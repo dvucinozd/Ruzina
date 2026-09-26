@@ -725,8 +725,7 @@ pub fn parse_pdb_track_row_header(
         return Ok(None);
     }
 
-    let bpm_x100 =
-        read_le32(row_prefix, TRACK_OFF_TEMPO).ok_or(PdbError::TrackRowOutOfRange)?;
+    let bpm_x100 = read_le32(row_prefix, TRACK_OFF_TEMPO).ok_or(PdbError::TrackRowOutOfRange)?;
     let rounded_bpm = (u64::from(bpm_x100) + 50) / 100;
 
     let string_offset = |index: usize| {
@@ -735,18 +734,15 @@ pub fn parse_pdb_track_row_header(
     };
 
     Ok(Some(PdbTrackRowHeader {
-        track_id: read_le32(row_prefix, TRACK_OFF_TRACK_ID)
-            .ok_or(PdbError::TrackRowOutOfRange)?,
+        track_id: read_le32(row_prefix, TRACK_OFF_TRACK_ID).ok_or(PdbError::TrackRowOutOfRange)?,
         bpm_x100,
         bpm: u16::try_from(rounded_bpm).unwrap_or(u16::MAX),
         duration_s: read_le16(row_prefix, TRACK_OFF_DURATION)
             .ok_or(PdbError::TrackRowOutOfRange)?,
         artist_id: read_le32(row_prefix, TRACK_OFF_ARTIST_ID)
             .ok_or(PdbError::TrackRowOutOfRange)?,
-        album_id: read_le32(row_prefix, TRACK_OFF_ALBUM_ID)
-            .ok_or(PdbError::TrackRowOutOfRange)?,
-        key_id: read_le32(row_prefix, TRACK_OFF_KEY_ID)
-            .ok_or(PdbError::TrackRowOutOfRange)?,
+        album_id: read_le32(row_prefix, TRACK_OFF_ALBUM_ID).ok_or(PdbError::TrackRowOutOfRange)?,
+        key_id: read_le32(row_prefix, TRACK_OFF_KEY_ID).ok_or(PdbError::TrackRowOutOfRange)?,
         strings: PdbTrackStringOffsets {
             title: string_offset(STR_IDX_TITLE)?,
             filename: string_offset(STR_IDX_FILENAME)?,
@@ -1140,10 +1136,7 @@ mod tests {
             pdb_track_string_page_offset(0x100, 0x90, 4_096).unwrap(),
             Some(0x1b8)
         );
-        assert_eq!(
-            pdb_track_string_page_offset(0x100, 0, 4_096).unwrap(),
-            None
-        );
+        assert_eq!(pdb_track_string_page_offset(0x100, 0, 4_096).unwrap(), None);
         assert_eq!(
             pdb_track_string_page_offset(4_000, 100, 4_096),
             Err(PdbError::TrackStringOffsetOutOfRange)
