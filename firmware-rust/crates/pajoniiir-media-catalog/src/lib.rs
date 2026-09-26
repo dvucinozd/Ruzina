@@ -60,8 +60,7 @@ impl<const N: usize> CatalogText<N> {
     }
 
     pub fn as_str(&self) -> &str {
-        str::from_utf8(self.as_bytes())
-            .expect("CatalogText is constructible only from valid UTF-8")
+        str::from_utf8(self.as_bytes()).expect("CatalogText is constructible only from valid UTF-8")
     }
 }
 
@@ -223,10 +222,7 @@ impl<const N: usize> CatalogSnapshot<N> {
             .find(|(_, track)| track.track_id == track_id)
     }
 
-    pub fn find_by_source_track_id(
-        &self,
-        source_track_id: u32,
-    ) -> Option<(usize, &CatalogTrack)> {
+    pub fn find_by_source_track_id(&self, source_track_id: u32) -> Option<(usize, &CatalogTrack)> {
         self.tracks()
             .iter()
             .enumerate()
@@ -252,7 +248,11 @@ impl<const N: usize> CatalogPublisher<N> {
     }
 
     pub fn invalidate(&mut self, lease: MediaLease) -> bool {
-        if self.current.as_ref().is_some_and(|snapshot| snapshot.lease == lease) {
+        if self
+            .current
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.lease == lease)
+        {
             self.current = None;
             true
         } else {
@@ -304,7 +304,10 @@ mod tests {
             CatalogText::<4>::try_from_str("hello"),
             Err(CatalogTextError::TooLong { len: 5, max: 4 })
         );
-        assert_eq!(CatalogText::<4>::try_from_str("test").unwrap().as_str(), "test");
+        assert_eq!(
+            CatalogText::<4>::try_from_str("test").unwrap().as_str(),
+            "test"
+        );
     }
 
     #[test]
