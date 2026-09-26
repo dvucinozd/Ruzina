@@ -17,9 +17,9 @@ use crate::usb0_msc::{
     Usb0FilesystemClient, Usb0LibraryEvent, Usb0MscBinding,
 };
 
-const USB0_LIBRARY_PDB_PAGE_BYTES: usize = 4_096;
+const USB0_LIBRARY_PDB_IO_BYTES: usize = 8_192;
 
-static USB0_LIBRARY_PDB_PAGE: StaticCell<[u8; USB0_LIBRARY_PDB_PAGE_BYTES]> = StaticCell::new();
+static USB0_LIBRARY_PDB_IO: StaticCell<[u8; USB0_LIBRARY_PDB_IO_BYTES]> = StaticCell::new();
 
 static USB0_LIBRARY_STATE: CriticalSectionMutex<RefCell<Usb0LibraryState>> =
     CriticalSectionMutex::new(RefCell::new(Usb0LibraryState::Idle));
@@ -36,14 +36,6 @@ pub(crate) enum Usb0LibraryError {
     FilesystemStaleLease,
     FilesystemExFatUnavailable,
     FilesystemFat32,
-    PageTooLarge {
-        required: u32,
-        available: u32,
-    },
-    ShortPageRead {
-        required: u32,
-        actual: u32,
-    },
     MissingTracksTable,
     Pdb(PdbError),
 }
@@ -121,7 +113,7 @@ async fn open_export_pdb(
     }
 }
 
-enum PageReadResult {
+enum PrefixReadResult {
     Complete {
         file: Fat32AsyncFileHandle,
         buffer: &'static mut [u8],
@@ -134,12 +126,12 @@ enum PageReadResult {
     },
 }
 
-async fn read_page(
+async fn read_prefix(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
     file: Fat32AsyncFileHandle,
     buffer: &'static mut [u8],
-) -> PageReadResult {
+) -> PrefixReadResult {
     let ticket = client.issue_ticket(lease);
     match client
         .submit(Usb0FsRequest::Read {
@@ -155,33 +147,33 @@ async fn read_page(
             result,
             ..
         }) => match result {
-            Ok(bytes) => PageReadResult::Complete {
+            Ok(bytes) => PrefixReadResult::Complete {
                 file,
                 buffer,
                 bytes,
             },
-            Err(error) => PageReadResult::Failed {
+            Err(error) => PrefixReadResult::Failed {
                 file,
                 buffer,
                 error: map_filesystem_error(error),
             },
         },
         Usb0FsSubmitResult::QueueFull(Usb0FsRequest::Read { file, buffer, .. }) => {
-            PageReadResult::Failed {
+            PrefixReadResult::Failed {
                 file,
                 buffer,
                 error: Usb0LibraryError::BrokerBusy,
             }
         }
         Usb0FsSubmitResult::PendingCompletion(Usb0FsRequest::Read { file, buffer, .. }) => {
-            PageReadResult::Failed {
+            PrefixReadResult::Failed {
                 file,
                 buffer,
                 error: Usb0LibraryError::BrokerPending,
             }
         }
         Usb0FsSubmitResult::WrongClient(Usb0FsRequest::Read { file, buffer, .. }) => {
-            PageReadResult::Failed {
+            PrefixReadResult::Failed {
                 file,
                 buffer,
                 error: Usb0LibraryError::BrokerWrongClient,
@@ -230,22 +222,8 @@ fn parse_first_page(
 ) -> Result<Usb0LibraryPdbProbe, Usb0LibraryError> {
     let available = bytes.min(buffer.len());
     let header = parse_pdb_header(&buffer[..available], file_len).map_err(Usb0LibraryError::Pdb)?;
-
-    if header.page_size as usize > buffer.len() {
-        return Err(Usb0LibraryError::PageTooLarge {
-            required: header.page_size,
-            available: buffer.len() as u32,
-        });
-    }
-    if available < header.page_size as usize {
-        return Err(Usb0LibraryError::ShortPageRead {
-            required: header.page_size,
-            actual: available as u32,
-        });
-    }
-
-    let tables = parse_pdb_table_directory(&buffer[..header.page_size as usize], header)
-        .map_err(Usb0LibraryError::Pdb)?;
+    let tables =
+        parse_pdb_table_directory(&buffer[..available], header).map_err(Usb0LibraryError::Pdb)?;
     let tracks_first_page =
         first_page(&tables, PDB_TABLE_TRACKS).ok_or(Usb0LibraryError::MissingTracksTable)?;
 
@@ -274,13 +252,13 @@ async fn probe_export_pdb(
     };
     let file_len = file.len();
 
-    let (file, buffer, read_result) = match read_page(client, lease, file, buffer).await {
-        PageReadResult::Complete {
+    let (file, buffer, read_result) = match read_prefix(client, lease, file, buffer).await {
+        PrefixReadResult::Complete {
             file,
             buffer,
             bytes,
         } => (file, buffer, Ok(bytes)),
-        PageReadResult::Failed {
+        PrefixReadResult::Failed {
             file,
             buffer,
             error,
@@ -303,7 +281,7 @@ async fn probe_export_pdb(
 
 pub(crate) async fn run_usb0_library_worker() -> ! {
     let mut client = Usb0FilesystemClient::library();
-    let mut page_buffer = &mut USB0_LIBRARY_PDB_PAGE.init([0; USB0_LIBRARY_PDB_PAGE_BYTES])[..];
+    let mut page_buffer = &mut USB0_LIBRARY_PDB_IO.init([0; USB0_LIBRARY_PDB_IO_BYTES])[..];
 
     loop {
         match USB0_LIBRARY_EVENTS.wait().await {
@@ -390,17 +368,18 @@ mod tests {
     }
 
     #[test]
-    fn first_page_probe_rejects_page_larger_than_owned_buffer() {
-        let mut page = [0u8; 512];
-        put_le32(&mut page, 4, 4_096);
-        put_le32(&mut page, 8, 1);
+    fn first_page_probe_accepts_large_pdb_page_from_bounded_prefix() {
+        let mut prefix = [0u8; 64];
+        put_le32(&mut prefix, 4, 65_536);
+        put_le32(&mut prefix, 8, 1);
+        put_le32(&mut prefix, 0x1c, PDB_TABLE_TRACKS);
+        put_le32(&mut prefix, 0x24, 1);
+        put_le32(&mut prefix, 0x28, 1);
 
-        assert_eq!(
-            parse_first_page(lease(), 8_192, &page, page.len()),
-            Err(Usb0LibraryError::PageTooLarge {
-                required: 4_096,
-                available: 512,
-            })
-        );
+        let probe =
+            parse_first_page(lease(), 65_536 * 2, &prefix, prefix.len()).unwrap();
+
+        assert_eq!(probe.header.page_size, 65_536);
+        assert_eq!(probe.tracks_first_page, 1);
     }
 }

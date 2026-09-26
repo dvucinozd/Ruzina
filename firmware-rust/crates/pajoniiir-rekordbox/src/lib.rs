@@ -63,6 +63,12 @@ pub struct PdbHeader {
     pub total_pages: u32,
 }
 
+impl PdbHeader {
+    pub const fn table_directory_bytes(self) -> usize {
+        PDB_TABLE_DIRECTORY_OFFSET + self.num_tables as usize * PDB_TABLE_ENTRY_SIZE
+    }
+}
+
 pub fn parse_pdb_header(header: &[u8], file_len: u64) -> Result<PdbHeader, PdbError> {
     if header.len() < PDB_HEADER_MIN {
         return Err(PdbError::HeaderTooShort);
@@ -142,22 +148,19 @@ impl PdbTableDirectory {
 }
 
 pub fn parse_pdb_table_directory(
-    first_page: &[u8],
+    first_page_prefix: &[u8],
     header: PdbHeader,
 ) -> Result<PdbTableDirectory, PdbError> {
     let page_size = header.page_size as usize;
-    if first_page.len() < page_size {
-        return Err(PdbError::PageBufferTooSmall {
-            required: page_size,
-            actual: first_page.len(),
-        });
-    }
-
-    let required = PDB_TABLE_DIRECTORY_OFFSET
-        .checked_add(header.num_tables as usize * PDB_TABLE_ENTRY_SIZE)
-        .ok_or(PdbError::TableDirectoryOutOfRange)?;
+    let required = header.table_directory_bytes();
     if required > page_size {
         return Err(PdbError::TableDirectoryOutOfRange);
+    }
+    if first_page_prefix.len() < required {
+        return Err(PdbError::PageBufferTooSmall {
+            required,
+            actual: first_page_prefix.len(),
+        });
     }
 
     let mut entries = [PdbTableEntry::EMPTY; PDB_MAX_TABLES];
@@ -168,12 +171,12 @@ pub fn parse_pdb_table_directory(
     {
         let offset = PDB_TABLE_DIRECTORY_OFFSET + index * PDB_TABLE_ENTRY_SIZE;
         let entry = PdbTableEntry {
-            kind: read_le32(first_page, offset).ok_or(PdbError::TableDirectoryOutOfRange)?,
-            empty_candidate: read_le32(first_page, offset + 4)
+            kind: read_le32(first_page_prefix, offset).ok_or(PdbError::TableDirectoryOutOfRange)?,
+            empty_candidate: read_le32(first_page_prefix, offset + 4)
                 .ok_or(PdbError::TableDirectoryOutOfRange)?,
-            first_page: read_le32(first_page, offset + 8)
+            first_page: read_le32(first_page_prefix, offset + 8)
                 .ok_or(PdbError::TableDirectoryOutOfRange)?,
-            last_page: read_le32(first_page, offset + 12)
+            last_page: read_le32(first_page_prefix, offset + 12)
                 .ok_or(PdbError::TableDirectoryOutOfRange)?,
         };
 
@@ -655,6 +658,28 @@ mod tests {
         assert_eq!(tables.len(), 2);
         assert_eq!(tables.find(PDB_TABLE_TRACKS).unwrap().first_page, 1);
         assert_eq!(tables.find(PDB_TABLE_ARTISTS).unwrap().first_page, 2);
+    }
+
+    #[test]
+    fn table_directory_parses_from_small_prefix_of_large_page() {
+        let mut prefix = [0u8; 540];
+        put_le32(&mut prefix, 4, PDB_MAX_PAGE_SIZE);
+        put_le32(&mut prefix, 8, PDB_MAX_TABLES as u32);
+
+        for index in 0..PDB_MAX_TABLES {
+            let offset = PDB_TABLE_DIRECTORY_OFFSET + index * PDB_TABLE_ENTRY_SIZE;
+            put_le32(&mut prefix, offset, index as u32);
+            put_le32(&mut prefix, offset + 8, 1);
+            put_le32(&mut prefix, offset + 12, 1);
+        }
+
+        let header =
+            parse_pdb_header(&prefix[..PDB_HEADER_MIN], u64::from(PDB_MAX_PAGE_SIZE) * 2).unwrap();
+        assert_eq!(header.table_directory_bytes(), prefix.len());
+
+        let tables = parse_pdb_table_directory(&prefix, header).unwrap();
+        assert_eq!(tables.len(), PDB_MAX_TABLES);
+        assert_eq!(tables.find(31).unwrap().first_page, 1);
     }
 
     #[test]
