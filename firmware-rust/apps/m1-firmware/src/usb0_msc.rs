@@ -13,10 +13,14 @@ use embassy_usb_host::{
 };
 use pajoniiir_media_block::{BlockGeometry, TransferError};
 use pajoniiir_media_fat32::{
-    Fat32AsyncFileSystem, Fat32AsyncMountError, Fat32BootInfo, Fat32BootSectorError, Fat32FsInfo,
-    Fat32FsInfoError, parse_fat32_boot_sector, parse_fat32_fs_info,
+    Fat32AsyncDirectoryHandle, Fat32AsyncFileHandle, Fat32AsyncFileSystem, Fat32AsyncFsError,
+    Fat32AsyncMountError, Fat32BootInfo, Fat32BootSectorError, Fat32FsInfo, Fat32FsInfoError,
+    parse_fat32_boot_sector, parse_fat32_fs_info,
 };
-use pajoniiir_media_fs::FileSystemKind;
+use pajoniiir_media_fs::{
+    AsyncFileSystem, BoundedPath, DirEntry, FS_NAME_MAX, FileStat, FileSystemClientId,
+    FileSystemKind, FileSystemRequestSequencer, FileSystemRequestTicket,
+};
 use pajoniiir_media_io::{
     AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
 };
@@ -57,6 +61,33 @@ pub(crate) static USB0_MSC_FILESYSTEM_EVENTS: Channel<
     CriticalSectionRawMutex,
     Usb0MscFilesystemEvent,
     USB0_MSC_QUEUE_DEPTH,
+> = Channel::new();
+
+pub(crate) const USB0_FS_REQUEST_DEPTH: usize = 3;
+const USB0_FS_COMPLETION_DEPTH: usize = 1;
+
+pub(crate) static USB0_FS_REQUESTS: Channel<
+    CriticalSectionRawMutex,
+    Usb0FsRequest,
+    USB0_FS_REQUEST_DEPTH,
+> = Channel::new();
+
+static USB0_FS_LIBRARY_COMPLETIONS: Channel<
+    CriticalSectionRawMutex,
+    Usb0FsCompletion,
+    USB0_FS_COMPLETION_DEPTH,
+> = Channel::new();
+
+static USB0_FS_DECK_A_COMPLETIONS: Channel<
+    CriticalSectionRawMutex,
+    Usb0FsCompletion,
+    USB0_FS_COMPLETION_DEPTH,
+> = Channel::new();
+
+static USB0_FS_DECK_B_COMPLETIONS: Channel<
+    CriticalSectionRawMutex,
+    Usb0FsCompletion,
+    USB0_FS_COMPLETION_DEPTH,
 > = Channel::new();
 
 static USB0_MSC_LIFECYCLE: CriticalSectionMutex<RefCell<Usb0MscLifecycle>> =
@@ -172,6 +203,206 @@ pub(crate) enum Usb0MscFilesystemEvent {
     Detached {
         binding: Usb0MscBinding,
     },
+}
+
+type Usb0Fat32OperationError = Fat32AsyncFsError<AsyncPartitionError<Usb0MscIoError>>;
+
+#[derive(Debug)]
+pub(crate) enum Usb0FsOperationError {
+    NoMedia,
+    StaleLease,
+    ExFatUnavailable,
+    Fat32(Usb0Fat32OperationError),
+}
+
+pub(crate) enum Usb0FsRequest {
+    Stat {
+        ticket: FileSystemRequestTicket,
+        path: BoundedPath,
+    },
+    OpenRead {
+        ticket: FileSystemRequestTicket,
+        path: BoundedPath,
+    },
+    Read {
+        ticket: FileSystemRequestTicket,
+        file: Fat32AsyncFileHandle,
+        buffer: &'static mut [u8],
+    },
+    Seek {
+        ticket: FileSystemRequestTicket,
+        file: Fat32AsyncFileHandle,
+        position: u64,
+    },
+    CloseFile {
+        ticket: FileSystemRequestTicket,
+        file: Fat32AsyncFileHandle,
+    },
+    OpenDirectory {
+        ticket: FileSystemRequestTicket,
+        path: BoundedPath,
+    },
+    NextEntry {
+        ticket: FileSystemRequestTicket,
+        directory: Fat32AsyncDirectoryHandle,
+        name_storage: &'static mut [u8; FS_NAME_MAX],
+    },
+    CloseDirectory {
+        ticket: FileSystemRequestTicket,
+        directory: Fat32AsyncDirectoryHandle,
+    },
+}
+
+impl Usb0FsRequest {
+    pub(crate) const fn ticket(&self) -> FileSystemRequestTicket {
+        match self {
+            Self::Stat { ticket, .. }
+            | Self::OpenRead { ticket, .. }
+            | Self::Read { ticket, .. }
+            | Self::Seek { ticket, .. }
+            | Self::CloseFile { ticket, .. }
+            | Self::OpenDirectory { ticket, .. }
+            | Self::NextEntry { ticket, .. }
+            | Self::CloseDirectory { ticket, .. } => *ticket,
+        }
+    }
+}
+
+pub(crate) enum Usb0FsCompletion {
+    Stat {
+        ticket: FileSystemRequestTicket,
+        result: Result<FileStat, Usb0FsOperationError>,
+    },
+    OpenRead {
+        ticket: FileSystemRequestTicket,
+        result: Result<Fat32AsyncFileHandle, Usb0FsOperationError>,
+    },
+    Read {
+        ticket: FileSystemRequestTicket,
+        file: Fat32AsyncFileHandle,
+        buffer: &'static mut [u8],
+        result: Result<usize, Usb0FsOperationError>,
+    },
+    Seek {
+        ticket: FileSystemRequestTicket,
+        file: Fat32AsyncFileHandle,
+        result: Result<(), Usb0FsOperationError>,
+    },
+    CloseFile {
+        ticket: FileSystemRequestTicket,
+        result: Result<(), Usb0FsOperationError>,
+    },
+    OpenDirectory {
+        ticket: FileSystemRequestTicket,
+        result: Result<Fat32AsyncDirectoryHandle, Usb0FsOperationError>,
+    },
+    NextEntry {
+        ticket: FileSystemRequestTicket,
+        directory: Fat32AsyncDirectoryHandle,
+        name_storage: &'static mut [u8; FS_NAME_MAX],
+        result: Result<Option<DirEntry>, Usb0FsOperationError>,
+    },
+    CloseDirectory {
+        ticket: FileSystemRequestTicket,
+        result: Result<(), Usb0FsOperationError>,
+    },
+}
+
+impl Usb0FsCompletion {
+    pub(crate) const fn ticket(&self) -> FileSystemRequestTicket {
+        match self {
+            Self::Stat { ticket, .. }
+            | Self::OpenRead { ticket, .. }
+            | Self::Read { ticket, .. }
+            | Self::Seek { ticket, .. }
+            | Self::CloseFile { ticket, .. }
+            | Self::OpenDirectory { ticket, .. }
+            | Self::NextEntry { ticket, .. }
+            | Self::CloseDirectory { ticket, .. } => *ticket,
+        }
+    }
+}
+
+pub(crate) enum Usb0FsSubmitResult {
+    Completed(Usb0FsCompletion),
+    QueueFull(Usb0FsRequest),
+    PendingCompletion(Usb0FsRequest),
+    WrongClient(Usb0FsRequest),
+    UnexpectedCompletion {
+        expected: FileSystemRequestTicket,
+        completion: Usb0FsCompletion,
+    },
+}
+
+pub(crate) struct Usb0FilesystemClient {
+    client: FileSystemClientId,
+    sequencer: FileSystemRequestSequencer,
+    pending: Option<FileSystemRequestTicket>,
+}
+
+impl Usb0FilesystemClient {
+    pub(crate) const fn new(client: FileSystemClientId) -> Self {
+        Self {
+            client,
+            sequencer: FileSystemRequestSequencer::new(),
+            pending: None,
+        }
+    }
+
+    pub(crate) const fn library() -> Self {
+        Self::new(FileSystemClientId::Library)
+    }
+
+    pub(crate) const fn deck_a() -> Self {
+        Self::new(FileSystemClientId::DeckA)
+    }
+
+    pub(crate) const fn deck_b() -> Self {
+        Self::new(FileSystemClientId::DeckB)
+    }
+
+    pub(crate) fn issue_ticket(&mut self, lease: MediaLease) -> FileSystemRequestTicket {
+        self.sequencer.issue(self.client, lease)
+    }
+
+    pub(crate) const fn pending_ticket(&self) -> Option<FileSystemRequestTicket> {
+        self.pending
+    }
+
+    pub(crate) async fn submit(&mut self, request: Usb0FsRequest) -> Usb0FsSubmitResult {
+        if request.ticket().client() != self.client {
+            return Usb0FsSubmitResult::WrongClient(request);
+        }
+        if self.pending.is_some() {
+            return Usb0FsSubmitResult::PendingCompletion(request);
+        }
+
+        let ticket = request.ticket();
+        match USB0_FS_REQUESTS.sender().try_send(request) {
+            Ok(()) => self.pending = Some(ticket),
+            Err(embassy_sync::channel::TrySendError::Full(request)) => {
+                return Usb0FsSubmitResult::QueueFull(request);
+            }
+        }
+
+        self.receive_pending_completion()
+            .await
+            .expect("pending filesystem ticket is set before awaiting completion")
+    }
+
+    pub(crate) async fn receive_pending_completion(&mut self) -> Option<Usb0FsSubmitResult> {
+        let expected = self.pending?;
+        let completion = filesystem_completion_channel(self.client).receive().await;
+        if completion.ticket() != expected {
+            return Some(Usb0FsSubmitResult::UnexpectedCompletion {
+                expected,
+                completion,
+            });
+        }
+
+        self.pending = None;
+        Some(Usb0FsSubmitResult::Completed(completion))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1338,6 +1569,16 @@ impl Usb0FilesystemScratchPool {
 type Usb0Fat32FileSystem =
     Fat32AsyncFileSystem<AsyncPartitionDevice<Usb0MscAsyncBlockDevice>>;
 
+fn filesystem_completion_channel(
+    client: FileSystemClientId,
+) -> &'static Channel<CriticalSectionRawMutex, Usb0FsCompletion, USB0_FS_COMPLETION_DEPTH> {
+    match client {
+        FileSystemClientId::Library => &USB0_FS_LIBRARY_COMPLETIONS,
+        FileSystemClientId::DeckA => &USB0_FS_DECK_A_COMPLETIONS,
+        FileSystemClientId::DeckB => &USB0_FS_DECK_B_COMPLETIONS,
+    }
+}
+
 enum Usb0ActiveFileSystem {
     Fat32(Usb0Fat32FileSystem),
     ExFat(AsyncPartitionDevice<Usb0MscAsyncBlockDevice>),
@@ -1350,6 +1591,137 @@ impl Usb0ActiveFileSystem {
             if let Some(scratch) = scratch {
                 restore_filesystem_scratch(scratch_pool, scratch);
             }
+        }
+    }
+}
+
+fn active_fat32_for_request<'a>(
+    active: &'a mut Option<(UsbMscMountedMedia, Usb0ActiveFileSystem)>,
+    ticket: FileSystemRequestTicket,
+) -> Result<&'a mut Usb0Fat32FileSystem, Usb0FsOperationError> {
+    let Some((media, filesystem)) = active.as_mut() else {
+        return Err(Usb0FsOperationError::NoMedia);
+    };
+    if media.attempt.lease != ticket.lease() {
+        return Err(Usb0FsOperationError::StaleLease);
+    }
+
+    match filesystem {
+        Usb0ActiveFileSystem::Fat32(filesystem) => Ok(filesystem),
+        Usb0ActiveFileSystem::ExFat(_) => Err(Usb0FsOperationError::ExFatUnavailable),
+    }
+}
+
+async fn process_filesystem_request(
+    active: &mut Option<(UsbMscMountedMedia, Usb0ActiveFileSystem)>,
+    request: Usb0FsRequest,
+) -> Usb0FsCompletion {
+    match request {
+        Usb0FsRequest::Stat { ticket, path } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .stat(path.as_str())
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::Stat { ticket, result }
+        }
+        Usb0FsRequest::OpenRead { ticket, path } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .open_read(path.as_str())
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::OpenRead { ticket, result }
+        }
+        Usb0FsRequest::Read {
+            ticket,
+            mut file,
+            buffer,
+        } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .read(&mut file, buffer)
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::Read {
+                ticket,
+                file,
+                buffer,
+                result,
+            }
+        }
+        Usb0FsRequest::Seek {
+            ticket,
+            mut file,
+            position,
+        } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .seek_absolute(&mut file, position)
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::Seek {
+                ticket,
+                file,
+                result,
+            }
+        }
+        Usb0FsRequest::CloseFile { ticket, file } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .close_file(file)
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::CloseFile { ticket, result }
+        }
+        Usb0FsRequest::OpenDirectory { ticket, path } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .open_directory(path.as_str())
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::OpenDirectory { ticket, result }
+        }
+        Usb0FsRequest::NextEntry {
+            ticket,
+            mut directory,
+            name_storage,
+        } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .next_entry(&mut directory, name_storage)
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::NextEntry {
+                ticket,
+                directory,
+                name_storage,
+                result,
+            }
+        }
+        Usb0FsRequest::CloseDirectory { ticket, directory } => {
+            let result = match active_fat32_for_request(active, ticket) {
+                Ok(filesystem) => filesystem
+                    .close_directory(directory)
+                    .await
+                    .map_err(Usb0FsOperationError::Fat32),
+                Err(error) => Err(error),
+            };
+            Usb0FsCompletion::CloseDirectory { ticket, result }
         }
     }
 }
@@ -1475,41 +1847,53 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
     let mut active: Option<(UsbMscMountedMedia, Usb0ActiveFileSystem)> = None;
 
     loop {
-        match USB0_MSC_FILESYSTEM_EVENTS.receive().await {
-            Usb0MscFilesystemEvent::Mounted { binding, media } => {
-                if let Some((_old_media, filesystem)) = active.take() {
-                    filesystem.release(&mut scratch_pool);
-                }
-
-                set_filesystem_state(Usb0MscFilesystemState::Probing { binding, media });
-                match probe_mounted_filesystem(media, &mut scratch_pool).await {
-                    Ok((probe, filesystem)) => {
-                        active = Some((media, filesystem));
-                        set_filesystem_state(Usb0MscFilesystemState::Ready {
-                            binding,
-                            media,
-                            probe,
-                        });
-                    }
-                    Err(error) => {
-                        set_filesystem_state(Usb0MscFilesystemState::Failed {
-                            binding,
-                            media,
-                            error,
-                        });
-                    }
-                }
-            }
-            Usb0MscFilesystemEvent::Detached { binding } => {
-                if active
-                    .as_ref()
-                    .is_some_and(|(media, _)| media.attempt.handle == binding.handle)
-                {
-                    if let Some((_media, filesystem)) = active.take() {
+        match select(
+            USB0_MSC_FILESYSTEM_EVENTS.receive(),
+            USB0_FS_REQUESTS.receive(),
+        )
+        .await
+        {
+            Either::First(event) => match event {
+                Usb0MscFilesystemEvent::Mounted { binding, media } => {
+                    if let Some((_old_media, filesystem)) = active.take() {
                         filesystem.release(&mut scratch_pool);
                     }
+
+                    set_filesystem_state(Usb0MscFilesystemState::Probing { binding, media });
+                    match probe_mounted_filesystem(media, &mut scratch_pool).await {
+                        Ok((probe, filesystem)) => {
+                            active = Some((media, filesystem));
+                            set_filesystem_state(Usb0MscFilesystemState::Ready {
+                                binding,
+                                media,
+                                probe,
+                            });
+                        }
+                        Err(error) => {
+                            set_filesystem_state(Usb0MscFilesystemState::Failed {
+                                binding,
+                                media,
+                                error,
+                            });
+                        }
+                    }
                 }
-                set_filesystem_state(Usb0MscFilesystemState::Detached { binding });
+                Usb0MscFilesystemEvent::Detached { binding } => {
+                    if active
+                        .as_ref()
+                        .is_some_and(|(media, _)| media.attempt.handle == binding.handle)
+                        && let Some((_media, filesystem)) = active.take()
+                    {
+                        filesystem.release(&mut scratch_pool);
+                    }
+                    set_filesystem_state(Usb0MscFilesystemState::Detached { binding });
+                }
+            },
+            Either::Second(request) => {
+                let completion = process_filesystem_request(&mut active, request).await;
+                filesystem_completion_channel(completion.ticket().client())
+                    .send(completion)
+                    .await;
             }
         }
     }
@@ -1522,8 +1906,10 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
 /// mount descriptor. The descriptor is then handed to the separate filesystem
 /// worker, which owns the async partition adapter. FAT32 receives BPB/FSInfo
 /// validation and is then promoted into the native async FAT32 filesystem,
-/// which retains the exact logical-sector scratch buffer until detach. The
-/// synchronous FAT32/exFAT backends are never called from the Embassy task.
+/// which retains the exact logical-sector scratch buffer until detach. Library,
+/// Deck A and Deck B submit one owned request at a time through the bounded
+/// filesystem queue and receive completions on physically separate channels.
+/// The synchronous FAT32/exFAT backends are never called from the Embassy task.
 pub(crate) async fn run_usb0_media_worker() -> ! {
     let mut coordinator = UsbMscMountCoordinator::new();
     let mut scratch_pool = Usb0MscScratchPool::new();

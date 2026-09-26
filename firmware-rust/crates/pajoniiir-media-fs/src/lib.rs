@@ -9,6 +9,116 @@ use pajoniiir_media_session::MediaLease;
 /// four UTF-8 bytes. Callers own this buffer so directory scans never allocate.
 pub const FS_NAME_MAX: usize = 255 * 4;
 
+/// Maximum UTF-8 path bytes accepted by allocation-free filesystem brokers.
+///
+/// FAT32/exFAT can encode long individual components, while the complete path
+/// is implementation-defined. M1 intentionally caps broker messages at 1 KiB
+/// so request queues have a fixed and reviewable memory cost.
+pub const FS_PATH_MAX: usize = 1_024;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FileSystemClientId {
+    Library,
+    DeckA,
+    DeckB,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FileSystemRequestTicket {
+    client: FileSystemClientId,
+    sequence: u32,
+    lease: MediaLease,
+}
+
+impl FileSystemRequestTicket {
+    pub const fn client(self) -> FileSystemClientId {
+        self.client
+    }
+
+    pub const fn sequence(self) -> u32 {
+        self.sequence
+    }
+
+    pub const fn lease(self) -> MediaLease {
+        self.lease
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FileSystemRequestSequencer {
+    next: u32,
+}
+
+impl FileSystemRequestSequencer {
+    pub const fn new() -> Self {
+        Self { next: 0 }
+    }
+
+    pub fn issue(
+        &mut self,
+        client: FileSystemClientId,
+        lease: MediaLease,
+    ) -> FileSystemRequestTicket {
+        self.next = self.next.wrapping_add(1);
+        if self.next == 0 {
+            self.next = 1;
+        }
+        FileSystemRequestTicket {
+            client,
+            sequence: self.next,
+            lease,
+        }
+    }
+}
+
+impl Default for FileSystemRequestSequencer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BoundedPathError {
+    TooLong { len: usize, max: usize },
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct BoundedPath {
+    len: u16,
+    bytes: [u8; FS_PATH_MAX],
+}
+
+impl BoundedPath {
+    pub fn new(path: &str) -> Result<Self, BoundedPathError> {
+        if path.len() > FS_PATH_MAX {
+            return Err(BoundedPathError::TooLong {
+                len: path.len(),
+                max: FS_PATH_MAX,
+            });
+        }
+
+        let mut bytes = [0u8; FS_PATH_MAX];
+        bytes[..path.len()].copy_from_slice(path.as_bytes());
+        Ok(Self {
+            len: path.len() as u16,
+            bytes,
+        })
+    }
+
+    pub fn as_str(&self) -> &str {
+        core::str::from_utf8(&self.bytes[..self.len as usize])
+            .expect("BoundedPath is only constructible from valid UTF-8")
+    }
+
+    pub const fn len(&self) -> usize {
+        self.len as usize
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FileSystemKind {
     Fat32,
@@ -356,6 +466,47 @@ mod tests {
             generation: MediaGeneration::initial(),
             source: MediaSourceId::new(1).unwrap(),
         }
+    }
+
+    #[test]
+    fn bounded_path_preserves_utf8_and_enforces_fixed_capacity() {
+        let path = BoundedPath::new("/PIONEER/USBANLZ/P001/0001.DAT").unwrap();
+        assert_eq!(path.as_str(), "/PIONEER/USBANLZ/P001/0001.DAT");
+        assert_eq!(path.len(), 31);
+        assert!(!path.is_empty());
+
+        let exact = std::string::String::from_utf8(vec![b'a'; FS_PATH_MAX]).unwrap();
+        assert_eq!(BoundedPath::new(&exact).unwrap().len(), FS_PATH_MAX);
+
+        let too_long = std::string::String::from_utf8(vec![b'a'; FS_PATH_MAX + 1]).unwrap();
+        assert_eq!(
+            BoundedPath::new(&too_long),
+            Err(BoundedPathError::TooLong {
+                len: FS_PATH_MAX + 1,
+                max: FS_PATH_MAX,
+            })
+        );
+    }
+
+    #[test]
+    fn filesystem_request_sequences_are_client_and_lease_bound() {
+        let mut sequencer = FileSystemRequestSequencer::new();
+        let first = sequencer.issue(FileSystemClientId::Library, lease());
+        let second = sequencer.issue(FileSystemClientId::DeckA, lease());
+
+        assert_eq!(first.client(), FileSystemClientId::Library);
+        assert_eq!(first.sequence(), 1);
+        assert_eq!(first.lease(), lease());
+        assert_eq!(second.client(), FileSystemClientId::DeckA);
+        assert_eq!(second.sequence(), 2);
+    }
+
+    #[test]
+    fn filesystem_request_sequence_never_emits_zero_after_wrap() {
+        let mut sequencer = FileSystemRequestSequencer { next: u32::MAX };
+        let ticket = sequencer.issue(FileSystemClientId::DeckB, lease());
+
+        assert_eq!(ticket.sequence(), 1);
     }
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
