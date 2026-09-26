@@ -917,7 +917,6 @@ fn encode_latin1(input: &[u8], output: &mut [u8], mut written: usize) -> Option<
     Some(written)
 }
 
-
 const FAT32_BOOT_MINIMUM: usize = 512;
 const FAT32_BOOT_SIGNATURE_OFFSET: usize = 510;
 const FAT32_FSINFO_MINIMUM: usize = 512;
@@ -951,10 +950,18 @@ pub struct Fat32BootInfo {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Fat32BootSectorError {
-    BufferTooSmall { minimum: usize, actual: usize },
-    InvalidSignature { found: u16 },
+    BufferTooSmall {
+        minimum: usize,
+        actual: usize,
+    },
+    InvalidSignature {
+        found: u16,
+    },
     UnsupportedSectorSize(u16),
-    DeviceSectorSizeMismatch { device: u32, bpb: u16 },
+    DeviceSectorSizeMismatch {
+        device: u32,
+        bpb: u16,
+    },
     InvalidSectorsPerCluster(u8),
     ClusterSizeTooLarge(u32),
     InvalidReservedSectors(u16),
@@ -995,14 +1002,8 @@ pub enum Fat32FsInfoError {
     InvalidLeadSignature { found: u32 },
     InvalidStructureSignature { found: u32 },
     InvalidTrailSignature { found: u32 },
-    FreeCountOutOfRange {
-        free_count: u32,
-        cluster_count: u32,
-    },
-    NextFreeOutOfRange {
-        next_free: u32,
-        max_cluster: u32,
-    },
+    FreeCountOutOfRange { free_count: u32, cluster_count: u32 },
+    NextFreeOutOfRange { next_free: u32, max_cluster: u32 },
 }
 
 fn read_le_u16(input: &[u8], offset: usize) -> u16 {
@@ -1202,9 +1203,7 @@ pub fn parse_fat32_fs_info(
     }
     let structure = read_le_u32(block, 484);
     if structure != FAT32_FSINFO_STRUCTURE_SIGNATURE {
-        return Err(Fat32FsInfoError::InvalidStructureSignature {
-            found: structure,
-        });
+        return Err(Fat32FsInfoError::InvalidStructureSignature { found: structure });
     }
     let trail = read_le_u32(block, 508);
     if trail != FAT32_FSINFO_TRAIL_SIGNATURE {
@@ -1462,7 +1461,6 @@ mod tests {
         );
     }
 }
-
 
 #[cfg(test)]
 mod async_mount_validation_tests {
