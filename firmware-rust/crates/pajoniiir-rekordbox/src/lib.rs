@@ -893,7 +893,11 @@ impl<const N: usize> PdbNameMap<N> {
     }
 
     pub fn push(&mut self, entry: PdbNameEntry) -> Result<usize, PdbNameMapError> {
-        if self.entries().iter().any(|existing| existing.id == entry.id) {
+        if self
+            .entries()
+            .iter()
+            .any(|existing| existing.id == entry.id)
+        {
             return Err(PdbNameMapError::DuplicateId(entry.id));
         }
         if self.len == N {
@@ -1363,10 +1367,9 @@ mod tests {
             usize::from(NAME_ROW_TEXT_OFFSET),
             b"Artist Name",
         );
-        let artist_header =
-            parse_pdb_name_row_header(&artist, PdbNameRowLayout::ArtistOrAlbum)
-                .unwrap()
-                .unwrap();
+        let artist_header = parse_pdb_name_row_header(&artist, PdbNameRowLayout::ArtistOrAlbum)
+            .unwrap()
+            .unwrap();
         assert_eq!(artist_header.id, 42);
         assert_eq!(artist_header.text_relative_offset, NAME_ROW_TEXT_OFFSET);
         let artist_name = PdbText::<PDB_NAME_MAX>::from_devicesql_field(
