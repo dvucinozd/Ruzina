@@ -1,5 +1,6 @@
 use core::char;
 
+#[cfg(test)]
 use pajoniiir_media_block::BlockGeometry;
 use pajoniiir_media_fs::{
     AsyncFileSystem, DirEntry, DirectoryHandle, EntryKind, FS_NAME_MAX, FileHandle, FileStat,
@@ -371,7 +372,8 @@ where
 
     fn decode_short_name(raw: &[u8; FAT32_ENTRY_SIZE], output: &mut [u8]) -> Option<usize> {
         let mut written = 0usize;
-        let mut base = raw[0..8].to_vec_array();
+        let mut base = [0u8; 8];
+        base.copy_from_slice(&raw[0..8]);
         if base[0] == 0x05 {
             base[0] = 0xe5;
         }
@@ -798,18 +800,6 @@ where
     }
 }
 
-trait ToVecArray {
-    fn to_vec_array(&self) -> [u8; 8];
-}
-
-impl ToVecArray for [u8] {
-    fn to_vec_array(&self) -> [u8; 8] {
-        let mut output = [0u8; 8];
-        output.copy_from_slice(&self[..8]);
-        output
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -945,7 +935,7 @@ mod tests {
 
         let alias = *b"LONGTR~1WAV";
         let checksum = Fat32AsyncFileSystem::<MemoryDevice>::short_name_checksum(&alias);
-        let lfn = lfn_entry("Long Track.wav", checksum);
+        let lfn = lfn_entry("Long Trk.wav", checksum);
         image[root + 64..root + 96].copy_from_slice(&lfn);
         let long_file = short_entry(&alias, 0x20, 7, 5);
         image[root + 96..root + 128].copy_from_slice(&long_file);
@@ -1050,14 +1040,14 @@ mod tests {
         ))
         .unwrap()
         .unwrap();
-        assert_eq!(third.name(&name), Some(b"Long Track.wav".as_slice()));
+        assert_eq!(third.name(&name), Some(b"Long Trk.wav".as_slice()));
     }
 
     #[test]
     fn long_filename_lookup_is_case_insensitive_for_ascii() {
         let mut fs = filesystem();
         let mut file =
-            block_on_ready(AsyncFileSystem::open_read(&mut fs, "/long track.wav")).unwrap();
+            block_on_ready(AsyncFileSystem::open_read(&mut fs, "/long trk.wav")).unwrap();
         let mut output = [0u8; 5];
 
         block_on_ready(AsyncFileSystem::read_exact(&mut fs, &mut file, &mut output)).unwrap();
