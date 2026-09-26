@@ -13,7 +13,9 @@ use embassy_usb_host::{
 };
 use pajoniiir_media_block::{BlockGeometry, TransferError};
 use pajoniiir_media_fs::FileSystemKind;
-use pajoniiir_media_io::{AsyncPartitionDevice, OwnedBlockDevice, OwnedWritableBlockDevice};
+use pajoniiir_media_io::{
+    AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
+};
 use pajoniiir_media_partition::{VolumeKind, classify_boot_sector};
 use pajoniiir_media_session::{DisconnectResult, MediaHandle, MediaLease, MediaSession};
 use pajoniiir_media_usb_msc::{
@@ -105,6 +107,7 @@ pub(crate) enum Usb0MscMediaState {
 pub(crate) enum Usb0MscFilesystemProbeError {
     UnsupportedBlockSize(u32),
     ScratchUnavailable(u32),
+    PartitionTransfer(TransferError),
     Io(Usb0MscIoError),
     UnknownVolume,
     KindMismatch {
@@ -1335,7 +1338,12 @@ async fn probe_mounted_filesystem(
             if scratch_pool.restore(scratch).is_err() {
                 esp_hal::system::software_reset();
             }
-            return Err(Usb0MscFilesystemProbeError::Io(error));
+            return Err(match error {
+                AsyncPartitionError::Transfer(error) => {
+                    Usb0MscFilesystemProbeError::PartitionTransfer(error)
+                }
+                AsyncPartitionError::Inner(error) => Usb0MscFilesystemProbeError::Io(error),
+            });
         }
     };
 
