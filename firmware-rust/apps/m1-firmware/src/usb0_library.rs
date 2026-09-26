@@ -8,7 +8,8 @@ use pajoniiir_media_fs::{
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
     PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS, PdbError, PdbHeader,
-    PdbTableDirectory, REKORDBOX_EXPORT_PDB_PATH, parse_pdb_header, parse_pdb_table_directory,
+    PdbPageSlotWalker, PdbTableDirectory, REKORDBOX_EXPORT_PDB_PATH, parse_pdb_header,
+    parse_pdb_page_header, parse_pdb_table_directory,
 };
 use static_cell::StaticCell;
 
@@ -37,7 +38,18 @@ pub(crate) enum Usb0LibraryError {
     FilesystemExFatUnavailable,
     FilesystemFat32,
     MissingTracksTable,
+    PageOutOfRange(u32),
+    PageChainLoop,
+    RowCountOverflow,
     Pdb(PdbError),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Usb0LibraryTableProbe {
+    pub(crate) pages: u32,
+    pub(crate) declared_rows: u32,
+    pub(crate) present_rows: u32,
+    pub(crate) truncated: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -49,6 +61,7 @@ pub(crate) struct Usb0LibraryPdbProbe {
     pub(crate) artists_first_page: Option<u32>,
     pub(crate) albums_first_page: Option<u32>,
     pub(crate) keys_first_page: Option<u32>,
+    pub(crate) tracks_layout: Option<Usb0LibraryTableProbe>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -126,6 +139,62 @@ enum PrefixReadResult {
     },
 }
 
+enum SeekResult {
+    Complete {
+        file: Fat32AsyncFileHandle,
+    },
+    Failed {
+        file: Fat32AsyncFileHandle,
+        error: Usb0LibraryError,
+    },
+}
+
+async fn seek_file(
+    client: &mut Usb0FilesystemClient,
+    lease: MediaLease,
+    file: Fat32AsyncFileHandle,
+    position: u64,
+) -> SeekResult {
+    let ticket = client.issue_ticket(lease);
+    match client
+        .submit(Usb0FsRequest::Seek {
+            ticket,
+            file,
+            position,
+        })
+        .await
+    {
+        Usb0FsSubmitResult::Completed(Usb0FsCompletion::Seek {
+            file, result, ..
+        }) => match result {
+            Ok(()) => SeekResult::Complete { file },
+            Err(error) => SeekResult::Failed {
+                file,
+                error: map_filesystem_error(error),
+            },
+        },
+        Usb0FsSubmitResult::QueueFull(Usb0FsRequest::Seek { file, .. }) => SeekResult::Failed {
+            file,
+            error: Usb0LibraryError::BrokerBusy,
+        },
+        Usb0FsSubmitResult::PendingCompletion(Usb0FsRequest::Seek { file, .. }) => {
+            SeekResult::Failed {
+                file,
+                error: Usb0LibraryError::BrokerPending,
+            }
+        }
+        Usb0FsSubmitResult::WrongClient(Usb0FsRequest::Seek { file, .. }) => SeekResult::Failed {
+            file,
+            error: Usb0LibraryError::BrokerWrongClient,
+        },
+        Usb0FsSubmitResult::Completed(_)
+        | Usb0FsSubmitResult::QueueFull(_)
+        | Usb0FsSubmitResult::PendingCompletion(_)
+        | Usb0FsSubmitResult::WrongClient(_)
+        | Usb0FsSubmitResult::UnexpectedCompletion { .. } => broker_invariant_reset(),
+    }
+}
+
 async fn read_prefix(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
@@ -187,6 +256,26 @@ async fn read_prefix(
     }
 }
 
+async fn read_at(
+    client: &mut Usb0FilesystemClient,
+    lease: MediaLease,
+    file: Fat32AsyncFileHandle,
+    buffer: &'static mut [u8],
+    position: u64,
+) -> PrefixReadResult {
+    let file = match seek_file(client, lease, file, position).await {
+        SeekResult::Complete { file } => file,
+        SeekResult::Failed { file, error } => {
+            return PrefixReadResult::Failed {
+                file,
+                buffer,
+                error,
+            };
+        }
+    };
+    read_prefix(client, lease, file, buffer).await
+}
+
 async fn close_file(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
@@ -235,7 +324,124 @@ fn parse_first_page(
         artists_first_page: first_page(&tables, PDB_TABLE_ARTISTS),
         albums_first_page: first_page(&tables, PDB_TABLE_ALBUMS),
         keys_first_page: first_page(&tables, PDB_TABLE_KEYS),
+        tracks_layout: None,
     })
+}
+
+async fn scan_table_layout(
+    client: &mut Usb0FilesystemClient,
+    lease: MediaLease,
+    mut file: Fat32AsyncFileHandle,
+    mut buffer: &'static mut [u8],
+    header: PdbHeader,
+    first_page: u32,
+) -> (
+    Fat32AsyncFileHandle,
+    &'static mut [u8],
+    Result<Usb0LibraryTableProbe, Usb0LibraryError>,
+) {
+    let mut page = first_page;
+    let mut pages = 0u32;
+    let mut declared_rows = 0u32;
+    let mut present_rows = 0u32;
+    let mut truncated = false;
+
+    loop {
+        if page >= header.total_pages {
+            return (
+                file,
+                buffer,
+                Err(Usb0LibraryError::PageOutOfRange(page)),
+            );
+        }
+        if pages >= header.total_pages {
+            return (file, buffer, Err(Usb0LibraryError::PageChainLoop));
+        }
+
+        let page_start = u64::from(page) * u64::from(header.page_size);
+        let header_read = read_at(client, lease, file, buffer, page_start).await;
+        let (next_file, next_buffer, bytes) = match header_read {
+            PrefixReadResult::Complete {
+                file,
+                buffer,
+                bytes,
+            } => (file, buffer, bytes),
+            PrefixReadResult::Failed {
+                file,
+                buffer,
+                error,
+            } => return (file, buffer, Err(error)),
+        };
+        file = next_file;
+        buffer = next_buffer;
+
+        let page_header = match parse_pdb_page_header(&buffer[..bytes], header.page_size) {
+            Ok(page_header) => page_header,
+            Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
+        };
+        let mut walker = match PdbPageSlotWalker::new(header.page_size, page_header.declared_rows) {
+            Ok(walker) => walker,
+            Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
+        };
+
+        while let Some(plan) = walker.next_batch_plan() {
+            let absolute = page_start + u64::from(plan.offset);
+            let slot_read = read_at(client, lease, file, buffer, absolute).await;
+            let (next_file, next_buffer, bytes) = match slot_read {
+                PrefixReadResult::Complete {
+                    file,
+                    buffer,
+                    bytes,
+                } => (file, buffer, bytes),
+                PrefixReadResult::Failed {
+                    file,
+                    buffer,
+                    error,
+                } => return (file, buffer, Err(error)),
+            };
+            file = next_file;
+            buffer = next_buffer;
+
+            if let Err(error) = walker.ingest_batch(plan, &buffer[..bytes]) {
+                return (file, buffer, Err(Usb0LibraryError::Pdb(error)));
+            }
+        }
+
+        let summary = walker.summary();
+        declared_rows = match declared_rows.checked_add(summary.declared_rows) {
+            Some(total) => total,
+            None => return (file, buffer, Err(Usb0LibraryError::RowCountOverflow)),
+        };
+        present_rows = match present_rows.checked_add(summary.present_rows) {
+            Some(total) => total,
+            None => return (file, buffer, Err(Usb0LibraryError::RowCountOverflow)),
+        };
+        truncated |= summary.truncated;
+        pages += 1;
+
+        if page_header.next_page == u32::MAX {
+            break;
+        }
+        if page_header.next_page >= header.total_pages {
+            return (
+                file,
+                buffer,
+                Err(Usb0LibraryError::PageOutOfRange(page_header.next_page)),
+            );
+        }
+        page = page_header.next_page;
+    }
+
+    (
+        file,
+        buffer,
+        Ok(Usb0LibraryTableProbe {
+            pages,
+            declared_rows,
+            present_rows,
+            truncated,
+        }),
+    )
 }
 
 async fn probe_export_pdb(
@@ -268,6 +474,26 @@ async fn probe_export_pdb(
     let parse_result = match read_result {
         Ok(bytes) => parse_first_page(lease, file_len, buffer, bytes),
         Err(error) => Err(error),
+    };
+
+    let (file, buffer, parse_result) = match parse_result {
+        Ok(mut probe) => {
+            let (file, buffer, layout) = scan_table_layout(
+                client,
+                lease,
+                file,
+                buffer,
+                probe.header,
+                probe.tracks_first_page,
+            )
+            .await;
+            let result = layout.map(|layout| {
+                probe.tracks_layout = Some(layout);
+                probe
+            });
+            (file, buffer, result)
+        }
+        Err(error) => (file, buffer, Err(error)),
     };
 
     let close_result = close_file(client, lease, file).await;
@@ -365,6 +591,7 @@ mod tests {
         assert_eq!(probe.artists_first_page, Some(2));
         assert_eq!(probe.albums_first_page, Some(3));
         assert_eq!(probe.keys_first_page, Some(4));
+        assert_eq!(probe.tracks_layout, None);
     }
 
     #[test]
