@@ -25,6 +25,7 @@ use pajoniiir_media_fs::{
 use pajoniiir_media_io::{
     AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
 };
+use pajoniiir_media_identity::{VolumeIdentity, derive_fat32_volume_identity};
 use pajoniiir_media_partition::{VolumeKind, classify_boot_sector};
 use pajoniiir_media_session::{DisconnectResult, MediaHandle, MediaLease, MediaSession};
 use pajoniiir_media_usb_msc::{
@@ -214,6 +215,7 @@ pub(crate) enum Usb0LibraryEvent {
     Ready {
         binding: Usb0MscBinding,
         kind: FileSystemKind,
+        volume_identity: Option<VolumeIdentity>,
     },
     FilesystemFailed {
         binding: Usb0MscBinding,
@@ -1886,9 +1888,21 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
                                 media,
                                 probe,
                             });
+                            let volume_identity = match probe {
+                                Usb0MscFilesystemProbe::Fat32 { boot, .. } => {
+                                    Some(derive_fat32_volume_identity(
+                                        boot.volume_id,
+                                        boot.bytes_per_sector,
+                                        boot.total_sectors,
+                                        media.selection.range.first_block(),
+                                    ))
+                                }
+                                Usb0MscFilesystemProbe::ExFat => None,
+                            };
                             USB0_LIBRARY_EVENTS.signal(Usb0LibraryEvent::Ready {
                                 binding,
                                 kind: probe.kind(),
+                                volume_identity,
                             });
                         }
                         Err(error) => {

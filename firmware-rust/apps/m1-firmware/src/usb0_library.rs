@@ -5,6 +5,7 @@ use pajoniiir_media_fat32::Fat32AsyncFileHandle;
 use pajoniiir_media_fs::{
     BoundedPath, FileHandle, FileSystemKind,
 };
+use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
     PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS,
@@ -39,6 +40,9 @@ pub(crate) enum Usb0LibraryError {
     FilesystemStaleLease,
     FilesystemExFatUnavailable,
     FilesystemFat32,
+    MissingVolumeIdentity,
+    InvalidTrackPathUtf8,
+    Identity(IdentityError),
     MissingTracksTable,
     PageOutOfRange(u32),
     PageChainLoop,
@@ -58,6 +62,7 @@ pub(crate) struct Usb0LibraryTableProbe {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Usb0LibraryPdbProbe {
     pub(crate) lease: MediaLease,
+    pub(crate) volume_identity: VolumeIdentity,
     pub(crate) file_len: u64,
     pub(crate) header: PdbHeader,
     pub(crate) tracks_first_page: u32,
@@ -381,6 +386,7 @@ fn first_page(tables: &PdbTableDirectory, kind: u32) -> Option<u32> {
 
 fn parse_first_page(
     lease: MediaLease,
+    volume_identity: VolumeIdentity,
     file_len: u64,
     buffer: &[u8],
     bytes: usize,
@@ -394,6 +400,7 @@ fn parse_first_page(
 
     Ok(Usb0LibraryPdbProbe {
         lease,
+        volume_identity,
         file_len,
         header,
         tracks_first_page,
@@ -407,6 +414,7 @@ fn parse_first_page(
 async fn scan_table_layout(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
+    volume_identity: VolumeIdentity,
     mut file: Fat32AsyncFileHandle,
     mut buffer: &'static mut [u8],
     header: PdbHeader,
@@ -606,13 +614,31 @@ async fn scan_table_layout(
                             Err(error) => return (file, buffer, Err(error)),
                         };
 
-                        let _track = PdbTrackRow::from_header_and_fields(
+                        let track = PdbTrackRow::from_header_and_fields(
                             track_header,
                             title,
                             filename,
                             file_path,
                             anlz_path,
                         );
+                        let audio_path = match track.file_path.as_str() {
+                            Some(path) => path,
+                            None => {
+                                return (
+                                    file,
+                                    buffer,
+                                    Err(Usb0LibraryError::InvalidTrackPathUtf8),
+                                );
+                            }
+                        };
+                        if let Err(error) = derive_track_id(volume_identity, audio_path) {
+                            return (
+                                file,
+                                buffer,
+                                Err(Usb0LibraryError::Identity(error)),
+                            );
+                        }
+
                         track_rows = match track_rows.checked_add(1) {
                             Some(total) => total,
                             None => {
@@ -673,6 +699,7 @@ async fn scan_table_layout(
 async fn probe_export_pdb(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
+    volume_identity: VolumeIdentity,
     buffer: &'static mut [u8],
 ) -> (
     &'static mut [u8],
@@ -698,7 +725,7 @@ async fn probe_export_pdb(
     };
 
     let parse_result = match read_result {
-        Ok(bytes) => parse_first_page(lease, file_len, buffer, bytes),
+        Ok(bytes) => parse_first_page(lease, volume_identity, file_len, buffer, bytes),
         Err(error) => Err(error),
     };
 
@@ -707,6 +734,7 @@ async fn probe_export_pdb(
             let (file, buffer, layout) = scan_table_layout(
                 client,
                 lease,
+                volume_identity,
                 file,
                 buffer,
                 probe.header,
@@ -737,7 +765,11 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
 
     loop {
         match USB0_LIBRARY_EVENTS.wait().await {
-            Usb0LibraryEvent::Ready { binding, kind } => {
+            Usb0LibraryEvent::Ready {
+                binding,
+                kind,
+                volume_identity,
+            } => {
                 if kind != FileSystemKind::Fat32 {
                     set_library_state(Usb0LibraryState::Failed {
                         binding,
@@ -745,10 +777,22 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     });
                     continue;
                 }
+                let Some(volume_identity) = volume_identity else {
+                    set_library_state(Usb0LibraryState::Failed {
+                        binding,
+                        error: Usb0LibraryError::MissingVolumeIdentity,
+                    });
+                    continue;
+                };
 
                 set_library_state(Usb0LibraryState::Probing { binding });
-                let (restored, result) =
-                    probe_export_pdb(&mut client, binding.lease, page_buffer).await;
+                let (restored, result) = probe_export_pdb(
+                    &mut client,
+                    binding.lease,
+                    volume_identity,
+                    page_buffer,
+                )
+                .await;
                 page_buffer = restored;
 
                 match result {
@@ -786,6 +830,10 @@ mod tests {
         }
     }
 
+    fn volume_identity() -> VolumeIdentity {
+        VolumeIdentity([0x42; 32])
+    }
+
     fn put_le32(data: &mut [u8], offset: usize, value: u32) {
         data[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
     }
@@ -811,7 +859,7 @@ mod tests {
             put_le32(&mut page, offset + 12, first_page);
         }
 
-        let probe = parse_first_page(lease(), 512 * 6, &page, page.len()).unwrap();
+        let probe = parse_first_page(lease(), volume_identity(), 512 * 6, &page, page.len()).unwrap();
         assert_eq!(probe.header.page_size, 512);
         assert_eq!(probe.tracks_first_page, 1);
         assert_eq!(probe.artists_first_page, Some(2));
@@ -830,7 +878,13 @@ mod tests {
         put_le32(&mut prefix, 0x28, 1);
 
         let probe =
-            parse_first_page(lease(), 65_536 * 2, &prefix, prefix.len()).unwrap();
+            parse_first_page(
+            lease(),
+            volume_identity(),
+            65_536 * 2,
+            &prefix,
+            prefix.len(),
+        ).unwrap();
 
         assert_eq!(probe.header.page_size, 65_536);
         assert_eq!(probe.tracks_first_page, 1);

@@ -6,6 +6,7 @@ use pajoniiir_core::MediaTrackId;
 
 pub const MEDIA_PATH_MAX: usize = 256;
 pub const TRACK_ID_DOMAIN: &[u8] = b"pajoniiir.track.v1";
+pub const FAT32_VOLUME_ID_DOMAIN: &[u8] = b"pajoniiir.volume.fat32.v1";
 pub const LEGACY_HOTCUE_V2_DOMAIN: &[u8] = b"pajoniiir.hotcue.v2";
 
 const SHA256_K: [u32; 64] = [
@@ -170,6 +171,21 @@ pub fn sha256(data: &[u8]) -> Sha256Digest {
     hash.finalize()
 }
 
+pub fn derive_fat32_volume_identity(
+    volume_id: u32,
+    bytes_per_sector: u16,
+    total_sectors: u32,
+    partition_first_block: u64,
+) -> VolumeIdentity {
+    let mut hash = Sha256::new();
+    hash.update(FAT32_VOLUME_ID_DOMAIN);
+    hash.update(&volume_id.to_le_bytes());
+    hash.update(&bytes_per_sector.to_le_bytes());
+    hash.update(&total_sectors.to_le_bytes());
+    hash.update(&partition_first_block.to_le_bytes());
+    VolumeIdentity(hash.finalize().0)
+}
+
 pub fn normalize_relative_path<'a>(
     input: &str,
     output: &'a mut [u8],
@@ -325,6 +341,18 @@ mod tests {
                 0x8d, 0x66, 0xcb, 0x22,
             ]
         );
+    }
+
+    #[test]
+    fn fat32_volume_identity_is_stable_and_geometry_bound() {
+        let first = derive_fat32_volume_identity(0x1234_5678, 512, 262_144, 2_048);
+        let same = derive_fat32_volume_identity(0x1234_5678, 512, 262_144, 2_048);
+        let moved = derive_fat32_volume_identity(0x1234_5678, 512, 262_144, 4_096);
+        let resized = derive_fat32_volume_identity(0x1234_5678, 512, 524_288, 2_048);
+
+        assert_eq!(first, same);
+        assert_ne!(first, moved);
+        assert_ne!(first, resized);
     }
 
     #[test]
