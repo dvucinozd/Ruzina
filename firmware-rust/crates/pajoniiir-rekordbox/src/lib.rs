@@ -353,7 +353,7 @@ pub fn decode_devicesql(
     if !wide {
         let written = payload.len().min(output.len());
         output[..written].copy_from_slice(&payload[..written]);
-        while written > 0 && output[written - 1] == 0 {
+        if written > 0 && output[written - 1] == 0 {
             return Ok(DeviceSqlDecode {
                 consumed: total,
                 written: output[..written]
@@ -370,7 +370,7 @@ pub fn decode_devicesql(
         });
     }
 
-    if payload.len() % 2 != 0 {
+    if !payload.len().is_multiple_of(2) {
         return Err(PdbError::DeviceSqlInvalidUtf16);
     }
 
