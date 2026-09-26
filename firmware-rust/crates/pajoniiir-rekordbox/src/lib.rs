@@ -35,8 +35,17 @@ const STR_IDX_FILENAME: usize = 19;
 const STR_IDX_FILE_PATH: usize = 20;
 
 pub const PDB_TITLE_MAX: usize = 128;
+pub const PDB_NAME_MAX: usize = 96;
 pub const PDB_PATH_MAX: usize = 256;
+pub const PDB_MAX_NAMES: usize = 512;
 pub const PDB_TRACK_ROW_HEADER_BYTES: usize = TRACK_ROW_MIN_SIZE;
+
+const NAME_ROW_ID_OFFSET: usize = 4;
+const NAME_ROW_TEXT_OFFSET: u16 = 10;
+const NAME_ROW_MIN_BYTES: usize = 14;
+const KEY_ROW_ID_OFFSET: usize = 0;
+const KEY_ROW_TEXT_OFFSET: u16 = 8;
+const KEY_ROW_MIN_BYTES: usize = 9;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PdbError {
@@ -56,6 +65,7 @@ pub enum PdbError {
     DeviceSqlInvalidUtf16,
     TrackRowOutOfRange,
     TrackStringOffsetOutOfRange,
+    NameRowOutOfRange,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -706,7 +716,7 @@ pub fn decode_devicesql(
     })
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PdbText<const N: usize> {
     bytes: [u8; N],
     len: u16,
@@ -760,6 +770,154 @@ impl<const N: usize> PdbText<N> {
 }
 
 impl<const N: usize> Default for PdbText<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PdbNameRowLayout {
+    ArtistOrAlbum,
+    Key,
+}
+
+impl PdbNameRowLayout {
+    pub const fn minimum_bytes(self) -> usize {
+        match self {
+            Self::ArtistOrAlbum => NAME_ROW_MIN_BYTES,
+            Self::Key => KEY_ROW_MIN_BYTES,
+        }
+    }
+
+    pub const fn id_offset(self) -> usize {
+        match self {
+            Self::ArtistOrAlbum => NAME_ROW_ID_OFFSET,
+            Self::Key => KEY_ROW_ID_OFFSET,
+        }
+    }
+
+    pub const fn text_relative_offset(self) -> u16 {
+        match self {
+            Self::ArtistOrAlbum => NAME_ROW_TEXT_OFFSET,
+            Self::Key => KEY_ROW_TEXT_OFFSET,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbNameRowHeader {
+    pub id: u32,
+    pub text_relative_offset: u16,
+}
+
+pub fn parse_pdb_name_row_header(
+    row_prefix: &[u8],
+    layout: PdbNameRowLayout,
+) -> Result<Option<PdbNameRowHeader>, PdbError> {
+    if row_prefix.len() < layout.minimum_bytes() {
+        return Err(PdbError::NameRowOutOfRange);
+    }
+
+    let id = read_le32(row_prefix, layout.id_offset()).ok_or(PdbError::NameRowOutOfRange)?;
+    if id == 0 {
+        return Ok(None);
+    }
+
+    Ok(Some(PdbNameRowHeader {
+        id,
+        text_relative_offset: layout.text_relative_offset(),
+    }))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbNameEntry {
+    pub id: u32,
+    pub name: PdbText<PDB_NAME_MAX>,
+}
+
+impl PdbNameEntry {
+    const EMPTY: Self = Self {
+        id: 0,
+        name: PdbText::new(),
+    };
+
+    pub fn from_header_and_field(
+        header: PdbNameRowHeader,
+        name: PdbText<PDB_NAME_MAX>,
+    ) -> Option<Self> {
+        if name.is_empty() {
+            None
+        } else {
+            Some(Self {
+                id: header.id,
+                name,
+            })
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PdbNameMapError {
+    Full { capacity: usize },
+    DuplicateId(u32),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PdbNameMap<const N: usize> {
+    entries: [PdbNameEntry; N],
+    len: usize,
+}
+
+impl<const N: usize> PdbNameMap<N> {
+    pub const fn new() -> Self {
+        Self {
+            entries: [PdbNameEntry::EMPTY; N],
+            len: 0,
+        }
+    }
+
+    pub const fn len(&self) -> usize {
+        self.len
+    }
+
+    pub const fn capacity(&self) -> usize {
+        N
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    pub fn entries(&self) -> &[PdbNameEntry] {
+        &self.entries[..self.len]
+    }
+
+    pub fn push(&mut self, entry: PdbNameEntry) -> Result<usize, PdbNameMapError> {
+        if self.entries().iter().any(|existing| existing.id == entry.id) {
+            return Err(PdbNameMapError::DuplicateId(entry.id));
+        }
+        if self.len == N {
+            return Err(PdbNameMapError::Full { capacity: N });
+        }
+
+        let index = self.len;
+        self.entries[index] = entry;
+        self.len += 1;
+        Ok(index)
+    }
+
+    pub fn lookup(&self, id: u32) -> Option<&PdbText<PDB_NAME_MAX>> {
+        if id == 0 {
+            return None;
+        }
+        self.entries()
+            .iter()
+            .find(|entry| entry.id == id)
+            .map(|entry| &entry.name)
+    }
+}
+
+impl<const N: usize> Default for PdbNameMap<N> {
     fn default() -> Self {
         Self::new()
     }
@@ -1194,6 +1352,79 @@ mod tests {
         let text = PdbText::<PDB_TITLE_MAX>::from_devicesql_field(&raw).unwrap();
         assert_eq!(text.as_str(), Some("Track Name"));
         assert!(!text.was_truncated());
+    }
+
+    #[test]
+    fn parses_artist_album_and_key_name_row_layouts() {
+        let mut artist = [0u8; 32];
+        put_le32(&mut artist, NAME_ROW_ID_OFFSET, 42);
+        put_short_devicesql(
+            &mut artist,
+            usize::from(NAME_ROW_TEXT_OFFSET),
+            b"Artist Name",
+        );
+        let artist_header =
+            parse_pdb_name_row_header(&artist, PdbNameRowLayout::ArtistOrAlbum)
+                .unwrap()
+                .unwrap();
+        assert_eq!(artist_header.id, 42);
+        assert_eq!(artist_header.text_relative_offset, NAME_ROW_TEXT_OFFSET);
+        let artist_name = PdbText::<PDB_NAME_MAX>::from_devicesql_field(
+            &artist[usize::from(artist_header.text_relative_offset)..],
+        )
+        .unwrap();
+        assert_eq!(artist_name.as_str(), Some("Artist Name"));
+
+        let mut key = [0u8; 16];
+        put_le32(&mut key, KEY_ROW_ID_OFFSET, 7);
+        put_short_devicesql(&mut key, usize::from(KEY_ROW_TEXT_OFFSET), b"8A");
+        let key_header = parse_pdb_name_row_header(&key, PdbNameRowLayout::Key)
+            .unwrap()
+            .unwrap();
+        assert_eq!(key_header.id, 7);
+        assert_eq!(key_header.text_relative_offset, KEY_ROW_TEXT_OFFSET);
+        let key_name = PdbText::<PDB_NAME_MAX>::from_devicesql_field(
+            &key[usize::from(key_header.text_relative_offset)..],
+        )
+        .unwrap();
+        assert_eq!(key_name.as_str(), Some("8A"));
+
+        put_le32(&mut key, KEY_ROW_ID_OFFSET, 0);
+        assert_eq!(
+            parse_pdb_name_row_header(&key, PdbNameRowLayout::Key).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn bounded_name_map_rejects_duplicates_and_capacity_overflow() {
+        let header = PdbNameRowHeader {
+            id: 1,
+            text_relative_offset: NAME_ROW_TEXT_OFFSET,
+        };
+        let mut raw = [0u8; 16];
+        put_short_devicesql(&mut raw, 0, b"One");
+        let one = PdbNameEntry::from_header_and_field(
+            header,
+            PdbText::<PDB_NAME_MAX>::from_devicesql_field(&raw).unwrap(),
+        )
+        .unwrap();
+
+        let mut map = PdbNameMap::<1>::new();
+        assert_eq!(map.push(one), Ok(0));
+        assert_eq!(map.lookup(1).unwrap().as_str(), Some("One"));
+        assert_eq!(map.push(one), Err(PdbNameMapError::DuplicateId(1)));
+
+        let header_two = PdbNameRowHeader {
+            id: 2,
+            text_relative_offset: NAME_ROW_TEXT_OFFSET,
+        };
+        let two = PdbNameEntry::from_header_and_field(
+            header_two,
+            PdbText::<PDB_NAME_MAX>::from_devicesql_field(&raw).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(map.push(two), Err(PdbNameMapError::Full { capacity: 1 }));
     }
 
     #[test]
