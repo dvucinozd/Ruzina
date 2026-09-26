@@ -1,6 +1,9 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+#[cfg(test)]
+extern crate std;
+
 use pajoniiir_media_session::MediaLease;
 
 /// Maximum UTF-8 bytes required to losslessly expose an exFAT filename.
