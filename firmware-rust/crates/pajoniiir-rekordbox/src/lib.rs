@@ -272,6 +272,12 @@ impl PdbRowOffsetBatch {
         self.truncated
     }
 
+    pub fn from_devicesql_field(data: &[u8]) -> Result<Self, PdbError> {
+        let mut text = Self::new();
+        text.decode_from(data, 0)?;
+        Ok(text)
+    }
+
     pub fn offsets(&self) -> &[u16] {
         &self.offsets[..self.len()]
     }
@@ -502,6 +508,74 @@ pub struct DeviceSqlDecode {
     pub consumed: usize,
     pub written: usize,
     pub truncated: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DeviceSqlFieldHeader {
+    pub flag: u8,
+    pub total_len: u16,
+    pub header_len: u8,
+    pub wide: bool,
+    pub little_endian: bool,
+}
+
+impl DeviceSqlFieldHeader {
+    pub const fn total_len_usize(self) -> usize {
+        self.total_len as usize
+    }
+}
+
+pub fn parse_devicesql_field_header(
+    data: &[u8],
+    offset: usize,
+) -> Result<DeviceSqlFieldHeader, PdbError> {
+    let flag = *data
+        .get(offset)
+        .ok_or(PdbError::DeviceSqlOffsetOutOfRange)?;
+
+    if flag == 0 || flag == 0x40 {
+        return Ok(DeviceSqlFieldHeader {
+            flag,
+            total_len: 1,
+            header_len: 1,
+            wide: false,
+            little_endian: false,
+        });
+    }
+
+    if flag & 1 != 0 {
+        let total = u16::from(flag >> 1);
+        if total == 0 {
+            return Err(PdbError::DeviceSqlInvalidLength);
+        }
+        return Ok(DeviceSqlFieldHeader {
+            flag,
+            total_len: total,
+            header_len: 1,
+            wide: false,
+            little_endian: false,
+        });
+    }
+
+    let prefix_end = offset
+        .checked_add(4)
+        .ok_or(PdbError::DeviceSqlTruncated)?;
+    if prefix_end > data.len() {
+        return Err(PdbError::DeviceSqlTruncated);
+    }
+
+    let total = read_le16(data, offset + 1).ok_or(PdbError::DeviceSqlTruncated)?;
+    if total < 4 {
+        return Err(PdbError::DeviceSqlInvalidLength);
+    }
+
+    Ok(DeviceSqlFieldHeader {
+        flag,
+        total_len: total,
+        header_len: 4,
+        wide: flag & 0x10 != 0,
+        little_endian: flag & 0x80 != 0,
+    })
 }
 
 pub fn decode_devicesql(
@@ -789,6 +863,33 @@ pub struct PdbTrackRow {
     pub anlz_path: PdbText<PDB_PATH_MAX>,
 }
 
+impl PdbTrackRow {
+    pub fn from_header_and_fields(
+        header: PdbTrackRowHeader,
+        mut title: PdbText<PDB_TITLE_MAX>,
+        filename: PdbText<PDB_TITLE_MAX>,
+        file_path: PdbText<PDB_PATH_MAX>,
+        anlz_path: PdbText<PDB_PATH_MAX>,
+    ) -> Self {
+        if title.is_empty() {
+            title.copy_from(&filename);
+        }
+
+        Self {
+            track_id: header.track_id,
+            bpm_x100: header.bpm_x100,
+            bpm: header.bpm,
+            duration_s: header.duration_s,
+            artist_id: header.artist_id,
+            album_id: header.album_id,
+            key_id: header.key_id,
+            title,
+            file_path,
+            anlz_path,
+        }
+    }
+}
+
 pub fn parse_pdb_track_row(
     page: &[u8],
     page_size: u32,
@@ -820,22 +921,9 @@ pub fn parse_pdb_track_row(
     decode_track_string(page, size, row, STR_IDX_FILE_PATH, &mut file_path)?;
     decode_track_string(page, size, row, STR_IDX_ANLZ_PATH, &mut anlz_path)?;
 
-    if title.is_empty() {
-        title.copy_from(&filename);
-    }
-
-    Ok(Some(PdbTrackRow {
-        track_id: header.track_id,
-        bpm_x100: header.bpm_x100,
-        bpm: header.bpm,
-        duration_s: header.duration_s,
-        artist_id: header.artist_id,
-        album_id: header.album_id,
-        key_id: header.key_id,
-        title,
-        file_path,
-        anlz_path,
-    }))
+    Ok(Some(PdbTrackRow::from_header_and_fields(
+        header, title, filename, file_path, anlz_path,
+    )))
 }
 
 fn decode_track_string<const N: usize>(
@@ -1066,6 +1154,83 @@ mod tests {
 
         assert!(walk.truncated);
         assert_eq!(visited, 0);
+    }
+
+    #[test]
+    fn plans_devicesql_field_length_from_bounded_prefix() {
+        let short_flag = ((6u8) << 1) | 1;
+        assert_eq!(
+            parse_devicesql_field_header(&[short_flag], 0).unwrap(),
+            DeviceSqlFieldHeader {
+                flag: short_flag,
+                total_len: 6,
+                header_len: 1,
+                wide: false,
+                little_endian: false,
+            }
+        );
+
+        let long_prefix = [0x90, 0x24, 0x01, 0];
+        assert_eq!(
+            parse_devicesql_field_header(&long_prefix, 0).unwrap(),
+            DeviceSqlFieldHeader {
+                flag: 0x90,
+                total_len: 0x124,
+                header_len: 4,
+                wide: true,
+                little_endian: true,
+            }
+        );
+
+        assert_eq!(
+            parse_devicesql_field_header(&[0x90, 0x24, 0x01], 0),
+            Err(PdbError::DeviceSqlTruncated)
+        );
+    }
+
+    #[test]
+    fn fixed_text_decodes_one_devicesql_field_without_allocation() {
+        let mut raw = [0u8; 32];
+        put_short_devicesql(&mut raw, 0, b"Track Name");
+
+        let text = PdbText::<PDB_TITLE_MAX>::from_devicesql_field(&raw).unwrap();
+        assert_eq!(text.as_str(), Some("Track Name"));
+        assert!(!text.was_truncated());
+    }
+
+    #[test]
+    fn track_row_assembly_uses_filename_when_title_is_empty() {
+        let header = PdbTrackRowHeader {
+            track_id: 9,
+            bpm_x100: 12_800,
+            bpm: 128,
+            duration_s: 240,
+            artist_id: 3,
+            album_id: 4,
+            key_id: 5,
+            strings: PdbTrackStringOffsets {
+                title: 0,
+                filename: 0,
+                file_path: 0,
+                anlz_path: 0,
+            },
+        };
+        let title = PdbText::<PDB_TITLE_MAX>::new();
+
+        let mut filename_raw = [0u8; 32];
+        put_short_devicesql(&mut filename_raw, 0, b"fallback.wav");
+        let filename =
+            PdbText::<PDB_TITLE_MAX>::from_devicesql_field(&filename_raw).unwrap();
+
+        let row = PdbTrackRow::from_header_and_fields(
+            header,
+            title,
+            filename,
+            PdbText::new(),
+            PdbText::new(),
+        );
+        assert_eq!(row.title.as_str(), Some("fallback.wav"));
+        assert_eq!(row.track_id, 9);
     }
 
     #[test]
