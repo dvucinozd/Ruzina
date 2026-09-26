@@ -1,9 +1,6 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
-#[cfg(test)]
-extern crate std;
-
 pub const REKORDBOX_EXPORT_PDB_PATH: &str = "/PIONEER/rekordbox/export.pdb";
 
 pub const PDB_MAX_TABLES: usize = 32;
@@ -208,8 +205,7 @@ pub fn pdb_page_next(page: &[u8], page_size: u32) -> Result<u32, PdbError> {
 
 pub const PDB_PAGE_HEADER_BYTES: usize = PDB_PAGE_HEAP_OFFSET;
 pub const PDB_ROW_SLOT_BATCH_ROWS: usize = 256;
-pub const PDB_ROW_SLOT_BATCH_BYTES_MAX: usize =
-    (PDB_ROW_SLOT_BATCH_ROWS / 16) * (4 + 16 * 2);
+pub const PDB_ROW_SLOT_BATCH_BYTES_MAX: usize = (PDB_ROW_SLOT_BATCH_ROWS / 16) * (4 + 16 * 2);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PdbPageHeader {
@@ -336,8 +332,8 @@ impl PdbPageSlotWalker {
             return None;
         }
 
-        let row_count = (self.declared_rows - self.processed_rows)
-            .min(PDB_ROW_SLOT_BATCH_ROWS as u32) as usize;
+        let row_count =
+            (self.declared_rows - self.processed_rows).min(PDB_ROW_SLOT_BATCH_ROWS as u32) as usize;
         let full_groups = row_count / 16;
         let tail_rows = row_count % 16;
         let mut bytes = full_groups * (4 + 16 * 2);
@@ -382,16 +378,14 @@ impl PdbPageSlotWalker {
                 return Err(PdbError::SlotBatchPlanMismatch);
             }
 
-            let row_present =
-                read_le16(data, cursor - 4).ok_or(PdbError::SlotBatchPlanMismatch)?;
+            let row_present = read_le16(data, cursor - 4).ok_or(PdbError::SlotBatchPlanMismatch)?;
             for slot_index in 0..group_count {
                 if row_present & (1u16 << slot_index) == 0 {
                     continue;
                 }
 
                 let slot = cursor - 4 - 2 * (slot_index + 1);
-                let heap_offset =
-                    read_le16(data, slot).ok_or(PdbError::SlotBatchPlanMismatch)?;
+                let heap_offset = read_le16(data, slot).ok_or(PdbError::SlotBatchPlanMismatch)?;
                 let absolute = PDB_PAGE_HEAP_OFFSET + usize::from(heap_offset);
                 if absolute >= self.page_size as usize {
                     result.truncated = true;
@@ -965,7 +959,9 @@ mod tests {
 
         let batch = walker.ingest_batch(plan, &encoded).unwrap();
         assert_eq!(batch.len(), 17);
-        assert_eq!(&batch.offsets()[..16], &(100u16..116).collect::<std::vec::Vec<_>>()[..]);
+        for (index, offset) in batch.offsets()[..16].iter().copied().enumerate() {
+            assert_eq!(offset, 100 + index as u16);
+        }
         assert_eq!(batch.offsets()[16], 200);
         assert!(!batch.was_truncated());
         assert!(walker.is_complete());
