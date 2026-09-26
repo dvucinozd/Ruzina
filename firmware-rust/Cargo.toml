@@ -22,6 +22,7 @@ members = [
     "crates/pajoniiir-media-partition",
     "crates/pajoniiir-media-session",
     "crates/pajoniiir-media-usb-msc",
+    "crates/pajoniiir-rekordbox",
     "crates/pajoniiir-track-analysis",
     "crates/pajoniiir-ui-model",
     "crates/pajoniiir-waveform",
@@ -48,6 +49,7 @@ default-members = [
     "crates/pajoniiir-media-io",
     "crates/pajoniiir-media-partition",
     "crates/pajoniiir-media-session",
+    "crates/pajoniiir-rekordbox",
     "crates/pajoniiir-track-analysis",
     "crates/pajoniiir-ui-model",
     "crates/pajoniiir-waveform",
@@ -89,6 +91,7 @@ pajoniiir-media-io = { path = "crates/pajoniiir-media-io" }
 pajoniiir-media-partition = { path = "crates/pajoniiir-media-partition" }
 pajoniiir-media-session = { path = "crates/pajoniiir-media-session" }
 pajoniiir-media-usb-msc = { path = "crates/pajoniiir-media-usb-msc" }
+pajoniiir-rekordbox = { path = "crates/pajoniiir-rekordbox" }
 pajoniiir-track-analysis = { path = "crates/pajoniiir-track-analysis" }
 pajoniiir-ui-model = { path = "crates/pajoniiir-ui-model" }
 pajoniiir-waveform = { path = "crates/pajoniiir-waveform" }

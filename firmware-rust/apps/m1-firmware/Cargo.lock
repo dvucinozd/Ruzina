@@ -1400,6 +1400,7 @@ dependencies = [
  "pajoniiir-media-session",
  "pajoniiir-media-usb-msc",
  "pajoniiir-mixer",
+ "pajoniiir-rekordbox",
  "pajoniiir-ui-model",
  "pajoniiir-waveform",
  "static_cell",
@@ -1480,6 +1481,10 @@ dependencies = [
  "pajoniiir-audio-dsp",
  "pajoniiir-controller-core",
 ]
+
+[[package]]
+name = "pajoniiir-rekordbox"
+version = "0.1.0"
 
 [[package]]
 name = "pajoniiir-track-analysis"

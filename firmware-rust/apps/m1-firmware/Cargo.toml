@@ -36,6 +36,7 @@ pajoniiir-media-io = { path = "../../crates/pajoniiir-media-io" }
 pajoniiir-media-partition = { path = "../../crates/pajoniiir-media-partition" }
 pajoniiir-media-session = { path = "../../crates/pajoniiir-media-session" }
 pajoniiir-media-usb-msc = { path = "../../crates/pajoniiir-media-usb-msc" }
+pajoniiir-rekordbox = { path = "../../crates/pajoniiir-rekordbox" }
 pajoniiir-ui-model = { path = "../../crates/pajoniiir-ui-model" }
 pajoniiir-waveform = { path = "../../crates/pajoniiir-waveform" }
 
