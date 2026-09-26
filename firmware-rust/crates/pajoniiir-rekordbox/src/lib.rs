@@ -134,7 +134,10 @@ impl PdbTableDirectory {
     }
 
     pub fn find(&self, kind: u32) -> Option<PdbTableEntry> {
-        self.entries().iter().copied().find(|entry| entry.kind == kind)
+        self.entries()
+            .iter()
+            .copied()
+            .find(|entry| entry.kind == kind)
     }
 }
 
@@ -214,8 +217,7 @@ pub fn visit_pdb_page_rows(
         read_le32(page, PDB_PAGE_NROWS_OFFSET).ok_or(PdbError::PageBufferTooSmall {
             required: size,
             actual: page.len(),
-        })?
-            & 0x1fff;
+        })? & 0x1fff;
 
     if declared_rows == 0 {
         return Ok(PdbPageWalk {
@@ -247,11 +249,10 @@ pub fn visit_pdb_page_rows(
 
         for slot_index in 0..group_count {
             let slot = cursor - 4 - 2 * (slot_index + 1);
-            let heap_offset =
-                read_le16(page, slot).ok_or(PdbError::PageBufferTooSmall {
-                    required: size,
-                    actual: page.len(),
-                })?;
+            let heap_offset = read_le16(page, slot).ok_or(PdbError::PageBufferTooSmall {
+                required: size,
+                actual: page.len(),
+            })?;
             if row_present & (1u16 << slot_index) == 0 {
                 continue;
             }
@@ -329,9 +330,7 @@ pub fn decode_devicesql(
         });
     }
 
-    let length_end = offset
-        .checked_add(3)
-        .ok_or(PdbError::DeviceSqlTruncated)?;
+    let length_end = offset.checked_add(3).ok_or(PdbError::DeviceSqlTruncated)?;
     if length_end >= data.len() {
         return Err(PdbError::DeviceSqlTruncated);
     }
@@ -535,16 +534,14 @@ pub fn parse_pdb_track_row(
     }
 
     Ok(Some(PdbTrackRow {
-        track_id: read_le32(page, row + TRACK_OFF_TRACK_ID)
-            .ok_or(PdbError::TrackRowOutOfRange)?,
+        track_id: read_le32(page, row + TRACK_OFF_TRACK_ID).ok_or(PdbError::TrackRowOutOfRange)?,
         bpm_x100,
         bpm: u16::try_from(rounded_bpm).unwrap_or(u16::MAX),
         duration_s: read_le16(page, row + TRACK_OFF_DURATION)
             .ok_or(PdbError::TrackRowOutOfRange)?,
         artist_id: read_le32(page, row + TRACK_OFF_ARTIST_ID)
             .ok_or(PdbError::TrackRowOutOfRange)?,
-        album_id: read_le32(page, row + TRACK_OFF_ALBUM_ID)
-            .ok_or(PdbError::TrackRowOutOfRange)?,
+        album_id: read_le32(page, row + TRACK_OFF_ALBUM_ID).ok_or(PdbError::TrackRowOutOfRange)?,
         key_id: read_le32(page, row + TRACK_OFF_KEY_ID).ok_or(PdbError::TrackRowOutOfRange)?,
         title,
         file_path,
@@ -696,8 +693,8 @@ mod tests {
     #[test]
     fn decodes_devicesql_utf16_to_utf8_and_normalizes_separator() {
         let units = [
-            '/', 'C', 'o', 'n', 't', 'e', 'n', 't', 's', '\\', '\u{5468}', '\u{9632}',
-            '\u{7fa9}', '\u{548c}', '/', 't', 'e', 's', 't', '.', 'm', 'p', '3',
+            '/', 'C', 'o', 'n', 't', 'e', 'n', 't', 's', '\\', '\u{5468}', '\u{9632}', '\u{7fa9}',
+            '\u{548c}', '/', 't', 'e', 's', 't', '.', 'm', 'p', '3',
         ];
         let total = 4 + (units.len() + 1) * 2;
         let mut raw = [0u8; 64];
@@ -794,11 +791,7 @@ mod tests {
             row + TRACK_OFF_STR_OFFS + STR_IDX_FILENAME * 2,
             filename_offset,
         );
-        put_short_devicesql(
-            &mut page,
-            row + filename_offset as usize,
-            b"fallback.mp3",
-        );
+        put_short_devicesql(&mut page, row + filename_offset as usize, b"fallback.mp3");
 
         let track = parse_pdb_track_row(&page, 512, 0).unwrap().unwrap();
         assert_eq!(track.title.as_str(), Some("fallback.mp3"));
