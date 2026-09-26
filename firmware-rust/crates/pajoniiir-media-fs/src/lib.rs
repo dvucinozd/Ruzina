@@ -226,7 +226,6 @@ pub trait WritableFileSystem: FileSystem {
     }
 }
 
-
 /// Native asynchronous filesystem contract for executor-owned storage backends.
 ///
 /// This is intentionally a separate trait instead of a blanket adapter around
@@ -315,17 +314,9 @@ pub trait AsyncFileSystem: LeaseBound {
 /// durability boundary.
 #[allow(async_fn_in_trait)]
 pub trait AsyncWritableFileSystem: AsyncFileSystem {
-    async fn open_write(
-        &mut self,
-        path: &str,
-        truncate: bool,
-    ) -> Result<Self::File, Self::Error>;
+    async fn open_write(&mut self, path: &str, truncate: bool) -> Result<Self::File, Self::Error>;
 
-    async fn write(
-        &mut self,
-        file: &mut Self::File,
-        input: &[u8],
-    ) -> Result<usize, Self::Error>;
+    async fn write(&mut self, file: &mut Self::File, input: &[u8]) -> Result<usize, Self::Error>;
 
     async fn flush_file(&mut self, file: &mut Self::File) -> Result<(), Self::Error>;
 
@@ -643,7 +634,6 @@ mod tests {
         assert_eq!(FS_NAME_MAX, 1_020);
     }
 
-
     struct AsyncTestFs(TestFs);
 
     impl AsyncTestFs {
@@ -699,10 +689,7 @@ mod tests {
             FileSystem::seek_absolute(&mut self.0, file, position)
         }
 
-        async fn open_directory(
-            &mut self,
-            path: &str,
-        ) -> Result<Self::Directory, Self::Error> {
+        async fn open_directory(&mut self, path: &str) -> Result<Self::Directory, Self::Error> {
             FileSystem::open_directory(&mut self.0, path)
         }
 
@@ -714,10 +701,7 @@ mod tests {
             FileSystem::next_entry(&mut self.0, directory, name_storage)
         }
 
-        async fn close_directory(
-            &mut self,
-            directory: Self::Directory,
-        ) -> Result<(), Self::Error> {
+        async fn close_directory(&mut self, directory: Self::Directory) -> Result<(), Self::Error> {
             FileSystem::close_directory(&mut self.0, directory)
         }
     }
@@ -740,11 +724,7 @@ mod tests {
         let mut output = [0u8; 7];
 
         assert_eq!(
-            block_on_ready(AsyncFileSystem::read_exact(
-                &mut fs,
-                &mut file,
-                &mut output
-            )),
+            block_on_ready(AsyncFileSystem::read_exact(&mut fs, &mut file, &mut output)),
             Ok(())
         );
         assert_eq!(&output, b"abcdefg");
@@ -771,11 +751,7 @@ mod tests {
             source: MediaSourceId::new(2).unwrap(),
         };
         assert_eq!(
-            block_on_ready(AsyncFileSystem::read(
-                &mut fs,
-                &mut file,
-                &mut [0u8; 1]
-            )),
+            block_on_ready(AsyncFileSystem::read(&mut fs, &mut file, &mut [0u8; 1])),
             Err(TestError::InvalidHandle)
         );
 
