@@ -14,6 +14,7 @@ members = [
     "crates/pajoniiir-hot-cues",
     "crates/pajoniiir-mixer",
     "crates/pajoniiir-media-block",
+    "crates/pajoniiir-media-catalog",
     "crates/pajoniiir-media-exfat",
     "crates/pajoniiir-media-fat32",
     "crates/pajoniiir-media-fs",
@@ -42,6 +43,7 @@ default-members = [
     "crates/pajoniiir-hot-cues",
     "crates/pajoniiir-mixer",
     "crates/pajoniiir-media-block",
+    "crates/pajoniiir-media-catalog",
     "crates/pajoniiir-media-exfat",
     "crates/pajoniiir-media-fat32",
     "crates/pajoniiir-media-fs",
@@ -83,6 +85,7 @@ pajoniiir-deck = { path = "crates/pajoniiir-deck" }
 pajoniiir-hot-cues = { path = "crates/pajoniiir-hot-cues" }
 pajoniiir-mixer = { path = "crates/pajoniiir-mixer" }
 pajoniiir-media-block = { path = "crates/pajoniiir-media-block" }
+pajoniiir-media-catalog = { path = "crates/pajoniiir-media-catalog" }
 pajoniiir-media-exfat = { path = "crates/pajoniiir-media-exfat" }
 pajoniiir-media-fat32 = { path = "crates/pajoniiir-media-fat32" }
 pajoniiir-media-fs = { path = "crates/pajoniiir-media-fs" }

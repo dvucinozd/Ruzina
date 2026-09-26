@@ -55,6 +55,7 @@ async fn main(spawner: Spawner) -> ! {
     let _ = core::mem::size_of::<pajoniiir_deck::DeckProductState>();
     let _ = core::mem::size_of::<pajoniiir_hot_cues::HotCueBank>();
     let _ = core::mem::size_of::<pajoniiir_mixer::MixerState>();
+    let _ = core::mem::size_of::<pajoniiir_media_catalog::CatalogTrack>();
     let _ = core::mem::size_of::<pajoniiir_media_usb_msc::UsbMscCapacity>();
     let _ = core::mem::size_of::<pajoniiir_rekordbox::PdbHeader>();
     let _ = core::mem::size_of::<pajoniiir_ui_model::UiSnapshot>();

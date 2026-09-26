@@ -1391,6 +1391,7 @@ dependencies = [
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
  "pajoniiir-media-block",
+ "pajoniiir-media-catalog",
  "pajoniiir-media-exfat",
  "pajoniiir-media-fat32",
  "pajoniiir-media-fs",
@@ -1409,6 +1410,14 @@ dependencies = [
 [[package]]
 name = "pajoniiir-media-block"
 version = "0.1.0"
+
+[[package]]
+name = "pajoniiir-media-catalog"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-core",
+ "pajoniiir-media-session",
+]
 
 [[package]]
 name = "pajoniiir-media-exfat"
