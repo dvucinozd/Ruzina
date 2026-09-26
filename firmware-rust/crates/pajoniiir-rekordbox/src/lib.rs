@@ -1105,8 +1105,7 @@ pub fn catalog_track_from_pdb(
         .file_path
         .as_str()
         .ok_or(PdbCatalogError::InvalidUtf8(PdbCatalogField::AudioPath))?;
-    let track_id =
-        derive_track_id(volume, audio_path_text).map_err(PdbCatalogError::Identity)?;
+    let track_id = derive_track_id(volume, audio_path_text).map_err(PdbCatalogError::Identity)?;
 
     Ok(CatalogTrack {
         track_id,
@@ -1126,9 +1125,7 @@ fn catalog_text<const S: usize, const D: usize>(
     field: PdbCatalogField,
     source: &PdbText<S>,
 ) -> Result<CatalogText<D>, PdbCatalogError> {
-    let value = source
-        .as_str()
-        .ok_or(PdbCatalogError::InvalidUtf8(field))?;
+    let value = source.as_str().ok_or(PdbCatalogError::InvalidUtf8(field))?;
     CatalogText::try_from_str(value).map_err(|error| PdbCatalogError::Text { field, error })
 }
 
