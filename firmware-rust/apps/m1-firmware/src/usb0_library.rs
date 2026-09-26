@@ -7,10 +7,11 @@ use pajoniiir_media_fs::{
 };
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
-    PDB_PAGE_HEAP_OFFSET, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS,
-    PDB_TRACK_ROW_HEADER_BYTES, PdbError, PdbHeader, PdbPageSlotWalker, PdbTableDirectory,
-    REKORDBOX_EXPORT_PDB_PATH, parse_pdb_header, parse_pdb_page_header, parse_pdb_table_directory,
-    parse_pdb_track_row_header,
+    PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS,
+    PDB_TABLE_TRACKS, PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES, PdbError, PdbHeader,
+    PdbPageSlotWalker, PdbTableDirectory, PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH,
+    parse_devicesql_field_header, parse_pdb_header, parse_pdb_page_header,
+    parse_pdb_table_directory, parse_pdb_track_row_header, pdb_track_string_page_offset,
 };
 use static_cell::StaticCell;
 
@@ -278,6 +279,79 @@ async fn read_at(
     read_prefix(client, lease, file, buffer).await
 }
 
+async fn read_track_text<const N: usize>(
+    client: &mut Usb0FilesystemClient,
+    lease: MediaLease,
+    file: Fat32AsyncFileHandle,
+    buffer: &'static mut [u8],
+    page_start: u64,
+    page_size: u32,
+    heap_offset: u16,
+    relative_offset: u16,
+) -> (
+    Fat32AsyncFileHandle,
+    &'static mut [u8],
+    Result<PdbText<N>, Usb0LibraryError>,
+) {
+    let page_relative = match pdb_track_string_page_offset(heap_offset, relative_offset, page_size) {
+        Ok(Some(offset)) => offset,
+        Ok(None) => return (file, buffer, Ok(PdbText::new())),
+        Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
+    };
+    let absolute = match page_start.checked_add(u64::from(page_relative)) {
+        Some(position) => position,
+        None => {
+            return (
+                file,
+                buffer,
+                Err(Usb0LibraryError::Pdb(PdbError::TrackStringOffsetOutOfRange)),
+            );
+        }
+    };
+
+    let read = read_at(client, lease, file, buffer, absolute).await;
+    let (file, buffer, bytes) = match read {
+        PrefixReadResult::Complete {
+            file,
+            buffer,
+            bytes,
+        } => (file, buffer, bytes),
+        PrefixReadResult::Failed {
+            file,
+            buffer,
+            error,
+        } => return (file, buffer, Err(error)),
+    };
+    let available = bytes.min(buffer.len());
+
+    let field = match parse_devicesql_field_header(&buffer[..available], 0) {
+        Ok(field) => field,
+        Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
+    };
+    let field_len = field.total_len_usize();
+    let field_end = match page_relative.checked_add(field.total_len as u32) {
+        Some(end) => end,
+        None => {
+            return (
+                file,
+                buffer,
+                Err(Usb0LibraryError::Pdb(PdbError::DeviceSqlTruncated)),
+            );
+        }
+    };
+    if field_end > page_size || field_len > available {
+        return (
+            file,
+            buffer,
+            Err(Usb0LibraryError::Pdb(PdbError::DeviceSqlTruncated)),
+        );
+    }
+
+    let text = PdbText::from_devicesql_field(&buffer[..field_len])
+        .map_err(Usb0LibraryError::Pdb);
+    (file, buffer, text)
+}
+
 async fn close_file(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
@@ -459,7 +533,86 @@ async fn scan_table_layout(
                 buffer = next_buffer;
 
                 match parse_pdb_track_row_header(&buffer[..bytes]) {
-                    Ok(Some(_header)) => {
+                    Ok(Some(track_header)) => {
+                        let (next_file, next_buffer, title) = read_track_text::<PDB_TITLE_MAX>(
+                            client,
+                            lease,
+                            file,
+                            buffer,
+                            page_start,
+                            header.page_size,
+                            heap_offset,
+                            track_header.strings.title,
+                        )
+                        .await;
+                        file = next_file;
+                        buffer = next_buffer;
+                        let title = match title {
+                            Ok(title) => title,
+                            Err(error) => return (file, buffer, Err(error)),
+                        };
+
+                        let (next_file, next_buffer, filename) = read_track_text::<PDB_TITLE_MAX>(
+                            client,
+                            lease,
+                            file,
+                            buffer,
+                            page_start,
+                            header.page_size,
+                            heap_offset,
+                            track_header.strings.filename,
+                        )
+                        .await;
+                        file = next_file;
+                        buffer = next_buffer;
+                        let filename = match filename {
+                            Ok(filename) => filename,
+                            Err(error) => return (file, buffer, Err(error)),
+                        };
+
+                        let (next_file, next_buffer, file_path) = read_track_text::<PDB_PATH_MAX>(
+                            client,
+                            lease,
+                            file,
+                            buffer,
+                            page_start,
+                            header.page_size,
+                            heap_offset,
+                            track_header.strings.file_path,
+                        )
+                        .await;
+                        file = next_file;
+                        buffer = next_buffer;
+                        let file_path = match file_path {
+                            Ok(file_path) => file_path,
+                            Err(error) => return (file, buffer, Err(error)),
+                        };
+
+                        let (next_file, next_buffer, anlz_path) = read_track_text::<PDB_PATH_MAX>(
+                            client,
+                            lease,
+                            file,
+                            buffer,
+                            page_start,
+                            header.page_size,
+                            heap_offset,
+                            track_header.strings.anlz_path,
+                        )
+                        .await;
+                        file = next_file;
+                        buffer = next_buffer;
+                        let anlz_path = match anlz_path {
+                            Ok(anlz_path) => anlz_path,
+                            Err(error) => return (file, buffer, Err(error)),
+                        };
+
+                        let _track = PdbTrackRow::from_header_and_fields(
+                            track_header,
+                            title,
+                            filename,
+                            file_path,
+                            anlz_path,
+                        );
                         track_rows = match track_rows.checked_add(1) {
                             Some(total) => total,
                             None => {
