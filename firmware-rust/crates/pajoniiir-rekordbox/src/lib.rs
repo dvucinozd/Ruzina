@@ -1,6 +1,9 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+#[cfg(test)]
+extern crate std;
+
 pub const REKORDBOX_EXPORT_PDB_PATH: &str = "/PIONEER/rekordbox/export.pdb";
 
 pub const PDB_MAX_TABLES: usize = 32;
@@ -48,6 +51,7 @@ pub enum PdbError {
     PageBufferTooSmall { required: usize, actual: usize },
     TableDirectoryOutOfRange,
     TablePageOutOfRange(u32),
+    SlotBatchPlanMismatch,
     DeviceSqlOffsetOutOfRange,
     DeviceSqlTruncated,
     DeviceSqlInvalidLength,
@@ -200,6 +204,217 @@ pub fn pdb_page_next(page: &[u8], page_size: u32) -> Result<u32, PdbError> {
         required: page_size as usize,
         actual: page.len(),
     })
+}
+
+pub const PDB_PAGE_HEADER_BYTES: usize = PDB_PAGE_HEAP_OFFSET;
+pub const PDB_ROW_SLOT_BATCH_ROWS: usize = 256;
+pub const PDB_ROW_SLOT_BATCH_BYTES_MAX: usize =
+    (PDB_ROW_SLOT_BATCH_ROWS / 16) * (4 + 16 * 2);
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbPageHeader {
+    pub next_page: u32,
+    pub declared_rows: u32,
+}
+
+pub fn parse_pdb_page_header(
+    page_prefix: &[u8],
+    page_size: u32,
+) -> Result<PdbPageHeader, PdbError> {
+    if !(PDB_PAGE_HEAP_OFFSET as u32..=PDB_MAX_PAGE_SIZE).contains(&page_size) {
+        return Err(PdbError::PageSizeOutOfRange(page_size));
+    }
+    if page_prefix.len() < PDB_PAGE_HEADER_BYTES {
+        return Err(PdbError::PageBufferTooSmall {
+            required: PDB_PAGE_HEADER_BYTES,
+            actual: page_prefix.len(),
+        });
+    }
+
+    Ok(PdbPageHeader {
+        next_page: read_le32(page_prefix, PDB_PAGE_NEXT_OFFSET)
+            .ok_or(PdbError::TrackRowOutOfRange)?,
+        declared_rows: read_le32(page_prefix, PDB_PAGE_NROWS_OFFSET)
+            .ok_or(PdbError::TrackRowOutOfRange)?
+            & 0x1fff,
+    })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbSlotBatchPlan {
+    pub offset: u32,
+    pub len: u16,
+    pub row_count: u16,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PdbRowOffsetBatch {
+    offsets: [u16; PDB_ROW_SLOT_BATCH_ROWS],
+    len: u16,
+    truncated: bool,
+}
+
+impl PdbRowOffsetBatch {
+    const fn new() -> Self {
+        Self {
+            offsets: [0; PDB_ROW_SLOT_BATCH_ROWS],
+            len: 0,
+            truncated: false,
+        }
+    }
+
+    pub const fn len(&self) -> usize {
+        self.len as usize
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    pub const fn was_truncated(&self) -> bool {
+        self.truncated
+    }
+
+    pub fn offsets(&self) -> &[u16] {
+        &self.offsets[..self.len()]
+    }
+
+    fn push(&mut self, offset: u16) {
+        let index = self.len();
+        self.offsets[index] = offset;
+        self.len += 1;
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbPageSlotWalker {
+    page_size: u32,
+    declared_rows: u32,
+    processed_rows: u32,
+    cursor: u32,
+    present_rows: u32,
+    truncated: bool,
+}
+
+impl PdbPageSlotWalker {
+    pub fn new(page_size: u32, declared_rows: u32) -> Result<Self, PdbError> {
+        if !(PDB_PAGE_HEAP_OFFSET as u32..=PDB_MAX_PAGE_SIZE).contains(&page_size) {
+            return Err(PdbError::PageSizeOutOfRange(page_size));
+        }
+        if declared_rows > 0x1fff {
+            return Err(PdbError::TrackRowOutOfRange);
+        }
+
+        Ok(Self {
+            page_size,
+            declared_rows,
+            processed_rows: 0,
+            cursor: page_size,
+            present_rows: 0,
+            truncated: false,
+        })
+    }
+
+    pub const fn is_complete(&self) -> bool {
+        self.processed_rows >= self.declared_rows
+    }
+
+    pub const fn processed_rows(&self) -> u32 {
+        self.processed_rows
+    }
+
+    pub const fn summary(&self) -> PdbPageWalk {
+        PdbPageWalk {
+            declared_rows: self.declared_rows,
+            present_rows: self.present_rows,
+            truncated: self.truncated,
+        }
+    }
+
+    pub fn next_batch_plan(&self) -> Option<PdbSlotBatchPlan> {
+        if self.is_complete() {
+            return None;
+        }
+
+        let row_count = (self.declared_rows - self.processed_rows)
+            .min(PDB_ROW_SLOT_BATCH_ROWS as u32) as usize;
+        let full_groups = row_count / 16;
+        let tail_rows = row_count % 16;
+        let mut bytes = full_groups * (4 + 16 * 2);
+        if tail_rows != 0 {
+            bytes += 4 + tail_rows * 2;
+        }
+
+        let offset = self.cursor.checked_sub(bytes as u32)?;
+        Some(PdbSlotBatchPlan {
+            offset,
+            len: bytes as u16,
+            row_count: row_count as u16,
+        })
+    }
+
+    pub fn ingest_batch(
+        &mut self,
+        plan: PdbSlotBatchPlan,
+        data: &[u8],
+    ) -> Result<PdbRowOffsetBatch, PdbError> {
+        if self.next_batch_plan() != Some(plan) {
+            return Err(PdbError::SlotBatchPlanMismatch);
+        }
+
+        let required = usize::from(plan.len);
+        if data.len() < required {
+            return Err(PdbError::PageBufferTooSmall {
+                required,
+                actual: data.len(),
+            });
+        }
+
+        let mut result = PdbRowOffsetBatch::new();
+        let mut cursor = required;
+        let mut consumed_rows = 0usize;
+        let planned_rows = usize::from(plan.row_count);
+
+        while consumed_rows < planned_rows {
+            let group_count = (planned_rows - consumed_rows).min(16);
+            let group_bytes = 4 + group_count * 2;
+            if cursor < group_bytes {
+                return Err(PdbError::SlotBatchPlanMismatch);
+            }
+
+            let row_present =
+                read_le16(data, cursor - 4).ok_or(PdbError::SlotBatchPlanMismatch)?;
+            for slot_index in 0..group_count {
+                if row_present & (1u16 << slot_index) == 0 {
+                    continue;
+                }
+
+                let slot = cursor - 4 - 2 * (slot_index + 1);
+                let heap_offset =
+                    read_le16(data, slot).ok_or(PdbError::SlotBatchPlanMismatch)?;
+                let absolute = PDB_PAGE_HEAP_OFFSET + usize::from(heap_offset);
+                if absolute >= self.page_size as usize {
+                    result.truncated = true;
+                    self.truncated = true;
+                    continue;
+                }
+
+                result.push(heap_offset);
+                self.present_rows = self.present_rows.saturating_add(1);
+            }
+
+            cursor -= group_bytes;
+            consumed_rows += group_count;
+        }
+
+        if cursor != 0 {
+            return Err(PdbError::SlotBatchPlanMismatch);
+        }
+
+        self.cursor = plan.offset;
+        self.processed_rows += u32::from(plan.row_count);
+        Ok(result)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -696,6 +911,71 @@ mod tests {
         assert_eq!(
             parse_pdb_header(&header, 1024),
             Err(PdbError::TooManyTables(PDB_MAX_TABLES as u32 + 1))
+        );
+    }
+
+    #[test]
+    fn parses_page_header_from_fixed_prefix() {
+        let mut prefix = [0u8; PDB_PAGE_HEADER_BYTES];
+        put_le32(&mut prefix, PDB_PAGE_NEXT_OFFSET, 9);
+        put_le32(&mut prefix, PDB_PAGE_NROWS_OFFSET, 0x6000_0012);
+
+        assert_eq!(
+            parse_pdb_page_header(&prefix, 65_536).unwrap(),
+            PdbPageHeader {
+                next_page: 9,
+                declared_rows: 18,
+            }
+        );
+    }
+
+    #[test]
+    fn slot_walker_batches_large_pages_without_full_page_buffer() {
+        let walker = PdbPageSlotWalker::new(65_536, 300).unwrap();
+        let first = walker.next_batch_plan().unwrap();
+
+        assert_eq!(first.row_count, 256);
+        assert_eq!(usize::from(first.len), PDB_ROW_SLOT_BATCH_BYTES_MAX);
+        assert_eq!(first.offset, 65_536 - PDB_ROW_SLOT_BATCH_BYTES_MAX as u32);
+    }
+
+    #[test]
+    fn slot_walker_decodes_present_offsets_and_resumes() {
+        let mut walker = PdbPageSlotWalker::new(512, 18).unwrap();
+        let plan = walker.next_batch_plan().unwrap();
+        assert_eq!(plan.row_count, 18);
+        assert_eq!(plan.len, 44);
+
+        let mut encoded = [0u8; 44];
+        let mut cursor = encoded.len();
+
+        put_le16(&mut encoded, cursor - 4, 0xffff);
+        for index in 0..16 {
+            put_le16(
+                &mut encoded,
+                cursor - 4 - 2 * (index + 1),
+                100 + index as u16,
+            );
+        }
+        cursor -= 36;
+
+        put_le16(&mut encoded, cursor - 4, 0x0001);
+        put_le16(&mut encoded, cursor - 6, 200);
+        put_le16(&mut encoded, cursor - 8, 201);
+
+        let batch = walker.ingest_batch(plan, &encoded).unwrap();
+        assert_eq!(batch.len(), 17);
+        assert_eq!(&batch.offsets()[..16], &(100u16..116).collect::<std::vec::Vec<_>>()[..]);
+        assert_eq!(batch.offsets()[16], 200);
+        assert!(!batch.was_truncated());
+        assert!(walker.is_complete());
+        assert_eq!(
+            walker.summary(),
+            PdbPageWalk {
+                declared_rows: 18,
+                present_rows: 17,
+                truncated: false,
+            }
         );
     }
 
