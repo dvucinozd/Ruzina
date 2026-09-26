@@ -3050,6 +3050,10 @@ dependencies = [
 [[package]]
 name = "pajoniiir-rekordbox"
 version = "0.1.0"
+dependencies = [
+ "pajoniiir-media-catalog",
+ "pajoniiir-media-identity",
+]
 
 [[package]]
 name = "pajoniiir-mixer"

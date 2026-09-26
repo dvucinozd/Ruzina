@@ -1,6 +1,12 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+use pajoniiir_media_catalog::{
+    CATALOG_ALBUM_MAX, CATALOG_ARTIST_MAX, CATALOG_KEY_MAX, CATALOG_PATH_MAX, CATALOG_TITLE_MAX,
+    CatalogText, CatalogTextError, CatalogTrack,
+};
+use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
+
 pub const REKORDBOX_EXPORT_PDB_PATH: &str = "/PIONEER/rekordbox/export.pdb";
 
 pub const PDB_MAX_TABLES: usize = 32;
@@ -1050,6 +1056,92 @@ impl PdbTrackRow {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbResolvedNames<'a> {
+    pub artist: Option<&'a PdbText<PDB_NAME_MAX>>,
+    pub album: Option<&'a PdbText<PDB_NAME_MAX>>,
+    pub key: Option<&'a PdbText<PDB_NAME_MAX>>,
+}
+
+pub fn resolve_pdb_track_names<'a, const A: usize, const B: usize, const K: usize>(
+    track: &PdbTrackRow,
+    artists: &'a PdbNameMap<A>,
+    albums: &'a PdbNameMap<B>,
+    keys: &'a PdbNameMap<K>,
+) -> PdbResolvedNames<'a> {
+    PdbResolvedNames {
+        artist: artists.lookup(track.artist_id),
+        album: albums.lookup(track.album_id),
+        key: keys.lookup(track.key_id),
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PdbCatalogField {
+    Title,
+    Artist,
+    Album,
+    Key,
+    AudioPath,
+    AnalysisPath,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PdbCatalogError {
+    InvalidUtf8(PdbCatalogField),
+    Text {
+        field: PdbCatalogField,
+        error: CatalogTextError,
+    },
+    Identity(IdentityError),
+}
+
+pub fn catalog_track_from_pdb(
+    volume: VolumeIdentity,
+    track: &PdbTrackRow,
+    names: PdbResolvedNames<'_>,
+) -> Result<CatalogTrack, PdbCatalogError> {
+    let audio_path_text = track
+        .file_path
+        .as_str()
+        .ok_or(PdbCatalogError::InvalidUtf8(PdbCatalogField::AudioPath))?;
+    let track_id =
+        derive_track_id(volume, audio_path_text).map_err(PdbCatalogError::Identity)?;
+
+    Ok(CatalogTrack {
+        track_id,
+        source_track_id: track.track_id,
+        bpm_x100: track.bpm_x100,
+        duration_ms: u32::from(track.duration_s) * 1_000,
+        title: catalog_text(PdbCatalogField::Title, &track.title)?,
+        artist: optional_catalog_text(PdbCatalogField::Artist, names.artist)?,
+        album: optional_catalog_text(PdbCatalogField::Album, names.album)?,
+        key: optional_catalog_text(PdbCatalogField::Key, names.key)?,
+        audio_path: catalog_text(PdbCatalogField::AudioPath, &track.file_path)?,
+        analysis_path: catalog_text(PdbCatalogField::AnalysisPath, &track.anlz_path)?,
+    })
+}
+
+fn catalog_text<const S: usize, const D: usize>(
+    field: PdbCatalogField,
+    source: &PdbText<S>,
+) -> Result<CatalogText<D>, PdbCatalogError> {
+    let value = source
+        .as_str()
+        .ok_or(PdbCatalogError::InvalidUtf8(field))?;
+    CatalogText::try_from_str(value).map_err(|error| PdbCatalogError::Text { field, error })
+}
+
+fn optional_catalog_text<const D: usize>(
+    field: PdbCatalogField,
+    source: Option<&PdbText<PDB_NAME_MAX>>,
+) -> Result<CatalogText<D>, PdbCatalogError> {
+    match source {
+        Some(source) => catalog_text(field, source),
+        None => Ok(CatalogText::EMPTY),
+    }
+}
+
 pub fn parse_pdb_track_row(
     page: &[u8],
     page_size: u32,
@@ -1462,6 +1554,125 @@ mod tests {
         );
         assert_eq!(row.title.as_str(), Some("fallback.wav"));
         assert_eq!(row.track_id, 9);
+    }
+
+    #[test]
+    fn resolved_pdb_track_converts_to_neutral_catalog_track() {
+        fn field<const N: usize>(value: &[u8]) -> PdbText<N> {
+            let mut raw = [0u8; 128];
+            put_short_devicesql(&mut raw, 0, value);
+            PdbText::from_devicesql_field(&raw).unwrap()
+        }
+
+        fn name(id: u32, value: &[u8]) -> PdbNameEntry {
+            PdbNameEntry::from_header_and_field(
+                PdbNameRowHeader {
+                    id,
+                    text_relative_offset: NAME_ROW_TEXT_OFFSET,
+                },
+                field(value),
+            )
+            .unwrap()
+        }
+
+        let header = PdbTrackRowHeader {
+            track_id: 42,
+            bpm_x100: 12_834,
+            bpm: 128,
+            duration_s: 321,
+            artist_id: 7,
+            album_id: 8,
+            key_id: 9,
+            strings: PdbTrackStringOffsets {
+                title: 0,
+                filename: 0,
+                file_path: 0,
+                anlz_path: 0,
+            },
+        };
+        let track = PdbTrackRow::from_header_and_fields(
+            header,
+            field(b"Test Track"),
+            PdbText::new(),
+            field(b"/Contents/test.wav"),
+            field(b"/PIONEER/USBANLZ/P001/00000042/ANLZ0000.DAT"),
+        );
+
+        let mut artists = PdbNameMap::<2>::new();
+        let mut albums = PdbNameMap::<2>::new();
+        let mut keys = PdbNameMap::<2>::new();
+        artists.push(name(7, b"Test Artist")).unwrap();
+        albums.push(name(8, b"Test Album")).unwrap();
+        keys.push(name(9, b"8A")).unwrap();
+
+        let volume = VolumeIdentity([0x31; 32]);
+        let resolved = resolve_pdb_track_names(&track, &artists, &albums, &keys);
+        let catalog = catalog_track_from_pdb(volume, &track, resolved).unwrap();
+
+        assert_eq!(
+            catalog.track_id,
+            derive_track_id(volume, "/Contents/test.wav").unwrap()
+        );
+        assert_eq!(catalog.source_track_id, 42);
+        assert_eq!(catalog.bpm_x100, 12_834);
+        assert_eq!(catalog.duration_ms, 321_000);
+        assert_eq!(catalog.title.as_str(), "Test Track");
+        assert_eq!(catalog.artist.as_str(), "Test Artist");
+        assert_eq!(catalog.album.as_str(), "Test Album");
+        assert_eq!(catalog.key.as_str(), "8A");
+        assert_eq!(catalog.audio_path.as_str(), "/Contents/test.wav");
+        assert_eq!(
+            catalog.analysis_path.as_str(),
+            "/PIONEER/USBANLZ/P001/00000042/ANLZ0000.DAT"
+        );
+    }
+
+    #[test]
+    fn catalog_adapter_rejects_metadata_that_exceeds_neutral_contract() {
+        fn field<const N: usize>(value: &[u8]) -> PdbText<N> {
+            let mut raw = [0u8; 128];
+            put_short_devicesql(&mut raw, 0, value);
+            PdbText::from_devicesql_field(&raw).unwrap()
+        }
+
+        let track = PdbTrackRow::from_header_and_fields(
+            PdbTrackRowHeader {
+                track_id: 1,
+                bpm_x100: 12_000,
+                bpm: 120,
+                duration_s: 60,
+                artist_id: 0,
+                album_id: 0,
+                key_id: 1,
+                strings: PdbTrackStringOffsets {
+                    title: 0,
+                    filename: 0,
+                    file_path: 0,
+                    anlz_path: 0,
+                },
+            },
+            field(b"Track"),
+            PdbText::new(),
+            field(b"/Contents/track.wav"),
+            PdbText::new(),
+        );
+        let key = field::<PDB_NAME_MAX>(b"12345678901234567");
+        let names = PdbResolvedNames {
+            artist: None,
+            album: None,
+            key: Some(&key),
+        };
+
+        assert_eq!(
+            catalog_track_from_pdb(VolumeIdentity([0x44; 32]), &track, names),
+            Err(PdbCatalogError::Text {
+                field: PdbCatalogField::Key,
+                error: CatalogTextError::TooLong {
+                    len: 17,
+                    max: CATALOG_KEY_MAX,
+                },
+            })
+        );
     }
 
     #[test]
