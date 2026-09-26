@@ -2,8 +2,8 @@ use core::char;
 
 use pajoniiir_media_block::BlockGeometry;
 use pajoniiir_media_fs::{
-    AsyncFileSystem, DirEntry, DirectoryHandle, EntryKind, FileHandle, FileStat, FileSystemCapabilities,
-    FileSystemKind, LeaseBound, FS_NAME_MAX,
+    AsyncFileSystem, DirEntry, DirectoryHandle, EntryKind, FS_NAME_MAX, FileHandle, FileStat,
+    FileSystemCapabilities, FileSystemKind, LeaseBound,
 };
 use pajoniiir_media_io::OwnedBlockDevice;
 use pajoniiir_media_session::MediaLease;
@@ -256,7 +256,10 @@ where
             .ok_or(Fat32AsyncFsError::MissingScratch)
     }
 
-    async fn next_cluster(&mut self, cluster: u32) -> Result<Option<u32>, Fat32AsyncFsError<D::Error>> {
+    async fn next_cluster(
+        &mut self,
+        cluster: u32,
+    ) -> Result<Option<u32>, Fat32AsyncFsError<D::Error>> {
         self.validate_cluster(cluster)?;
         let offset = u64::from(cluster)
             .checked_mul(4)
@@ -361,9 +364,9 @@ where
     }
 
     fn short_name_checksum(raw_name: &[u8]) -> u8 {
-        raw_name.iter().fold(0u8, |sum, byte| {
-            sum.rotate_right(1).wrapping_add(*byte)
-        })
+        raw_name
+            .iter()
+            .fold(0u8, |sum, byte| sum.rotate_right(1).wrapping_add(*byte))
     }
 
     fn decode_short_name(raw: &[u8; FAT32_ENTRY_SIZE], output: &mut [u8]) -> Option<usize> {
@@ -373,9 +376,15 @@ where
             base[0] = 0xe5;
         }
 
-        let base_len = base.iter().rposition(|byte| *byte != b' ').map_or(0, |i| i + 1);
+        let base_len = base
+            .iter()
+            .rposition(|byte| *byte != b' ')
+            .map_or(0, |i| i + 1);
         let ext = &raw[8..11];
-        let ext_len = ext.iter().rposition(|byte| *byte != b' ').map_or(0, |i| i + 1);
+        let ext_len = ext
+            .iter()
+            .rposition(|byte| *byte != b' ')
+            .map_or(0, |i| i + 1);
 
         for byte in &base[..base_len] {
             let value = if raw[12] & 0x08 != 0 {
@@ -425,7 +434,9 @@ where
             let mut encoded = [0u8; 4];
             let text = ch.encode_utf8(&mut encoded);
             let end = written.checked_add(text.len())?;
-            output.get_mut(written..end)?.copy_from_slice(text.as_bytes());
+            output
+                .get_mut(written..end)?
+                .copy_from_slice(text.as_bytes());
             written = end;
         }
         Some(written)
@@ -486,14 +497,12 @@ where
                 continue;
             }
 
-            let checksum_matches = lfn_valid
-                && lfn_checksum == Some(Self::short_name_checksum(&raw[0..11]));
+            let checksum_matches =
+                lfn_valid && lfn_checksum == Some(Self::short_name_checksum(&raw[0..11]));
             let name_len = if checksum_matches {
-                Self::encode_utf16_name(&lfn, name_storage)
-                    .ok_or(Fat32AsyncFsError::NameTooLong)?
+                Self::encode_utf16_name(&lfn, name_storage).ok_or(Fat32AsyncFsError::NameTooLong)?
             } else {
-                Self::decode_short_name(&raw, name_storage)
-                    .ok_or(Fat32AsyncFsError::NameTooLong)?
+                Self::decode_short_name(&raw, name_storage).ok_or(Fat32AsyncFsError::NameTooLong)?
             };
 
             let first_cluster = (u32::from(u16::from_le_bytes([raw[20], raw[21]])) << 16)
@@ -720,8 +729,7 @@ where
                 .ok_or(Fat32AsyncFsError::PositionOverflow)?;
 
             self.load_sector(sector).await?;
-            let remaining_file = usize::try_from(file.len - file.position)
-                .unwrap_or(usize::MAX);
+            let remaining_file = usize::try_from(file.len - file.position).unwrap_or(usize::MAX);
             let available_sector = usize::from(self.boot.bytes_per_sector) - offset_in_sector;
             let count = (output.len() - written)
                 .min(remaining_file)
@@ -975,7 +983,8 @@ mod tests {
 
     fn filesystem() -> Fat32AsyncFileSystem<MemoryDevice> {
         let (image, boot) = fixture();
-        match Fat32AsyncFileSystem::new(MemoryDevice::new(image), [0u8; SECTOR_SIZE], boot, lease()) {
+        match Fat32AsyncFileSystem::new(MemoryDevice::new(image), [0u8; SECTOR_SIZE], boot, lease())
+        {
             Ok(fs) => fs,
             Err(_) => panic!("fixture mount failed"),
         }
@@ -1016,22 +1025,31 @@ mod tests {
         let mut directory = block_on_ready(AsyncFileSystem::open_directory(&mut fs, "/")).unwrap();
         let mut name = [0u8; FS_NAME_MAX];
 
-        let first =
-            block_on_ready(AsyncFileSystem::next_entry(&mut fs, &mut directory, &mut name))
-                .unwrap()
-                .unwrap();
+        let first = block_on_ready(AsyncFileSystem::next_entry(
+            &mut fs,
+            &mut directory,
+            &mut name,
+        ))
+        .unwrap()
+        .unwrap();
         assert_eq!(first.name(&name), Some(b"TRACK.WAV".as_slice()));
 
-        let second =
-            block_on_ready(AsyncFileSystem::next_entry(&mut fs, &mut directory, &mut name))
-                .unwrap()
-                .unwrap();
+        let second = block_on_ready(AsyncFileSystem::next_entry(
+            &mut fs,
+            &mut directory,
+            &mut name,
+        ))
+        .unwrap()
+        .unwrap();
         assert_eq!(second.name(&name), Some(b"MUSIC".as_slice()));
 
-        let third =
-            block_on_ready(AsyncFileSystem::next_entry(&mut fs, &mut directory, &mut name))
-                .unwrap()
-                .unwrap();
+        let third = block_on_ready(AsyncFileSystem::next_entry(
+            &mut fs,
+            &mut directory,
+            &mut name,
+        ))
+        .unwrap()
+        .unwrap();
         assert_eq!(third.name(&name), Some(b"Long Track.wav".as_slice()));
     }
 
