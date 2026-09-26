@@ -36,6 +36,7 @@ const STR_IDX_FILE_PATH: usize = 20;
 
 pub const PDB_TITLE_MAX: usize = 128;
 pub const PDB_PATH_MAX: usize = 256;
+pub const PDB_TRACK_ROW_HEADER_BYTES: usize = TRACK_ROW_MIN_SIZE;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PdbError {
@@ -692,6 +693,92 @@ impl<const N: usize> Default for PdbText<N> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbTrackStringOffsets {
+    pub title: u16,
+    pub filename: u16,
+    pub file_path: u16,
+    pub anlz_path: u16,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbTrackRowHeader {
+    pub track_id: u32,
+    pub bpm_x100: u32,
+    pub bpm: u16,
+    pub duration_s: u16,
+    pub artist_id: u32,
+    pub album_id: u32,
+    pub key_id: u32,
+    pub strings: PdbTrackStringOffsets,
+}
+
+pub fn parse_pdb_track_row_header(
+    row_prefix: &[u8],
+) -> Result<Option<PdbTrackRowHeader>, PdbError> {
+    if row_prefix.len() < PDB_TRACK_ROW_HEADER_BYTES {
+        return Err(PdbError::TrackRowOutOfRange);
+    }
+
+    let subtype = read_le16(row_prefix, 0).ok_or(PdbError::TrackRowOutOfRange)?;
+    if subtype != TRACK_ROW_SUBTYPE {
+        return Ok(None);
+    }
+
+    let bpm_x100 =
+        read_le32(row_prefix, TRACK_OFF_TEMPO).ok_or(PdbError::TrackRowOutOfRange)?;
+    let rounded_bpm = (u64::from(bpm_x100) + 50) / 100;
+
+    let string_offset = |index: usize| {
+        read_le16(row_prefix, TRACK_OFF_STR_OFFS + index * 2)
+            .ok_or(PdbError::TrackStringOffsetOutOfRange)
+    };
+
+    Ok(Some(PdbTrackRowHeader {
+        track_id: read_le32(row_prefix, TRACK_OFF_TRACK_ID)
+            .ok_or(PdbError::TrackRowOutOfRange)?,
+        bpm_x100,
+        bpm: u16::try_from(rounded_bpm).unwrap_or(u16::MAX),
+        duration_s: read_le16(row_prefix, TRACK_OFF_DURATION)
+            .ok_or(PdbError::TrackRowOutOfRange)?,
+        artist_id: read_le32(row_prefix, TRACK_OFF_ARTIST_ID)
+            .ok_or(PdbError::TrackRowOutOfRange)?,
+        album_id: read_le32(row_prefix, TRACK_OFF_ALBUM_ID)
+            .ok_or(PdbError::TrackRowOutOfRange)?,
+        key_id: read_le32(row_prefix, TRACK_OFF_KEY_ID)
+            .ok_or(PdbError::TrackRowOutOfRange)?,
+        strings: PdbTrackStringOffsets {
+            title: string_offset(STR_IDX_TITLE)?,
+            filename: string_offset(STR_IDX_FILENAME)?,
+            file_path: string_offset(STR_IDX_FILE_PATH)?,
+            anlz_path: string_offset(STR_IDX_ANLZ_PATH)?,
+        },
+    }))
+}
+
+pub fn pdb_track_string_page_offset(
+    heap_offset: u16,
+    relative_offset: u16,
+    page_size: u32,
+) -> Result<Option<u32>, PdbError> {
+    if relative_offset == 0 {
+        return Ok(None);
+    }
+    if !(PDB_PAGE_HEAP_OFFSET as u32..=PDB_MAX_PAGE_SIZE).contains(&page_size) {
+        return Err(PdbError::PageSizeOutOfRange(page_size));
+    }
+
+    let absolute = (PDB_PAGE_HEAP_OFFSET as u32)
+        .checked_add(u32::from(heap_offset))
+        .and_then(|offset| offset.checked_add(u32::from(relative_offset)))
+        .ok_or(PdbError::TrackStringOffsetOutOfRange)?;
+    if absolute >= page_size {
+        return Err(PdbError::TrackStringOffsetOutOfRange);
+    }
+
+    Ok(Some(absolute))
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PdbTrackRow {
     pub track_id: u32,
@@ -723,13 +810,9 @@ pub fn parse_pdb_track_row(
         return Err(PdbError::TrackRowOutOfRange);
     }
 
-    let subtype = read_le16(page, row).ok_or(PdbError::TrackRowOutOfRange)?;
-    if subtype != TRACK_ROW_SUBTYPE {
+    let Some(header) = parse_pdb_track_row_header(&page[row..size])? else {
         return Ok(None);
-    }
-
-    let bpm_x100 = read_le32(page, row + TRACK_OFF_TEMPO).ok_or(PdbError::TrackRowOutOfRange)?;
-    let rounded_bpm = (u64::from(bpm_x100) + 50) / 100;
+    };
 
     let mut title = PdbText::new();
     let mut filename = PdbText::new();
@@ -746,15 +829,13 @@ pub fn parse_pdb_track_row(
     }
 
     Ok(Some(PdbTrackRow {
-        track_id: read_le32(page, row + TRACK_OFF_TRACK_ID).ok_or(PdbError::TrackRowOutOfRange)?,
-        bpm_x100,
-        bpm: u16::try_from(rounded_bpm).unwrap_or(u16::MAX),
-        duration_s: read_le16(page, row + TRACK_OFF_DURATION)
-            .ok_or(PdbError::TrackRowOutOfRange)?,
-        artist_id: read_le32(page, row + TRACK_OFF_ARTIST_ID)
-            .ok_or(PdbError::TrackRowOutOfRange)?,
-        album_id: read_le32(page, row + TRACK_OFF_ALBUM_ID).ok_or(PdbError::TrackRowOutOfRange)?,
-        key_id: read_le32(page, row + TRACK_OFF_KEY_ID).ok_or(PdbError::TrackRowOutOfRange)?,
+        track_id: header.track_id,
+        bpm_x100: header.bpm_x100,
+        bpm: header.bpm,
+        duration_s: header.duration_s,
+        artist_id: header.artist_id,
+        album_id: header.album_id,
+        key_id: header.key_id,
         title,
         file_path,
         anlz_path,
@@ -1012,6 +1093,61 @@ mod tests {
 
         assert_eq!(text, "/Contents/周防義和/test.mp3");
         assert!(!result.truncated);
+    }
+
+    #[test]
+    fn parses_track_header_from_fixed_136_byte_prefix() {
+        let mut row = [0u8; PDB_TRACK_ROW_HEADER_BYTES];
+        put_le16(&mut row, 0, TRACK_ROW_SUBTYPE);
+        put_le32(&mut row, TRACK_OFF_KEY_ID, 7);
+        put_le32(&mut row, TRACK_OFF_TEMPO, 12_834);
+        put_le32(&mut row, TRACK_OFF_ALBUM_ID, 11);
+        put_le32(&mut row, TRACK_OFF_ARTIST_ID, 12);
+        put_le32(&mut row, TRACK_OFF_TRACK_ID, 42);
+        put_le16(&mut row, TRACK_OFF_DURATION, 321);
+        put_le16(&mut row, TRACK_OFF_STR_OFFS + STR_IDX_TITLE * 2, 0x90);
+        put_le16(&mut row, TRACK_OFF_STR_OFFS + STR_IDX_FILENAME * 2, 0xa0);
+        put_le16(&mut row, TRACK_OFF_STR_OFFS + STR_IDX_FILE_PATH * 2, 0xb0);
+        put_le16(&mut row, TRACK_OFF_STR_OFFS + STR_IDX_ANLZ_PATH * 2, 0xc0);
+
+        assert_eq!(
+            parse_pdb_track_row_header(&row).unwrap(),
+            Some(PdbTrackRowHeader {
+                track_id: 42,
+                bpm_x100: 12_834,
+                bpm: 128,
+                duration_s: 321,
+                artist_id: 12,
+                album_id: 11,
+                key_id: 7,
+                strings: PdbTrackStringOffsets {
+                    title: 0x90,
+                    filename: 0xa0,
+                    file_path: 0xb0,
+                    anlz_path: 0xc0,
+                },
+            })
+        );
+        assert_eq!(
+            parse_pdb_track_row_header(&row[..PDB_TRACK_ROW_HEADER_BYTES - 1]),
+            Err(PdbError::TrackRowOutOfRange)
+        );
+    }
+
+    #[test]
+    fn computes_on_demand_track_string_page_offsets() {
+        assert_eq!(
+            pdb_track_string_page_offset(0x100, 0x90, 4_096).unwrap(),
+            Some(0x1b8)
+        );
+        assert_eq!(
+            pdb_track_string_page_offset(0x100, 0, 4_096).unwrap(),
+            None
+        );
+        assert_eq!(
+            pdb_track_string_page_offset(4_000, 100, 4_096),
+            Err(PdbError::TrackStringOffsetOutOfRange)
+        );
     }
 
     #[test]
