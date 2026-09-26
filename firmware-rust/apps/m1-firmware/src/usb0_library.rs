@@ -7,9 +7,10 @@ use pajoniiir_media_fs::{
 };
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
-    PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS, PdbError, PdbHeader,
-    PdbPageSlotWalker, PdbTableDirectory, REKORDBOX_EXPORT_PDB_PATH, parse_pdb_header,
-    parse_pdb_page_header, parse_pdb_table_directory,
+    PDB_PAGE_HEAP_OFFSET, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS,
+    PDB_TRACK_ROW_HEADER_BYTES, PdbError, PdbHeader, PdbPageSlotWalker, PdbTableDirectory,
+    REKORDBOX_EXPORT_PDB_PATH, parse_pdb_header, parse_pdb_page_header, parse_pdb_table_directory,
+    parse_pdb_track_row_header,
 };
 use static_cell::StaticCell;
 
@@ -49,6 +50,7 @@ pub(crate) struct Usb0LibraryTableProbe {
     pub(crate) pages: u32,
     pub(crate) declared_rows: u32,
     pub(crate) present_rows: u32,
+    pub(crate) track_rows: u32,
     pub(crate) truncated: bool,
 }
 
@@ -344,6 +346,7 @@ async fn scan_table_layout(
     let mut pages = 0u32;
     let mut declared_rows = 0u32;
     let mut present_rows = 0u32;
+    let mut track_rows = 0u32;
     let mut truncated = false;
 
     loop {
@@ -402,8 +405,77 @@ async fn scan_table_layout(
             file = next_file;
             buffer = next_buffer;
 
-            if let Err(error) = walker.ingest_batch(plan, &buffer[..bytes]) {
-                return (file, buffer, Err(Usb0LibraryError::Pdb(error)));
+            let row_offsets = match walker.ingest_batch(plan, &buffer[..bytes]) {
+                Ok(row_offsets) => row_offsets,
+                Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
+            };
+
+            for heap_offset in row_offsets.offsets().iter().copied() {
+                let page_relative = match (PDB_PAGE_HEAP_OFFSET as u32)
+                    .checked_add(u32::from(heap_offset))
+                {
+                    Some(offset) => offset,
+                    None => {
+                        return (
+                            file,
+                            buffer,
+                            Err(Usb0LibraryError::Pdb(PdbError::TrackRowOutOfRange)),
+                        );
+                    }
+                };
+                let row_end = match page_relative.checked_add(PDB_TRACK_ROW_HEADER_BYTES as u32) {
+                    Some(end) => end,
+                    None => {
+                        return (
+                            file,
+                            buffer,
+                            Err(Usb0LibraryError::Pdb(PdbError::TrackRowOutOfRange)),
+                        );
+                    }
+                };
+                if row_end > header.page_size {
+                    return (
+                        file,
+                        buffer,
+                        Err(Usb0LibraryError::Pdb(PdbError::TrackRowOutOfRange)),
+                    );
+                }
+
+                let absolute = page_start + u64::from(page_relative);
+                let row_read = read_at(client, lease, file, buffer, absolute).await;
+                let (next_file, next_buffer, bytes) = match row_read {
+                    PrefixReadResult::Complete {
+                        file,
+                        buffer,
+                        bytes,
+                    } => (file, buffer, bytes),
+                    PrefixReadResult::Failed {
+                        file,
+                        buffer,
+                        error,
+                    } => return (file, buffer, Err(error)),
+                };
+                file = next_file;
+                buffer = next_buffer;
+
+                match parse_pdb_track_row_header(&buffer[..bytes]) {
+                    Ok(Some(_header)) => {
+                        track_rows = match track_rows.checked_add(1) {
+                            Some(total) => total,
+                            None => {
+                                return (
+                                    file,
+                                    buffer,
+                                    Err(Usb0LibraryError::RowCountOverflow),
+                                );
+                            }
+                        };
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        return (file, buffer, Err(Usb0LibraryError::Pdb(error)));
+                    }
+                }
             }
         }
 
@@ -439,6 +511,7 @@ async fn scan_table_layout(
             pages,
             declared_rows,
             present_rows,
+            track_rows,
             truncated,
         }),
     )
