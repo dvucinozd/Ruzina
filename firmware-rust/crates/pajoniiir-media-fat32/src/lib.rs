@@ -12,6 +12,9 @@ use pajoniiir_media_block::{
 };
 use pajoniiir_media_partition::{PartitionCandidate, VolumeKind};
 
+mod async_fs;
+pub use async_fs::*;
+
 pub const FAT_BLOCK_SIZE: u32 = 512;
 
 #[derive(Debug, Eq, PartialEq)]

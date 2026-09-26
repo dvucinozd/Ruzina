@@ -9,5 +9,6 @@ publish.workspace = true
 embedded-sdmmc.workspace = true
 pajoniiir-media-block.workspace = true
 pajoniiir-media-fs.workspace = true
+pajoniiir-media-io.workspace = true
 pajoniiir-media-partition.workspace = true
 pajoniiir-media-session.workspace = true

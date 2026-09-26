@@ -1426,6 +1426,7 @@ dependencies = [
  "embedded-sdmmc",
  "pajoniiir-media-block",
  "pajoniiir-media-fs",
+ "pajoniiir-media-io",
  "pajoniiir-media-partition",
  "pajoniiir-media-session",
 ]
