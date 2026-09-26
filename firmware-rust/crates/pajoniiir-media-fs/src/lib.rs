@@ -226,6 +226,135 @@ pub trait WritableFileSystem: FileSystem {
     }
 }
 
+
+/// Native asynchronous filesystem contract for executor-owned storage backends.
+///
+/// This is intentionally a separate trait instead of a blanket adapter around
+/// FileSystem. Synchronous FAT/exFAT implementations may block while doing
+/// device I/O and must not be disguised as async operations inside Embassy
+/// tasks. Target backends should implement this contract over a genuinely
+/// asynchronous transport such as the USB0 owned-buffer queue.
+#[allow(async_fn_in_trait)]
+pub trait AsyncFileSystem: LeaseBound {
+    type Error;
+    type File: FileHandle;
+    type Directory: DirectoryHandle;
+
+    fn kind(&self) -> FileSystemKind;
+    fn capabilities(&self) -> FileSystemCapabilities;
+
+    async fn stat(&mut self, path: &str) -> Result<FileStat, Self::Error>;
+
+    async fn open_read(&mut self, path: &str) -> Result<Self::File, Self::Error>;
+
+    async fn close_file(&mut self, file: Self::File) -> Result<(), Self::Error>;
+
+    async fn read(
+        &mut self,
+        file: &mut Self::File,
+        output: &mut [u8],
+    ) -> Result<usize, Self::Error>;
+
+    async fn seek_absolute(
+        &mut self,
+        file: &mut Self::File,
+        position: u64,
+    ) -> Result<(), Self::Error>;
+
+    async fn open_directory(&mut self, path: &str) -> Result<Self::Directory, Self::Error>;
+
+    async fn next_entry(
+        &mut self,
+        directory: &mut Self::Directory,
+        name_storage: &mut [u8; FS_NAME_MAX],
+    ) -> Result<Option<DirEntry>, Self::Error>;
+
+    async fn close_directory(&mut self, directory: Self::Directory) -> Result<(), Self::Error>;
+
+    async fn read_exact(
+        &mut self,
+        file: &mut Self::File,
+        mut output: &mut [u8],
+    ) -> Result<(), IoContractError<Self::Error>> {
+        while !output.is_empty() {
+            let read = self
+                .read(file, output)
+                .await
+                .map_err(IoContractError::Inner)?;
+            if read == 0 {
+                return Err(IoContractError::UnexpectedEof);
+            }
+            if read > output.len() {
+                return Err(IoContractError::InvalidBackendCount);
+            }
+            output = &mut output[read..];
+        }
+        Ok(())
+    }
+
+    async fn seek_checked(
+        &mut self,
+        file: &mut Self::File,
+        position: u64,
+    ) -> Result<(), IoContractError<Self::Error>> {
+        if position > file.len() {
+            return Err(IoContractError::BeyondEnd);
+        }
+        self.seek_absolute(file, position)
+            .await
+            .map_err(IoContractError::Inner)?;
+        file.set_position(position);
+        Ok(())
+    }
+}
+
+/// Writable extension of AsyncFileSystem.
+///
+/// Implementations must not return success from flush_file or sync until the
+/// underlying asynchronous transport has completed the corresponding
+/// durability boundary.
+#[allow(async_fn_in_trait)]
+pub trait AsyncWritableFileSystem: AsyncFileSystem {
+    async fn open_write(
+        &mut self,
+        path: &str,
+        truncate: bool,
+    ) -> Result<Self::File, Self::Error>;
+
+    async fn write(
+        &mut self,
+        file: &mut Self::File,
+        input: &[u8],
+    ) -> Result<usize, Self::Error>;
+
+    async fn flush_file(&mut self, file: &mut Self::File) -> Result<(), Self::Error>;
+
+    async fn rename(&mut self, from: &str, to: &str) -> Result<(), Self::Error>;
+    async fn remove(&mut self, path: &str) -> Result<(), Self::Error>;
+    async fn sync(&mut self) -> Result<(), Self::Error>;
+
+    async fn write_all(
+        &mut self,
+        file: &mut Self::File,
+        mut input: &[u8],
+    ) -> Result<(), IoContractError<Self::Error>> {
+        while !input.is_empty() {
+            let written = self
+                .write(file, input)
+                .await
+                .map_err(IoContractError::Inner)?;
+            if written == 0 {
+                return Err(IoContractError::WriteZero);
+            }
+            if written > input.len() {
+                return Err(IoContractError::InvalidBackendCount);
+            }
+            input = &input[written..];
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -512,6 +641,154 @@ mod tests {
     #[test]
     fn utf8_name_storage_covers_worst_case_exfat_name_width() {
         assert_eq!(FS_NAME_MAX, 1_020);
+    }
+
+
+    struct AsyncTestFs(TestFs);
+
+    impl AsyncTestFs {
+        fn new() -> Self {
+            Self(TestFs::new())
+        }
+    }
+
+    impl LeaseBound for AsyncTestFs {
+        fn lease(&self) -> MediaLease {
+            self.0.lease()
+        }
+    }
+
+    impl AsyncFileSystem for AsyncTestFs {
+        type Error = TestError;
+        type File = TestFile;
+        type Directory = TestDirectory;
+
+        fn kind(&self) -> FileSystemKind {
+            FileSystem::kind(&self.0)
+        }
+
+        fn capabilities(&self) -> FileSystemCapabilities {
+            FileSystem::capabilities(&self.0)
+        }
+
+        async fn stat(&mut self, path: &str) -> Result<FileStat, Self::Error> {
+            FileSystem::stat(&mut self.0, path)
+        }
+
+        async fn open_read(&mut self, path: &str) -> Result<Self::File, Self::Error> {
+            FileSystem::open_read(&mut self.0, path)
+        }
+
+        async fn close_file(&mut self, file: Self::File) -> Result<(), Self::Error> {
+            FileSystem::close_file(&mut self.0, file)
+        }
+
+        async fn read(
+            &mut self,
+            file: &mut Self::File,
+            output: &mut [u8],
+        ) -> Result<usize, Self::Error> {
+            FileSystem::read(&mut self.0, file, output)
+        }
+
+        async fn seek_absolute(
+            &mut self,
+            file: &mut Self::File,
+            position: u64,
+        ) -> Result<(), Self::Error> {
+            FileSystem::seek_absolute(&mut self.0, file, position)
+        }
+
+        async fn open_directory(
+            &mut self,
+            path: &str,
+        ) -> Result<Self::Directory, Self::Error> {
+            FileSystem::open_directory(&mut self.0, path)
+        }
+
+        async fn next_entry(
+            &mut self,
+            directory: &mut Self::Directory,
+            name_storage: &mut [u8; FS_NAME_MAX],
+        ) -> Result<Option<DirEntry>, Self::Error> {
+            FileSystem::next_entry(&mut self.0, directory, name_storage)
+        }
+
+        async fn close_directory(
+            &mut self,
+            directory: Self::Directory,
+        ) -> Result<(), Self::Error> {
+            FileSystem::close_directory(&mut self.0, directory)
+        }
+    }
+
+    fn block_on_ready<F: core::future::Future>(future: F) -> F::Output {
+        let waker = core::task::Waker::noop();
+        let mut context = core::task::Context::from_waker(waker);
+        let mut future = core::pin::pin!(future);
+        match future.as_mut().poll(&mut context) {
+            core::task::Poll::Ready(output) => output,
+            core::task::Poll::Pending => panic!("test future unexpectedly pending"),
+        }
+    }
+
+    #[test]
+    fn async_contract_preserves_partial_read_and_seek_rules() {
+        let mut fs = AsyncTestFs::new();
+        fs.0.max_chunk = 2;
+        let mut file = block_on_ready(AsyncFileSystem::open_read(&mut fs, "track.wav")).unwrap();
+        let mut output = [0u8; 7];
+
+        assert_eq!(
+            block_on_ready(AsyncFileSystem::read_exact(
+                &mut fs,
+                &mut file,
+                &mut output
+            )),
+            Ok(())
+        );
+        assert_eq!(&output, b"abcdefg");
+        assert_eq!(file.position(), 7);
+
+        assert_eq!(
+            block_on_ready(AsyncFileSystem::seek_checked(&mut fs, &mut file, 8)),
+            Ok(())
+        );
+        assert_eq!(file.position(), 8);
+        assert_eq!(
+            block_on_ready(AsyncFileSystem::seek_checked(&mut fs, &mut file, 9)),
+            Err(IoContractError::BeyondEnd)
+        );
+    }
+
+    #[test]
+    fn async_contract_rejects_stale_generation_and_impossible_counts() {
+        let mut fs = AsyncTestFs::new();
+        let mut file = block_on_ready(AsyncFileSystem::open_read(&mut fs, "track.wav")).unwrap();
+
+        fs.0.lease = MediaLease {
+            generation: MediaGeneration::initial(),
+            source: MediaSourceId::new(2).unwrap(),
+        };
+        assert_eq!(
+            block_on_ready(AsyncFileSystem::read(
+                &mut fs,
+                &mut file,
+                &mut [0u8; 1]
+            )),
+            Err(TestError::InvalidHandle)
+        );
+
+        fs.0.lease = file.lease();
+        fs.0.lie_about_count = true;
+        assert_eq!(
+            block_on_ready(AsyncFileSystem::read_exact(
+                &mut fs,
+                &mut file,
+                &mut [0u8; 4]
+            )),
+            Err(IoContractError::InvalidBackendCount)
+        );
     }
 
     #[test]
