@@ -4,6 +4,7 @@ use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex},
     channel::Channel,
+    signal::Signal,
 };
 use embassy_usb_driver::host::{DeviceEvent, UsbHostAllocator};
 use embassy_usb_host::{
@@ -62,6 +63,9 @@ pub(crate) static USB0_MSC_FILESYSTEM_EVENTS: Channel<
     Usb0MscFilesystemEvent,
     USB0_MSC_QUEUE_DEPTH,
 > = Channel::new();
+
+pub(crate) static USB0_LIBRARY_EVENTS: Signal<CriticalSectionRawMutex, Usb0LibraryEvent> =
+    Signal::new();
 
 pub(crate) const USB0_FS_REQUEST_DEPTH: usize = 3;
 const USB0_FS_COMPLETION_DEPTH: usize = 1;
@@ -199,6 +203,20 @@ pub(crate) enum Usb0MscFilesystemEvent {
     Mounted {
         binding: Usb0MscBinding,
         media: UsbMscMountedMedia,
+    },
+    Detached {
+        binding: Usb0MscBinding,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0LibraryEvent {
+    Ready {
+        binding: Usb0MscBinding,
+        kind: FileSystemKind,
+    },
+    FilesystemFailed {
+        binding: Usb0MscBinding,
     },
     Detached {
         binding: Usb0MscBinding,
@@ -1868,6 +1886,10 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
                                 media,
                                 probe,
                             });
+                            USB0_LIBRARY_EVENTS.signal(Usb0LibraryEvent::Ready {
+                                binding,
+                                kind: probe.kind(),
+                            });
                         }
                         Err(error) => {
                             set_filesystem_state(Usb0MscFilesystemState::Failed {
@@ -1875,6 +1897,8 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
                                 media,
                                 error,
                             });
+                            USB0_LIBRARY_EVENTS
+                                .signal(Usb0LibraryEvent::FilesystemFailed { binding });
                         }
                     }
                 }
@@ -1887,6 +1911,7 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
                         filesystem.release(&mut scratch_pool);
                     }
                     set_filesystem_state(Usb0MscFilesystemState::Detached { binding });
+                    USB0_LIBRARY_EVENTS.signal(Usb0LibraryEvent::Detached { binding });
                 }
             },
             Either::Second(request) => {

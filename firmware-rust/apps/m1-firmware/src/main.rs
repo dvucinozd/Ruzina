@@ -6,6 +6,8 @@ use embassy_executor::Spawner;
 use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 
 #[allow(dead_code)]
+mod usb0_library;
+#[allow(dead_code)]
 mod usb0_msc;
 
 #[cfg(feature = "usb0-hardware-bringup")]
@@ -24,6 +26,12 @@ async fn usb0_media_task() {
 #[embassy_executor::task]
 async fn usb0_filesystem_task() {
     usb0_msc::run_usb0_filesystem_worker().await
+}
+
+#[cfg(feature = "usb0-hardware-bringup")]
+#[embassy_executor::task]
+async fn usb0_library_task() {
+    usb0_library::run_usb0_library_worker().await
 }
 
 #[panic_handler]
@@ -63,6 +71,9 @@ async fn main(spawner: Spawner) -> ! {
         );
         spawner.spawn(
             usb0_filesystem_task().expect("USB0 filesystem task slot must be available"),
+        );
+        spawner.spawn(
+            usb0_library_task().expect("USB0 library task slot must be available"),
         );
     }
 
