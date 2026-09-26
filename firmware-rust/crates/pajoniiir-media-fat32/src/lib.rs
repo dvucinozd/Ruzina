@@ -917,6 +917,332 @@ fn encode_latin1(input: &[u8], output: &mut [u8], mut written: usize) -> Option<
     Some(written)
 }
 
+
+const FAT32_BOOT_MINIMUM: usize = 512;
+const FAT32_BOOT_SIGNATURE_OFFSET: usize = 510;
+const FAT32_FSINFO_MINIMUM: usize = 512;
+const FAT32_FSINFO_UNKNOWN: u32 = 0xffff_ffff;
+const FAT32_FSINFO_LEAD_SIGNATURE: u32 = 0x4161_5252;
+const FAT32_FSINFO_STRUCTURE_SIGNATURE: u32 = 0x6141_7272;
+const FAT32_FSINFO_TRAIL_SIGNATURE: u32 = 0xaa55_0000;
+
+/// Validated FAT32 BPB geometry needed by the async target mount path.
+///
+/// This parser is intentionally independent of embedded-sdmmc so USB media
+/// with 512/1024/2048/4096-byte logical sectors can be validated without
+/// blocking the Embassy executor.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Fat32BootInfo {
+    pub bytes_per_sector: u16,
+    pub sectors_per_cluster: u8,
+    pub reserved_sectors: u16,
+    pub fat_count: u8,
+    pub sectors_per_fat: u32,
+    pub total_sectors: u32,
+    pub root_cluster: u32,
+    pub fs_info_sector: u16,
+    pub backup_boot_sector: u16,
+    pub fat_start_sector: u32,
+    pub data_start_sector: u64,
+    pub cluster_count: u32,
+    pub max_cluster: u32,
+    pub volume_id: u32,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Fat32BootSectorError {
+    BufferTooSmall { minimum: usize, actual: usize },
+    InvalidSignature { found: u16 },
+    UnsupportedSectorSize(u16),
+    DeviceSectorSizeMismatch { device: u32, bpb: u16 },
+    InvalidSectorsPerCluster(u8),
+    ClusterSizeTooLarge(u32),
+    InvalidReservedSectors(u16),
+    InvalidFatCount(u8),
+    NotFat32Layout {
+        root_entries: u16,
+        sectors_per_fat_16: u16,
+    },
+    UnsupportedVersion(u16),
+    MissingSectorsPerFat,
+    MissingTotalSectors,
+    MetadataBeyondVolume,
+    VolumeBeyondPartition {
+        volume_sectors: u32,
+        partition_sectors: u64,
+    },
+    FatTooSmall,
+    InvalidRootCluster {
+        root_cluster: u32,
+        max_cluster: u32,
+    },
+    InvalidFsInfoSector {
+        fs_info_sector: u16,
+        reserved_sectors: u16,
+    },
+    ArithmeticOverflow,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Fat32FsInfo {
+    pub free_cluster_count: Option<u32>,
+    pub next_free_cluster: Option<u32>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Fat32FsInfoError {
+    BufferTooSmall { minimum: usize, actual: usize },
+    InvalidLeadSignature { found: u32 },
+    InvalidStructureSignature { found: u32 },
+    InvalidTrailSignature { found: u32 },
+    FreeCountOutOfRange {
+        free_count: u32,
+        cluster_count: u32,
+    },
+    NextFreeOutOfRange {
+        next_free: u32,
+        max_cluster: u32,
+    },
+}
+
+fn read_le_u16(input: &[u8], offset: usize) -> u16 {
+    u16::from_le_bytes([input[offset], input[offset + 1]])
+}
+
+fn read_le_u32(input: &[u8], offset: usize) -> u32 {
+    u32::from_le_bytes([
+        input[offset],
+        input[offset + 1],
+        input[offset + 2],
+        input[offset + 3],
+    ])
+}
+
+/// Validate the FAT32 boot sector against the already-bounded partition.
+///
+/// FAT logical-sector size must match the USB MSC logical block size. This is
+/// the invariant that makes BPB/FSInfo sector numbers directly usable as LBAs
+/// by the async USB0 partition adapter.
+pub fn parse_fat32_boot_sector(
+    block: &[u8],
+    geometry: BlockGeometry,
+) -> Result<Fat32BootInfo, Fat32BootSectorError> {
+    if block.len() < FAT32_BOOT_MINIMUM {
+        return Err(Fat32BootSectorError::BufferTooSmall {
+            minimum: FAT32_BOOT_MINIMUM,
+            actual: block.len(),
+        });
+    }
+
+    let signature = read_le_u16(block, FAT32_BOOT_SIGNATURE_OFFSET);
+    if signature != 0xaa55 {
+        return Err(Fat32BootSectorError::InvalidSignature { found: signature });
+    }
+
+    let bytes_per_sector = read_le_u16(block, 11);
+    if !matches!(bytes_per_sector, 512 | 1_024 | 2_048 | 4_096) {
+        return Err(Fat32BootSectorError::UnsupportedSectorSize(
+            bytes_per_sector,
+        ));
+    }
+    if u32::from(bytes_per_sector) != geometry.block_size {
+        return Err(Fat32BootSectorError::DeviceSectorSizeMismatch {
+            device: geometry.block_size,
+            bpb: bytes_per_sector,
+        });
+    }
+    let sector_size = usize::from(bytes_per_sector);
+    if block.len() < sector_size {
+        return Err(Fat32BootSectorError::BufferTooSmall {
+            minimum: sector_size,
+            actual: block.len(),
+        });
+    }
+
+    let sectors_per_cluster = block[13];
+    if sectors_per_cluster == 0
+        || !sectors_per_cluster.is_power_of_two()
+        || sectors_per_cluster > 128
+    {
+        return Err(Fat32BootSectorError::InvalidSectorsPerCluster(
+            sectors_per_cluster,
+        ));
+    }
+    let cluster_size = u32::from(bytes_per_sector)
+        .checked_mul(u32::from(sectors_per_cluster))
+        .ok_or(Fat32BootSectorError::ArithmeticOverflow)?;
+    if cluster_size > 32 * 1_024 {
+        return Err(Fat32BootSectorError::ClusterSizeTooLarge(cluster_size));
+    }
+
+    let reserved_sectors = read_le_u16(block, 14);
+    if reserved_sectors == 0 {
+        return Err(Fat32BootSectorError::InvalidReservedSectors(
+            reserved_sectors,
+        ));
+    }
+    let fat_count = block[16];
+    if !matches!(fat_count, 1 | 2) {
+        return Err(Fat32BootSectorError::InvalidFatCount(fat_count));
+    }
+
+    let root_entries = read_le_u16(block, 17);
+    let sectors_per_fat_16 = read_le_u16(block, 22);
+    if root_entries != 0 || sectors_per_fat_16 != 0 {
+        return Err(Fat32BootSectorError::NotFat32Layout {
+            root_entries,
+            sectors_per_fat_16,
+        });
+    }
+
+    let version = read_le_u16(block, 42);
+    if version != 0 {
+        return Err(Fat32BootSectorError::UnsupportedVersion(version));
+    }
+
+    let sectors_per_fat = read_le_u32(block, 36);
+    if sectors_per_fat == 0 {
+        return Err(Fat32BootSectorError::MissingSectorsPerFat);
+    }
+
+    let total_sectors_16 = read_le_u16(block, 19);
+    let total_sectors = if total_sectors_16 != 0 {
+        u32::from(total_sectors_16)
+    } else {
+        read_le_u32(block, 32)
+    };
+    if total_sectors == 0 {
+        return Err(Fat32BootSectorError::MissingTotalSectors);
+    }
+    if u64::from(total_sectors) > geometry.block_count {
+        return Err(Fat32BootSectorError::VolumeBeyondPartition {
+            volume_sectors: total_sectors,
+            partition_sectors: geometry.block_count,
+        });
+    }
+
+    let fat_sectors = u64::from(fat_count)
+        .checked_mul(u64::from(sectors_per_fat))
+        .ok_or(Fat32BootSectorError::ArithmeticOverflow)?;
+    let metadata_sectors = u64::from(reserved_sectors)
+        .checked_add(fat_sectors)
+        .ok_or(Fat32BootSectorError::ArithmeticOverflow)?;
+    if metadata_sectors >= u64::from(total_sectors) {
+        return Err(Fat32BootSectorError::MetadataBeyondVolume);
+    }
+
+    let data_sectors = u64::from(total_sectors) - metadata_sectors;
+    let cluster_count_u64 = data_sectors / u64::from(sectors_per_cluster);
+    let cluster_count =
+        u32::try_from(cluster_count_u64).map_err(|_| Fat32BootSectorError::ArithmeticOverflow)?;
+    if cluster_count == 0 {
+        return Err(Fat32BootSectorError::MetadataBeyondVolume);
+    }
+    let max_cluster = cluster_count
+        .checked_add(1)
+        .ok_or(Fat32BootSectorError::ArithmeticOverflow)?;
+
+    let fat_entries = u64::from(sectors_per_fat)
+        .checked_mul(u64::from(bytes_per_sector))
+        .ok_or(Fat32BootSectorError::ArithmeticOverflow)?
+        / 4;
+    if fat_entries <= u64::from(max_cluster) {
+        return Err(Fat32BootSectorError::FatTooSmall);
+    }
+
+    let root_cluster = read_le_u32(block, 44);
+    if !(2..=max_cluster).contains(&root_cluster) {
+        return Err(Fat32BootSectorError::InvalidRootCluster {
+            root_cluster,
+            max_cluster,
+        });
+    }
+
+    let fs_info_sector = read_le_u16(block, 48);
+    if fs_info_sector == 0 || fs_info_sector >= reserved_sectors {
+        return Err(Fat32BootSectorError::InvalidFsInfoSector {
+            fs_info_sector,
+            reserved_sectors,
+        });
+    }
+
+    Ok(Fat32BootInfo {
+        bytes_per_sector,
+        sectors_per_cluster,
+        reserved_sectors,
+        fat_count,
+        sectors_per_fat,
+        total_sectors,
+        root_cluster,
+        fs_info_sector,
+        backup_boot_sector: read_le_u16(block, 50),
+        fat_start_sector: u32::from(reserved_sectors),
+        data_start_sector: metadata_sectors,
+        cluster_count,
+        max_cluster,
+        volume_id: read_le_u32(block, 67),
+    })
+}
+
+/// Validate the FAT32 FSInfo sector selected by the BPB.
+pub fn parse_fat32_fs_info(
+    block: &[u8],
+    boot: &Fat32BootInfo,
+) -> Result<Fat32FsInfo, Fat32FsInfoError> {
+    if block.len() < FAT32_FSINFO_MINIMUM {
+        return Err(Fat32FsInfoError::BufferTooSmall {
+            minimum: FAT32_FSINFO_MINIMUM,
+            actual: block.len(),
+        });
+    }
+
+    let lead = read_le_u32(block, 0);
+    if lead != FAT32_FSINFO_LEAD_SIGNATURE {
+        return Err(Fat32FsInfoError::InvalidLeadSignature { found: lead });
+    }
+    let structure = read_le_u32(block, 484);
+    if structure != FAT32_FSINFO_STRUCTURE_SIGNATURE {
+        return Err(Fat32FsInfoError::InvalidStructureSignature {
+            found: structure,
+        });
+    }
+    let trail = read_le_u32(block, 508);
+    if trail != FAT32_FSINFO_TRAIL_SIGNATURE {
+        return Err(Fat32FsInfoError::InvalidTrailSignature { found: trail });
+    }
+
+    let free_count_raw = read_le_u32(block, 488);
+    let free_cluster_count = if free_count_raw == FAT32_FSINFO_UNKNOWN {
+        None
+    } else {
+        if free_count_raw > boot.cluster_count {
+            return Err(Fat32FsInfoError::FreeCountOutOfRange {
+                free_count: free_count_raw,
+                cluster_count: boot.cluster_count,
+            });
+        }
+        Some(free_count_raw)
+    };
+
+    let next_free_raw = read_le_u32(block, 492);
+    let next_free_cluster = if next_free_raw == FAT32_FSINFO_UNKNOWN {
+        None
+    } else {
+        if !(2..=boot.max_cluster).contains(&next_free_raw) {
+            return Err(Fat32FsInfoError::NextFreeOutOfRange {
+                next_free: next_free_raw,
+                max_cluster: boot.max_cluster,
+            });
+        }
+        Some(next_free_raw)
+    };
+
+    Ok(Fat32FsInfo {
+        free_cluster_count,
+        next_free_cluster,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1134,5 +1460,149 @@ mod tests {
             adapter.read(&mut blocks, BlockIdx(0)),
             Err(Fat32BlockError::AddressOverflow)
         );
+    }
+}
+
+
+#[cfg(test)]
+mod async_mount_validation_tests {
+    use super::*;
+
+    fn put_u16(block: &mut [u8], offset: usize, value: u16) {
+        block[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn put_u32(block: &mut [u8], offset: usize, value: u32) {
+        block[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn build_boot_sector(block: &mut [u8], sector_size: u16, sectors_per_fat: u32) {
+        block.fill(0);
+        put_u16(block, 11, sector_size);
+        block[13] = 1;
+        put_u16(block, 14, 32);
+        block[16] = 2;
+        put_u16(block, 17, 0);
+        put_u16(block, 19, 0);
+        put_u16(block, 22, 0);
+        put_u32(block, 32, 131_072);
+        put_u32(block, 36, sectors_per_fat);
+        put_u16(block, 42, 0);
+        put_u32(block, 44, 2);
+        put_u16(block, 48, 1);
+        put_u16(block, 50, 6);
+        put_u32(block, 67, 0x1234_5678);
+        put_u16(block, 510, 0xaa55);
+    }
+
+    fn build_fs_info(block: &mut [u8], next_free: u32) {
+        block.fill(0);
+        put_u32(block, 0, FAT32_FSINFO_LEAD_SIGNATURE);
+        put_u32(block, 484, FAT32_FSINFO_STRUCTURE_SIGNATURE);
+        put_u32(block, 488, FAT32_FSINFO_UNKNOWN);
+        put_u32(block, 492, next_free);
+        put_u32(block, 508, FAT32_FSINFO_TRAIL_SIGNATURE);
+    }
+
+    #[test]
+    fn async_mount_parser_accepts_valid_512_byte_fat32() {
+        let mut boot = [0u8; 512];
+        build_boot_sector(&mut boot, 512, 1_024);
+        let info = parse_fat32_boot_sector(
+            &boot,
+            BlockGeometry {
+                block_size: 512,
+                block_count: 131_072,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(info.root_cluster, 2);
+        assert_eq!(info.fs_info_sector, 1);
+        assert_eq!(info.volume_id, 0x1234_5678);
+
+        let mut fs_info = [0u8; 512];
+        build_fs_info(&mut fs_info, 2);
+        let parsed = parse_fat32_fs_info(&fs_info, &info).unwrap();
+        assert_eq!(parsed.free_cluster_count, None);
+        assert_eq!(parsed.next_free_cluster, Some(2));
+    }
+
+    #[test]
+    fn async_mount_parser_accepts_4096_byte_logical_sector() {
+        let mut boot = [0u8; 4_096];
+        build_boot_sector(&mut boot, 4_096, 128);
+        let info = parse_fat32_boot_sector(
+            &boot,
+            BlockGeometry {
+                block_size: 4_096,
+                block_count: 131_072,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(info.bytes_per_sector, 4_096);
+        assert_eq!(info.data_start_sector, 288);
+    }
+
+    #[test]
+    fn async_mount_parser_rejects_usb_bpb_sector_size_mismatch() {
+        let mut boot = [0u8; 512];
+        build_boot_sector(&mut boot, 512, 1_024);
+
+        assert!(matches!(
+            parse_fat32_boot_sector(
+                &boot,
+                BlockGeometry {
+                    block_size: 1_024,
+                    block_count: 131_072,
+                },
+            ),
+            Err(Fat32BootSectorError::DeviceSectorSizeMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn async_mount_parser_rejects_invalid_fsinfo_next_free() {
+        let mut boot = [0u8; 512];
+        build_boot_sector(&mut boot, 512, 1_024);
+        let info = parse_fat32_boot_sector(
+            &boot,
+            BlockGeometry {
+                block_size: 512,
+                block_count: 131_072,
+            },
+        )
+        .unwrap();
+
+        let mut fs_info = [0u8; 512];
+        build_fs_info(&mut fs_info, info.max_cluster + 1);
+        assert!(matches!(
+            parse_fat32_fs_info(&fs_info, &info),
+            Err(Fat32FsInfoError::NextFreeOutOfRange { .. })
+        ));
+    }
+
+    #[test]
+    fn async_mount_parser_rejects_invalid_fsinfo_signature() {
+        let mut boot = [0u8; 512];
+        build_boot_sector(&mut boot, 512, 1_024);
+        let info = parse_fat32_boot_sector(
+            &boot,
+            BlockGeometry {
+                block_size: 512,
+                block_count: 131_072,
+            },
+        )
+        .unwrap();
+
+        let mut fs_info = [0u8; 512];
+        build_fs_info(&mut fs_info, 2);
+        put_u32(&mut fs_info, 484, 0);
+
+        assert!(matches!(
+            parse_fat32_fs_info(&fs_info, &info),
+            Err(Fat32FsInfoError::InvalidStructureSignature { found: 0 })
+        ));
     }
 }

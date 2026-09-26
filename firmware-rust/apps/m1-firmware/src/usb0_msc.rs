@@ -12,6 +12,10 @@ use embassy_usb_host::{
     handler::EnumerationInfo,
 };
 use pajoniiir_media_block::{BlockGeometry, TransferError};
+use pajoniiir_media_fat32::{
+    Fat32BootInfo, Fat32BootSectorError, Fat32FsInfo, Fat32FsInfoError,
+    parse_fat32_boot_sector, parse_fat32_fs_info,
+};
 use pajoniiir_media_fs::FileSystemKind;
 use pajoniiir_media_io::{
     AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
@@ -114,6 +118,26 @@ pub(crate) enum Usb0MscFilesystemProbeError {
         expected: FileSystemKind,
         observed: FileSystemKind,
     },
+    Fat32Boot(Fat32BootSectorError),
+    Fat32FsInfo(Fat32FsInfoError),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0MscFilesystemProbe {
+    Fat32 {
+        boot: Fat32BootInfo,
+        fs_info: Fat32FsInfo,
+    },
+    ExFat,
+}
+
+impl Usb0MscFilesystemProbe {
+    pub(crate) const fn kind(self) -> FileSystemKind {
+        match self {
+            Self::Fat32 { .. } => FileSystemKind::Fat32,
+            Self::ExFat => FileSystemKind::ExFat,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -126,7 +150,7 @@ pub(crate) enum Usb0MscFilesystemState {
     VolumeProbed {
         binding: Usb0MscBinding,
         media: UsbMscMountedMedia,
-        filesystem: FileSystemKind,
+        probe: Usb0MscFilesystemProbe,
     },
     Failed {
         binding: Usb0MscBinding,
@@ -1317,12 +1341,32 @@ fn filesystem_kind_from_boot(block: &[u8]) -> Option<FileSystemKind> {
     }
 }
 
+fn restore_filesystem_scratch(
+    scratch_pool: &mut Usb0FilesystemScratchPool,
+    scratch: &'static mut [u8],
+) {
+    if scratch_pool.restore(scratch).is_err() {
+        esp_hal::system::software_reset();
+    }
+}
+
+fn map_partition_probe_error(
+    error: AsyncPartitionError<Usb0MscIoError>,
+) -> Usb0MscFilesystemProbeError {
+    match error {
+        AsyncPartitionError::Transfer(error) => {
+            Usb0MscFilesystemProbeError::PartitionTransfer(error)
+        }
+        AsyncPartitionError::Inner(error) => Usb0MscFilesystemProbeError::Io(error),
+    }
+}
+
 async fn probe_mounted_filesystem(
     media: UsbMscMountedMedia,
     scratch_pool: &mut Usb0FilesystemScratchPool,
 ) -> Result<
     (
-        FileSystemKind,
+        Usb0MscFilesystemProbe,
         AsyncPartitionDevice<Usb0MscAsyncBlockDevice>,
     ),
     Usb0MscFilesystemProbeError,
@@ -1335,32 +1379,62 @@ async fn probe_mounted_filesystem(
     let scratch = match partition.read_blocks_owned(0, 1, scratch).await {
         Ok(scratch) => scratch,
         Err((error, scratch)) => {
-            if scratch_pool.restore(scratch).is_err() {
-                esp_hal::system::software_reset();
-            }
-            return Err(match error {
-                AsyncPartitionError::Transfer(error) => {
-                    Usb0MscFilesystemProbeError::PartitionTransfer(error)
-                }
-                AsyncPartitionError::Inner(error) => Usb0MscFilesystemProbeError::Io(error),
-            });
+            restore_filesystem_scratch(scratch_pool, scratch);
+            return Err(map_partition_probe_error(error));
         }
     };
 
-    let observed = filesystem_kind_from_boot(scratch)
-        .ok_or(Usb0MscFilesystemProbeError::UnknownVolume);
-    if scratch_pool.restore(scratch).is_err() {
-        esp_hal::system::software_reset();
-    }
-    let observed = observed?;
+    let observed = match filesystem_kind_from_boot(scratch) {
+        Some(observed) => observed,
+        None => {
+            restore_filesystem_scratch(scratch_pool, scratch);
+            return Err(Usb0MscFilesystemProbeError::UnknownVolume);
+        }
+    };
     if observed != media.selection.filesystem {
+        restore_filesystem_scratch(scratch_pool, scratch);
         return Err(Usb0MscFilesystemProbeError::KindMismatch {
             expected: media.selection.filesystem,
             observed,
         });
     }
 
-    Ok((observed, partition))
+    match observed {
+        FileSystemKind::Fat32 => {
+            let boot = match parse_fat32_boot_sector(scratch, partition.geometry()) {
+                Ok(boot) => boot,
+                Err(error) => {
+                    restore_filesystem_scratch(scratch_pool, scratch);
+                    return Err(Usb0MscFilesystemProbeError::Fat32Boot(error));
+                }
+            };
+
+            let scratch = match partition
+                .read_blocks_owned(u64::from(boot.fs_info_sector), 1, scratch)
+                .await
+            {
+                Ok(scratch) => scratch,
+                Err((error, scratch)) => {
+                    restore_filesystem_scratch(scratch_pool, scratch);
+                    return Err(map_partition_probe_error(error));
+                }
+            };
+
+            let fs_info = parse_fat32_fs_info(scratch, &boot)
+                .map_err(Usb0MscFilesystemProbeError::Fat32FsInfo);
+            restore_filesystem_scratch(scratch_pool, scratch);
+            let fs_info = fs_info?;
+
+            Ok((
+                Usb0MscFilesystemProbe::Fat32 { boot, fs_info },
+                partition,
+            ))
+        }
+        FileSystemKind::ExFat => {
+            restore_filesystem_scratch(scratch_pool, scratch);
+            Ok((Usb0MscFilesystemProbe::ExFat, partition))
+        }
+    }
 }
 
 pub(crate) async fn run_usb0_filesystem_worker() -> ! {
@@ -1373,12 +1447,12 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
             Usb0MscFilesystemEvent::Mounted { binding, media } => {
                 set_filesystem_state(Usb0MscFilesystemState::Probing { binding, media });
                 match probe_mounted_filesystem(media, &mut scratch_pool).await {
-                    Ok((filesystem, partition)) => {
+                    Ok((probe, partition)) => {
                         active = Some((media, partition));
                         set_filesystem_state(Usb0MscFilesystemState::VolumeProbed {
                             binding,
                             media,
-                            filesystem,
+                            probe,
                         });
                     }
                     Err(error) => {
@@ -1409,8 +1483,10 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
 /// This task consumes owner lifecycle events, performs partition discovery only
 /// through the bounded request/completion queue, and commits a generation-safe
 /// mount descriptor. The descriptor is then handed to the separate filesystem
-/// worker, which owns the async partition adapter. FAT32/exFAT file operations
-/// are still intentionally not mounted through the synchronous backends here.
+/// worker, which owns the async partition adapter. FAT32 now receives a second
+/// async read for BPB/FSInfo validation before the volume is published as
+/// probed. File/directory operations are still intentionally not routed through
+/// the synchronous FAT32/exFAT backends from an Embassy task.
 pub(crate) async fn run_usb0_media_worker() -> ! {
     let mut coordinator = UsbMscMountCoordinator::new();
     let mut scratch_pool = Usb0MscScratchPool::new();
