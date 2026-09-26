@@ -12,7 +12,9 @@ use embassy_usb_host::{
     handler::EnumerationInfo,
 };
 use pajoniiir_media_block::{BlockGeometry, TransferError};
-use pajoniiir_media_io::{OwnedBlockDevice, OwnedWritableBlockDevice};
+use pajoniiir_media_fs::FileSystemKind;
+use pajoniiir_media_io::{AsyncPartitionDevice, OwnedBlockDevice, OwnedWritableBlockDevice};
+use pajoniiir_media_partition::{VolumeKind, classify_boot_sector};
 use pajoniiir_media_session::{DisconnectResult, MediaHandle, MediaLease, MediaSession};
 use pajoniiir_media_usb_msc::{
     UsbMscCapacity, UsbMscCompletionGate, UsbMscDiscoveryPlan, UsbMscDiscoveryPlanError,
@@ -45,6 +47,12 @@ pub(crate) static USB0_MSC_OWNER_EVENTS: Channel<
     USB0_MSC_QUEUE_DEPTH,
 > = Channel::new();
 
+pub(crate) static USB0_MSC_FILESYSTEM_EVENTS: Channel<
+    CriticalSectionRawMutex,
+    Usb0MscFilesystemEvent,
+    USB0_MSC_QUEUE_DEPTH,
+> = Channel::new();
+
 static USB0_MSC_LIFECYCLE: CriticalSectionMutex<RefCell<Usb0MscLifecycle>> =
     CriticalSectionMutex::new(RefCell::new(Usb0MscLifecycle::new()));
 
@@ -55,6 +63,14 @@ static USB0_MSC_SCRATCH_512: StaticCell<[u8; 512]> = StaticCell::new();
 static USB0_MSC_SCRATCH_1024: StaticCell<[u8; 1_024]> = StaticCell::new();
 static USB0_MSC_SCRATCH_2048: StaticCell<[u8; 2_048]> = StaticCell::new();
 static USB0_MSC_SCRATCH_4096: StaticCell<[u8; 4_096]> = StaticCell::new();
+
+static USB0_FS_SCRATCH_512: StaticCell<[u8; 512]> = StaticCell::new();
+static USB0_FS_SCRATCH_1024: StaticCell<[u8; 1_024]> = StaticCell::new();
+static USB0_FS_SCRATCH_2048: StaticCell<[u8; 2_048]> = StaticCell::new();
+static USB0_FS_SCRATCH_4096: StaticCell<[u8; 4_096]> = StaticCell::new();
+
+static USB0_MSC_FILESYSTEM_STATE: CriticalSectionMutex<RefCell<Usb0MscFilesystemState>> =
+    CriticalSectionMutex::new(RefCell::new(Usb0MscFilesystemState::Idle));
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Usb0MscMediaWorkerError {
@@ -82,6 +98,51 @@ pub(crate) enum Usb0MscMediaState {
         binding: Usb0MscBinding,
         reason: Usb0MscDetachReason,
         result: DisconnectResult,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0MscFilesystemProbeError {
+    UnsupportedBlockSize(u32),
+    ScratchUnavailable(u32),
+    Io(Usb0MscIoError),
+    UnknownVolume,
+    KindMismatch {
+        expected: FileSystemKind,
+        observed: FileSystemKind,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0MscFilesystemState {
+    Idle,
+    Probing {
+        binding: Usb0MscBinding,
+        media: UsbMscMountedMedia,
+    },
+    VolumeProbed {
+        binding: Usb0MscBinding,
+        media: UsbMscMountedMedia,
+        filesystem: FileSystemKind,
+    },
+    Failed {
+        binding: Usb0MscBinding,
+        media: UsbMscMountedMedia,
+        error: Usb0MscFilesystemProbeError,
+    },
+    Detached {
+        binding: Usb0MscBinding,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0MscFilesystemEvent {
+    Mounted {
+        binding: Usb0MscBinding,
+        media: UsbMscMountedMedia,
+    },
+    Detached {
+        binding: Usb0MscBinding,
     },
 }
 
@@ -199,6 +260,16 @@ fn set_media_state(state: Usb0MscMediaState) {
 
 pub(crate) fn media_state() -> Usb0MscMediaState {
     USB0_MSC_MEDIA_STATE.lock(|cell| *cell.borrow())
+}
+
+fn set_filesystem_state(state: Usb0MscFilesystemState) {
+    USB0_MSC_FILESYSTEM_STATE.lock(|cell| {
+        *cell.borrow_mut() = state;
+    });
+}
+
+pub(crate) fn filesystem_state() -> Usb0MscFilesystemState {
+    USB0_MSC_FILESYSTEM_STATE.lock(|cell| *cell.borrow())
 }
 
 pub(crate) fn issue_current_request(
@@ -1183,13 +1254,155 @@ impl Usb0MscScratchPool {
     }
 }
 
+struct Usb0FilesystemScratchPool {
+    sector_512: Option<&'static mut [u8]>,
+    sector_1024: Option<&'static mut [u8]>,
+    sector_2048: Option<&'static mut [u8]>,
+    sector_4096: Option<&'static mut [u8]>,
+}
+
+impl Usb0FilesystemScratchPool {
+    fn new() -> Self {
+        Self {
+            sector_512: Some(&mut USB0_FS_SCRATCH_512.init([0; 512])[..]),
+            sector_1024: Some(&mut USB0_FS_SCRATCH_1024.init([0; 1_024])[..]),
+            sector_2048: Some(&mut USB0_FS_SCRATCH_2048.init([0; 2_048])[..]),
+            sector_4096: Some(&mut USB0_FS_SCRATCH_4096.init([0; 4_096])[..]),
+        }
+    }
+
+    fn take(
+        &mut self,
+        block_size: u32,
+    ) -> Result<&'static mut [u8], Usb0MscFilesystemProbeError> {
+        let slot = match block_size {
+            512 => &mut self.sector_512,
+            1_024 => &mut self.sector_1024,
+            2_048 => &mut self.sector_2048,
+            4_096 => &mut self.sector_4096,
+            other => return Err(Usb0MscFilesystemProbeError::UnsupportedBlockSize(other)),
+        };
+        slot.take()
+            .ok_or(Usb0MscFilesystemProbeError::ScratchUnavailable(block_size))
+    }
+
+    fn restore(
+        &mut self,
+        scratch: &'static mut [u8],
+    ) -> Result<(), Usb0MscFilesystemProbeError> {
+        let block_size = scratch.len() as u32;
+        let slot = match block_size {
+            512 => &mut self.sector_512,
+            1_024 => &mut self.sector_1024,
+            2_048 => &mut self.sector_2048,
+            4_096 => &mut self.sector_4096,
+            other => return Err(Usb0MscFilesystemProbeError::UnsupportedBlockSize(other)),
+        };
+        if slot.is_some() {
+            return Err(Usb0MscFilesystemProbeError::ScratchUnavailable(block_size));
+        }
+        *slot = Some(scratch);
+        Ok(())
+    }
+}
+
+fn filesystem_kind_from_boot(block: &[u8]) -> Option<FileSystemKind> {
+    match classify_boot_sector(block) {
+        VolumeKind::Fat => Some(FileSystemKind::Fat32),
+        VolumeKind::ExFat => Some(FileSystemKind::ExFat),
+        VolumeKind::Unknown => None,
+    }
+}
+
+async fn probe_mounted_filesystem(
+    media: UsbMscMountedMedia,
+    scratch_pool: &mut Usb0FilesystemScratchPool,
+) -> Result<
+    (
+        FileSystemKind,
+        AsyncPartitionDevice<Usb0MscAsyncBlockDevice>,
+    ),
+    Usb0MscFilesystemProbeError,
+> {
+    let block_size = media.attempt.geometry.block_size;
+    let scratch = scratch_pool.take(block_size)?;
+    let raw = Usb0MscAsyncBlockDevice::new(media);
+    let mut partition = AsyncPartitionDevice::new(raw, media.selection.range);
+
+    let scratch = match partition.read_blocks_owned(0, 1, scratch).await {
+        Ok(scratch) => scratch,
+        Err((error, scratch)) => {
+            if scratch_pool.restore(scratch).is_err() {
+                esp_hal::system::software_reset();
+            }
+            return Err(Usb0MscFilesystemProbeError::Io(error));
+        }
+    };
+
+    let observed = filesystem_kind_from_boot(scratch)
+        .ok_or(Usb0MscFilesystemProbeError::UnknownVolume);
+    if scratch_pool.restore(scratch).is_err() {
+        esp_hal::system::software_reset();
+    }
+    let observed = observed?;
+    if observed != media.selection.filesystem {
+        return Err(Usb0MscFilesystemProbeError::KindMismatch {
+            expected: media.selection.filesystem,
+            observed,
+        });
+    }
+
+    Ok((observed, partition))
+}
+
+pub(crate) async fn run_usb0_filesystem_worker() -> ! {
+    let mut scratch_pool = Usb0FilesystemScratchPool::new();
+    let mut active:
+        Option<(UsbMscMountedMedia, AsyncPartitionDevice<Usb0MscAsyncBlockDevice>)> = None;
+
+    loop {
+        match USB0_MSC_FILESYSTEM_EVENTS.receive().await {
+            Usb0MscFilesystemEvent::Mounted { binding, media } => {
+                set_filesystem_state(Usb0MscFilesystemState::Probing { binding, media });
+                match probe_mounted_filesystem(media, &mut scratch_pool).await {
+                    Ok((filesystem, partition)) => {
+                        active = Some((media, partition));
+                        set_filesystem_state(Usb0MscFilesystemState::VolumeProbed {
+                            binding,
+                            media,
+                            filesystem,
+                        });
+                    }
+                    Err(error) => {
+                        active = None;
+                        set_filesystem_state(Usb0MscFilesystemState::Failed {
+                            binding,
+                            media,
+                            error,
+                        });
+                    }
+                }
+            }
+            Usb0MscFilesystemEvent::Detached { binding } => {
+                if active
+                    .as_ref()
+                    .is_some_and(|(media, _)| media.attempt.handle == binding.handle)
+                {
+                    active = None;
+                }
+                set_filesystem_state(Usb0MscFilesystemState::Detached { binding });
+            }
+        }
+    }
+}
+
 /// Persistent USB0 media worker.
 ///
 /// This task consumes owner lifecycle events, performs partition discovery only
 /// through the bounded request/completion queue, and commits a generation-safe
-/// mount descriptor. It intentionally stops at the filesystem boundary: FAT32
-/// and exFAT are synchronous APIs today, so no executor thread is blocked by a
-/// hidden block_on bridge.
+/// mount descriptor. The descriptor is then handed to the separate filesystem
+/// worker, which owns the async partition adapter. FAT32/exFAT file operations
+/// are still intentionally not mounted through the synchronous backends here.
 pub(crate) async fn run_usb0_media_worker() -> ! {
     let mut coordinator = UsbMscMountCoordinator::new();
     let mut scratch_pool = Usb0MscScratchPool::new();
@@ -1255,6 +1468,9 @@ pub(crate) async fn run_usb0_media_worker() -> ! {
                     ) {
                         Ok(media) => {
                             set_media_state(Usb0MscMediaState::Mounted { binding, media });
+                            USB0_MSC_FILESYSTEM_EVENTS
+                                .send(Usb0MscFilesystemEvent::Mounted { binding, media })
+                                .await;
                         }
                         Err(error) => {
                             let _ = coordinator.abort(attempt);
@@ -1279,6 +1495,9 @@ pub(crate) async fn run_usb0_media_worker() -> ! {
                 result,
             } => {
                 let _ = detach_mount(&mut coordinator, binding);
+                USB0_MSC_FILESYSTEM_EVENTS
+                    .send(Usb0MscFilesystemEvent::Detached { binding })
+                    .await;
                 set_media_state(Usb0MscMediaState::Detached {
                     binding,
                     reason,

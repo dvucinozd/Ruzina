@@ -20,6 +20,12 @@ async fn usb0_media_task() {
     usb0_msc::run_usb0_media_worker().await
 }
 
+#[cfg(feature = "usb0-hardware-bringup")]
+#[embassy_executor::task]
+async fn usb0_filesystem_task() {
+    usb0_msc::run_usb0_filesystem_worker().await
+}
+
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
     esp_hal::system::software_reset()
@@ -53,6 +59,9 @@ async fn main(spawner: Spawner) -> ! {
         );
         spawner.spawn(
             usb0_media_task().expect("USB0 media task slot must be available"),
+        );
+        spawner.spawn(
+            usb0_filesystem_task().expect("USB0 filesystem task slot must be available"),
         );
     }
 
