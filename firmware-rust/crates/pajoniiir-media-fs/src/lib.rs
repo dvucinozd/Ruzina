@@ -82,7 +82,7 @@ pub enum BoundedPathError {
     TooLong { len: usize, max: usize },
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BoundedPath {
     len: u16,
     bytes: [u8; FS_PATH_MAX],
@@ -472,13 +472,13 @@ mod tests {
     fn bounded_path_preserves_utf8_and_enforces_fixed_capacity() {
         let path = BoundedPath::new("/PIONEER/USBANLZ/P001/0001.DAT").unwrap();
         assert_eq!(path.as_str(), "/PIONEER/USBANLZ/P001/0001.DAT");
-        assert_eq!(path.len(), 31);
+        assert_eq!(path.len(), 30);
         assert!(!path.is_empty());
 
-        let exact = std::string::String::from_utf8(vec![b'a'; FS_PATH_MAX]).unwrap();
+        let exact = std::string::String::from_utf8(std::vec![b'a'; FS_PATH_MAX]).unwrap();
         assert_eq!(BoundedPath::new(&exact).unwrap().len(), FS_PATH_MAX);
 
-        let too_long = std::string::String::from_utf8(vec![b'a'; FS_PATH_MAX + 1]).unwrap();
+        let too_long = std::string::String::from_utf8(std::vec![b'a'; FS_PATH_MAX + 1]).unwrap();
         assert_eq!(
             BoundedPath::new(&too_long),
             Err(BoundedPathError::TooLong {
