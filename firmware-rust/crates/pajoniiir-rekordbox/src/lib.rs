@@ -272,12 +272,6 @@ impl PdbRowOffsetBatch {
         self.truncated
     }
 
-    pub fn from_devicesql_field(data: &[u8]) -> Result<Self, PdbError> {
-        let mut text = Self::new();
-        text.decode_from(data, 0)?;
-        Ok(text)
-    }
-
     pub fn offsets(&self) -> &[u16] {
         &self.offsets[..self.len()]
     }
@@ -557,9 +551,7 @@ pub fn parse_devicesql_field_header(
         });
     }
 
-    let prefix_end = offset
-        .checked_add(4)
-        .ok_or(PdbError::DeviceSqlTruncated)?;
+    let prefix_end = offset.checked_add(4).ok_or(PdbError::DeviceSqlTruncated)?;
     if prefix_end > data.len() {
         return Err(PdbError::DeviceSqlTruncated);
     }
@@ -744,6 +736,12 @@ impl<const N: usize> PdbText<N> {
 
     pub const fn was_truncated(&self) -> bool {
         self.truncated
+    }
+
+    pub fn from_devicesql_field(data: &[u8]) -> Result<Self, PdbError> {
+        let mut text = Self::new();
+        text.decode_from(data, 0)?;
+        Ok(text)
     }
 
     fn decode_from(&mut self, data: &[u8], offset: usize) -> Result<(), PdbError> {
@@ -1219,8 +1217,7 @@ mod tests {
 
         let mut filename_raw = [0u8; 32];
         put_short_devicesql(&mut filename_raw, 0, b"fallback.wav");
-        let filename =
-            PdbText::<PDB_TITLE_MAX>::from_devicesql_field(&filename_raw).unwrap();
+        let filename = PdbText::<PDB_TITLE_MAX>::from_devicesql_field(&filename_raw).unwrap();
 
         let row = PdbTrackRow::from_header_and_fields(
             header,
