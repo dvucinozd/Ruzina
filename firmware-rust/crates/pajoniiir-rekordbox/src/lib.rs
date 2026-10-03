@@ -1088,6 +1088,7 @@ pub enum PdbCatalogField {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PdbCatalogError {
     InvalidUtf8(PdbCatalogField),
+    Truncated(PdbCatalogField),
     Text {
         field: PdbCatalogField,
         error: CatalogTextError,
@@ -1100,6 +1101,9 @@ pub fn catalog_track_from_pdb(
     track: &PdbTrackRow,
     names: PdbResolvedNames<'_>,
 ) -> Result<CatalogTrack, PdbCatalogError> {
+    if track.file_path.was_truncated() {
+        return Err(PdbCatalogError::Truncated(PdbCatalogField::AudioPath));
+    }
     let audio_path_text = track
         .file_path
         .as_str()
@@ -1124,6 +1128,9 @@ fn catalog_text<const S: usize, const D: usize>(
     field: PdbCatalogField,
     source: &PdbText<S>,
 ) -> Result<CatalogText<D>, PdbCatalogError> {
+    if source.was_truncated() {
+        return Err(PdbCatalogError::Truncated(field));
+    }
     let value = source.as_str().ok_or(PdbCatalogError::InvalidUtf8(field))?;
     CatalogText::try_from_str(value).map_err(|error| PdbCatalogError::Text { field, error })
 }
@@ -1620,6 +1627,19 @@ mod tests {
         assert_eq!(
             catalog.analysis_path.as_str(),
             "/PIONEER/USBANLZ/P001/00000042/ANLZ0000.DAT"
+        );
+    }
+
+    #[test]
+    fn catalog_adapter_rejects_provider_side_truncation() {
+        let mut raw = [0u8; 16];
+        put_short_devicesql(&mut raw, 0, b"hello");
+        let truncated = PdbText::<4>::from_devicesql_field(&raw).unwrap();
+        assert!(truncated.was_truncated());
+
+        assert_eq!(
+            catalog_text::<4, 8>(PdbCatalogField::Title, &truncated),
+            Err(PdbCatalogError::Truncated(PdbCatalogField::Title))
         );
     }
 

@@ -621,6 +621,13 @@ async fn scan_table_layout(
                             file_path,
                             anlz_path,
                         );
+                        if track.file_path.was_truncated() {
+                            return (
+                                file,
+                                buffer,
+                                Err(Usb0LibraryError::Identity(IdentityError::PathTooLong)),
+                            );
+                        }
                         let audio_path = match track.file_path.as_str() {
                             Some(path) => path,
                             None => {
