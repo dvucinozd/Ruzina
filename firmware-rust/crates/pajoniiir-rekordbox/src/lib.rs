@@ -1,9 +1,9 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
-use pajoniiir_media_catalog::{CatalogText, CatalogTextError, CatalogTrack};
 #[cfg(test)]
 use pajoniiir_media_catalog::CATALOG_KEY_MAX;
+use pajoniiir_media_catalog::{CatalogText, CatalogTextError, CatalogTrack};
 use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 
 pub const REKORDBOX_EXPORT_PDB_PATH: &str = "/PIONEER/rekordbox/export.pdb";
