@@ -267,6 +267,15 @@ impl<const N: usize> Default for CatalogPublisher<N> {
     }
 }
 
+pub const MEDIA_CATALOG_BANK_BUDGET_BYTES: usize = 1_024 * 1_024;
+pub const MEDIA_CATALOG_TRANSACTION_BUDGET_BYTES: usize = 2 * 1_024 * 1_024;
+pub const MEDIA_CATALOG_BUILDER_BYTES: usize =
+    core::mem::size_of::<CatalogBuilder<MEDIA_CATALOG_MAX_TRACKS>>();
+pub const MEDIA_CATALOG_PUBLISHER_BYTES: usize =
+    core::mem::size_of::<CatalogPublisher<MEDIA_CATALOG_MAX_TRACKS>>();
+pub const MEDIA_CATALOG_TRANSACTION_BYTES: usize =
+    MEDIA_CATALOG_BUILDER_BYTES + MEDIA_CATALOG_PUBLISHER_BYTES;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -296,6 +305,13 @@ mod tests {
             audio_path: text("/Contents/test.wav"),
             analysis_path: text("/PIONEER/USBANLZ/P001/00000042/ANLZ0000.DAT"),
         }
+    }
+
+    #[test]
+    fn released_catalog_layout_stays_inside_transactional_memory_budget() {
+        assert!(MEDIA_CATALOG_BUILDER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
+        assert!(MEDIA_CATALOG_PUBLISHER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
+        assert!(MEDIA_CATALOG_TRANSACTION_BYTES <= MEDIA_CATALOG_TRANSACTION_BUDGET_BYTES);
     }
 
     #[test]

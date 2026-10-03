@@ -932,6 +932,11 @@ impl<const N: usize> Default for PdbNameMap<N> {
     }
 }
 
+pub const PDB_NAME_MAP_BUDGET_BYTES: usize = 64 * 1_024;
+pub const PDB_NAME_STAGE_BUDGET_BYTES: usize = 256 * 1_024;
+pub const PDB_NAME_MAP_BYTES: usize = core::mem::size_of::<PdbNameMap<PDB_MAX_NAMES>>();
+pub const PDB_NAME_STAGE_BYTES: usize = PDB_NAME_MAP_BYTES * 3;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PdbTrackStringOffsets {
     pub title: u16,
@@ -1451,6 +1456,12 @@ mod tests {
         let text = PdbText::<PDB_TITLE_MAX>::from_devicesql_field(&raw).unwrap();
         assert_eq!(text.as_str(), Some("Track Name"));
         assert!(!text.was_truncated());
+    }
+
+    #[test]
+    fn released_name_maps_stay_inside_staging_memory_budget() {
+        assert!(PDB_NAME_MAP_BYTES <= PDB_NAME_MAP_BUDGET_BYTES);
+        assert!(PDB_NAME_STAGE_BYTES <= PDB_NAME_STAGE_BUDGET_BYTES);
     }
 
     #[test]
