@@ -309,9 +309,11 @@ mod tests {
 
     #[test]
     fn released_catalog_layout_stays_inside_transactional_memory_budget() {
-        assert!(MEDIA_CATALOG_BUILDER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
-        assert!(MEDIA_CATALOG_PUBLISHER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
-        assert!(MEDIA_CATALOG_TRANSACTION_BYTES <= MEDIA_CATALOG_TRANSACTION_BUDGET_BYTES);
+        const {
+            assert!(MEDIA_CATALOG_BUILDER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
+            assert!(MEDIA_CATALOG_PUBLISHER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
+            assert!(MEDIA_CATALOG_TRANSACTION_BYTES <= MEDIA_CATALOG_TRANSACTION_BUDGET_BYTES);
+        }
     }
 
     #[test]

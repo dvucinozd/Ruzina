@@ -1460,8 +1460,10 @@ mod tests {
 
     #[test]
     fn released_name_maps_stay_inside_staging_memory_budget() {
-        assert!(PDB_NAME_MAP_BYTES <= PDB_NAME_MAP_BUDGET_BYTES);
-        assert!(PDB_NAME_STAGE_BYTES <= PDB_NAME_STAGE_BUDGET_BYTES);
+        const {
+            assert!(PDB_NAME_MAP_BYTES <= PDB_NAME_MAP_BUDGET_BYTES);
+            assert!(PDB_NAME_STAGE_BYTES <= PDB_NAME_STAGE_BUDGET_BYTES);
+        }
     }
 
     #[test]
