@@ -13,7 +13,13 @@ pajoniiir-waveform.workspace = true
 pajoniiir-deck.workspace = true
 pajoniiir-core.workspace = true
 pajoniiir-media-session.workspace = true
+pajoniiir-media-fs.workspace = true
+pajoniiir-media-catalog.workspace = true
+pajoniiir-media-identity.workspace = true
 
 [dev-dependencies]
-pajoniiir-media-identity.workspace = true
+pajoniiir-media-fat32.workspace = true
+pajoniiir-media-exfat.workspace = true
+pajoniiir-media-io.workspace = true
+pajoniiir-media-block.workspace = true
 pajoniiir-controller-core.workspace = true

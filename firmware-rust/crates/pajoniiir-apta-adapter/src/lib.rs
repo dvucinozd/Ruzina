@@ -2,6 +2,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod source;
 pub mod window;
 pub mod worker;
 

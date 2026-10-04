@@ -13,12 +13,38 @@ pub fn overview<'a>(
     output: &'a mut [RenderColumn],
     color: u16,
 ) -> Result<WaveformView<'a>, Error> {
+    overview_window(source, range, output, color, None)
+}
+
+/// Include a final truncated column only at the declared source EOF. The start
+/// remains column-aligned; every selected column must be fully covered up to EOF.
+/// Each source column occupies one output column, including the shorter tail;
+/// this does not provide duration-proportional pixel resampling. `total_frames`
+/// must come from the same trusted result as `source`.
+pub fn overview_with_eof<'a>(
+    source: NativeOverview<'_>,
+    total_frames: u64,
+    range: FrameRange,
+    output: &'a mut [RenderColumn],
+    color: u16,
+) -> Result<WaveformView<'a>, Error> {
+    overview_window(source, range, output, color, Some(total_frames))
+}
+
+fn overview_window<'a>(
+    source: NativeOverview<'_>,
+    range: FrameRange,
+    output: &'a mut [RenderColumn],
+    color: u16,
+    eof: Option<u64>,
+) -> Result<WaveformView<'a>, Error> {
     window(
         source.origin_frame,
         source.frames_per_column as u64,
         range,
         output,
         color,
+        eof,
         |first, end| {
             let span = source
                 .spans
@@ -55,7 +81,29 @@ pub fn detail<'a>(
     output: &'a mut [RenderColumn],
     color: u16,
 ) -> Result<WaveformView<'a>, Error> {
-    window(0, 256, range, output, color, |first, end| {
+    detail_window(source, range, output, color, None)
+}
+
+/// Detail equivalent of `overview_with_eof`; no holes, sub-column start crop or
+/// fabricated coverage. The final shorter column remains one display column.
+pub fn detail_with_eof<'a>(
+    source: NativeDetail<'_>,
+    total_frames: u64,
+    range: FrameRange,
+    output: &'a mut [RenderColumn],
+    color: u16,
+) -> Result<WaveformView<'a>, Error> {
+    detail_window(source, range, output, color, Some(total_frames))
+}
+
+fn detail_window<'a>(
+    source: NativeDetail<'_>,
+    range: FrameRange,
+    output: &'a mut [RenderColumn],
+    color: u16,
+    eof: Option<u64>,
+) -> Result<WaveformView<'a>, Error> {
+    window(0, 256, range, output, color, eof, |first, end| {
         let tile = source
             .tiles
             .iter()
@@ -86,17 +134,19 @@ fn window<'a>(
     range: FrameRange,
     output: &'a mut [RenderColumn],
     color: u16,
+    eof: Option<u64>,
     column: impl Fn(u64, u64) -> Result<WaveformColumn, Error>,
 ) -> Result<WaveformView<'a>, Error> {
     if frames == 0
         || range.first_frame < origin
         || range.end_frame <= range.first_frame
         || !(range.first_frame - origin).is_multiple_of(frames)
-        || !(range.end_frame - origin).is_multiple_of(frames)
+        || (eof.is_some_and(|end| range.end_frame > end))
+        || (!(range.end_frame - origin).is_multiple_of(frames) && eof != Some(range.end_frame))
     {
         return Err(Error::Coordinate);
     }
-    let count = usize::try_from((range.end_frame - range.first_frame) / frames)
+    let count = usize::try_from((range.end_frame - range.first_frame).div_ceil(frames))
         .map_err(|_| Error::Capacity)?;
     if output.len() < count {
         return Err(Error::Capacity);
@@ -104,7 +154,8 @@ fn window<'a>(
     let at = |index: usize| -> Result<RenderColumn, Error> {
         // index is bounded by the validated range difference above.
         let first = range.first_frame + index as u64 * frames;
-        let c = column(first, first + frames)?;
+        let end = first + frames.min(range.end_frame - first);
+        let c = column(first, end)?;
         if c.flags & 1 == 0 || c.minimum > c.maximum {
             return Err(Error::Invalid);
         }

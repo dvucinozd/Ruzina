@@ -68,7 +68,7 @@ caps are host example policy, not firmware budgets or streaming file support.
   saturates. The caller chooses RGB565 color. `window::overview` and
   `window::detail` select aligned whole-column viewports from published sparse
   overview or level-1 detail data, including adjacent detail tiles. The caller
-  explicitly chooses the layer. Holes, unaligned cropping and partial EOF columns
+  explicitly chooses the layer. Holes, unaligned cropping and partial EOF columns in the strict APIs
   return errors before output changes; no silence or interpolated coverage is
   fabricated. These views feed the existing renderer and survive source drop.
   Arbitrary pixel resampling, automatic layer selection and band colors remain open.
@@ -107,9 +107,9 @@ pin exists; do not recreate it or mix independent lane owners' tickets.
 
 `worker::Worker` owns a Created, already-configured `Session` over caller storage.
 It checks the current request/media before push, processing and completion.
-Each step uses at most 256 frames and one core step. The caller owns asynchronous
-reads/decoding, must retry the unaccepted PCM suffix, and must report source
-failure. Failed/stale workers cannot publish. Completion requires a completed
+Each step uses at most 256 frames and one core step. Direct PCM callers own asynchronous reads/decoding, must retry the unaccepted
+PCM suffix, and must report source failure. The optional catalog acquisition path
+below manages these steps for a caller-buffered WAV object. Failed/stale workers cannot publish. Completion requires a completed
 session; capacity failures can be retried with a larger conversion bank.
 No core processing, filesystem work or allocation belongs in the audio callback.
 
@@ -204,3 +204,89 @@ The inherited catalog formatting change is already on the foundation branch;
 this PR does not change collaborator firmware/catalog implementation. The Slint
 build's missing development metadata was supplied in an external user-local
 package extraction for host verification; no host service/system installation.
+
+## Catalog filesystem acquisition — 2026-10-04
+
+`source::SourceRequest` selects the exact audio path and track ID from either an
+immutable `CatalogSnapshot` or the foundation's storage-backed `CatalogBankSnapshot`.
+It reserves the existing persistent analysis lane before I/O, retaining the
+original catalog lease. The selected path is copied; recycling the catalog bank
+cannot change it. `open` uses the existing native `AsyncFileSystem` contract.
+`SourceRead::step` performs one read of at most **4096 bytes** into caller-owned
+whole-object storage and hashes only the returned bytes using the existing product
+SHA-256. Short reads continue; zero, oversized counts, changed length/position,
+stale lease, I/O failure and cancelled pending reads fail closed. A cancelled
+read remains terminal even if the backend advanced its handle or wrote storage.
+Always consume an open reader with `finish` or `abort`, including after failure.
+There is no hidden asynchronous cleanup in Drop.
+
+`finish` requires complete byte coverage, successful close and valid nonempty WAV
+before binding the computed identity to the reserved job. Hashing includes RIFF
+headers, ancillary and trailing bytes. The identity describes the captured object
+bytes; it does not prove that externally mutable media stayed unchanged afterward.
+No incomplete/unverified job can construct the core worker. Replacement or
+unmount before delivery still invalidates it. Checked generation exhaustion
+preserves the previous request and never wraps or resets the lane.
+
+`VerifiedWav::worker` checks the configured session's rate/channels/duration against
+the actual decoded source. `WavWorker::step` decodes at most **256 frames**, pushes
+only accepted frames and performs one core step. Immutable source bytes allow
+retry of a partial suffix without losing or duplicating PCM. Nonfinite float
+input poisons the worker. Completion and waveform output retain only their caller
+banks; actual Deck Beat Jump/Sync and raster rendering work after the worker,
+source bytes and filesystem are destroyed. No new codec or DSP engine is added.
+
+The host example now uses this acquisition path through a host-only std-file
+fixture; its immediately-ready blocking filesystem operations must never be used
+inside Embassy. Host tests separately exercise the **actual native async FAT32
+and exFAT implementations** over generated owned-block images, including reversed
+fragmented chains and exFAT NoFatChain storage. Those fixtures supply constructed
+boot geometry and test file acquisition, not on-disk boot/mount qualification.
+The P4 USB broker has dedicated Library/DeckA/DeckB channels and pending tickets;
+this adapter does not take over one of those channels or enable a production lane.
+The foundation's exFAT broker wiring, production codecs and scheduling remain its
+own workstream. Open/close futures must be driven to completion; cancellation of
+those operations requires backend-owned resource recovery. Poisoning the reader
+prevents bad analysis but cannot itself restore a backend's in-flight DMA buffer.
+
+Storage is explicit and checked before reading: source bytes must fit the supplied
+slice (no allocation/growth), PCM scratch is **2048 B**, and each backend owns its
+sector scratch. Final WAV parsing is bounded by the object size, not by the 4 KiB
+read step. Existing core/beat/render banks are additional. Compile-time object
+budgets cap `SourceRequest` at **384 B** and `WavWorker` at **4096 B** on host and
+P4; these exclude all borrowed banks, backend futures and nested calls. The tested
+RV32 objects are 324 B for the request, 232/256 B for FAT32/exFAT readers, and
+3704 B for the WAV worker. Full-file storage is an experimental bounded profile,
+not a suitable default for arbitrary tracks in 32 MiB PSRAM. A future streaming
+codec/source contract is required before that production use.
+
+`window::overview_with_eof` and `detail_with_eof` accept a shorter last column only
+when the requested end equals the declared EOF from the same trusted result.
+The start stays column-aligned and coverage must extend to that EOF. Each selected
+source column, including the shorter tail, occupies one output column. There is
+no duration-proportional pixel resampling. The original strict APIs still reject
+partial columns; arbitrary crops, holes and automatic layer selection stay out.
+EOF validation and short-capacity errors preserve the destination.
+
+Final-source acceptance: `verify-consumer.py`, stamp **20261004T190329Z**, passes
+**393 workspace tests including doctests**, **89 focused release tests including
+doctests**, and **19 adapter tests + one lifetime compile-fail doctest under ASan**.
+Formatting, Clippy, allocation counters, pinned Rust 1.95 P4 library compilation,
+dependency inspection and optimized object generation pass. Nine source tests
+include real FAT32/exFAT reads, forced short reads/PCM acceptance, I/O/close/count/
+position/length failures, pending resume/cancellation, stale catalogs/completions,
+geometry mismatch and terminal invalid-float decoding. Generation exhaustion and
+real 300-frame partial-EOF overview/detail rendering have separate regressions.
+
+`verify-extended-artifacts.py`, stamp **20261004T190445Z**, reproduces exact prior
+PPM bytes for both fixture and silence through the new catalog read/hash path.
+`verify-native-source-probe.py`, stamp **20261004T190446Z**, compiles and instantiates
+the actual native filesystem acquisition generics on P4 with an asynchronous
+owned-buffer device callback. Its one-poll diagnostic frames are FAT32 read
+**2336 B**, exFAT read **2368 B**, FAT32 open **4720 B**, FAT32 finish **336 B**;
+FAT32 nested sector loading is separately **1584 B**. These probes intentionally
+create/poll/drop futures for object inspection, are not an executor, and are not
+task-stack recommendations. The WAV step wrapper tail-calls the adapter; zero
+wrapper frame does not mean zero worker stack. All evidence remains under
+`/home/shome/.local/share/Pajoniiir-M1/apta-evidence/`. Intermediate failed formatting,
+Clippy and diagnostic probes are retained alongside successful final runs.

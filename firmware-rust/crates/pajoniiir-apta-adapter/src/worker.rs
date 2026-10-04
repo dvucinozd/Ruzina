@@ -44,7 +44,19 @@ impl Requests {
         track: MediaTrackId,
         identity: SourceIdentity,
     ) -> Result<Job, WorkerError> {
-        if !media.is_available() || !media.validate(lease) || identity.kind() == 0 {
+        if identity.kind() == 0 {
+            return Err(WorkerError::Stale);
+        }
+        self.issue(media, lease, track, identity)
+    }
+    fn issue(
+        &mut self,
+        media: &MediaSession,
+        lease: MediaLease,
+        track: MediaTrackId,
+        identity: SourceIdentity,
+    ) -> Result<Job, WorkerError> {
+        if !media.is_available() || !media.validate(lease) {
             return Err(WorkerError::Stale);
         }
         let generation = self
@@ -61,10 +73,31 @@ impl Requests {
         self.current = Some(job);
         Ok(job)
     }
+    pub(crate) fn begin_source(
+        &mut self,
+        media: &MediaSession,
+        lease: MediaLease,
+        track: MediaTrackId,
+    ) -> Result<Job, WorkerError> {
+        self.issue(media, lease, track, SourceIdentity::default())
+    }
+    pub(crate) fn verify_source(
+        &mut self,
+        job: Job,
+        media: &MediaSession,
+        identity: SourceIdentity,
+    ) -> Result<Job, WorkerError> {
+        if !self.accepts(job, media) {
+            return Err(WorkerError::Stale);
+        }
+        let job = Job { identity, ..job };
+        self.current = Some(job);
+        Ok(job)
+    }
     pub fn cancel(&mut self) {
         self.current = None;
     }
-    fn accepts(&self, job: Job, media: &MediaSession) -> bool {
+    pub(crate) fn accepts(&self, job: Job, media: &MediaSession) -> bool {
         self.current == Some(job) && media.is_available() && media.validate(job.lease)
     }
 }
@@ -79,6 +112,9 @@ pub struct Worker<'a> {
 }
 impl<'a> Worker<'a> {
     pub fn new(mut session: Session<'a>, job: Job) -> Result<Self, WorkerError> {
+        if job.identity.kind() == 0 {
+            return Err(WorkerError::Failed);
+        }
         session
             .set_source_identity(job.identity)
             .map_err(WorkerError::Core)?;
@@ -88,7 +124,11 @@ impl<'a> Worker<'a> {
             failed: false,
         })
     }
-    fn check(&mut self, requests: &Requests, media: &MediaSession) -> Result<(), WorkerError> {
+    pub(crate) fn check(
+        &mut self,
+        requests: &Requests,
+        media: &MediaSession,
+    ) -> Result<(), WorkerError> {
         if self.failed {
             return Err(WorkerError::Failed);
         }
@@ -324,4 +364,37 @@ fn check_delivery(
         return Err(WorkerError::Analysis(Error::Playing));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pajoniiir_media_session::{MediaHandle, MediaSourceId};
+    #[test]
+    fn generation_exhaustion_preserves_last_request_without_wrapping() {
+        let mut media = MediaSession::new();
+        media.on_connect(MediaSourceId::new(1).unwrap());
+        let lease = media.lease().unwrap();
+        media.bind_handle(lease, MediaHandle::new(1).unwrap());
+        media.commit_mounted(lease);
+        let mut requests = Requests {
+            next: u32::MAX - 1,
+            current: None,
+        };
+        let job = requests
+            .begin_source(&media, lease, MediaTrackId([1; 16]))
+            .unwrap();
+        assert_eq!(job.generation, u32::MAX);
+        assert_eq!(
+            requests.begin_source(&media, lease, MediaTrackId([2; 16])),
+            Err(WorkerError::Analysis(Error::Generation))
+        );
+        assert!(requests.accepts(job, &media));
+        requests.cancel();
+        assert!(
+            requests
+                .begin_source(&media, lease, MediaTrackId([1; 16]))
+                .is_err()
+        );
+    }
 }

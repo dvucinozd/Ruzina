@@ -2,35 +2,77 @@
 use libapta::{
     WaveformColumn,
     analysis::{BIN_CAPACITY, OnsetBin},
-    session::{Session, SessionConfig, SourceIdentity},
-    wav::Wav,
+    session::{Session, SessionConfig},
     waveform::NormalizedSample,
 };
-use pajoniiir_apta_adapter::worker::{Pin, Requests, Worker};
+use pajoniiir_apta_adapter::{
+    source::SourceRequest,
+    worker::{Pin, Requests},
+};
+use pajoniiir_media_catalog::{CatalogBuilder, CatalogText, CatalogTrack};
+mod support;
 use pajoniiir_core::{DeckId, MediaTrackId};
 use pajoniiir_deck::DeckProductState;
 use pajoniiir_media_session::{MediaHandle, MediaSession, MediaSourceId};
 use pajoniiir_track_analysis::Beat;
-use std::io::{Read, Write};
+use std::io::Write;
+use support::{HostFs, ready};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args_os().collect();
     if args.len() != 3 {
         return Err("usage: analyze_wav INPUT.wav OUTPUT.ppm (new output only)".into());
     }
-    let mut bytes = Vec::new();
-    std::fs::File::open(&args[1])?
-        .take(256 * 1024 * 1024 + 1)
-        .read_to_end(&mut bytes)?;
-    if bytes.len() > 256 * 1024 * 1024 {
+    let len = std::fs::metadata(&args[1])?.len();
+    if len > 256 * 1024 * 1024 {
         return Err("input exceeds 256 MiB host policy".into());
     }
-    let wav = Wav::parse(&bytes)?;
-    if wav.frame_count() == 0 {
-        return Err("empty source".into());
+    let mut bytes = vec![0; usize::try_from(len)?];
+    let mut media = MediaSession::new();
+    media.on_connect(MediaSourceId::new(1).unwrap());
+    let lease = media.lease().unwrap();
+    assert!(media.bind_handle(lease, MediaHandle::new(1).unwrap()));
+    assert!(media.commit_mounted(lease));
+    let mut catalog = CatalogBuilder::<1>::new(lease);
+    catalog
+        .push(CatalogTrack {
+            track_id: MediaTrackId([1; 16]),
+            source_track_id: 1,
+            bpm_x100: 0,
+            duration_ms: 0,
+            title: CatalogText::EMPTY,
+            artist: CatalogText::EMPTY,
+            album: CatalogText::EMPTY,
+            key: CatalogText::EMPTY,
+            analysis_path: CatalogText::EMPTY,
+            audio_path: CatalogText::try_from_str("/TRACK.WAV").unwrap(),
+        })
+        .map_err(|e| format!("catalog: {e:?}"))?;
+    let catalog = catalog.finish(1);
+    let mut requests = Requests::default();
+    let request = SourceRequest::new(&mut requests, &media, &catalog, 0)
+        .map_err(|e| format!("request: {e:?}"))?;
+    let mut fs = HostFs {
+        path: args[1].clone().into(),
+        lease,
+    };
+    let mut read = ready(request.open(&mut fs, &requests, &media, &mut bytes))
+        .map_err(|e| format!("open: {e:?}"))?;
+    loop {
+        match ready(read.step(&mut fs, &requests, &media)) {
+            Ok(true) => break,
+            Ok(false) => (),
+            Err(e) => {
+                let _ = ready(read.abort(&mut fs));
+                return Err(format!("read: {e:?}").into());
+            }
+        }
     }
+    let wav =
+        ready(read.finish(&mut fs, &mut requests, &media)).map_err(|e| format!("source: {e:?}"))?;
+    let total = wav.source().total_frames.unwrap();
     const FPC: u32 = 256;
-    let count = usize::try_from(wav.frame_count().div_ceil(FPC as u64))?;
+    let count = usize::try_from(total.div_ceil(FPC as u64))?;
     let mut columns = vec![WaveformColumn::default(); count];
     let mut queue = [NormalizedSample::default(); 256];
     let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
@@ -39,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         SessionConfig {
             sample_rate: wav.source().sample_rate,
             channel_count: wav.source().channel_count,
-            total_frames: wav.frame_count(),
+            total_frames: total,
             frames_per_column: FPC,
         },
         &mut queue,
@@ -55,21 +97,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     session.enable_tempo(&mut bins, &mut flux)?;
     session.enable_meter()?;
-    let mut media = MediaSession::new();
-    media.on_connect(MediaSourceId::new(1).unwrap());
-    let lease = media.lease().unwrap();
-    assert!(media.bind_handle(lease, MediaHandle::new(1).unwrap()));
-    assert!(media.commit_mounted(lease));
-    let identity = SourceIdentity::new(2, pajoniiir_media_identity::sha256(&bytes).0)?;
-    let mut requests = Requests::default();
-    let job = requests
-        .request(
-            &media,
-            media.lease().unwrap(),
-            MediaTrackId([1; 16]),
-            identity,
-        )
-        .map_err(|e| format!("request: {e:?}"))?;
     // Explicit host cap. Capacity failure is returned rather than dropping beats.
     let mut beats = vec![
         Beat {
@@ -87,29 +114,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         count
     ];
     let view = {
-        let mut worker = Worker::new(session, job).map_err(|e| format!("worker: {e:?}"))?;
+        let mut worker = wav.worker(session).map_err(|e| format!("worker: {e:?}"))?;
         let mut scratch = [0.; 512];
-        let channels = wav.source().channel_count as usize;
-        let mut offset = 0;
-        while offset < wav.frame_count() {
-            let n = wav.read_frames(offset, &mut scratch[..256 * channels])?;
-            if n == 0 {
-                return Err("source ended before declared duration".into());
-            }
-            let accepted = worker
-                .push(&requests, &media, &scratch[..n * channels])
-                .map_err(|e| format!("PCM: {e:?}"))?;
-            offset += accepted as u64;
-            worker
-                .step(&requests, &media)
-                .map_err(|e| format!("step: {e:?}"))?;
-        }
-        worker
-            .finish_input(&requests, &media)
-            .map_err(|e| format!("EOF: {e:?}"))?;
         while !worker
-            .step(&requests, &media)
-            .map_err(|e| format!("drain: {e:?}"))?
+            .step(&requests, &media, &mut scratch)
+            .map_err(|e| format!("step: {e:?}"))?
         {}
         let completed = worker
             .complete(&requests, &media, &mut beats)

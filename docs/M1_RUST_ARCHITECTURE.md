@@ -455,3 +455,31 @@ The native exFAT path parses File (0x85), Stream Extension (0xC0), and File Name
 ### Native read-only exFAT filesystem core
 
 The exFAT crate now implements the target-facing read-only AsyncFileSystem contract directly over OwnedBlockDevice. Detached file and directory handles are lease-bound; directory iteration consumes validated entry sets sequentially; fragmented streams follow the active exFAT FAT; NoFatChain streams use contiguous cluster arithmetic; and bytes between ValidDataLength and DataLength are returned as zeroes. Path lookup is allocation-free and ASCII-case-insensitive while non-ASCII UTF-8 must match exactly until the exFAT Up-case Table is wired. The USB0 broker still remains fail-closed for exFAT until its public request/completion handle types are generalized in the next step.
+
+
+### Experimental native analysis acquisition — 2026-10-04
+
+The APTA adapter now selects from fixed or storage-backed catalog snapshots and
+uses the existing `AsyncFileSystem` surface for bounded whole-object WAV loading.
+It reserves its persistent analysis-lane generation before I/O and retains the
+original catalog lease/path/track. Reads are capped at 4 KiB into caller storage;
+exact captured bytes are hashed with the product SHA-256. Complete coverage,
+successful close and WAV validation precede verified job creation. Pending read
+cancellation poisons that reader; callers must close/abort and respect backend
+recovery obligations. This is not a new Embassy worker or USB broker client.
+
+The same borrowed portable WAV decoder feeds the existing Session in at most
+256-frame/one-step calls, preserving partial acceptance. Independent converted
+banks reach Deck Beat Jump/Sync and RGB565 rendering after source/worker drop.
+Host integration tests use the native FAT32 and exFAT async filesystems over
+generated fragmented/contiguous block images. Production USB scheduling, compressed
+codecs, exFAT broker wiring, SRAM/PSRAM placement and DMA/cache qualification remain
+separate. Whole-source storage is bounded by the supplied slice and is explicitly
+not the production memory policy for arbitrary-length tracks. Request and WAV
+worker object budgets are compile-time checked; nested-call/task-stack and timing
+qualification remain open. See the adapter README for exact evidence and limits.
+
+Optional EOF-aware overview/detail windows preserve the actual shorter terminal
+column as one display column. They require source-aligned starts, trusted declared
+EOF and complete selected coverage; they do not implement arbitrary crop/resampling
+or fill sparse holes. Firmware/Slint selection and ADR-006 gates remain unchanged.
