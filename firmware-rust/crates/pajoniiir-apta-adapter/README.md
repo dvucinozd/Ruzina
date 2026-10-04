@@ -162,7 +162,16 @@ worker completion 1104 B, waveform 112 B, push 1776 B, step 352 B; global cache
 conversion 2608 B, overview window 128 B, detail window 48 B. Completion/waveform
 previously used 7712/7600 B with a full detail snapshot; typed getters remove that
 unused work. These exclude nested callees, caller placement and interrupt/runtime
-costs and are not task-stack recommendations. Final-source acceptance follows.
+costs and are not task-stack recommendations. Final-source acceptance after integrating the collaborator's exFAT implementation
+and host-check fix: stamp `20261004T181337Z` passes **382 workspace tests**,
+**78 focused release tests**, **8 adapter ASan integration tests + 1 compile-fail
+doctest**, formatting, Clippy, P4 compilation/dependency inspection and optimized
+object generation. No caller memory placement or hardware execution is claimed.
+`verify-extended-artifacts.py` reruns the worker WAV/raster cases serially; stamp
+`20261004T181426Z` verifies byte-identical PPM output after the stack optimization:
+120.00 BPM / 80 beats / 4120 green pixels, and silence BPM zero/no grid / 800-pixel
+centerline. Both images are 800x128. The final object report records the same
+individual worker frames. All logs/artifacts remain in the external evidence root.
 
 ## Dated software verification — 2026-10-04
 
