@@ -483,3 +483,22 @@ Optional EOF-aware overview/detail windows preserve the actual shorter terminal
 column as one display column. They require source-aligned starts, trusted declared
 EOF and complete selected coverage; they do not implement arbitrary crop/resampling
 or fill sparse holes. Firmware/Slint selection and ADR-006 gates remain unchanged.
+
+### Experimental streaming analysis — 2026-10-04
+
+The native adapter now additionally supports bounded two-pass WAV acquisition.
+The first pass scans portable framing and hashes the exact object; successful
+close precedes a verified layout. The second pass reopens the same catalog path,
+decodes into the existing core through fixed 4 KiB byte/2 KiB PCM scratch, hashes
+all bytes again and withholds analysis until equal hashes and successful close.
+Partial byte reads and partial PCM acceptance retain their suffixes. No full
+track buffer, new DSP engine, desktop runtime or random-seek requirement enters
+the portable path. The adapter README defines ownership, storage and evidence.
+
+This remains outside production provider selection. It uses `AsyncFileSystem`
+without taking a Library/DeckA/DeckB broker lane. Adding an analysis client still
+requires a unique lifecycle/client identity, pending completion drain/recovery,
+original lease checks and exclusive handle/buffer ownership. Neither cancellation
+poisoning nor two-pass hashing solves backend resource recovery or future external
+media mutation. SRAM/PSRAM placement, full nested/future/task storage and measured
+coexistence/timing remain separate embedded gates under ADR-006/008.

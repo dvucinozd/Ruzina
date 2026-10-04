@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if len > 256 * 1024 * 1024 {
         return Err("input exceeds 256 MiB host policy".into());
     }
-    let mut bytes = vec![0; usize::try_from(len)?];
+    let mut bytes = [0; 4096];
     let mut media = MediaSession::new();
     media.on_connect(MediaSourceId::new(1).unwrap());
     let lease = media.lease().unwrap();
@@ -56,10 +56,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         path: args[1].clone().into(),
         lease,
     };
-    let mut read = ready(request.open(&mut fs, &requests, &media, &mut bytes))
+    let mut read = ready(request.open_stream(&mut fs, &requests, &media))
         .map_err(|e| format!("open: {e:?}"))?;
     loop {
-        match ready(read.step(&mut fs, &requests, &media)) {
+        match ready(read.step(&mut fs, &requests, &media, &mut bytes)) {
             Ok(true) => break,
             Ok(false) => (),
             Err(e) => {
@@ -88,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut columns,
     )?;
     println!(
-        "storage: session={} onset={} flux={} queue={} overview={} bytes",
+        "storage: source_scratch=4096 pcm_scratch=2048 session={} onset={} flux={} queue={} overview={} bytes",
         std::mem::size_of_val(&session),
         std::mem::size_of_val(bins.as_slice()),
         std::mem::size_of_val(flux.as_slice()),
@@ -114,12 +114,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         count
     ];
     let view = {
-        let mut worker = wav.worker(session).map_err(|e| format!("worker: {e:?}"))?;
+        let mut worker = wav
+            .worker(session, &mut bytes)
+            .map_err(|e| format!("worker: {e:?}"))?;
+        ready(worker.open(&mut fs, &requests, &media)).map_err(|e| format!("reopen: {e:?}"))?;
         let mut scratch = [0.; 512];
-        while !worker
-            .step(&requests, &media, &mut scratch)
-            .map_err(|e| format!("step: {e:?}"))?
-        {}
+        loop {
+            match ready(worker.step(&mut fs, &requests, &media, &mut scratch)) {
+                Ok(true) => break,
+                Ok(false) => (),
+                Err(e) => {
+                    let _ = ready(worker.abort(&mut fs));
+                    return Err(format!("step: {e:?}").into());
+                }
+            }
+        }
+        ready(worker.finish(&mut fs, &requests, &media)).map_err(|e| format!("verify: {e:?}"))?;
+        let mut worker = worker.into_worker().map_err(|_| "unverified worker")?;
         let completed = worker
             .complete(&requests, &media, &mut beats)
             .map_err(|e| format!("analysis: {e:?}"))?;

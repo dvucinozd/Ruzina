@@ -6,7 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "03b0643aaedc7b362a2556d8bcc563b78ac526ec", default-features = false }
+libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "a242c4ab1ada6ac2547f63332ef7f7c0f36276fa", default-features = false }
 pajoniiir-track-analysis.workspace = true
 pajoniiir-waveform.workspace = true
 

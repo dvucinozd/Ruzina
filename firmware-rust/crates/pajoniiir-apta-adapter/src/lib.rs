@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 pub mod source;
+pub mod streaming;
 pub mod window;
 pub mod worker;
 

@@ -16,7 +16,8 @@ cargo check --locked -p pajoniiir-apta-adapter --lib --target riscv32imafc-unkno
 The host example decodes WAV, runs the existing core outside any audio callback,
 converts analysis and renders an 800x128 whole-track waveform through the existing
 RGB565 rasterizer. It creates a new PPM only. Its 256 MiB input and 65,536-beat
-caps are host example policy, not firmware budgets or streaming file support.
+caps are host example work/output policy, not firmware budgets. Source storage
+is now fixed scratch through the two-pass streaming path below.
 
 ## Contract
 
@@ -290,3 +291,127 @@ task-stack recommendations. The WAV step wrapper tail-calls the adapter; zero
 wrapper frame does not mean zero worker stack. All evidence remains under
 `/home/shome/.local/share/Pajoniiir-M1/apta-evidence/`. Intermediate failed formatting,
 Clippy and diagnostic probes are retained alongside successful final runs.
+
+## Bounded two-pass WAV acquisition — 2026-10-04
+
+`SourceRequest::open_stream` preserves the same copied catalog path, originating
+lease and persistent request generation. `ScanRead::step` reads at most 4096 bytes
+into caller scratch and feeds the portable `WavScanner` while hashing all bytes.
+`finish` consumes/closes the handle and requires complete valid nonempty WAV
+framing before returning `VerifiedStream`. Data may precede format; all supported
+mono/stereo S16/S24/S32/F32 and extensible profiles use the existing decoder.
+
+Use `VerifiedStream::source` to size/configure the existing Session, then call
+`VerifiedStream::worker` synchronously with a separate or reused `[u8;4096]`.
+`StreamWorker::open` borrows that control in place and reopens the exact path
+without a seek, requires the same length and Session geometry, and owns that
+handle until finish/abort. `StreamWorker::step` reads at most once, decodes at
+most 256 frames into caller `[f32;512]`, preserves partial-byte and unaccepted
+PCM suffixes, and performs one core step. This is a cooperative work-unit bound,
+not a latency bound. Filesystem operations and all processing stay outside audio.
+
+`StreamWorker` deliberately exposes no completion/waveform getters. After all
+bytes and core stages finish, `finish` consumes/closes its handle and requires
+its second full-object SHA-256 to equal the first pass. Only then does synchronous `into_worker` release
+an ordinary `Worker` for conversion and retained Deck pins. Premature extraction
+returns the original streaming worker so its handle can still be aborted. This rejects changed
+headers, ancillary chunks, PCM or trailing bytes even if geometry stays equal.
+Hashes identify captured bytes; they cannot certify future external immutability.
+Two sequential passes cost twice the object I/O but avoid whole-track retention
+and linear-cost native random seeks. Non-WAV codecs are outside this profile.
+
+Read cancellation poisons either pass before I/O, including cancellation after a
+backend wrote bytes/advanced position. A failed reader/worker must still be
+consumed with `finish` or `abort`. Open and close futures must run to completion.
+The backend owner must recover pending operations, handles and DMA buffers;
+analysis poisoning provides no filesystem cancellation guarantee. Reopening is
+an ownership boundary, not permission to mix filesystem instances/client lanes.
+Use the same filesystem owner and persistent `Requests` throughout both passes.
+
+The host example now uses this path. Its blocking std-file fixture remains
+host-only. Tests run both whole-object and streaming paths through native FAT32
+fragmented and exFAT contiguous/fragmented files, real local PCM analysis, Deck
+Sync/Beat Jump and exact RGB565 pixels. Additional tests exercise one-byte reads,
+stereo packed24, data-before-format, partial EOF, short queue acceptance, changed
+objects, stale requests/media, invalid counts/geometry, pending resume/drop and
+close failure. Instrumented acquisition, processing and retained conversion
+perform zero allocations; independent output banks outlive the filesystem.
+
+### Live storage and placement boundary
+
+Caller source scratch is **4096 bytes**; decoded PCM scratch is **2048 bytes**.
+The same byte bank can serve the first pass and second pass because their
+lifetimes do not overlap. Source scratch no longer scales with object length.
+Compile-time control budgets exclude backend handles and caller storage:
+`ScanRead<()> <=768 B`, `StreamWorker<()> <=4864 B` (includes Session control).
+The portable scanner is <=192 B. These ceilings are not runtime stack sizes.
+
+For the tested local-tempo profile, simultaneous retained/caller banks cost:
+`81920 + 8*queue_frames + 14*overview_columns + 24*beat_capacity` bytes, plus
+6144 source/PCM scratch and worker/backend/future/control storage. The 81920 is
+4096 OnsetBins plus 4096 flux entries; 14 per overview column covers the native
+10-byte column and rendered 4-byte column. The beat term includes **two** 12-byte
+banks. At 17 queue frames, 1250 columns and two 128-beat banks this is **108772 B**
+of caller arrays including source/PCM scratch, before control/backend/futures,
+stack, catalog and existing pinned-track banks. Duration-dependent capacities
+must be checked before opening the second pass. Optional global/key/detail/cache
+profiles require their own additional storage and are not covered by this sum.
+
+The original whole-object APIs remain available for explicitly bounded immutable
+buffers. Neither the 256 MiB host cap nor these diagnostic profile sizes establish
+a production 32 MiB PSRAM policy. Allocate latency-critical/DMA structures only
+in qualified internal memory; PSRAM bank/cache placement requires ADR-008 review
+and measurement. Future storage, nested call chains, executor/task overhead and
+interrupt stacks must be included in final live/peak budgets. Production broker
+analysis-lane ownership, exFAT handle wiring and provider enablement stay gated.
+
+
+P4 diagnostics exposed a large intermediate future when Session moved through
+async open/finish. The final API constructs the worker synchronously, borrows it
+for I/O and extracts it synchronously after verification. The early open/finish
+futures were 14592/8464 B; current FAT32 futures are 2936/504 B. Their one-poll
+frames fell from 18672/12656 B to 3136/224 B. The synchronous worker control grows
+slightly to retain the reopen path; this avoids large Session copies in suspendable
+I/O storage without adding allocation or another runtime.
+
+
+Final-source serial verification: `verify-consumer.py`, stamp
+**20261004T203840Z**, passes **400 workspace tests**, **96 focused release tests**
+(including doctests), and **26 adapter tests plus one lifetime compile-fail doctest
+under ASan**. Formatting/Clippy, pinned Rust 1.95 P4 compile/dependency/object
+checks and zero-allocation instrumented native filesystem/analysis paths pass.
+The dependency is pinned to Libapta `a242c4ab1ada6ac2547f63332ef7f7c0f36276fa`.
+`verify-extended-artifacts.py` stamp **20261004T203948Z** reproduces exact prior
+impulse/silence PPM bytes through streaming (120 BPM, 80 beats, 4120 green pixels;
+silence no grid and 800 centerline pixels). Source tests additionally compare every
+retained beat and waveform column between whole-object and streaming paths.
+The unchanged whole-object P4 probe passes at **20261004T203949Z**.
+
+`verify-streaming-source-probe.py`, final stamp **20261004T204041Z**, instantiates
+actual FAT32/exFAT generics, pending owned-buffer callbacks and the pinned target:
+
+| RV32 diagnostic | FAT32 bytes | exFAT bytes |
+|---|---:|---:|
+| ScanRead including handle | 632 | 656 |
+| StreamWorker including handle/Session | 4256 | 4280 |
+| Native filesystem with diagnostic 512-byte backend | 592 | 600 |
+| Streaming step future | 1408 | 1440 |
+| One-poll scan frame | 1408 | 1456 |
+| One-poll streaming frame | 1488 | 1520 |
+
+VerifiedStream is 456 B and WavScanner 128 B. FAT32 first-pass open/finish futures
+are 3568/1776 B; second-pass open/finish futures are 2936/504 B. Disassembly
+confirms nested native filesystem read/cluster/sector-load calls: their distinct
+frames include adapter read 96/112 B, backend read 80 B, FAT32 next-cluster 32 B
+and sector loading 1584 B. No flat worker-frame number covers this chain. The
+one-poll probes place their futures on the stack: do not add future storage again
+to that probe frame as if it were separate. Real executor placement differs.
+
+Synchronous construction/extraction probe frames are 3648/16 B.
+These are compiler diagnostics, not complete task-stack budgets, timing bounds
+or hardware recommendations. Full constructor/caller/executor/library/interrupt
+paths and concurrent Deck/UI/audio storage remain to be qualified. Logs, source,
+objects, disassembly and reproducible scripts live only under
+`/home/shome/.local/share/Pajoniiir-M1/apta-evidence/`. Initial larger-future
+measurements/source are preserved alongside the final report. Broader i686,
+Windows/MSVC, AArch64 and Libapta-runtime sanitizer matrices were not rerun.

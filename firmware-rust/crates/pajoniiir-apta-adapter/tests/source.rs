@@ -99,9 +99,118 @@ fn analyze<F: AsyncFileSystem>(
         (completed, view)
     };
     drop(bytes);
+
+    verify_consumers(completed, view, &requests, media);
+    let decks = DeckProductState::new();
+    let selected = Pin::load(DeckId::One, &decks, completed, &requests, media).unwrap();
+    analyze_stream(fs, media, original, selected.track(media).unwrap(), view);
+}
+fn analyze_stream<F: AsyncFileSystem>(
+    mut fs: F,
+    media: &pajoniiir_media_session::MediaSession,
+    original: &[u8],
+    expected: pajoniiir_track_analysis::TrackAnalysis<'_>,
+    expected_waveform: pajoniiir_waveform::WaveformView<'_>,
+) where
+    F::Error: core::fmt::Debug,
+{
+    let snapshot = catalog(media);
+    let mut catalog = pajoniiir_media_catalog::CatalogBankBuilder::new(
+        snapshot.lease(),
+        Bank(Vec::with_capacity(1)),
+    );
+    catalog.push(*snapshot.get(0).unwrap()).unwrap();
+    let catalog = catalog.finish(1);
+    let mut requests = Requests::default();
+    let mut bytes = [0; 4096];
+    allocation::start();
+    let request = SourceRequest::from_bank(&mut requests, media, &catalog, 0).unwrap();
+    let mut read = run(request.open_stream(&mut fs, &requests, media)).unwrap();
+    let mut steps = 0;
+    while !run(read.step(&mut fs, &requests, media, &mut bytes)).unwrap() {
+        steps += 1;
+        assert!(steps < 20000);
+    }
+    let source = run(read.finish(&mut fs, &mut requests, media)).unwrap();
+    allocation::finish();
+    assert_eq!(
+        source.source().fingerprint,
+        pajoniiir_media_identity::sha256(original).0
+    );
+    assert_eq!(source.source().fingerprint_kind, 2);
+    let s = source.source();
+    let mut queue = [NormalizedSample::default(); 17]; // force partial acceptance
+    let mut columns = vec![WaveformColumn::default(); 1250];
+    let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
+    let mut flux = vec![0.; BIN_CAPACITY];
+    let mut session = Session::new(
+        SessionConfig {
+            sample_rate: s.sample_rate,
+            channel_count: s.channel_count,
+            total_frames: s.total_frames.unwrap(),
+            frames_per_column: 256,
+        },
+        &mut queue,
+        &mut columns,
+    )
+    .unwrap();
+    session.enable_tempo(&mut bins, &mut flux).unwrap();
+    session.enable_meter().unwrap();
+    let mut bank = [EMPTY; 128];
+    let mut render = vec![
+        pajoniiir_waveform::WaveformColumn {
+            peak: 0,
+            color_rgb565: 0
+        };
+        1250
+    ];
+    let (completed, view) = {
+        allocation::start();
+        let mut worker = source.worker(session, &mut bytes).unwrap();
+        run(worker.open(&mut fs, &requests, media)).unwrap();
+        let mut scratch = [0.; 512];
+        let mut done = false;
+        for _ in 0..40000 {
+            if run(worker.step(&mut fs, &requests, media, &mut scratch)).unwrap() {
+                done = true;
+                break;
+            }
+        }
+        assert!(done);
+        run(worker.finish(&mut fs, &requests, media)).unwrap();
+        let mut worker = worker
+            .into_worker()
+            .unwrap_or_else(|_| panic!("verified worker"));
+        let completed = worker.complete(&requests, media, &mut bank).unwrap();
+        let view = worker
+            .waveform(&requests, media, &mut render, 0x07e0)
+            .unwrap();
+        allocation::finish();
+        (completed, view)
+    };
+
     drop(fs);
+    assert_eq!(view.columns, expected_waveform.columns);
+    let decks = DeckProductState::new();
+    let new = Pin::load(DeckId::One, &decks, completed, &requests, media).unwrap();
+    let actual = new.track(media).unwrap();
+    assert_eq!(expected.provider(), actual.provider());
+    assert_eq!(expected.generation(), actual.generation());
+    assert_eq!(expected.bpm_x100(), actual.bpm_x100());
+    assert_eq!(
+        expected.beat_grid().unwrap().beats(),
+        actual.beat_grid().unwrap().beats()
+    );
+    verify_consumers(completed, view, &requests, media);
+}
+fn verify_consumers(
+    completed: pajoniiir_apta_adapter::worker::Completed<'_>,
+    view: pajoniiir_waveform::WaveformView<'_>,
+    requests: &Requests,
+    media: &pajoniiir_media_session::MediaSession,
+) {
     let mut decks = DeckProductState::new();
-    let pin = Pin::load(DeckId::One, &decks, completed, &requests, media).unwrap();
+    let pin = Pin::load(DeckId::One, &decks, completed, requests, media).unwrap();
     let track = pin.track(media).unwrap();
     assert_eq!(track.bpm_x100(), 12000);
     assert_eq!(track.beat_grid().unwrap().beats().len(), 80);
@@ -117,7 +226,7 @@ fn analyze<F: AsyncFileSystem>(
         [pin.track(media), None],
     );
     assert_eq!(decks.deck(DeckId::One).position_ms, beats[11].time_ms);
-    let second = Pin::load(DeckId::Two, &decks, completed, &requests, media).unwrap();
+    let second = Pin::load(DeckId::Two, &decks, completed, requests, media).unwrap();
     let position = decks.deck(DeckId::One).position_ms;
     decks.set_position_ms(DeckId::Two, position + 17);
     decks.handle_control_with_analysis(

@@ -35,8 +35,8 @@ pub enum SourceError<E> {
 /// Reserves one lane generation before opening the exact catalog path. The
 /// original catalog lease, never a refreshed lease, accompanies that request.
 pub struct SourceRequest {
-    job: Job,
-    path: CatalogText<CATALOG_PATH_MAX>,
+    pub(crate) job: Job,
+    pub(crate) path: CatalogText<CATALOG_PATH_MAX>,
 }
 impl SourceRequest {
     pub fn new<const N: usize>(

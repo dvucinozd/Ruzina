@@ -142,6 +142,19 @@ impl AsyncFileSystem for Fs {
     }
     async fn close_file(&mut self, _: Handle) -> Result<(), Fault> {
         self.closes += 1;
+        if self.mode == 10 {
+            let mut first = true;
+            core::future::poll_fn(|cx| {
+                if first {
+                    first = false;
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                } else {
+                    Poll::Ready(())
+                }
+            })
+            .await;
+        }
         if self.mode == 5 {
             Err(Fault::Io)
         } else {
@@ -182,6 +195,9 @@ impl AsyncFileSystem for Fs {
         }
         if self.mode == 7 {
             f.len += 1;
+        }
+        if self.mode == 9 {
+            core::future::pending::<()>().await;
         }
         Ok(n)
     }
