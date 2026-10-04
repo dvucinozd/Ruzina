@@ -437,3 +437,10 @@ The M1 controller port is a separate ESP32-P4 Full-Speed OTG host on GPIO27 (DP)
 The HAL-independent `pajoniiir-controller-usb` crate parses the configuration descriptor into a bounded `ControllerUsbCapabilities` snapshot covering MIDI Streaming, USB Audio Control/Streaming, HID and vendor interfaces plus relevant endpoint directions. This preserves the product rule that transport discovery is separate from S3CP/profile semantics. A controller is not considered physically supported by descriptor compatibility alone.
 
 CI cross-compiles USB1 independently and links USB0 + USB1 + PSRAM together. Physical VBUS/fault behavior, MIDI traffic, LED output and UAC isochronous/feedback behavior remain `HARDWARE_PENDING`.
+
+
+### USB-MIDI 1.0 transport boundary
+
+Above USB1 enumeration, `pajoniiir-controller-usb` now provides a transport-neutral locator for alternate-setting-zero Audio/MIDIStreaming interfaces plus allocation-free USB-MIDI 1.0 event-packet encode/decode. It preserves cable number, CIN, payload length, channel-voice status and endpoint max-packet sizes rather than collapsing USB framing into semantic controller events.
+
+The ESP32-P4 USB1 adapter allocates Embassy typed bulk IN and optional bulk OUT pipes from the enumerated device address and route. It rejects invalid Full-Speed bulk max-packet sizes and keeps pipe lifetime bounded to the current enumerated device. This layer intentionally stops before S3CP/profile dispatch: USB transport qualification, controller profile selection and product semantics remain separate gates.

@@ -59,3 +59,10 @@ Feature `usb1-controller-bringup` owns the ESP32-P4 Full-Speed OTG controller th
 Descriptor classification is implemented in the HAL-independent `pajoniiir-controller-usb` crate and is host-tested. It recognizes USB Audio Control, Audio Streaming, MIDI Streaming, HID and vendor interfaces, and records the relevant bulk/interrupt/isochronous endpoint directions without binding product behavior to a single VID/PID.
 
 This gate is **COMPILE_VERIFIED / HARDWARE_PENDING**. It does not yet claim physical VBUS switching/fault recovery, MIDI packet transport, LED output, UAC isochronous streaming or FLX4 qualification. CI also links USB0 HS + USB1 FS + PSRAM together so ownership collisions are caught before EVT hardware exists.
+
+
+### USB-MIDI transport boundary
+
+The USB1 controller layer now contains a compile-verified USB-MIDI 1.0 bulk transport. The host-tested `pajoniiir-controller-usb` crate locates the first alternate-setting-zero Audio/MIDIStreaming interface, preserves bulk endpoint addresses/max-packet sizes, and encodes/decodes standard 4-byte USB-MIDI event packets without allocation.
+
+On ESP32-P4 the USB1 owner can allocate typed Embassy `Bulk/In` and optional `Bulk/Out` pipes for that interface using the enumerated route/split metadata. Full-Speed bulk packet sizes are fail-closed above 64 bytes. The transport exposes raw read and event-write methods, but it is not yet connected to `ControllerSession`; S3CP profile selection and semantic ingestion are the next software boundary. Physical MIDI interoperability and LED feedback remain `HARDWARE_PENDING`.

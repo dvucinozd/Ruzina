@@ -62,6 +62,217 @@ pub enum ControllerUsbDescriptorError {
     EndpointTooShort { offset: usize },
 }
 
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UsbEndpointDescriptor {
+    pub address: u8,
+    pub max_packet_size: u16,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MidiStreamingInterface {
+    pub interface_number: u8,
+    pub alternate_setting: u8,
+    pub bulk_in: Option<UsbEndpointDescriptor>,
+    pub bulk_out: Option<UsbEndpointDescriptor>,
+}
+
+impl MidiStreamingInterface {
+    pub const fn has_input(self) -> bool {
+        self.bulk_in.is_some()
+    }
+
+    pub const fn has_output(self) -> bool {
+        self.bulk_out.is_some()
+    }
+
+    pub const fn is_bidirectional(self) -> bool {
+        self.has_input() && self.has_output()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UsbMidiEvent {
+    pub cable: u8,
+    pub cin: u8,
+    pub bytes: [u8; 3],
+    pub len: u8,
+}
+
+impl UsbMidiEvent {
+    pub fn decode(packet: [u8; 4]) -> Option<Self> {
+        let cin = packet[0] & 0x0f;
+        let len = cin_payload_len(cin)?;
+        Some(Self {
+            cable: packet[0] >> 4,
+            cin,
+            bytes: [packet[1], packet[2], packet[3]],
+            len,
+        })
+    }
+
+    pub const fn as_usb_packet(self) -> [u8; 4] {
+        [
+            (self.cable << 4) | (self.cin & 0x0f),
+            self.bytes[0],
+            self.bytes[1],
+            self.bytes[2],
+        ]
+    }
+
+    pub const fn channel_voice(self) -> Option<MidiChannelVoice> {
+        if self.cin < 0x08 || self.cin > 0x0e {
+            return None;
+        }
+        if self.bytes[0] >> 4 != self.cin {
+            return None;
+        }
+        Some(MidiChannelVoice {
+            cable: self.cable,
+            status: self.bytes[0],
+            data1: self.bytes[1],
+            data2: if self.len == 3 {
+                Some(self.bytes[2])
+            } else {
+                None
+            },
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MidiChannelVoice {
+    pub cable: u8,
+    pub status: u8,
+    pub data1: u8,
+    pub data2: Option<u8>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UsbMidiEncodeError {
+    InvalidCable(u8),
+    NotChannelVoice(u8),
+    InvalidDataByte(u8),
+    MissingData2,
+}
+
+impl MidiChannelVoice {
+    pub fn new(
+        cable: u8,
+        status: u8,
+        data1: u8,
+        data2: Option<u8>,
+    ) -> Result<Self, UsbMidiEncodeError> {
+        if cable > 0x0f {
+            return Err(UsbMidiEncodeError::InvalidCable(cable));
+        }
+        let family = status >> 4;
+        if !(0x08..=0x0e).contains(&family) {
+            return Err(UsbMidiEncodeError::NotChannelVoice(status));
+        }
+        if data1 > 0x7f {
+            return Err(UsbMidiEncodeError::InvalidDataByte(data1));
+        }
+
+        let two_byte = matches!(family, 0x0c | 0x0d);
+        if !two_byte && data2.is_none() {
+            return Err(UsbMidiEncodeError::MissingData2);
+        }
+        if let Some(value) = data2
+            && value > 0x7f
+        {
+            return Err(UsbMidiEncodeError::InvalidDataByte(value));
+        }
+
+        Ok(Self {
+            cable,
+            status,
+            data1,
+            data2: if two_byte { None } else { data2 },
+        })
+    }
+
+    pub fn to_usb_event(self) -> UsbMidiEvent {
+        let cin = self.status >> 4;
+        let len = if matches!(cin, 0x0c | 0x0d) { 2 } else { 3 };
+        UsbMidiEvent {
+            cable: self.cable,
+            cin,
+            bytes: [self.status, self.data1, self.data2.unwrap_or(0)],
+            len,
+        }
+    }
+}
+
+const fn cin_payload_len(cin: u8) -> Option<u8> {
+    match cin {
+        0x02 | 0x06 | 0x0c | 0x0d => Some(2),
+        0x03 | 0x04 | 0x07 | 0x08 | 0x09 | 0x0a | 0x0b | 0x0e => Some(3),
+        0x05 | 0x0f => Some(1),
+        _ => None,
+    }
+}
+
+pub fn find_midi_streaming_interface(
+    bytes: &[u8],
+) -> Result<Option<MidiStreamingInterface>, ControllerUsbDescriptorError> {
+    inspect_configuration(bytes)?;
+
+    let header_len = usize::from(bytes[0]);
+    let total_len = usize::from(u16::from_le_bytes([bytes[2], bytes[3]]));
+    let mut current: Option<MidiStreamingInterface> = None;
+    let mut offset = header_len;
+
+    while offset < total_len {
+        let descriptor_len = usize::from(bytes[offset]);
+        let end = offset + descriptor_len;
+
+        if bytes[offset + 1] == DESCRIPTOR_INTERFACE {
+            if let Some(found) = current
+                && (found.bulk_in.is_some() || found.bulk_out.is_some())
+            {
+                return Ok(Some(found));
+            }
+
+            let class = bytes[offset + 5];
+            let subclass = bytes[offset + 6];
+            let alternate_setting = bytes[offset + 3];
+            current = if class == CLASS_AUDIO
+                && subclass == AUDIO_SUBCLASS_MIDI_STREAMING
+                && alternate_setting == 0
+            {
+                Some(MidiStreamingInterface {
+                    interface_number: bytes[offset + 2],
+                    alternate_setting,
+                    bulk_in: None,
+                    bulk_out: None,
+                })
+            } else {
+                None
+            };
+        } else if bytes[offset + 1] == DESCRIPTOR_ENDPOINT
+            && let Some(interface) = current.as_mut()
+            && bytes[offset + 3] & 0x03 == ENDPOINT_TRANSFER_BULK
+        {
+            let endpoint = UsbEndpointDescriptor {
+                address: bytes[offset + 2],
+                max_packet_size: u16::from_le_bytes([bytes[offset + 4], bytes[offset + 5]]),
+            };
+            if endpoint.address & 0x80 != 0 {
+                if interface.bulk_in.is_none() {
+                    interface.bulk_in = Some(endpoint);
+                }
+            } else if interface.bulk_out.is_none() {
+                interface.bulk_out = Some(endpoint);
+            }
+        }
+
+        offset = end;
+    }
+
+    Ok(current.filter(|found| found.bulk_in.is_some() || found.bulk_out.is_some()))
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum InterfaceKind {
     MidiStreaming,
@@ -254,6 +465,70 @@ mod tests {
         assert!(c.has_bidirectional_midi());
         assert!(c.has_usb_audio());
         assert!(c.has_audio_output());
+    }
+
+
+    #[test]
+    fn locates_midi_streaming_bulk_endpoints() {
+        let (bytes, used) = composite_fixture();
+        let midi = find_midi_streaming_interface(&bytes[..used])
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(midi.interface_number, 1);
+        assert_eq!(midi.alternate_setting, 0);
+        assert_eq!(
+            midi.bulk_in,
+            Some(UsbEndpointDescriptor {
+                address: 0x81,
+                max_packet_size: 64,
+            })
+        );
+        assert_eq!(
+            midi.bulk_out,
+            Some(UsbEndpointDescriptor {
+                address: 0x01,
+                max_packet_size: 64,
+            })
+        );
+        assert!(midi.is_bidirectional());
+    }
+
+    #[test]
+    fn usb_midi_channel_voice_round_trips() {
+        let note = UsbMidiEvent::decode([0x19, 0x91, 0x24, 0x7f]).unwrap();
+        assert_eq!(note.cable, 1);
+        assert_eq!(note.len, 3);
+        assert_eq!(
+            note.channel_voice(),
+            Some(MidiChannelVoice {
+                cable: 1,
+                status: 0x91,
+                data1: 0x24,
+                data2: Some(0x7f),
+            })
+        );
+
+        let cc = MidiChannelVoice::new(2, 0xb3, 0x10, Some(0x40)).unwrap();
+        assert_eq!(cc.to_usb_event().as_usb_packet(), [0x2b, 0xb3, 0x10, 0x40]);
+
+        let program = MidiChannelVoice::new(0, 0xc0, 0x05, None).unwrap();
+        assert_eq!(program.to_usb_event().as_usb_packet(), [0x0c, 0xc0, 0x05, 0x00]);
+    }
+
+    #[test]
+    fn usb_midi_rejects_reserved_and_mismatched_packets() {
+        assert_eq!(UsbMidiEvent::decode([0x00, 0, 0, 0]), None);
+        let mismatch = UsbMidiEvent::decode([0x09, 0xb0, 0x10, 0x7f]).unwrap();
+        assert_eq!(mismatch.channel_voice(), None);
+        assert_eq!(
+            MidiChannelVoice::new(16, 0x90, 0x10, Some(0x7f)),
+            Err(UsbMidiEncodeError::InvalidCable(16))
+        );
+        assert_eq!(
+            MidiChannelVoice::new(0, 0x90, 0x10, None),
+            Err(UsbMidiEncodeError::MissingData2)
+        );
     }
 
     #[test]
