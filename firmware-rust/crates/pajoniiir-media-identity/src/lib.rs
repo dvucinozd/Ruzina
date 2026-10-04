@@ -7,6 +7,7 @@ use pajoniiir_core::MediaTrackId;
 pub const MEDIA_PATH_MAX: usize = 256;
 pub const TRACK_ID_DOMAIN: &[u8] = b"pajoniiir.track.v1";
 pub const FAT32_VOLUME_ID_DOMAIN: &[u8] = b"pajoniiir.volume.fat32.v1";
+pub const EXFAT_VOLUME_ID_DOMAIN: &[u8] = b"pajoniiir.volume.exfat.v1";
 pub const LEGACY_HOTCUE_V2_DOMAIN: &[u8] = b"pajoniiir.hotcue.v2";
 
 const SHA256_K: [u32; 64] = [
@@ -186,6 +187,23 @@ pub fn derive_fat32_volume_identity(
     VolumeIdentity(hash.finalize().0)
 }
 
+pub fn derive_exfat_volume_identity(
+    volume_serial: u32,
+    bytes_per_sector: u32,
+    sectors_per_cluster: u32,
+    volume_length: u64,
+    partition_first_block: u64,
+) -> VolumeIdentity {
+    let mut hash = Sha256::new();
+    hash.update(EXFAT_VOLUME_ID_DOMAIN);
+    hash.update(&volume_serial.to_le_bytes());
+    hash.update(&bytes_per_sector.to_le_bytes());
+    hash.update(&sectors_per_cluster.to_le_bytes());
+    hash.update(&volume_length.to_le_bytes());
+    hash.update(&partition_first_block.to_le_bytes());
+    VolumeIdentity(hash.finalize().0)
+}
+
 pub fn normalize_relative_path<'a>(
     input: &str,
     output: &'a mut [u8],
@@ -349,6 +367,18 @@ mod tests {
         let same = derive_fat32_volume_identity(0x1234_5678, 512, 262_144, 2_048);
         let moved = derive_fat32_volume_identity(0x1234_5678, 512, 262_144, 4_096);
         let resized = derive_fat32_volume_identity(0x1234_5678, 512, 524_288, 2_048);
+
+        assert_eq!(first, same);
+        assert_ne!(first, moved);
+        assert_ne!(first, resized);
+    }
+
+    #[test]
+    fn exfat_volume_identity_is_stable_and_geometry_bound() {
+        let first = derive_exfat_volume_identity(0x1234_5678, 512, 8, 1_000_000, 2_048);
+        let same = derive_exfat_volume_identity(0x1234_5678, 512, 8, 1_000_000, 2_048);
+        let moved = derive_exfat_volume_identity(0x1234_5678, 512, 8, 1_000_000, 4_096);
+        let resized = derive_exfat_volume_identity(0x1234_5678, 512, 8, 2_000_000, 2_048);
 
         assert_eq!(first, same);
         assert_ne!(first, moved);

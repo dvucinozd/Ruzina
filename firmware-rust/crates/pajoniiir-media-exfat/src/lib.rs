@@ -1,6 +1,13 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+mod async_fs;
+
+pub use async_fs::{
+    ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncIoError, ExFatAsyncMountError,
+    ExFatAsyncVolume, parse_exfat_boot_sector,
+};
+
 pub type BackendFsError<E> = exfat_embedded::Error<ExFatBlockError<E>>;
 
 #[derive(Debug, Eq, PartialEq)]

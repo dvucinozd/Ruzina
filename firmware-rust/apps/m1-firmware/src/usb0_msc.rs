@@ -13,6 +13,10 @@ use embassy_usb_host::{
     handler::EnumerationInfo,
 };
 use pajoniiir_media_block::{BlockGeometry, TransferError};
+use pajoniiir_media_exfat::{
+    ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncMountError, ExFatAsyncVolume,
+    parse_exfat_boot_sector,
+};
 use pajoniiir_media_fat32::{
     Fat32AsyncDirectoryHandle, Fat32AsyncFileHandle, Fat32AsyncFileSystem, Fat32AsyncFsError,
     Fat32AsyncMountError, Fat32BootInfo, Fat32BootSectorError, Fat32FsInfo, Fat32FsInfoError,
@@ -25,7 +29,9 @@ use pajoniiir_media_fs::{
 use pajoniiir_media_io::{
     AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
 };
-use pajoniiir_media_identity::{VolumeIdentity, derive_fat32_volume_identity};
+use pajoniiir_media_identity::{
+    VolumeIdentity, derive_exfat_volume_identity, derive_fat32_volume_identity,
+};
 use pajoniiir_media_partition::{VolumeKind, classify_boot_sector};
 use pajoniiir_media_session::{DisconnectResult, MediaHandle, MediaLease, MediaSession};
 use pajoniiir_media_usb_msc::{
@@ -157,6 +163,9 @@ pub(crate) enum Usb0MscFilesystemProbeError {
     Fat32Boot(Fat32BootSectorError),
     Fat32FsInfo(Fat32FsInfoError),
     Fat32Backend(Fat32AsyncMountError),
+    ExFatBoot(ExFatAsyncBootSectorError),
+    ExFatBackend(ExFatAsyncMountError),
+    ExFatBootRegionChecksum,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -165,14 +174,16 @@ pub(crate) enum Usb0MscFilesystemProbe {
         boot: Fat32BootInfo,
         fs_info: Fat32FsInfo,
     },
-    ExFat,
+    ExFat {
+        boot: ExFatAsyncBootInfo,
+    },
 }
 
 impl Usb0MscFilesystemProbe {
     pub(crate) const fn kind(self) -> FileSystemKind {
         match self {
             Self::Fat32 { .. } => FileSystemKind::Fat32,
-            Self::ExFat => FileSystemKind::ExFat,
+            Self::ExFat { .. } => FileSystemKind::ExFat,
         }
     }
 }
@@ -1588,6 +1599,8 @@ impl Usb0FilesystemScratchPool {
 
 type Usb0Fat32FileSystem =
     Fat32AsyncFileSystem<AsyncPartitionDevice<Usb0MscAsyncBlockDevice>>;
+type Usb0ExFatVolume =
+    ExFatAsyncVolume<AsyncPartitionDevice<Usb0MscAsyncBlockDevice>>;
 
 fn filesystem_completion_channel(
     client: FileSystemClientId,
@@ -1601,16 +1614,17 @@ fn filesystem_completion_channel(
 
 enum Usb0ActiveFileSystem {
     Fat32(Usb0Fat32FileSystem),
-    ExFat(AsyncPartitionDevice<Usb0MscAsyncBlockDevice>),
+    ExFat(Usb0ExFatVolume),
 }
 
 impl Usb0ActiveFileSystem {
     fn release(self, scratch_pool: &mut Usb0FilesystemScratchPool) {
-        if let Self::Fat32(filesystem) = self {
-            let (_partition, scratch) = filesystem.into_parts();
-            if let Some(scratch) = scratch {
-                restore_filesystem_scratch(scratch_pool, scratch);
-            }
+        let scratch = match self {
+            Self::Fat32(filesystem) => filesystem.into_parts().1,
+            Self::ExFat(filesystem) => filesystem.into_parts().1,
+        };
+        if let Some(scratch) = scratch {
+            restore_filesystem_scratch(scratch_pool, scratch);
         }
     }
 }
@@ -1853,10 +1867,35 @@ async fn probe_mounted_filesystem(
             ))
         }
         FileSystemKind::ExFat => {
-            restore_filesystem_scratch(scratch_pool, scratch);
+            let boot = match parse_exfat_boot_sector(scratch, partition.geometry()) {
+                Ok(boot) => boot,
+                Err(error) => {
+                    restore_filesystem_scratch(scratch_pool, scratch);
+                    return Err(Usb0MscFilesystemProbeError::ExFatBoot(error));
+                }
+            };
+
+            let mut filesystem =
+                match ExFatAsyncVolume::new(partition, scratch, boot, media.attempt.lease) {
+                    Ok(filesystem) => filesystem,
+                    Err((error, _partition, scratch)) => {
+                        restore_filesystem_scratch(scratch_pool, scratch);
+                        return Err(Usb0MscFilesystemProbeError::ExFatBackend(error));
+                    }
+                };
+
+            if filesystem.validate_main_boot_region().await.is_err() {
+                let (_partition, scratch) = filesystem.into_parts();
+                let Some(scratch) = scratch else {
+                    esp_hal::system::software_reset();
+                };
+                restore_filesystem_scratch(scratch_pool, scratch);
+                return Err(Usb0MscFilesystemProbeError::ExFatBootRegionChecksum);
+            }
+
             Ok((
-                Usb0MscFilesystemProbe::ExFat,
-                Usb0ActiveFileSystem::ExFat(partition),
+                Usb0MscFilesystemProbe::ExFat { boot },
+                Usb0ActiveFileSystem::ExFat(filesystem),
             ))
         }
     }
@@ -1897,7 +1936,15 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
                                         media.selection.range.first_block(),
                                     ))
                                 }
-                                Usb0MscFilesystemProbe::ExFat => None,
+                                Usb0MscFilesystemProbe::ExFat { boot } => {
+                                    Some(derive_exfat_volume_identity(
+                                        boot.volume_serial,
+                                        boot.bytes_per_sector,
+                                        boot.sectors_per_cluster,
+                                        boot.volume_length,
+                                        media.selection.range.first_block(),
+                                    ))
+                                }
                             };
                             USB0_LIBRARY_EVENTS.signal(Usb0LibraryEvent::Ready {
                                 binding,

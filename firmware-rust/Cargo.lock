@@ -3010,6 +3010,7 @@ dependencies = [
  "exfat-embedded",
  "pajoniiir-media-block",
  "pajoniiir-media-fs",
+ "pajoniiir-media-io",
  "pajoniiir-media-session",
 ]
 
