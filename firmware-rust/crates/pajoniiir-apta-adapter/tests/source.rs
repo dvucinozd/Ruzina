@@ -54,6 +54,16 @@ fn analyze<F: AsyncFileSystem>(
     );
     assert_eq!(source.source().fingerprint_kind, 2);
     let s = source.source();
+    let plan = pajoniiir_apta_adapter::storage::LocalTempoStorage::plan(
+        s.total_frames.unwrap(),
+        256,
+        17,
+        128,
+        108772,
+    )
+    .unwrap();
+    assert_eq!(plan.total_bytes, 108772);
+    assert_eq!(plan.overview_columns, 1250);
     let mut queue = [NormalizedSample::default(); 17]; // force partial acceptance
     let mut columns = vec![WaveformColumn::default(); 1250];
     let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
@@ -125,7 +135,13 @@ fn analyze_stream<F: AsyncFileSystem>(
     let mut bytes = [0; 4096];
     allocation::start();
     let request = SourceRequest::from_bank(&mut requests, media, &catalog, 0).unwrap();
-    let mut read = run(request.open_stream(&mut fs, &requests, media)).unwrap();
+    let limits = pajoniiir_apta_adapter::streaming::StreamLimits {
+        object_bytes: original.len() as u64,
+        duration_ms: 40_000,
+        scan_steps: 20_000,
+        processing_steps: 40_000,
+    };
+    let mut read = run(request.open_stream_with_limits(&mut fs, &requests, media, limits)).unwrap();
     let mut steps = 0;
     while !run(read.step(&mut fs, &requests, media, &mut bytes)).unwrap() {
         steps += 1;
@@ -139,6 +155,16 @@ fn analyze_stream<F: AsyncFileSystem>(
     );
     assert_eq!(source.source().fingerprint_kind, 2);
     let s = source.source();
+    let plan = pajoniiir_apta_adapter::storage::LocalTempoStorage::plan(
+        s.total_frames.unwrap(),
+        256,
+        17,
+        128,
+        108772,
+    )
+    .unwrap();
+    assert_eq!(plan.total_bytes, 108772);
+    assert_eq!(plan.overview_columns, 1250);
     let mut queue = [NormalizedSample::default(); 17]; // force partial acceptance
     let mut columns = vec![WaveformColumn::default(); 1250];
     let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
@@ -178,9 +204,7 @@ fn analyze_stream<F: AsyncFileSystem>(
         }
         assert!(done);
         run(worker.finish(&mut fs, &requests, media)).unwrap();
-        let mut worker = worker
-            .into_worker()
-            .unwrap_or_else(|_| panic!("verified worker"));
+        let worker = worker.verified_worker().unwrap();
         let completed = worker.complete(&requests, media, &mut bank).unwrap();
         let view = worker
             .waveform(&requests, media, &mut render, 0x07e0)

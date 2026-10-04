@@ -502,3 +502,12 @@ original lease checks and exclusive handle/buffer ownership. Neither cancellatio
 poisoning nor two-pass hashing solves backend resource recovery or future external
 media mutation. SRAM/PSRAM placement, full nested/future/task storage and measured
 coexistence/timing remain separate embedded gates under ADR-006/008.
+
+The experimental streaming consumer now supports caller-selected object, exact
+duration and per-pass step ceilings, and checked local-tempo caller-array sizing.
+These are explicit job policy, not production defaults. Verified output can be
+borrowed in place after second close/hash acceptance, avoiding large Session
+transfers through async caller temporaries. The adapter README records the full
+coroutine/Embassy pool diagnostic: individual step-future sizes substantially
+understate complete task storage and nested stack. Production analysis-client
+ownership, exFAT broker handles, memory placement and scheduling gates remain open.

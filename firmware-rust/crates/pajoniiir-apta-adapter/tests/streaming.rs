@@ -63,6 +63,7 @@ fn both_passes_reject_bad_io_and_dropped_pending_reads_and_close_once() {
                     Err(SourceError::Failed)
                 ));
                 assert!(run(w.finish(&mut fs, &r, &m)).is_err());
+                assert!(w.verified_worker().is_err());
                 assert!(w.into_worker().is_err());
                 assert_eq!(fs.closes, 2);
             } else {
@@ -130,6 +131,7 @@ fn changed_object_bytes_never_release_analysis_even_with_identical_geometry() {
             Err(SourceError::Failed)
         ));
         assert_eq!(fs.closes, 2);
+        assert!(w.verified_worker().is_err());
         assert!(w.into_worker().is_err());
     }
 }
@@ -179,6 +181,7 @@ fn close_failure_incomplete_pcm_and_nonfinite_input_cannot_release_worker() {
             r.cancel();
         }
         assert!(run(w.finish(&mut fs, &r, &m)).is_err());
+        assert!(w.verified_worker().is_err());
         assert!(w.into_worker().is_err());
         assert_eq!(fs.closes, 2);
     }
@@ -386,6 +389,7 @@ fn premature_extraction_preserves_handle_and_cancelled_close_never_authorizes_ou
             run(w.abort(&mut fs)).unwrap();
             assert!(run(w.abort(&mut fs)).is_err());
             assert_eq!(fs.closes, 2);
+            assert!(w.verified_worker().is_err());
             assert!(w.into_worker().is_err());
             continue;
         }
@@ -406,8 +410,10 @@ fn premature_extraction_preserves_handle_and_cancelled_close_never_authorizes_ou
         assert_eq!(fs.closes, 2);
         if case == 1 {
             assert!(run(w.finish(&mut fs, &r, &m)).is_err());
+            assert!(w.verified_worker().is_err());
             assert!(w.into_worker().is_err());
         } else {
+            assert!(w.verified_worker().is_ok());
             assert!(w.into_worker().is_ok());
         }
         assert_eq!(fs.closes, 2);

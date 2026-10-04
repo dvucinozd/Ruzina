@@ -11,6 +11,25 @@ use pajoniiir_media_fs::{AsyncFileSystem, FileHandle, LeaseBound};
 use pajoniiir_media_identity::Sha256;
 use pajoniiir_media_session::MediaSession;
 
+/// Caller policy for one two-pass job. Bounds are inclusive; zero permits no
+/// corresponding work. No value is a firmware default or an elapsed-time limit.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct StreamLimits {
+    pub object_bytes: u64,
+    pub duration_ms: u64,
+    pub scan_steps: u64,
+    pub processing_steps: u64,
+}
+impl StreamLimits {
+    /// Compatibility profile for callers enforcing their own policy externally.
+    pub const UNLIMITED: Self = Self {
+        object_bytes: u64::MAX,
+        duration_ms: u64::MAX,
+        scan_steps: u64::MAX,
+        processing_steps: u64::MAX,
+    };
+}
+
 struct Reader<H> {
     file: H,
     len: u64,
@@ -118,12 +137,32 @@ impl SourceRequest {
         requests: &Requests,
         media: &MediaSession,
     ) -> Result<ScanRead<F::File>, SourceError<F::Error>> {
+        self.open_stream_with_limits(fs, requests, media, StreamLimits::UNLIMITED)
+            .await
+    }
+    /// Reject oversized objects after open and before reading; close even on
+    /// rejection. Duration is checked after complete framing/close, before source
+    /// verification or any Session/output-bank construction. Open/close must run
+    /// to completion. Step limits count attempts, including cancelled pending I/O.
+    pub async fn open_stream_with_limits<F: AsyncFileSystem>(
+        self,
+        fs: &mut F,
+        requests: &Requests,
+        media: &MediaSession,
+        limits: StreamLimits,
+    ) -> Result<ScanRead<F::File>, SourceError<F::Error>> {
         let reader = open(&self, fs, requests, media).await?;
+        if reader.len > limits.object_bytes {
+            fs.close_file(reader.file).await.map_err(SourceError::Io)?;
+            return Err(SourceError::Limit);
+        }
         let scanner = WavScanner::new(reader.len);
         Ok(ScanRead {
             request: self,
             reader,
             scanner,
+            limits,
+            remaining_steps: limits.scan_steps,
         })
     }
 }
@@ -131,6 +170,8 @@ pub struct ScanRead<H> {
     request: SourceRequest,
     reader: Reader<H>,
     scanner: WavScanner,
+    limits: StreamLimits,
+    remaining_steps: u64,
 }
 impl<H: FileHandle> ScanRead<H> {
     /// One <=4096-byte read plus bounded framing/hash work; no PCM processing.
@@ -141,6 +182,16 @@ impl<H: FileHandle> ScanRead<H> {
         media: &MediaSession,
         scratch: &mut [u8; READ_BYTES],
     ) -> Result<bool, SourceError<F::Error>> {
+        if self.reader.failed {
+            return Err(SourceError::Failed);
+        }
+        if self.reader.offset != self.reader.len {
+            if self.remaining_steps == 0 {
+                self.reader.failed = true;
+                return Err(SourceError::Limit);
+            }
+            self.remaining_steps -= 1;
+        }
         let n = self
             .reader
             .read(fs, self.request.job, requests, media, scratch)
@@ -174,6 +225,12 @@ impl<H: FileHandle> ScanRead<H> {
         if layout.source().total_frames == Some(0) {
             return Err(SourceError::Contract);
         }
+        let source = layout.source();
+        if u128::from(source.total_frames.unwrap()) * 1000
+            > u128::from(self.limits.duration_ms) * u128::from(source.sample_rate)
+        {
+            return Err(SourceError::Limit);
+        }
         let mut request = self.request;
         request.job = requests
             .verify_source(request.job, media, identity)
@@ -183,6 +240,7 @@ impl<H: FileHandle> ScanRead<H> {
             layout,
             identity,
             len,
+            processing_steps: self.limits.processing_steps,
         })
     }
 }
@@ -192,6 +250,7 @@ pub struct VerifiedStream {
     layout: WavLayout,
     identity: SourceIdentity,
     len: u64,
+    processing_steps: u64,
 }
 impl VerifiedStream {
     pub fn source(&self) -> libapta::SourceInfo {
@@ -231,6 +290,7 @@ impl VerifiedStream {
             opened: false,
             failed: false,
             verified: false,
+            remaining_steps: self.processing_steps,
         })
     }
 }
@@ -251,6 +311,7 @@ pub struct StreamWorker<'s, 'b, H> {
     opened: bool,
     failed: bool,
     verified: bool,
+    remaining_steps: u64,
 }
 impl<H: FileHandle> StreamWorker<'_, '_, H> {
     /// Reopen the copied path without seeking. Drive this future to completion;
@@ -305,6 +366,13 @@ impl<H: FileHandle> StreamWorker<'_, '_, H> {
         self.worker
             .check(requests, media)
             .map_err(SourceError::Worker)?;
+        if self.done {
+            return Ok(true);
+        }
+        if self.remaining_steps == 0 {
+            return Err(SourceError::Limit);
+        }
+        self.remaining_steps -= 1;
         let reader = self.reader.as_mut().ok_or(SourceError::Failed)?;
         let start = self.layout.data_offset();
         let end = start + self.layout.data_bytes();
@@ -390,6 +458,16 @@ impl<H: FileHandle> StreamWorker<'_, '_, H> {
     }
 }
 impl<'s, H> StreamWorker<'s, '_, H> {
+    /// Borrow the ordinary worker in place after successful close/hash acceptance.
+    /// Avoids moving Session through an async caller's extraction/error temporaries.
+    /// Output views still borrow only their independent caller conversion banks.
+    pub fn verified_worker(&mut self) -> Result<&mut Worker<'s>, WorkerError> {
+        if !self.verified || self.failed {
+            return Err(WorkerError::Failed);
+        }
+        Ok(&mut self.worker)
+    }
+
     /// Synchronous extraction only after successful close/hash acceptance. No
     /// partial, aborted, cancelled or unverified analysis can escape.
     // Preserve a possibly open handle on misuse without allocating. This move

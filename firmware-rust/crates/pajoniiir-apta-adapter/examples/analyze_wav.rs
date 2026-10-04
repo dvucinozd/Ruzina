@@ -7,6 +7,8 @@ use libapta::{
 };
 use pajoniiir_apta_adapter::{
     source::SourceRequest,
+    storage::LocalTempoStorage,
+    streaming::StreamLimits,
     worker::{Pin, Requests},
 };
 use pajoniiir_media_catalog::{CatalogBuilder, CatalogText, CatalogTrack};
@@ -23,10 +25,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.len() != 3 {
         return Err("usage: analyze_wav INPUT.wav OUTPUT.ppm (new output only)".into());
     }
-    let len = std::fs::metadata(&args[1])?.len();
-    if len > 256 * 1024 * 1024 {
-        return Err("input exceeds 256 MiB host policy".into());
-    }
+    // Explicit host policy, checked against the opened object rather than a
+    // separate metadata snapshot. These are not firmware defaults.
+    let limits = StreamLimits {
+        object_bytes: 256 * 1024 * 1024,
+        duration_ms: 2 * 60 * 60 * 1000,
+        scan_steps: 1_000_000,
+        processing_steps: 4_000_000,
+    };
     let mut bytes = [0; 4096];
     let mut media = MediaSession::new();
     media.on_connect(MediaSourceId::new(1).unwrap());
@@ -56,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         path: args[1].clone().into(),
         lease,
     };
-    let mut read = ready(request.open_stream(&mut fs, &requests, &media))
+    let mut read = ready(request.open_stream_with_limits(&mut fs, &requests, &media, limits))
         .map_err(|e| format!("open: {e:?}"))?;
     loop {
         match ready(read.step(&mut fs, &requests, &media, &mut bytes)) {
@@ -72,7 +78,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ready(read.finish(&mut fs, &mut requests, &media)).map_err(|e| format!("source: {e:?}"))?;
     let total = wav.source().total_frames.unwrap();
     const FPC: u32 = 256;
-    let count = usize::try_from(total.div_ceil(FPC as u64))?;
+    let storage = LocalTempoStorage::plan(total, FPC, 256, 65536, 32 * 1024 * 1024)
+        .map_err(|e| format!("host caller-array budget: {e:?}"))?;
+    let count = storage.overview_columns;
+    println!(
+        "caller-array budget (two beat banks): {} bytes",
+        storage.total_bytes
+    );
     let mut columns = vec![WaveformColumn::default(); count];
     let mut queue = [NormalizedSample::default(); 256];
     let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
@@ -104,7 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             phase: 0,
             bpm_x100: 0
         };
-        65536
+        storage.beats_per_bank
     ];
     let mut output = vec![
         pajoniiir_waveform::WaveformColumn {
@@ -130,7 +142,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         ready(worker.finish(&mut fs, &requests, &media)).map_err(|e| format!("verify: {e:?}"))?;
-        let mut worker = worker.into_worker().map_err(|_| "unverified worker")?;
+        let worker = worker.verified_worker().map_err(|_| "unverified worker")?;
         let completed = worker
             .complete(&requests, &media, &mut beats)
             .map_err(|e| format!("analysis: {e:?}"))?;

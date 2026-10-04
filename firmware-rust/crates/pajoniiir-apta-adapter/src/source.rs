@@ -27,6 +27,8 @@ pub enum SourceError<E> {
     Worker(WorkerError),
     Io(E),
     Capacity,
+    /// Caller-chosen streaming work/object/duration limit exceeded.
+    Limit,
     Contract,
     Failed,
     Decode(libapta::Error),

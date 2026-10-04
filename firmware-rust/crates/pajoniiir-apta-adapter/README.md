@@ -415,3 +415,116 @@ objects, disassembly and reproducible scripts live only under
 `/home/shome/.local/share/Pajoniiir-M1/apta-evidence/`. Initial larger-future
 measurements/source are preserved alongside the final report. Broader i686,
 Windows/MSVC, AArch64 and Libapta-runtime sanitizer matrices were not rerun.
+
+## Streaming policy and full-task storage — 2026-10-04
+
+`SourceRequest::open_stream_with_limits` takes explicit `StreamLimits`: inclusive
+object bytes, duration in milliseconds, first-pass step attempts and second-pass
+step attempts. Zero allows none of the corresponding work. The existing
+`open_stream` preserves its externally governed profile through `UNLIMITED`.
+These values are caller policy; the adapter chooses no firmware defaults.
+
+The opened length is checked before reading, with the handle closed on rejection.
+Duration uses exact `frames * 1000 <= duration_ms * sample_rate` wide arithmetic
+at complete first-pass framing/close, before source verification and Session/bank
+construction. Fractional milliseconds are never rounded down into acceptance.
+A step budget is charged before starting work, including a pending read. Resume
+of the same future does not charge again. Exhaustion returns `SourceError::Limit`,
+poisons the job and prevents delivery; the caller must still finish/abort its
+handle. Close failure is reported as I/O failure. Completed step calls are
+idempotent and do not spend more budget or perform more I/O. Work counts include
+header/trailer processing and PCM backpressure; they are not deadlines and do
+not limit filesystem open/close latency or time spent awaiting one operation.
+
+`storage::LocalTempoStorage::plan` preflights known nonempty duration, the existing
+Session column geometry and checked target-`usize` array arithmetic against a
+caller byte ceiling. It reports onset/flux, queue, native/rendered overview,
+**two** retained beat banks and fixed byte/PCM scratch separately. Beat capacity
+remains caller policy; conversion can still reject insufficient capacity. The
+plan includes no control objects, filesystem, catalog, other tracks, framebuffer,
+executor, stack or optional global/key/detail/cache storage. It does not allocate
+or select SRAM/PSRAM placement. The tested 320000-frame / 256-frame-column /
+17-frame-queue / two 128-beat-bank profile is exactly **108772 B**; one byte less
+fails preflight. Output overflow and invalid/unknown geometry fail explicitly.
+
+The host example applies limits to the opened object (replacing a separate
+metadata snapshot): 256 MiB, two hours, one million scan steps, four million
+processing steps and 32 MiB for the above caller-array plan with 65536 beats per
+bank. These are host example policy, not firmware recommendations. The example
+uses one active beat bank while the conservative plan reserves space for two.
+Native FAT32/exFAT fixtures use exact object length, 40 seconds, 20000 scan steps,
+40000 processing steps and the 108772-byte profile. They still compare every beat
+and waveform column exactly against whole-object acquisition and drive real
+Deck Sync/Beat Jump and raster consumers with retained outputs.
+
+`StreamWorker::verified_worker` borrows the ordinary Worker in place after equal
+hashes and successful close. This avoids moving Session through an async caller's
+large extraction/error temporaries. Before verification, after error/abort or
+cancelled close it rejects access. Existing Worker request/media checks still
+apply on every use. The consuming `into_worker` API remains available and keeps
+its handle-recovery-on-premature-extraction contract. The example and native
+filesystem fixtures now use borrowed verified access.
+
+### Complete coroutine and Embassy diagnostic
+
+External `task-storage-probe` uses pinned Rust 1.95, Embassy executor **0.10.0**
+and futures **0.1.2**, matching the firmware's declared versions, with direct
+native FAT32/exFAT generic backends and caller-owned banks. It compiles actual
+`#[embassy_executor::task]` pools around a complete two-pass coroutine: finite
+scan, source verification, checked storage plan, Session configuration, cooperative
+yields, streaming, close/hash acceptance, retained conversion, Deck pin and a
+neutral analysis/waveform sink. A host test suspends every read once, resumes each
+future, and reaches 120 BPM / 80 beats / 4120 green pixels with zero allocations.
+This is a software diagnostic; it is not a registered firmware task, a USB broker
+client or a running Embassy executor acceptance test.
+
+The naive complete job exposed much larger storage than individual step probes.
+Borrowed verified access plus a separate synchronous constructor reduce its
+compiler-observed sizes as follows (FAT32 / exFAT, bytes):
+
+| Diagnostic | Initial | Final |
+|---|---:|---:|
+| Complete job future | 12968 / 13272 | 9424 / 9728 |
+| Embassy single-task pool including header/alignment | 13336 / 13640 | 9792 / 10096 |
+| Task polling frame, excluding nested calls | 33344 / 33280 | 21008 / 21424 |
+| Task initialization `write_in_place` frame | 13344 / 13648 | 9792 / 10096 |
+
+Final synchronous preparation separately uses **6976 B**; sector loading remains
+**1584 B**. The task polling frame calls preparation, so already that known nested
+path uses **27984 / 28400 B before preparation's own callees**, executor caller or
+interrupts. A small one-step future never established a safe task stack. The
+future is stored inside the task pool: do not add it, Session, StreamWorker or
+child I/O futures again to that pool. Caller arrays (108772 B) plus pool and
+native backend (592 / 600 B) total **119156 / 119468 B** before Requests/media,
+catalog, framebuffers, other live tracks, executor state and stack. These are
+identified storage subtotals, not a maximum, placement recommendation or runtime
+high-water measurement. Actual firmware executor features and backend/DMA/timing
+coexistence still require qualification. No hardware was operated.
+
+Reproduce serially with two build jobs using the external evidence scripts,
+including `verify-task-storage-probe.py`. The complete probe, lockfile, dated
+source snapshot, object, disassembly and host output are retained under
+`/home/shome/.local/share/Pajoniiir-M1/apta-evidence/`. The successful complete-job
+probe stamp is **20261004T210659Z**; earlier 210313Z/210423Z/210507Z retain the
+initial and intermediate measurements. The test-harness-only initial no_std
+prelude compile error was corrected without changing product source.
+
+Production prerequisites remain the foundation's unique analysis-client lifetime,
+pending ticket/completion draining and handle/buffer recovery (its file broker
+still returns `ExFatUnavailable`), then target placement and timing qualification.
+No client channel is borrowed, no foundation checkout is changed, and neither
+firmware nor Slint selects APTA. Original DSP accuracy and C compatibility remain
+independent gates.
+
+Final-source acceptance: `verify-consumer.py` **20261004T210742Z** passes
+**405 workspace tests**, **101 focused release tests**, **31 adapter tests plus
+one lifetime compile-fail doctest under ASan**, formatting/Clippy, allocation
+instrumentation and pinned P4 compilation/dependency/object inspection. Artifact
+rerun **20261004T210932Z** preserves exact impulse/silence PPM bytes. Native and
+streaming P4 probes pass at **20261004T210933Z / 20261004T210938Z**. Current policy
+control sizes are ScanRead **672 / 696 B**, StreamWorker **4264 / 4288 B** and
+VerifiedStream **464 B**. Streaming step futures/one-poll frames remain
+**1408 / 1440 B** and **1488 / 1520 B**. Compatibility first-pass open/finish
+futures are **3984 / 1856 B**; second-pass open/finish stay **2936 / 504 B**.
+Broader i686, Windows/MSVC, AArch64 and Libapta-runtime sanitizer matrices were
+not rerun. The portable Cargo pin remains unchanged.
