@@ -333,11 +333,9 @@ impl ProfileRegistry {
             return Err(ProfileActivationError::NotMatched);
         }
 
-        let slot = self
-            .profile(index)
-            .ok_or(ProfileActivationError::Registry(
-                ProfileRegistryError::InvalidIndex,
-            ))?;
+        let slot = self.profile(index).ok_or(ProfileActivationError::Registry(
+            ProfileRegistryError::InvalidIndex,
+        ))?;
         if slot.meta.vid != controller.vid || slot.meta.pid != controller.pid {
             return Err(ProfileActivationError::NotMatched);
         }
