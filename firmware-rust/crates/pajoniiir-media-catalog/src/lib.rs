@@ -422,10 +422,7 @@ impl<B: CatalogBank> CatalogBankPublisher<B> {
         self.current.as_ref()
     }
 
-    pub fn publish(
-        &mut self,
-        next: CatalogBankSnapshot<B>,
-    ) -> Option<CatalogBankSnapshot<B>> {
+    pub fn publish(&mut self, next: CatalogBankSnapshot<B>) -> Option<CatalogBankSnapshot<B>> {
         self.current.replace(next)
     }
 
