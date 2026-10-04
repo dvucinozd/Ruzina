@@ -10,7 +10,7 @@ use crate::entry_set::{ExFatEntrySetError, ExFatFileEntrySetParser, ExFatParsedF
 
 const EXFAT_FILE_ENTRY: u8 = 0x85;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ExFatAsyncFsError<E> {
     StaleLease,
     Io(ExFatAsyncIoError<E>),
@@ -643,7 +643,8 @@ mod tests {
                 return Err(((), buffer));
             }
             let start = first_block as usize * 512;
-            buffer.copy_from_slice(&self.bytes[start..start + buffer.len()]);
+            let len = buffer.len();
+            buffer.copy_from_slice(&self.bytes[start..start + len]);
             Ok(buffer)
         }
     }
