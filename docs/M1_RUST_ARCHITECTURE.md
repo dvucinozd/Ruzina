@@ -352,6 +352,8 @@ PSRAM is preferred for large retained data:
 
 The released library-memory policy is now CI-enforced from actual Rust type sizes rather than hand estimates: one 1024-track catalog builder and one published catalog bank must each remain within 1 MiB, their transactional coexistence within 2 MiB, and all three 512-entry Rekordbox name staging maps within 256 KiB. These are placement budgets, not proof that PSRAM is safe for every access pattern.
 
+The P4 firmware now exposes an explicit `p4-psram-storage` compile gate. Under that feature the ESP32-P4 PSRAM peripheral is initialized through `esp-hal` and its mapped region is registered with `esp-alloc` as external heap storage. CI cross-checks the feature independently and links it together with USB0 bring-up. No catalog/name-map allocation is routed there yet; this commit establishes only the platform placement boundary.
+
 No subsystem may assume PSRAM is DMA-safe without an explicit hardware/platform proof.
 
 ## 17. Unsafe policy

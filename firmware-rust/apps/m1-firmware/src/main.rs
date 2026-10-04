@@ -44,6 +44,14 @@ async fn main(spawner: Spawner) -> ! {
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
+    #[cfg(feature = "p4-psram-storage")]
+    {
+        // Compile-verified placement boundary only. The allocator maps ESP32-P4
+        // PSRAM as external heap storage, but DMA/cache behavior and the custom
+        // M1 board's physical PSRAM remain HARDWARE_PENDING until EVT.
+        esp_alloc::psram_allocator!(peripherals.PSRAM, esp_hal::psram);
+    }
+
     // esp-rtos owns the Embassy scheduler/time driver. Start it before any
     // spawned task or timer is allowed to run.
     let timg0 = TimerGroup::new(peripherals.TIMG0);

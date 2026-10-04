@@ -1382,6 +1382,7 @@ dependencies = [
  "embassy-sync 0.8.0",
  "embassy-usb-driver",
  "embassy-usb-host",
+ "esp-alloc",
  "esp-hal",
  "esp-rtos",
  "pajoniiir-audio-dsp",

@@ -10,6 +10,9 @@ default = []
 # Compile-verified target wiring only. Do not enable in normal firmware until
 # USB0 VBUS/power switching, PHY and hot-plug are EVT-verified.
 usb0-hardware-bringup = []
+# Compile-verified PSRAM allocator boundary for large retained library/UI storage.
+# This does not claim DMA/cache coherency or hardware qualification.
+p4-psram-storage = ["dep:esp-alloc"]
 
 [dependencies]
 embassy-executor = { version = "=0.10.0", default-features = false }
@@ -17,6 +20,7 @@ embassy-futures = { version = "=0.1.2", default-features = false }
 embassy-usb-driver = { version = "=0.2.2", default-features = false }
 embassy-usb-host = { version = "=0.1.0", default-features = false }
 embassy-sync = { version = "=0.8.0", default-features = false }
+esp-alloc = { version = "=0.11.0", default-features = false, features = ["esp32p4", "global-allocator"], optional = true }
 esp-hal = { version = "=1.2.2", features = ["esp32p4", "unstable"] }
 esp-rtos = { version = "=0.4.0", default-features = false, features = ["embassy", "esp32p4"] }
 static_cell = { version = "=2.1.1", default-features = false }
