@@ -2,10 +2,14 @@
 #![forbid(unsafe_code)]
 
 mod async_fs;
+mod entry_set;
 
 pub use async_fs::{
     ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncIoError, ExFatAsyncMountError,
     ExFatAsyncVolume, parse_exfat_boot_sector,
+};
+pub use entry_set::{
+    ExFatEntrySetError, ExFatFileEntrySetParser, ExFatParsedFileEntry,
 };
 
 pub type BackendFsError<E> = exfat_embedded::Error<ExFatBlockError<E>>;
