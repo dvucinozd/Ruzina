@@ -35,7 +35,7 @@ supported P4 revision is available.
 
 Feature `p4-psram-storage` enables the compile-verified ESP32-P4 PSRAM placement boundary. It initializes the PSRAM peripheral through `esp-hal` and registers the mapped region with `esp-alloc = 0.11.0` as external heap storage.
 
-This gate is intentionally narrower than a product-storage implementation: the 1024-track catalog banks and three 512-entry Rekordbox name maps are not yet allocated from this heap. The feature proves API/link integration only. Cache coherency, DMA suitability, sustained access behavior and the custom M1 board's physical PSRAM remain `HARDWARE_PENDING` until EVT hardware exists.
+This gate is intentionally narrower than full product-storage qualification: the three 512-entry Rekordbox name maps now use this heap when the feature is enabled, while the 1024-track catalog banks are still being moved onto the same boundary. Cache coherency, DMA suitability, sustained access behavior and the custom M1 board's physical PSRAM remain `HARDWARE_PENDING` until EVT hardware exists.
 
 CI checks the feature independently and also links it together with `usb0-hardware-bringup` so PSRAM and USB0 peripheral ownership cannot silently diverge at compile time.
 

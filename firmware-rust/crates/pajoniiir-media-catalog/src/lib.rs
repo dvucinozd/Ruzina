@@ -267,6 +267,195 @@ impl<const N: usize> Default for CatalogPublisher<N> {
     }
 }
 
+/// Storage contract for a bounded catalog bank.
+///
+/// Implementations may place the backing storage in internal RAM, PSRAM or a
+/// host-owned fixture. `push_prechecked` is called only after the builder has
+/// verified capacity and duplicate identities.
+pub trait CatalogBank {
+    fn capacity(&self) -> usize;
+    fn tracks(&self) -> &[CatalogTrack];
+    fn clear(&mut self);
+    fn push_prechecked(&mut self, track: CatalogTrack) -> usize;
+}
+
+/// Storage-generic transactional builder used when the catalog backing cannot
+/// live inline in the builder value (for example, a large PSRAM allocation).
+pub struct CatalogBankBuilder<B> {
+    lease: MediaLease,
+    bank: B,
+}
+
+impl<B: CatalogBank> CatalogBankBuilder<B> {
+    pub fn new(lease: MediaLease, mut bank: B) -> Self {
+        bank.clear();
+        Self { lease, bank }
+    }
+
+    pub const fn lease(&self) -> MediaLease {
+        self.lease
+    }
+
+    pub fn len(&self) -> usize {
+        self.bank.tracks().len()
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.bank.capacity()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.len() >= self.capacity()
+    }
+
+    pub fn tracks(&self) -> &[CatalogTrack] {
+        self.bank.tracks()
+    }
+
+    pub fn push(&mut self, track: CatalogTrack) -> Result<usize, CatalogBuildError> {
+        let capacity = self.capacity();
+        if self.len() >= capacity {
+            return Err(CatalogBuildError::Full { capacity });
+        }
+        if self
+            .tracks()
+            .iter()
+            .any(|existing| existing.track_id == track.track_id)
+        {
+            return Err(CatalogBuildError::DuplicateTrackId(track.track_id));
+        }
+        if self
+            .tracks()
+            .iter()
+            .any(|existing| existing.source_track_id == track.source_track_id)
+        {
+            return Err(CatalogBuildError::DuplicateSourceTrackId(
+                track.source_track_id,
+            ));
+        }
+
+        let expected = self.len();
+        let index = self.bank.push_prechecked(track);
+        debug_assert_eq!(index, expected);
+        debug_assert_eq!(self.len(), expected + 1);
+        Ok(index)
+    }
+
+    pub fn finish(self, revision: u32) -> CatalogBankSnapshot<B> {
+        CatalogBankSnapshot {
+            lease: self.lease,
+            revision,
+            bank: self.bank,
+        }
+    }
+
+    pub fn into_bank(self) -> B {
+        self.bank
+    }
+}
+
+#[derive(Clone)]
+pub struct CatalogBankSnapshot<B> {
+    lease: MediaLease,
+    revision: u32,
+    bank: B,
+}
+
+impl<B: CatalogBank> CatalogBankSnapshot<B> {
+    pub const fn lease(&self) -> MediaLease {
+        self.lease
+    }
+
+    pub const fn revision(&self) -> u32 {
+        self.revision
+    }
+
+    pub fn len(&self) -> usize {
+        self.bank.tracks().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn tracks(&self) -> &[CatalogTrack] {
+        self.bank.tracks()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&CatalogTrack> {
+        self.tracks().get(index)
+    }
+
+    pub fn find_by_track_id(&self, track_id: MediaTrackId) -> Option<(usize, &CatalogTrack)> {
+        self.tracks()
+            .iter()
+            .enumerate()
+            .find(|(_, track)| track.track_id == track_id)
+    }
+
+    pub fn find_by_source_track_id(&self, source_track_id: u32) -> Option<(usize, &CatalogTrack)> {
+        self.tracks()
+            .iter()
+            .enumerate()
+            .find(|(_, track)| track.source_track_id == source_track_id)
+    }
+
+    pub fn into_bank(self) -> B {
+        self.bank
+    }
+}
+
+pub struct CatalogBankPublisher<B> {
+    current: Option<CatalogBankSnapshot<B>>,
+}
+
+impl<B: CatalogBank> CatalogBankPublisher<B> {
+    pub const fn new() -> Self {
+        Self { current: None }
+    }
+
+    pub const fn current(&self) -> Option<&CatalogBankSnapshot<B>> {
+        self.current.as_ref()
+    }
+
+    pub fn publish(
+        &mut self,
+        next: CatalogBankSnapshot<B>,
+    ) -> Option<CatalogBankSnapshot<B>> {
+        self.current.replace(next)
+    }
+
+    pub fn take_current(&mut self) -> Option<CatalogBankSnapshot<B>> {
+        self.current.take()
+    }
+
+    pub fn take_if_lease(&mut self, lease: MediaLease) -> Option<CatalogBankSnapshot<B>> {
+        if self
+            .current
+            .as_ref()
+            .is_some_and(|snapshot| snapshot.lease == lease)
+        {
+            self.current.take()
+        } else {
+            None
+        }
+    }
+
+    pub fn invalidate(&mut self, lease: MediaLease) -> bool {
+        self.take_if_lease(lease).is_some()
+    }
+}
+
+impl<B: CatalogBank> Default for CatalogBankPublisher<B> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub const MEDIA_CATALOG_BANK_BUDGET_BYTES: usize = 1_024 * 1_024;
 pub const MEDIA_CATALOG_TRANSACTION_BUDGET_BYTES: usize = 2 * 1_024 * 1_024;
 pub const MEDIA_CATALOG_BUILDER_BYTES: usize =
@@ -275,6 +464,8 @@ pub const MEDIA_CATALOG_PUBLISHER_BYTES: usize =
     core::mem::size_of::<CatalogPublisher<MEDIA_CATALOG_MAX_TRACKS>>();
 pub const MEDIA_CATALOG_TRANSACTION_BYTES: usize =
     MEDIA_CATALOG_BUILDER_BYTES + MEDIA_CATALOG_PUBLISHER_BYTES;
+pub const MEDIA_CATALOG_TRACK_STORAGE_BYTES: usize =
+    core::mem::size_of::<CatalogTrack>() * MEDIA_CATALOG_MAX_TRACKS;
 
 #[cfg(test)]
 mod tests {
@@ -313,7 +504,73 @@ mod tests {
             assert!(MEDIA_CATALOG_BUILDER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
             assert!(MEDIA_CATALOG_PUBLISHER_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
             assert!(MEDIA_CATALOG_TRANSACTION_BYTES <= MEDIA_CATALOG_TRANSACTION_BUDGET_BYTES);
+            assert!(MEDIA_CATALOG_TRACK_STORAGE_BYTES <= MEDIA_CATALOG_BANK_BUDGET_BYTES);
         }
+    }
+
+    #[derive(Clone)]
+    struct TestBank<const N: usize> {
+        tracks: [CatalogTrack; N],
+        len: usize,
+    }
+
+    impl<const N: usize> TestBank<N> {
+        const fn new() -> Self {
+            Self {
+                tracks: [CatalogTrack::EMPTY; N],
+                len: 0,
+            }
+        }
+    }
+
+    impl<const N: usize> CatalogBank for TestBank<N> {
+        fn capacity(&self) -> usize {
+            N
+        }
+
+        fn tracks(&self) -> &[CatalogTrack] {
+            &self.tracks[..self.len]
+        }
+
+        fn clear(&mut self) {
+            self.len = 0;
+        }
+
+        fn push_prechecked(&mut self, track: CatalogTrack) -> usize {
+            assert!(self.len < N);
+            let index = self.len;
+            self.tracks[index] = track;
+            self.len += 1;
+            index
+        }
+    }
+
+    #[test]
+    fn storage_backed_catalog_banks_publish_and_recycle_transactionally() {
+        let mut publisher = CatalogBankPublisher::<TestBank<2>>::new();
+
+        let mut first = CatalogBankBuilder::new(lease(1), TestBank::new());
+        first.push(track(1, 10, "Old")).unwrap();
+        assert!(publisher.publish(first.finish(1)).is_none());
+
+        let mut next = CatalogBankBuilder::new(lease(2), TestBank::new());
+        next.push(track(2, 20, "New")).unwrap();
+        assert_eq!(
+            publisher.current().unwrap().get(0).unwrap().title.as_str(),
+            "Old"
+        );
+
+        let retired = publisher.publish(next.finish(2)).unwrap();
+        assert_eq!(retired.revision(), 1);
+        let recycled = retired.into_bank();
+
+        let rebuilt = CatalogBankBuilder::new(lease(3), recycled);
+        assert!(rebuilt.is_empty());
+        assert_eq!(rebuilt.capacity(), 2);
+        assert_eq!(
+            publisher.current().unwrap().get(0).unwrap().title.as_str(),
+            "New"
+        );
     }
 
     #[test]

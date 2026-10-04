@@ -932,6 +932,16 @@ impl<const N: usize> Default for PdbNameMap<N> {
     }
 }
 
+pub trait PdbNameLookup {
+    fn lookup(&self, id: u32) -> Option<&PdbText<PDB_NAME_MAX>>;
+}
+
+impl<const N: usize> PdbNameLookup for PdbNameMap<N> {
+    fn lookup(&self, id: u32) -> Option<&PdbText<PDB_NAME_MAX>> {
+        PdbNameMap::lookup(self, id)
+    }
+}
+
 pub const PDB_NAME_MAP_BUDGET_BYTES: usize = 64 * 1_024;
 pub const PDB_NAME_STAGE_BUDGET_BYTES: usize = 256 * 1_024;
 pub const PDB_NAME_MAP_BYTES: usize = core::mem::size_of::<PdbNameMap<PDB_MAX_NAMES>>();
@@ -1067,12 +1077,17 @@ pub struct PdbResolvedNames<'a> {
     pub key: Option<&'a PdbText<PDB_NAME_MAX>>,
 }
 
-pub fn resolve_pdb_track_names<'a, const A: usize, const B: usize, const K: usize>(
+pub fn resolve_pdb_track_names<'a, A, B, K>(
     track: &PdbTrackRow,
-    artists: &'a PdbNameMap<A>,
-    albums: &'a PdbNameMap<B>,
-    keys: &'a PdbNameMap<K>,
-) -> PdbResolvedNames<'a> {
+    artists: &'a A,
+    albums: &'a B,
+    keys: &'a K,
+) -> PdbResolvedNames<'a>
+where
+    A: PdbNameLookup + ?Sized,
+    B: PdbNameLookup + ?Sized,
+    K: PdbNameLookup + ?Sized,
+{
     PdbResolvedNames {
         artist: artists.lookup(track.artist_id),
         album: albums.lookup(track.album_id),
