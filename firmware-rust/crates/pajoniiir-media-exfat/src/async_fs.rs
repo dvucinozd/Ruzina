@@ -548,6 +548,7 @@ mod tests {
         BadTransfer,
     }
 
+    #[derive(Debug)]
     struct MemoryOwnedDevice {
         bytes: [u8; 64 * 512],
     }
