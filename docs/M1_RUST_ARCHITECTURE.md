@@ -245,7 +245,24 @@ libapta native/cache --/
 
 The analysis model owns BPM/grid/waveform/meter/downbeat/key/confidence/provenance data as applicable. A loaded deck pins an immutable generation.
 
-libapta is integrated only after its upstream embedded/release gates are met; the neutral model is implemented before that dependency.
+Production libapta integration remains gated on upstream embedded/release
+acceptance (ADR-006 and M1R-P1-001).
+
+An isolated experimental [native adapter](../firmware-rust/crates/pajoniiir-apta-adapter/README.md)
+now depends directly on a pinned portable Libapta revision. Its host tests process
+PCM through the existing engine into immutable `TrackAnalysis`, exercise Deck
+Sync/Beat Jump, retain generations, round-trip an identity-checked local-grid
+cache and render the existing whole-track waveform. Neither firmware nor the
+Slint simulator selects this provider. The host WAV example is an analysis-worker
+demonstration, not an audio callback or production enablement.
+
+Conversion storage belongs to the caller. Full source identity and native lineage
+stay with the adapter's pinned analysis; the neutral generation width is checked.
+Unsupported coverage/authority, coordinate overflow and capacity failure are
+explicit. P4 compilation proves the no_std software dependency boundary only;
+worker scheduling, PSRAM/internal SRAM placement, DMA/cache and complete task-stack
+qualification remain open. C ABI emulation and ESP-IDF are not prerequisites for
+this native Rust consumer. See the adapter contract for exact supported profiles.
 
 ## 11. Networking
 

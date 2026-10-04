@@ -2187,6 +2187,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "libapta"
+version = "0.1.0"
+source = "git+https://github.com/dvucinozd/libapta-audio.git?rev=03b0643aaedc7b362a2556d8bcc563b78ac526ec#03b0643aaedc7b362a2556d8bcc563b78ac526ec"
+dependencies = [
+ "libm",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2888,6 +2896,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-apta-adapter"
+version = "0.1.0"
+dependencies = [
+ "libapta",
+ "pajoniiir-controller-core",
+ "pajoniiir-core",
+ "pajoniiir-deck",
+ "pajoniiir-track-analysis",
+ "pajoniiir-waveform",
+]
+
+[[package]]
 name = "pajoniiir-audio-dsp"
 version = "0.1.0"
 dependencies = [
@@ -3048,19 +3068,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "pajoniiir-rekordbox"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-media-catalog",
- "pajoniiir-media-identity",
-]
-
-[[package]]
 name = "pajoniiir-mixer"
 version = "0.1.0"
 dependencies = [
  "pajoniiir-audio-dsp",
  "pajoniiir-controller-core",
+]
+
+[[package]]
+name = "pajoniiir-rekordbox"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-media-catalog",
+ "pajoniiir-media-identity",
 ]
 
 [[package]]

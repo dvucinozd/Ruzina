@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/pajoniiir-apta-adapter",
     "apps/desktop-simulator",
     "crates/pajoniiir-audio-dsp",
     "crates/pajoniiir-audio-keylock",

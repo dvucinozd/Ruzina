@@ -54,3 +54,8 @@ jobs:
 
       - name: Desktop simulator compile gate
         run: cargo check --locked -p desktop-simulator
+
+      - name: Experimental native APTA portable boundary
+        run: |
+          rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
+          cargo check --locked -p pajoniiir-apta-adapter --lib --target riscv32imafc-unknown-none-elf
