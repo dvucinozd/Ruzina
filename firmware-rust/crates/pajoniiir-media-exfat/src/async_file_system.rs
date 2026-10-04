@@ -295,7 +295,9 @@ where
         }
 
         let mut raw = [0u8; 32];
-        let read = self.fs_read_allocation(&mut directory.cursor, &mut raw).await?;
+        let read = self
+            .fs_read_allocation(&mut directory.cursor, &mut raw)
+            .await?;
         if read == 0 {
             directory.ended = true;
             return Ok(None);
