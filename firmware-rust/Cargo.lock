@@ -2947,6 +2947,7 @@ dependencies = [
  "pajoniiir-control-scheduler",
  "pajoniiir-controller-core",
  "pajoniiir-controller-profile",
+ "pajoniiir-controller-usb",
 ]
 
 [[package]]

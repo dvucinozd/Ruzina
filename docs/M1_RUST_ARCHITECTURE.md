@@ -469,3 +469,10 @@ CI independently cross-compiles this SDMMC boundary and also release-links it to
 Profile activation across microSD I/O now has an explicit stale-binding guard. `ProfileRegistry::begin_activation` captures a bounded ticket containing the matched registry index, connected VID/PID/capability/epoch snapshot, and the validated S3CP metadata expected from storage. After the potentially asynchronous file read, `validate_activation_blob` rechecks that the same physical connection and registry binding are still current and reparses the complete profile before it can be committed active.
 
 A disconnect/reconnect, a conflicting/newer connection epoch, or a registry rescan invalidates the outstanding ticket. Profile bytes whose validated metadata no longer matches the scanned registry entry are also rejected. This ports the released C manager's read-outside-lock / revalidate-before-commit invariant into the Rust domain layer without holding a lock across storage I/O.
+
+
+### USB-MIDI to semantic-session ingest boundary
+
+The controller session now accepts the transport-level `UsbMidiEvent` directly and converts only validated MIDI channel-voice packets into the existing S3CP runtime. USB framing therefore terminates before semantic scheduling/reconciliation; the profile/session layer never parses endpoint buffers itself.
+
+S3CP v2 has no virtual-cable selector, so R1 fails closed for non-zero USB-MIDI cable numbers rather than silently merging multiple virtual cables. SysEx and other non-channel-voice CIN values remain ignored by the S3CP control runtime, consistent with ADR-004's explicit SysEx/MIDI-CI deferral. These outcomes are typed and host-tested.
