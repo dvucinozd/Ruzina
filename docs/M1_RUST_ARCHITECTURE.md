@@ -444,3 +444,12 @@ CI cross-compiles USB1 independently and links USB0 + USB1 + PSRAM together. Phy
 Above USB1 enumeration, `pajoniiir-controller-usb` now provides a transport-neutral locator for alternate-setting-zero Audio/MIDIStreaming interfaces plus allocation-free USB-MIDI 1.0 event-packet encode/decode. It preserves cable number, CIN, payload length, channel-voice status and endpoint max-packet sizes rather than collapsing USB framing into semantic controller events.
 
 The ESP32-P4 USB1 adapter allocates Embassy typed bulk IN and optional bulk OUT pipes from the enumerated device address and route. It rejects invalid Full-Speed bulk max-packet sizes and keeps pipe lifetime bounded to the current enumerated device. This layer intentionally stops before S3CP/profile dispatch: USB transport qualification, controller profile selection and product semantics remain separate gates.
+
+
+### Controller profile registry and binding state
+
+The released controller-profile selection state machine is now represented in the `no_std` Rust profile crate instead of being deferred to target glue. The bounded registry accepts at most 16 validated S3CP v2 profiles, keeps profile IDs to the released ASCII directory policy, matches controllers by exact VID/PID, and retains explicit `Idle / Matched / Activating / Active / Failed / Unsupported` states.
+
+Connection descriptors carry a monotonic wrapping epoch. A descriptor with an old epoch, or the same epoch with a conflicting VID/PID, is rejected before it can replace the live binding. Rescanning profile storage preserves the current physical descriptor but intentionally drops the active profile back to `Matched`, forcing the newly read bytes to be revalidated and reactivated before use.
+
+This is the HAL-independent half of the microSD profile manager. Profile bytes remain external `/controllers/<id>/profile.s3bin` data; they are not embedded into the firmware image. The SD/MMC scanner, transactional upload/backup recovery and target activation worker remain separate platform boundaries.
