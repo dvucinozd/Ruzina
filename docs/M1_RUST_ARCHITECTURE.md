@@ -408,3 +408,8 @@ The following cannot be considered closed without physical M1/P4 hardware:
 - thermal/load/soak tests.
 
 Host success is necessary but not a substitute for these gates.
+
+
+### Native async exFAT mount boundary
+
+The USB0 target validates exFAT boot geometry and the main boot-region checksum through the owned-buffer asynchronous block transport, retains the logical-sector scratch buffer with the mounted volume, and derives a domain-separated exFAT volume identity. File/directory broker operations remain fail-closed until native exFAT handles are wired; the synchronous exFAT backend is not used from Embassy.
