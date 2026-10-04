@@ -476,3 +476,10 @@ A disconnect/reconnect, a conflicting/newer connection epoch, or a registry resc
 The controller session now accepts the transport-level `UsbMidiEvent` directly and converts only validated MIDI channel-voice packets into the existing S3CP runtime. USB framing therefore terminates before semantic scheduling/reconciliation; the profile/session layer never parses endpoint buffers itself.
 
 S3CP v2 has no virtual-cable selector, so R1 fails closed for non-zero USB-MIDI cable numbers rather than silently merging multiple virtual cables. SysEx and other non-channel-voice CIN values remain ignored by the S3CP control runtime, consistent with ADR-004's explicit SysEx/MIDI-CI deferral. These outcomes are typed and host-tested.
+
+
+### SDIO to native filesystem block boundary
+
+The initialized SD card is now adaptable directly to `pajoniiir_media_io::OwnedBlockDevice`. The target wrapper retains the exact `sdio::BlockDevice<Card, Slot<0, Async>, Delay, 512>`, exposes a synchronous `BlockGeometry` from the card's reported block count, and transfers one aligned 512-byte caller-owned buffer through the asynchronous SDIO read path. Transfer bounds and the u64→u32 SD block-address conversion fail closed.
+
+The buffer is `aligned::Aligned<A4, [u8; 512]>`, matching `block-device-driver 0.2.0` and avoiding an intermediate sector copy. This makes the existing `AsyncPartitionDevice` and native `Fat32AsyncFileSystem` reusable for microSD profile storage; no second FAT implementation is introduced.

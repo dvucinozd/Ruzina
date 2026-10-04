@@ -73,3 +73,10 @@ On ESP32-P4 the USB1 owner can allocate typed Embassy `Bulk/In` and optional `Bu
 Feature `sdmmc-profile-storage-bringup` now binds the M1 board-authoritative ESP32-P4 SDMMC slot-0 path: `GPIO39..42 = D0..D3`, `GPIO43 = CLK`, `GPIO44 = CMD`, `GPIO45 = SD_PWR_EN`, and `GPIO46 = SD_CARD_DETECT`. The task uses the native `esp-hal 1.2.2` `SdHostController`, converts slot 0 to interrupt-driven async mode, waits for the controlled 3V3_SD rail to settle, and constructs the official `sdio 0.5.1` SD-card block device. Initialization uses the conservative 25 MHz product baseline and the recoverable `new_uninit_sd_card + reacquire` path so a failed attempt does not discard bus ownership.
 
 This is intentionally **COMPILE_VERIFIED / HARDWARE_PENDING**. Successful card initialization, rail timing, hot-plug/recovery, filesystem mounting, `/controllers` scanning and profile activation still require EVT hardware and follow-on software gates. CI additionally links SDMMC together with USB0 HS, USB1 FS and PSRAM so peripheral/pin ownership conflicts are caught before EVT hardware exists.
+
+
+### SDIO owned-block adapter
+
+The microSD target now has a zero-allocation adapter from the initialized `sdio::BlockDevice<Card, ..., 512>` into Pajoniiir's existing `OwnedBlockDevice` contract. Its caller-owned sector buffer is a 4-byte-aligned 512-byte value matching the `block-device-driver` requirement, and the geometry is frozen from the SD card's reported block count after successful initialization.
+
+This deliberately reuses the same native async FAT32 path already exercised by USB0 instead of introducing a second filesystem implementation for controller profiles. The adapter is compile-verified only; real sector reads and media-error recovery remain hardware-pending.
