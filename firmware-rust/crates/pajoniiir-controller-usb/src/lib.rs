@@ -62,7 +62,6 @@ pub enum ControllerUsbDescriptorError {
     EndpointTooShort { offset: usize },
 }
 
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct UsbEndpointDescriptor {
     pub address: u8,
@@ -467,7 +466,6 @@ mod tests {
         assert!(c.has_audio_output());
     }
 
-
     #[test]
     fn locates_midi_streaming_bulk_endpoints() {
         let (bytes, used) = composite_fixture();
@@ -513,7 +511,10 @@ mod tests {
         assert_eq!(cc.to_usb_event().as_usb_packet(), [0x2b, 0xb3, 0x10, 0x40]);
 
         let program = MidiChannelVoice::new(0, 0xc0, 0x05, None).unwrap();
-        assert_eq!(program.to_usb_event().as_usb_packet(), [0x0c, 0xc0, 0x05, 0x00]);
+        assert_eq!(
+            program.to_usb_event().as_usb_packet(),
+            [0x0c, 0xc0, 0x05, 0x00]
+        );
     }
 
     #[test]
