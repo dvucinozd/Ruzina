@@ -462,3 +462,10 @@ The profile-storage platform boundary now has a target-side compile gate matchin
 The `sdmmc-profile-storage-bringup` task constructs the native `esp-hal 1.2.2` SD host, binds the fixed slot-0 IO-MUX pins, owns the power-enable/card-detect pins, switches the slot into async interrupt-driven mode, and then deliberately stops. Card protocol initialization, FAT profile storage, transactional install/recovery and profile activation remain separate follow-on gates.
 
 CI independently cross-compiles this SDMMC boundary and also release-links it together with USB0 HS, USB1 FS and PSRAM, proving compile-time resource coexistence only. Electrical rail timing, back-power avoidance, SD signal integrity, hot-plug and filesystem behavior remain `HARDWARE_PENDING`.
+
+
+### Connection-safe profile activation tickets
+
+Profile activation across microSD I/O now has an explicit stale-binding guard. `ProfileRegistry::begin_activation` captures a bounded ticket containing the matched registry index, connected VID/PID/capability/epoch snapshot, and the validated S3CP metadata expected from storage. After the potentially asynchronous file read, `validate_activation_blob` rechecks that the same physical connection and registry binding are still current and reparses the complete profile before it can be committed active.
+
+A disconnect/reconnect, a conflicting/newer connection epoch, or a registry rescan invalidates the outstanding ticket. Profile bytes whose validated metadata no longer matches the scanned registry entry are also rejected. This ports the released C manager's read-outside-lock / revalidate-before-commit invariant into the Rust domain layer without holding a lock across storage I/O.

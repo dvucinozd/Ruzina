@@ -110,6 +110,27 @@ pub enum ProfileActivationState {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProfileActivationTicket {
+    index: u8,
+    controller: ConnectedController,
+    expected_meta: ProfileMeta,
+}
+
+impl ProfileActivationTicket {
+    pub const fn index(self) -> u8 {
+        self.index
+    }
+
+    pub const fn controller(self) -> ConnectedController {
+        self.controller
+    }
+
+    pub const fn expected_meta(self) -> ProfileMeta {
+        self.expected_meta
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ConnectedController {
     pub vid: u16,
     pub pid: u16,
@@ -127,6 +148,19 @@ pub enum DescriptorApply {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DescriptorError {
     StaleOrConflictingEpoch,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProfileActivationError {
+    Registry(ProfileRegistryError),
+    NoConnectedController,
+    NotMatched,
+    StaleBinding,
+    InvalidProfile(ProfileMetaError),
+    MetadataChanged {
+        expected: ProfileMeta,
+        actual: ProfileMeta,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -284,6 +318,91 @@ impl ProfileRegistry {
         self.active_index = None;
         self.activation_state = ProfileActivationState::Idle;
         was_present
+    }
+
+    pub fn begin_activation(
+        &mut self,
+        index: u8,
+    ) -> Result<ProfileActivationTicket, ProfileActivationError> {
+        self.require_index(index)
+            .map_err(ProfileActivationError::Registry)?;
+        let controller = self
+            .connected
+            .ok_or(ProfileActivationError::NoConnectedController)?;
+        if self.matched_index != Some(index) {
+            return Err(ProfileActivationError::NotMatched);
+        }
+
+        let slot = self
+            .profile(index)
+            .ok_or(ProfileActivationError::Registry(
+                ProfileRegistryError::InvalidIndex,
+            ))?;
+        if slot.meta.vid != controller.vid || slot.meta.pid != controller.pid {
+            return Err(ProfileActivationError::NotMatched);
+        }
+
+        self.active_index = None;
+        self.activation_state = ProfileActivationState::Activating;
+
+        Ok(ProfileActivationTicket {
+            index,
+            controller,
+            expected_meta: slot.meta,
+        })
+    }
+
+    pub fn activation_ticket_is_current(&self, ticket: ProfileActivationTicket) -> bool {
+        self.connected == Some(ticket.controller)
+            && self.matched_index == Some(ticket.index)
+            && self.activation_state == ProfileActivationState::Activating
+            && self.profile(ticket.index).map(|slot| slot.meta) == Some(ticket.expected_meta)
+    }
+
+    pub fn validate_activation_blob<'a>(
+        &self,
+        ticket: ProfileActivationTicket,
+        blob: &'a [u8],
+    ) -> Result<Profile<'a>, ProfileActivationError> {
+        if !self.activation_ticket_is_current(ticket) {
+            return Err(ProfileActivationError::StaleBinding);
+        }
+
+        let actual = ProfileMeta::parse(blob).map_err(ProfileActivationError::InvalidProfile)?;
+        if actual != ticket.expected_meta {
+            return Err(ProfileActivationError::MetadataChanged {
+                expected: ticket.expected_meta,
+                actual,
+            });
+        }
+
+        Profile::parse(blob).map_err(|error| {
+            ProfileActivationError::InvalidProfile(ProfileMetaError::Profile(error))
+        })
+    }
+
+    pub fn commit_activation(
+        &mut self,
+        ticket: ProfileActivationTicket,
+    ) -> Result<(), ProfileActivationError> {
+        if !self.activation_ticket_is_current(ticket) {
+            return Err(ProfileActivationError::StaleBinding);
+        }
+        self.active_index = Some(ticket.index);
+        self.activation_state = ProfileActivationState::Active;
+        Ok(())
+    }
+
+    pub fn fail_activation(
+        &mut self,
+        ticket: ProfileActivationTicket,
+    ) -> Result<(), ProfileActivationError> {
+        if !self.activation_ticket_is_current(ticket) {
+            return Err(ProfileActivationError::StaleBinding);
+        }
+        self.active_index = None;
+        self.activation_state = ProfileActivationState::Failed;
+        Ok(())
     }
 
     pub fn mark_activation_started(&mut self, index: u8) -> Result<(), ProfileRegistryError> {
@@ -513,6 +632,94 @@ mod tests {
         assert_eq!(registry.matched_index(), Some(1));
         assert_eq!(registry.active_index(), None);
         assert_eq!(registry.activation_state(), ProfileActivationState::Matched);
+    }
+
+    #[test]
+    fn activation_ticket_revalidates_blob_before_commit() {
+        let flx4 = profile_blob(0x2b73, 0x0045);
+        let hercules = profile_blob(0x06f8, 0xe020);
+        let mut registry = ProfileRegistry::new();
+        registry.push_blob("pioneer_ddj_flx4", &flx4).unwrap();
+        registry.on_descriptor(0x2b73, 0x0045, 3, 17).unwrap();
+
+        let ticket = registry.begin_activation(0).unwrap();
+        assert_eq!(ticket.controller().epoch, 17);
+        assert_eq!(ticket.expected_meta().vid, 0x2b73);
+        assert_eq!(
+            registry
+                .validate_activation_blob(ticket, &hercules)
+                .unwrap_err(),
+            ProfileActivationError::MetadataChanged {
+                expected: ProfileMeta::parse(&flx4).unwrap(),
+                actual: ProfileMeta::parse(&hercules).unwrap(),
+            }
+        );
+
+        let profile = registry.validate_activation_blob(ticket, &flx4).unwrap();
+        assert_eq!(profile.vid(), 0x2b73);
+        assert_eq!(profile.pid(), 0x0045);
+        registry.commit_activation(ticket).unwrap();
+        assert_eq!(registry.active_index(), Some(0));
+        assert_eq!(registry.activation_state(), ProfileActivationState::Active);
+    }
+
+    #[test]
+    fn activation_ticket_rejects_disconnect_reconnect_during_storage_read() {
+        let flx4 = profile_blob(0x2b73, 0x0045);
+        let mut registry = ProfileRegistry::new();
+        registry.push_blob("pioneer_ddj_flx4", &flx4).unwrap();
+        registry.on_descriptor(0x2b73, 0x0045, 3, 20).unwrap();
+
+        let ticket = registry.begin_activation(0).unwrap();
+        assert!(registry.on_disconnect());
+        registry.on_descriptor(0x2b73, 0x0045, 3, 21).unwrap();
+
+        assert_eq!(
+            registry
+                .validate_activation_blob(ticket, &flx4)
+                .unwrap_err(),
+            ProfileActivationError::StaleBinding
+        );
+        assert_eq!(
+            registry.commit_activation(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+        assert_eq!(registry.active_index(), None);
+    }
+
+    #[test]
+    fn activation_ticket_rejects_registry_rescan_during_storage_read() {
+        let flx4 = profile_blob(0x2b73, 0x0045);
+        let mut registry = ProfileRegistry::new();
+        registry.push_blob("pioneer_ddj_flx4", &flx4).unwrap();
+        registry.on_descriptor(0x2b73, 0x0045, 3, 30).unwrap();
+
+        let ticket = registry.begin_activation(0).unwrap();
+
+        let mut scanned = ProfileRegistry::new();
+        scanned.push_blob("pioneer_ddj_flx4", &flx4).unwrap();
+        registry.apply_rescan(&scanned);
+
+        assert_eq!(registry.activation_state(), ProfileActivationState::Matched);
+        assert_eq!(
+            registry
+                .validate_activation_blob(ticket, &flx4)
+                .unwrap_err(),
+            ProfileActivationError::StaleBinding
+        );
+    }
+
+    #[test]
+    fn activation_failure_is_committed_only_for_current_ticket() {
+        let flx4 = profile_blob(0x2b73, 0x0045);
+        let mut registry = ProfileRegistry::new();
+        registry.push_blob("pioneer_ddj_flx4", &flx4).unwrap();
+        registry.on_descriptor(0x2b73, 0x0045, 3, 40).unwrap();
+
+        let ticket = registry.begin_activation(0).unwrap();
+        registry.fail_activation(ticket).unwrap();
+        assert_eq!(registry.active_index(), None);
+        assert_eq!(registry.activation_state(), ProfileActivationState::Failed);
     }
 
     #[test]
