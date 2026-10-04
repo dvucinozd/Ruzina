@@ -81,9 +81,7 @@ impl ExFatFileEntrySetParser {
 
         let secondary_count = primary[1];
         if secondary_count < 2 {
-            return Err(ExFatEntrySetError::InvalidSecondaryCount(
-                secondary_count,
-            ));
+            return Err(ExFatEntrySetError::InvalidSecondaryCount(secondary_count));
         }
 
         let expected_checksum = u16::from_le_bytes([primary[2], primary[3]]);
@@ -137,9 +135,7 @@ impl ExFatFileEntrySetParser {
             != (EXFAT_ENTRY_IN_USE | EXFAT_ENTRY_SECONDARY)
             || entry_type & EXFAT_ENTRY_BENIGN == 0
         {
-            return Err(ExFatEntrySetError::UnexpectedCriticalSecondary(
-                entry_type,
-            ));
+            return Err(ExFatEntrySetError::UnexpectedCriticalSecondary(entry_type));
         }
 
         Ok(())
@@ -220,8 +216,7 @@ impl ExFatFileEntrySetParser {
         if name_length == 0 {
             return Err(ExFatEntrySetError::InvalidNameLength(name_length));
         }
-        let expected_name_entries =
-            usize::from(name_length).div_ceil(EXFAT_NAME_UNITS_PER_ENTRY);
+        let expected_name_entries = usize::from(name_length).div_ceil(EXFAT_NAME_UNITS_PER_ENTRY);
         let expected_name_entries = u8::try_from(expected_name_entries)
             .map_err(|_| ExFatEntrySetError::InvalidNameLength(name_length))?;
         if usize::from(name_length) > EXFAT_NAME_MAX_UNITS
@@ -251,8 +246,7 @@ impl ExFatFileEntrySetParser {
 
         for index in 0..take {
             let offset = 2 + index * 2;
-            self.name_units[start + index] =
-                u16::from_le_bytes([entry[offset], entry[offset + 1]]);
+            self.name_units[start + index] = u16::from_le_bytes([entry[offset], entry[offset + 1]]);
         }
         self.name_entries = self.name_entries.saturating_add(1);
         Ok(())
@@ -328,7 +322,11 @@ mod tests {
         entry[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
     }
 
-    fn file_entry_set(name: &[u16], directory: bool, no_fat_chain: bool) -> std::vec::Vec<[u8; 32]> {
+    fn file_entry_set(
+        name: &[u16],
+        directory: bool,
+        no_fat_chain: bool,
+    ) -> std::vec::Vec<[u8; 32]> {
         let name_entries = name.len().div_ceil(EXFAT_NAME_UNITS_PER_ENTRY);
         let secondary_count = 1 + name_entries;
         let mut entries = std::vec::Vec::with_capacity(1 + secondary_count);
@@ -343,8 +341,7 @@ mod tests {
 
         let mut stream = [0u8; 32];
         stream[0] = EXFAT_STREAM_EXTENSION_ENTRY;
-        stream[1] =
-            EXFAT_ALLOCATION_POSSIBLE | if no_fat_chain { EXFAT_NO_FAT_CHAIN } else { 0 };
+        stream[1] = EXFAT_ALLOCATION_POSSIBLE | if no_fat_chain { EXFAT_NO_FAT_CHAIN } else { 0 };
         stream[3] = name.len() as u8;
         write_u64(&mut stream, 8, 4_096);
         stream[20..24].copy_from_slice(&7u32.to_le_bytes());
@@ -369,7 +366,9 @@ mod tests {
         entries
     }
 
-    fn parse(entries: &[[u8; 32]]) -> Result<(ExFatParsedFileEntry, [u8; FS_NAME_MAX]), ExFatEntrySetError> {
+    fn parse(
+        entries: &[[u8; 32]],
+    ) -> Result<(ExFatParsedFileEntry, [u8; FS_NAME_MAX]), ExFatEntrySetError> {
         let mut parser = ExFatFileEntrySetParser::begin(&entries[0])?;
         for entry in &entries[1..] {
             parser.push_secondary(entry)?;
