@@ -226,6 +226,12 @@ pub struct DeckState {
 }
 
 impl DeckState {
+    /// Analysis replacement is safe only after transport has settled stopped.
+    /// A pending start must retain the generation selected for that request.
+    pub const fn can_replace_analysis(&self) -> bool {
+        !self.playing && self.pending_playback.is_none()
+    }
+
     pub const fn new() -> Self {
         Self {
             playing: false,

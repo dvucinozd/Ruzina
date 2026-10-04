@@ -2,6 +2,9 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod window;
+pub mod worker;
+
 use libapta::{FeatureState, FractionalFrame, GridRepresentation, NativeResultInput, SourceInfo};
 use pajoniiir_track_analysis::{AnalysisProvider, Beat, BeatGrid, TrackAnalysis};
 
@@ -46,7 +49,7 @@ impl<'a> Analysis<'a> {
     }
 }
 
-/// Convert only complete, continuous grids with a known single meter. Missing
+/// Convert complete continuous segment/explicit grids with a known single meter. Missing
 /// or non-final grid/meter yields tempo only; never invent four-beat phase.
 /// Input must come from a trusted session/owned result. For external bytes use
 /// `convert_cache`; this is subset conversion, not complete graph validation.
@@ -92,7 +95,8 @@ pub fn convert<'a>(
                 return Err(Error::UnsupportedGrid);
             }
             let segment = m.segments[0];
-            if segment.first_frame != 0
+            if segment.state != FeatureState::Final
+                || segment.first_frame != 0
                 || segment.end_frame != total
                 || segment.numerator != m.numerator
                 || segment.denominator != m.denominator
@@ -107,70 +111,87 @@ pub fn convert<'a>(
     };
     let mut count = 0usize;
     if let Some((g, m)) = usable {
+        if input.global_grid.is_some()
+            && input.revision.is_some_and(|r| {
+                r.state != libapta::RevisionState::Applied
+                    || g.segments.iter().any(|s| s.revision != r.revision_id)
+                    || g.beats.iter().any(|b| b.revision != r.revision_id)
+            })
+        {
+            return Err(Error::UnsupportedGrid);
+        }
         count = match g.representation {
-            GridRepresentation::Segments if g.segments.len() == 1 => {
-                g.segments[0].beat_count as usize
+            GridRepresentation::Segments => {
+                let mut end = 0;
+                let mut count = 0usize;
+                for s in g.segments {
+                    if s.applicability_range.first_frame != end
+                        || s.applicability_range.end_frame <= end
+                        || s.state != FeatureState::Final
+                        || s.flags & 1 != 0
+                        || s.beat_count == 0
+                    {
+                        return Err(Error::UnsupportedGrid);
+                    }
+                    end = s.applicability_range.end_frame;
+                    count = count
+                        .checked_add(s.beat_count as usize)
+                        .ok_or(Error::Capacity)?;
+                }
+                if end != input.source.total_frames.unwrap() {
+                    return Err(Error::UnsupportedGrid);
+                }
+                count
             }
             GridRepresentation::Explicit => g.beats.len(),
-            _ => return Err(Error::UnsupportedGrid),
+            // The wire/native model has no explicit override ranges to resolve.
+            GridRepresentation::Hybrid => return Err(Error::UnsupportedGrid),
         };
         if count > destination.len() {
             return Err(Error::Capacity);
         }
-        if g.representation == GridRepresentation::Explicit
-            && g.beats
-                .windows(2)
-                .any(|p| p[0].ordinal.checked_add(1) != Some(p[1].ordinal))
-        {
-            return Err(Error::UnsupportedGrid);
-        }
-        let beat = |index: usize| -> Result<(Beat, bool), Error> {
-            let (position, ordinal, tempo) = if g.representation == GridRepresentation::Explicit {
-                let b = g.beats[index];
-                (b.position, b.ordinal, bpm)
-            } else {
-                let s = &g.segments[0];
-                let beat = s
-                    .beat_at(u32::try_from(index).map_err(|_| Error::Coordinate)?)
-                    .map_err(|_| Error::Coordinate)?
-                    .ok_or(Error::Coordinate)?;
-                (
-                    beat.position,
-                    beat.ordinal,
-                    bpm_x100(s.nominal_tempo_millibpm),
-                )
-            };
-            if position.whole_frame >= input.source.total_frames.unwrap() {
+        let beat = |b: libapta::Beat, tempo| -> Result<Beat, Error> {
+            if b.position.whole_frame >= input.source.total_frames.unwrap() {
                 return Err(Error::Coordinate);
             }
-            let phase = ((ordinal as i128 - m.downbeat_ordinal as i128)
-                .rem_euclid(m.numerator as i128)) as u16;
-            Ok((
-                Beat {
-                    time_ms: milliseconds(position, input.source.sample_rate)?,
-                    phase,
-                    bpm_x100: tempo,
-                },
-                ordinal == m.downbeat_ordinal && position.whole_frame == m.downbeat_frame,
-            ))
+            Ok(Beat {
+                time_ms: milliseconds(b.position, input.source.sample_rate)?,
+                phase: ((b.ordinal as i128 - m.downbeat_ordinal as i128)
+                    .rem_euclid(m.numerator as i128)) as u16,
+                bpm_x100: tempo,
+            })
         };
-        let mut previous = None;
+        let mut previous: Option<(u32, i64)> = None;
         let mut matching_downbeat = false;
-        for i in 0..count {
-            let (b, matches_meter) = beat(i)?;
-            matching_downbeat |= matches_meter;
-            if previous.is_some_and(|p| p >= b.time_ms) {
-                return Err(Error::Coordinate);
+        visit_beats(g, bpm, |b, tempo| {
+            if b.flags & 1 != 0 {
+                return Err(Error::UnsupportedGrid);
             }
-            previous = Some(b.time_ms);
-        }
+            let converted = beat(b, tempo)?;
+            matching_downbeat |=
+                b.ordinal == m.downbeat_ordinal && b.position.whole_frame == m.downbeat_frame;
+            if let Some((time, ordinal)) = previous {
+                if ordinal.checked_add(1) != Some(b.ordinal) {
+                    return Err(Error::UnsupportedGrid);
+                }
+                if time >= converted.time_ms {
+                    return Err(Error::Coordinate);
+                }
+            }
+            previous = Some((converted.time_ms, b.ordinal));
+            Ok(())
+        })?;
         if !matching_downbeat {
             return Err(Error::UnsupportedGrid);
         }
-        for (i, out) in destination[..count].iter_mut().enumerate() {
-            *out = beat(i)?.0;
-        }
+        let mut index = 0;
+        visit_beats(g, bpm, |b, tempo| {
+            destination[index] = beat(b, tempo)?;
+            index += 1;
+            Ok(())
+        })?;
     }
+
     Ok(Analysis {
         source: input.source,
         lineage: (input.info.lineage_id_high, input.info.lineage_id_low),
@@ -181,6 +202,34 @@ pub fn convert<'a>(
             (count != 0).then(|| BeatGrid::new(&destination[..count])),
         ),
     })
+}
+
+// Two identical linear passes: validate before writing, then populate the bank.
+fn visit_beats(
+    grid: libapta::NativeGrid<'_>,
+    bpm: u32,
+    mut visit: impl FnMut(libapta::Beat, u32) -> Result<(), Error>,
+) -> Result<(), Error> {
+    match grid.representation {
+        GridRepresentation::Segments => {
+            for segment in grid.segments {
+                for index in 0..segment.beat_count {
+                    let beat = segment
+                        .beat_at(index)
+                        .map_err(|_| Error::Coordinate)?
+                        .ok_or(Error::Coordinate)?;
+                    visit(beat, bpm_x100(segment.nominal_tempo_millibpm))?;
+                }
+            }
+        }
+        GridRepresentation::Explicit => {
+            for &beat in grid.beats {
+                visit(beat, bpm)?;
+            }
+        }
+        GridRepresentation::Hybrid => return Err(Error::UnsupportedGrid),
+    }
+    Ok(())
 }
 
 impl<'a> Analysis<'a> {
@@ -205,15 +254,38 @@ impl<'a> Analysis<'a> {
     }
 }
 
-/// Read a validated local-grid cache. Cache files do not persist session
+/// Read a validated local-grid cache without global scratch. Cache files do not persist session
 /// generations: the host assigns a nonzero generation in its cache lineage.
 /// Identity equality checks supplied bytes, not the source object's hash.
-/// Global/hybrid caches require a future explicit scratch/authority extension.
+/// Global caches use `convert_cache_with_scratch`; hybrid authority is unsupported.
 pub fn convert_cache<'a>(
     bytes: &[u8],
     expected: libapta::session::SourceIdentity,
     generation: u32,
     limits: libapta::result::Limits,
+    destination: &'a mut [Beat],
+) -> Result<Analysis<'a>, Error> {
+    convert_cache_with_scratch(
+        bytes,
+        expected,
+        generation,
+        limits,
+        &mut [],
+        &mut [],
+        destination,
+    )
+}
+
+/// Global cache conversion with caller-owned native segment/beat scratch.
+/// Scratch can change on error; the converted destination remains transactional.
+/// No returned view borrows the bytes or scratch. Hybrid remains unsupported.
+pub fn convert_cache_with_scratch<'a>(
+    bytes: &[u8],
+    expected: libapta::session::SourceIdentity,
+    generation: u32,
+    limits: libapta::result::Limits,
+    segments: &mut [libapta::GridSegment],
+    beats: &mut [libapta::Beat],
     destination: &'a mut [Beat],
 ) -> Result<Analysis<'a>, Error> {
     let cache = libapta::result::parse(bytes, limits).map_err(|_| Error::Invalid)?;
@@ -223,9 +295,24 @@ pub fn convert_cache<'a>(
     {
         return Err(Error::Identity);
     }
-    if cache.global_grid.is_some() {
-        return Err(Error::UnsupportedGrid);
-    }
+    let global = cache
+        .global_grid
+        .map(|g| g.copy_into(segments, beats))
+        .transpose()
+        .map_err(|_| Error::Capacity)?;
+    let global_coverage = global.map(|g| [g.coverage_range]);
+    let global_grid = global.map(|g| libapta::NativeGrid {
+        state: g.state,
+        confidence: g.confidence,
+        flags: g.flags,
+        representation: g.representation,
+        requested_range: g.requested_range,
+        evidence_range: g.evidence_range,
+        applicability_range: g.applicability_range,
+        coverage_ranges: global_coverage.as_ref().unwrap(),
+        segments: g.segments,
+        beats: g.beats,
+    });
     let local = cache.local_grid;
     let coverage = local.map(|g| [g.coverage]);
     let segments = local.map(|g| [g.segment]);
@@ -279,8 +366,8 @@ pub fn convert_cache<'a>(
             candidates: &[],
         }),
         local_grid,
-        global_grid: None,
-        revision: None,
+        global_grid,
+        revision: cache.revision,
         key: None,
         meter,
         quality: &[],

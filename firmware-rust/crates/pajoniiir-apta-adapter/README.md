@@ -26,15 +26,17 @@ caps are host example policy, not firmware budgets or streaming file support.
 - Fractional Q32 sample positions use the source rate and round once to nearest
   millisecond, ties upward. Results exceeding `u32` and coincident rounded beats
   are errors. Millibpm rounds to BPM x100, ties upward, with wide arithmetic.
-- Final continuous single-segment or explicit grids are accepted with one final
+- Final continuous single/multiple-segment or explicit grids are accepted with one final
   full-source quarter-note meter. Phase is zero-based relative to the actual
   meter downbeat ordinal, modulo its numerator. The selected grid must contain
   that exact downbeat whole-frame/ordinal pair; local meter cannot silently supply
   phase to an unrelated global grid. No implicit four-beat meter.
   Segment beats retain nominal tempo; explicit beats use the selected track tempo
   (zero when absent), without claiming an instantaneous tempo estimate.
-  Explicit ordinal gaps, sparse coverage, hybrid authority and multiple segments
-  are unsupported. A global grid takes precedence; unsupported global data does
+  Segment applicability must partition the full source without gaps or overlap,
+  and ordinals must advance by exactly one across boundaries. Every segment is
+  final with non-provisional phase. Explicit ordinal gaps, sparse grid coverage
+  and hybrid authority remain unsupported. A global grid takes precedence; unsupported global data does
   not silently fall back to a different local interpretation.
 - Missing/non-final grid or meter, unknown duration, or provisional phase yields
   tempo only. Missing tempo is represented by neutral BPM zero; existing Deck
@@ -53,13 +55,23 @@ caps are host example policy, not firmware budgets or streaming file support.
   enforce pinning: the worker/product owner must retain the selected `Analysis`.
 - `convert_cache` validates bytes with caller-specified Libapta limits, requires
   an expected present source identity, and supports the local-grid cache profile.
-  Global/hybrid caches return an explicit error. Cache generations are assigned by
+  `convert_cache_with_scratch` also accepts global segment/explicit caches using
+  caller-owned `GridSegment`/native `Beat` scratch; scratch may change on failure,
+  but converted output stays transactional. Applied revision IDs must match the
+  grid; pending revisions are never exposed as a final consumable grid. Hybrid
+  remains rejected: populated arrays alone do not identify override ranges.
+  Cache generations are assigned by
   the host; `.apta` does not persist native session generations/lineage. Cache and
   live grids are compared exactly by the integration test.
 - `waveform` converts a final continuous overview for the existing whole-track
   renderer. Q15 magnitude maps to full-range u16, nearest rounding; -32768
-  saturates. The caller chooses RGB565 color. Sparse/detail viewport geometry and
-  band-color interpretation remain separate work.
+  saturates. The caller chooses RGB565 color. `window::overview` and
+  `window::detail` select aligned whole-column viewports from published sparse
+  overview or level-1 detail data, including adjacent detail tiles. The caller
+  explicitly chooses the layer. Holes, unaligned cropping and partial EOF columns
+  return errors before output changes; no silence or interpolated coverage is
+  fabricated. These views feed the existing renderer and survive source drop.
+  Arbitrary pixel resampling, automatic layer selection and band colors remain open.
 
 ## Storage and scheduling
 
@@ -77,11 +89,80 @@ passes over output beats; cache validation has its separate configured limits.
 A step budget bounds cooperative work, not elapsed real-time latency.
 
 P4 cross-compilation and dependency inspection establish a portable software
-boundary only. The actual worker, PSRAM banks, internal SRAM scratch placement,
+boundary only. Production worker scheduling, PSRAM banks, internal SRAM scratch placement,
 DMA/cache discipline, whole-call stack and timing, and physical target execution
 are still required. No firmware deployment or hardware operation is part of this
 experiment. Libapta's portable key rounding boundary and original musical
 accuracy gates remain open independently of this adapter.
+
+## Experimental media worker
+
+`worker::Requests` is one persistent analysis lane, with a checked monotonic
+nonzero generation for each completed analysis job (not a core publication serial). A request carries the originating catalog/media `MediaLease`,
+`MediaTrackId` and present source-object identity. It validates that original
+lease against the mounted `MediaSession`; do not replace an old catalog lease
+with the current medium's lease. New requests supersede in-flight work, and
+cancellation invalidates delivery. Keep this owner alive while any job/completion/
+pin exists; do not recreate it or mix independent lane owners' tickets.
+
+`worker::Worker` owns a Created, already-configured `Session` over caller storage.
+It checks the current request/media before push, processing and completion.
+Each step uses at most 256 frames and one core step. The caller owns asynchronous
+reads/decoding, must retry the unaccepted PCM suffix, and must report source
+failure. Failed/stale workers cannot publish. Completion requires a completed
+session; capacity failures can be retried with a larger conversion bank.
+No core processing, filesystem work or allocation belongs in the audio callback.
+
+`worker::Pin` retains the selected immutable conversion bank and track identity.
+Load/upgrade inspects the actual `DeckProductState`: both playing and pending
+transport requests block replacement. Same-track upgrades additionally require
+matching media/source geometry/provider/lineage and a newer generation. A new
+track establishes a new pin. Replacement requests leave the old pin usable;
+unmount/disconnect hides it, and reinsertion cannot revive it. Product code must
+keep one selected pin per deck, clear/replace it on track loads, and obtain the
+neutral view through `Pin::track` for each use. A copied neutral view cannot itself
+recheck media or prevent bypassing these experimental owner APIs.
+
+The worker borrows existing typed musical getters and overview columns instead
+of constructing an unused full-detail snapshot.
+
+Storage stays explicit: two caller beat banks, existing core queue/onset/overview
+storage, optional cache segment/beat scratch and rendered waveform banks. Worker
+and request objects contain no large inline beat arrays or allocator. The host
+WAV example now goes through this worker and pin path, computes SHA-256 over the
+exact source object with the existing product identity implementation, and renders
+a retained waveform after dropping the worker. Its mounted media session is a
+host fixture, not a USB filesystem or Embassy task integration. Production firmware
+and Slint provider selection remain unchanged.
+
+## Extended consumer verification — 2026-10-04
+
+The global transport tests compare every beat exactly for single-segment,
+multi-segment and explicit global caches, using timing produced by real local
+PCM analysis. These are deliberately constructed transport profiles, not S6
+accuracy acceptance. Actual S6 output for the 8 kHz/320000-frame uniform impulse
+fixture has a final segment ending at frame 262144 and a meter that does not bind
+to it; conversion must fail without local fallback. Dynamic/hybrid authority and
+DSP behavior were not changed to make that fixture pass.
+
+Real worker PCM drives Deck Beat Jump/Sync and two retained generations; cancellation,
+replacement, stale delivery/catalog leases, unmount/reinsert, source failure,
+pending transport and capacity rollback are covered. Test-only allocator
+instrumentation observes zero allocations during worker creation, PCM processing
+and conversion. Real sparse PCM crosses a detail-tile boundary into the renderer;
+hole and alignment rejection preserve the output bank. All library modules remain
+`no_std` and forbid unsafe; the counting allocator is confined to the test harness.
+
+Extended checkpoint evidence (before the subsequent foundation integration):
+`verify-consumer.py`, stamp `20261004T181028Z`, passes 373 workspace tests,
+78 focused release tests, 8 adapter integration tests under ASan plus the lifetime
+compile-fail doctest, formatting/Clippy, pinned Rust 1.95 P4 library/object checks.
+`extended-stack-final-20261004T181128Z.log` measures individual RV32 frames:
+worker completion 1104 B, waveform 112 B, push 1776 B, step 352 B; global cache
+conversion 2608 B, overview window 128 B, detail window 48 B. Completion/waveform
+previously used 7712/7600 B with a full detail snapshot; typed getters remove that
+unused work. These exclude nested callees, caller placement and interrupt/runtime
+costs and are not task-stack recommendations. Final-source acceptance follows.
 
 ## Dated software verification — 2026-10-04
 

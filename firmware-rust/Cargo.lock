@@ -2903,6 +2903,8 @@ dependencies = [
  "pajoniiir-controller-core",
  "pajoniiir-core",
  "pajoniiir-deck",
+ "pajoniiir-media-identity",
+ "pajoniiir-media-session",
  "pajoniiir-track-analysis",
  "pajoniiir-waveform",
 ]

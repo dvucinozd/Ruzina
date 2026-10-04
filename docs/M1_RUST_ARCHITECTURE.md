@@ -260,9 +260,24 @@ Conversion storage belongs to the caller. Full source identity and native lineag
 stay with the adapter's pinned analysis; the neutral generation width is checked.
 Unsupported coverage/authority, coordinate overflow and capacity failure are
 explicit. P4 compilation proves the no_std software dependency boundary only;
-worker scheduling, PSRAM/internal SRAM placement, DMA/cache and complete task-stack
-qualification remain open. C ABI emulation and ESP-IDF are not prerequisites for
+production worker scheduling, PSRAM/internal SRAM placement, DMA/cache and complete
+task-stack qualification remain open. C ABI emulation and ESP-IDF are not prerequisites for
 this native Rust consumer. See the adapter contract for exact supported profiles.
+
+The experimental adapter now includes a bounded session worker and retained deck
+pin. Requests carry the originating catalog `MediaLease`, track ID and source
+identity; stale/cancelled/replaced work cannot deliver into a new request or
+medium. The existing Deck state exposes a stopped-and-no-pending-transport query,
+so a pending start also pins the selected generation. Two caller beat banks
+separate staging from retained analysis. The host WAV example exercises this
+path; it is not wired into the USB filesystem/Embassy worker or Slint selection.
+
+Continuous multi-segment and explicit global caches use caller native scratch,
+consecutive ordinals and exact selected-grid/meter correspondence. Sparse
+whole-column overview/detail windows feed the existing rasterizer without
+bridging holes. Hybrid override authority, arbitrary cropped/resampled viewports,
+production scheduling and embedded qualification remain open. See the adapter
+README for the real S6 profile that remains correctly rejected and dated evidence.
 
 ## 11. Networking
 

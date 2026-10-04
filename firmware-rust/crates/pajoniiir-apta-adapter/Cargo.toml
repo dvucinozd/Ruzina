@@ -10,7 +10,10 @@ libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "03b06
 pajoniiir-track-analysis.workspace = true
 pajoniiir-waveform.workspace = true
 
-[dev-dependencies]
 pajoniiir-deck.workspace = true
 pajoniiir-core.workspace = true
+pajoniiir-media-session.workspace = true
+
+[dev-dependencies]
+pajoniiir-media-identity.workspace = true
 pajoniiir-controller-core.workspace = true

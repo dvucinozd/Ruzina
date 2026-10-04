@@ -245,6 +245,47 @@ fn pcm_to_deck_sync_and_jump() {
             Err(Error::UnsupportedGrid)
         ));
 
+        // Split actual PCM timing; second anchor is context before applicability.
+        let mut split = [segment; 2];
+        split[0].applicability_range.end_frame = 160000;
+        split[0].beat_count = 40;
+        split[1].applicability_range.first_frame = 160000;
+        split[1].beat_count = 40;
+        split[1].segment_id += 1;
+        let mut segmented = input.local_grid.unwrap();
+        segmented.segments = &split;
+        let mut split_input = input;
+        split_input.global_grid = Some(segmented);
+        let mut split_out = [EMPTY; 128];
+        assert_eq!(
+            convert(&split_input, &mut split_out)
+                .unwrap()
+                .track()
+                .beat_grid()
+                .unwrap()
+                .beats(),
+            grid.beats()
+        );
+        let before = split_out;
+        let mut ordinal_gap = split;
+        ordinal_gap[1].anchor_ordinal += 1;
+        segmented.segments = &ordinal_gap;
+        split_input.global_grid = Some(segmented);
+        assert!(matches!(
+            convert(&split_input, &mut split_out),
+            Err(Error::UnsupportedGrid)
+        ));
+        assert_eq!(split_out, before);
+        let mut coverage_gap = split;
+        coverage_gap[1].applicability_range.first_frame += 1;
+        segmented.segments = &coverage_gap;
+        split_input.global_grid = Some(segmented);
+        assert!(matches!(
+            convert(&split_input, &mut split_out),
+            Err(Error::UnsupportedGrid)
+        ));
+        assert_eq!(split_out, before);
+
         let mut partial = input;
         let mut partial_grid = input.local_grid.unwrap();
         partial_grid.state = libapta::FeatureState::Provisional;
