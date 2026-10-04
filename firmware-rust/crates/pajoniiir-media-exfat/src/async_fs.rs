@@ -10,7 +10,7 @@ const EXFAT_BOOT_REGION_DATA_SECTORS: u64 = 11;
 const EXFAT_BOOT_CHECKSUM_SECTOR: u64 = 11;
 const EXFAT_RESERVED_BOOT_SECTORS: u32 = 24;
 const EXFAT_FIRST_DATA_CLUSTER: u32 = 2;
-const EXFAT_END_OF_CHAIN_MIN: u32 = 0xffff_fff8;
+const EXFAT_END_OF_CHAIN: u32 = 0xffff_ffff;
 const EXFAT_BAD_CLUSTER: u32 = 0xffff_fff7;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -369,7 +369,7 @@ where
             .ok_or(ExFatAsyncIoError::CorruptFat)?;
         let next = u32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]);
 
-        if next >= EXFAT_END_OF_CHAIN_MIN {
+        if next == EXFAT_END_OF_CHAIN {
             Ok(None)
         } else if next == EXFAT_BAD_CLUSTER {
             Err(ExFatAsyncIoError::BadCluster(cluster))
@@ -385,7 +385,10 @@ where
             .ok_or(ExFatAsyncIoError::InvalidCluster(cluster))
     }
 
-    async fn load_sector(&mut self, sector: u64) -> Result<(), ExFatAsyncIoError<D::Error>> {
+    pub(crate) async fn load_sector(
+        &mut self,
+        sector: u64,
+    ) -> Result<(), ExFatAsyncIoError<D::Error>> {
         if self.loaded_sector == Some(sector) {
             return Ok(());
         }
@@ -411,7 +414,7 @@ where
         }
     }
 
-    fn loaded_bytes(&self) -> Result<&[u8], ExFatAsyncIoError<D::Error>> {
+    pub(crate) fn loaded_bytes(&self) -> Result<&[u8], ExFatAsyncIoError<D::Error>> {
         self.scratch
             .as_ref()
             .map(AsRef::as_ref)

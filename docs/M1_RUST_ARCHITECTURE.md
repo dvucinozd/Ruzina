@@ -445,3 +445,13 @@ Host success is necessary but not a substitute for these gates.
 ### Native async exFAT mount boundary
 
 The USB0 target validates exFAT boot geometry and the main boot-region checksum through the owned-buffer asynchronous block transport, retains the logical-sector scratch buffer with the mounted volume, and derives a domain-separated exFAT volume identity. File/directory broker operations remain fail-closed until native exFAT handles are wired; the synchronous exFAT backend is not used from Embassy.
+
+
+### Native exFAT directory-entry parsing
+
+The native exFAT path parses File (0x85), Stream Extension (0xC0), and File Name (0xC1) entry sets without allocation. It validates the entry-set checksum, secondary count, allocation flags, UTF-16 name validity, data-length invariants, and the 256 MiB directory-size limit. Benign secondary entries after the required file-name entries are tolerated and included in the checksum; unexpected critical secondary entries fail closed. This parser is deliberately separated from block I/O so directory streaming and path lookup can be host-tested before target broker integration.
+
+
+### Native read-only exFAT filesystem core
+
+The exFAT crate now implements the target-facing read-only AsyncFileSystem contract directly over OwnedBlockDevice. Detached file and directory handles are lease-bound; directory iteration consumes validated entry sets sequentially; fragmented streams follow the active exFAT FAT; NoFatChain streams use contiguous cluster arithmetic; and bytes between ValidDataLength and DataLength are returned as zeroes. Path lookup is allocation-free and ASCII-case-insensitive while non-ASCII UTF-8 must match exactly until the exFAT Up-case Table is wired. The USB0 broker still remains fail-closed for exFAT until its public request/completion handle types are generalized in the next step.
