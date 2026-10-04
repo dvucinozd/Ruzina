@@ -453,3 +453,12 @@ The released controller-profile selection state machine is now represented in th
 Connection descriptors carry a monotonic wrapping epoch. A descriptor with an old epoch, or the same epoch with a conflicting VID/PID, is rejected before it can replace the live binding. Rescanning profile storage preserves the current physical descriptor but intentionally drops the active profile back to `Matched`, forcing the newly read bytes to be revalidated and reactivated before use.
 
 This is the HAL-independent half of the microSD profile manager. Profile bytes remain external `/controllers/<id>/profile.s3bin` data; they are not embedded into the firmware image. The SD/MMC scanner, transactional upload/backup recovery and target activation worker remain separate platform boundaries.
+
+
+### microSD SDMMC0 target ownership
+
+The profile-storage platform boundary now has a target-side compile gate matching the Rev A M1 schematic. ESP32-P4 SDMMC slot 0 owns GPIO39/D0, GPIO40/D1, GPIO41/D2, GPIO42/D3, GPIO43/CLK and GPIO44/CMD. GPIO45 controls the TPS22918-backed 3V3_SD rail and GPIO46 is reserved by the captured schematic for active-low card detect.
+
+The `sdmmc-profile-storage-bringup` task constructs the native `esp-hal 1.2.2` SD host, binds the fixed slot-0 IO-MUX pins, owns the power-enable/card-detect pins, switches the slot into async interrupt-driven mode, and then deliberately stops. Card protocol initialization, FAT profile storage, transactional install/recovery and profile activation remain separate follow-on gates.
+
+CI independently cross-compiles this SDMMC boundary and also release-links it together with USB0 HS, USB1 FS and PSRAM, proving compile-time resource coexistence only. Electrical rail timing, back-power avoidance, SD signal integrity, hot-plug and filesystem behavior remain `HARDWARE_PENDING`.

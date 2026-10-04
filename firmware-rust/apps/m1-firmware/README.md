@@ -66,3 +66,10 @@ This gate is **COMPILE_VERIFIED / HARDWARE_PENDING**. It does not yet claim phys
 The USB1 controller layer now contains a compile-verified USB-MIDI 1.0 bulk transport. The host-tested `pajoniiir-controller-usb` crate locates the first alternate-setting-zero Audio/MIDIStreaming interface, preserves bulk endpoint addresses/max-packet sizes, and encodes/decodes standard 4-byte USB-MIDI event packets without allocation.
 
 On ESP32-P4 the USB1 owner can allocate typed Embassy `Bulk/In` and optional `Bulk/Out` pipes for that interface using the enumerated route/split metadata. Full-Speed bulk packet sizes are fail-closed above 64 bytes. The transport exposes raw read and event-write methods, but it is not yet connected to `ControllerSession`; S3CP profile selection and semantic ingestion are the next software boundary. Physical MIDI interoperability and LED feedback remain `HARDWARE_PENDING`.
+
+
+### microSD / controller-profile storage ownership boundary
+
+Feature `sdmmc-profile-storage-bringup` now binds the M1 board-authoritative ESP32-P4 SDMMC slot-0 path: `GPIO39..42 = D0..D3`, `GPIO43 = CLK`, `GPIO44 = CMD`, `GPIO45 = SD_PWR_EN`, and `GPIO46 = SD_CARD_DETECT`. The task uses the native `esp-hal 1.2.2` `SdHostController` and converts slot 0 to interrupt-driven async mode while retaining ownership for the firmware lifetime.
+
+This is intentionally **COMPILE_VERIFIED / HARDWARE_PENDING**. It does not initialize a card, mount a filesystem, scan `/controllers`, or activate a profile. CI additionally links SDMMC together with USB0 HS, USB1 FS and PSRAM so peripheral/pin ownership conflicts are caught before EVT hardware exists.

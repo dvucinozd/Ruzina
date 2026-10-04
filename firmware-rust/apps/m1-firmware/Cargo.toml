@@ -14,6 +14,9 @@ usb0-hardware-bringup = []
 # GPIO27 is DP and GPIO26 is DM on the ESP32-P4 M1 routing. This does not
 # claim physical MIDI/UAC/VBUS qualification.
 usb1-controller-bringup = []
+# Compile-only M1 microSD SDMMC0 ownership/pin/power boundary. This does not
+# claim card initialization, filesystem, hot-plug, or profile-storage success.
+sdmmc-profile-storage-bringup = []
 # Compile-verified PSRAM allocator boundary for large retained library/UI storage.
 # This does not claim DMA/cache coherency or hardware qualification.
 p4-psram-storage = ["dep:esp-alloc"]
