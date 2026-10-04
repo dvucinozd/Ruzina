@@ -2941,6 +2941,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-controller-profile-storage"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-controller-profile",
+ "pajoniiir-media-fs",
+ "pajoniiir-media-session",
+]
+
+[[package]]
 name = "pajoniiir-controller-session"
 version = "0.1.0"
 dependencies = [

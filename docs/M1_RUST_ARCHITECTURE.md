@@ -483,3 +483,10 @@ S3CP v2 has no virtual-cable selector, so R1 fails closed for non-zero USB-MIDI 
 The initialized SD card is now adaptable directly to `pajoniiir_media_io::OwnedBlockDevice`. The target wrapper retains the exact `sdio::BlockDevice<Card, Slot<0, Async>, Delay, 512>`, exposes a synchronous `BlockGeometry` from the card's reported block count, and transfers one aligned 512-byte caller-owned buffer through the asynchronous SDIO read path. Transfer bounds and the u64→u32 SD block-address conversion fail closed.
 
 The buffer is `aligned::Aligned<A4, [u8; 512]>`, matching `block-device-driver 0.2.0` and avoiding an intermediate sector copy. This makes the existing `AsyncPartitionDevice` and native `Fat32AsyncFileSystem` reusable for microSD profile storage; no second FAT implementation is introduced.
+
+
+### Allocation-free controller profile storage scanner
+
+Controller profile discovery now has a HAL-independent `pajoniiir-controller-profile-storage` crate. It scans the released `/controllers/<id>/profile.s3bin` layout through the generic asynchronous filesystem contract, reuses one caller-owned 16 KiB profile buffer for every candidate, validates the released ASCII directory-name policy, and fills the bounded 16-entry `ProfileRegistry` with complete S3CP validation.
+
+A missing, unreadable, oversized or corrupt individual profile is counted and skipped so one bad controller package does not hide the remaining registry. Root-directory traversal errors remain fatal because publishing a silently partial scan would make controller availability nondeterministic. Host tests exercise fragmented reads, invalid IDs, corrupt blobs, unreadable profiles and the 16-profile capacity boundary.
