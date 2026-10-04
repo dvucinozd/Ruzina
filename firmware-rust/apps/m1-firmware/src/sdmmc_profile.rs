@@ -1,10 +1,16 @@
+use embassy_time::{Delay, Timer};
 use esp_hal::sdmmc::{Config, SdHostController, SlotConfig};
+use sdio::{BlockDevice, sd::Card};
 
-/// Persistent compile-gate owner for the M1 microSD SDMMC0 path.
+const CARD_HZ: u32 = 25_000_000;
+const RAIL_SETTLE_MS: u64 = 10;
+const INIT_RETRY_MS: u64 = 1_000;
+
+/// Persistent owner for the M1 microSD SDMMC0 path.
 ///
-/// This binds the board-authoritative ESP32-P4 slot-0 IO-MUX pins and the
-/// controlled 3V3_SD rail. It deliberately stops before card initialization,
-/// filesystem mounting, profile scanning, or transactional profile updates.
+/// This binds the board-authoritative ESP32-P4 slot-0 IO-MUX pins, enables the
+/// controlled 3V3_SD rail, and retains the initialized SD-card block device.
+/// Filesystem mounting and controller-profile I/O remain separate boundaries.
 pub(crate) async fn run_profile_storage_owner(
     sdhost: esp_hal::peripherals::SDHOST<'static>,
     d0: esp_hal::peripherals::GPIO39<'static>,
@@ -18,7 +24,7 @@ pub(crate) async fn run_profile_storage_owner(
 ) -> ! {
     let controller =
         SdHostController::new(sdhost, Config::default()).expect("SDMMC controller config is valid");
-    let _slot = controller
+    let slot = controller
         .slot::<0>(SlotConfig::default())
         .expect("SDMMC slot 0 must be available")
         .with_clk(clk)
@@ -31,5 +37,13 @@ pub(crate) async fn run_profile_storage_owner(
         .with_card_detect(card_detect)
         .into_async();
 
-    match core::future::pending::<core::convert::Infallible>().await {}
+    Timer::after_millis(RAIL_SETTLE_MS).await;
+
+    let mut card: BlockDevice<Card, _, _, 512> = BlockDevice::new_uninit_sd_card(slot, Delay);
+    loop {
+        if card.reacquire(CARD_HZ).await.is_ok() {
+            match core::future::pending::<core::convert::Infallible>().await {}
+        }
+        Timer::after_millis(INIT_RETRY_MS).await;
+    }
 }

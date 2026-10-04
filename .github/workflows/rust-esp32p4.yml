@@ -45,7 +45,7 @@ jobs:
       - name: ESP32-P4 USB1 controller bring-up cross compile
         run: cargo +1.95.0 check --locked --features usb1-controller-bringup
 
-      - name: ESP32-P4 microSD SDMMC profile-storage cross compile
+      - name: ESP32-P4 microSD SDMMC card-init cross compile
         run: cargo +1.95.0 check --locked --features sdmmc-profile-storage-bringup
 
       - name: ESP32-P4 PSRAM storage boundary cross compile

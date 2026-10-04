@@ -14,8 +14,8 @@ usb0-hardware-bringup = []
 # GPIO27 is DP and GPIO26 is DM on the ESP32-P4 M1 routing. This does not
 # claim physical MIDI/UAC/VBUS qualification.
 usb1-controller-bringup = []
-# Compile-only M1 microSD SDMMC0 ownership/pin/power boundary. This does not
-# claim card initialization, filesystem, hot-plug, or profile-storage success.
+# Compile-verified M1 microSD SDMMC0 ownership and card-init boundary. Runtime
+# card/FAT/profile success still requires EVT hardware qualification.
 sdmmc-profile-storage-bringup = []
 # Compile-verified PSRAM allocator boundary for large retained library/UI storage.
 # This does not claim DMA/cache coherency or hardware qualification.
@@ -27,9 +27,11 @@ embassy-futures = { version = "=0.1.2", default-features = false }
 embassy-usb-driver = { version = "=0.2.2", default-features = false }
 embassy-usb-host = { version = "=0.1.0", default-features = false }
 embassy-sync = { version = "=0.8.0", default-features = false }
+embassy-time = { version = "=0.5.1", default-features = false }
 esp-alloc = { version = "=0.11.0", default-features = false, features = ["esp32p4", "global-allocator"], optional = true }
 esp-hal = { version = "=1.2.2", features = ["esp32p4", "unstable"] }
 esp-rtos = { version = "=0.4.0", default-features = false, features = ["embassy", "esp32p4"] }
+sdio = { version = "=0.5.1", default-features = false }
 static_cell = { version = "=2.1.1", default-features = false }
 pajoniiir-audio-dsp = { path = "../../crates/pajoniiir-audio-dsp" }
 pajoniiir-audio-keylock = { path = "../../crates/pajoniiir-audio-keylock" }
