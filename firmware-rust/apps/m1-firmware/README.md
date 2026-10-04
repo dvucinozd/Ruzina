@@ -38,3 +38,10 @@ Feature `p4-psram-storage` enables the compile-verified ESP32-P4 PSRAM placement
 This gate is intentionally narrower than a product-storage implementation: the 1024-track catalog banks and three 512-entry Rekordbox name maps are not yet allocated from this heap. The feature proves API/link integration only. Cache coherency, DMA suitability, sustained access behavior and the custom M1 board's physical PSRAM remain `HARDWARE_PENDING` until EVT hardware exists.
 
 CI checks the feature independently and also links it together with `usb0-hardware-bringup` so PSRAM and USB0 peripheral ownership cannot silently diverge at compile time.
+
+
+### Bounded Rekordbox name staging
+
+When `p4-psram-storage` is enabled, the USB0 Library worker now allocates three bounded PSRAM-backed `Vec<PdbNameEntry>` stores for Artists, Albums and Keys. Each store reserves the released 512-entry limit before PDB processing starts, so page walking does not trigger heap growth. Allocation failure is reported as a Library failure, duplicate retained IDs fail closed, and capacity overflow remains observable through the existing probe flag. The stores are cleared on failed import, filesystem failure and detach, while their reserved PSRAM capacity is retained for the next media generation.
+
+Without `p4-psram-storage`, the same parser path remains probe-only and does not retain name metadata.

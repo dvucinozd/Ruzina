@@ -2,6 +2,9 @@
 #![no_main]
 #![deny(clippy::mem_forget)]
 
+#[cfg(feature = "p4-psram-storage")]
+extern crate alloc;
+
 use embassy_executor::Spawner;
 use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 

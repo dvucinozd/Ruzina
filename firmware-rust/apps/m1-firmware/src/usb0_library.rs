@@ -1,5 +1,7 @@
 use core::cell::RefCell;
 
+#[cfg(feature = "p4-psram-storage")]
+use alloc::vec::Vec;
 use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
 use pajoniiir_media_fat32::Fat32AsyncFileHandle;
 use pajoniiir_media_fs::{
@@ -30,6 +32,76 @@ static USB0_LIBRARY_PDB_IO: StaticCell<[u8; USB0_LIBRARY_PDB_IO_BYTES]> = Static
 static USB0_LIBRARY_STATE: CriticalSectionMutex<RefCell<Usb0LibraryState>> =
     CriticalSectionMutex::new(RefCell::new(Usb0LibraryState::Idle));
 
+#[cfg(feature = "p4-psram-storage")]
+struct Usb0LibraryNameMap {
+    entries: Vec<PdbNameEntry>,
+}
+
+#[cfg(not(feature = "p4-psram-storage"))]
+struct Usb0LibraryNameMap;
+
+impl Usb0LibraryNameMap {
+    fn try_new() -> Result<Self, ()> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            let mut entries = Vec::new();
+            entries.try_reserve_exact(PDB_MAX_NAMES).map_err(|_| ())?;
+            Ok(Self { entries })
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        {
+            Ok(Self)
+        }
+    }
+
+    fn clear(&mut self) {
+        #[cfg(feature = "p4-psram-storage")]
+        self.entries.clear();
+    }
+
+    fn retain(&mut self, entry: PdbNameEntry) -> Result<(), Usb0LibraryError> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            if self.entries.iter().any(|existing| existing.id == entry.id) {
+                return Err(Usb0LibraryError::DuplicateNameId(entry.id));
+            }
+            if self.entries.len() < PDB_MAX_NAMES {
+                // Capacity is reserved once at worker startup, so this push cannot
+                // grow the heap while a PDB page is being processed.
+                self.entries.push(entry);
+            }
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = entry;
+
+        Ok(())
+    }
+}
+
+struct Usb0LibraryNameStage {
+    artists: Usb0LibraryNameMap,
+    albums: Usb0LibraryNameMap,
+    keys: Usb0LibraryNameMap,
+}
+
+impl Usb0LibraryNameStage {
+    fn try_new() -> Result<Self, ()> {
+        Ok(Self {
+            artists: Usb0LibraryNameMap::try_new()?,
+            albums: Usb0LibraryNameMap::try_new()?,
+            keys: Usb0LibraryNameMap::try_new()?,
+        })
+    }
+
+    fn clear(&mut self) {
+        self.artists.clear();
+        self.albums.clear();
+        self.keys.clear();
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Usb0LibraryError {
     FilesystemUnavailable,
@@ -43,6 +115,8 @@ pub(crate) enum Usb0LibraryError {
     FilesystemExFatUnavailable,
     FilesystemFat32,
     MissingVolumeIdentity,
+    StagingAllocation,
+    DuplicateNameId(u32),
     InvalidTrackPathUtf8,
     Identity(IdentityError),
     MissingTracksTable,
@@ -812,6 +886,7 @@ async fn scan_name_table_layout(
     header: PdbHeader,
     first_page: u32,
     layout: PdbNameRowLayout,
+    stage: &mut Usb0LibraryNameMap,
 ) -> (
     Fat32AsyncFileHandle,
     &'static mut [u8],
@@ -966,13 +1041,16 @@ async fn scan_name_table_layout(
                         }
                     };
                 }
-                if PdbNameEntry::from_header_and_field(row_header, name).is_some() {
+                if let Some(entry) = PdbNameEntry::from_header_and_field(row_header, name) {
                     names = match names.checked_add(1) {
                         Some(total) => total,
                         None => {
                             return (file, buffer, Err(Usb0LibraryError::RowCountOverflow));
                         }
                     };
+                    if let Err(error) = stage.retain(entry) {
+                        return (file, buffer, Err(error));
+                    }
                 }
             }
         }
@@ -1025,6 +1103,7 @@ async fn scan_optional_name_table(
     header: PdbHeader,
     first_page: Option<u32>,
     layout: PdbNameRowLayout,
+    stage: &mut Usb0LibraryNameMap,
 ) -> (
     Fat32AsyncFileHandle,
     &'static mut [u8],
@@ -1034,8 +1113,10 @@ async fn scan_optional_name_table(
         return (file, buffer, Ok(None));
     };
 
-    let (file, buffer, result) =
-        scan_name_table_layout(client, lease, file, buffer, header, first_page, layout).await;
+    let (file, buffer, result) = scan_name_table_layout(
+        client, lease, file, buffer, header, first_page, layout, stage,
+    )
+    .await;
     (file, buffer, result.map(Some))
 }
 
@@ -1045,6 +1126,7 @@ async fn scan_probe_tables(
     file: Fat32AsyncFileHandle,
     buffer: &'static mut [u8],
     mut probe: Usb0LibraryPdbProbe,
+    staging: &mut Usb0LibraryNameStage,
 ) -> (
     Fat32AsyncFileHandle,
     &'static mut [u8],
@@ -1074,6 +1156,7 @@ async fn scan_probe_tables(
         probe.header,
         probe.artists_first_page,
         PdbNameRowLayout::ArtistOrAlbum,
+        &mut staging.artists,
     )
     .await;
     probe.artists_layout = match artists {
@@ -1089,6 +1172,7 @@ async fn scan_probe_tables(
         probe.header,
         probe.albums_first_page,
         PdbNameRowLayout::ArtistOrAlbum,
+        &mut staging.albums,
     )
     .await;
     probe.albums_layout = match albums {
@@ -1104,6 +1188,7 @@ async fn scan_probe_tables(
         probe.header,
         probe.keys_first_page,
         PdbNameRowLayout::Key,
+        &mut staging.keys,
     )
     .await;
     probe.keys_layout = match keys {
@@ -1119,6 +1204,7 @@ async fn probe_export_pdb(
     lease: MediaLease,
     volume_identity: VolumeIdentity,
     buffer: &'static mut [u8],
+    staging: &mut Usb0LibraryNameStage,
 ) -> (
     &'static mut [u8],
     Result<Usb0LibraryPdbProbe, Usb0LibraryError>,
@@ -1148,7 +1234,7 @@ async fn probe_export_pdb(
     };
 
     let (file, buffer, parse_result) = match parse_result {
-        Ok(probe) => scan_probe_tables(client, lease, file, buffer, probe).await,
+        Ok(probe) => scan_probe_tables(client, lease, file, buffer, probe, staging).await,
         Err(error) => (file, buffer, Err(error)),
     };
 
@@ -1164,6 +1250,7 @@ async fn probe_export_pdb(
 pub(crate) async fn run_usb0_library_worker() -> ! {
     let mut client = Usb0FilesystemClient::library();
     let mut page_buffer = &mut USB0_LIBRARY_PDB_IO.init([0; USB0_LIBRARY_PDB_IO_BYTES])[..];
+    let mut name_stage: Option<Usb0LibraryNameStage> = None;
 
     loop {
         match USB0_LIBRARY_EVENTS.wait().await {
@@ -1187,12 +1274,25 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     continue;
                 };
 
+                if name_stage.is_none() {
+                    name_stage = Usb0LibraryNameStage::try_new().ok();
+                }
+                let Some(staging) = name_stage.as_mut() else {
+                    set_library_state(Usb0LibraryState::Failed {
+                        binding,
+                        error: Usb0LibraryError::StagingAllocation,
+                    });
+                    continue;
+                };
+                staging.clear();
+
                 set_library_state(Usb0LibraryState::Probing { binding });
                 let (restored, result) = probe_export_pdb(
                     &mut client,
                     binding.lease,
                     volume_identity,
                     page_buffer,
+                    staging,
                 )
                 .await;
                 page_buffer = restored;
@@ -1202,17 +1302,24 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                         set_library_state(Usb0LibraryState::Ready { binding, pdb });
                     }
                     Err(error) => {
+                        staging.clear();
                         set_library_state(Usb0LibraryState::Failed { binding, error });
                     }
                 }
             }
             Usb0LibraryEvent::FilesystemFailed { binding } => {
+                if let Some(staging) = name_stage.as_mut() {
+                    staging.clear();
+                }
                 set_library_state(Usb0LibraryState::Failed {
                     binding,
                     error: Usb0LibraryError::FilesystemUnavailable,
                 });
             }
             Usb0LibraryEvent::Detached { binding } => {
+                if let Some(staging) = name_stage.as_mut() {
+                    staging.clear();
+                }
                 set_library_state(Usb0LibraryState::Detached { binding });
             }
         }
