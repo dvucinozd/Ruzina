@@ -394,7 +394,10 @@ mod tests {
             ProfileId::parse("Hercules-500").unwrap().as_str(),
             "Hercules-500"
         );
-        assert_eq!(ProfileId::parse("../escape"), Err(ProfileIdError::Character));
+        assert_eq!(
+            ProfileId::parse("../escape"),
+            Err(ProfileIdError::Character)
+        );
         assert_eq!(ProfileId::parse(""), Err(ProfileIdError::Length));
         assert_eq!(
             ProfileId::parse("1234567890123456789012345678901234567890"),
@@ -421,10 +424,7 @@ mod tests {
         );
         assert_eq!(registry.matched_index(), Some(flx4_index));
         assert_eq!(registry.active_index(), None);
-        assert_eq!(
-            registry.activation_state(),
-            ProfileActivationState::Matched
-        );
+        assert_eq!(registry.activation_state(), ProfileActivationState::Matched);
 
         registry.mark_activation_started(flx4_index).unwrap();
         assert_eq!(
@@ -483,9 +483,7 @@ mod tests {
         let mut registry = ProfileRegistry::new();
         registry.push_blob("pioneer_ddj_flx4", &flx4).unwrap();
 
-        registry
-            .on_descriptor(0x2b73, 0x0045, 1, u32::MAX)
-            .unwrap();
+        registry.on_descriptor(0x2b73, 0x0045, 1, u32::MAX).unwrap();
         assert!(registry.descriptor_is_fresh(0x2b73, 0x0045, 1));
         assert_eq!(
             registry.on_descriptor(0x2b73, 0x0045, 1, 1),
@@ -514,10 +512,7 @@ mod tests {
         assert_eq!(registry.connected().unwrap().epoch, 7);
         assert_eq!(registry.matched_index(), Some(1));
         assert_eq!(registry.active_index(), None);
-        assert_eq!(
-            registry.activation_state(),
-            ProfileActivationState::Matched
-        );
+        assert_eq!(registry.activation_state(), ProfileActivationState::Matched);
     }
 
     #[test]
