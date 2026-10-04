@@ -35,7 +35,7 @@ supported P4 revision is available.
 
 Feature `p4-psram-storage` enables the compile-verified ESP32-P4 PSRAM placement boundary. It initializes the PSRAM peripheral through `esp-hal` and registers the mapped region with `esp-alloc = 0.11.0` as external heap storage.
 
-This gate is intentionally narrower than full product-storage qualification: the three 512-entry Rekordbox name maps now use this heap when the feature is enabled, while the 1024-track catalog banks are still being moved onto the same boundary. Cache coherency, DMA suitability, sustained access behavior and the custom M1 board's physical PSRAM remain `HARDWARE_PENDING` until EVT hardware exists.
+This gate is intentionally narrower than full product-storage qualification: the three 512-entry Rekordbox name maps and two recyclable 1024-track catalog banks now use this heap when the feature is enabled. Cache coherency, DMA suitability, sustained access behavior and the custom M1 board's physical PSRAM remain `HARDWARE_PENDING` until EVT hardware exists.
 
 CI checks the feature independently and also links it together with `usb0-hardware-bringup` so PSRAM and USB0 peripheral ownership cannot silently diverge at compile time.
 
@@ -45,3 +45,8 @@ CI checks the feature independently and also links it together with `usb0-hardwa
 When `p4-psram-storage` is enabled, the USB0 Library worker now allocates three bounded PSRAM-backed `Vec<PdbNameEntry>` stores for Artists, Albums and Keys. Each store reserves the released 512-entry limit before PDB processing starts, so page walking does not trigger heap growth. Allocation failure is reported as a Library failure, duplicate retained IDs fail closed, and capacity overflow remains observable through the existing probe flag. The stores are cleared on failed import, filesystem failure and detach, while their reserved PSRAM capacity is retained for the next media generation.
 
 Without `p4-psram-storage`, the same parser path remains probe-only and does not retain name metadata.
+
+
+### Transactional PSRAM catalog publication
+
+With `p4-psram-storage`, the Library worker reserves two 1024-track PSRAM banks before import. Artists, Albums and Keys are scanned first; Tracks are then converted through the provider-neutral Rekordbox adapter into `CatalogTrack` values in the inactive bank. A new snapshot is published only after the complete PDB scan and file close succeed. Parse, capacity, duplicate-ID, UTF-8 or close failures abort the build and recycle the inactive bank without exposing a partial catalog. A detach or failed filesystem generation invalidates the matching published snapshot and returns its bank to the two-bank pool.

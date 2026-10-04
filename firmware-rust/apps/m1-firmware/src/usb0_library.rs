@@ -7,16 +7,21 @@ use pajoniiir_media_fat32::Fat32AsyncFileHandle;
 use pajoniiir_media_fs::{
     BoundedPath, FileHandle, FileSystemKind,
 };
+use pajoniiir_media_catalog::{
+    CatalogBank, CatalogBankBuilder, CatalogBankPublisher, CatalogBuildError, CatalogTrack,
+    MEDIA_CATALOG_MAX_TRACKS,
+};
 use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
     PDB_MAX_NAMES, PDB_NAME_MAX, PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_TABLE_ALBUMS,
     PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS, PDB_TITLE_MAX,
-    PDB_TRACK_ROW_HEADER_BYTES, PdbError, PdbHeader, PdbNameEntry, PdbNameRowHeader,
-    PdbNameRowLayout, PdbPageSlotWalker, PdbTableDirectory, PdbText, PdbTrackRow,
-    REKORDBOX_EXPORT_PDB_PATH, parse_devicesql_field_header, parse_pdb_header,
-    parse_pdb_name_row_header, parse_pdb_page_header, parse_pdb_table_directory,
-    parse_pdb_track_row_header, pdb_track_string_page_offset,
+    PDB_TRACK_ROW_HEADER_BYTES, PdbCatalogError, PdbError, PdbHeader, PdbNameEntry,
+    PdbNameLookup, PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbTableDirectory,
+    PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb,
+    parse_devicesql_field_header, parse_pdb_header, parse_pdb_name_row_header,
+    parse_pdb_page_header, parse_pdb_table_directory, parse_pdb_track_row_header,
+    pdb_track_string_page_offset, resolve_pdb_track_names,
 };
 use static_cell::StaticCell;
 
@@ -39,6 +44,19 @@ struct Usb0LibraryNameMap {
 
 #[cfg(not(feature = "p4-psram-storage"))]
 struct Usb0LibraryNameMap;
+
+#[cfg(feature = "p4-psram-storage")]
+impl PdbNameLookup for Usb0LibraryNameMap {
+    fn lookup(&self, id: u32) -> Option<&PdbText<PDB_NAME_MAX>> {
+        if id == 0 {
+            return None;
+        }
+        self.entries
+            .iter()
+            .find(|entry| entry.id == id)
+            .map(|entry| &entry.name)
+    }
+}
 
 impl Usb0LibraryNameMap {
     fn try_new() -> Result<Self, ()> {
@@ -102,6 +120,231 @@ impl Usb0LibraryNameStage {
     }
 }
 
+#[cfg(feature = "p4-psram-storage")]
+struct Usb0CatalogBank {
+    tracks: Vec<CatalogTrack>,
+}
+
+#[cfg(feature = "p4-psram-storage")]
+impl Usb0CatalogBank {
+    fn try_new() -> Result<Self, ()> {
+        let mut tracks = Vec::new();
+        tracks
+            .try_reserve_exact(MEDIA_CATALOG_MAX_TRACKS)
+            .map_err(|_| ())?;
+        Ok(Self { tracks })
+    }
+}
+
+#[cfg(feature = "p4-psram-storage")]
+impl CatalogBank for Usb0CatalogBank {
+    fn capacity(&self) -> usize {
+        MEDIA_CATALOG_MAX_TRACKS
+    }
+
+    fn tracks(&self) -> &[CatalogTrack] {
+        &self.tracks
+    }
+
+    fn clear(&mut self) {
+        self.tracks.clear();
+    }
+
+    fn push_prechecked(&mut self, track: CatalogTrack) -> usize {
+        debug_assert!(self.tracks.len() < MEDIA_CATALOG_MAX_TRACKS);
+        let index = self.tracks.len();
+        self.tracks.push(track);
+        index
+    }
+}
+
+struct Usb0LibraryCatalogStage {
+    #[cfg(feature = "p4-psram-storage")]
+    publisher: CatalogBankPublisher<Usb0CatalogBank>,
+    #[cfg(feature = "p4-psram-storage")]
+    available: Option<Usb0CatalogBank>,
+    #[cfg(feature = "p4-psram-storage")]
+    reserve: Option<Usb0CatalogBank>,
+    #[cfg(feature = "p4-psram-storage")]
+    builder: Option<CatalogBankBuilder<Usb0CatalogBank>>,
+    #[cfg(feature = "p4-psram-storage")]
+    next_revision: u32,
+}
+
+impl Usb0LibraryCatalogStage {
+    fn try_new() -> Result<Self, ()> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            let first = Usb0CatalogBank::try_new()?;
+            let second = Usb0CatalogBank::try_new()?;
+            Ok(Self {
+                publisher: CatalogBankPublisher::new(),
+                available: Some(first),
+                reserve: Some(second),
+                builder: None,
+                next_revision: 1,
+            })
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        {
+            Ok(Self {})
+        }
+    }
+
+    #[cfg(feature = "p4-psram-storage")]
+    fn recycle_bank(&mut self, bank: Usb0CatalogBank) {
+        if self.available.is_none() {
+            self.available = Some(bank);
+        } else if self.reserve.is_none() {
+            self.reserve = Some(bank);
+        } else {
+            debug_assert!(false, "more than two catalog banks returned to the pool");
+        }
+    }
+
+    fn prepare_generation(&mut self, lease: MediaLease) {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            self.abort();
+            let different_lease = self
+                .publisher
+                .current()
+                .is_some_and(|snapshot| snapshot.lease() != lease);
+            if different_lease {
+                if let Some(snapshot) = self.publisher.take_current() {
+                    self.recycle_bank(snapshot.into_bank());
+                }
+            }
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = lease;
+    }
+
+    fn begin(&mut self, lease: MediaLease) -> Result<(), Usb0LibraryError> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            self.abort();
+            let bank = self
+                .available
+                .take()
+                .ok_or(Usb0LibraryError::CatalogBankUnavailable)?;
+            self.builder = Some(CatalogBankBuilder::new(lease, bank));
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = lease;
+
+        Ok(())
+    }
+
+    fn validate_names(&self, probe: &Usb0LibraryPdbProbe) -> Result<(), Usb0LibraryError> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            for table in [probe.artists_layout, probe.albums_layout, probe.keys_layout]
+                .into_iter()
+                .flatten()
+            {
+                if table.capacity_exceeded {
+                    return Err(Usb0LibraryError::CatalogNameCapacityExceeded);
+                }
+                if table.slot_truncated {
+                    return Err(Usb0LibraryError::CatalogTableTruncated);
+                }
+            }
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = probe;
+
+        Ok(())
+    }
+
+    fn validate_tracks(&self, probe: Usb0LibraryTableProbe) -> Result<(), Usb0LibraryError> {
+        #[cfg(feature = "p4-psram-storage")]
+        if probe.truncated {
+            return Err(Usb0LibraryError::CatalogTableTruncated);
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = probe;
+
+        Ok(())
+    }
+
+    fn retain_track(
+        &mut self,
+        volume_identity: VolumeIdentity,
+        track: &PdbTrackRow,
+        names: &Usb0LibraryNameStage,
+    ) -> Result<(), Usb0LibraryError> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            let resolved = resolve_pdb_track_names(
+                track,
+                &names.artists,
+                &names.albums,
+                &names.keys,
+            );
+            let catalog_track = catalog_track_from_pdb(volume_identity, track, resolved)
+                .map_err(Usb0LibraryError::CatalogDecode)?;
+            let builder = self
+                .builder
+                .as_mut()
+                .ok_or(Usb0LibraryError::CatalogBankUnavailable)?;
+            builder
+                .push(catalog_track)
+                .map_err(Usb0LibraryError::CatalogBuild)?;
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = (volume_identity, track, names);
+
+        Ok(())
+    }
+
+    fn publish(&mut self) -> Result<(), Usb0LibraryError> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            let builder = self
+                .builder
+                .take()
+                .ok_or(Usb0LibraryError::CatalogBankUnavailable)?;
+            let revision = self.next_revision;
+            self.next_revision = self.next_revision.wrapping_add(1).max(1);
+            let retired = self.publisher.publish(builder.finish(revision));
+            if let Some(snapshot) = retired {
+                self.recycle_bank(snapshot.into_bank());
+            } else if let Some(bank) = self.reserve.take() {
+                self.recycle_bank(bank);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn abort(&mut self) {
+        #[cfg(feature = "p4-psram-storage")]
+        if let Some(builder) = self.builder.take() {
+            self.recycle_bank(builder.into_bank());
+        }
+    }
+
+    fn invalidate(&mut self, lease: MediaLease) {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            self.abort();
+            if let Some(snapshot) = self.publisher.take_if_lease(lease) {
+                self.recycle_bank(snapshot.into_bank());
+            }
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = lease;
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Usb0LibraryError {
     FilesystemUnavailable,
@@ -117,6 +360,11 @@ pub(crate) enum Usb0LibraryError {
     MissingVolumeIdentity,
     StagingAllocation,
     DuplicateNameId(u32),
+    CatalogBankUnavailable,
+    CatalogNameCapacityExceeded,
+    CatalogTableTruncated,
+    CatalogDecode(PdbCatalogError),
+    CatalogBuild(CatalogBuildError),
     InvalidTrackPathUtf8,
     Identity(IdentityError),
     MissingTracksTable,
@@ -594,6 +842,8 @@ async fn scan_table_layout(
     mut buffer: &'static mut [u8],
     header: PdbHeader,
     first_page: u32,
+    names: &Usb0LibraryNameStage,
+    catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
     Fat32AsyncFileHandle,
     &'static mut [u8],
@@ -819,6 +1069,9 @@ async fn scan_table_layout(
                                 buffer,
                                 Err(Usb0LibraryError::Identity(error)),
                             );
+                        }
+                        if let Err(error) = catalog.retain_track(volume_identity, &track, names) {
+                            return (file, buffer, Err(error));
                         }
 
                         track_rows = match track_rows.checked_add(1) {
@@ -1127,27 +1380,12 @@ async fn scan_probe_tables(
     buffer: &'static mut [u8],
     mut probe: Usb0LibraryPdbProbe,
     staging: &mut Usb0LibraryNameStage,
+    catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
     Fat32AsyncFileHandle,
     &'static mut [u8],
     Result<Usb0LibraryPdbProbe, Usb0LibraryError>,
 ) {
-    let (file, buffer, tracks) = scan_table_layout(
-        client,
-        lease,
-        probe.volume_identity,
-        file,
-        buffer,
-        probe.header,
-        probe.tracks_first_page,
-    )
-    .await;
-    let tracks = match tracks {
-        Ok(tracks) => tracks,
-        Err(error) => return (file, buffer, Err(error)),
-    };
-    probe.tracks_layout = Some(tracks);
-
     let (file, buffer, artists) = scan_optional_name_table(
         client,
         lease,
@@ -1196,6 +1434,34 @@ async fn scan_probe_tables(
         Err(error) => return (file, buffer, Err(error)),
     };
 
+    if let Err(error) = catalog.validate_names(&probe) {
+        return (file, buffer, Err(error));
+    }
+    if let Err(error) = catalog.begin(lease) {
+        return (file, buffer, Err(error));
+    }
+
+    let (file, buffer, tracks) = scan_table_layout(
+        client,
+        lease,
+        probe.volume_identity,
+        file,
+        buffer,
+        probe.header,
+        probe.tracks_first_page,
+        staging,
+        catalog,
+    )
+    .await;
+    let tracks = match tracks {
+        Ok(tracks) => tracks,
+        Err(error) => return (file, buffer, Err(error)),
+    };
+    if let Err(error) = catalog.validate_tracks(tracks) {
+        return (file, buffer, Err(error));
+    }
+    probe.tracks_layout = Some(tracks);
+
     (file, buffer, Ok(probe))
 }
 
@@ -1205,6 +1471,7 @@ async fn probe_export_pdb(
     volume_identity: VolumeIdentity,
     buffer: &'static mut [u8],
     staging: &mut Usb0LibraryNameStage,
+    catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
     &'static mut [u8],
     Result<Usb0LibraryPdbProbe, Usb0LibraryError>,
@@ -1234,14 +1501,29 @@ async fn probe_export_pdb(
     };
 
     let (file, buffer, parse_result) = match parse_result {
-        Ok(probe) => scan_probe_tables(client, lease, file, buffer, probe, staging).await,
+        Ok(probe) => scan_probe_tables(client, lease, file, buffer, probe, staging, catalog).await,
         Err(error) => (file, buffer, Err(error)),
     };
 
     let close_result = close_file(client, lease, file).await;
     let result = match parse_result {
-        Err(error) => Err(error),
-        Ok(probe) => close_result.map(|()| probe),
+        Err(error) => {
+            catalog.abort();
+            Err(error)
+        }
+        Ok(probe) => match close_result {
+            Ok(()) => match catalog.publish() {
+                Ok(()) => Ok(probe),
+                Err(error) => {
+                    catalog.abort();
+                    Err(error)
+                }
+            },
+            Err(error) => {
+                catalog.abort();
+                Err(error)
+            }
+        },
     };
 
     (buffer, result)
@@ -1251,6 +1533,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
     let mut client = Usb0FilesystemClient::library();
     let mut page_buffer = &mut USB0_LIBRARY_PDB_IO.init([0; USB0_LIBRARY_PDB_IO_BYTES])[..];
     let mut name_stage: Option<Usb0LibraryNameStage> = None;
+    let mut catalog_stage: Option<Usb0LibraryCatalogStage> = None;
 
     loop {
         match USB0_LIBRARY_EVENTS.wait().await {
@@ -1260,6 +1543,12 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                 volume_identity,
             } => {
                 if kind != FileSystemKind::Fat32 {
+                    if let Some(catalog) = catalog_stage.as_mut() {
+                        catalog.invalidate(binding.lease);
+                    }
+                    if let Some(staging) = name_stage.as_mut() {
+                        staging.clear();
+                    }
                     set_library_state(Usb0LibraryState::Failed {
                         binding,
                         error: Usb0LibraryError::UnsupportedFilesystem(kind),
@@ -1267,6 +1556,12 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     continue;
                 }
                 let Some(volume_identity) = volume_identity else {
+                    if let Some(catalog) = catalog_stage.as_mut() {
+                        catalog.invalidate(binding.lease);
+                    }
+                    if let Some(staging) = name_stage.as_mut() {
+                        staging.clear();
+                    }
                     set_library_state(Usb0LibraryState::Failed {
                         binding,
                         error: Usb0LibraryError::MissingVolumeIdentity,
@@ -1284,6 +1579,18 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     });
                     continue;
                 };
+                if catalog_stage.is_none() {
+                    catalog_stage = Usb0LibraryCatalogStage::try_new().ok();
+                }
+                let Some(catalog) = catalog_stage.as_mut() else {
+                    staging.clear();
+                    set_library_state(Usb0LibraryState::Failed {
+                        binding,
+                        error: Usb0LibraryError::StagingAllocation,
+                    });
+                    continue;
+                };
+                catalog.prepare_generation(binding.lease);
                 staging.clear();
 
                 set_library_state(Usb0LibraryState::Probing { binding });
@@ -1293,6 +1600,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     volume_identity,
                     page_buffer,
                     staging,
+                    catalog,
                 )
                 .await;
                 page_buffer = restored;
@@ -1302,6 +1610,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                         set_library_state(Usb0LibraryState::Ready { binding, pdb });
                     }
                     Err(error) => {
+                        catalog.abort();
                         staging.clear();
                         set_library_state(Usb0LibraryState::Failed { binding, error });
                     }
@@ -1311,6 +1620,9 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                 if let Some(staging) = name_stage.as_mut() {
                     staging.clear();
                 }
+                if let Some(catalog) = catalog_stage.as_mut() {
+                    catalog.invalidate(binding.lease);
+                }
                 set_library_state(Usb0LibraryState::Failed {
                     binding,
                     error: Usb0LibraryError::FilesystemUnavailable,
@@ -1319,6 +1631,9 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
             Usb0LibraryEvent::Detached { binding } => {
                 if let Some(staging) = name_stage.as_mut() {
                     staging.clear();
+                }
+                if let Some(catalog) = catalog_stage.as_mut() {
+                    catalog.invalidate(binding.lease);
                 }
                 set_library_state(Usb0LibraryState::Detached { binding });
             }
