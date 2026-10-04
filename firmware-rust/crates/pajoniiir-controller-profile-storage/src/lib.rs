@@ -4,14 +4,15 @@
 use pajoniiir_controller_profile::{
     MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, MAX_PROFILE_SIZE, ProfileId, ProfileRegistry,
 };
-use pajoniiir_media_fs::{
-    AsyncFileSystem, DirectoryHandle, EntryKind, FS_NAME_MAX, FileHandle,
-};
+use pajoniiir_media_fs::{AsyncFileSystem, DirectoryHandle, EntryKind, FS_NAME_MAX, FileHandle};
 
 pub const CONTROLLER_PROFILE_ROOT: &str = "/controllers";
 pub const CONTROLLER_PROFILE_FILENAME: &str = "profile.s3bin";
-const PROFILE_PATH_CAPACITY: usize =
-    CONTROLLER_PROFILE_ROOT.len() + 1 + MAX_PROFILE_ID_BYTES + 1 + CONTROLLER_PROFILE_FILENAME.len();
+const PROFILE_PATH_CAPACITY: usize = CONTROLLER_PROFILE_ROOT.len()
+    + 1
+    + MAX_PROFILE_ID_BYTES
+    + 1
+    + CONTROLLER_PROFILE_FILENAME.len();
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ProfileScanStats {
@@ -152,7 +153,10 @@ where
         let mut offset = 0usize;
         let mut read_failed = false;
         while offset < file_len {
-            match filesystem.read(&mut file, &mut profile_storage[offset..file_len]).await {
+            match filesystem
+                .read(&mut file, &mut profile_storage[offset..file_len])
+                .await
+            {
                 Ok(0) => {
                     stats.short_reads = stats.short_reads.saturating_add(1);
                     read_failed = true;
@@ -201,10 +205,12 @@ extern crate std;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::{future::Future, pin::pin, task::{Context, Poll}};
-    use pajoniiir_controller_profile::{
-        HEADER_SIZE, INPUT_ENTRY_SIZE, OUTPUT_ENTRY_SIZE, crc32,
+    use core::{
+        future::Future,
+        pin::pin,
+        task::{Context, Poll},
     };
+    use pajoniiir_controller_profile::{HEADER_SIZE, INPUT_ENTRY_SIZE, OUTPUT_ENTRY_SIZE, crc32};
     use pajoniiir_media_fs::{
         DirEntry, FileStat, FileSystemCapabilities, FileSystemKind, LeaseBound,
     };
