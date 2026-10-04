@@ -136,11 +136,9 @@ pub fn parse_exfat_boot_sector(
 
     let sectors_per_cluster_shift = sector[109];
     if u16::from(bytes_per_sector_shift) + u16::from(sectors_per_cluster_shift) > 25 {
-        return Err(
-            ExFatAsyncBootSectorError::InvalidSectorsPerClusterShift(
-                sectors_per_cluster_shift,
-            ),
-        );
+        return Err(ExFatAsyncBootSectorError::InvalidSectorsPerClusterShift(
+            sectors_per_cluster_shift,
+        ));
     }
     let sectors_per_cluster = 1u32
         .checked_shl(u32::from(sectors_per_cluster_shift))
@@ -153,7 +151,8 @@ pub fn parse_exfat_boot_sector(
         return Err(ExFatAsyncBootSectorError::InvalidFatCount(number_of_fats));
     }
 
-    let partition_offset = read_u64(sector, 64).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
+    let partition_offset =
+        read_u64(sector, 64).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
     let volume_length = read_u64(sector, 72).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
     if volume_length == 0 || volume_length > geometry.block_count {
         return Err(ExFatAsyncBootSectorError::InvalidVolumeLength(
@@ -168,12 +167,10 @@ pub fn parse_exfat_boot_sector(
     let cluster_count = read_u32(sector, 92).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
     let root_directory_cluster =
         read_u32(sector, 96).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
-    let volume_serial =
-        read_u32(sector, 100).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
+    let volume_serial = read_u32(sector, 100).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
     let file_system_revision =
         read_u16(sector, 104).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
-    let volume_flags =
-        read_u16(sector, 106).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
+    let volume_flags = read_u16(sector, 106).ok_or(ExFatAsyncBootSectorError::MissingSignature)?;
     let percent_in_use = sector[112];
 
     if fat_offset < EXFAT_RESERVED_BOOT_SECTORS || fat_length == 0 {
@@ -265,11 +262,7 @@ where
     ) -> Result<Self, (ExFatAsyncMountError, D, D::Buffer)> {
         let geometry = device.geometry();
         if !geometry.is_valid() {
-            return Err((
-                ExFatAsyncMountError::InvalidDeviceGeometry,
-                device,
-                scratch,
-            ));
+            return Err((ExFatAsyncMountError::InvalidDeviceGeometry, device, scratch));
         }
         if geometry.block_size != boot.bytes_per_sector {
             return Err((
@@ -291,11 +284,7 @@ where
             ));
         }
         if boot.volume_length > geometry.block_count {
-            return Err((
-                ExFatAsyncMountError::VolumeBeyondDevice,
-                device,
-                scratch,
-            ));
+            return Err((ExFatAsyncMountError::VolumeBeyondDevice, device, scratch));
         }
 
         Ok(Self {
@@ -327,9 +316,7 @@ where
         (self.device, self.scratch.take())
     }
 
-    pub async fn validate_main_boot_region(
-        &mut self,
-    ) -> Result<(), ExFatAsyncIoError<D::Error>> {
+    pub async fn validate_main_boot_region(&mut self) -> Result<(), ExFatAsyncIoError<D::Error>> {
         let mut checksum = 0u32;
 
         for sector_index in 0..EXFAT_BOOT_REGION_DATA_SECTORS {
@@ -392,10 +379,7 @@ where
         }
     }
 
-    pub fn cluster_first_sector(
-        &self,
-        cluster: u32,
-    ) -> Result<u64, ExFatAsyncIoError<D::Error>> {
+    pub fn cluster_first_sector(&self, cluster: u32) -> Result<u64, ExFatAsyncIoError<D::Error>> {
         self.boot
             .cluster_first_sector(cluster)
             .ok_or(ExFatAsyncIoError::InvalidCluster(cluster))
