@@ -12,6 +12,8 @@ use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 mod usb0_library;
 #[allow(dead_code)]
 mod usb0_msc;
+#[allow(dead_code)]
+mod usb1_controller;
 
 #[cfg(feature = "usb0-hardware-bringup")]
 #[embassy_executor::task]
@@ -35,6 +37,16 @@ async fn usb0_filesystem_task() {
 #[embassy_executor::task]
 async fn usb0_library_task() {
     usb0_library::run_usb0_library_worker().await
+}
+
+#[cfg(feature = "usb1-controller-bringup")]
+#[embassy_executor::task]
+async fn usb1_owner_task(
+    usb_fs: esp_hal::peripherals::USB_FS<'static>,
+    usb_dp: esp_hal::peripherals::GPIO27<'static>,
+    usb_dm: esp_hal::peripherals::GPIO26<'static>,
+) {
+    usb1_controller::run_root_controller_owner(usb_fs, usb_dp, usb_dm).await
 }
 
 #[panic_handler]
@@ -63,6 +75,7 @@ async fn main(spawner: Spawner) -> ! {
     // Compile-time anchors: the production target must keep the host-tested
     // product crates no_std-compatible on the real ESP32-P4 architecture.
     let _ = core::mem::size_of::<pajoniiir_controller_session::ControllerSession>();
+    let _ = core::mem::size_of::<pajoniiir_controller_usb::ControllerUsbCapabilities>();
     let _ = core::mem::size_of::<pajoniiir_deck::DeckProductState>();
     let _ = core::mem::size_of::<pajoniiir_hot_cues::HotCueBank>();
     let _ = core::mem::size_of::<pajoniiir_mixer::MixerState>();
@@ -89,11 +102,22 @@ async fn main(spawner: Spawner) -> ! {
         );
     }
 
-    #[cfg(not(feature = "usb0-hardware-bringup"))]
+    #[cfg(feature = "usb1-controller-bringup")]
+    {
+        spawner.spawn(
+            usb1_owner_task(peripherals.USB_FS, peripherals.GPIO27, peripherals.GPIO26)
+                .expect("USB1 owner task slot must be available"),
+        );
+    }
+
+    #[cfg(not(any(
+        feature = "usb0-hardware-bringup",
+        feature = "usb1-controller-bringup"
+    )))]
     let _ = spawner;
 
-    // The default image intentionally does not touch USB0 yet. Enabling
-    // usb0-hardware-bringup transfers USB_HS ownership into the persistent
-    // Embassy owner task above.
+    // The default image intentionally does not touch either USB controller.
+    // Feature gates transfer USB_HS and/or USB_FS ownership into persistent
+    // Embassy owner tasks without weakening the hardware-verification boundary.
     match core::future::pending::<core::convert::Infallible>().await {}
 }

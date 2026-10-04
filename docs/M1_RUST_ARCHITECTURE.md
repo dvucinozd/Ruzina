@@ -428,3 +428,12 @@ The exFAT crate now implements the target-facing read-only AsyncFileSystem contr
 ### exFAT broker integration
 
 The USB0 filesystem broker now exposes backend-neutral lease-bound file and directory handles. Stat/open/read/seek/close and directory operations dispatch to either the native FAT32 or native exFAT async backend while preserving the existing one-in-flight-per-client and owned-buffer completion rules. A handle from the wrong filesystem kind fails closed instead of being reinterpreted. The Rekordbox Library worker consumes the same generic file handle, so a validated exFAT Rekordbox medium can follow the same PDB/catalog pipeline as FAT32 using its domain-separated exFAT VolumeIdentity.
+
+
+### USB1 Full-Speed controller boundary
+
+The M1 controller port is a separate ESP32-P4 Full-Speed OTG host on GPIO27 (DP) / GPIO26 (DM), independent of the USB0 High-Speed storage controller. Feature `usb1-controller-bringup` owns that peripheral in a persistent Embassy task and performs root-port enumeration without assuming a particular controller VID/PID.
+
+The HAL-independent `pajoniiir-controller-usb` crate parses the configuration descriptor into a bounded `ControllerUsbCapabilities` snapshot covering MIDI Streaming, USB Audio Control/Streaming, HID and vendor interfaces plus relevant endpoint directions. This preserves the product rule that transport discovery is separate from S3CP/profile semantics. A controller is not considered physically supported by descriptor compatibility alone.
+
+CI cross-compiles USB1 independently and links USB0 + USB1 + PSRAM together. Physical VBUS/fault behavior, MIDI traffic, LED output and UAC isochronous/feedback behavior remain `HARDWARE_PENDING`.

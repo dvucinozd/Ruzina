@@ -50,3 +50,12 @@ Without `p4-psram-storage`, the same parser path remains probe-only and does not
 ### Transactional PSRAM catalog publication
 
 With `p4-psram-storage`, the Library worker reserves two 1024-track PSRAM banks before import. Artists, Albums and Keys are scanned first; Tracks are then converted through the provider-neutral Rekordbox adapter into `CatalogTrack` values in the inactive bank. A new snapshot is published only after the complete PDB scan and file close succeed. Parse, capacity, duplicate-ID, UTF-8 or close failures abort the build and recycle the inactive bank without exposing a partial catalog. A detach or failed filesystem generation invalidates the matching published snapshot and returns its bank to the two-bank pool.
+
+
+## USB1 controller ownership boundary
+
+Feature `usb1-controller-bringup` owns the ESP32-P4 Full-Speed OTG controller through `USB_FS` with the M1 board-authoritative pin order `GPIO27 = DP`, `GPIO26 = DM`. The persistent Embassy task enumerates the root-port device and publishes a bounded capability snapshot derived from the configuration descriptor.
+
+Descriptor classification is implemented in the HAL-independent `pajoniiir-controller-usb` crate and is host-tested. It recognizes USB Audio Control, Audio Streaming, MIDI Streaming, HID and vendor interfaces, and records the relevant bulk/interrupt/isochronous endpoint directions without binding product behavior to a single VID/PID.
+
+This gate is **COMPILE_VERIFIED / HARDWARE_PENDING**. It does not yet claim physical VBUS switching/fault recovery, MIDI packet transport, LED output, UAC isochronous streaming or FLX4 qualification. CI also links USB0 HS + USB1 FS + PSRAM together so ownership collisions are caught before EVT hardware exists.

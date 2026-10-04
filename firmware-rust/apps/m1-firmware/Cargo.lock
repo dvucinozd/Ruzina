@@ -1352,6 +1352,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-controller-usb"
+version = "0.1.0"
+
+[[package]]
 name = "pajoniiir-core"
 version = "0.1.0"
 
@@ -1389,6 +1393,7 @@ dependencies = [
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-runtime",
  "pajoniiir-controller-session",
+ "pajoniiir-controller-usb",
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
  "pajoniiir-media-block",

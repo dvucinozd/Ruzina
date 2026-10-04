@@ -10,6 +10,10 @@ default = []
 # Compile-verified target wiring only. Do not enable in normal firmware until
 # USB0 VBUS/power switching, PHY and hot-plug are EVT-verified.
 usb0-hardware-bringup = []
+# Compile-verified USB1 Full-Speed controller ownership/enumeration boundary.
+# GPIO27 is DP and GPIO26 is DM on the ESP32-P4 M1 routing. This does not
+# claim physical MIDI/UAC/VBUS qualification.
+usb1-controller-bringup = []
 # Compile-verified PSRAM allocator boundary for large retained library/UI storage.
 # This does not claim DMA/cache coherency or hardware qualification.
 p4-psram-storage = ["dep:esp-alloc"]
@@ -28,6 +32,7 @@ pajoniiir-audio-dsp = { path = "../../crates/pajoniiir-audio-dsp" }
 pajoniiir-audio-keylock = { path = "../../crates/pajoniiir-audio-keylock" }
 pajoniiir-audio-runtime = { path = "../../crates/pajoniiir-audio-runtime" }
 pajoniiir-controller-session = { path = "../../crates/pajoniiir-controller-session" }
+pajoniiir-controller-usb = { path = "../../crates/pajoniiir-controller-usb" }
 pajoniiir-deck = { path = "../../crates/pajoniiir-deck" }
 pajoniiir-hot-cues = { path = "../../crates/pajoniiir-hot-cues" }
 pajoniiir-mixer = { path = "../../crates/pajoniiir-mixer" }

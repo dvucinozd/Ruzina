@@ -9,6 +9,7 @@ members = [
     "crates/pajoniiir-controller-core",
     "crates/pajoniiir-controller-profile",
     "crates/pajoniiir-controller-session",
+    "crates/pajoniiir-controller-usb",
     "crates/pajoniiir-control-scheduler",
     "crates/pajoniiir-deck",
     "crates/pajoniiir-hot-cues",
@@ -38,6 +39,7 @@ default-members = [
     "crates/pajoniiir-controller-core",
     "crates/pajoniiir-controller-profile",
     "crates/pajoniiir-controller-session",
+    "crates/pajoniiir-controller-usb",
     "crates/pajoniiir-control-scheduler",
     "crates/pajoniiir-deck",
     "crates/pajoniiir-hot-cues",
@@ -80,6 +82,7 @@ pajoniiir-core = { path = "crates/pajoniiir-core" }
 pajoniiir-controller-core = { path = "crates/pajoniiir-controller-core" }
 pajoniiir-controller-profile = { path = "crates/pajoniiir-controller-profile" }
 pajoniiir-controller-session = { path = "crates/pajoniiir-controller-session" }
+pajoniiir-controller-usb = { path = "crates/pajoniiir-controller-usb" }
 pajoniiir-control-scheduler = { path = "crates/pajoniiir-control-scheduler" }
 pajoniiir-deck = { path = "crates/pajoniiir-deck" }
 pajoniiir-hot-cues = { path = "crates/pajoniiir-hot-cues" }
