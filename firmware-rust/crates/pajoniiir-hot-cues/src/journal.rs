@@ -223,9 +223,7 @@ where
                 continue;
             };
 
-            if entry_key == *incoming_key.as_bytes()
-                || seen[..seen_count].contains(&entry_key)
-            {
+            if entry_key == *incoming_key.as_bytes() || seen[..seen_count].contains(&entry_key) {
                 continue;
             }
 
