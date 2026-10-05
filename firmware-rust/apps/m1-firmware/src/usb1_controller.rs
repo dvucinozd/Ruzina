@@ -1,5 +1,7 @@
 use core::cell::RefCell;
 
+use crate::controller_profiles::{match_scanned_profile, wait_for_profile_catalog_change};
+use embassy_futures::select::{Either, select};
 use embassy_usb_driver::{
     Direction as UsbDirection, EndpointAddress, EndpointInfo, EndpointType,
     host::{
@@ -27,6 +29,8 @@ pub(crate) struct Usb1ControllerProbe {
     pub(crate) product_id: u16,
     pub(crate) capabilities: ControllerUsbCapabilities,
     pub(crate) midi_transport_ready: bool,
+    pub(crate) profile_index: Option<u8>,
+    pub(crate) profile_catalog_revision: u32,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -237,7 +241,7 @@ pub(crate) async fn run_root_controller_owner(
                     Usb1ControllerFailure::MalformedConfiguration,
                 ));
                 bus.free_address(info.device_address);
-                pending_speed = wait_for_change(&mut controller).await;
+                pending_speed = wait_for_device_change(&mut controller).await;
                 continue;
             }
         };
@@ -245,22 +249,28 @@ pub(crate) async fn run_root_controller_owner(
         let midi_transport =
             Usb1MidiTransport::new(&bus, &config[..config_len], &info).ok();
         let midi_transport_ready = midi_transport.is_some();
-
-        set_state(Usb1ControllerState::Ready(Usb1ControllerProbe {
+        let profile_match =
+            match_scanned_profile(info.device_desc.vendor_id, info.device_desc.product_id);
+        let mut probe = Usb1ControllerProbe {
             device_address: info.device_address,
             vendor_id: info.device_desc.vendor_id,
             product_id: info.device_desc.product_id,
             capabilities,
             midi_transport_ready,
-        }));
+            profile_index: profile_match.index,
+            profile_catalog_revision: profile_match.revision,
+        };
+        set_state(Usb1ControllerState::Ready(probe));
 
-        pending_speed = wait_for_change(&mut controller).await;
+        pending_speed = wait_for_ready_change(&mut controller, &mut probe).await;
         drop(midi_transport);
         bus.free_address(info.device_address);
     }
 }
 
-async fn wait_for_change<'d, C>(controller: &mut BusController<'d, C>) -> Option<embassy_usb_driver::Speed>
+async fn wait_for_device_change<'d, C>(
+    controller: &mut BusController<'d, C>,
+) -> Option<embassy_usb_driver::Speed>
 where
     C: UsbHostController<'d>,
 {
@@ -281,6 +291,45 @@ where
                 return Some(speed);
             }
             _ => {}
+        }
+    }
+}
+
+async fn wait_for_ready_change<'d, C>(
+    controller: &mut BusController<'d, C>,
+    probe: &mut Usb1ControllerProbe,
+) -> Option<embassy_usb_driver::Speed>
+where
+    C: UsbHostController<'d>,
+{
+    loop {
+        match select(
+            controller.wait_for_device_event(),
+            wait_for_profile_catalog_change(),
+        )
+        .await
+        {
+            Either::First(DeviceEvent::Disconnected) => {
+                set_state(Usb1ControllerState::Detached);
+                return None;
+            }
+            Either::First(DeviceEvent::Overcurrent) => {
+                set_state(Usb1ControllerState::Failed(
+                    Usb1ControllerFailure::Overcurrent,
+                ));
+                return None;
+            }
+            Either::First(DeviceEvent::Connected(speed)) => {
+                set_state(Usb1ControllerState::Detached);
+                return Some(speed);
+            }
+            Either::First(_) => {}
+            Either::Second(_revision) => {
+                let profile_match = match_scanned_profile(probe.vendor_id, probe.product_id);
+                probe.profile_index = profile_match.index;
+                probe.profile_catalog_revision = profile_match.revision;
+                set_state(Usb1ControllerState::Ready(*probe));
+            }
         }
     }
 }
