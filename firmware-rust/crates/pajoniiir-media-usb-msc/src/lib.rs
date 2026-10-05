@@ -1025,6 +1025,37 @@ mod tests {
         block[84..88].copy_from_slice(&entry_size.to_le_bytes());
     }
 
+    fn crc32(input: &[u8]) -> u32 {
+        let mut crc = u32::MAX;
+        for &byte in input {
+            crc ^= u32::from(byte);
+            for _ in 0..8 {
+                let mask = 0u32.wrapping_sub(crc & 1);
+                crc = (crc >> 1) ^ (0xedb8_8320 & mask);
+            }
+        }
+        !crc
+    }
+
+    fn finalize_gpt_integrity(
+        device: &mut MemoryBlockDevice,
+        header_lba: u64,
+        entries_lba: u64,
+        entry_count: u32,
+        entry_size: u32,
+    ) {
+        let block_size = device.geometry.block_size as usize;
+        let table_start = entries_lba as usize * block_size;
+        let table_len = entry_count as usize * entry_size as usize;
+        let entries_crc = crc32(&device.bytes[table_start..table_start + table_len]);
+
+        let header = device.block_mut(header_lba);
+        header[88..92].copy_from_slice(&entries_crc.to_le_bytes());
+        header[16..20].fill(0);
+        let header_crc = crc32(&header[..92]);
+        header[16..20].copy_from_slice(&header_crc.to_le_bytes());
+    }
+
     fn write_gpt_basic_data_entry(entry: &mut [u8], first_lba: u64, last_lba: u64) {
         const BASIC_DATA_GUID: [u8; 16] = [
             0xa2, 0xa0, 0xd0, 0xeb, 0xe5, 0xb9, 0x33, 0x44, 0x87, 0xc0, 0x68, 0xb6, 0xb7, 0x26,
@@ -1049,6 +1080,7 @@ mod tests {
         write_gpt_header(image.block_mut(1), 2, 4, 136);
         let entry_start = 2 * 512 + 3 * 136;
         write_gpt_basic_data_entry(image.byte_range_mut(entry_start, 136), 20, 31);
+        finalize_gpt_integrity(&mut image, 1, 2, 4, 136);
         image.block_mut(20).copy_from_slice(&fat32_boot_sector());
 
         let mut plan = UsbMscDiscoveryPlan::new(attempt).unwrap();
@@ -1157,6 +1189,7 @@ mod tests {
 
         let entry_start = 2 * 512 + 3 * 136;
         write_gpt_basic_data_entry(device.byte_range_mut(entry_start, 136), 20, 31);
+        finalize_gpt_integrity(&mut device, 1, 2, 4, 136);
         device.block_mut(20).copy_from_slice(&fat32_boot_sector());
 
         let mut scratch = [0u8; 512];
