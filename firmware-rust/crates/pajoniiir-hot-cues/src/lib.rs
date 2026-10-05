@@ -1,6 +1,8 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod journal;
+
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_media_identity::PersistentMediaId;
 
