@@ -231,10 +231,11 @@ pub(crate) async fn run_profile_storage_owner(
             Ok(report) => report,
             Err(_) => match park_profile_storage().await {},
         };
+        crate::controller_profiles::publish_scanned_registry(report.registry);
 
-        // Retain the filesystem/card owner and the immutable registry snapshot.
-        // A later USB1 integration gate will publish this registry to the
-        // controller session; until then, keep both alive in this task.
+        // Retain the filesystem/card owner and immutable scan report. USB1 can
+        // consume the bounded registry snapshot immediately; loading and
+        // validating the matched profile blob remains the next activation gate.
         loop {
             Timer::after_millis(OWNER_HEALTH_TICK_MS).await;
             let _ = filesystem.boot_info();
