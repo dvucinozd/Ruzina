@@ -1,10 +1,10 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+use pajoniiir_controller_profile::{MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, ProfileId};
 pub use pajoniiir_controller_profile::{
     MAX_PROFILE_SIZE, ProfileActivationState, ProfileActivationTicket, ProfileRegistry, ProfileSlot,
 };
-use pajoniiir_controller_profile::{MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, ProfileId};
 use pajoniiir_media_fs::{AsyncFileSystem, EntryKind, FS_NAME_MAX, FileHandle};
 
 pub const CONTROLLER_PROFILE_ROOT: &str = "/controllers";
@@ -681,5 +681,4 @@ mod tests {
             slot.meta
         );
     }
-
 }
