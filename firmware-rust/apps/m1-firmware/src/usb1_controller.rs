@@ -14,7 +14,7 @@ use embassy_usb_driver::{
 };
 use embassy_usb_host::{BusController, BusRoute, BusState, handler::EnumerationInfo};
 use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
-use pajoniiir_controller_profile::ProfileActivationState;
+use pajoniiir_controller_profile_storage::ProfileActivationState;
 use pajoniiir_controller_usb::{
     ControllerUsbCapabilities, ControllerUsbDescriptorError, UsbMidiEvent,
     find_midi_streaming_interface, inspect_configuration,

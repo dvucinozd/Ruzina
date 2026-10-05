@@ -5,9 +5,8 @@ use embassy_sync::{
     mutex::Mutex,
     signal::Signal,
 };
-use pajoniiir_controller_profile::{
-    ProfileActivationState, ProfileActivationTicket, ProfileRegistry, ProfileSlot,
-    MAX_PROFILE_SIZE,
+use pajoniiir_controller_profile_storage::{
+    MAX_PROFILE_SIZE, ProfileActivationState, ProfileActivationTicket, ProfileRegistry, ProfileSlot,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

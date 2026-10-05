@@ -38,7 +38,6 @@ static_cell = { version = "=2.1.1", default-features = false }
 pajoniiir-audio-dsp = { path = "../../crates/pajoniiir-audio-dsp" }
 pajoniiir-audio-keylock = { path = "../../crates/pajoniiir-audio-keylock" }
 pajoniiir-audio-runtime = { path = "../../crates/pajoniiir-audio-runtime" }
-pajoniiir-controller-profile = { path = "../../crates/pajoniiir-controller-profile" }
 pajoniiir-controller-profile-storage = { path = "../../crates/pajoniiir-controller-profile-storage" }
 pajoniiir-controller-session = { path = "../../crates/pajoniiir-controller-session" }
 pajoniiir-controller-usb = { path = "../../crates/pajoniiir-controller-usb" }
