@@ -301,17 +301,138 @@ fn crc32_iso(data: &[u8]) -> u32 {
     !crc
 }
 
-/// Storage boundary for the platform adapter.
+pub const HOT_CUE_STORAGE_KEY_LEN: usize = 15;
+
+/// Bounded backend key matching the released product's NVS key-size constraint.
 ///
-/// The product model owns cue semantics. ESP32-P4 firmware can implement this
-/// trait with NVS or another bounded persistent store without coupling flash I/O
-/// to the controller reducer.
+/// The key intentionally carries only a prefix of the provider-neutral track ID.
+/// Every stored V3 record still carries the complete 16-byte ID, so a truncated
+/// key collision is detected as `TrackMismatch` instead of silently returning
+/// another track's cues.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HotCueStorageKey([u8; HOT_CUE_STORAGE_KEY_LEN]);
+
+impl HotCueStorageKey {
+    pub fn from_track_id(track_id: MediaTrackId) -> Self {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let mut key = [0u8; HOT_CUE_STORAGE_KEY_LEN];
+        key[0] = b'h';
+        for (index, byte) in track_id.0[..7].iter().copied().enumerate() {
+            key[1 + index * 2] = HEX[(byte >> 4) as usize];
+            key[2 + index * 2] = HEX[(byte & 0x0f) as usize];
+        }
+        Self(key)
+    }
+
+    pub const fn as_bytes(&self) -> &[u8; HOT_CUE_STORAGE_KEY_LEN] {
+        &self.0
+    }
+}
+
+/// Minimal key/value persistence boundary used by the native Rust product.
+///
+/// `write_record_atomic` is deliberately stronger than a raw flash write: after
+/// any reset or power loss, a subsequent read for the same key must return either
+/// the complete previous record or the complete new record, never a torn record.
+/// A raw ESP32-P4 flash adapter therefore needs a journal/two-slot commit scheme
+/// (or another backend that already provides equivalent atomic replacement).
+pub trait HotCueRecordBackend {
+    type Error;
+
+    fn read_record(
+        &mut self,
+        key: HotCueStorageKey,
+        output: &mut [u8; HOT_CUE_RECORD_V3_SIZE],
+    ) -> Result<bool, Self::Error>;
+
+    fn write_record_atomic(
+        &mut self,
+        key: HotCueStorageKey,
+        record: &[u8; HOT_CUE_RECORD_V3_SIZE],
+    ) -> Result<(), Self::Error>;
+
+    fn remove_record(&mut self, key: HotCueStorageKey) -> Result<(), Self::Error>;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RecordBackedHotCueStoreError<E> {
+    Backend(E),
+    Record(HotCueRecordError),
+}
+
+/// Reusable V3 Hot Cue store over an atomic bounded record backend.
+///
+/// This adapter owns key derivation, full-ID collision detection and record
+/// validation. Platform code only owns durable record replacement/removal.
+pub struct RecordBackedHotCueStore<B> {
+    backend: B,
+}
+
+impl<B> RecordBackedHotCueStore<B> {
+    pub const fn new(backend: B) -> Self {
+        Self { backend }
+    }
+
+    pub const fn backend(&self) -> &B {
+        &self.backend
+    }
+
+    pub fn backend_mut(&mut self) -> &mut B {
+        &mut self.backend
+    }
+
+    pub fn into_backend(self) -> B {
+        self.backend
+    }
+}
+
+/// Storage boundary for the product model.
+///
+/// The reducer owns cue semantics. Platform adapters implement durability behind
+/// this trait so controller handling never performs raw flash I/O directly.
 pub trait HotCueStore {
     type Error;
 
     fn load(&mut self, track_id: MediaTrackId) -> Result<Option<HotCueBank>, Self::Error>;
     fn save(&mut self, bank: &HotCueBank) -> Result<(), Self::Error>;
     fn clear(&mut self, track_id: MediaTrackId) -> Result<(), Self::Error>;
+}
+
+impl<B> HotCueStore for RecordBackedHotCueStore<B>
+where
+    B: HotCueRecordBackend,
+{
+    type Error = RecordBackedHotCueStoreError<B::Error>;
+
+    fn load(&mut self, track_id: MediaTrackId) -> Result<Option<HotCueBank>, Self::Error> {
+        let key = HotCueStorageKey::from_track_id(track_id);
+        let mut record = [0u8; HOT_CUE_RECORD_V3_SIZE];
+        if !self
+            .backend
+            .read_record(key, &mut record)
+            .map_err(RecordBackedHotCueStoreError::Backend)?
+        {
+            return Ok(None);
+        }
+
+        decode_record_v3(track_id, &record)
+            .map(Some)
+            .map_err(RecordBackedHotCueStoreError::Record)
+    }
+
+    fn save(&mut self, bank: &HotCueBank) -> Result<(), Self::Error> {
+        let key = HotCueStorageKey::from_track_id(bank.track_id());
+        let record = encode_record_v3(bank);
+        self.backend
+            .write_record_atomic(key, &record)
+            .map_err(RecordBackedHotCueStoreError::Backend)
+    }
+
+    fn clear(&mut self, track_id: MediaTrackId) -> Result<(), Self::Error> {
+        self.backend
+            .remove_record(HotCueStorageKey::from_track_id(track_id))
+            .map_err(RecordBackedHotCueStoreError::Backend)
+    }
 }
 
 #[cfg(test)]
@@ -429,6 +550,110 @@ mod tests {
         let migrated = decode_legacy_record_v2(legacy_id, migrated_id, &record).unwrap();
 
         assert_eq!(migrated, legacy_bank);
+    }
+
+    #[derive(Clone, Copy)]
+    struct OneRecordBackend {
+        key: Option<HotCueStorageKey>,
+        record: [u8; HOT_CUE_RECORD_V3_SIZE],
+    }
+
+    impl OneRecordBackend {
+        const fn new() -> Self {
+            Self {
+                key: None,
+                record: [0u8; HOT_CUE_RECORD_V3_SIZE],
+            }
+        }
+    }
+
+    impl HotCueRecordBackend for OneRecordBackend {
+        type Error = ();
+
+        fn read_record(
+            &mut self,
+            key: HotCueStorageKey,
+            output: &mut [u8; HOT_CUE_RECORD_V3_SIZE],
+        ) -> Result<bool, Self::Error> {
+            if self.key != Some(key) {
+                return Ok(false);
+            }
+            *output = self.record;
+            Ok(true)
+        }
+
+        fn write_record_atomic(
+            &mut self,
+            key: HotCueStorageKey,
+            record: &[u8; HOT_CUE_RECORD_V3_SIZE],
+        ) -> Result<(), Self::Error> {
+            self.record = *record;
+            self.key = Some(key);
+            Ok(())
+        }
+
+        fn remove_record(&mut self, key: HotCueStorageKey) -> Result<(), Self::Error> {
+            if self.key == Some(key) {
+                self.key = None;
+                self.record = [0u8; HOT_CUE_RECORD_V3_SIZE];
+            }
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn bounded_storage_key_matches_nvs_limit_and_is_deterministic() {
+        let track = MediaTrackId([
+            0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+            0x10, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc, 0xfe,
+        ]);
+        let key = HotCueStorageKey::from_track_id(track);
+        assert_eq!(key.as_bytes(), b"h0123456789abcd");
+        assert_eq!(key.as_bytes().len(), HOT_CUE_STORAGE_KEY_LEN);
+    }
+
+    #[test]
+    fn record_backed_store_roundtrips_and_clears_v3_bank() {
+        let track = id(0x51);
+        let mut bank = HotCueBank::empty(track);
+        assert!(bank.set_single(0, 1_250));
+        assert!(bank.set_loop(4, 5_000, 9_000));
+
+        let mut store = RecordBackedHotCueStore::new(OneRecordBackend::new());
+        assert_eq!(store.load(track), Ok(None));
+        assert_eq!(store.save(&bank), Ok(()));
+        assert_eq!(store.load(track), Ok(Some(bank)));
+        assert_eq!(store.clear(track), Ok(()));
+        assert_eq!(store.load(track), Ok(None));
+    }
+
+    #[test]
+    fn truncated_backend_key_collision_fails_closed_on_full_track_id() {
+        let prefix = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
+        let first = MediaTrackId([
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6],
+            0x01, 0, 0, 0, 0, 0, 0, 0, 1,
+        ]);
+        let second = MediaTrackId([
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6],
+            0x02, 0, 0, 0, 0, 0, 0, 0, 2,
+        ]);
+        assert_eq!(
+            HotCueStorageKey::from_track_id(first),
+            HotCueStorageKey::from_track_id(second)
+        );
+
+        let mut bank = HotCueBank::empty(first);
+        assert!(bank.set_single(2, 7_000));
+        let mut store = RecordBackedHotCueStore::new(OneRecordBackend::new());
+        assert_eq!(store.save(&bank), Ok(()));
+
+        assert_eq!(
+            store.load(second),
+            Err(RecordBackedHotCueStoreError::Record(
+                HotCueRecordError::TrackMismatch
+            ))
+        );
     }
 
     #[test]
