@@ -408,14 +408,29 @@ impl<const N: usize> DeckEffectQueue<N> {
         true
     }
 
-    pub fn pop(&mut self) -> Option<DeckEffect> {
+    pub fn front(&self) -> Option<DeckEffect> {
         if self.count == 0 || N == 0 {
-            return None;
+            None
+        } else {
+            self.items[self.head]
         }
-        let effect = self.items[self.head].take();
-        self.head = (self.head + 1) % N;
-        self.count -= 1;
-        effect
+    }
+
+    /// Completes the currently visible effect only after the downstream owner
+    /// reports whether it accepted the request.
+    ///
+    /// A failed completion intentionally keeps the same front item for retry.
+    pub fn complete_front(&mut self, succeeded: bool) -> bool {
+        if self.count == 0 || N == 0 {
+            return false;
+        }
+
+        if succeeded {
+            self.items[self.head] = None;
+            self.head = (self.head + 1) % N;
+            self.count -= 1;
+        }
+        true
     }
 }
 
@@ -495,16 +510,28 @@ impl<const T: usize, const P: usize, const A: usize> DeckEffectBroker<T, P, A> {
         true
     }
 
-    pub fn pop_transport(&mut self) -> Option<DeckEffect> {
-        self.transport.pop()
+    pub fn transport_front(&self) -> Option<DeckEffect> {
+        self.transport.front()
     }
 
-    pub fn pop_persistence(&mut self) -> Option<DeckEffect> {
-        self.persistence.pop()
+    pub fn complete_transport(&mut self, succeeded: bool) -> bool {
+        self.transport.complete_front(succeeded)
     }
 
-    pub fn pop_audio_dsp(&mut self) -> Option<DeckEffect> {
-        self.audio_dsp.pop()
+    pub fn persistence_front(&self) -> Option<DeckEffect> {
+        self.persistence.front()
+    }
+
+    pub fn complete_persistence(&mut self, succeeded: bool) -> bool {
+        self.persistence.complete_front(succeeded)
+    }
+
+    pub fn audio_dsp_front(&self) -> Option<DeckEffect> {
+        self.audio_dsp.front()
+    }
+
+    pub fn complete_audio_dsp(&mut self, succeeded: bool) -> bool {
+        self.audio_dsp.complete_front(succeeded)
     }
 }
 
@@ -3147,7 +3174,8 @@ mod tests {
 
         assert!(queue.try_push_all(DeckEffects::one(pause)));
         assert_eq!(queue.len(), 1);
-        assert_eq!(queue.pop(), Some(pause));
+        assert_eq!(queue.front(), Some(pause));
+        assert!(queue.complete_front(true));
         assert!(queue.is_empty());
     }
 
@@ -3161,9 +3189,12 @@ mod tests {
         let mut queue = DeckEffectQueue::<2>::new();
 
         assert!(queue.try_push_all(DeckEffects::two(first, second)));
-        assert_eq!(queue.pop(), Some(first));
-        assert_eq!(queue.pop(), Some(second));
-        assert_eq!(queue.pop(), None);
+        assert_eq!(queue.front(), Some(first));
+        assert!(queue.complete_front(true));
+        assert_eq!(queue.front(), Some(second));
+        assert!(queue.complete_front(true));
+        assert_eq!(queue.front(), None);
+        assert!(!queue.complete_front(true));
     }
 
     #[test]
@@ -3202,8 +3233,56 @@ mod tests {
         assert!(broker.try_push_all(DeckEffects::two(transport, audio)));
         assert_eq!(broker.transport_len(), 1);
         assert_eq!(broker.audio_dsp_len(), 1);
-        assert_eq!(broker.pop_transport(), Some(transport));
-        assert_eq!(broker.pop_audio_dsp(), Some(audio));
+        assert_eq!(broker.transport_front(), Some(transport));
+        assert!(broker.complete_transport(true));
+        assert_eq!(broker.audio_dsp_front(), Some(audio));
+        assert!(broker.complete_audio_dsp(true));
         assert!(broker.is_empty());
     }
+
+    #[test]
+    fn failed_effect_completion_retains_exact_front_for_retry() {
+        let first = DeckEffect::Pause { deck: DeckId::One };
+        let second = DeckEffect::Seek {
+            deck: DeckId::One,
+            position_ms: 4_321,
+        };
+        let mut queue = DeckEffectQueue::<2>::new();
+
+        assert!(queue.try_push_all(DeckEffects::two(first, second)));
+        assert_eq!(queue.front(), Some(first));
+
+        assert!(queue.complete_front(false));
+        assert_eq!(queue.len(), 2);
+        assert_eq!(queue.front(), Some(first));
+
+        assert!(queue.complete_front(true));
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.front(), Some(second));
+    }
+
+    #[test]
+    fn broker_lane_retry_does_not_advance_or_disturb_other_lanes() {
+        let transport = DeckEffect::Pause { deck: DeckId::One };
+        let audio = DeckEffect::ApplyPadFx {
+            deck: DeckId::Two,
+            bank: PadFxBank::Two,
+            pad: 4,
+            active: true,
+        };
+        let mut broker = DeckEffectBroker::<2, 1, 2>::new();
+
+        assert!(broker.try_push_all(DeckEffects::two(transport, audio)));
+        assert_eq!(broker.transport_front(), Some(transport));
+        assert_eq!(broker.audio_dsp_front(), Some(audio));
+
+        assert!(broker.complete_transport(false));
+        assert_eq!(broker.transport_front(), Some(transport));
+        assert_eq!(broker.audio_dsp_front(), Some(audio));
+
+        assert!(broker.complete_audio_dsp(true));
+        assert_eq!(broker.audio_dsp_front(), None);
+        assert_eq!(broker.transport_front(), Some(transport));
+    }
+
 }

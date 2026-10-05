@@ -53,16 +53,28 @@ impl ProductRuntime {
         self.deck_effects.len()
     }
 
-    pub(crate) fn pop_transport_effect(&mut self) -> Option<DeckEffect> {
-        self.deck_effects.pop_transport()
+    pub(crate) fn next_transport_effect(&self) -> Option<DeckEffect> {
+        self.deck_effects.transport_front()
     }
 
-    pub(crate) fn pop_persistence_effect(&mut self) -> Option<DeckEffect> {
-        self.deck_effects.pop_persistence()
+    pub(crate) fn complete_transport_effect(&mut self, succeeded: bool) -> bool {
+        self.deck_effects.complete_transport(succeeded)
     }
 
-    pub(crate) fn pop_audio_dsp_effect(&mut self) -> Option<DeckEffect> {
-        self.deck_effects.pop_audio_dsp()
+    pub(crate) fn next_persistence_effect(&self) -> Option<DeckEffect> {
+        self.deck_effects.persistence_front()
+    }
+
+    pub(crate) fn complete_persistence_effect(&mut self, succeeded: bool) -> bool {
+        self.deck_effects.complete_persistence(succeeded)
+    }
+
+    pub(crate) fn next_audio_dsp_effect(&self) -> Option<DeckEffect> {
+        self.deck_effects.audio_dsp_front()
+    }
+
+    pub(crate) fn complete_audio_dsp_effect(&mut self, succeeded: bool) -> bool {
+        self.deck_effects.complete_audio_dsp(succeeded)
     }
 
     pub(crate) const fn has_dirty_leds(&self) -> bool {
