@@ -1,8 +1,9 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub use pajoniiir_controller_profile::ProfileRegistry;
 use pajoniiir_controller_profile::{
-    MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, MAX_PROFILE_SIZE, ProfileId, ProfileRegistry,
+    MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, MAX_PROFILE_SIZE, ProfileId,
 };
 use pajoniiir_media_fs::{AsyncFileSystem, EntryKind, FS_NAME_MAX, FileHandle};
 
