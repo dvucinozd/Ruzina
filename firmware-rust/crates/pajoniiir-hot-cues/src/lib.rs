@@ -41,10 +41,17 @@ impl HotCueSlot {
     }
 }
 
+/// Per-track local Hot Cue bank.
+///
+/// `slots` contains locally stored cue values. `override_mask` states which
+/// source slots are replaced by the local bank. An override bit with an empty
+/// slot is a durable deletion/tombstone and therefore intentionally differs
+/// from "no local override".
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HotCueBank {
     track_id: MediaTrackId,
     slots: [Option<HotCueSlot>; HOT_CUE_SLOT_COUNT],
+    override_mask: u8,
 }
 
 impl HotCueBank {
@@ -52,6 +59,7 @@ impl HotCueBank {
         Self {
             track_id,
             slots: [None; HOT_CUE_SLOT_COUNT],
+            override_mask: 0,
         }
     }
 
@@ -59,8 +67,25 @@ impl HotCueBank {
         self.track_id
     }
 
+    pub const fn override_mask(&self) -> u8 {
+        self.override_mask
+    }
+
+    /// Converts a bank into imported/source semantics.
+    ///
+    /// Source cue presence is carried by the slots themselves; source entries do
+    /// not create local overrides.
+    pub const fn as_source(mut self) -> Self {
+        self.override_mask = 0;
+        self
+    }
+
     pub fn slot(&self, index: u8) -> Option<HotCueSlot> {
         self.slots.get(index as usize).copied().flatten()
+    }
+
+    pub fn is_overridden(&self, index: u8) -> bool {
+        index < HOT_CUE_SLOT_COUNT as u8 && self.override_mask & (1u8 << index) != 0
     }
 
     pub fn set_single(&mut self, index: u8, pos_ms: u32) -> bool {
@@ -68,6 +93,7 @@ impl HotCueBank {
             return false;
         };
         *slot = Some(HotCueSlot::single(pos_ms));
+        self.override_mask |= 1u8 << index;
         true
     }
 
@@ -79,17 +105,24 @@ impl HotCueBank {
             return false;
         };
         *slot = Some(cue);
+        self.override_mask |= 1u8 << index;
         true
     }
 
+    /// Creates a durable local deletion override.
+    ///
+    /// Clearing an empty slot for the first time is meaningful because the
+    /// resulting tombstone can hide an imported Rekordbox cue.
     pub fn clear(&mut self, index: u8) -> bool {
         let Some(slot) = self.slots.get_mut(index as usize) else {
             return false;
         };
-        if slot.is_none() {
+        let bit = 1u8 << index;
+        if slot.is_none() && self.override_mask & bit != 0 {
             return false;
         }
         *slot = None;
+        self.override_mask |= bit;
         true
     }
 
@@ -102,19 +135,49 @@ impl HotCueBank {
         }
         mask
     }
+
+    /// Merges imported/source cues with durable local overrides.
+    ///
+    /// Local overrides win even when their slot is empty, preserving deleted
+    /// source cues across reloads. The returned bank is an effective view, not a
+    /// persistence object, so its override mask is intentionally zero.
+    pub fn merged(source: Self, local: Self) -> Option<Self> {
+        if source.track_id != local.track_id {
+            return None;
+        }
+
+        let mut merged = Self::empty(source.track_id);
+        for index in 0..HOT_CUE_SLOT_COUNT {
+            merged.slots[index] = if local.override_mask & (1u8 << index) != 0 {
+                local.slots[index]
+            } else {
+                source.slots[index]
+            };
+        }
+        Some(merged)
+    }
 }
 
+pub const HOT_CUE_RECORD_V4_SIZE: usize = 132;
 pub const HOT_CUE_RECORD_V3_SIZE: usize = 128;
 pub const HOT_CUE_RECORD_V2_SIZE: usize = 144;
 
+const HOT_CUE_RECORD_V4_MAGIC: u32 = 0x3443_5648;
 const HOT_CUE_RECORD_V3_MAGIC: u32 = 0x3343_5648;
 const HOT_CUE_RECORD_V2_MAGIC: u32 = 0x3243_5648;
+const HOT_CUE_RECORD_V4_VERSION: u16 = 4;
 const HOT_CUE_RECORD_V3_VERSION: u16 = 3;
 const HOT_CUE_RECORD_V2_VERSION: u16 = 2;
 const HOT_CUE_RECORD_SLOT_SIZE: usize = 12;
+const HOT_CUE_RECORD_V4_HEADER_SIZE: usize = 32;
 const HOT_CUE_RECORD_V3_HEADER_SIZE: usize = 28;
 const HOT_CUE_RECORD_V2_HEADER_SIZE: usize = 44;
-const HOT_CUE_RECORD_PAYLOAD_LEN: u16 = (4 + HOT_CUE_SLOT_COUNT * HOT_CUE_RECORD_SLOT_SIZE) as u16;
+const HOT_CUE_RECORD_V4_PAYLOAD_LEN: u16 =
+    (8 + HOT_CUE_SLOT_COUNT * HOT_CUE_RECORD_SLOT_SIZE) as u16;
+const HOT_CUE_RECORD_V3_PAYLOAD_LEN: u16 =
+    (4 + HOT_CUE_SLOT_COUNT * HOT_CUE_RECORD_SLOT_SIZE) as u16;
+const HOT_CUE_RECORD_V4_CRC_OFFSET: usize =
+    HOT_CUE_RECORD_V4_HEADER_SIZE + HOT_CUE_SLOT_COUNT * HOT_CUE_RECORD_SLOT_SIZE;
 const HOT_CUE_RECORD_V3_CRC_OFFSET: usize =
     HOT_CUE_RECORD_V3_HEADER_SIZE + HOT_CUE_SLOT_COUNT * HOT_CUE_RECORD_SLOT_SIZE;
 const HOT_CUE_RECORD_V2_CRC_OFFSET: usize =
@@ -132,25 +195,39 @@ pub enum HotCueRecordError {
     InvalidSlot,
 }
 
+pub fn encode_record_v4(bank: &HotCueBank) -> [u8; HOT_CUE_RECORD_V4_SIZE] {
+    let mut record = [0u8; HOT_CUE_RECORD_V4_SIZE];
+    put_u32(&mut record[0..4], HOT_CUE_RECORD_V4_MAGIC);
+    put_u16(&mut record[4..6], HOT_CUE_RECORD_V4_VERSION);
+    put_u16(&mut record[6..8], HOT_CUE_RECORD_V4_PAYLOAD_LEN);
+    record[8..24].copy_from_slice(&bank.track_id().0);
+    put_u32(&mut record[24..28], bank.exists_mask() as u32);
+    put_u32(&mut record[28..32], bank.override_mask() as u32);
+    encode_slots(
+        bank,
+        &mut record[HOT_CUE_RECORD_V4_HEADER_SIZE..HOT_CUE_RECORD_V4_CRC_OFFSET],
+    );
+
+    let crc = crc32_iso(&record[..HOT_CUE_RECORD_V4_CRC_OFFSET]);
+    put_u32(
+        &mut record[HOT_CUE_RECORD_V4_CRC_OFFSET..HOT_CUE_RECORD_V4_SIZE],
+        crc,
+    );
+    record
+}
+
+/// Legacy native-Rust V3 encoder retained for migration fixtures.
 pub fn encode_record_v3(bank: &HotCueBank) -> [u8; HOT_CUE_RECORD_V3_SIZE] {
     let mut record = [0u8; HOT_CUE_RECORD_V3_SIZE];
     put_u32(&mut record[0..4], HOT_CUE_RECORD_V3_MAGIC);
     put_u16(&mut record[4..6], HOT_CUE_RECORD_V3_VERSION);
-    put_u16(&mut record[6..8], HOT_CUE_RECORD_PAYLOAD_LEN);
+    put_u16(&mut record[6..8], HOT_CUE_RECORD_V3_PAYLOAD_LEN);
     record[8..24].copy_from_slice(&bank.track_id().0);
     put_u32(&mut record[24..28], bank.exists_mask() as u32);
-
-    for index in 0..HOT_CUE_SLOT_COUNT {
-        let offset = HOT_CUE_RECORD_V3_HEADER_SIZE + index * HOT_CUE_RECORD_SLOT_SIZE;
-        if let Some(slot) = bank.slot(index as u8) {
-            put_u32(&mut record[offset..offset + 4], slot.pos_ms);
-            put_u32(&mut record[offset + 4..offset + 8], slot.end_ms);
-            record[offset + 8] = match slot.kind {
-                HotCueKind::Single => 1,
-                HotCueKind::Loop => 2,
-            };
-        }
-    }
+    encode_slots(
+        bank,
+        &mut record[HOT_CUE_RECORD_V3_HEADER_SIZE..HOT_CUE_RECORD_V3_CRC_OFFSET],
+    );
 
     let crc = crc32_iso(&record[..HOT_CUE_RECORD_V3_CRC_OFFSET]);
     put_u32(
@@ -158,6 +235,39 @@ pub fn encode_record_v3(bank: &HotCueBank) -> [u8; HOT_CUE_RECORD_V3_SIZE] {
         crc,
     );
     record
+}
+
+pub fn decode_record_v4(
+    expected_track: MediaTrackId,
+    record: &[u8],
+) -> Result<HotCueBank, HotCueRecordError> {
+    if record.len() != HOT_CUE_RECORD_V4_SIZE {
+        return Err(HotCueRecordError::InvalidLength);
+    }
+    if get_u32(&record[0..4]) != HOT_CUE_RECORD_V4_MAGIC {
+        return Err(HotCueRecordError::InvalidMagic);
+    }
+    if get_u16(&record[4..6]) != HOT_CUE_RECORD_V4_VERSION {
+        return Err(HotCueRecordError::UnsupportedVersion);
+    }
+    if get_u16(&record[6..8]) != HOT_CUE_RECORD_V4_PAYLOAD_LEN {
+        return Err(HotCueRecordError::InvalidPayloadLength);
+    }
+    if record[8..24] != expected_track.0 {
+        return Err(HotCueRecordError::TrackMismatch);
+    }
+    let expected_crc = get_u32(&record[HOT_CUE_RECORD_V4_CRC_OFFSET..HOT_CUE_RECORD_V4_SIZE]);
+    if expected_crc != crc32_iso(&record[..HOT_CUE_RECORD_V4_CRC_OFFSET]) {
+        return Err(HotCueRecordError::InvalidCrc);
+    }
+
+    decode_slots(
+        expected_track,
+        get_u32(&record[24..28]),
+        get_u32(&record[28..32]),
+        &record[HOT_CUE_RECORD_V4_HEADER_SIZE..HOT_CUE_RECORD_V4_CRC_OFFSET],
+        true,
+    )
 }
 
 pub fn decode_record_v3(
@@ -173,7 +283,7 @@ pub fn decode_record_v3(
     if get_u16(&record[4..6]) != HOT_CUE_RECORD_V3_VERSION {
         return Err(HotCueRecordError::UnsupportedVersion);
     }
-    if get_u16(&record[6..8]) != HOT_CUE_RECORD_PAYLOAD_LEN {
+    if get_u16(&record[6..8]) != HOT_CUE_RECORD_V3_PAYLOAD_LEN {
         return Err(HotCueRecordError::InvalidPayloadLength);
     }
     if record[8..24] != expected_track.0 {
@@ -184,9 +294,12 @@ pub fn decode_record_v3(
         return Err(HotCueRecordError::InvalidCrc);
     }
 
+    // V3 had no override mask. Treat it as an authoritative local bank so
+    // source cues cannot unexpectedly reappear after migration.
     decode_slots(
         expected_track,
         get_u32(&record[24..28]),
+        0xff,
         &record[HOT_CUE_RECORD_V3_HEADER_SIZE..HOT_CUE_RECORD_V3_CRC_OFFSET],
         true,
     )
@@ -206,7 +319,7 @@ pub fn decode_legacy_record_v2(
     if get_u16(&record[4..6]) != HOT_CUE_RECORD_V2_VERSION {
         return Err(HotCueRecordError::UnsupportedVersion);
     }
-    if get_u16(&record[6..8]) != HOT_CUE_RECORD_PAYLOAD_LEN {
+    if get_u16(&record[6..8]) != HOT_CUE_RECORD_V3_PAYLOAD_LEN {
         return Err(HotCueRecordError::InvalidPayloadLength);
     }
     if record[8..40] != expected_legacy_id.0 {
@@ -220,18 +333,34 @@ pub fn decode_legacy_record_v2(
     decode_slots(
         migrated_track_id,
         get_u32(&record[40..44]),
+        0xff,
         &record[HOT_CUE_RECORD_V2_HEADER_SIZE..HOT_CUE_RECORD_V2_CRC_OFFSET],
         false,
     )
 }
 
+fn encode_slots(bank: &HotCueBank, output: &mut [u8]) {
+    for index in 0..HOT_CUE_SLOT_COUNT {
+        let offset = index * HOT_CUE_RECORD_SLOT_SIZE;
+        if let Some(slot) = bank.slot(index as u8) {
+            put_u32(&mut output[offset..offset + 4], slot.pos_ms);
+            put_u32(&mut output[offset + 4..offset + 8], slot.end_ms);
+            output[offset + 8] = match slot.kind {
+                HotCueKind::Single => 1,
+                HotCueKind::Loop => 2,
+            };
+        }
+    }
+}
+
 fn decode_slots(
     track_id: MediaTrackId,
     valid_mask: u32,
+    override_mask: u32,
     slots: &[u8],
     strict_reserved: bool,
 ) -> Result<HotCueBank, HotCueRecordError> {
-    if valid_mask & !0xff != 0 {
+    if (valid_mask | override_mask) & !0xff != 0 || valid_mask & !override_mask != 0 {
         return Err(HotCueRecordError::InvalidMask);
     }
 
@@ -256,21 +385,14 @@ fn decode_slots(
             continue;
         }
 
-        match kind {
-            1 if end_ms == 0 => {
-                if !bank.set_single(index as u8, pos_ms) {
-                    return Err(HotCueRecordError::InvalidSlot);
-                }
-            }
-            2 if end_ms > pos_ms => {
-                if !bank.set_loop(index as u8, pos_ms, end_ms) {
-                    return Err(HotCueRecordError::InvalidSlot);
-                }
-            }
+        bank.slots[index] = Some(match kind {
+            1 if end_ms == 0 => HotCueSlot::single(pos_ms),
+            2 => HotCueSlot::loop_region(pos_ms, end_ms).ok_or(HotCueRecordError::InvalidSlot)?,
             _ => return Err(HotCueRecordError::InvalidSlot),
-        }
+        });
     }
 
+    bank.override_mask = override_mask as u8;
     Ok(bank)
 }
 
@@ -306,9 +428,9 @@ pub const HOT_CUE_STORAGE_KEY_LEN: usize = 15;
 /// Bounded backend key matching the released product's NVS key-size constraint.
 ///
 /// The key intentionally carries only a prefix of the provider-neutral track ID.
-/// Every stored V3 record still carries the complete 16-byte ID, so a truncated
-/// key collision is detected as `TrackMismatch` instead of silently returning
-/// another track's cues.
+/// Every stored V4 record still carries the complete 16-byte ID, so a truncated
+/// key collision is detected as `TrackMismatch` instead of silently returning,
+/// replacing or deleting another track's cues.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HotCueStorageKey([u8; HOT_CUE_STORAGE_KEY_LEN]);
 
@@ -334,21 +456,19 @@ impl HotCueStorageKey {
 /// `write_record_atomic` is deliberately stronger than a raw flash write: after
 /// any reset or power loss, a subsequent read for the same key must return either
 /// the complete previous record or the complete new record, never a torn record.
-/// A raw ESP32-P4 flash adapter therefore needs a journal/two-slot commit scheme
-/// (or another backend that already provides equivalent atomic replacement).
 pub trait HotCueRecordBackend {
     type Error;
 
     fn read_record(
         &mut self,
         key: HotCueStorageKey,
-        output: &mut [u8; HOT_CUE_RECORD_V3_SIZE],
+        output: &mut [u8; HOT_CUE_RECORD_V4_SIZE],
     ) -> Result<bool, Self::Error>;
 
     fn write_record_atomic(
         &mut self,
         key: HotCueStorageKey,
-        record: &[u8; HOT_CUE_RECORD_V3_SIZE],
+        record: &[u8; HOT_CUE_RECORD_V4_SIZE],
     ) -> Result<(), Self::Error>;
 
     fn remove_record(&mut self, key: HotCueStorageKey) -> Result<(), Self::Error>;
@@ -360,10 +480,6 @@ pub enum RecordBackedHotCueStoreError<E> {
     Record(HotCueRecordError),
 }
 
-/// Reusable V3 Hot Cue store over an atomic bounded record backend.
-///
-/// This adapter owns key derivation, full-ID collision detection and record
-/// validation. Platform code only owns durable record replacement/removal.
 pub struct RecordBackedHotCueStore<B> {
     backend: B,
 }
@@ -386,16 +502,35 @@ impl<B> RecordBackedHotCueStore<B> {
     }
 }
 
-/// Storage boundary for the product model.
-///
-/// The reducer owns cue semantics. Platform adapters implement durability behind
-/// this trait so controller handling never performs raw flash I/O directly.
 pub trait HotCueStore {
     type Error;
 
     fn load(&mut self, track_id: MediaTrackId) -> Result<Option<HotCueBank>, Self::Error>;
     fn save(&mut self, bank: &HotCueBank) -> Result<(), Self::Error>;
     fn clear(&mut self, track_id: MediaTrackId) -> Result<(), Self::Error>;
+}
+
+impl<B> RecordBackedHotCueStore<B>
+where
+    B: HotCueRecordBackend,
+{
+    fn validate_existing_key(
+        &mut self,
+        key: HotCueStorageKey,
+        track_id: MediaTrackId,
+    ) -> Result<(), RecordBackedHotCueStoreError<B::Error>> {
+        let mut record = [0u8; HOT_CUE_RECORD_V4_SIZE];
+        if self
+            .backend
+            .read_record(key, &mut record)
+            .map_err(RecordBackedHotCueStoreError::Backend)?
+        {
+            decode_record_v4(track_id, &record)
+                .map(|_| ())
+                .map_err(RecordBackedHotCueStoreError::Record)?;
+        }
+        Ok(())
+    }
 }
 
 impl<B> HotCueStore for RecordBackedHotCueStore<B>
@@ -406,7 +541,7 @@ where
 
     fn load(&mut self, track_id: MediaTrackId) -> Result<Option<HotCueBank>, Self::Error> {
         let key = HotCueStorageKey::from_track_id(track_id);
-        let mut record = [0u8; HOT_CUE_RECORD_V3_SIZE];
+        let mut record = [0u8; HOT_CUE_RECORD_V4_SIZE];
         if !self
             .backend
             .read_record(key, &mut record)
@@ -415,22 +550,25 @@ where
             return Ok(None);
         }
 
-        decode_record_v3(track_id, &record)
+        decode_record_v4(track_id, &record)
             .map(Some)
             .map_err(RecordBackedHotCueStoreError::Record)
     }
 
     fn save(&mut self, bank: &HotCueBank) -> Result<(), Self::Error> {
         let key = HotCueStorageKey::from_track_id(bank.track_id());
-        let record = encode_record_v3(bank);
+        self.validate_existing_key(key, bank.track_id())?;
+        let record = encode_record_v4(bank);
         self.backend
             .write_record_atomic(key, &record)
             .map_err(RecordBackedHotCueStoreError::Backend)
     }
 
     fn clear(&mut self, track_id: MediaTrackId) -> Result<(), Self::Error> {
+        let key = HotCueStorageKey::from_track_id(track_id);
+        self.validate_existing_key(key, track_id)?;
         self.backend
-            .remove_record(HotCueStorageKey::from_track_id(track_id))
+            .remove_record(key)
             .map_err(RecordBackedHotCueStoreError::Backend)
     }
 }
@@ -455,21 +593,13 @@ mod tests {
         let mut record = [0u8; HOT_CUE_RECORD_V2_SIZE];
         put_u32(&mut record[0..4], HOT_CUE_RECORD_V2_MAGIC);
         put_u16(&mut record[4..6], HOT_CUE_RECORD_V2_VERSION);
-        put_u16(&mut record[6..8], HOT_CUE_RECORD_PAYLOAD_LEN);
+        put_u16(&mut record[6..8], HOT_CUE_RECORD_V3_PAYLOAD_LEN);
         record[8..40].copy_from_slice(&id.0);
         put_u32(&mut record[40..44], bank.exists_mask() as u32);
-
-        for index in 0..HOT_CUE_SLOT_COUNT {
-            let offset = HOT_CUE_RECORD_V2_HEADER_SIZE + index * HOT_CUE_RECORD_SLOT_SIZE;
-            if let Some(slot) = bank.slot(index as u8) {
-                put_u32(&mut record[offset..offset + 4], slot.pos_ms);
-                put_u32(&mut record[offset + 4..offset + 8], slot.end_ms);
-                record[offset + 8] = match slot.kind {
-                    HotCueKind::Single => 1,
-                    HotCueKind::Loop => 2,
-                };
-            }
-        }
+        encode_slots(
+            bank,
+            &mut record[HOT_CUE_RECORD_V2_HEADER_SIZE..HOT_CUE_RECORD_V2_CRC_OFFSET],
+        );
 
         let crc = crc32_iso(&record[..HOT_CUE_RECORD_V2_CRC_OFFSET]);
         put_u32(
@@ -485,50 +615,78 @@ mod tests {
     }
 
     #[test]
-    fn v3_record_roundtrip_preserves_track_and_slots() {
+    fn v4_record_roundtrip_preserves_track_slots_and_tombstones() {
         let id = derived_id(0x21, "Music/roundtrip.flac");
         let mut bank = HotCueBank::empty(id);
         assert!(bank.set_single(0, 1_000));
         assert!(bank.set_loop(2, 2_000, 4_000));
+        assert!(bank.clear(6));
 
-        let record = encode_record_v3(&bank);
-        assert_eq!(record.len(), HOT_CUE_RECORD_V3_SIZE);
-        let decoded = decode_record_v3(id, &record).unwrap();
+        let record = encode_record_v4(&bank);
+        assert_eq!(record.len(), HOT_CUE_RECORD_V4_SIZE);
+        let decoded = decode_record_v4(id, &record).unwrap();
         assert_eq!(decoded, bank);
+        assert_eq!(decoded.override_mask(), 0x45);
+        assert!(decoded.is_overridden(6));
+        assert_eq!(decoded.slot(6), None);
     }
 
     #[test]
-    fn v3_record_rejects_wrong_track_crc_and_invalid_slot() {
+    fn v4_record_rejects_wrong_track_crc_masks_and_invalid_slot() {
         let id = derived_id(0x31, "Music/a.wav");
         let other = derived_id(0x31, "Music/b.wav");
         let mut bank = HotCueBank::empty(id);
         assert!(bank.set_single(0, 500));
-        let record = encode_record_v3(&bank);
+        let record = encode_record_v4(&bank);
 
         assert_eq!(
-            decode_record_v3(other, &record),
+            decode_record_v4(other, &record),
             Err(HotCueRecordError::TrackMismatch)
         );
 
         let mut corrupt_crc = record;
-        corrupt_crc[32] ^= 0x80;
+        corrupt_crc[40] ^= 0x80;
         assert_eq!(
-            decode_record_v3(id, &corrupt_crc),
+            decode_record_v4(id, &corrupt_crc),
             Err(HotCueRecordError::InvalidCrc)
         );
 
-        let mut invalid_slot = record;
-        let slot_offset = HOT_CUE_RECORD_V3_HEADER_SIZE;
-        invalid_slot[slot_offset + 4] = 1;
-        let crc = crc32_iso(&invalid_slot[..HOT_CUE_RECORD_V3_CRC_OFFSET]);
+        let mut invalid_mask = record;
+        put_u32(&mut invalid_mask[28..32], 0);
+        let crc = crc32_iso(&invalid_mask[..HOT_CUE_RECORD_V4_CRC_OFFSET]);
         put_u32(
-            &mut invalid_slot[HOT_CUE_RECORD_V3_CRC_OFFSET..HOT_CUE_RECORD_V3_SIZE],
+            &mut invalid_mask[HOT_CUE_RECORD_V4_CRC_OFFSET..HOT_CUE_RECORD_V4_SIZE],
             crc,
         );
         assert_eq!(
-            decode_record_v3(id, &invalid_slot),
+            decode_record_v4(id, &invalid_mask),
+            Err(HotCueRecordError::InvalidMask)
+        );
+
+        let mut invalid_slot = record;
+        let slot_offset = HOT_CUE_RECORD_V4_HEADER_SIZE;
+        invalid_slot[slot_offset + 4] = 1;
+        let crc = crc32_iso(&invalid_slot[..HOT_CUE_RECORD_V4_CRC_OFFSET]);
+        put_u32(
+            &mut invalid_slot[HOT_CUE_RECORD_V4_CRC_OFFSET..HOT_CUE_RECORD_V4_SIZE],
+            crc,
+        );
+        assert_eq!(
+            decode_record_v4(id, &invalid_slot),
             Err(HotCueRecordError::InvalidSlot)
         );
+    }
+
+    #[test]
+    fn v3_record_migrates_as_authoritative_override_bank() {
+        let id = derived_id(0x22, "Music/v3.flac");
+        let mut bank = HotCueBank::empty(id);
+        assert!(bank.set_single(1, 1_500));
+
+        let record = encode_record_v3(&bank);
+        let decoded = decode_record_v3(id, &record).unwrap();
+        assert_eq!(decoded.slot(1), bank.slot(1));
+        assert_eq!(decoded.override_mask(), 0xff);
     }
 
     #[test]
@@ -549,20 +707,22 @@ mod tests {
         let record = legacy_record(legacy_id, &legacy_bank);
         let migrated = decode_legacy_record_v2(legacy_id, migrated_id, &record).unwrap();
 
-        assert_eq!(migrated, legacy_bank);
+        assert_eq!(migrated.slot(1), legacy_bank.slot(1));
+        assert_eq!(migrated.slot(6), legacy_bank.slot(6));
+        assert_eq!(migrated.override_mask(), 0xff);
     }
 
     #[derive(Clone, Copy)]
     struct OneRecordBackend {
         key: Option<HotCueStorageKey>,
-        record: [u8; HOT_CUE_RECORD_V3_SIZE],
+        record: [u8; HOT_CUE_RECORD_V4_SIZE],
     }
 
     impl OneRecordBackend {
         const fn new() -> Self {
             Self {
                 key: None,
-                record: [0u8; HOT_CUE_RECORD_V3_SIZE],
+                record: [0u8; HOT_CUE_RECORD_V4_SIZE],
             }
         }
     }
@@ -573,7 +733,7 @@ mod tests {
         fn read_record(
             &mut self,
             key: HotCueStorageKey,
-            output: &mut [u8; HOT_CUE_RECORD_V3_SIZE],
+            output: &mut [u8; HOT_CUE_RECORD_V4_SIZE],
         ) -> Result<bool, Self::Error> {
             if self.key != Some(key) {
                 return Ok(false);
@@ -585,7 +745,7 @@ mod tests {
         fn write_record_atomic(
             &mut self,
             key: HotCueStorageKey,
-            record: &[u8; HOT_CUE_RECORD_V3_SIZE],
+            record: &[u8; HOT_CUE_RECORD_V4_SIZE],
         ) -> Result<(), Self::Error> {
             self.record = *record;
             self.key = Some(key);
@@ -595,7 +755,7 @@ mod tests {
         fn remove_record(&mut self, key: HotCueStorageKey) -> Result<(), Self::Error> {
             if self.key == Some(key) {
                 self.key = None;
-                self.record = [0u8; HOT_CUE_RECORD_V3_SIZE];
+                self.record = [0u8; HOT_CUE_RECORD_V4_SIZE];
             }
             Ok(())
         }
@@ -613,11 +773,12 @@ mod tests {
     }
 
     #[test]
-    fn record_backed_store_roundtrips_and_clears_v3_bank() {
+    fn record_backed_store_roundtrips_and_clears_v4_bank() {
         let track = id(0x51);
         let mut bank = HotCueBank::empty(track);
         assert!(bank.set_single(0, 1_250));
         assert!(bank.set_loop(4, 5_000, 9_000));
+        assert!(bank.clear(7));
 
         let mut store = RecordBackedHotCueStore::new(OneRecordBackend::new());
         assert_eq!(store.load(track), Ok(None));
@@ -628,7 +789,7 @@ mod tests {
     }
 
     #[test]
-    fn truncated_backend_key_collision_fails_closed_on_full_track_id() {
+    fn truncated_backend_key_collision_fails_closed_on_load() {
         let prefix = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
         let first = MediaTrackId([
             prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], 0x01, 0,
@@ -657,10 +818,63 @@ mod tests {
     }
 
     #[test]
-    fn empty_bank_has_no_slots() {
+    fn short_key_collision_cannot_overwrite_or_delete_foreign_record() {
+        let prefix = [0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07];
+        let first = MediaTrackId([
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], 1, 0, 0,
+            0, 0, 0, 0, 0, 1,
+        ]);
+        let second = MediaTrackId([
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], 2, 0, 0,
+            0, 0, 0, 0, 0, 2,
+        ]);
+
+        let mut first_bank = HotCueBank::empty(first);
+        assert!(first_bank.set_single(0, 1_000));
+        let mut second_bank = HotCueBank::empty(second);
+        assert!(second_bank.set_single(0, 9_000));
+
+        let mut store = RecordBackedHotCueStore::new(OneRecordBackend::new());
+        assert_eq!(store.save(&first_bank), Ok(()));
+        assert_eq!(
+            store.save(&second_bank),
+            Err(RecordBackedHotCueStoreError::Record(
+                HotCueRecordError::TrackMismatch
+            ))
+        );
+        assert_eq!(
+            store.clear(second),
+            Err(RecordBackedHotCueStoreError::Record(
+                HotCueRecordError::TrackMismatch
+            ))
+        );
+        assert_eq!(store.load(first), Ok(Some(first_bank)));
+    }
+
+    #[test]
+    fn merge_uses_local_overrides_and_preserves_durable_deletion() {
+        let track = id(0x61);
+        let mut source = HotCueBank::empty(track);
+        assert!(source.set_single(0, 1_000));
+        assert!(source.set_single(2, 3_000));
+        source = source.as_source();
+
+        let mut local = HotCueBank::empty(track);
+        assert!(local.set_single(2, 3_500));
+        assert!(local.clear(0));
+
+        let effective = HotCueBank::merged(source, local).unwrap();
+        assert_eq!(effective.slot(0), None);
+        assert_eq!(effective.slot(2), Some(HotCueSlot::single(3_500)));
+        assert_eq!(effective.override_mask(), 0);
+    }
+
+    #[test]
+    fn empty_bank_has_no_slots_or_overrides() {
         let bank = HotCueBank::empty(id(1));
         assert_eq!(bank.track_id(), id(1));
         assert_eq!(bank.exists_mask(), 0);
+        assert_eq!(bank.override_mask(), 0);
         for slot in 0..HOT_CUE_SLOT_COUNT as u8 {
             assert_eq!(bank.slot(slot), None);
         }
@@ -684,15 +898,18 @@ mod tests {
             })
         );
         assert_eq!(bank.exists_mask(), 0x81);
+        assert_eq!(bank.override_mask(), 0x81);
     }
 
     #[test]
-    fn clear_is_idempotent_and_reports_change() {
+    fn clear_is_idempotent_and_reports_first_tombstone() {
         let mut bank = HotCueBank::empty(id(3));
+        assert!(bank.clear(3));
         assert!(!bank.clear(3));
         assert!(bank.set_single(3, 9_000));
         assert!(bank.clear(3));
         assert!(!bank.clear(3));
         assert_eq!(bank.exists_mask(), 0);
+        assert_eq!(bank.override_mask(), 1 << 3);
     }
 }
