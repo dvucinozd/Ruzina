@@ -1343,6 +1343,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-controller-profile-storage"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-controller-profile",
+ "pajoniiir-media-fs",
+]
+
+[[package]]
 name = "pajoniiir-controller-session"
 version = "0.1.0"
 dependencies = [
@@ -1396,6 +1404,7 @@ dependencies = [
  "pajoniiir-audio-dsp",
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-runtime",
+ "pajoniiir-controller-profile-storage",
  "pajoniiir-controller-session",
  "pajoniiir-controller-usb",
  "pajoniiir-deck",
