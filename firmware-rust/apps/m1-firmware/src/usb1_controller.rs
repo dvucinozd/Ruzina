@@ -1,10 +1,9 @@
 use core::cell::RefCell;
 
 use crate::controller_profiles::{
-    ActiveMidiBatchReport, ActiveProfileMidiError, bind_controller_descriptor,
-    match_scanned_profile, on_controller_disconnect, process_active_midi_transfer,
-    request_profile_activation, wait_for_profile_activation_change,
-    wait_for_profile_catalog_change,
+    ActiveProfileMidiError, bind_controller_descriptor, match_scanned_profile,
+    on_controller_disconnect, process_active_midi_transfer, request_profile_activation,
+    wait_for_profile_activation_change, wait_for_profile_catalog_change,
 };
 use embassy_futures::select::{Either, select};
 use embassy_usb_driver::{
@@ -16,7 +15,7 @@ use embassy_usb_driver::{
 use embassy_usb_host::{BusController, BusRoute, BusState, handler::EnumerationInfo};
 use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
 use pajoniiir_controller_profile_storage::ProfileActivationState;
-use pajoniiir_controller_session::ControllerSession;
+use pajoniiir_controller_session::{ControllerSession, UsbMidiBatchReport};
 use pajoniiir_controller_usb::{
     ControllerUsbCapabilities, ControllerUsbDescriptorError, UsbMidiEvent,
     find_midi_streaming_interface, inspect_configuration,
@@ -40,7 +39,7 @@ pub(crate) struct Usb1ControllerProbe {
     pub(crate) profile_index: Option<u8>,
     pub(crate) profile_catalog_revision: u32,
     pub(crate) profile_activation_state: ProfileActivationState,
-    pub(crate) midi_ingest: ActiveMidiBatchReport,
+    pub(crate) midi_ingest: UsbMidiBatchReport,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -285,7 +284,7 @@ pub(crate) async fn run_root_controller_owner(
             profile_index: profile_match.index,
             profile_catalog_revision: profile_match.revision,
             profile_activation_state: profile_match.activation_state,
-            midi_ingest: ActiveMidiBatchReport::default(),
+            midi_ingest: UsbMidiBatchReport::default(),
         };
         refresh_profile_probe(&mut probe, true);
         session.set_connected(true);
@@ -438,7 +437,7 @@ where
                             refresh_profile_probe(probe, true);
                             set_state(Usb1ControllerState::Ready(*probe));
                         }
-                        Err(ActiveProfileMidiError::MisalignedTransfer) => {
+                        Err(ActiveProfileMidiError::Batch(_)) => {
                             session.set_connected(false);
                             on_controller_disconnect();
                             set_state(Usb1ControllerState::Failed(
