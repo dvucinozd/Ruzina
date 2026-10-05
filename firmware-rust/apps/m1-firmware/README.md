@@ -50,3 +50,33 @@ Without `p4-psram-storage`, the same parser path remains probe-only and does not
 ### Transactional PSRAM catalog publication
 
 With `p4-psram-storage`, the Library worker reserves two 1024-track PSRAM banks before import. Artists, Albums and Keys are scanned first; Tracks are then converted through the provider-neutral Rekordbox adapter into `CatalogTrack` values in the inactive bank. A new snapshot is published only after the complete PDB scan and file close succeed. Parse, capacity, duplicate-ID, UTF-8 or close failures abort the build and recycle the inactive bank without exposing a partial catalog. A detach or failed filesystem generation invalidates the matching published snapshot and returns its bank to the two-bank pool.
+
+
+## USB1 controller ownership boundary
+
+Feature `usb1-controller-bringup` owns the ESP32-P4 Full-Speed OTG controller through `USB_FS` with the M1 board-authoritative pin order `GPIO27 = DP`, `GPIO26 = DM`. The persistent Embassy task enumerates the root-port device and publishes a bounded capability snapshot derived from the configuration descriptor. It also matches the enumerated VID/PID against the latest microSD-backed `ProfileRegistry` and records the matched profile index plus catalog revision. Registry publication is signalled, so a controller already connected before the microSD scan completes is rematched without requiring a USB reconnect.
+
+Descriptor classification is implemented in the HAL-independent `pajoniiir-controller-usb` crate and is host-tested. It recognizes USB Audio Control, Audio Streaming, MIDI Streaming, HID and vendor interfaces, and records the relevant bulk/interrupt/isochronous endpoint directions without binding product behavior to a single VID/PID.
+
+This gate is **COMPILE_VERIFIED / HARDWARE_PENDING**. It does not yet claim physical VBUS switching/fault recovery, target-side MIDI packet pumping through an activated profile, LED output, UAC isochronous streaming or FLX4 qualification. CI also links USB0 HS + USB1 FS + SDMMC + PSRAM together so ownership collisions are caught before EVT hardware exists.
+
+
+### USB-MIDI transport boundary
+
+The USB1 controller layer now contains a compile-verified USB-MIDI 1.0 bulk transport. The host-tested `pajoniiir-controller-usb` crate locates the first alternate-setting-zero Audio/MIDIStreaming interface, preserves bulk endpoint addresses/max-packet sizes, and encodes/decodes standard 4-byte USB-MIDI event packets without allocation.
+
+On ESP32-P4 the USB1 owner can allocate typed Embassy `Bulk/In` and optional `Bulk/Out` pipes for that interface using the enumerated route/split metadata. Full-Speed bulk packet sizes are fail-closed above 64 bytes. The transport exposes raw read and event-write methods. A host-tested domain bridge now feeds decoded channel-voice `UsbMidiEvent` packets into `ControllerSession`; the target USB1 task is not yet pumping packets into an activated storage-backed profile/session instance. Physical MIDI interoperability and LED feedback remain `HARDWARE_PENDING`.
+
+
+### microSD / controller-profile storage ownership boundary
+
+Feature `sdmmc-profile-storage-bringup` now binds the M1 board-authoritative ESP32-P4 SDMMC slot-0 path: `GPIO39..42 = D0..D3`, `GPIO43 = CLK`, `GPIO44 = CMD`, `GPIO45 = SD_PWR_EN`, and `GPIO46 = SD_CARD_DETECT`. The task uses the native `esp-hal 1.2.2` `SdHostController`, converts slot 0 to interrupt-driven async mode, waits for the controlled 3V3_SD rail to settle, and constructs the official `sdio 0.5.1` SD-card block device. Initialization uses the conservative 25 MHz product baseline and the recoverable `new_uninit_sd_card + reacquire` path so a failed attempt does not discard bus ownership.
+
+This remains **COMPILE_VERIFIED / HARDWARE_PENDING**. The target now continues past card initialization: it reads the partition table, accepts FAT32 superfloppy/MBR media, validates the FAT32 boot sector + FSInfo, mounts the native async FAT32 filesystem and scans the released `/controllers/<id>/profile.s3bin` layout into a bounded `ProfileRegistry`. The 16 KiB profile blob scratch and maximum filename scratch live in one static `ProfileScanBuffers` workspace rather than the Embassy task state. The completed registry is published to USB1 through a revisioned bounded catalog and live controller VID/PID matches are refreshed when that catalog changes. GPT discovery, physical rail timing, hot-plug/power-cycle recovery and matched-profile blob loading/activation remain explicit follow-on gates. CI additionally links SDMMC together with USB0 HS, USB1 FS and PSRAM so peripheral/pin ownership conflicts are caught before EVT hardware exists.
+
+
+### SDIO owned-block adapter
+
+The microSD target now has a zero-allocation adapter from the initialized `sdio::BlockDevice<Card, ..., 512>` into Pajoniiir's existing `OwnedBlockDevice` contract. Its caller-owned sector buffer is a 4-byte-aligned 512-byte value matching the `block-device-driver` requirement, and the geometry is frozen from the SD card's reported block count after successful initialization.
+
+This deliberately reuses the same native async FAT32 path already exercised by USB0 instead of introducing a second filesystem implementation for controller profiles. The adapter, FAT32 mount and controller-profile scan are compile gates only; real sector reads, card interoperability and media-error recovery remain hardware-pending.

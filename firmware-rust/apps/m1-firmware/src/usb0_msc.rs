@@ -14,7 +14,8 @@ use embassy_usb_host::{
 };
 use pajoniiir_media_block::{BlockGeometry, TransferError};
 use pajoniiir_media_exfat::{
-    ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncMountError, ExFatAsyncVolume,
+    ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncDirectoryHandle,
+    ExFatAsyncFileHandle, ExFatAsyncFsError, ExFatAsyncMountError, ExFatAsyncVolume,
     parse_exfat_boot_sector,
 };
 use pajoniiir_media_fat32::{
@@ -23,8 +24,9 @@ use pajoniiir_media_fat32::{
     parse_fat32_boot_sector, parse_fat32_fs_info,
 };
 use pajoniiir_media_fs::{
-    AsyncFileSystem, BoundedPath, DirEntry, FS_NAME_MAX, FileStat, FileSystemClientId,
-    FileSystemKind, FileSystemRequestSequencer, FileSystemRequestTicket,
+    AsyncFileSystem, BoundedPath, DirEntry, DirectoryHandle, FS_NAME_MAX, FileHandle, FileStat,
+    FileSystemClientId, FileSystemKind, FileSystemRequestSequencer, FileSystemRequestTicket,
+    LeaseBound,
 };
 use pajoniiir_media_io::{
     AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
@@ -237,14 +239,71 @@ pub(crate) enum Usb0LibraryEvent {
 }
 
 type Usb0Fat32OperationError = Fat32AsyncFsError<AsyncPartitionError<Usb0MscIoError>>;
+type Usb0ExFatOperationError = ExFatAsyncFsError<AsyncPartitionError<Usb0MscIoError>>;
 
 #[derive(Debug)]
 pub(crate) enum Usb0FsOperationError {
     NoMedia,
     StaleLease,
-    ExFatUnavailable,
+    HandleKindMismatch,
     Fat32(Usb0Fat32OperationError),
+    ExFat(Usb0ExFatOperationError),
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0FsFileHandle {
+    Fat32(Fat32AsyncFileHandle),
+    ExFat(ExFatAsyncFileHandle),
+}
+
+impl LeaseBound for Usb0FsFileHandle {
+    fn lease(&self) -> MediaLease {
+        match self {
+            Self::Fat32(file) => file.lease(),
+            Self::ExFat(file) => file.lease(),
+        }
+    }
+}
+
+impl FileHandle for Usb0FsFileHandle {
+    fn len(&self) -> u64 {
+        match self {
+            Self::Fat32(file) => file.len(),
+            Self::ExFat(file) => file.len(),
+        }
+    }
+
+    fn position(&self) -> u64 {
+        match self {
+            Self::Fat32(file) => file.position(),
+            Self::ExFat(file) => file.position(),
+        }
+    }
+
+    fn set_position(&mut self, position: u64) {
+        match self {
+            Self::Fat32(file) => file.set_position(position),
+            Self::ExFat(file) => file.set_position(position),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0FsDirectoryHandle {
+    Fat32(Fat32AsyncDirectoryHandle),
+    ExFat(ExFatAsyncDirectoryHandle),
+}
+
+impl LeaseBound for Usb0FsDirectoryHandle {
+    fn lease(&self) -> MediaLease {
+        match self {
+            Self::Fat32(directory) => directory.lease(),
+            Self::ExFat(directory) => directory.lease(),
+        }
+    }
+}
+
+impl DirectoryHandle for Usb0FsDirectoryHandle {}
 
 pub(crate) enum Usb0FsRequest {
     Stat {
@@ -257,17 +316,17 @@ pub(crate) enum Usb0FsRequest {
     },
     Read {
         ticket: FileSystemRequestTicket,
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
         buffer: &'static mut [u8],
     },
     Seek {
         ticket: FileSystemRequestTicket,
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
         position: u64,
     },
     CloseFile {
         ticket: FileSystemRequestTicket,
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
     },
     OpenDirectory {
         ticket: FileSystemRequestTicket,
@@ -275,12 +334,12 @@ pub(crate) enum Usb0FsRequest {
     },
     NextEntry {
         ticket: FileSystemRequestTicket,
-        directory: Fat32AsyncDirectoryHandle,
+        directory: Usb0FsDirectoryHandle,
         name_storage: &'static mut [u8; FS_NAME_MAX],
     },
     CloseDirectory {
         ticket: FileSystemRequestTicket,
-        directory: Fat32AsyncDirectoryHandle,
+        directory: Usb0FsDirectoryHandle,
     },
 }
 
@@ -306,17 +365,17 @@ pub(crate) enum Usb0FsCompletion {
     },
     OpenRead {
         ticket: FileSystemRequestTicket,
-        result: Result<Fat32AsyncFileHandle, Usb0FsOperationError>,
+        result: Result<Usb0FsFileHandle, Usb0FsOperationError>,
     },
     Read {
         ticket: FileSystemRequestTicket,
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
         buffer: &'static mut [u8],
         result: Result<usize, Usb0FsOperationError>,
     },
     Seek {
         ticket: FileSystemRequestTicket,
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
         result: Result<(), Usb0FsOperationError>,
     },
     CloseFile {
@@ -325,11 +384,11 @@ pub(crate) enum Usb0FsCompletion {
     },
     OpenDirectory {
         ticket: FileSystemRequestTicket,
-        result: Result<Fat32AsyncDirectoryHandle, Usb0FsOperationError>,
+        result: Result<Usb0FsDirectoryHandle, Usb0FsOperationError>,
     },
     NextEntry {
         ticket: FileSystemRequestTicket,
-        directory: Fat32AsyncDirectoryHandle,
+        directory: Usb0FsDirectoryHandle,
         name_storage: &'static mut [u8; FS_NAME_MAX],
         result: Result<Option<DirEntry>, Usb0FsOperationError>,
     },
@@ -1627,23 +1686,150 @@ impl Usb0ActiveFileSystem {
             restore_filesystem_scratch(scratch_pool, scratch);
         }
     }
+
+    async fn stat(&mut self, path: &str) -> Result<FileStat, Usb0FsOperationError> {
+        match self {
+            Self::Fat32(filesystem) => filesystem
+                .stat(path)
+                .await
+                .map_err(Usb0FsOperationError::Fat32),
+            Self::ExFat(filesystem) => filesystem
+                .stat(path)
+                .await
+                .map_err(Usb0FsOperationError::ExFat),
+        }
+    }
+
+    async fn open_read(&mut self, path: &str) -> Result<Usb0FsFileHandle, Usb0FsOperationError> {
+        match self {
+            Self::Fat32(filesystem) => filesystem
+                .open_read(path)
+                .await
+                .map(Usb0FsFileHandle::Fat32)
+                .map_err(Usb0FsOperationError::Fat32),
+            Self::ExFat(filesystem) => filesystem
+                .open_read(path)
+                .await
+                .map(Usb0FsFileHandle::ExFat)
+                .map_err(Usb0FsOperationError::ExFat),
+        }
+    }
+
+    async fn read(
+        &mut self,
+        file: &mut Usb0FsFileHandle,
+        output: &mut [u8],
+    ) -> Result<usize, Usb0FsOperationError> {
+        match (self, file) {
+            (Self::Fat32(filesystem), Usb0FsFileHandle::Fat32(file)) => filesystem
+                .read(file, output)
+                .await
+                .map_err(Usb0FsOperationError::Fat32),
+            (Self::ExFat(filesystem), Usb0FsFileHandle::ExFat(file)) => filesystem
+                .read(file, output)
+                .await
+                .map_err(Usb0FsOperationError::ExFat),
+            _ => Err(Usb0FsOperationError::HandleKindMismatch),
+        }
+    }
+
+    async fn seek_absolute(
+        &mut self,
+        file: &mut Usb0FsFileHandle,
+        position: u64,
+    ) -> Result<(), Usb0FsOperationError> {
+        match (self, file) {
+            (Self::Fat32(filesystem), Usb0FsFileHandle::Fat32(file)) => filesystem
+                .seek_absolute(file, position)
+                .await
+                .map_err(Usb0FsOperationError::Fat32),
+            (Self::ExFat(filesystem), Usb0FsFileHandle::ExFat(file)) => filesystem
+                .seek_absolute(file, position)
+                .await
+                .map_err(Usb0FsOperationError::ExFat),
+            _ => Err(Usb0FsOperationError::HandleKindMismatch),
+        }
+    }
+
+    async fn close_file(&mut self, file: Usb0FsFileHandle) -> Result<(), Usb0FsOperationError> {
+        match (self, file) {
+            (Self::Fat32(filesystem), Usb0FsFileHandle::Fat32(file)) => filesystem
+                .close_file(file)
+                .await
+                .map_err(Usb0FsOperationError::Fat32),
+            (Self::ExFat(filesystem), Usb0FsFileHandle::ExFat(file)) => filesystem
+                .close_file(file)
+                .await
+                .map_err(Usb0FsOperationError::ExFat),
+            _ => Err(Usb0FsOperationError::HandleKindMismatch),
+        }
+    }
+
+    async fn open_directory(
+        &mut self,
+        path: &str,
+    ) -> Result<Usb0FsDirectoryHandle, Usb0FsOperationError> {
+        match self {
+            Self::Fat32(filesystem) => filesystem
+                .open_directory(path)
+                .await
+                .map(Usb0FsDirectoryHandle::Fat32)
+                .map_err(Usb0FsOperationError::Fat32),
+            Self::ExFat(filesystem) => filesystem
+                .open_directory(path)
+                .await
+                .map(Usb0FsDirectoryHandle::ExFat)
+                .map_err(Usb0FsOperationError::ExFat),
+        }
+    }
+
+    async fn next_entry(
+        &mut self,
+        directory: &mut Usb0FsDirectoryHandle,
+        name_storage: &mut [u8; FS_NAME_MAX],
+    ) -> Result<Option<DirEntry>, Usb0FsOperationError> {
+        match (self, directory) {
+            (Self::Fat32(filesystem), Usb0FsDirectoryHandle::Fat32(directory)) => filesystem
+                .next_entry(directory, name_storage)
+                .await
+                .map_err(Usb0FsOperationError::Fat32),
+            (Self::ExFat(filesystem), Usb0FsDirectoryHandle::ExFat(directory)) => filesystem
+                .next_entry(directory, name_storage)
+                .await
+                .map_err(Usb0FsOperationError::ExFat),
+            _ => Err(Usb0FsOperationError::HandleKindMismatch),
+        }
+    }
+
+    async fn close_directory(
+        &mut self,
+        directory: Usb0FsDirectoryHandle,
+    ) -> Result<(), Usb0FsOperationError> {
+        match (self, directory) {
+            (Self::Fat32(filesystem), Usb0FsDirectoryHandle::Fat32(directory)) => filesystem
+                .close_directory(directory)
+                .await
+                .map_err(Usb0FsOperationError::Fat32),
+            (Self::ExFat(filesystem), Usb0FsDirectoryHandle::ExFat(directory)) => filesystem
+                .close_directory(directory)
+                .await
+                .map_err(Usb0FsOperationError::ExFat),
+            _ => Err(Usb0FsOperationError::HandleKindMismatch),
+        }
+    }
 }
 
-fn active_fat32_for_request<'a>(
+fn active_filesystem_for_request<'a>(
     active: &'a mut Option<(UsbMscMountedMedia, Usb0ActiveFileSystem)>,
     ticket: FileSystemRequestTicket,
-) -> Result<&'a mut Usb0Fat32FileSystem, Usb0FsOperationError> {
+) -> Result<&'a mut Usb0ActiveFileSystem, Usb0FsOperationError> {
     let Some((media, filesystem)) = active.as_mut() else {
         return Err(Usb0FsOperationError::NoMedia);
     };
     if media.attempt.lease != ticket.lease() {
         return Err(Usb0FsOperationError::StaleLease);
     }
-
-    match filesystem {
-        Usb0ActiveFileSystem::Fat32(filesystem) => Ok(filesystem),
-        Usb0ActiveFileSystem::ExFat(_) => Err(Usb0FsOperationError::ExFatUnavailable),
-    }
+    Ok(filesystem)
 }
 
 async fn process_filesystem_request(
@@ -1652,21 +1838,15 @@ async fn process_filesystem_request(
 ) -> Usb0FsCompletion {
     match request {
         Usb0FsRequest::Stat { ticket, path } => {
-            let result = match active_fat32_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .stat(path.as_str())
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+            let result = match active_filesystem_for_request(active, ticket) {
+                Ok(filesystem) => filesystem.stat(path.as_str()).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::Stat { ticket, result }
         }
         Usb0FsRequest::OpenRead { ticket, path } => {
-            let result = match active_fat32_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .open_read(path.as_str())
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+            let result = match active_filesystem_for_request(active, ticket) {
+                Ok(filesystem) => filesystem.open_read(path.as_str()).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::OpenRead { ticket, result }
@@ -1676,11 +1856,8 @@ async fn process_filesystem_request(
             mut file,
             buffer,
         } => {
-            let result = match active_fat32_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .read(&mut file, buffer)
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+            let result = match active_filesystem_for_request(active, ticket) {
+                Ok(filesystem) => filesystem.read(&mut file, buffer).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::Read {
@@ -1695,11 +1872,8 @@ async fn process_filesystem_request(
             mut file,
             position,
         } => {
-            let result = match active_fat32_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .seek_absolute(&mut file, position)
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+            let result = match active_filesystem_for_request(active, ticket) {
+                Ok(filesystem) => filesystem.seek_absolute(&mut file, position).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::Seek {
@@ -1709,21 +1883,15 @@ async fn process_filesystem_request(
             }
         }
         Usb0FsRequest::CloseFile { ticket, file } => {
-            let result = match active_fat32_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .close_file(file)
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+            let result = match active_filesystem_for_request(active, ticket) {
+                Ok(filesystem) => filesystem.close_file(file).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::CloseFile { ticket, result }
         }
         Usb0FsRequest::OpenDirectory { ticket, path } => {
-            let result = match active_fat32_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .open_directory(path.as_str())
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+            let result = match active_filesystem_for_request(active, ticket) {
+                Ok(filesystem) => filesystem.open_directory(path.as_str()).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::OpenDirectory { ticket, result }
@@ -1733,11 +1901,10 @@ async fn process_filesystem_request(
             mut directory,
             name_storage,
         } => {
-            let result = match active_fat32_for_request(active, ticket) {
+            let result = match active_filesystem_for_request(active, ticket) {
                 Ok(filesystem) => filesystem
                     .next_entry(&mut directory, name_storage)
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+                    .await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::NextEntry {
@@ -1748,11 +1915,8 @@ async fn process_filesystem_request(
             }
         }
         Usb0FsRequest::CloseDirectory { ticket, directory } => {
-            let result = match active_fat32_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .close_directory(directory)
-                    .await
-                    .map_err(Usb0FsOperationError::Fat32),
+            let result = match active_filesystem_for_request(active, ticket) {
+                Ok(filesystem) => filesystem.close_directory(directory).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::CloseDirectory { ticket, result }

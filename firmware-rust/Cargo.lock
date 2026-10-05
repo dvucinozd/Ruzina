@@ -2969,13 +2969,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-controller-profile-storage"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-controller-profile",
+ "pajoniiir-media-fs",
+ "pajoniiir-media-session",
+]
+
+[[package]]
 name = "pajoniiir-controller-session"
 version = "0.1.0"
 dependencies = [
  "pajoniiir-control-scheduler",
  "pajoniiir-controller-core",
  "pajoniiir-controller-profile",
+ "pajoniiir-controller-usb",
 ]
+
+[[package]]
+name = "pajoniiir-controller-usb"
+version = "0.1.0"
 
 [[package]]
 name = "pajoniiir-core"

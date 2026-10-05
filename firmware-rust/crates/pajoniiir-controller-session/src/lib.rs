@@ -9,12 +9,20 @@ use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
 use pajoniiir_controller_profile::{
     MAX_INPUTS, Profile, ProfileRuntime, SemanticAdapterError, adapt_profile_event,
 };
+use pajoniiir_controller_usb::UsbMidiEvent;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IngestOutcome {
     NoMapping,
     Scheduled,
     Dropped,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UsbMidiIngestOutcome {
+    IgnoredNonChannelVoice,
+    UnsupportedCable(u8),
+    Session(IngestOutcome),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -114,6 +122,28 @@ impl ControllerSession {
 
     pub const fn stats(&self) -> SessionStats {
         self.stats
+    }
+
+    pub fn process_usb_midi_event(
+        &mut self,
+        profile: &Profile<'_>,
+        event: UsbMidiEvent,
+    ) -> Result<UsbMidiIngestOutcome, SemanticAdapterError> {
+        if event.cable != 0 {
+            return Ok(UsbMidiIngestOutcome::UnsupportedCable(event.cable));
+        }
+
+        let Some(message) = event.channel_voice() else {
+            return Ok(UsbMidiIngestOutcome::IgnoredNonChannelVoice);
+        };
+
+        self.process_midi(
+            profile,
+            message.status,
+            message.data1,
+            message.data2.unwrap_or(0),
+        )
+        .map(UsbMidiIngestOutcome::Session)
     }
 
     pub fn process_midi(
@@ -529,6 +559,43 @@ mod tests {
                 9
             )))
         );
+    }
+
+    #[test]
+    fn usb_midi_event_ingests_channel_voice_without_transport_leakage() {
+        let bytes = replay_profile_bytes();
+        let profile = Profile::parse(&bytes).unwrap();
+        let mut session = ControllerSession::new();
+
+        let event = UsbMidiEvent::decode([0x0b, 0xb0, 0x10, 64]).unwrap();
+        assert_eq!(
+            session.process_usb_midi_event(&profile, event),
+            Ok(UsbMidiIngestOutcome::Session(IngestOutcome::Scheduled))
+        );
+        assert_eq!(session.stats().midi_messages, 1);
+        assert_eq!(session.stats().mapped_messages, 1);
+    }
+
+    #[test]
+    fn usb_midi_event_fails_closed_for_nonzero_cable_and_non_channel_voice() {
+        let bytes = replay_profile_bytes();
+        let profile = Profile::parse(&bytes).unwrap();
+        let mut session = ControllerSession::new();
+
+        let cable_one = UsbMidiEvent::decode([0x1b, 0xb0, 0x10, 64]).unwrap();
+        assert_eq!(
+            session.process_usb_midi_event(&profile, cable_one),
+            Ok(UsbMidiIngestOutcome::UnsupportedCable(1))
+        );
+
+        let sysex = UsbMidiEvent::decode([0x04, 0xf0, 0x01, 0x02]).unwrap();
+        assert_eq!(
+            session.process_usb_midi_event(&profile, sysex),
+            Ok(UsbMidiIngestOutcome::IgnoredNonChannelVoice)
+        );
+
+        assert_eq!(session.stats().midi_messages, 0);
+        assert_eq!(session.stats().mapped_messages, 0);
     }
 
     #[test]

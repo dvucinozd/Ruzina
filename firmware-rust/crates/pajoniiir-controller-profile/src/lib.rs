@@ -1,8 +1,10 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+mod registry;
 mod semantic;
 
+pub use registry::*;
 pub use semantic::{SemanticAdapterError, adapt_profile_event};
 
 #[cfg(test)]

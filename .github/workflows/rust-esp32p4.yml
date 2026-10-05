@@ -42,8 +42,20 @@ jobs:
       - name: ESP32-P4 USB0 bring-up link gate
         run: cargo +1.95.0 build --locked --release --features usb0-hardware-bringup
 
+      - name: ESP32-P4 USB1 controller bring-up cross compile
+        run: cargo +1.95.0 check --locked --features usb1-controller-bringup
+
+      - name: ESP32-P4 microSD profile-storage cross compile
+        run: cargo +1.95.0 check --locked --features sdmmc-profile-storage-bringup
+
       - name: ESP32-P4 PSRAM storage boundary cross compile
         run: cargo +1.95.0 check --locked --features p4-psram-storage
 
       - name: ESP32-P4 USB0 + PSRAM combined link gate
         run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,p4-psram-storage"
+
+      - name: ESP32-P4 dual USB + PSRAM combined link gate
+        run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage"
+
+      - name: ESP32-P4 USB0 + USB1 + SDMMC + PSRAM full ownership link gate
+        run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,usb1-controller-bringup,sdmmc-profile-storage-bringup,p4-psram-storage"

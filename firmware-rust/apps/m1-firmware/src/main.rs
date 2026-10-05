@@ -9,9 +9,15 @@ use embassy_executor::Spawner;
 use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 
 #[allow(dead_code)]
+mod controller_profiles;
+#[allow(dead_code)]
 mod usb0_library;
 #[allow(dead_code)]
 mod usb0_msc;
+#[allow(dead_code)]
+mod usb1_controller;
+#[allow(dead_code)]
+mod sdmmc_profile;
 
 #[cfg(feature = "usb0-hardware-bringup")]
 #[embassy_executor::task]
@@ -35,6 +41,43 @@ async fn usb0_filesystem_task() {
 #[embassy_executor::task]
 async fn usb0_library_task() {
     usb0_library::run_usb0_library_worker().await
+}
+
+#[cfg(feature = "usb1-controller-bringup")]
+#[embassy_executor::task]
+async fn usb1_owner_task(
+    usb_fs: esp_hal::peripherals::USB_FS<'static>,
+    usb_dp: esp_hal::peripherals::GPIO27<'static>,
+    usb_dm: esp_hal::peripherals::GPIO26<'static>,
+) {
+    usb1_controller::run_root_controller_owner(usb_fs, usb_dp, usb_dm).await
+}
+
+#[cfg(feature = "sdmmc-profile-storage-bringup")]
+#[embassy_executor::task]
+async fn sdmmc_profile_owner_task(
+    sdhost: esp_hal::peripherals::SDHOST<'static>,
+    d0: esp_hal::peripherals::GPIO39<'static>,
+    d1: esp_hal::peripherals::GPIO40<'static>,
+    d2: esp_hal::peripherals::GPIO41<'static>,
+    d3: esp_hal::peripherals::GPIO42<'static>,
+    clk: esp_hal::peripherals::GPIO43<'static>,
+    cmd: esp_hal::peripherals::GPIO44<'static>,
+    power_enable: esp_hal::peripherals::GPIO45<'static>,
+    card_detect: esp_hal::peripherals::GPIO46<'static>,
+) {
+    sdmmc_profile::run_profile_storage_owner(
+        sdhost,
+        d0,
+        d1,
+        d2,
+        d3,
+        clk,
+        cmd,
+        power_enable,
+        card_detect,
+    )
+    .await
 }
 
 #[panic_handler]
@@ -63,6 +106,7 @@ async fn main(spawner: Spawner) -> ! {
     // Compile-time anchors: the production target must keep the host-tested
     // product crates no_std-compatible on the real ESP32-P4 architecture.
     let _ = core::mem::size_of::<pajoniiir_controller_session::ControllerSession>();
+    let _ = core::mem::size_of::<pajoniiir_controller_usb::ControllerUsbCapabilities>();
     let _ = core::mem::size_of::<pajoniiir_deck::DeckProductState>();
     let _ = core::mem::size_of::<pajoniiir_hot_cues::HotCueBank>();
     let _ = core::mem::size_of::<pajoniiir_mixer::MixerState>();
@@ -89,11 +133,41 @@ async fn main(spawner: Spawner) -> ! {
         );
     }
 
-    #[cfg(not(feature = "usb0-hardware-bringup"))]
+    #[cfg(feature = "usb1-controller-bringup")]
+    {
+        spawner.spawn(
+            usb1_owner_task(peripherals.USB_FS, peripherals.GPIO27, peripherals.GPIO26)
+                .expect("USB1 owner task slot must be available"),
+        );
+    }
+
+    #[cfg(feature = "sdmmc-profile-storage-bringup")]
+    {
+        spawner.spawn(
+            sdmmc_profile_owner_task(
+                peripherals.SDHOST,
+                peripherals.GPIO39,
+                peripherals.GPIO40,
+                peripherals.GPIO41,
+                peripherals.GPIO42,
+                peripherals.GPIO43,
+                peripherals.GPIO44,
+                peripherals.GPIO45,
+                peripherals.GPIO46,
+            )
+            .expect("SDMMC profile owner task slot must be available"),
+        );
+    }
+
+    #[cfg(not(any(
+        feature = "usb0-hardware-bringup",
+        feature = "usb1-controller-bringup",
+        feature = "sdmmc-profile-storage-bringup"
+    )))]
     let _ = spawner;
 
-    // The default image intentionally does not touch USB0 yet. Enabling
-    // usb0-hardware-bringup transfers USB_HS ownership into the persistent
-    // Embassy owner task above.
+    // The default image intentionally does not touch either USB controller or
+    // the microSD rail. Feature gates transfer those peripherals into persistent
+    // Embassy owner tasks without weakening the hardware-verification boundary.
     match core::future::pending::<core::convert::Infallible>().await {}
 }

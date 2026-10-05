@@ -3,10 +3,7 @@ use core::cell::RefCell;
 #[cfg(feature = "p4-psram-storage")]
 use alloc::vec::Vec;
 use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
-use pajoniiir_media_fat32::Fat32AsyncFileHandle;
-use pajoniiir_media_fs::{
-    BoundedPath, FileHandle, FileSystemKind,
-};
+use pajoniiir_media_fs::{BoundedPath, FileHandle};
 use pajoniiir_media_catalog::{
     CatalogBank, CatalogBankBuilder, CatalogBankPublisher, CatalogBuildError, CatalogTrack,
     MEDIA_CATALOG_MAX_TRACKS,
@@ -26,8 +23,8 @@ use pajoniiir_rekordbox::{
 use static_cell::StaticCell;
 
 use crate::usb0_msc::{
-    USB0_LIBRARY_EVENTS, Usb0FsCompletion, Usb0FsOperationError, Usb0FsRequest, Usb0FsSubmitResult,
-    Usb0FilesystemClient, Usb0LibraryEvent, Usb0MscBinding,
+    USB0_LIBRARY_EVENTS, Usb0FsCompletion, Usb0FsFileHandle, Usb0FsOperationError, Usb0FsRequest,
+    Usb0FsSubmitResult, Usb0FilesystemClient, Usb0LibraryEvent, Usb0MscBinding,
 };
 
 const USB0_LIBRARY_PDB_IO_BYTES: usize = 8_192;
@@ -348,15 +345,15 @@ impl Usb0LibraryCatalogStage {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Usb0LibraryError {
     FilesystemUnavailable,
-    UnsupportedFilesystem(FileSystemKind),
     PathTooLong,
     BrokerBusy,
     BrokerPending,
     BrokerWrongClient,
     FilesystemNoMedia,
     FilesystemStaleLease,
-    FilesystemExFatUnavailable,
+    FilesystemHandleKindMismatch,
     FilesystemFat32,
+    FilesystemExFat,
     MissingVolumeIdentity,
     StagingAllocation,
     DuplicateNameId(u32),
@@ -443,8 +440,11 @@ fn map_filesystem_error(error: Usb0FsOperationError) -> Usb0LibraryError {
     match error {
         Usb0FsOperationError::NoMedia => Usb0LibraryError::FilesystemNoMedia,
         Usb0FsOperationError::StaleLease => Usb0LibraryError::FilesystemStaleLease,
-        Usb0FsOperationError::ExFatUnavailable => Usb0LibraryError::FilesystemExFatUnavailable,
+        Usb0FsOperationError::HandleKindMismatch => {
+            Usb0LibraryError::FilesystemHandleKindMismatch
+        }
         Usb0FsOperationError::Fat32(_) => Usb0LibraryError::FilesystemFat32,
+        Usb0FsOperationError::ExFat(_) => Usb0LibraryError::FilesystemExFat,
     }
 }
 
@@ -455,7 +455,7 @@ fn broker_invariant_reset() -> ! {
 async fn open_export_pdb(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-) -> Result<Fat32AsyncFileHandle, Usb0LibraryError> {
+) -> Result<Usb0FsFileHandle, Usb0LibraryError> {
     let path =
         BoundedPath::new(REKORDBOX_EXPORT_PDB_PATH).map_err(|_| Usb0LibraryError::PathTooLong)?;
     let ticket = client.issue_ticket(lease);
@@ -474,12 +474,12 @@ async fn open_export_pdb(
 
 enum PrefixReadResult {
     Complete {
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
         buffer: &'static mut [u8],
         bytes: usize,
     },
     Failed {
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
         buffer: &'static mut [u8],
         error: Usb0LibraryError,
     },
@@ -487,10 +487,10 @@ enum PrefixReadResult {
 
 enum SeekResult {
     Complete {
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
     },
     Failed {
-        file: Fat32AsyncFileHandle,
+        file: Usb0FsFileHandle,
         error: Usb0LibraryError,
     },
 }
@@ -498,7 +498,7 @@ enum SeekResult {
 async fn seek_file(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
     position: u64,
 ) -> SeekResult {
     let ticket = client.issue_ticket(lease);
@@ -544,7 +544,7 @@ async fn seek_file(
 async fn read_prefix(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
 ) -> PrefixReadResult {
     let ticket = client.issue_ticket(lease);
@@ -605,7 +605,7 @@ async fn read_prefix(
 async fn read_at(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     position: u64,
 ) -> PrefixReadResult {
@@ -625,14 +625,14 @@ async fn read_at(
 async fn read_track_text<const N: usize>(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     page_start: u64,
     page_size: u32,
     heap_offset: u16,
     relative_offset: u16,
 ) -> (
-    Fat32AsyncFileHandle,
+    Usb0FsFileHandle,
     &'static mut [u8],
     Result<PdbText<N>, Usb0LibraryError>,
 ) {
@@ -698,14 +698,14 @@ async fn read_track_text<const N: usize>(
 async fn read_name_text(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     page_start: u64,
     page_size: u32,
     heap_offset: u16,
     header: PdbNameRowHeader,
 ) -> (
-    Fat32AsyncFileHandle,
+    Usb0FsFileHandle,
     &'static mut [u8],
     Result<PdbText<PDB_NAME_MAX>, Usb0LibraryError>,
 ) {
@@ -780,7 +780,7 @@ async fn read_name_text(
 async fn close_file(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
 ) -> Result<(), Usb0LibraryError> {
     let ticket = client.issue_ticket(lease);
     match client
@@ -838,14 +838,14 @@ async fn scan_table_layout(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
     volume_identity: VolumeIdentity,
-    mut file: Fat32AsyncFileHandle,
+    mut file: Usb0FsFileHandle,
     mut buffer: &'static mut [u8],
     header: PdbHeader,
     first_page: u32,
     names: &Usb0LibraryNameStage,
     catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
-    Fat32AsyncFileHandle,
+    Usb0FsFileHandle,
     &'static mut [u8],
     Result<Usb0LibraryTableProbe, Usb0LibraryError>,
 ) {
@@ -1134,14 +1134,14 @@ async fn scan_table_layout(
 async fn scan_name_table_layout(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    mut file: Fat32AsyncFileHandle,
+    mut file: Usb0FsFileHandle,
     mut buffer: &'static mut [u8],
     header: PdbHeader,
     first_page: u32,
     layout: PdbNameRowLayout,
     stage: &mut Usb0LibraryNameMap,
 ) -> (
-    Fat32AsyncFileHandle,
+    Usb0FsFileHandle,
     &'static mut [u8],
     Result<Usb0LibraryNameTableProbe, Usb0LibraryError>,
 ) {
@@ -1351,14 +1351,14 @@ async fn scan_name_table_layout(
 async fn scan_optional_name_table(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     header: PdbHeader,
     first_page: Option<u32>,
     layout: PdbNameRowLayout,
     stage: &mut Usb0LibraryNameMap,
 ) -> (
-    Fat32AsyncFileHandle,
+    Usb0FsFileHandle,
     &'static mut [u8],
     Result<Option<Usb0LibraryNameTableProbe>, Usb0LibraryError>,
 ) {
@@ -1376,13 +1376,13 @@ async fn scan_optional_name_table(
 async fn scan_probe_tables(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
-    file: Fat32AsyncFileHandle,
+    file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     mut probe: Usb0LibraryPdbProbe,
     staging: &mut Usb0LibraryNameStage,
     catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
-    Fat32AsyncFileHandle,
+    Usb0FsFileHandle,
     &'static mut [u8],
     Result<Usb0LibraryPdbProbe, Usb0LibraryError>,
 ) {
@@ -1539,22 +1539,9 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
         match USB0_LIBRARY_EVENTS.wait().await {
             Usb0LibraryEvent::Ready {
                 binding,
-                kind,
+                kind: _,
                 volume_identity,
             } => {
-                if kind != FileSystemKind::Fat32 {
-                    if let Some(catalog) = catalog_stage.as_mut() {
-                        catalog.invalidate(binding.lease);
-                    }
-                    if let Some(staging) = name_stage.as_mut() {
-                        staging.clear();
-                    }
-                    set_library_state(Usb0LibraryState::Failed {
-                        binding,
-                        error: Usb0LibraryError::UnsupportedFilesystem(kind),
-                    });
-                    continue;
-                }
                 let Some(volume_identity) = volume_identity else {
                     if let Some(catalog) = catalog_stage.as_mut() {
                         catalog.invalidate(binding.lease);

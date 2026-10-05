@@ -9,3 +9,4 @@ publish.workspace = true
 pajoniiir-control-scheduler.workspace = true
 pajoniiir-controller-core.workspace = true
 pajoniiir-controller-profile.workspace = true
+pajoniiir-controller-usb.workspace = true

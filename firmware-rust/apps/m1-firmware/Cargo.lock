@@ -1343,13 +1343,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-controller-profile-storage"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-controller-profile",
+ "pajoniiir-media-fs",
+]
+
+[[package]]
 name = "pajoniiir-controller-session"
 version = "0.1.0"
 dependencies = [
  "pajoniiir-control-scheduler",
  "pajoniiir-controller-core",
  "pajoniiir-controller-profile",
+ "pajoniiir-controller-usb",
 ]
+
+[[package]]
+name = "pajoniiir-controller-usb"
+version = "0.1.0"
 
 [[package]]
 name = "pajoniiir-core"
@@ -1377,9 +1390,12 @@ dependencies = [
 name = "pajoniiir-m1-firmware"
 version = "0.1.0"
 dependencies = [
+ "aligned",
+ "block-device-driver",
  "embassy-executor",
  "embassy-futures",
  "embassy-sync 0.8.0",
+ "embassy-time",
  "embassy-usb-driver",
  "embassy-usb-host",
  "esp-alloc",
@@ -1388,7 +1404,9 @@ dependencies = [
  "pajoniiir-audio-dsp",
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-runtime",
+ "pajoniiir-controller-profile-storage",
  "pajoniiir-controller-session",
+ "pajoniiir-controller-usb",
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
  "pajoniiir-media-block",
@@ -1405,6 +1423,7 @@ dependencies = [
  "pajoniiir-rekordbox",
  "pajoniiir-ui-model",
  "pajoniiir-waveform",
+ "sdio",
  "static_cell",
 ]
 

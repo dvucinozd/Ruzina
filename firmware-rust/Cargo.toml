@@ -9,7 +9,9 @@ members = [
     "crates/pajoniiir-core",
     "crates/pajoniiir-controller-core",
     "crates/pajoniiir-controller-profile",
+    "crates/pajoniiir-controller-profile-storage",
     "crates/pajoniiir-controller-session",
+    "crates/pajoniiir-controller-usb",
     "crates/pajoniiir-control-scheduler",
     "crates/pajoniiir-deck",
     "crates/pajoniiir-hot-cues",
@@ -38,7 +40,9 @@ default-members = [
     "crates/pajoniiir-core",
     "crates/pajoniiir-controller-core",
     "crates/pajoniiir-controller-profile",
+    "crates/pajoniiir-controller-profile-storage",
     "crates/pajoniiir-controller-session",
+    "crates/pajoniiir-controller-usb",
     "crates/pajoniiir-control-scheduler",
     "crates/pajoniiir-deck",
     "crates/pajoniiir-hot-cues",
@@ -80,7 +84,9 @@ pajoniiir-audio-scratch = { path = "crates/pajoniiir-audio-scratch" }
 pajoniiir-core = { path = "crates/pajoniiir-core" }
 pajoniiir-controller-core = { path = "crates/pajoniiir-controller-core" }
 pajoniiir-controller-profile = { path = "crates/pajoniiir-controller-profile" }
+pajoniiir-controller-profile-storage = { path = "crates/pajoniiir-controller-profile-storage" }
 pajoniiir-controller-session = { path = "crates/pajoniiir-controller-session" }
+pajoniiir-controller-usb = { path = "crates/pajoniiir-controller-usb" }
 pajoniiir-control-scheduler = { path = "crates/pajoniiir-control-scheduler" }
 pajoniiir-deck = { path = "crates/pajoniiir-deck" }
 pajoniiir-hot-cues = { path = "crates/pajoniiir-hot-cues" }
