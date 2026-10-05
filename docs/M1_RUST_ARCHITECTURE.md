@@ -669,3 +669,20 @@ no provider selection, task spawn, memory placement or audio call path changes.
 Owner review is needed for adopting this dedicated lane and its lifetime/recovery
 contract, selecting the long-lived task and existing SRAM/PSRAM storage policy.
 Software recovery does not establish backend deadlines or hardware DMA/cache safety.
+
+### Persistent native analysis owner, compile-only — 2026-10-05
+
+The isolated APTA contribution now owns its Client, request generations, catalog
+selection and reusable working arrays across cancellable jobs. Actual broker
+resources survive temporary scanner/worker destruction and drain before reuse;
+retained output banks remain separately borrowed by existing Deck pins. Both
+hashes/closes and all original lease checks remain delivery gates.
+
+`apta-owner-compile` compiles the actual USB0 endpoint, Library bank selection,
+short-lock lifecycle snapshots and PSRAM-backed Storage/Bank construction. The
+4096-byte broker buffer follows the internal-SRAM StaticCell pattern. No boot
+claim, analysis-task spawn, product provider selection or audio-path work is added.
+The adapter README's **Persistent native consumer owner** section owns contracts,
+software evidence and compiler-profile exclusions. Review must choose production
+triggers/scheduling, capacities, bank retirement and unexpected/hung-backend policy;
+physical placement/DMA/cache/timing/coexistence and ADR-006 activation remain gated.

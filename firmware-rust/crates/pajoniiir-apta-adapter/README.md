@@ -1038,3 +1038,89 @@ Actual combined firmware `firmware-frames-20261005T095227Z` compiles/links with
 4213 frame records and APTA unselected. Inventories include unused functions;
 none is a complete call-graph maximum, safe stack size, runtime high-water or
 hardware acceptance. Physical SRAM/PSRAM/DMA/cache/timing gates remain open.
+
+## Persistent native consumer owner — 2026-10-05
+
+`owner::Owner` retains the unique broker Client, Requests, selected catalog path
+and working-array borrows across jobs. Construction takes the existing Requests
+by value; only a newly claimed endpoint initializes that counter. `select`/`select_bank` reserve a generation
+and copy the original catalog lease/path; replacement never recreates Requests.
+`run` first drains/closes the same client, then consumes the selection and drives
+both existing passes. It returns `Delivery` only after both full-object hashes
+and both closes pass. Backend cleanup errors take precedence and remain retryable.
+
+To cancel, drop the borrowed `run` future, call `cancel` (or select a replacement),
+and retain the owner. `recover` can itself be cancelled/retried. Temporary logical
+scanner/worker tokens may now leave scope because the concrete broker Client owns
+all actual pending handles and whole buffers. This permission does **not** apply
+to arbitrary AsyncFileSystem implementations. Cancelled recovery preserves the
+queued selection; a started job consumes it, so retry needs a new selection.
+Quarantine is exposed only through explicit `take_unexpected`; recovery cannot
+invent a missing completion or terminate hung USB/DMA.
+
+Working arrays and source/PCM scratch live outside the job future. Output banks
+are borrowed separately: an existing `Pin`/waveform view holds one bank immutable
+while another job reuses working arrays and a free output bank. Deliver through
+existing `Pin::load`/`upgrade` with current Deck state and a fresh media snapshot.
+Pending transport/playing still rejects upgrades; media invalidation hides pins.
+Copied neutral views remain subject to the existing lifetime/media rules.
+
+The firmware `apta-owner-compile` feature supplies `usb0_analysis::Storage`,
+`Bank`, `AnalysisOwner`, and `run_selected`, using the actual once-claimed USB0
+endpoint. Storage allocation uses the existing initialized PSRAM allocator with
+fallible reservation; the 4096-byte broker buffer uses the existing internal-SRAM
+StaticCell pattern. Allocate Storage and both Banks before claiming the endpoint.
+The actual Library catalog stage has a synchronous selection handoff, and USB0
+provides a short-lock media snapshot; neither lock nor catalog borrow spans I/O.
+The transport also checks mounted availability on every lease validation.
+
+The feature compiles a concrete Embassy task/pool for diagnostics but **does not
+call claim, spawn the task, or select APTA in boot/product code**. Its default is
+off. Production adoption still needs owner review of the trigger/scheduling path,
+capacity/limits, safe bank retirement and the quarantine/hung-backend policy.
+These are bounded integration decisions, not missing filesystem/DSP engines.
+
+Native FAT32/exFAT profiles now execute repeated jobs through this owner, comparing
+all beats and waveform columns and reusing neutral Sync/Beat Jump/raster/effect
+acknowledgement consumers. Owner tests cancel both passes' open/read/close phases,
+including recovery cancellation, and cover queue refusal, stale media, quarantine,
+backend errors, malformed input and retained pins during pending/playing transport.
+Host Embassy executes cancellation and two replacements alongside a heartbeat.
+The host broker completes native I/O before delaying its completion message; this
+is host completion simulation, **not actual USB execution**.
+
+Reproduce with the existing serial verification scripts plus external
+`/home/shome/.local/share/Pajoniiir-M1/apta-evidence/verify-owner-firmware.py`.
+The latter explicitly emits the actual firmware owner with `-Clink-dead-code`,
+forced frame pointers and stack-size metadata; it records exact objects, source,
+lock, configuration, Cargo-resolved dependencies and disassembly. Ordinary CI
+also compiles/links the feature without spawning it. Desktop `libapta-runtime`
+remains absent from both firmware dependency paths.
+
+Final consumer acceptance `20261005T102601Z`: 465 workspace, 124 focused release
+and 49 adapter ASan tests, plus the lifetime doctest per suite; fmt/Clippy/allocation
+and P4 checks pass. Artifacts `20261005T103149Z` preserve original PPM bytes.
+Native/streaming probes are `20261005T103152Z` / `20261005T103157Z`; complete host
+Embassy task/storage `20261005T103158Z` passes all three tests. Separate nested
+inventory `20261005T103203Z` has 1502 records; ordinary combined firmware
+`20261005T103206Z` has 4213. These retain their earlier profile exclusions.
+
+Actual USB0 owner diagnostic `owner-firmware-frames-20261005T103211Z` compiles and
+links with 7363 frame records under its distinct link-dead-code/forced-frame-pointer
+profile. Compiler-observed `run_selected` future is 5696 B; its Embassy pool is
+5752 B; persistent Owner is 680 B; Storage Vec headers are 72 B and each Bank's
+headers 24 B. Separate broker scratch is 4096 B. Individual inner/outer owner poll
+frames are 2336/800 B; task poll and wrapper frames remain additional, as do callees.
+No sum of these individual records establishes a complete stack maximum.
+
+For the diagnostic queue 17 / 1250 columns / 128 beats profile, working-array
+payload is 100700 B and each independent beat+waveform bank is 6536 B. Two output
+banks therefore use 113772 B total array payload (5000 B more than the earlier
+one-waveform array plan). Including the listed Owner/Vec metadata, broker scratch
+and task pool gives a **selected-component subtotal** of 124420 B. Scanner/worker
+controls are already inside the future/pool: do not double-count them. This subtotal
+excludes allocator rounding/overhead, StaticCell/claim flags, actual USB channels/
+backend, catalog/display/other tasks, stack/interrupts and runtime placement. It is
+not a physical memory budget or an apples-to-apples reduction against the older
+opaque-broker profile. No hardware, deployment, DSP accuracy or production-provider
+qualification follows from these diagnostics.

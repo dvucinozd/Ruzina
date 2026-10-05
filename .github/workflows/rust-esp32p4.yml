@@ -59,3 +59,6 @@ jobs:
 
       - name: ESP32-P4 USB0 + USB1 + SDMMC + PSRAM full ownership link gate
         run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,usb1-controller-bringup,sdmmc-profile-storage-bringup,p4-psram-storage"
+
+      - name: Native analysis owner compile-only gate (provider unselected)
+        run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,usb1-controller-bringup,sdmmc-profile-storage-bringup,apta-owner-compile"

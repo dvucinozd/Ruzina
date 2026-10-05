@@ -1185,6 +1185,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "libapta"
+version = "0.1.0"
+source = "git+https://github.com/dvucinozd/libapta-audio.git?rev=25d09de364e9507532c0508c838a8fecf0772d13#25d09de364e9507532c0508c838a8fecf0772d13"
+dependencies = [
+ "libm",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1297,6 +1305,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
+name = "pajoniiir-apta-adapter"
+version = "0.1.0"
+dependencies = [
+ "libapta",
+ "pajoniiir-core",
+ "pajoniiir-deck",
+ "pajoniiir-media-catalog",
+ "pajoniiir-media-fs",
+ "pajoniiir-media-identity",
+ "pajoniiir-media-session",
+ "pajoniiir-track-analysis",
+ "pajoniiir-waveform",
+]
+
+[[package]]
 name = "pajoniiir-audio-dsp"
 version = "0.1.0"
 dependencies = [
@@ -1401,6 +1424,8 @@ dependencies = [
  "esp-alloc",
  "esp-hal",
  "esp-rtos",
+ "libapta",
+ "pajoniiir-apta-adapter",
  "pajoniiir-audio-dsp",
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-runtime",
@@ -1421,6 +1446,7 @@ dependencies = [
  "pajoniiir-media-usb-msc",
  "pajoniiir-mixer",
  "pajoniiir-rekordbox",
+ "pajoniiir-track-analysis",
  "pajoniiir-ui-model",
  "pajoniiir-waveform",
  "sdio",

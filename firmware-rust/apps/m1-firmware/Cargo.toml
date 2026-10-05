@@ -21,7 +21,13 @@ sdmmc-profile-storage-bringup = []
 # This does not claim DMA/cache coherency or hardware qualification.
 p4-psram-storage = ["dep:esp-alloc"]
 
+# Compiles the native owner and storage only; never claims/spawns/selects it.
+apta-owner-compile = ["p4-psram-storage", "dep:pajoniiir-apta-adapter", "dep:libapta", "dep:pajoniiir-track-analysis"]
+
 [dependencies]
+libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "25d09de364e9507532c0508c838a8fecf0772d13", default-features = false, optional = true }
+pajoniiir-apta-adapter = { path = "../../crates/pajoniiir-apta-adapter", optional = true }
+pajoniiir-track-analysis = { path = "../../crates/pajoniiir-track-analysis", optional = true }
 aligned = { version = "=0.4.3", default-features = false }
 block-device-driver = { version = "=0.2.0", default-features = false }
 embassy-executor = { version = "=0.10.0", default-features = false }

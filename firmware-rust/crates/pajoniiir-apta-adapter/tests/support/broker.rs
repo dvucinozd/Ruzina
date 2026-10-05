@@ -11,6 +11,7 @@ pub struct Control {
     pub stale: Cell<bool>,
     pub full: Cell<bool>,
     pub unexpected: Cell<bool>,
+    pub opens: Cell<usize>,
     pub closes: Cell<usize>,
     pub reads: Cell<usize>,
 }
@@ -44,7 +45,10 @@ impl<F: AsyncFileSystem> Transport for Broker<F> {
         }
         assert!(self.completion.is_none());
         self.completion = Some(match request {
-            Request::Open(t, p) => Completion::Open(t, run(self.fs.open_read(p.as_str()))),
+            Request::Open(t, p) => {
+                self.control.opens.set(self.control.opens.get() + 1);
+                Completion::Open(t, run(self.fs.open_read(p.as_str())))
+            }
             Request::Read(t, mut h, b, n) => {
                 self.control.reads.set(self.control.reads.get() + 1);
                 let result = run(self.fs.read(&mut h, &mut b[..n]));

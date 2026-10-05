@@ -2,6 +2,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod owner;
 pub mod source;
 pub mod storage;
 pub mod streaming;

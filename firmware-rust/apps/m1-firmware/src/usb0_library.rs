@@ -169,6 +169,21 @@ struct Usb0LibraryCatalogStage {
 }
 
 impl Usb0LibraryCatalogStage {
+    /// Compile-only handoff from the actual retained catalog. Copies the selected
+    /// path/track/original lease; the catalog bank is not borrowed across I/O.
+    #[cfg(feature = "apta-owner-compile")]
+    fn select_analysis(
+        &self,
+        owner: &mut crate::usb0_analysis::AnalysisOwner<'_>,
+        index: usize,
+    ) -> Result<(), pajoniiir_apta_adapter::worker::WorkerError> {
+        let catalog = self
+            .publisher
+            .current()
+            .ok_or(pajoniiir_apta_adapter::worker::WorkerError::Stale)?;
+        owner.select_bank(&crate::usb0_msc::analysis_media_snapshot(), catalog, index)
+    }
+
     fn try_new() -> Result<Self, ()> {
         #[cfg(feature = "p4-psram-storage")]
         {

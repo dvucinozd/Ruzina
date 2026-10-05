@@ -5,6 +5,10 @@
 #[cfg(feature = "p4-psram-storage")]
 extern crate alloc;
 
+#[cfg(feature = "apta-owner-compile")]
+#[allow(dead_code)]
+mod usb0_analysis;
+
 use embassy_executor::Spawner;
 use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 

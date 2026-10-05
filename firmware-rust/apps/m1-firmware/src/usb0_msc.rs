@@ -603,6 +603,11 @@ fn with_lifecycle<R>(f: impl FnOnce(&Usb0MscLifecycle) -> R) -> R {
     })
 }
 
+#[cfg(feature = "apta-owner-compile")]
+pub(crate) fn analysis_media_snapshot() -> MediaSession {
+    with_lifecycle(|lifecycle| *lifecycle.session())
+}
+
 fn set_media_state(state: Usb0MscMediaState) {
     USB0_MSC_MEDIA_STATE.lock(|cell| {
         *cell.borrow_mut() = state;
@@ -2508,7 +2513,7 @@ impl pajoniiir_media_fs::analysis::Transport for Usb0AnalysisTransport {
     type Error = Usb0FsOperationError;
     type Unexpected = Usb0FsCompletion;
     fn valid(&self, lease: MediaLease) -> bool {
-        with_lifecycle(|l| l.session().validate(lease))
+        with_lifecycle(|l| l.session().is_available() && l.session().validate(lease))
     }
     fn kind(&self) -> FileSystemKind {
         match filesystem_state() {

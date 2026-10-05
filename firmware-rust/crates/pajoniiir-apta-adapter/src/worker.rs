@@ -15,6 +15,12 @@ pub struct Job {
     identity: SourceIdentity,
 }
 
+impl Job {
+    pub(crate) fn lease(self) -> MediaLease {
+        self.lease
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WorkerError {
     Stale,

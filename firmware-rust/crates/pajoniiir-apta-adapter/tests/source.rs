@@ -136,9 +136,72 @@ fn analyze<F: AsyncFileSystem>(
         original,
         selected.track(media).unwrap(),
         view,
+        &mut requests,
     );
     assert!(fs.is_idle());
-    support::broker::free_buffer(fs.retire_buffer().unwrap());
+    // Reuse this same actual native filesystem endpoint through the persistent
+    // owner, with retained output independent of its reusable working arrays.
+    let mut work = support::owner::Work::new();
+    let mut a = support::owner::Bank::new();
+    let mut b = support::owner::Bank::new();
+    let mut owner = pajoniiir_apta_adapter::owner::Owner::new(fs, requests, work.borrow());
+    allocation::start();
+    owner.select_bank(media, &catalog, 0).unwrap();
+    let first = drive(owner.run(
+        media,
+        pajoniiir_apta_adapter::streaming::StreamLimits::UNLIMITED,
+        256,
+        a.borrow(),
+        0x07e0,
+    ))
+    .unwrap();
+    let pin = Pin::load(
+        DeckId::One,
+        &decks,
+        first.completed,
+        owner.requests(),
+        media,
+    )
+    .unwrap();
+    owner.select_bank(media, &catalog, 0).unwrap();
+    let second = drive(owner.run(
+        media,
+        pajoniiir_apta_adapter::streaming::StreamLimits::UNLIMITED,
+        256,
+        b.borrow(),
+        0x07e0,
+    ))
+    .unwrap();
+    let next = Pin::load(
+        DeckId::One,
+        &decks,
+        second.completed,
+        owner.requests(),
+        media,
+    )
+    .unwrap();
+    assert_eq!(pin.track(media).unwrap().generation(), 3);
+    assert_eq!(next.track(media).unwrap().generation(), 4);
+    assert_eq!(first.waveform.columns, second.waveform.columns);
+    assert_eq!(view.columns, second.waveform.columns);
+    assert_eq!(
+        selected.track(media).unwrap().beat_grid().unwrap().beats(),
+        next.track(media).unwrap().beat_grid().unwrap().beats()
+    );
+    allocation::finish();
+    verify_consumers(
+        second.completed,
+        second.waveform,
+        owner.requests(),
+        media,
+        if libapta::wav::Wav::parse(original).unwrap().encoding() == libapta::wav::Encoding::S16 {
+            4160
+        } else {
+            4120
+        },
+    );
+    assert!(owner.is_idle());
+    support::broker::free_buffer(owner.retire_buffer().unwrap());
 }
 fn analyze_stream<F: AsyncFileSystem>(
     fs: &mut F,
@@ -146,6 +209,7 @@ fn analyze_stream<F: AsyncFileSystem>(
     original: &[u8],
     expected: pajoniiir_track_analysis::TrackAnalysis<'_>,
     expected_waveform: pajoniiir_waveform::WaveformView<'_>,
+    requests: &mut Requests,
 ) where
     F::Error: core::fmt::Debug,
 {
@@ -156,10 +220,9 @@ fn analyze_stream<F: AsyncFileSystem>(
     );
     catalog.push(*snapshot.get(0).unwrap()).unwrap();
     let catalog = catalog.finish(1);
-    let mut requests = Requests::default();
     let mut bytes = [0; 4096];
     allocation::start();
-    let request = SourceRequest::from_bank(&mut requests, media, &catalog, 0).unwrap();
+    let request = SourceRequest::from_bank(requests, media, &catalog, 0).unwrap();
     let limits = pajoniiir_apta_adapter::streaming::StreamLimits {
         object_bytes: original.len() as u64,
         duration_ms: 40_000,
@@ -167,8 +230,7 @@ fn analyze_stream<F: AsyncFileSystem>(
         processing_steps: 40_000,
     };
     let mut scan = None;
-    let source =
-        drive(request.scan(&mut scan, fs, &mut requests, media, limits, &mut bytes)).unwrap();
+    let source = drive(request.scan(&mut scan, fs, requests, media, limits, &mut bytes)).unwrap();
     assert!(scan.is_none());
     allocation::finish();
     assert_eq!(
@@ -217,11 +279,11 @@ fn analyze_stream<F: AsyncFileSystem>(
             .unwrap();
         let worker = slot.as_mut().unwrap();
         let mut scratch = [0.; 512];
-        drive(worker.run(fs, &requests, media, &mut scratch)).unwrap();
+        drive(worker.run(fs, requests, media, &mut scratch)).unwrap();
         let worker = worker.verified_worker().unwrap();
-        let completed = worker.complete(&requests, media, &mut bank).unwrap();
+        let completed = worker.complete(requests, media, &mut bank).unwrap();
         let view = worker
-            .waveform(&requests, media, &mut render, 0x07e0)
+            .waveform(requests, media, &mut render, 0x07e0)
             .unwrap();
         allocation::finish();
         (completed, view)
@@ -229,10 +291,10 @@ fn analyze_stream<F: AsyncFileSystem>(
 
     assert_eq!(view.columns, expected_waveform.columns);
     let decks = DeckProductState::new();
-    let new = Pin::load(DeckId::One, &decks, completed, &requests, media).unwrap();
+    let new = Pin::load(DeckId::One, &decks, completed, requests, media).unwrap();
     let actual = new.track(media).unwrap();
     assert_eq!(expected.provider(), actual.provider());
-    assert_eq!(expected.generation(), actual.generation());
+    assert_eq!(expected.generation() + 1, actual.generation());
     assert_eq!(expected.bpm_x100(), actual.bpm_x100());
     assert_eq!(
         expected.beat_grid().unwrap().beats(),
@@ -241,7 +303,7 @@ fn analyze_stream<F: AsyncFileSystem>(
     verify_consumers(
         completed,
         view,
-        &requests,
+        requests,
         media,
         if libapta::wav::Wav::parse(original).unwrap().encoding() == libapta::wav::Encoding::S16 {
             4160
