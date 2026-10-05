@@ -270,12 +270,14 @@ mod tests {
         assert_eq!(SemanticControl::Play.domain(), ControlDomain::Deck);
         assert_eq!(SemanticControl::BeatFxOn.domain(), ControlDomain::Deck);
         assert_eq!(SemanticControl::Crossfader.domain(), ControlDomain::Mixer);
-        assert_eq!(SemanticControl::BrowseDelta.domain(), ControlDomain::Library);
+        assert_eq!(
+            SemanticControl::BrowseDelta.domain(),
+            ControlDomain::Library
+        );
         assert_eq!(SemanticControl::JogSearch.domain(), ControlDomain::Deferred);
         assert_eq!(
             SemanticControl::SmartCfxShift.domain(),
             ControlDomain::Deferred
         );
     }
-
 }

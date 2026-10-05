@@ -1,11 +1,11 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub use pajoniiir_control_scheduler::ConnectionState;
 use pajoniiir_control_scheduler::{
     ConnectionDelivery, ConnectionReconciler, ContinuousMode, EventScheduler, HeldStateReconciler,
     SchedulerStats,
 };
-pub use pajoniiir_control_scheduler::ConnectionState;
 pub use pajoniiir_controller_core::ControlDomain;
 use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
 use pajoniiir_controller_profile::{
@@ -880,5 +880,4 @@ mod tests {
             SessionDispatchOutcome::Idle
         );
     }
-
 }

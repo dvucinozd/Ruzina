@@ -3054,5 +3054,4 @@ mod tests {
         assert_eq!(queue.pop(), Some(second));
         assert_eq!(queue.pop(), None);
     }
-
 }
