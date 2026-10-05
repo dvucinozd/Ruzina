@@ -3,7 +3,8 @@
 
 use pajoniiir_controller_profile::{MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, ProfileId};
 pub use pajoniiir_controller_profile::{
-    MAX_PROFILE_SIZE, ProfileActivationState, ProfileActivationTicket, ProfileRegistry, ProfileSlot,
+    MAX_PROFILE_SIZE, Profile, ProfileActivationState, ProfileActivationTicket, ProfileRegistry,
+    ProfileSlot,
 };
 use pajoniiir_media_fs::{AsyncFileSystem, EntryKind, FS_NAME_MAX, FileHandle};
 

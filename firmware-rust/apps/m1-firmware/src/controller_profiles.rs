@@ -6,8 +6,11 @@ use embassy_sync::{
     signal::Signal,
 };
 use pajoniiir_controller_profile_storage::{
-    MAX_PROFILE_SIZE, ProfileActivationState, ProfileActivationTicket, ProfileRegistry, ProfileSlot,
+    MAX_PROFILE_SIZE, Profile, ProfileActivationState, ProfileActivationTicket, ProfileRegistry,
+    ProfileSlot,
 };
+use pajoniiir_controller_session::{ControllerSession, IngestOutcome, UsbMidiIngestOutcome};
+use pajoniiir_controller_usb::UsbMidiEvent;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct ProfileCatalogMatch {
@@ -20,6 +23,41 @@ pub(crate) struct ProfileCatalogMatch {
 pub(crate) struct ProfileActivationRequest {
     pub(crate) ticket: ProfileActivationTicket,
     pub(crate) slot: ProfileSlot,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct ActiveMidiBatchReport {
+    pub(crate) packets: u32,
+    pub(crate) decoded: u32,
+    pub(crate) scheduled: u32,
+    pub(crate) dropped: u32,
+    pub(crate) no_mapping: u32,
+    pub(crate) ignored_non_channel_voice: u32,
+    pub(crate) unsupported_cable: u32,
+    pub(crate) semantic_errors: u32,
+}
+
+impl ActiveMidiBatchReport {
+    pub(crate) fn accumulate(&mut self, other: Self) {
+        self.packets = self.packets.saturating_add(other.packets);
+        self.decoded = self.decoded.saturating_add(other.decoded);
+        self.scheduled = self.scheduled.saturating_add(other.scheduled);
+        self.dropped = self.dropped.saturating_add(other.dropped);
+        self.no_mapping = self.no_mapping.saturating_add(other.no_mapping);
+        self.ignored_non_channel_voice = self
+            .ignored_non_channel_voice
+            .saturating_add(other.ignored_non_channel_voice);
+        self.unsupported_cable = self.unsupported_cable.saturating_add(other.unsupported_cable);
+        self.semantic_errors = self.semantic_errors.saturating_add(other.semantic_errors);
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ActiveProfileMidiError {
+    MisalignedTransfer,
+    NotActive,
+    StaleController,
+    InvalidActiveProfile,
 }
 
 struct ProfileCatalog {
@@ -232,4 +270,71 @@ pub(crate) async fn fail_profile_activation(request: ProfileActivationRequest) {
     if let Some(revision) = revision {
         PROFILE_ACTIVATION_CHANGED.signal(revision);
     }
+}
+
+
+pub(crate) async fn process_active_midi_transfer(
+    controller_epoch: u32,
+    session: &mut ControllerSession,
+    bytes: &[u8],
+) -> Result<ActiveMidiBatchReport, ActiveProfileMidiError> {
+    if !bytes.len().is_multiple_of(4) {
+        return Err(ActiveProfileMidiError::MisalignedTransfer);
+    }
+
+    let active = ACTIVE_PROFILE.lock().await;
+    let (state, active_index, connected_epoch) = PROFILE_CATALOG.lock(|cell| {
+        let catalog = cell.borrow();
+        (
+            catalog.registry.activation_state(),
+            catalog.registry.active_index(),
+            catalog.registry.connected().map(|controller| controller.epoch),
+        )
+    });
+
+    if state != ProfileActivationState::Active {
+        return Err(ActiveProfileMidiError::NotActive);
+    }
+    if active.controller_epoch != controller_epoch
+        || connected_epoch != Some(controller_epoch)
+        || active.index != active_index
+    {
+        return Err(ActiveProfileMidiError::StaleController);
+    }
+
+    let profile = Profile::parse(&active.bytes[..active.len])
+        .map_err(|_| ActiveProfileMidiError::InvalidActiveProfile)?;
+    let mut report = ActiveMidiBatchReport::default();
+
+    for packet in bytes.chunks_exact(4) {
+        report.packets = report.packets.saturating_add(1);
+        let Some(event) = UsbMidiEvent::decode([packet[0], packet[1], packet[2], packet[3]]) else {
+            continue;
+        };
+        report.decoded = report.decoded.saturating_add(1);
+
+        match session.process_usb_midi_event(&profile, event) {
+            Ok(UsbMidiIngestOutcome::IgnoredNonChannelVoice) => {
+                report.ignored_non_channel_voice =
+                    report.ignored_non_channel_voice.saturating_add(1);
+            }
+            Ok(UsbMidiIngestOutcome::UnsupportedCable(_)) => {
+                report.unsupported_cable = report.unsupported_cable.saturating_add(1);
+            }
+            Ok(UsbMidiIngestOutcome::Session(IngestOutcome::NoMapping)) => {
+                report.no_mapping = report.no_mapping.saturating_add(1);
+            }
+            Ok(UsbMidiIngestOutcome::Session(IngestOutcome::Scheduled)) => {
+                report.scheduled = report.scheduled.saturating_add(1);
+            }
+            Ok(UsbMidiIngestOutcome::Session(IngestOutcome::Dropped)) => {
+                report.dropped = report.dropped.saturating_add(1);
+            }
+            Err(_) => {
+                report.semantic_errors = report.semantic_errors.saturating_add(1);
+            }
+        }
+    }
+
+    Ok(report)
 }
