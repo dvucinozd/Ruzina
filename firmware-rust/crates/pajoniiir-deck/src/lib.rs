@@ -541,7 +541,8 @@ pub struct DeckProductState {
     sync_master: Option<DeckId>,
     beat_jump_page: BeatJumpPage,
     shifted_loop_roll: [ShiftedLoopRoll; 2],
-    hot_cues: [Option<HotCueBank>; 2],
+    hot_cue_sources: [Option<HotCueBank>; 2],
+    hot_cue_locals: [Option<HotCueBank>; 2],
     beat_fx: BeatFxState,
 }
 
@@ -558,7 +559,8 @@ impl DeckProductState {
             sync_master: None,
             beat_jump_page: BeatJumpPage::Default,
             shifted_loop_roll: [ShiftedLoopRoll::new(), ShiftedLoopRoll::new()],
-            hot_cues: [None, None],
+            hot_cue_sources: [None, None],
+            hot_cue_locals: [None, None],
             beat_fx: BeatFxState::new(),
         }
     }
@@ -581,21 +583,48 @@ impl DeckProductState {
         track_id: MediaTrackId,
         persisted: Option<HotCueBank>,
     ) -> bool {
-        let bank = match persisted {
+        self.load_hot_cues_with_source(
+            deck,
+            track_id,
+            HotCueBank::empty(track_id),
+            persisted,
+        )
+    }
+
+    pub fn load_hot_cues_with_source(
+        &mut self,
+        deck: DeckId,
+        track_id: MediaTrackId,
+        source: HotCueBank,
+        persisted: Option<HotCueBank>,
+    ) -> bool {
+        if source.track_id() != track_id {
+            return false;
+        }
+        let local = match persisted {
             Some(bank) if bank.track_id() != track_id => return false,
             Some(bank) => bank,
             None => HotCueBank::empty(track_id),
         };
-        self.hot_cues[deck_index(deck)] = Some(bank);
+        let index = deck_index(deck);
+        self.hot_cue_sources[index] = Some(source.as_source());
+        self.hot_cue_locals[index] = Some(local);
         true
     }
 
     pub fn clear_loaded_track(&mut self, deck: DeckId) {
-        self.hot_cues[deck_index(deck)] = None;
+        let index = deck_index(deck);
+        self.hot_cue_sources[index] = None;
+        self.hot_cue_locals[index] = None;
     }
 
     pub fn hot_cues(&self, deck: DeckId) -> Option<HotCueBank> {
-        self.hot_cues[deck_index(deck)]
+        let index = deck_index(deck);
+        HotCueBank::merged(self.hot_cue_sources[index]?, self.hot_cue_locals[index]?)
+    }
+
+    pub fn local_hot_cues(&self, deck: DeckId) -> Option<HotCueBank> {
+        self.hot_cue_locals[deck_index(deck)]
     }
 
     pub fn set_base_bpm_x100(&mut self, deck: DeckId, bpm_x100: u32) {
@@ -1221,19 +1250,24 @@ impl DeckProductState {
 
     fn handle_hot_cue_pad_action(&mut self, deck: DeckId, pad: u8, shifted: bool) -> DeckEffects {
         let index = deck_index(deck);
-        let Some(mut bank) = self.hot_cues[index] else {
+        let (Some(source), Some(mut local)) =
+            (self.hot_cue_sources[index], self.hot_cue_locals[index])
+        else {
+            return DeckEffects::NONE;
+        };
+        let Some(effective) = HotCueBank::merged(source, local) else {
             return DeckEffects::NONE;
         };
 
         if shifted {
-            if !bank.clear(pad) {
+            if effective.slot(pad).is_none() || !local.clear(pad) {
                 return DeckEffects::NONE;
             }
-            self.hot_cues[index] = Some(bank);
-            return DeckEffects::one(DeckEffect::PersistHotCues { deck, bank });
+            self.hot_cue_locals[index] = Some(local);
+            return DeckEffects::one(DeckEffect::PersistHotCues { deck, bank: local });
         }
 
-        if let Some(cue) = bank.slot(pad) {
+        if let Some(cue) = effective.slot(pad) {
             self.decks[index].position_ms = cue.pos_ms;
             return DeckEffects::one(DeckEffect::Seek {
                 deck,
@@ -1242,11 +1276,11 @@ impl DeckProductState {
         }
 
         let position_ms = self.decks[index].position_ms;
-        if !bank.set_single(pad, position_ms) {
+        if !local.set_single(pad, position_ms) {
             return DeckEffects::NONE;
         }
-        self.hot_cues[index] = Some(bank);
-        DeckEffects::one(DeckEffect::PersistHotCues { deck, bank })
+        self.hot_cue_locals[index] = Some(local);
+        DeckEffects::one(DeckEffect::PersistHotCues { deck, bank: local })
     }
 
     fn handle_beat_loop_pad_action(
@@ -2701,13 +2735,14 @@ mod tests {
 
         let set = state.handle_control(hot_cue_pad(DeckId::One, 2, false, true));
         let bank = state.hot_cues(DeckId::One).unwrap();
+        let local = state.local_hot_cues(DeckId::One).unwrap();
         assert_eq!(bank.track_id(), track_id);
         assert_eq!(bank.slot(2), Some(HotCueSlot::single(4_250)));
         assert_eq!(
             set.items[0],
             Some(DeckEffect::PersistHotCues {
                 deck: DeckId::One,
-                bank,
+                bank: local,
             })
         );
 
@@ -2733,18 +2768,55 @@ mod tests {
 
         let cleared = state.handle_control(hot_cue_pad(DeckId::Two, 6, true, true));
         let updated = state.hot_cues(DeckId::Two).unwrap();
+        let local = state.local_hot_cues(DeckId::Two).unwrap();
         assert_eq!(updated.slot(6), None);
         assert_eq!(
             cleared.items[0],
             Some(DeckEffect::PersistHotCues {
                 deck: DeckId::Two,
-                bank: updated,
+                bank: local,
             })
         );
         assert_eq!(
             state.handle_control(hot_cue_pad(DeckId::Two, 6, true, true)),
             DeckEffects::NONE
         );
+    }
+
+    #[test]
+    fn deleting_imported_hot_cue_persists_tombstone_across_reload() {
+        let track_id = media_id(0x45);
+        let mut source = HotCueBank::empty(track_id);
+        assert!(source.set_single(1, 5_000));
+
+        let mut state = DeckProductState::new();
+        assert!(state.load_hot_cues_with_source(DeckId::One, track_id, source, None));
+        assert_eq!(
+            state.hot_cues(DeckId::One).unwrap().slot(1),
+            Some(HotCueSlot::single(5_000))
+        );
+
+        let effect = state.handle_control(hot_cue_pad(DeckId::One, 1, true, true));
+        let local = state.local_hot_cues(DeckId::One).unwrap();
+        assert!(local.is_overridden(1));
+        assert_eq!(local.slot(1), None);
+        assert_eq!(
+            effect.items[0],
+            Some(DeckEffect::PersistHotCues {
+                deck: DeckId::One,
+                bank: local,
+            })
+        );
+        assert_eq!(state.hot_cues(DeckId::One).unwrap().slot(1), None);
+
+        let mut reloaded = DeckProductState::new();
+        assert!(reloaded.load_hot_cues_with_source(
+            DeckId::One,
+            track_id,
+            source,
+            Some(local),
+        ));
+        assert_eq!(reloaded.hot_cues(DeckId::One).unwrap().slot(1), None);
     }
 
     #[test]
