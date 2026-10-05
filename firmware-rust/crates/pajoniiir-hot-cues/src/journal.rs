@@ -500,7 +500,7 @@ fn bucket_for(key: HotCueStorageKey) -> u32 {
     crc32_iso(key.as_bytes()) & (HOT_CUE_JOURNAL_BUCKET_COUNT - 1)
 }
 
-fn sector_base(bucket: u32, side: u32) -> Result<u32, HotCueJournalError<core::convert::Infallible>> {
+fn sector_base<E>(bucket: u32, side: u32) -> Result<u32, HotCueJournalError<E>> {
     if bucket >= HOT_CUE_JOURNAL_BUCKET_COUNT || side >= HOT_CUE_JOURNAL_SECTORS_PER_BUCKET {
         return Err(HotCueJournalError::OutOfBounds);
     }
@@ -743,7 +743,7 @@ mod tests {
         journal.write_record_atomic(key, &record(0x55)).unwrap();
 
         let bucket = bucket_for(key);
-        let base = sector_base(bucket, 0).unwrap();
+        let base = sector_base::<FakeError>(bucket, 0).unwrap();
         let payload_byte = (base + SECTOR_HEADER_SIZE + ENTRY_PAYLOAD_OFFSET as u32) as usize;
         journal.flash_mut().bytes[payload_byte] ^= 1;
 
