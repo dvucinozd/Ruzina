@@ -118,6 +118,7 @@ pub struct GptTableInfo {
     pub entries_lba: u64,
     pub entry_count: u32,
     pub entry_size: u32,
+    pub entry_array_crc32: u32,
 }
 
 pub fn parse_gpt_header(header_sector: &[u8]) -> Option<GptTableInfo> {
@@ -128,11 +129,20 @@ pub fn parse_gpt_header(header_sector: &[u8]) -> Option<GptTableInfo> {
     }
 
     let header_size = read_u32_le(&header_sector[12..16]) as usize;
+    if !(92..=MIN_SECTOR_SIZE).contains(&header_size) {
+        return None;
+    }
+
+    let expected_header_crc = read_u32_le(&header_sector[16..20]);
+    if gpt_header_crc32(header_sector, header_size)? != expected_header_crc {
+        return None;
+    }
+
     let entries_lba = read_u64_le(&header_sector[72..80]);
     let entry_count = read_u32_le(&header_sector[80..84]);
     let entry_size = read_u32_le(&header_sector[84..88]);
-    if !(92..=MIN_SECTOR_SIZE).contains(&header_size)
-        || entries_lba == 0
+    let entry_array_crc32 = read_u32_le(&header_sector[88..92]);
+    if entries_lba == 0
         || entry_count == 0
         || entry_count > MAX_GPT_ENTRY_COUNT
         || !(128..=MAX_GPT_ENTRY_SIZE).contains(&(entry_size as usize))
@@ -144,6 +154,7 @@ pub fn parse_gpt_header(header_sector: &[u8]) -> Option<GptTableInfo> {
         entries_lba,
         entry_count,
         entry_size,
+        entry_array_crc32,
     })
 }
 
@@ -196,6 +207,8 @@ pub struct GptEntryStream {
     remaining_entries: u32,
     partial: [u8; MAX_GPT_ENTRY_SIZE],
     partial_len: u16,
+    crc32_state: u32,
+    expected_crc32: u32,
 }
 
 impl GptEntryStream {
@@ -213,6 +226,8 @@ impl GptEntryStream {
             remaining_entries: info.entry_count,
             partial: [0u8; MAX_GPT_ENTRY_SIZE],
             partial_len: 0,
+            crc32_state: u32::MAX,
+            expected_crc32: info.entry_array_crc32,
         })
     }
 
@@ -232,6 +247,12 @@ impl GptEntryStream {
         self.remaining_entries == 0
     }
 
+    pub const fn is_valid_complete(&self) -> bool {
+        self.remaining_entries == 0
+            && self.partial_len == 0
+            && !self.crc32_state == self.expected_crc32
+    }
+
     /// Feed an arbitrary raw GPT entry-table byte chunk.
     ///
     /// The chunk does not need to align to GPT entry boundaries. At most one
@@ -244,6 +265,7 @@ impl GptEntryStream {
         while !bytes.is_empty() && self.remaining_entries != 0 {
             if self.partial_len == 0 && bytes.len() >= entry_size {
                 let entry = &bytes[..entry_size];
+                self.crc32_state = crc32_update(self.crc32_state, entry);
                 let _ = append_gpt_entries(entry, self.entry_size as u32, 1, layout);
                 bytes = &bytes[entry_size..];
                 self.remaining_entries -= 1;
@@ -254,7 +276,9 @@ impl GptEntryStream {
             let partial_len = self.partial_len as usize;
             let needed = entry_size - partial_len;
             let take = needed.min(bytes.len());
-            self.partial[partial_len..partial_len + take].copy_from_slice(&bytes[..take]);
+            let chunk = &bytes[..take];
+            self.crc32_state = crc32_update(self.crc32_state, chunk);
+            self.partial[partial_len..partial_len + take].copy_from_slice(chunk);
             self.partial_len += take as u16;
             bytes = &bytes[take..];
 
@@ -354,8 +378,17 @@ pub fn scan_gpt(
     let Some(info) = parse_gpt_header(header_sector) else {
         return PartitionScanResult::Invalid;
     };
+    let Some(table_len) = (info.entry_count as usize).checked_mul(info.entry_size as usize) else {
+        return PartitionScanResult::Invalid;
+    };
+    let Some(table) = entries.get(..table_len) else {
+        return PartitionScanResult::Invalid;
+    };
+    if crc32(table) != info.entry_array_crc32 {
+        return PartitionScanResult::Invalid;
+    }
 
-    let _ = append_gpt_entries(entries, info.entry_size, info.entry_count, layout);
+    let _ = append_gpt_entries(table, info.entry_size, info.entry_count, layout);
     if layout.count != 0 {
         PartitionScanResult::Ok
     } else {
@@ -380,6 +413,34 @@ fn mbr_range_fits(first_lba: u32, sector_count: u32) -> bool {
         .checked_add(sector_count as u64)
         .and_then(|end| end.checked_sub(1))
         .is_some_and(|end| end <= u32::MAX as u64)
+}
+
+fn gpt_header_crc32(header_sector: &[u8], header_size: usize) -> Option<u32> {
+    let header = header_sector.get(..header_size)?;
+    if header.len() < 20 {
+        return None;
+    }
+
+    let mut state = u32::MAX;
+    state = crc32_update(state, &header[..16]);
+    state = crc32_update(state, &[0u8; 4]);
+    state = crc32_update(state, &header[20..]);
+    Some(!state)
+}
+
+fn crc32(input: &[u8]) -> u32 {
+    !crc32_update(u32::MAX, input)
+}
+
+fn crc32_update(mut crc: u32, input: &[u8]) -> u32 {
+    for &byte in input {
+        crc ^= u32::from(byte);
+        for _ in 0..8 {
+            let mask = 0u32.wrapping_sub(crc & 1);
+            crc = (crc >> 1) ^ (0xedb8_8320 & mask);
+        }
+    }
+    crc
 }
 
 fn read_u16_le(input: &[u8]) -> u16 {
@@ -442,14 +503,22 @@ mod tests {
         sector
     }
 
-    fn gpt_header(entry_count: u32, entry_size: u32) -> [u8; 512] {
+    fn gpt_header(entry_count: u32, entry_size: u32, entry_array_crc32: u32) -> [u8; 512] {
         let mut sector = [0u8; 512];
         sector[..8].copy_from_slice(b"EFI PART");
         put_u32_le(&mut sector[12..16], 92);
         put_u64_le(&mut sector[72..80], 2);
         put_u32_le(&mut sector[80..84], entry_count);
         put_u32_le(&mut sector[84..88], entry_size);
+        put_u32_le(&mut sector[88..92], entry_array_crc32);
+        refresh_gpt_header_crc(&mut sector);
         sector
+    }
+
+    fn refresh_gpt_header_crc(sector: &mut [u8; 512]) {
+        put_u32_le(&mut sector[16..20], 0);
+        let crc = gpt_header_crc32(sector, 92).unwrap();
+        put_u32_le(&mut sector[16..20], crc);
     }
 
     fn write_basic_data_entry(entry: &mut [u8], first_lba: u64, last_lba: u64) {
@@ -523,9 +592,9 @@ mod tests {
 
     #[test]
     fn gpt_basic_data_candidate_matches_released_fixture() {
-        let header = gpt_header(4, 128);
         let mut entries = [0u8; 512];
         write_basic_data_entry(&mut entries[..128], 32_768, 98_303);
+        let header = gpt_header(4, 128, crc32(&entries));
         let mut layout = PartitionLayout::new();
 
         assert_eq!(
@@ -544,31 +613,34 @@ mod tests {
 
     #[test]
     fn gpt_header_exposes_bounded_entry_table_geometry() {
-        let header = gpt_header(128, 128);
+        let header = gpt_header(128, 128, 0);
         assert_eq!(
             parse_gpt_header(&header),
             Some(GptTableInfo {
                 entries_lba: 2,
                 entry_count: 128,
                 entry_size: 128,
+                entry_array_crc32: 0,
             })
         );
 
         let mut invalid = header;
         put_u64_le(&mut invalid[72..80], 0);
+        refresh_gpt_header_crc(&mut invalid);
         assert_eq!(parse_gpt_header(&invalid), None);
     }
 
     #[test]
     fn gpt_stream_accepts_entry_split_across_arbitrary_chunks() {
+        let mut bytes = [0u8; 384];
+        write_basic_data_entry(&mut bytes[128..256], 32_768, 98_303);
+        write_basic_data_entry(&mut bytes[256..384], 131_072, 196_607);
         let info = GptTableInfo {
             entries_lba: 2,
             entry_count: 3,
             entry_size: 128,
+            entry_array_crc32: crc32(&bytes),
         };
-        let mut bytes = [0u8; 384];
-        write_basic_data_entry(&mut bytes[128..256], 32_768, 98_303);
-        write_basic_data_entry(&mut bytes[256..384], 131_072, 196_607);
 
         let mut stream = GptEntryStream::new(info).unwrap();
         let mut layout = PartitionLayout::new();
@@ -582,6 +654,7 @@ mod tests {
         assert_eq!(stream.push(&bytes[301..], &mut layout), 1);
 
         assert!(stream.is_complete());
+        assert!(stream.is_valid_complete());
         assert_eq!(stream.pending_bytes(), 0);
         assert_eq!(layout.count(), 2);
         assert_eq!(layout.candidates()[0].first_lba, 32_768);
@@ -590,29 +663,32 @@ mod tests {
 
     #[test]
     fn gpt_stream_ignores_bytes_after_declared_entry_count() {
+        let mut bytes = [0u8; 256];
+        write_basic_data_entry(&mut bytes[..128], 2_048, 4_095);
+        write_basic_data_entry(&mut bytes[128..], 8_192, 16_383);
         let info = GptTableInfo {
             entries_lba: 2,
             entry_count: 1,
             entry_size: 128,
+            entry_array_crc32: crc32(&bytes[..128]),
         };
-        let mut bytes = [0u8; 256];
-        write_basic_data_entry(&mut bytes[..128], 2_048, 4_095);
-        write_basic_data_entry(&mut bytes[128..], 8_192, 16_383);
 
         let mut stream = GptEntryStream::new(info).unwrap();
         let mut layout = PartitionLayout::new();
         assert_eq!(stream.push(&bytes, &mut layout), 1);
         assert!(stream.is_complete());
+        assert!(stream.is_valid_complete());
         assert_eq!(layout.count(), 1);
         assert_eq!(layout.candidates()[0].first_lba, 2_048);
     }
 
     #[test]
     fn gpt_header_and_stream_reject_unbounded_entry_counts() {
-        let mut header = gpt_header(MAX_GPT_ENTRY_COUNT + 1, 128);
+        let mut header = gpt_header(MAX_GPT_ENTRY_COUNT + 1, 128, 0);
         assert_eq!(parse_gpt_header(&header), None);
 
         put_u32_le(&mut header[80..84], MAX_GPT_ENTRY_COUNT);
+        refresh_gpt_header_crc(&mut header);
         let info = parse_gpt_header(&header).unwrap();
         assert_eq!(info.entry_count, MAX_GPT_ENTRY_COUNT);
         assert!(GptEntryStream::new(info).is_some());
@@ -646,10 +722,10 @@ mod tests {
 
     #[test]
     fn gpt_supports_valid_extents_beyond_u32_lba() {
-        let header = gpt_header(1, 128);
         let mut entries = [0u8; 128];
         let first = u32::MAX as u64 + 4_096;
         write_basic_data_entry(&mut entries, first, first + 65_535);
+        let header = gpt_header(1, 128, crc32(&entries));
         let mut layout = PartitionLayout::new();
 
         assert_eq!(
@@ -658,6 +734,50 @@ mod tests {
         );
         assert_eq!(layout.candidates()[0].first_lba, first);
         assert_eq!(layout.candidates()[0].sector_count, NonZeroU64::new(65_536));
+    }
+
+    #[test]
+    fn gpt_header_crc_mismatch_fails_closed() {
+        let mut header = gpt_header(1, 128, 0);
+        header[24] ^= 0x01;
+        assert_eq!(parse_gpt_header(&header), None);
+    }
+
+    #[test]
+    fn gpt_entry_array_crc_mismatch_fails_closed() {
+        let mut entries = [0u8; 128];
+        write_basic_data_entry(&mut entries, 2_048, 4_095);
+        let header = gpt_header(1, 128, crc32(&entries));
+        entries[64] ^= 0x80;
+
+        let mut layout = PartitionLayout::new();
+        assert_eq!(
+            scan_gpt(&header, &entries, &mut layout),
+            PartitionScanResult::Invalid
+        );
+        assert_eq!(layout.count(), 0);
+    }
+
+    #[test]
+    fn gpt_stream_crc_detects_corruption_across_chunk_boundaries() {
+        let mut bytes = [0u8; 256];
+        write_basic_data_entry(&mut bytes[128..], 8_192, 16_383);
+        let info = GptTableInfo {
+            entries_lba: 2,
+            entry_count: 2,
+            entry_size: 128,
+            entry_array_crc32: crc32(&bytes),
+        };
+        let mut stream = GptEntryStream::new(info).unwrap();
+        let mut layout = PartitionLayout::new();
+
+        assert_eq!(stream.push(&bytes[..97], &mut layout), 0);
+        let mut remainder = [0u8; 159];
+        remainder.copy_from_slice(&bytes[97..]);
+        remainder[31] ^= 0x01;
+        assert_eq!(stream.push(&remainder, &mut layout), 2);
+        assert!(stream.is_complete());
+        assert!(!stream.is_valid_complete());
     }
 
     #[test]

@@ -184,7 +184,7 @@ async fn discover_fat32_volume(
                 lba = next_lba;
             }
 
-            if stream.pending_bytes() != 0 {
+            if !stream.is_valid_complete() {
                 return Err((SdProfileDiscoveryError::InvalidGptTable, scratch));
             }
         }
