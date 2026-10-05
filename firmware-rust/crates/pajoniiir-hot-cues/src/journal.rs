@@ -1,5 +1,5 @@
 use crate::{
-    HOT_CUE_RECORD_V4_SIZE, HotCueRecordBackend, HotCueStorageKey, HOT_CUE_STORAGE_KEY_LEN,
+    HOT_CUE_RECORD_V4_SIZE, HOT_CUE_STORAGE_KEY_LEN, HotCueRecordBackend, HotCueStorageKey,
 };
 
 pub const HOT_CUE_JOURNAL_SECTOR_SIZE: u32 = 4096;
@@ -224,7 +224,9 @@ where
             };
 
             if entry_key == *incoming_key.as_bytes()
-                || seen[..seen_count].iter().any(|seen_key| *seen_key == entry_key)
+                || seen[..seen_count]
+                    .iter()
+                    .any(|seen_key| *seen_key == entry_key)
             {
                 continue;
             }
@@ -357,7 +359,10 @@ where
 
     fn commit_header(&mut self, base: u32) -> Result<(), HotCueJournalError<F::Error>> {
         self.flash
-            .write_nor(base + HEADER_COMMIT_OFFSET as u32, &HEADER_COMMIT.to_le_bytes())
+            .write_nor(
+                base + HEADER_COMMIT_OFFSET as u32,
+                &HEADER_COMMIT.to_le_bytes(),
+            )
             .map_err(HotCueJournalError::Flash)
     }
 
@@ -399,16 +404,13 @@ where
 
         let kind = match raw[5] {
             ENTRY_KIND_PUT
-                if get_u32(
-                    &raw[ENTRY_PAYLOAD_LEN_OFFSET..ENTRY_PAYLOAD_LEN_OFFSET + 4],
-                ) == HOT_CUE_RECORD_V4_SIZE as u32 =>
+                if get_u32(&raw[ENTRY_PAYLOAD_LEN_OFFSET..ENTRY_PAYLOAD_LEN_OFFSET + 4])
+                    == HOT_CUE_RECORD_V4_SIZE as u32 =>
             {
                 EntryKind::Put
             }
             ENTRY_KIND_DELETE
-                if get_u32(
-                    &raw[ENTRY_PAYLOAD_LEN_OFFSET..ENTRY_PAYLOAD_LEN_OFFSET + 4],
-                ) == 0
+                if get_u32(&raw[ENTRY_PAYLOAD_LEN_OFFSET..ENTRY_PAYLOAD_LEN_OFFSET + 4]) == 0
                     && raw[ENTRY_PAYLOAD_OFFSET..ENTRY_CRC_OFFSET]
                         .iter()
                         .all(|byte| *byte == 0) =>
@@ -479,11 +481,7 @@ where
             .map_err(HotCueJournalError::Flash)
     }
 
-    fn read(
-        &mut self,
-        offset: u32,
-        output: &mut [u8],
-    ) -> Result<(), HotCueJournalError<F::Error>> {
+    fn read(&mut self, offset: u32, output: &mut [u8]) -> Result<(), HotCueJournalError<F::Error>> {
         let end = offset
             .checked_add(output.len() as u32)
             .ok_or(HotCueJournalError::OutOfBounds)?;
@@ -596,13 +594,19 @@ mod tests {
 
         fn write_nor(&mut self, offset: u32, data: &[u8]) -> Result<(), Self::Error> {
             let start = offset as usize;
-            let end = start.checked_add(data.len()).ok_or(FakeError::OutOfBounds)?;
+            let end = start
+                .checked_add(data.len())
+                .ok_or(FakeError::OutOfBounds)?;
             let target = self
                 .bytes
                 .get_mut(start..end)
                 .ok_or(FakeError::OutOfBounds)?;
 
-            let write_len = self.partial_next_write.take().unwrap_or(data.len()).min(data.len());
+            let write_len = self
+                .partial_next_write
+                .take()
+                .unwrap_or(data.len())
+                .min(data.len());
             for (old, new) in target[..write_len].iter_mut().zip(&data[..write_len]) {
                 if *old & *new != *new {
                     return Err(FakeError::NotNor);
