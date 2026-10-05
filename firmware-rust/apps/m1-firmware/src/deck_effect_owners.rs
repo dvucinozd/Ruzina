@@ -358,7 +358,9 @@ pub(crate) async fn run_persistence_owner(
         Err(_) => {
             PERSISTENCE_FAULTED.store(true, Ordering::Release);
             EFFECT_OWNER_PROGRESS.signal(());
-            return core::future::pending::<core::convert::Infallible>().await;
+            loop {
+                core::future::pending::<()>().await;
+            }
         }
     };
     let backend = HotCueJournalBackend::new(flash);
@@ -379,7 +381,9 @@ pub(crate) async fn run_persistence_owner(
         EFFECT_OWNER_PROGRESS.signal(());
 
         if !succeeded {
-            return core::future::pending::<core::convert::Infallible>().await;
+            loop {
+                core::future::pending::<()>().await;
+            }
         }
     }
 }
