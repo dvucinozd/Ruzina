@@ -141,9 +141,10 @@ fn analyze_stream<F: AsyncFileSystem>(
         scan_steps: 20_000,
         processing_steps: 40_000,
     };
-    let mut read = run(request.open_stream_with_limits(&mut fs, &requests, media, limits)).unwrap();
-    support::drive(read.run(&mut fs, &requests, media, &mut bytes)).unwrap();
-    let source = run(read.finish(&mut fs, &mut requests, media)).unwrap();
+    let mut scan = None;
+    let source =
+        drive(request.scan(&mut scan, &mut fs, &mut requests, media, limits, &mut bytes)).unwrap();
+    assert!(scan.is_none());
     allocation::finish();
     assert_eq!(
         source.source().fingerprint,

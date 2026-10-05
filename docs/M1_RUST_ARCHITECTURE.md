@@ -632,3 +632,16 @@ lane: refused downstream delivery keeps the exact effect for retry. No productio
 analysis client, playback owner or provider selection is added. The adapter README
 records exact software evidence and revised coroutine-construction diagnostics;
 physical stack, timing, memory placement and original DSP gates remain separate.
+
+### Complete experimental scan ownership — 2026-10-05
+
+The adapter's `SourceRequest::scan` now composes the first pass using an empty
+caller-owned control slot, including close on success and abort on scan error.
+Cancelled reads/cooperative yields retain poisoned control for explicit backend
+recovery. Occupied control cannot be replaced. The host example and native
+FAT32/exFAT fixtures share this path with the complete-task diagnostic; the
+existing synchronous Session preparation boundary stays separate. Source geometry
+can therefore determine host array sizes before the second pass. Persistent
+request generation ownership survives array reuse. See the adapter README for
+acceptance and profile-specific storage costs; this adds no production broker
+identity or provider selection.

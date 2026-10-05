@@ -18,7 +18,7 @@ use pajoniiir_deck::DeckProductState;
 use pajoniiir_media_session::{MediaHandle, MediaSession, MediaSourceId};
 use pajoniiir_track_analysis::Beat;
 use std::io::Write;
-use support::{HostFs, drive, ready};
+use support::{HostFs, drive};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args_os().collect();
@@ -62,14 +62,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         path: args[1].clone().into(),
         lease,
     };
-    let mut read = ready(request.open_stream_with_limits(&mut fs, &requests, &media, limits))
-        .map_err(|e| format!("open: {e:?}"))?;
-    if let Err(error) = drive(read.run(&mut fs, &requests, &media, &mut bytes)) {
-        ready(read.abort(&mut fs)).map_err(|e| format!("abort: {e:?}"))?;
-        return Err(format!("read: {error:?}").into());
-    }
-    let wav =
-        ready(read.finish(&mut fs, &mut requests, &media)).map_err(|e| format!("source: {e:?}"))?;
+    let mut scan = None;
+    let wav = drive(request.scan(
+        &mut scan,
+        &mut fs,
+        &mut requests,
+        &media,
+        limits,
+        &mut bytes,
+    ))
+    .map_err(|e| format!("source: {e:?}"))?;
     let total = wav.source().total_frames.unwrap();
     const FPC: u32 = 256;
     let storage = LocalTempoStorage::plan(total, FPC, 256, 65536, 32 * 1024 * 1024)

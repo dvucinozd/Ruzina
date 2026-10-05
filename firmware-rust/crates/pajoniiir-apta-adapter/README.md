@@ -821,3 +821,68 @@ Reproduce with the existing `verify-consumer.py`, `verify-extended-artifacts.py`
 `verify-firmware-frames.py`, serially. Explicit dated objects and Cargo-resolved
 libraries remain mandatory. Earlier failed/superseded logs remain archived.
 No hardware, broad runtime/C sanitizer, i686 or Windows acceptance is claimed.
+
+## Complete first-pass ownership — 2026-10-05
+
+`SourceRequest::scan` composes open, bounded cooperative scanning and verified
+finish into one call with an **empty caller-owned `Option<ScanRead<_>>`**. Success
+closes the first handle and empties the slot. Scan errors abort and empty the slot;
+a close error takes precedence. An occupied slot fails before I/O without changing
+its handle. Cancellation at a pending read or driver yield leaves poisoned control
+in the caller slot; recover any backend pending operation before taking it for
+`abort`. Open/close must run to completion. No async cleanup happens in Drop.
+
+The host example, fragmented FAT32 and contiguous/fragmented exFAT fixtures and
+external complete Embassy job use this same API. The first-pass scratch borrow
+ends on return so hosts can size arrays after verified geometry. Then use existing
+synchronous `VerifiedStream::prepare_local_tempo`, borrowed `StreamWorker::run`
+and `verified_worker`; no additional async preparation wrapper is needed. The
+worker control remains outside the driving future. Closed control must leave
+scope before reusing its borrowed arrays. Retain one persistent `Requests` owner
+across jobs; never reset generation ownership when recycling buffers.
+
+Four complete-job regression tests exercise first/second-pass cancellation at
+reads and cooperative yields, occupied scan refusal, short and pending reads,
+suspending closes, limit/framing/I/O/lease errors, cleanup error precedence and
+three successive jobs reusing arrays with generations 1/2/3. Tests count zero
+allocations after setup. Existing native filesystem tests still compare every
+retained beat and waveform column with whole-object processing and exercise the
+acknowledged Deck effect lane. Product enablement, backend recovery, hardware
+placement/timing and original DSP accuracy gates remain unchanged.
+
+Final consumer acceptance `20261005T083100Z`: 458 ordinary workspace tests plus
+one lifetime compile-fail doctest, 118 focused release tests plus that doctest,
+43 adapter ASan tests plus that doctest; formatting, Clippy, allocation and pinned
+Rust 1.95 P4 checks pass. Artifact `20261005T083148Z` retains identical impulse and
+silence PPM bytes (120 BPM / 80 beats / 4120 green pixels for the impulse).
+Native/streaming probes `20261005T083150Z` / `20261005T083155Z` and complete task
+`20261005T083156Z` pass. Three host complete-task tests still execute pending I/O,
+actual Embassy initialization/execution with another runnable task progressing,
+and cancellation recovery without measured allocations after setup.
+
+Standard pinned 1.95 RV32 FAT32 / exFAT measurements:
+
+| Quantity | Previous | Complete scan API |
+|---|---:|---:|
+| Job future | 4040 / 4288 B | 4120 / 4392 B |
+| Embassy pool | 4416 / 4664 B | 4496 / 4768 B |
+| Poll frame | 4432 / 4560 B | 4256 / 4336 B |
+| Preparation | 128 B | 128 B |
+| Identified poll + preparation subtotal | 4560 / 4688 B | 4384 / 4464 B |
+| Initialization `write_in_place` | 4416 / 4672 B | 4496 / 4768 B |
+
+This composition reduces polling temporaries but adds 80/104 B of resident future
+storage. Arrays remain 108772 B at the established fixture configuration; scanner
+and worker controls remain 672/696 and 4264/4288 B. Arrays + pool + both controls
++ diagnostic backend are now 118796/119124 B. Other owners, stack, catalog and
+placement are excluded. Initialization and deeper callees are separate from the
+identified poll/preparation subtotal. No double-counting of Session/child state.
+
+Separate panic-abort/forced-frame-pointer `task-nested-20261005T083159Z` records
+1491 frames (poll 4256/4336 B, preparation 128 B). Actual combined firmware
+`firmware-frames-20261005T083202Z` records 4213 frames with APTA absent. These include
+unused functions; they are not complete maxima, safe stack sizes or runtime
+high-water measurements. Initialization, indirect/compiler-helper/interrupt/FP
+call paths and simultaneous workload timing still require qualification. The
+first async wrapper experiment increased storage further and is not retained;
+the synchronous preparation boundary and async-constructor inlining remain.

@@ -94,17 +94,6 @@ impl AsyncFileSystem for HostFs {
         unsupported()
     }
 }
-pub fn ready<F: core::future::Future>(f: F) -> F::Output {
-    match core::pin::pin!(f)
-        .as_mut()
-        .poll(&mut core::task::Context::from_waker(
-            core::task::Waker::noop(),
-        )) {
-        core::task::Poll::Ready(v) => v,
-        core::task::Poll::Pending => panic!("host fixture operations are immediate"),
-    }
-}
-
 // Host-only blocking driver; a wake before park preserves its notification.
 pub fn drive<F: core::future::Future>(f: F) -> F::Output {
     struct WakeThread(std::thread::Thread);

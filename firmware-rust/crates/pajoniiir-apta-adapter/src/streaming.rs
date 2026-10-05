@@ -113,6 +113,7 @@ async fn open<F: AsyncFileSystem>(
     fs: &mut F,
     requests: &Requests,
     media: &MediaSession,
+    maximum_bytes: u64,
 ) -> Result<Reader<F::File>, SourceError<F::Error>> {
     if !requests.accepts(request.job, media) || Some(fs.lease()) != media.lease() {
         return Err(SourceError::Worker(WorkerError::Stale));
@@ -130,6 +131,10 @@ async fn open<F: AsyncFileSystem>(
         fs.close_file(file).await.map_err(SourceError::Io)?;
         return Err(SourceError::Contract);
     }
+    if len > maximum_bytes {
+        fs.close_file(file).await.map_err(SourceError::Io)?;
+        return Err(SourceError::Limit);
+    }
     Ok(Reader {
         file,
         len,
@@ -138,7 +143,45 @@ async fn open<F: AsyncFileSystem>(
         failed: false,
     })
 }
+
 impl SourceRequest {
+    /// Complete the first pass using an EMPTY caller-owned scanner slot.
+    /// Success closes and removes the scanner before returning verified framing.
+    /// A scan error aborts and removes it; a close error takes precedence. An
+    /// occupied slot is rejected unchanged before I/O, preserving its handle.
+    ///
+    /// Cancellation at a read or cooperative yield leaves a poisoned scanner in
+    /// the slot. Recover backend pending operations before taking it for abort.
+    /// Open/close must complete; cancelling them still requires backend recovery.
+    /// No work limits are reset. The scratch borrow ends with this call, allowing
+    /// hosts to size/allocate Session banks after discovering source geometry.
+    #[inline]
+    pub async fn scan<F: AsyncFileSystem>(
+        self,
+        slot: &mut Option<ScanRead<F::File>>,
+        fs: &mut F,
+        requests: &mut Requests,
+        media: &MediaSession,
+        limits: StreamLimits,
+        scratch: &mut [u8; READ_BYTES],
+    ) -> Result<VerifiedStream, SourceError<F::Error>> {
+        if slot.is_some() {
+            return Err(SourceError::Failed);
+        }
+        let reader = open(&self, fs, requests, media, limits.object_bytes).await?;
+        *slot = Some(ScanRead::new(self, reader, limits));
+        if let Err(error) = slot
+            .as_mut()
+            .unwrap()
+            .run(fs, requests, media, scratch)
+            .await
+        {
+            slot.take().unwrap().abort(fs).await?;
+            return Err(error);
+        }
+        slot.take().unwrap().finish(fs, requests, media).await
+    }
+
     /// First pass. Scratch is borrowed only per step; object length is not a
     /// memory allocation policy. Caller must impose its own duration/work limits.
     pub async fn open_stream<F: AsyncFileSystem>(
@@ -161,19 +204,8 @@ impl SourceRequest {
         media: &MediaSession,
         limits: StreamLimits,
     ) -> Result<ScanRead<F::File>, SourceError<F::Error>> {
-        let reader = open(&self, fs, requests, media).await?;
-        if reader.len > limits.object_bytes {
-            fs.close_file(reader.file).await.map_err(SourceError::Io)?;
-            return Err(SourceError::Limit);
-        }
-        let scanner = WavScanner::new(reader.len);
-        Ok(ScanRead {
-            request: self,
-            reader,
-            scanner,
-            limits,
-            remaining_steps: limits.scan_steps,
-        })
+        let reader = open(&self, fs, requests, media, limits.object_bytes).await?;
+        Ok(ScanRead::new(self, reader, limits))
     }
 }
 pub struct ScanRead<H> {
@@ -184,6 +216,17 @@ pub struct ScanRead<H> {
     remaining_steps: u64,
 }
 impl<H: FileHandle> ScanRead<H> {
+    fn new(request: SourceRequest, reader: Reader<H>, limits: StreamLimits) -> Self {
+        let scanner = WavScanner::new(reader.len);
+        Self {
+            request,
+            reader,
+            scanner,
+            limits,
+            remaining_steps: limits.scan_steps,
+        }
+    }
+
     /// Scan to the captured object end, yielding after every incomplete step.
     /// This borrows caller control so cancellation retains the open handle.
     /// Dropped reads or cooperative yields poison the scan. On success call
@@ -434,7 +477,7 @@ impl<H: FileHandle> StreamWorker<'_, '_, H> {
         }
         self.opened = true;
         self.failed = true;
-        let reader = open(&self.request, fs, requests, media).await?;
+        let reader = open(&self.request, fs, requests, media, u64::MAX).await?;
         if reader.len != self.expected_len {
             fs.close_file(reader.file).await.map_err(SourceError::Io)?;
             return Err(SourceError::Contract);
