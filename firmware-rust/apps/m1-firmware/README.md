@@ -94,13 +94,10 @@ Rust therefore reserves the final 1 MiB exclusively for the Hot Cue journal:
 - `hotcue` data partition: `0x00F00000..0x01000000` (1 MiB)
 - custom data subtype: `0x40`
 
-`partitions.csv` is the human-readable authority and `partitions.bin` is the
-deterministic ESP-IDF binary table consumed by `espflash.toml`. Regenerate the
-binary table with:
-
-```text
-espflash partition-table --to-binary partitions.csv > partitions.bin
-```
+`partitions.csv` is the single source of truth and is referenced directly by
+`espflash.toml`. Current `espflash` accepts CSV partition tables and performs
+the required binary conversion during image generation/flashing, so no stale
+generated `partitions.bin` is stored in the repository.
 
 The `hotcue-flash-storage` firmware feature uses `esp-storage = 0.10.0`. It
 does not trust the compile-time constants alone: before the first Hot Cue erase

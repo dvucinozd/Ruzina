@@ -1,5 +1,5 @@
 [idf]
-partition_table = "partitions.bin"
+partition_table = "partitions.csv"
 
 [flash]
 size = "16MB"
