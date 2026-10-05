@@ -583,12 +583,7 @@ impl DeckProductState {
         track_id: MediaTrackId,
         persisted: Option<HotCueBank>,
     ) -> bool {
-        self.load_hot_cues_with_source(
-            deck,
-            track_id,
-            HotCueBank::empty(track_id),
-            persisted,
-        )
+        self.load_hot_cues_with_source(deck, track_id, HotCueBank::empty(track_id), persisted)
     }
 
     pub fn load_hot_cues_with_source(
@@ -2810,12 +2805,7 @@ mod tests {
         assert_eq!(state.hot_cues(DeckId::One).unwrap().slot(1), None);
 
         let mut reloaded = DeckProductState::new();
-        assert!(reloaded.load_hot_cues_with_source(
-            DeckId::One,
-            track_id,
-            source,
-            Some(local),
-        ));
+        assert!(reloaded.load_hot_cues_with_source(DeckId::One, track_id, source, Some(local),));
         assert_eq!(reloaded.hot_cues(DeckId::One).unwrap().slot(1), None);
     }
 
