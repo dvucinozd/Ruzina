@@ -4,7 +4,7 @@
 use pajoniiir_controller_profile::{
     MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, MAX_PROFILE_SIZE, ProfileId, ProfileRegistry,
 };
-use pajoniiir_media_fs::{AsyncFileSystem, DirectoryHandle, EntryKind, FS_NAME_MAX, FileHandle};
+use pajoniiir_media_fs::{AsyncFileSystem, EntryKind, FS_NAME_MAX, FileHandle};
 
 pub const CONTROLLER_PROFILE_ROOT: &str = "/controllers";
 pub const CONTROLLER_PROFILE_FILENAME: &str = "profile.s3bin";
@@ -212,7 +212,7 @@ mod tests {
     };
     use pajoniiir_controller_profile::{HEADER_SIZE, INPUT_ENTRY_SIZE, OUTPUT_ENTRY_SIZE, crc32};
     use pajoniiir_media_fs::{
-        DirEntry, FileStat, FileSystemCapabilities, FileSystemKind, LeaseBound,
+        DirEntry, DirectoryHandle, FileStat, FileSystemCapabilities, FileSystemKind, LeaseBound,
     };
     use pajoniiir_media_session::{MediaGeneration, MediaLease, MediaSourceId};
     use std::{
