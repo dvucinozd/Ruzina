@@ -398,6 +398,7 @@ impl VerifiedStream {
             identity: self.identity,
             bytes,
             filled: 0,
+            consumed: 0,
             eof: false,
             done: false,
             opened: false,
@@ -419,6 +420,7 @@ pub struct StreamWorker<'s, 'b, H> {
     identity: SourceIdentity,
     bytes: &'b mut [u8; READ_BYTES],
     filled: usize,
+    consumed: usize,
     eof: bool,
     done: bool,
     opened: bool,
@@ -532,8 +534,14 @@ impl<H: FileHandle> StreamWorker<'_, '_, H> {
             reader
                 .read(fs, self.request.job, requests, media, &mut self.bytes[..n])
                 .await?;
-        } else if reader.offset < end || self.filled != 0 {
-            if self.filled < align && reader.offset < end {
+        } else if reader.offset < end || self.consumed != self.filled {
+            if self.filled - self.consumed < align && reader.offset < end {
+                // Compact only the incomplete final frame before a read. A
+                // short core acceptance advances the cursor without copying
+                // the remaining block on every processing step.
+                self.bytes.copy_within(self.consumed..self.filled, 0);
+                self.filled -= self.consumed;
+                self.consumed = 0;
                 let n = (end - reader.offset).min((READ_BYTES - self.filled) as u64) as usize;
                 let got = reader
                     .read(
@@ -546,19 +554,21 @@ impl<H: FileHandle> StreamWorker<'_, '_, H> {
                     .await?;
                 self.filled += got;
             }
-            let frames = (self.filled / align).min(256);
+            let frames = ((self.filled - self.consumed) / align).min(256);
             if frames != 0 {
                 let channels = self.layout.source().channel_count as usize;
                 self.layout
-                    .decode(&self.bytes[..frames * align], &mut pcm[..frames * channels])
+                    .decode(
+                        &self.bytes[self.consumed..self.consumed + frames * align],
+                        &mut pcm[..frames * channels],
+                    )
                     .map_err(SourceError::Decode)?;
                 let accepted = self
                     .worker
                     .push(requests, media, &pcm[..frames * channels])
                     .map_err(SourceError::Worker)?;
                 let used = accepted * align;
-                self.bytes.copy_within(used..self.filled, 0);
-                self.filled -= used;
+                self.consumed += used;
             }
         } else if reader.offset < reader.len {
             reader

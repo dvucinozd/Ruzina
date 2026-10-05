@@ -258,3 +258,65 @@ impl pajoniiir_media_catalog::CatalogBank for Bank {
         i
     }
 }
+
+// Deterministic impulse PCM, odd padding, reordered extensible framing and trailer.
+pub fn wav_profile(
+    frames: usize,
+    bits: u16,
+    channels: u16,
+    float: bool,
+    extensible: bool,
+) -> Vec<u8> {
+    let original = wav(frames);
+    let mut pcm = Vec::new();
+    for raw in original[44..44 + frames * 4].chunks_exact(4) {
+        let v = f32::from_le_bytes(raw.try_into().unwrap());
+        for _ in 0..channels {
+            match (float, bits) {
+                (true, 32) => pcm.extend(v.to_le_bytes()),
+                (false, 16) => pcm.extend(((v as f64 * 32768.0) as i16).to_le_bytes()),
+                (false, 24) => pcm.extend(&((v as f64 * 8388608.0) as i32).to_le_bytes()[..3]),
+                (false, 32) => pcm.extend(((v as f64 * 2147483648.0) as i32).to_le_bytes()),
+                _ => panic!("fixture format"),
+            }
+        }
+    }
+    let tag = if float { 3u16 } else { 1u16 };
+    let align = channels * (bits / 8);
+    let mut fmt = Vec::new();
+    fmt.extend((if extensible { 0xfffe } else { tag }).to_le_bytes());
+    fmt.extend(channels.to_le_bytes());
+    fmt.extend(8000u32.to_le_bytes());
+    fmt.extend((8000 * u32::from(align)).to_le_bytes());
+    fmt.extend(align.to_le_bytes());
+    fmt.extend(bits.to_le_bytes());
+    if extensible {
+        fmt.extend(22u16.to_le_bytes());
+        fmt.extend(bits.to_le_bytes());
+        fmt.extend((if channels == 1 { 4u32 } else { 3u32 }).to_le_bytes());
+        fmt.extend(tag.to_le_bytes());
+        fmt.extend([0, 0, 0, 0, 16, 0, 128, 0, 0, 170, 0, 56, 155, 113]);
+    }
+    fn chunk(out: &mut Vec<u8>, id: &[u8; 4], data: &[u8]) {
+        out.extend(id);
+        out.extend((data.len() as u32).to_le_bytes());
+        out.extend(data);
+        if !data.len().is_multiple_of(2) {
+            out.push(0);
+        }
+    }
+    let mut out = b"RIFF\0\0\0\0WAVE".to_vec();
+    chunk(&mut out, b"JUNK", &[1, 2, 3]);
+    if extensible {
+        chunk(&mut out, b"data", &pcm);
+        chunk(&mut out, b"fmt ", &fmt);
+    } else {
+        chunk(&mut out, b"fmt ", &fmt);
+        chunk(&mut out, b"data", &pcm);
+    }
+    chunk(&mut out, b"LIST", &[7; 9]);
+    let size = (out.len() - 8) as u32;
+    out[4..8].copy_from_slice(&size.to_le_bytes());
+    out.extend(b"trailing identity bytes");
+    out
+}

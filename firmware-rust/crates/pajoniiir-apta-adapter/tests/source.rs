@@ -110,7 +110,17 @@ fn analyze<F: AsyncFileSystem>(
     };
     drop(bytes);
 
-    verify_consumers(completed, view, &requests, media);
+    verify_consumers(
+        completed,
+        view,
+        &requests,
+        media,
+        if libapta::wav::Wav::parse(original).unwrap().encoding() == libapta::wav::Encoding::S16 {
+            4160
+        } else {
+            4120
+        },
+    );
     let decks = DeckProductState::new();
     let selected = Pin::load(DeckId::One, &decks, completed, &requests, media).unwrap();
     analyze_stream(fs, media, original, selected.track(media).unwrap(), view);
@@ -214,13 +224,24 @@ fn analyze_stream<F: AsyncFileSystem>(
         expected.beat_grid().unwrap().beats(),
         actual.beat_grid().unwrap().beats()
     );
-    verify_consumers(completed, view, &requests, media);
+    verify_consumers(
+        completed,
+        view,
+        &requests,
+        media,
+        if libapta::wav::Wav::parse(original).unwrap().encoding() == libapta::wav::Encoding::S16 {
+            4160
+        } else {
+            4120
+        },
+    );
 }
 fn verify_consumers(
     completed: pajoniiir_apta_adapter::worker::Completed<'_>,
     view: pajoniiir_waveform::WaveformView<'_>,
     requests: &Requests,
     media: &pajoniiir_media_session::MediaSession,
+    expected_pixels: usize,
 ) {
     let mut decks = DeckProductState::new();
     let pin = Pin::load(DeckId::One, &decks, completed, requests, media).unwrap();
@@ -286,7 +307,10 @@ fn verify_consumers(
     pajoniiir_waveform::Rgb565Surface::new(&mut pixels, 800, 128)
         .unwrap()
         .draw_centered_waveform(0, 0, 800, 128, view);
-    assert_eq!(pixels.iter().filter(|&&p| p == 0x07e0).count(), 4120);
+    assert_eq!(
+        pixels.iter().filter(|&&p| p == 0x07e0).count(),
+        expected_pixels
+    );
 }
 #[test]
 fn short_reads_exact_hash_bounded_decode_and_retained_consumers() {
@@ -448,9 +472,19 @@ impl pajoniiir_media_io::OwnedBlockDevice for Device {
 }
 #[test]
 fn native_async_fat32_fragmented_file_reaches_actual_consumers() {
+    for b in [
+        wav(320000),
+        wav_profile(320000, 16, 1, false, false),
+        wav_profile(320000, 24, 2, false, true),
+        wav_profile(320000, 32, 2, false, false),
+        wav_profile(320000, 32, 2, true, true),
+    ] {
+        fat32_profile(b);
+    }
+}
+fn fat32_profile(b: Vec<u8>) {
     use pajoniiir_media_fat32::{Fat32AsyncFileSystem, Fat32BootInfo};
     let m = mounted();
-    let b = wav(320000);
     let clusters = b.len().div_ceil(512);
     let fat_sectors = (clusters + 3).div_ceil(128);
     let data_start = 1 + fat_sectors;
@@ -502,82 +536,88 @@ fn native_async_fat32_fragmented_file_reaches_actual_consumers() {
 
 #[test]
 fn native_async_exfat_contiguous_and_fragmented_files_reach_consumers() {
-    use pajoniiir_media_exfat::{ExFatAsyncBootInfo, ExFatAsyncVolume};
     for contiguous in [false, true] {
-        let m = mounted();
-        let b = wav(320000);
-        let clusters = b.len().div_ceil(512);
-        let fat_len = (clusters + 3).div_ceil(128);
-        let heap = 24 + fat_len;
-        let sectors = heap + clusters + 1;
-        let mut image = vec![0; sectors * 512];
-        let mut entries = [[0u8; 32]; 3];
-        entries[0][0] = 0x85;
-        entries[0][1] = 2;
-        entries[1][0] = 0xc0;
-        entries[1][1] = if contiguous { 3 } else { 1 };
-        entries[1][3] = 9;
-        entries[1][8..16].copy_from_slice(&(b.len() as u64).to_le_bytes());
-        entries[1][20..24].copy_from_slice(&3u32.to_le_bytes());
-        entries[1][24..32].copy_from_slice(&(b.len() as u64).to_le_bytes());
-        entries[2][0] = 0xc1;
-        for (i, u) in "TRACK.WAV".encode_utf16().enumerate() {
-            entries[2][2 + i * 2..4 + i * 2].copy_from_slice(&u.to_le_bytes());
+        for b in [
+            wav(320000),
+            wav_profile(320000, 16, 1, false, false),
+            wav_profile(320000, 24, 2, false, true),
+            wav_profile(320000, 32, 2, false, false),
+            wav_profile(320000, 32, 2, true, true),
+        ] {
+            exfat_profile(b, contiguous);
         }
-        let mut checksum = 0u16;
-        for (i, e) in entries.iter().enumerate() {
-            for (j, &v) in e.iter().enumerate() {
-                if i == 0 && (j == 2 || j == 3) {
-                    continue;
-                }
-                checksum = checksum.rotate_right(1).wrapping_add(v as u16);
+    }
+}
+fn exfat_profile(b: Vec<u8>, contiguous: bool) {
+    use pajoniiir_media_exfat::{ExFatAsyncBootInfo, ExFatAsyncVolume};
+    let m = mounted();
+    let clusters = b.len().div_ceil(512);
+    let fat_len = (clusters + 3).div_ceil(128);
+    let heap = 24 + fat_len;
+    let sectors = heap + clusters + 1;
+    let mut image = vec![0; sectors * 512];
+    let mut entries = [[0u8; 32]; 3];
+    entries[0][0] = 0x85;
+    entries[0][1] = 2;
+    entries[1][0] = 0xc0;
+    entries[1][1] = if contiguous { 3 } else { 1 };
+    entries[1][3] = 9;
+    entries[1][8..16].copy_from_slice(&(b.len() as u64).to_le_bytes());
+    entries[1][20..24].copy_from_slice(&3u32.to_le_bytes());
+    entries[1][24..32].copy_from_slice(&(b.len() as u64).to_le_bytes());
+    entries[2][0] = 0xc1;
+    for (i, u) in "TRACK.WAV".encode_utf16().enumerate() {
+        entries[2][2 + i * 2..4 + i * 2].copy_from_slice(&u.to_le_bytes());
+    }
+    let mut checksum = 0u16;
+    for (i, e) in entries.iter().enumerate() {
+        for (j, &v) in e.iter().enumerate() {
+            if i == 0 && (j == 2 || j == 3) {
+                continue;
             }
+            checksum = checksum.rotate_right(1).wrapping_add(v as u16);
         }
-        entries[0][2..4].copy_from_slice(&checksum.to_le_bytes());
-        for (i, e) in entries.iter().enumerate() {
-            image[heap * 512 + i * 32..heap * 512 + (i + 1) * 32].copy_from_slice(e);
-        }
-        image[24 * 512 + 8..24 * 512 + 12].copy_from_slice(&u32::MAX.to_le_bytes());
-        let chain: Vec<_> = if contiguous {
-            (3..clusters + 3).collect()
-        } else {
-            core::iter::once(3).chain((4..clusters + 3).rev()).collect()
-        };
-        for (i, &c) in chain.iter().enumerate() {
-            let next = chain.get(i + 1).map_or(u32::MAX, |&n| n as u32);
-            let p = 24 * 512 + c * 4;
-            image[p..p + 4].copy_from_slice(&next.to_le_bytes());
-            let p = (heap + c - 2) * 512;
-            let chunk = &b[i * 512..b.len().min((i + 1) * 512)];
-            image[p..p + chunk.len()].copy_from_slice(chunk);
-        }
-        let boot = ExFatAsyncBootInfo {
-            partition_offset: 0,
-            volume_length: sectors as u64,
-            fat_offset: 24,
-            fat_length: fat_len as u32,
-            cluster_heap_offset: heap as u32,
-            cluster_count: (clusters + 1) as u32,
-            root_directory_cluster: 2,
-            volume_serial: 7,
-            file_system_revision: 0x100,
-            volume_flags: 0,
-            bytes_per_sector: 512,
-            sectors_per_cluster: 1,
-            number_of_fats: 1,
-            percent_in_use: 0,
-        };
-        let fs = match ExFatAsyncVolume::new(
-            Device { bytes: image },
-            [0; 512],
-            boot,
-            m.lease().unwrap(),
-        ) {
+    }
+    entries[0][2..4].copy_from_slice(&checksum.to_le_bytes());
+    for (i, e) in entries.iter().enumerate() {
+        image[heap * 512 + i * 32..heap * 512 + (i + 1) * 32].copy_from_slice(e);
+    }
+    image[24 * 512 + 8..24 * 512 + 12].copy_from_slice(&u32::MAX.to_le_bytes());
+    let chain: Vec<_> = if contiguous {
+        (3..clusters + 3).collect()
+    } else {
+        core::iter::once(3).chain((4..clusters + 3).rev()).collect()
+    };
+    for (i, &c) in chain.iter().enumerate() {
+        let next = chain.get(i + 1).map_or(u32::MAX, |&n| n as u32);
+        let p = 24 * 512 + c * 4;
+        image[p..p + 4].copy_from_slice(&next.to_le_bytes());
+        let p = (heap + c - 2) * 512;
+        let chunk = &b[i * 512..b.len().min((i + 1) * 512)];
+        image[p..p + chunk.len()].copy_from_slice(chunk);
+    }
+    let boot = ExFatAsyncBootInfo {
+        partition_offset: 0,
+        volume_length: sectors as u64,
+        fat_offset: 24,
+        fat_length: fat_len as u32,
+        cluster_heap_offset: heap as u32,
+        cluster_count: (clusters + 1) as u32,
+        root_directory_cluster: 2,
+        volume_serial: 7,
+        file_system_revision: 0x100,
+        volume_flags: 0,
+        bytes_per_sector: 512,
+        sectors_per_cluster: 1,
+        number_of_fats: 1,
+        percent_in_use: 0,
+    };
+    let fs =
+        match ExFatAsyncVolume::new(Device { bytes: image }, [0; 512], boot, m.lease().unwrap()) {
             Ok(fs) => fs,
             Err(_) => panic!("fixture mount"),
         };
-        analyze(fs, &m, &b);
-    }
+    analyze(fs, &m, &b);
 }
 
 #[test]

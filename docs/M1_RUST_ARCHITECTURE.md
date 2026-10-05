@@ -645,3 +645,10 @@ can therefore determine host array sizes before the second pass. Persistent
 request generation ownership survives array reuse. See the adapter README for
 acceptance and profile-specific storage costs; this adds no production broker
 identity or provider selection.
+
+
+The experimental APTA second pass uses a retained byte cursor under short queue
+acceptance; only incomplete frames are compacted before reads. Actual native
+FAT32/exFAT tests now cover S16/S24/S32/F32 through retained neutral consumers.
+See the adapter README's "Retained PCM cursor and multi-format consumers" section
+for exact behavior, software evidence and unchanged production ownership gates.

@@ -886,3 +886,74 @@ high-water measurements. Initialization, indirect/compiler-helper/interrupt/FP
 call paths and simultaneous workload timing still require qualification. The
 first async wrapper experiment increased storage further and is not retained;
 the synchronous preparation boundary and async-constructor inlining remain.
+
+
+## Retained PCM cursor and multi-format consumers — 2026-10-05
+
+The second-pass worker advances a cursor after partial core acceptance instead
+of moving every remaining byte to the beginning of scratch. Before the next read,
+only an incomplete interleaved frame is compacted: at most seven bytes for the
+supported formats. The worker retains bytes without borrowing PCM scratch across steps; the same
+bytes are still decoded/validated in the same prefix order. This reduces copying under
+small queue backpressure without changing input acceptance or failure semantics.
+It is not a measured throughput or target timing claim.
+
+The 128-case boundary matrix compares all native waveform columns exactly against
+ordinary whole-object decode/session processing: S16/S24/S32/F32, mono/stereo,
+ordinary and extensible data-before-fmt framing, reads of 1/5/4093/4096 bytes,
+queues of 1/17 frames and a 513-frame source with partial final column. Padding,
+ancillary chunks and bytes outside RIFF remain part of both full-object hashes.
+Every case closes twice and measures zero allocations after setup.
+
+The actual fragmented FAT32 and both contiguous/fragmented exFAT fixtures each
+run the original mono F32 plus S16 mono, packed S24 stereo extensible, S32 stereo
+and F32 stereo extensible. Every beat and rendered column agrees exactly between
+whole-object and streaming paths before retained Deck Sync/Beat Jump and transport
+acknowledgement checks. All yield 120 BPM and 80 beats. S16's quantized fixture
+has a separate exact 4160-green-pixel expectation; the other fixtures retain
+4120. The original impulse/silence artifact golden bytes remain authoritative.
+This qualifies existing supported PCM paths; no new codec or DSP engine is added.
+
+Both complete passes, limits, caller control, original media lease checks,
+cancellation poison and backend recovery obligations are unchanged. Neither
+firmware nor Slint enables APTA; the foundation-owned unique analysis client,
+retained storage/recovery, placement/DMA/cache/timing and hardware gates remain.
+
+
+Final-source acceptance `20261005T091217Z` passes 459 workspace tests, 119 focused
+release tests and 44 adapter ASan tests; each suite also passes the lifetime
+compile-fail doctest. Formatting, Clippy, allocation counters and pinned Rust 1.95
+P4 compile/dependency/object checks pass. The immutable portable dependency is
+`25d09de364e9507532c0508c838a8fecf0772d13`; desktop runtime stays excluded.
+
+Original impulse/silence PPM bytes match exactly in artifact run
+`20261005T091507Z`. Native-source and streaming probes are
+`20261005T091511Z` / `20261005T091516Z`; complete task `20261005T091517Z` passes all
+three host tests, including actual Embassy initialization/execution with another
+runnable task, cancellation recovery and zero measured allocations after setup.
+Reproduce with the seven existing verification scripts listed above, serially.
+
+Standard RV32 FAT32 / exFAT diagnostics:
+
+| Quantity | Before cursor | Final |
+|---|---:|---:|
+| Complete job future | 4120 / 4392 B | unchanged |
+| Embassy pool | 4496 / 4768 B | unchanged |
+| External scanner Option | 672 / 696 B | unchanged |
+| External worker Option | 4264 / 4288 B | 4272 / 4296 B |
+| Poll frame | 4256 / 4336 B | unchanged |
+| Preparation frame | 128 B | unchanged |
+| Initialization write_in_place | 4496 / 4768 B | unchanged |
+
+Caller arrays remain 108772 B for queue 17 / 1250 overview columns / two 128-beat
+banks. Arrays + pool + both external controls + diagnostic backend total
+118804/119132 B, eight more per filesystem. This excludes other owners, stack,
+catalog/display and placement; child futures and Session are not double-counted.
+
+The separate panic-abort/forced-frame-pointer inventory
+`task-nested-20261005T091525Z` has 1491 frames. Poll is 4256/4352 B (exFAT +16 B)
+and preparation 128 B; this profile must not be mixed with the standard numbers.
+Actual combined firmware `firmware-frames-20261005T091530Z` compiles/links with
+4213 frame records and APTA absent. Inventories include unused functions and do
+not establish complete call-stack maxima, runtime high-water, placement, DMA/cache,
+interrupt nesting or simultaneous workload timing. No hardware was operated.

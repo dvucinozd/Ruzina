@@ -2189,7 +2189,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 [[package]]
 name = "libapta"
 version = "0.1.0"
-source = "git+https://github.com/dvucinozd/libapta-audio.git?rev=e93e667ba010d7256e06582f05cf5da0b94846e5#e93e667ba010d7256e06582f05cf5da0b94846e5"
+source = "git+https://github.com/dvucinozd/libapta-audio.git?rev=25d09de364e9507532c0508c838a8fecf0772d13#25d09de364e9507532c0508c838a8fecf0772d13"
 dependencies = [
  "libm",
 ]

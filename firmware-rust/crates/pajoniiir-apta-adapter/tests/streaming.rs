@@ -844,3 +844,76 @@ fn cooperative_scan_errors_leave_cleanup_to_owner_without_spending_more_io() {
         assert_eq!(fs.closes, 1);
     }
 }
+
+#[test]
+fn pcm_cursor_preserves_all_formats_across_partial_frames_and_short_queues() {
+    use libapta::{
+        session::{CancellationToken, WorkBudget},
+        wav::Wav,
+    };
+    for (bits, float) in [(16, false), (24, false), (32, false), (32, true)] {
+        for channels in [1, 2] {
+            for extensible in [false, true] {
+                let original = wav_profile(513, bits, channels, float, extensible);
+                let wav = Wav::parse(&original).unwrap();
+                let mut samples = vec![0.; 513 * channels as usize];
+                assert_eq!(wav.read_frames(0, &mut samples), Ok(513));
+                let config = SessionConfig {
+                    sample_rate: 8000,
+                    channel_count: channels,
+                    total_frames: 513,
+                    frames_per_column: 64,
+                };
+                let mut expected = [WaveformColumn::default(); 9];
+                let mut reference_queue = [NormalizedSample::default(); 513];
+                {
+                    let mut s = Session::new(config, &mut reference_queue, &mut expected).unwrap();
+                    assert_eq!(s.push_interleaved(&samples), Ok(513));
+                    s.finish_input().unwrap();
+                    s.process(WorkBudget::default(), &CancellationToken::new())
+                        .unwrap();
+                }
+                for read_size in [1, 5, 4093, 4096] {
+                    for queue_size in [1, 17] {
+                        let media = mounted();
+                        let mut requests = Requests::default();
+                        let mut fs = Fs::new(&media, original.clone());
+                        fs.max = read_size;
+                        let mut bytes = [0; 4096];
+                        let mut pcm = [0.; 512];
+                        let mut queue = [NormalizedSample::default(); 17];
+                        let mut actual = [WaveformColumn::default(); 9];
+                        let catalog = catalog(&media);
+                        allocation::start();
+                        {
+                            let request =
+                                SourceRequest::new(&mut requests, &media, &catalog, 0).unwrap();
+                            let mut scanner = None;
+                            let source = drive(request.scan(
+                                &mut scanner,
+                                &mut fs,
+                                &mut requests,
+                                &media,
+                                pajoniiir_apta_adapter::streaming::StreamLimits::UNLIMITED,
+                                &mut bytes,
+                            ))
+                            .unwrap();
+                            let session =
+                                Session::new(config, &mut queue[..queue_size], &mut actual)
+                                    .unwrap();
+                            let mut worker = source.worker(session, &mut bytes).unwrap();
+                            drive(worker.run(&mut fs, &requests, &media, &mut pcm)).unwrap();
+                            assert!(worker.verified_worker().is_ok());
+                        }
+                        assert_eq!(fs.closes, 2);
+                        assert_eq!(
+                            actual, expected,
+                            "{bits} {channels} {extensible} {read_size} {queue_size}"
+                        );
+                        allocation::finish();
+                    }
+                }
+            }
+        }
+    }
+}
