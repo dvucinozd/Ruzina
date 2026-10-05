@@ -6,7 +6,10 @@ use pajoniiir_control_scheduler::{
     ConnectionDelivery, ConnectionReconciler, ContinuousMode, EventScheduler, HeldStateReconciler,
     SchedulerStats,
 };
-pub use pajoniiir_controller_core::ControlDomain;
+pub use pajoniiir_controller_core::{
+    BeatFxTarget, ControlDomain, ControllerLedFrame, DeckId, LedState, LedUpdate, PadMode,
+    SemanticLedId,
+};
 use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
 use pajoniiir_controller_profile::{
     MAX_INPUTS, Profile, ProfileRuntime, SemanticAdapterError, adapt_profile_event,
@@ -467,7 +470,7 @@ fn continuous_mode(event: ControlEvent) -> Option<ContinuousMode> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pajoniiir_controller_core::{DeckId, SemanticControl};
+    use pajoniiir_controller_core::SemanticControl;
     use pajoniiir_controller_profile::{
         HEADER_SIZE, INPUT_ENTRY_SIZE, INPUT_FLAG_REPLAY, S3CP_MAGIC, S3CP_VERSION, crc32,
     };
