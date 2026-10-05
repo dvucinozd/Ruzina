@@ -1,10 +1,10 @@
 use core::cell::RefCell;
 
 use crate::controller_profiles::{
-    ActiveProfileMidiError, bind_controller_descriptor, dispatch_session_deliveries,
-    match_scanned_profile, on_controller_disconnect, process_active_midi_transfer,
-    request_profile_activation, wait_for_profile_activation_change,
-    wait_for_profile_catalog_change,
+    ActiveProfileLedError, ActiveProfileMidiError, bind_controller_descriptor,
+    dispatch_session_deliveries, map_active_led_update, match_scanned_profile,
+    on_controller_disconnect, process_active_midi_transfer, request_profile_activation,
+    wait_for_profile_activation_change, wait_for_profile_catalog_change,
 };
 use crate::product_runtime::ProductRuntime;
 use embassy_futures::select::{Either, select};
@@ -37,6 +37,7 @@ pub(crate) struct Usb1ControllerProbe {
     pub(crate) product_id: u16,
     pub(crate) capabilities: ControllerUsbCapabilities,
     pub(crate) midi_transport_ready: bool,
+    pub(crate) led_transport_ready: bool,
     pub(crate) controller_epoch: u32,
     pub(crate) profile_index: Option<u8>,
     pub(crate) profile_catalog_revision: u32,
@@ -44,6 +45,7 @@ pub(crate) struct Usb1ControllerProbe {
     pub(crate) midi_ingest: UsbMidiBatchReport,
     pub(crate) product_pending_deck_effects: u8,
     pub(crate) product_backpressured: bool,
+    pub(crate) led_updates_sent: u32,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -53,6 +55,7 @@ pub(crate) enum Usb1ControllerFailure {
     MalformedMidiTransfer,
     ActiveProfile,
     MidiTransport,
+    LedOutput,
     Overcurrent,
 }
 
@@ -210,8 +213,8 @@ fn validate_fs_bulk_packet_size(max_packet_size: u16) -> Result<(), Usb1MidiTran
 /// Persistent owner for the M1 USB1 Full-Speed controller port.
 ///
 /// This compile boundary owns enumeration, controller-profile activation and
-/// USB-MIDI Bulk-IN ingestion through the semantic controller session.
-/// Product-side SessionDelivery dispatch, LED feedback and UAC remain later gates.
+/// USB-MIDI Bulk-IN ingestion through the semantic controller session plus
+/// profile-driven Bulk-OUT LED feedback. UAC remains a later gate.
 pub(crate) async fn run_root_controller_owner(
     usb_fs: esp_hal::peripherals::USB_FS<'static>,
     usb_dp: esp_hal::peripherals::GPIO27<'static>,
@@ -269,6 +272,7 @@ pub(crate) async fn run_root_controller_owner(
         let mut midi_transport =
             Usb1MidiTransport::new(&bus, &config[..config_len], &info).ok();
         let midi_transport_ready = midi_transport.is_some();
+        let led_transport_ready = midi_transport.as_ref().is_some_and(|transport| transport.has_output());
         controller_epoch = controller_epoch.wrapping_add(1);
         if controller_epoch == 0 {
             controller_epoch = 1;
@@ -285,6 +289,7 @@ pub(crate) async fn run_root_controller_owner(
             product_id: info.device_desc.product_id,
             capabilities,
             midi_transport_ready,
+            led_transport_ready,
             controller_epoch,
             profile_index: profile_match.index,
             profile_catalog_revision: profile_match.revision,
@@ -292,6 +297,7 @@ pub(crate) async fn run_root_controller_owner(
             midi_ingest: UsbMidiBatchReport::default(),
             product_pending_deck_effects: 0,
             product_backpressured: false,
+            led_updates_sent: 0,
         };
         refresh_profile_probe(&mut probe, true);
         session.set_connected(true);
@@ -394,6 +400,55 @@ where
     let mut midi_buffer = [0u8; USB1_MIDI_FS_MAX_PACKET_BYTES as usize];
 
     loop {
+        if probe.profile_activation_state == ProfileActivationState::Active
+            && product.has_dirty_leds()
+            && let Some(transport) = midi_transport.as_mut()
+            && transport.has_output()
+        {
+            match flush_controller_leds(&mut *controller, probe, transport, product).await {
+                LedFlushOutcome::Complete => {
+                    set_state(Usb1ControllerState::Ready(*probe));
+                }
+                LedFlushOutcome::ProfileChanged => {
+                    session.reset_profile_state();
+                    refresh_profile_probe(probe, true);
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Ready(*probe));
+                    continue;
+                }
+                LedFlushOutcome::Disconnected => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Detached);
+                    return None;
+                }
+                LedFlushOutcome::Overcurrent => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Failed(
+                        Usb1ControllerFailure::Overcurrent,
+                    ));
+                    return None;
+                }
+                LedFlushOutcome::Connected(speed) => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Detached);
+                    return Some(speed);
+                }
+                LedFlushOutcome::Failed => {
+                    product.mark_led_resync();
+                    set_state(Usb1ControllerState::Failed(
+                        Usb1ControllerFailure::LedOutput,
+                    ));
+                    return None;
+                }
+            }
+        }
+
         let profile_change = select(
             wait_for_profile_catalog_change(),
             wait_for_profile_activation_change(),
@@ -570,4 +625,89 @@ async fn drain_product_dispatch(
 
     probe.product_pending_deck_effects =
         product.pending_deck_effects().min(u8::MAX as usize) as u8;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum LedFlushOutcome {
+    Complete,
+    ProfileChanged,
+    Disconnected,
+    Overcurrent,
+    Connected(embassy_usb_driver::Speed),
+    Failed,
+}
+
+async fn flush_controller_leds<'d, C, A>(
+    controller: &mut BusController<'d, C>,
+    probe: &mut Usb1ControllerProbe,
+    transport: &mut Usb1MidiTransport<'d, A>,
+    product: &mut ProductRuntime,
+) -> LedFlushOutcome
+where
+    C: UsbHostController<'d>,
+    A: UsbHostAllocator<'d>,
+{
+    while let Some(update) = product.take_led_update() {
+        let event = match map_active_led_update(probe.controller_epoch, update).await {
+            Ok(Some(event)) => event,
+            Ok(None) => continue,
+            Err(ActiveProfileLedError::NotActive | ActiveProfileLedError::StaleController) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::ProfileChanged;
+            }
+            Err(
+                ActiveProfileLedError::InvalidActiveProfile
+                | ActiveProfileLedError::InvalidMidiOutput,
+            ) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::Failed;
+            }
+        };
+
+        let device_or_write = select(
+            controller.wait_for_device_event(),
+            transport.write_event(event),
+        );
+        let profile_change = select(
+            wait_for_profile_catalog_change(),
+            wait_for_profile_activation_change(),
+        );
+
+        match select(device_or_write, profile_change).await {
+            Either::First(Either::First(DeviceEvent::Disconnected)) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::Disconnected;
+            }
+            Either::First(Either::First(DeviceEvent::Overcurrent)) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::Overcurrent;
+            }
+            Either::First(Either::First(DeviceEvent::Connected(speed))) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::Connected(speed);
+            }
+            Either::First(Either::First(_)) => {
+                product.mark_led_resync();
+            }
+            Either::First(Either::Second(Ok(()))) => {
+                probe.led_updates_sent = probe.led_updates_sent.saturating_add(1);
+            }
+            Either::First(Either::Second(Err(Usb1MidiTransportError::Transfer(
+                PipeError::Disconnected,
+            )))) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::Disconnected;
+            }
+            Either::First(Either::Second(Err(_))) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::Failed;
+            }
+            Either::Second(_) => {
+                product.mark_led_resync();
+                return LedFlushOutcome::ProfileChanged;
+            }
+        }
+    }
+
+    LedFlushOutcome::Complete
 }
