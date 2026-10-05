@@ -683,8 +683,8 @@ No maximum stack, memory placement or runtime high-water claim follows.
 
 The separate actual combined firmware diagnostic builds/links USB0 + USB1 +
 SDMMC profile storage + PSRAM with panic-abort and forced frame pointers. It
-records 4208 compiled frames, resolved rlibs, a dated object and linked ELF plus
-disassembly under `firmware-frames-20261005T063542Z` in the external evidence root.
+records 4211 compiled frames, resolved rlibs, a dated object and linked ELF plus
+disassembly under `firmware-frames-20261005T064414Z` in the external evidence root.
 The observed entry/executor chain includes `_start_rust` 32 B, `hal_main` 16 B,
 `main` 32 B, esp-rtos `Executor::run_inner` 48 B and raw `Executor::poll` 16 B.
 Interrupt assembly saves 64 B before dispatch; handler/callee/context-switch and
@@ -700,3 +700,34 @@ Reproduction adds `verify-firmware-frames.py` to the existing external scripts.
 Source/native probe scripts now use Cargo-resolved rlib paths; raster/stack
 verification emits an explicit dated object. No script selects the newest cached
 object or rlib. Earlier evidence and failed experiments remain preserved.
+
+
+The later foundation integration adds the existing bounded `DeckEffectBroker`
+consumer to the native filesystem fixtures. A full transport lane refuses a
+staged Beat Jump without committing Deck state; after draining it, the retained
+pin supplies the same analysis and the retry enqueues the exact seek once. This
+uses the foundation's owner-lane contract without enabling APTA in its production
+`ProductRuntime`. Controller profile/MIDI, product dispatch and semantic LED
+implementation remain foundation-owned; production analysis still needs its own
+media and retained-bank ownership agreement.
+
+
+Final-source acceptance after integrating foundation dispatch/LED work through
+`a078c23`: `verify-consumer.py` **20261005T064308Z** passes **446 workspace tests**,
+**110 focused release tests**, **36 adapter tests plus one lifetime compile-fail
+doctest under ASan**, formatting, Clippy, allocation instrumentation and pinned
+Rust 1.95 P4 checks. Artifacts **20261005T064400Z** retain exact impulse/silence PPM
+bytes (impulse visually inspected through its byte-identical preceding render).
+Native and streaming probes **20261005T064402Z / 20261005T064407Z** pass.
+Complete-task **20261005T064408Z** passes three host tests, including actual Embassy
+execution and cancelled first-pass recovery, plus P4 pool/object/disassembly.
+Nested profile **task-nested-20261005T064412Z** records 1493 library/task frames
+with panic-abort/forced-frame-pointer settings; polling/preparation match the
+standard values above. All final reproduction scripts ran serially with two
+build/test jobs. Exact script/probe hashes and publication/CI evidence are in
+`cooperative-acceptance-20261005.json` and the new complete handoff
+`/home/shome/.local/share/libapta-audio/handoffs/pajoniiir-libapta-native-rust-continuation-2026-10-05-0645.md`.
+No hardware, deployment, production provider selection, C compatibility or new
+DSP accuracy acceptance is claimed. Broader runtime/C sanitizers and i686/Windows
+matrices were not rerun; Libapta separately passed its combined suite, 38 optimized
+ASan tests and portable AArch64 compilation for the constructor change.

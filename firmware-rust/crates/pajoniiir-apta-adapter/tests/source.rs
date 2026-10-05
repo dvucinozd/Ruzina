@@ -233,14 +233,34 @@ fn verify_consumers(
     use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
     let beats = track.beat_grid().unwrap().beats();
     decks.set_position_ms(DeckId::One, beats[10].time_ms);
-    decks.handle_control_with_analysis(
-        ControlEvent {
-            deck: Some(DeckId::One),
-            control: SemanticControl::BeatJumpForward,
-            value: ControlValue::Pressed(true),
-        },
-        [pin.track(media), None],
+    // Reuse the foundation's bounded owner lane. Refusal must not commit a
+    // staged Deck mutation or lose the pinned analysis needed to retry it.
+    use pajoniiir_deck::{DeckEffect, DeckEffectBroker, DeckEffects};
+    let mut effects = DeckEffectBroker::<1, 0, 0>::new();
+    let pending = DeckEffect::Pause { deck: DeckId::Two };
+    assert!(effects.try_push_all(DeckEffects::one(pending)));
+    let event = ControlEvent {
+        deck: Some(DeckId::One),
+        control: SemanticControl::BeatJumpForward,
+        value: ControlValue::Pressed(true),
+    };
+    let mut staged = decks;
+    let refused = staged.handle_control_with_analysis(event, [pin.track(media), None]);
+    assert!(!effects.try_push_all(refused));
+    assert_eq!(decks.deck(DeckId::One).position_ms, beats[10].time_ms);
+    assert_eq!(effects.pop_transport(), Some(pending));
+    let mut staged = decks;
+    let accepted = staged.handle_control_with_analysis(event, [pin.track(media), None]);
+    assert!(effects.try_push_all(accepted));
+    decks = staged;
+    assert_eq!(
+        effects.pop_transport(),
+        Some(DeckEffect::Seek {
+            deck: DeckId::One,
+            position_ms: beats[11].time_ms,
+        })
     );
+    assert!(effects.is_empty());
     assert_eq!(decks.deck(DeckId::One).position_ms, beats[11].time_ms);
     let second = Pin::load(DeckId::Two, &decks, completed, requests, media).unwrap();
     let position = decks.deck(DeckId::One).position_ms;

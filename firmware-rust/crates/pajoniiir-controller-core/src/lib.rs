@@ -363,7 +363,11 @@ impl ControllerLedFrame {
         let index = update.led.as_u8() as usize;
         let bit = 1u128 << index;
         let (states, valid, dirty) = match update.deck {
-            None => (&mut self.global, &mut self.valid_global, &mut self.dirty_global),
+            None => (
+                &mut self.global,
+                &mut self.valid_global,
+                &mut self.dirty_global,
+            ),
             Some(DeckId::One) => (
                 &mut self.decks[0],
                 &mut self.valid_decks[0],
@@ -532,7 +536,10 @@ mod tests {
         };
 
         assert!(frame.set(play));
-        assert_eq!(frame.state(SemanticLedId::PLAY, Some(DeckId::One)), Some(LedState::On));
+        assert_eq!(
+            frame.state(SemanticLedId::PLAY, Some(DeckId::One)),
+            Some(LedState::On)
+        );
         assert_eq!(frame.state(SemanticLedId::PLAY, Some(DeckId::Two)), None);
         assert_eq!(frame.take_next_dirty(), Some(play));
         assert!(!frame.has_dirty());
@@ -565,5 +572,4 @@ mod tests {
         assert_eq!(frame.take_next_dirty(), Some(master));
         assert_eq!(frame.take_next_dirty(), None);
     }
-
 }
