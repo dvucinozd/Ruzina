@@ -488,9 +488,7 @@ impl<const T: usize, const P: usize, const A: usize> DeckEffectBroker<T, P, A> {
                 DeckEffectTarget::Persistence => {
                     self.persistence.try_push_all(DeckEffects::one(effect))
                 }
-                DeckEffectTarget::AudioDsp => {
-                    self.audio_dsp.try_push_all(DeckEffects::one(effect))
-                }
+                DeckEffectTarget::AudioDsp => self.audio_dsp.try_push_all(DeckEffects::one(effect)),
             };
             debug_assert!(accepted);
         }
@@ -3208,5 +3206,4 @@ mod tests {
         assert_eq!(broker.pop_audio_dsp(), Some(audio));
         assert!(broker.is_empty());
     }
-
 }

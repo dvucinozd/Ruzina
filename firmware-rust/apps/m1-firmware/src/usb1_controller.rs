@@ -545,9 +545,29 @@ async fn drain_product_dispatch(
     session: &mut ControllerSession,
     product: &mut ProductRuntime,
 ) {
-    let report =
-        dispatch_session_deliveries(probe.controller_epoch, session, product, 32).await;
+    loop {
+        let report =
+            dispatch_session_deliveries(probe.controller_epoch, session, product, 32).await;
+
+        if report.backpressured {
+            probe.product_backpressured = true;
+            break;
+        }
+        if report.idle {
+            probe.product_backpressured = false;
+            break;
+        }
+
+        // Budget exhaustion is cooperative work chunking, not downstream
+        // backpressure. No producer can mutate this ControllerSession while this
+        // owner is draining it, so another bounded round must make progress or
+        // reach an actual sink refusal.
+        if !report.budget_exhausted {
+            probe.product_backpressured = false;
+            break;
+        }
+    }
+
     probe.product_pending_deck_effects =
         product.pending_deck_effects().min(u8::MAX as usize) as u8;
-    probe.product_backpressured = report.backpressured || report.budget_exhausted;
 }
