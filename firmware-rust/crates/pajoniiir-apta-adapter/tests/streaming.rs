@@ -419,3 +419,144 @@ fn premature_extraction_preserves_handle_and_cancelled_close_never_authorizes_ou
         assert_eq!(fs.closes, 2);
     }
 }
+
+#[test]
+fn original_lease_survives_backend_replacement_during_both_passes() {
+    for second in [false, true] {
+        for mode in [11, 12, 13] {
+            let m = mounted();
+            let mut r = Requests::default();
+            let mut fs = Fs::new(&m, wav(300));
+            let mut bytes = [0; 4096];
+            if second {
+                let source = scan(&mut fs, &mut r, &m);
+                let mut queue = [NormalizedSample::default(); 17];
+                let mut columns = [WaveformColumn::default(); 2];
+                let session = Session::new(
+                    SessionConfig {
+                        sample_rate: 8000,
+                        channel_count: 1,
+                        total_frames: 300,
+                        frames_per_column: 256,
+                    },
+                    &mut queue,
+                    &mut columns,
+                )
+                .unwrap();
+                let mut w = source.worker(session, &mut bytes).unwrap();
+                if mode == 11 {
+                    fs.mode = mode;
+                }
+                let opened = run(w.open(&mut fs, &r, &m));
+                if mode == 11 {
+                    assert!(opened.is_err(), "replacement during second open");
+                } else {
+                    opened.unwrap();
+                    let mut pcm = [0.; 512];
+                    if mode == 12 {
+                        fs.mode = mode;
+                        assert!(run(w.step(&mut fs, &r, &m, &mut pcm)).is_err());
+                        run(w.abort(&mut fs)).unwrap();
+                    } else {
+                        while !run(w.step(&mut fs, &r, &m, &mut pcm)).unwrap() {}
+                        fs.mode = mode;
+                        assert!(run(w.finish(&mut fs, &r, &m)).is_err());
+                    }
+                }
+                assert!(w.verified_worker().is_err());
+                assert_eq!(fs.closes, 2);
+            } else {
+                let c = catalog(&m);
+                let request = SourceRequest::new(&mut r, &m, &c, 0).unwrap();
+                if mode == 11 {
+                    fs.mode = mode;
+                }
+                let opened = run(request.open_stream(&mut fs, &r, &m));
+                if mode == 11 {
+                    assert!(opened.is_err(), "replacement during first open");
+                } else {
+                    let mut scan = opened.unwrap();
+                    if mode == 12 {
+                        fs.mode = mode;
+                        assert!(run(scan.step(&mut fs, &r, &m, &mut bytes)).is_err());
+                        run(scan.abort(&mut fs)).unwrap();
+                    } else {
+                        while !run(scan.step(&mut fs, &r, &m, &mut bytes)).unwrap() {}
+                        fs.mode = mode;
+                        assert!(run(scan.finish(&mut fs, &mut r, &m)).is_err());
+                    }
+                }
+                assert_eq!(fs.closes, 1);
+            }
+        }
+    }
+}
+
+#[test]
+fn local_tempo_preparation_preserves_occupied_handle_and_empty_slot_on_error() {
+    use libapta::analysis::{BIN_CAPACITY, OnsetBin};
+    use pajoniiir_apta_adapter::storage::LocalTempoBuffers;
+    for occupied in [false, true] {
+        let m = mounted();
+        let mut r = Requests::default();
+        let mut fs = Fs::new(&m, wav(300));
+        let source = scan(&mut fs, &mut r, &m);
+        let mut queue = [NormalizedSample::default(); 17];
+        let mut columns = [WaveformColumn::default(); 2];
+        let mut bytes = [0; 4096];
+        let session = Session::new(
+            SessionConfig {
+                sample_rate: 8000,
+                channel_count: 1,
+                total_frames: 300,
+                frames_per_column: 256,
+            },
+            &mut queue,
+            &mut columns,
+        )
+        .unwrap();
+        let mut slot = if occupied {
+            Some(source.worker(session, &mut bytes).unwrap())
+        } else {
+            None
+        };
+        if let Some(worker) = &mut slot {
+            run(worker.open(&mut fs, &r, &m)).unwrap();
+        }
+        let source = scan(&mut fs, &mut r, &m);
+        let mut queue2 = [NormalizedSample::default(); 17];
+        let mut columns2 = [WaveformColumn::default(); 2];
+        let mut bytes2 = [0; 4096];
+        let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
+        let mut flux = vec![0.; BIN_CAPACITY];
+        let result = source.prepare_local_tempo(
+            &mut slot,
+            LocalTempoBuffers {
+                queue: &mut queue2,
+                columns: &mut columns2,
+                bins: &mut bins,
+                flux: &mut flux,
+            },
+            3,
+            &mut bytes2,
+        ); // invalid geometry; occupied slot must be rejected first
+        assert_eq!(
+            result,
+            Err(if occupied {
+                WorkerError::Failed
+            } else {
+                WorkerError::Core(libapta::Error::InvalidArgument)
+            })
+        );
+        if occupied {
+            let worker = slot.as_mut().unwrap();
+            assert!(worker.verified_worker().is_err());
+            run(worker.abort(&mut fs)).unwrap();
+            assert!(run(worker.abort(&mut fs)).is_err());
+            assert_eq!(fs.closes, 3);
+        } else {
+            assert!(slot.is_none());
+            assert_eq!(fs.closes, 2);
+        }
+    }
+}

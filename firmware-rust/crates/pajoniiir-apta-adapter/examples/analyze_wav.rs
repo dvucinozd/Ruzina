@@ -2,12 +2,12 @@
 use libapta::{
     WaveformColumn,
     analysis::{BIN_CAPACITY, OnsetBin},
-    session::{Session, SessionConfig},
+    session::Session,
     waveform::NormalizedSample,
 };
 use pajoniiir_apta_adapter::{
     source::SourceRequest,
-    storage::LocalTempoStorage,
+    storage::{LocalTempoBuffers, LocalTempoStorage},
     streaming::StreamLimits,
     worker::{Pin, Requests},
 };
@@ -89,26 +89,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut queue = [NormalizedSample::default(); 256];
     let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
     let mut flux = vec![0.; BIN_CAPACITY];
-    let mut session = Session::new(
-        SessionConfig {
-            sample_rate: wav.source().sample_rate,
-            channel_count: wav.source().channel_count,
-            total_frames: total,
-            frames_per_column: FPC,
-        },
-        &mut queue,
-        &mut columns,
-    )?;
     println!(
         "storage: source_scratch=4096 pcm_scratch=2048 session={} onset={} flux={} queue={} overview={} bytes",
-        std::mem::size_of_val(&session),
+        std::mem::size_of::<Session<'_>>(),
         std::mem::size_of_val(bins.as_slice()),
         std::mem::size_of_val(flux.as_slice()),
         256 * std::mem::size_of::<NormalizedSample>(),
         count * std::mem::size_of::<WaveformColumn>()
     );
-    session.enable_tempo(&mut bins, &mut flux)?;
-    session.enable_meter()?;
     // Explicit host cap. Capacity failure is returned rather than dropping beats.
     let mut beats = vec![
         Beat {
@@ -126,9 +114,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         count
     ];
     let view = {
-        let mut worker = wav
-            .worker(session, &mut bytes)
-            .map_err(|e| format!("worker: {e:?}"))?;
+        let mut slot = None;
+        wav.prepare_local_tempo(
+            &mut slot,
+            LocalTempoBuffers {
+                queue: &mut queue,
+                columns: &mut columns,
+                bins: &mut bins,
+                flux: &mut flux,
+            },
+            FPC,
+            &mut bytes,
+        )
+        .map_err(|e| format!("worker: {e:?}"))?;
+        let worker = slot.as_mut().unwrap();
         ready(worker.open(&mut fs, &requests, &media)).map_err(|e| format!("reopen: {e:?}"))?;
         let mut scratch = [0.; 512];
         loop {

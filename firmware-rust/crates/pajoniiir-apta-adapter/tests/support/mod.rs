@@ -134,6 +134,9 @@ impl AsyncFileSystem for Fs {
     }
     async fn open_read(&mut self, path: &str) -> Result<Handle, Fault> {
         assert_eq!(path, "/TRACK.WAV");
+        if self.mode == 11 {
+            self.lease.source = MediaSourceId::new(2).unwrap();
+        }
         Ok(Handle {
             lease: self.lease,
             len: self.bytes.len() as u64,
@@ -142,6 +145,9 @@ impl AsyncFileSystem for Fs {
     }
     async fn close_file(&mut self, _: Handle) -> Result<(), Fault> {
         self.closes += 1;
+        if self.mode == 13 {
+            self.lease.source = MediaSourceId::new(2).unwrap();
+        }
         if self.mode == 10 {
             let mut first = true;
             core::future::poll_fn(|cx| {
@@ -190,6 +196,10 @@ impl AsyncFileSystem for Fs {
             .min(self.bytes.len() - f.pos as usize);
         out[..n].copy_from_slice(&self.bytes[f.pos as usize..f.pos as usize + n]);
         f.pos += n as u64;
+        if self.mode == 12 {
+            self.lease.source = MediaSourceId::new(2).unwrap();
+            f.lease = self.lease;
+        }
         if self.mode == 6 {
             f.pos += 1;
         }

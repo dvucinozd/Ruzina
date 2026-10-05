@@ -91,7 +91,8 @@ impl SourceRequest {
             .open_read(self.path.as_str())
             .await
             .map_err(SourceError::Io)?;
-        let valid = file.lease() == fs.lease() && file.position() == 0;
+        let valid =
+            file.lease() == fs.lease() && Some(fs.lease()) == media.lease() && file.position() == 0;
         let len = usize::try_from(file.len())
             .ok()
             .filter(|&n| n != 0 && n <= storage.len());
@@ -138,7 +139,10 @@ impl<'a, H: FileHandle> SourceRead<'a, H> {
             return Err(SourceError::Failed);
         }
         self.failed = true;
-        if !requests.accepts(self.job, media) || fs.lease() != self.file.lease() {
+        if !requests.accepts(self.job, media)
+            || fs.lease() != self.file.lease()
+            || Some(fs.lease()) != media.lease()
+        {
             return Err(SourceError::Worker(WorkerError::Stale));
         }
         if self.file.position() != self.offset as u64
@@ -157,6 +161,7 @@ impl<'a, H: FileHandle> SourceRead<'a, H> {
                 || self.file.position() != (self.offset + n) as u64
                 || self.file.len() != self.storage.len() as u64
                 || self.file.lease() != fs.lease()
+                || Some(fs.lease()) != media.lease()
             {
                 return Err(SourceError::Contract);
             }
@@ -181,11 +186,11 @@ impl<'a, H: FileHandle> SourceRead<'a, H> {
         requests: &mut Requests,
         media: &MediaSession,
     ) -> Result<VerifiedWav<'a>, SourceError<F::Error>> {
-        let lease_matches = fs.lease() == self.file.lease();
+        let lease_matches = fs.lease() == self.file.lease() && Some(fs.lease()) == media.lease();
         let geometry_matches = self.file.position() == self.offset as u64
             && self.file.len() == self.storage.len() as u64;
         fs.close_file(self.file).await.map_err(SourceError::Io)?;
-        if !lease_matches {
+        if !lease_matches || Some(fs.lease()) != media.lease() {
             return Err(SourceError::Worker(WorkerError::Stale));
         }
         if !geometry_matches {

@@ -50,7 +50,10 @@ impl<H: FileHandle> Reader<H> {
             return Err(SourceError::Failed);
         }
         self.failed = true; // also poisons a dropped pending read
-        if !requests.accepts(job, media) || fs.lease() != self.file.lease() {
+        if !requests.accepts(job, media)
+            || fs.lease() != self.file.lease()
+            || Some(fs.lease()) != media.lease()
+        {
             return Err(SourceError::Worker(WorkerError::Stale));
         }
         if self.file.position() != self.offset || self.file.len() != self.len || output.is_empty() {
@@ -72,6 +75,7 @@ impl<H: FileHandle> Reader<H> {
         if self.file.position() != self.offset + n as u64
             || self.file.len() != self.len
             || self.file.lease() != fs.lease()
+            || Some(fs.lease()) != media.lease()
         {
             return Err(SourceError::Contract);
         }
@@ -87,10 +91,12 @@ impl<H: FileHandle> Reader<H> {
         requests: &Requests,
         media: &MediaSession,
     ) -> Result<SourceIdentity, SourceError<F::Error>> {
-        let valid = requests.accepts(job, media) && fs.lease() == self.file.lease();
+        let valid = requests.accepts(job, media)
+            && fs.lease() == self.file.lease()
+            && Some(fs.lease()) == media.lease();
         let geometry = self.file.position() == self.offset && self.file.len() == self.len;
         fs.close_file(self.file).await.map_err(SourceError::Io)?;
-        if !valid {
+        if !valid || Some(fs.lease()) != media.lease() {
             return Err(SourceError::Worker(WorkerError::Stale));
         }
         if !geometry {
@@ -116,7 +122,11 @@ async fn open<F: AsyncFileSystem>(
         .await
         .map_err(SourceError::Io)?;
     let len = file.len();
-    if file.lease() != fs.lease() || file.position() != 0 || len == 0 {
+    if file.lease() != fs.lease()
+        || Some(fs.lease()) != media.lease()
+        || file.position() != 0
+        || len == 0
+    {
         fs.close_file(file).await.map_err(SourceError::Io)?;
         return Err(SourceError::Contract);
     }
@@ -260,6 +270,45 @@ impl VerifiedStream {
             ..self.layout.source()
         }
     }
+    /// Prepare the existing local-tempo/meter profile directly into an EMPTY
+    /// caller control slot. No I/O or allocation occurs. An occupied slot fails
+    /// unchanged, so its possibly open handle remains recoverable. On any other
+    /// failure the slot remains empty; working arrays may have been initialized.
+    ///
+    /// Keeping construction behind this synchronous boundary avoids returning a
+    /// large Session-bearing Result through the async caller's polling frame.
+    /// The slot still needs storage; this does not choose placement or a stack size.
+    #[inline(never)]
+    pub fn prepare_local_tempo<'s, 'b, H: FileHandle>(
+        self,
+        slot: &mut Option<StreamWorker<'s, 'b, H>>,
+        buffers: crate::storage::LocalTempoBuffers<'s>,
+        frames_per_column: u32,
+        bytes: &'b mut [u8; READ_BYTES],
+    ) -> Result<(), WorkerError> {
+        if slot.is_some() {
+            return Err(WorkerError::Failed);
+        }
+        let source = self.source();
+        let mut session = Session::new(
+            libapta::session::SessionConfig {
+                sample_rate: source.sample_rate,
+                channel_count: source.channel_count,
+                total_frames: source.total_frames.ok_or(WorkerError::Failed)?,
+                frames_per_column,
+            },
+            buffers.queue,
+            buffers.columns,
+        )
+        .map_err(WorkerError::Core)?;
+        session
+            .enable_tempo(buffers.bins, buffers.flux)
+            .map_err(WorkerError::Core)?;
+        session.enable_meter().map_err(WorkerError::Core)?;
+        *slot = Some(self.worker(session, bytes)?);
+        Ok(())
+    }
+
     /// Construct in place before asynchronous opening, so a large Session is
     /// never moved into an I/O future. No handle exists on geometry failure.
     pub fn worker<'s, 'b, H: FileHandle>(

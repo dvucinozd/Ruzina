@@ -86,3 +86,12 @@ impl LocalTempoStorage {
         })
     }
 }
+
+/// Borrowed working arrays for the existing local tempo + meter profile.
+/// Retained output banks and source/PCM scratch remain independently owned.
+pub struct LocalTempoBuffers<'a> {
+    pub queue: &'a mut [NormalizedSample],
+    pub columns: &'a mut [WaveformColumn],
+    pub bins: &'a mut [OnsetBin],
+    pub flux: &'a mut [f32],
+}

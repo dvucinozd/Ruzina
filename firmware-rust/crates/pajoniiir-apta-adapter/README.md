@@ -245,8 +245,8 @@ fragmented chains and exFAT NoFatChain storage. Those fixtures supply constructe
 boot geometry and test file acquisition, not on-disk boot/mount qualification.
 The P4 USB broker has dedicated Library/DeckA/DeckB channels and pending tickets;
 this adapter does not take over one of those channels or enable a production lane.
-The foundation's exFAT broker wiring, production codecs and scheduling remain its
-own workstream. Open/close futures must be driven to completion; cancellation of
+The integrated foundation routes FAT32 and exFAT through that broker. A uniquely
+owned analysis client, production codecs and scheduling remain separate work. Open/close futures must be driven to completion; cancellation of
 those operations requires backend-owned resource recovery. Poisoning the reader
 prevents bad analysis but cannot itself restore a backend's in-flight DMA buffer.
 
@@ -510,8 +510,8 @@ initial and intermediate measurements. The test-harness-only initial no_std
 prelude compile error was corrected without changing product source.
 
 Production prerequisites remain the foundation's unique analysis-client lifetime,
-pending ticket/completion draining and handle/buffer recovery (its file broker
-still returns `ExFatUnavailable`), then target placement and timing qualification.
+pending ticket/completion draining and handle/buffer recovery, then target
+placement and timing qualification. The foundation now routes exFAT file handles.
 No client channel is borrowed, no foundation checkout is changed, and neither
 firmware nor Slint selects APTA. Original DSP accuracy and C compatibility remain
 independent gates.
@@ -528,3 +528,85 @@ VerifiedStream **464 B**. Streaming step futures/one-poll frames remain
 futures are **3984 / 1856 B**; second-pass open/finish stay **2936 / 504 B**.
 Broader i686, Windows/MSVC, AArch64 and Libapta-runtime sanitizer matrices were
 not rerun. The portable Cargo pin remains unchanged.
+
+
+## Original lease checks and direct control preparation — 2026-10-05
+
+Whole-object and both streaming passes now recheck filesystem/file leases against
+the original mounted media after open/read and after close (not only against
+each other). A backend replacing both its lease and handle during an operation
+cannot bind replacement bytes to the old catalog job. Regression cases cover
+replacement during each operation, rejected delivery and exactly-once close.
+Read failure still poisons analysis; backend resource recovery and driving
+open/close to completion remain owner obligations.
+
+`VerifiedStream::prepare_local_tempo` constructs the existing Session local-tempo
+and meter profile directly into an empty caller `Option<StreamWorker>` using
+borrowed `storage::LocalTempoBuffers`. It allocates nothing and chooses no
+placement. Occupied slots fail unchanged before touching buffers, preserving
+possibly open handles for recovery. Other failures leave the slot empty; working
+arrays may have been initialized. The general configured-Session constructor
+remains available for other profiles. Storage preflight and beat capacity remain
+caller policy. The host WAV example, actual FAT32/exFAT fixtures and complete
+coroutine diagnostic now use direct preparation. Exact retained beats, waveform
+columns, Deck Sync/Beat Jump and raster output remain unchanged, with no measured
+allocations in native acquisition/construction/processing/conversion.
+
+The synchronous non-inlined boundary avoids returning a Session-bearing Result
+through the caller's polling frame. Pinned Rust 1.95 complete-task diagnostics
+(FAT32 / exFAT, bytes) now report:
+
+| Quantity | Previous | Direct preparation |
+|---|---:|---:|
+| Job future | 9424 / 9728 | 9440 / 9744 |
+| Embassy pool including header/alignment | 9792 / 10096 | 9808 / 10112 |
+| Polling frame | 21008 / 21424 | 13328 / 13776 |
+| Synchronous preparation frame | 6976 / 6976 | 7136 / 7136 |
+| Identified poll + preparation path, before further callees | 27984 / 28400 | 20464 / 20912 |
+
+The pool grows 16 bytes while removing 7488–7520 bytes from that identified
+nested path. Arrays + pool + diagnostic backend are 119172 / 119484 bytes;
+future/Session/worker/child I/O are already inside the pool and must not be
+counted twice. Initialization frames are 9808 / 10112 bytes. These are compiler
+diagnostics, not whole-stack maxima, placement advice or runtime high-water data.
+
+The actual firmware resolves Embassy executor 0.10.0 through esp-rtos 0.4.0 with
+no scheduler-priority/deadline features; it uses panic-abort and forced frame
+pointers. A second external diagnostic compiles all dependencies with those
+code-generation settings and records 1487 function frames plus disassembly.
+Its polling frames are 13328 / 13760, preparation 7040, Session::new 16,
+raw Executor::poll 16, native sector load 1584, Worker::step 112 and its
+Session::process_inner 144 bytes. Relocations identify constructor and core
+processing calls. Unused functions in that inventory are not live storage;
+indirect calls, compiler helpers, actual esp-rtos caller/interrupt paths,
+initialization placement and simultaneous workload timing still need analysis.
+The diagnostic is not linked into or executed on production firmware.
+
+Foundation advances integrated here route exFAT and FAT32 through backend-neutral
+broker handles. The obsolete ExFatUnavailable blocker is closed. Unique analysis
+client lifetime, pending completion draining, original lease enforcement and
+exclusive handle/buffer recovery remain prerequisites; no existing client lane
+is borrowed and neither firmware nor Slint selects APTA. ADR-006 remains gated.
+
+Final software acceptance: consumer **20261005T050057Z** passes **430 workspace
+tests**, **104 focused release tests**, **34 adapter tests + one lifetime
+compile-fail doctest under ASan**, fmt/Clippy, allocation instrumentation and P4
+compile/dependency/object checks. Artifacts **20261005T050216Z** match prior PPM
+bytes exactly (120 BPM / 80 beats / 4120 green pixels; silence unchanged); the
+impulse PNG was visually inspected. Native/streaming probes are
+**20261005T050217Z / 20261005T050222Z**. Complete-task final evidence is
+**20261005T050332Z**, including the pending-I/O host test. Its script now emits
+to an explicit dated object path: newest-file selection could pick a cached
+object from another flag profile. Supersede the 050223Z mixed-object diagnostic;
+retain it and the failed 050307Z reproduction for audit.
+
+`verify-task-nested.py` reproduces the second inventory in external
+`task-nested-20261005T050039Z`; source, lock, configuration, rlibs, frames.json
+and disassembly are retained. All scripts/evidence live under
+`/home/shome/.local/share/Pajoniiir-M1/apta-evidence/`. Run verification serially
+with two build/test jobs. The unchanged portable core passed the combined
+`consumer-construction-baseline-20261005.log`: 123 C tests, 279 ordinary Rust
+and 55 external-C groups per debug/release, 34 WAV interchange and two all-feature
+CLI cases. Its immutable source pin is unchanged. Broader core/runtime/C
+sanitizers and i686/Windows/AArch64 matrices were not rerun. No hardware,
+deployment, DSP algorithm, C header/ABI/container or numerical backend changed.

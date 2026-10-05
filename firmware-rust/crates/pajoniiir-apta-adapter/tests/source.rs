@@ -169,19 +169,6 @@ fn analyze_stream<F: AsyncFileSystem>(
     let mut columns = vec![WaveformColumn::default(); 1250];
     let mut bins = vec![OnsetBin::default(); BIN_CAPACITY];
     let mut flux = vec![0.; BIN_CAPACITY];
-    let mut session = Session::new(
-        SessionConfig {
-            sample_rate: s.sample_rate,
-            channel_count: s.channel_count,
-            total_frames: s.total_frames.unwrap(),
-            frames_per_column: 256,
-        },
-        &mut queue,
-        &mut columns,
-    )
-    .unwrap();
-    session.enable_tempo(&mut bins, &mut flux).unwrap();
-    session.enable_meter().unwrap();
     let mut bank = [EMPTY; 128];
     let mut render = vec![
         pajoniiir_waveform::WaveformColumn {
@@ -192,7 +179,21 @@ fn analyze_stream<F: AsyncFileSystem>(
     ];
     let (completed, view) = {
         allocation::start();
-        let mut worker = source.worker(session, &mut bytes).unwrap();
+        let mut slot = None;
+        source
+            .prepare_local_tempo(
+                &mut slot,
+                pajoniiir_apta_adapter::storage::LocalTempoBuffers {
+                    queue: &mut queue,
+                    columns: &mut columns,
+                    bins: &mut bins,
+                    flux: &mut flux,
+                },
+                256,
+                &mut bytes,
+            )
+            .unwrap();
+        let worker = slot.as_mut().unwrap();
         run(worker.open(&mut fs, &requests, media)).unwrap();
         let mut scratch = [0.; 512];
         let mut done = false;
@@ -626,4 +627,35 @@ fn pending_read_resumes_once_and_unmounted_completion_is_closed() {
         Err(SourceError::Worker(WorkerError::Stale))
     ));
     assert_eq!(fs.closes, 1);
+}
+
+#[test]
+fn original_lease_is_rechecked_after_whole_object_io() {
+    for mode in [11, 12, 13] {
+        let m = mounted();
+        let mut r = Requests::default();
+        let c = catalog(&m);
+        let mut fs = Fs::new(&m, wav(300));
+        let mut bytes = vec![0; fs.bytes.len()];
+        let request = SourceRequest::new(&mut r, &m, &c, 0).unwrap();
+        if mode == 11 {
+            fs.mode = mode;
+        }
+        let opened = run(request.open(&mut fs, &r, &m, &mut bytes));
+        if mode == 11 {
+            assert!(opened.is_err());
+        } else {
+            let mut read = opened.unwrap();
+            if mode == 12 {
+                fs.mode = mode;
+                assert!(run(read.step(&mut fs, &r, &m)).is_err());
+                run(read.abort(&mut fs)).unwrap();
+            } else {
+                while !run(read.step(&mut fs, &r, &m)).unwrap() {}
+                fs.mode = mode;
+                assert!(run(read.finish(&mut fs, &mut r, &m)).is_err());
+            }
+        }
+        assert_eq!(fs.closes, 1);
+    }
 }

@@ -578,3 +578,16 @@ transfers through async caller temporaries. The adapter README records the full
 coroutine/Embassy pool diagnostic: individual step-future sizes substantially
 understate complete task storage and nested stack. Production analysis-client
 ownership, memory placement and scheduling gates remain open.
+
+
+### Native analysis control preparation — 2026-10-05
+
+The adapter rechecks the original media lease after asynchronous open/read/close,
+including a backend replacing both its own and its handle's lease. Local tempo
+and meter Session construction writes into an empty caller control slot, avoiding
+a large returned Result in complete coroutine polling. Occupied slots retain
+possibly open handles. The host example and native FAT32/exFAT consumer tests
+use this path with exact retained output and allocation checks. The adapter
+README owns final-source verification and complete-task/nested-frame diagnostics.
+The integrated foundation now routes exFAT broker handles; unique analysis-client
+ownership/recovery and production provider selection remain separate open gates.
