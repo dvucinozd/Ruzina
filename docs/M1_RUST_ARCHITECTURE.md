@@ -707,7 +707,9 @@ Its bounded Library handoff commits selection only after successful analysis
 enqueue. Product intent revisions complement existing media/track identities to
 reject delayed same-track and superseded selections. The existing controller owner
 services coalesced analysis notifications without cancelling its pending USB wait.
-Retirement waits for both Deck transport state and acknowledged transport effects;
+Retirement waits for both Deck transport state and downstream-completed transport
+effects. Queue acceptance retains one ticketed in-flight effect until its matching
+audio/timeline completion;
 refused recycling remains product-owned. No production analysis claim, spawn or
 provider switch occurs. The adapter README's **Actual product-owner lifecycle**
 owns exact policy, host test seam, reproduction and remaining adoption/hardware gates.

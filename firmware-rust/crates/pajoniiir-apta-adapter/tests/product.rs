@@ -46,6 +46,18 @@ fn press(product: &mut ProductRuntime<'_>, deck: DeckId, control: SemanticContro
         value: ControlValue::Pressed(true),
     })));
 }
+fn acknowledge_completed(product: &mut ProductRuntime<'_>) {
+    let ticket = product.next_transport_ticket().unwrap();
+    assert!(product.complete_transport_effect(true));
+    assert!(product.inflight_transport_effect().is_some());
+    // Queue acceptance alone cannot release a bank, even when logical state stopped.
+    assert!(!product.retire_analysis(DeckId::One));
+    assert!(!product.finish_transport_effect(ticket.wrapping_add(1), true));
+    assert!(!product.finish_transport_effect(ticket.saturating_sub(1), true));
+    assert!(!product.finish_transport_effect(ticket, false));
+    assert!(product.finish_transport_effect(ticket, true));
+    assert!(!product.finish_transport_effect(ticket, true));
+}
 #[test]
 fn actual_product_lifecycle_with_service_and_transport_acknowledgement() {
     let media = mounted();
@@ -159,12 +171,12 @@ fn actual_product_lifecycle_with_service_and_transport_acknowledgement() {
             product.next_transport_effect(),
             Some(DeckEffect::SetPitchCentipercent { .. })
         ));
-        assert!(product.complete_transport_effect(true));
+        acknowledge_completed(&mut product);
         assert!(matches!(
             product.next_transport_effect(),
             Some(DeckEffect::Seek { .. })
         ));
-        assert!(product.complete_transport_effect(true));
+        acknowledge_completed(&mut product);
         // Actual control path consumes retained neutral grid; one beat is 500 ms.
         let track = product.analysis_track(DeckId::One, &media).unwrap();
         let target = pajoniiir_track_analysis::beat_jump_target_ms(
@@ -183,12 +195,12 @@ fn actual_product_lifecycle_with_service_and_transport_acknowledgement() {
         assert!(!product.complete_transport_effect(false));
         assert_eq!(product.next_transport_effect(), effect);
         assert!(!product.retire_analysis(DeckId::One));
-        assert!(product.complete_transport_effect(true));
+        acknowledge_completed(&mut product);
         press(&mut product, DeckId::One, SemanticControl::Play);
         assert!(!product.retire_analysis(DeckId::One));
         assert!(!product.complete_transport_effect(false));
         assert!(!product.deck().deck(DeckId::One).playing);
-        assert!(product.complete_transport_effect(true));
+        acknowledge_completed(&mut product);
         assert!(product.deck().deck(DeckId::One).playing);
         assert!(!product.retire_analysis(DeckId::One));
         // Media invalidation hides output, but doesn't free the playing bank.
@@ -204,7 +216,7 @@ fn actual_product_lifecycle_with_service_and_transport_acknowledgement() {
         assert!(!product.complete_transport_effect(false));
         assert!(!product.retire_analysis(DeckId::One));
         while product.next_transport_effect().is_some() {
-            assert!(product.complete_transport_effect(true));
+            acknowledge_completed(&mut product);
         }
         assert!(product.retire_analysis(DeckId::One));
         // Queue full: the product keeps the exact free bank for a later turn.

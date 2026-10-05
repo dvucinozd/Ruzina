@@ -23,6 +23,8 @@ pub(crate) struct ProductRuntime<'a> {
     #[cfg(any(feature = "apta-owner-compile", test))]
     analysis: AnalysisState<'a>,
     deck: DeckProductState,
+    transport_generation: u32,
+    transport_inflight: Option<(u32, DeckEffect)>,
     mixer: MixerState,
     deck_effects: DeckEffectBroker<
         PRODUCT_TRANSPORT_EFFECT_CAPACITY,
@@ -40,6 +42,8 @@ impl<'a> ProductRuntime<'a> {
             #[cfg(any(feature = "apta-owner-compile", test))]
             analysis: AnalysisState::new(),
             deck: DeckProductState::new(),
+            transport_generation: 0,
+            transport_inflight: None,
             mixer: MixerState::new(),
             deck_effects: DeckEffectBroker::new(),
             leds: ControllerLedFrame::new(),
@@ -55,24 +59,70 @@ impl<'a> ProductRuntime<'a> {
 
     pub(crate) const fn pending_deck_effects(&self) -> usize {
         self.deck_effects.len()
+            + if self.transport_inflight.is_some() {
+                1
+            } else {
+                0
+            }
     }
 
     pub(crate) fn next_transport_effect(&self) -> Option<DeckEffect> {
+        self.next_transport_ticket()?;
         self.deck_effects.transport_front()
     }
 
+    /// Pair this ticket with next_transport_effect when enqueueing downstream.
+    /// One in-flight effect is sufficient; never reuse/wrap a completion identity.
+    pub(crate) fn next_transport_ticket(&self) -> Option<u32> {
+        if self.transport_inflight.is_some() || self.deck_effects.transport_front().is_none() {
+            return None;
+        }
+        self.transport_generation.checked_add(1)
+    }
+
+    /// Foundation queue acknowledgement means accepted downstream, not executed.
+    /// A refused enqueue leaves the exact effect queued. Accepted effects retain
+    /// a product-owned pin until the matching audio/timeline completion arrives.
     pub(crate) fn complete_transport_effect(&mut self, succeeded: bool) -> bool {
+        let Some(ticket) = self.next_transport_ticket() else {
+            return false;
+        };
         if !succeeded {
             return false;
         }
-        if let Some(DeckEffect::PlaybackRequest {
+        let effect = self.deck_effects.transport_front().unwrap();
+        self.transport_inflight = Some((ticket, effect));
+        self.transport_generation = ticket;
+        self.deck_effects.complete_transport(true)
+    }
+
+    pub(crate) fn inflight_transport_effect(&self) -> Option<(u32, DeckEffect)> {
+        self.transport_inflight
+    }
+
+    /// Called only after the downstream operation reaches its safe audio/timeline
+    /// boundary and releases borrowed views. Failure retains the effect for retry;
+    /// a stale/duplicate completion cannot release a later identical Pause/Seek.
+    pub(crate) fn finish_transport_effect(&mut self, ticket: u32, succeeded: bool) -> bool {
+        let Some((current, effect)) = self.transport_inflight else {
+            return false;
+        };
+        if ticket != current || !succeeded {
+            return false;
+        }
+        if let DeckEffect::PlaybackRequest {
             deck, request_id, ..
-        }) = self.next_transport_effect()
+        } = effect
         {
             self.deck.resolve_playback_request(deck, request_id, true);
-            self.refresh_leds();
         }
-        self.deck_effects.complete_transport(true)
+        self.transport_inflight = None;
+        self.refresh_leds();
+        true
+    }
+
+    fn transport_settled(&self) -> bool {
+        self.transport_inflight.is_none() && self.deck_effects.transport_front().is_none()
     }
 
     pub(crate) fn next_persistence_effect(&self) -> Option<DeckEffect> {
@@ -392,7 +442,7 @@ impl<'a> ProductRuntime<'a> {
         if !media.is_available()
             || !media.validate(selection.lease())
             || !self.deck.deck(deck).can_replace_analysis()
-            || self.next_transport_effect().is_some()
+            || !self.transport_settled()
         {
             return false;
         }
@@ -460,7 +510,7 @@ impl<'a> ProductRuntime<'a> {
         if !self.analysis.selected[i].is_some_and(|s| bank.matches(s))
             || self.deck.hot_cues(deck).map(|b| b.track_id()) != Some(bank.track_id())
             || self.analysis.retained[i].is_some()
-            || self.next_transport_effect().is_some()
+            || !self.transport_settled()
             || bank.accept(authority, media, &self.deck).is_err()
         {
             return Err(bank);
@@ -494,7 +544,7 @@ impl<'a> ProductRuntime<'a> {
         let i = index(deck);
         // Cue/ToStart update logical state before their Pause/Seek effects are
         // acknowledged. Conservatively wait for the entire transport lane.
-        if self.next_transport_effect().is_some()
+        if !self.transport_settled()
             || self.analysis.recycle[i].is_some()
             || !self.deck.deck(deck).can_replace_analysis()
         {

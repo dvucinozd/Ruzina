@@ -1242,11 +1242,15 @@ short borrowed views. Another Deck's accepted generation remains independent.
 
 Selection changes and media invalidation hide obsolete views. The owner retires
 hidden output only after transport is stopped, no playback request is pending,
-all transport effects are acknowledged and borrowed views have ended. The whole
+all transport effects have completed at the downstream audio/timeline boundary
+and borrowed views have ended. The whole
 transport lane conservatively gates both Decks: Cue/ToStart can mark logical
 state stopped before Pause/Seek delivery succeeds. Failed acknowledgement retains
-the effect and blocks selection/retirement; successful PlaybackRequest completion
-resolves the existing Deck request ID. A refused recycle stays in one of two
+the effect and blocks selection/retirement; successful PlaybackRequest execution
+resolves the existing Deck request ID. Queue acceptance alone does not. One
+in-flight effect, identified by a checked non-wrapping ticket, remains retained
+after downstream enqueue. Failed/stale/duplicate completion cannot release it;
+later effects wait until that operation completes. A refused recycle stays in one of two
 product-held free-bank slots, retried before receiving another output. Occupied
 service banks still report NoBank; there is no eviction or implicit pending job.
 A NoBank analysis requires an explicit retry after retirement.
@@ -1273,24 +1277,24 @@ Verification uses `tests/product.rs`, the existing native FAT32/exFAT cases in
 `tests/source.rs`, and the existing external host Embassy task probe. Allocation
 instrumentation excludes fixture construction and raster rendering. Delayed host
 broker completion is not actual USB execution. Run `verify-consumer.py`, then
-`verify-product-owner-rest.py` under the existing external evidence root, serially
+`verify-product-completion-rest.py` under the existing external evidence root, serially
 with Rust 1.95.0 and build/test workers at most two. The latter preserves the
 predecessor runner's commands while giving this continuation separate log names.
 Final dated evidence and compiler-profile exclusions follow in the external handoff.
 
-Consumer acceptance `20261005T153658Z` passes 470 workspace, 129 focused release,
+Consumer acceptance `20261005T155814Z` passes 470 workspace, 129 focused release,
 54 adapter ASan tests and two lifetime doctests per suite, plus formatting,
 Clippy, allocation and portable P4 checks. Raster bytes remain identical
-(`20261005T154610Z`). Host Embassy/task probe `20261005T154618Z` passes all three
+(`20261005T160648Z`). Host Embassy/task probe `20261005T160654Z` passes all three
 cases with the exact product implementation in its Service-loop executor case.
 
-Concrete USB0/product diagnostic `owner-firmware-frames-20261005T154654Z` contains
-7527 frame records under link-dead-code/forced-frame-pointer/stack-size metadata.
+Concrete USB0/product diagnostic `owner-firmware-frames-20261005T160723Z` contains
+7531 frame records under link-dead-code/forced-frame-pointer/stack-size metadata.
 Service future/pool are 6352/6400 B; Service is 1008 B including the 680-B Owner.
 Command/Retained/Authority are 292/232/64 B; depth-two command/output channels
-616/504 B, authority/status mailbox 72 B. ProductRuntime is 6608 B; its depth-two
+616/504 B, authority/status mailbox 72 B. ProductRuntime is 6728 B; its depth-two
 catalog selection channel is 616 B and wake signal 12 B. The actual USB1 owner
-future/pool are 13280/13328 B, ALREADY INCLUDING ProductRuntime. Do not add the
+future/pool are 13400/13448 B, ALREADY INCLUDING ProductRuntime. Do not add the
 product again, a future to its pool, Owner to Service, or contained child futures.
 Working and two full output arrays remain 113772 B at diagnostic 17/1250/128
 capacities; broker scratch is separately 4096 B, Storage/two Bank Vec headers
@@ -1301,14 +1305,23 @@ Product turn/accept/advance frames are 960/368/928 B, with a separate 576-B deli
 closure; USB1 owner poll is 256 B. These are not a complete nested stack bound.
 Allocator overhead, claim flags, complete backend/channel state, other owners,
 catalog/display, stacks, interrupts/FP/helpers and physical placement remain
-additional. Ordinary firmware (`20261005T154630Z`) and nested opaque-broker probe
-(`20261005T154627Z`) have separate profiles. Exact layout/commands/exclusions are
-in external `product-owner-diagnostics-20261005.json` and the complete handoff.
+additional. Ordinary firmware (`20261005T160659Z`) and nested opaque-broker probe
+(`20261005T160659Z`) have separate profiles. Exact layout/commands/exclusions are
+in external `product-completion-diagnostics-20261005.json` and the complete handoff.
 
 The serial remainder runner passes all artifact/native/task/P4 probes, the
 unchanged Libapta combined suite, ordinary combined owner-feature firmware link
-and default/owner dependency exclusions. Logs are `product-owner-final-acceptance.log`,
-`product-owner-normal-firmware-link.log`, `product-owner-dependencies-{default,owner}.log`
-under the consumer evidence root and `product-owner-combined-20261005.log` under
+and default/owner dependency exclusions. Logs are `product-completion-final-acceptance.log`,
+`product-completion-normal-firmware-link.log`, `product-completion-dependencies-{default,owner}.log`
+under the consumer evidence root and `product-completion-combined-20261005.log` under
 Libapta's external rust-rewrite root. The ordinary link retains the two existing
 foundation unused-import warnings. No failing final check is waived.
+
+Transport acceptance and execution completion are deliberately separate: pair
+`next_transport_effect` with `next_transport_ticket`, acknowledge bounded enqueue
+with `complete_transport_effect`, then call `finish_transport_effect` only after
+the matching operation reaches the safe downstream boundary and borrowed views
+are released. Failure retains the in-flight effect for retry. Tests reject stale,
+duplicate and failed execution completions and prove queue acceptance alone
+cannot retire a bank. The foundation playback/timeline owner remains responsible
+for producing that completion; no new audio engine or production backend was added.
