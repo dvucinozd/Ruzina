@@ -117,12 +117,14 @@ fn verify_hot_cue_partition(
     storage: &mut FlashStorage<'static>,
 ) -> Result<(), HotCueFlashError> {
     let mut aligned = AlignedTransfer([0u8; MAX_TRANSFER_SIZE]);
+    let mut found_hot_cue = false;
+    let hot_cue_end = HOT_CUE_PARTITION_OFFSET + HOT_CUE_PARTITION_SIZE;
 
     for index in 0..PARTITION_ENTRY_COUNT {
-        let offset = PARTITION_TABLE_OFFSET + index * PARTITION_ENTRY_SIZE;
+        let table_offset = PARTITION_TABLE_OFFSET + index * PARTITION_ENTRY_SIZE;
         let entry = &mut aligned.0[..PARTITION_ENTRY_SIZE as usize];
         storage
-            .read_nor(offset, entry)
+            .read_nor(table_offset, entry)
             .map_err(HotCueFlashError::Storage)?;
 
         let magic = u16::from_le_bytes([entry[0], entry[1]]);
@@ -132,25 +134,39 @@ fn verify_hot_cue_partition(
         if magic != PARTITION_MAGIC {
             return Err(HotCueFlashError::InvalidPartitionTable);
         }
-        if !label_matches(&entry[12..28], HOT_CUE_LABEL) {
-            continue;
-        }
 
         let offset = u32::from_le_bytes([entry[4], entry[5], entry[6], entry[7]]);
         let size = u32::from_le_bytes([entry[8], entry[9], entry[10], entry[11]]);
+        let end = offset
+            .checked_add(size)
+            .ok_or(HotCueFlashError::InvalidPartitionTable)?;
         let flags = u32::from_le_bytes([entry[28], entry[29], entry[30], entry[31]]);
-        if entry[2] != PARTITION_TYPE_DATA
-            || entry[3] != HOT_CUE_PARTITION_SUBTYPE
-            || offset != HOT_CUE_PARTITION_OFFSET
-            || size != HOT_CUE_PARTITION_SIZE
-            || flags != 0
-        {
+        let is_hot_cue = label_matches(&entry[12..28], HOT_CUE_LABEL);
+
+        if is_hot_cue {
+            if found_hot_cue
+                || entry[2] != PARTITION_TYPE_DATA
+                || entry[3] != HOT_CUE_PARTITION_SUBTYPE
+                || offset != HOT_CUE_PARTITION_OFFSET
+                || size != HOT_CUE_PARTITION_SIZE
+                || flags != 0
+            {
+                return Err(HotCueFlashError::PartitionMismatch);
+            }
+            found_hot_cue = true;
+            continue;
+        }
+
+        if offset < hot_cue_end && end > HOT_CUE_PARTITION_OFFSET {
             return Err(HotCueFlashError::PartitionMismatch);
         }
-        return Ok(());
     }
 
-    Err(HotCueFlashError::MissingPartition)
+    if found_hot_cue {
+        Ok(())
+    } else {
+        Err(HotCueFlashError::MissingPartition)
+    }
 }
 
 fn label_matches(field: &[u8], expected: &[u8]) -> bool {
