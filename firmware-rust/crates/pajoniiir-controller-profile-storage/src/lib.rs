@@ -31,6 +31,46 @@ pub struct ProfileScanReport {
     pub stats: ProfileScanStats,
 }
 
+/// Fixed-capacity scratch owned by the controller-profile storage task.
+///
+/// Keeping the 16 KiB profile blob and maximum filename buffer outside the
+/// Embassy future avoids inflating the task state while preserving a strict
+/// no-allocation scan path.
+pub struct ProfileScanBuffers {
+    name_storage: [u8; FS_NAME_MAX],
+    profile_storage: [u8; MAX_PROFILE_SIZE],
+}
+
+impl ProfileScanBuffers {
+    pub const fn new() -> Self {
+        Self {
+            name_storage: [0u8; FS_NAME_MAX],
+            profile_storage: [0u8; MAX_PROFILE_SIZE],
+        }
+    }
+
+    pub async fn scan<F>(
+        &mut self,
+        filesystem: &mut F,
+    ) -> Result<ProfileScanReport, ProfileScanError<F::Error>>
+    where
+        F: AsyncFileSystem,
+    {
+        scan_controller_profiles(
+            filesystem,
+            &mut self.name_storage,
+            &mut self.profile_storage,
+        )
+        .await
+    }
+}
+
+impl Default for ProfileScanBuffers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 pub enum ProfileScanError<E> {
     OpenRoot(E),
