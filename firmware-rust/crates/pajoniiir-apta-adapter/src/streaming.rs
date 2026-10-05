@@ -363,6 +363,53 @@ pub struct StreamWorker<'s, 'b, H> {
     remaining_steps: u64,
 }
 impl<H: FileHandle> StreamWorker<'_, '_, H> {
+    /// Run the second pass on borrowed caller control, yielding once after each
+    /// incomplete bounded step even when the filesystem completes immediately.
+    /// Successful return requires the ordinary hash/close acceptance. A step
+    /// error closes the handle; a close error takes precedence over that error.
+    ///
+    /// Cancellation during a read or cooperative yield poisons the worker, but
+    /// keeps its handle available for `abort`. Backend recovery must precede
+    /// abort when required. Open/close futures must still run to completion.
+    /// Keep the control slot outside the driving coroutine when it must survive
+    /// cancellation. This method neither allocates nor selects an executor.
+    pub async fn run<F: AsyncFileSystem<File = H>>(
+        &mut self,
+        fs: &mut F,
+        requests: &Requests,
+        media: &MediaSession,
+        pcm: &mut [f32; PCM_SAMPLES],
+    ) -> Result<(), SourceError<F::Error>> {
+        self.open(fs, requests, media).await?;
+        loop {
+            match self.step(fs, requests, media, pcm).await {
+                Ok(true) => break,
+                Ok(false) => {
+                    // A dropped yield must not let a cancelled run resume via
+                    // the manual step/finish APIs and authorize delivery.
+                    self.failed = true;
+                    let mut yielded = false;
+                    core::future::poll_fn(|cx| {
+                        if yielded {
+                            core::task::Poll::Ready(())
+                        } else {
+                            yielded = true;
+                            cx.waker().wake_by_ref();
+                            core::task::Poll::Pending
+                        }
+                    })
+                    .await;
+                    self.failed = false;
+                }
+                Err(error) => {
+                    self.abort(fs).await?;
+                    return Err(error);
+                }
+            }
+        }
+        self.finish(fs, requests, media).await
+    }
+
     /// Reopen the copied path without seeking. Drive this future to completion;
     /// backend recovery remains required if an in-flight open is cancelled.
     pub async fn open<F: AsyncFileSystem<File = H>>(

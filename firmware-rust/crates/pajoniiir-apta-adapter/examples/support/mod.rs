@@ -104,3 +104,25 @@ pub fn ready<F: core::future::Future>(f: F) -> F::Output {
         core::task::Poll::Pending => panic!("host fixture operations are immediate"),
     }
 }
+
+// Host-only blocking driver; a wake before park preserves its notification.
+pub fn drive<F: core::future::Future>(f: F) -> F::Output {
+    struct WakeThread(std::thread::Thread);
+    impl std::task::Wake for WakeThread {
+        fn wake(self: std::sync::Arc<Self>) {
+            self.0.unpark();
+        }
+        fn wake_by_ref(self: &std::sync::Arc<Self>) {
+            self.0.unpark();
+        }
+    }
+    let waker = std::task::Waker::from(std::sync::Arc::new(WakeThread(std::thread::current())));
+    let mut cx = std::task::Context::from_waker(&waker);
+    let mut f = core::pin::pin!(f);
+    loop {
+        match f.as_mut().poll(&mut cx) {
+            core::task::Poll::Ready(value) => return value,
+            core::task::Poll::Pending => std::thread::park(),
+        }
+    }
+}

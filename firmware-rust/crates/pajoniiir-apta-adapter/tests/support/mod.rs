@@ -16,6 +16,18 @@ pub fn run<F: Future>(f: F) -> F::Output {
         Poll::Pending => panic!("unexpected pending"),
     }
 }
+// Test-only polling of self-waking fixtures, with a finite runaway guard.
+#[allow(dead_code)]
+pub fn drive<F: Future>(f: F) -> F::Output {
+    let mut f = pin!(f);
+    let mut cx = Context::from_waker(core::task::Waker::noop());
+    for _ in 0..100_000 {
+        if let Poll::Ready(value) = f.as_mut().poll(&mut cx) {
+            return value;
+        }
+    }
+    panic!("fixture exceeded poll budget")
+}
 pub fn mounted() -> MediaSession {
     let mut m = MediaSession::new();
     m.on_connect(MediaSourceId::new(1).unwrap());

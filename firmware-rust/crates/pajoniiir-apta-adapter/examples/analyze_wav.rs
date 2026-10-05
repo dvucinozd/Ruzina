@@ -18,7 +18,7 @@ use pajoniiir_deck::DeckProductState;
 use pajoniiir_media_session::{MediaHandle, MediaSession, MediaSourceId};
 use pajoniiir_track_analysis::Beat;
 use std::io::Write;
-use support::{HostFs, ready};
+use support::{HostFs, drive, ready};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args_os().collect();
@@ -128,19 +128,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .map_err(|e| format!("worker: {e:?}"))?;
         let worker = slot.as_mut().unwrap();
-        ready(worker.open(&mut fs, &requests, &media)).map_err(|e| format!("reopen: {e:?}"))?;
         let mut scratch = [0.; 512];
-        loop {
-            match ready(worker.step(&mut fs, &requests, &media, &mut scratch)) {
-                Ok(true) => break,
-                Ok(false) => (),
-                Err(e) => {
-                    let _ = ready(worker.abort(&mut fs));
-                    return Err(format!("step: {e:?}").into());
-                }
-            }
-        }
-        ready(worker.finish(&mut fs, &requests, &media)).map_err(|e| format!("verify: {e:?}"))?;
+        drive(worker.run(&mut fs, &requests, &media, &mut scratch))
+            .map_err(|e| format!("stream: {e:?}"))?;
         let worker = worker.verified_worker().map_err(|_| "unverified worker")?;
         let completed = worker
             .complete(&requests, &media, &mut beats)

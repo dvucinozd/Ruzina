@@ -593,3 +593,21 @@ use this path with exact retained output and allocation checks. The adapter
 README owns final-source verification and complete-task/nested-frame diagnostics.
 The integrated foundation now routes exFAT broker handles; unique analysis-client
 ownership/recovery and production provider selection remain separate open gates.
+
+
+### Cooperative native analysis driver — 2026-10-05
+
+The experimental adapter's second-pass driver borrows caller-owned worker control,
+yields after every incomplete bounded step, and closes before making hash-verified
+output available. Processing failure closes the handle; cancelled reads/yields
+poison delivery while leaving control available for owner-directed recovery.
+Pending backend operations and open/close cancellation still require explicit
+backend ownership contracts. No broker channel or production provider is added.
+
+An external complete-task diagnostic keeps worker control outside the coroutine;
+the task pool and external control are counted separately, once each. Libapta's
+existing borrowed constructor now permits cross-crate inlining to eliminate its
+large intermediate Result in the measured target profile. Exact host/native
+filesystem, constructor, executor and firmware diagnostic evidence and exclusions
+belong in the adapter README. Hardware placement/timing and original DSP accuracy
+remain independent gates.

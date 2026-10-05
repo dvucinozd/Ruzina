@@ -610,3 +610,93 @@ and 55 external-C groups per debug/release, 34 WAV interchange and two all-featu
 CLI cases. Its immutable source pin is unchanged. Broader core/runtime/C
 sanitizers and i686/Windows/AArch64 matrices were not rerun. No hardware,
 deployment, DSP algorithm, C header/ABI/container or numerical backend changed.
+
+
+## Cooperative second pass and caller control — 2026-10-05
+
+`StreamWorker::run` drives an unopened worker through reopen, bounded processing,
+second close and full-object hash acceptance. It borrows the worker and existing
+512-f32 scratch. Each incomplete step wakes and yields once even when every I/O
+operation is immediately ready; backend pending futures resume without duplicate
+reads or budget charges. It adds no executor dependency, allocation, deadline or
+firmware scheduling policy. Manual open/step/finish remains available.
+
+Processing errors trigger close; a cleanup error takes precedence. Dropping a
+pending read or cooperative yield prevents subsequent delivery and leaves caller
+control available for abort. Backend operation/buffer recovery must happen first
+where required. Open and close futures still must run to completion: this driver
+cannot recover a handle consumed by a cancelled backend open/close.
+
+Keep the `Option<StreamWorker>` outside a driving coroutine when control must
+survive cancellation. Pass a mutable borrow to preparation and to `run`, and keep
+the source/core arrays alive until that control is dropped. This also avoids
+putting the large control value in the coroutine's own state. The external slot
+still consumes storage and must be counted once alongside the task pool.
+
+The host WAV example and actual native FAT32 fragmented / exFAT contiguous and
+fragmented consumers now use `run`. Retained beats and waveform columns still
+match whole-object processing exactly and reach actual Deck Sync/Beat Jump and
+RGB565 rendering. Cancellation tests cover both cooperative yields and pending
+reads, including a backend that advances before returning Pending, plus wakeups,
+zero allocation, work exhaustion and exactly-once close/cleanup-error reporting.
+
+The immutable Libapta pin is `e93e667ba010d7256e06582f05cf5da0b94846e5`.
+Its only core change permits cross-crate inlining of the existing borrowed
+`Session::new` wrapper, eliminating large construction temporaries in the measured
+consumer without a new API or algorithm. Source/test behavior, C, ABI and wire
+format remain unchanged. Compiler frame measurements are not portable guarantees.
+Final-source verification and expanded diagnostics are recorded below.
+
+
+### Complete-task and executor evidence
+
+The revised complete two-pass diagnostic passes both scanner and worker control
+slots by mutable reference. Occupied slots are rejected before I/O. Cancellation
+of a pending first-pass read leaves its poisoned scanner handle available for
+abort, independently of the dropped job future. No slot fixes backend open/close
+cancellation. The host tests also execute a real Embassy 0.10 task pool and raw
+executor, including task initialization, pending I/O and cooperative wakeups,
+with zero measured allocations after fixture setup. This host executor test is
+not an execution of esp-rtos or P4 firmware. Diagnostic-only unsafe executor
+polling and host static fixture allocation stay outside product/library source.
+
+Pinned Rust 1.95 standard RV32 measurements (FAT32 / exFAT):
+
+| Storage/frame | Previous | Current |
+|---|---:|---:|
+| Complete job future | 9440 / 9744 B | 4040 / 4288 B |
+| Embassy task pool, header/alignment included | 9808 / 10112 B | 4416 / 4664 B |
+| External scanner control | included in old pool | 672 / 696 B |
+| External worker control | included in old pool | 4264 / 4288 B |
+| Task polling frame | 13328 / 13776 B | 8432 / 8800 B |
+| Synchronous preparation frame | 7136 B | 128 B |
+| Identified poll + preparation subtotal | 20464 / 20912 B | 8560 / 8928 B |
+| Task initialization `write_in_place` frame | 9808 / 10112 B | 4416 / 4672 B |
+
+Initialization frames and pool sizes are distinct measurements; the exFAT
+initialization frame includes 8 B beyond its pool. Arrays + pool + external
+controls + diagnostic backend total **118716 / 119020 B**, compared with
+119172 / 119484 B previously. The 108772 B caller arrays are unchanged. Do not add
+child futures or a second Session/worker: their storage is already accounted for.
+These subtotals exclude other owner state, stack, catalog, other tracks and display.
+No maximum stack, memory placement or runtime high-water claim follows.
+
+The separate actual combined firmware diagnostic builds/links USB0 + USB1 +
+SDMMC profile storage + PSRAM with panic-abort and forced frame pointers. It
+records 4208 compiled frames, resolved rlibs, a dated object and linked ELF plus
+disassembly under `firmware-frames-20261005T063542Z` in the external evidence root.
+The observed entry/executor chain includes `_start_rust` 32 B, `hal_main` 16 B,
+`main` 32 B, esp-rtos `Executor::run_inner` 48 B and raw `Executor::poll` 16 B.
+Interrupt assembly saves 64 B before dispatch; handler/callee/context-switch and
+nesting costs are additional. This is not a complete interrupt-stack bound.
+APTA is absent from that firmware, so these numbers are not a combined APTA
+firmware qualification. The inventory also exposes SD/profile owner 21184 B,
+Library polling 12800 B and filesystem worker 9264 B individual frames; these
+are foundation-owned integration concerns, not newly enabled APTA tasks or
+established maximum paths. Indirect callees, simultaneous workload timing,
+initial storage placement, SRAM/PSRAM, DMA/cache and physical gates remain open.
+
+Reproduction adds `verify-firmware-frames.py` to the existing external scripts.
+Source/native probe scripts now use Cargo-resolved rlib paths; raster/stack
+verification emits an explicit dated object. No script selects the newest cached
+object or rlib. Earlier evidence and failed experiments remain preserved.

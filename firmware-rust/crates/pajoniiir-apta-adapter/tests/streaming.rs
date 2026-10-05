@@ -1,3 +1,5 @@
+#[path = "support/allocation.rs"]
+mod allocation;
 #[allow(dead_code)]
 mod support;
 use libapta::{
@@ -558,5 +560,143 @@ fn local_tempo_preparation_preserves_occupied_handle_and_empty_slot_on_error() {
             assert!(slot.is_none());
             assert_eq!(fs.closes, 2);
         }
+    }
+}
+
+#[test]
+fn cooperative_run_yields_wakes_and_retains_control_after_cancellation() {
+    use core::{
+        pin::pin,
+        task::{Context, Poll},
+    };
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    struct WakeCount(AtomicUsize);
+    impl std::task::Wake for WakeCount {
+        fn wake(self: Arc<Self>) {
+            self.0.fetch_add(1, Ordering::Relaxed);
+        }
+        fn wake_by_ref(self: &Arc<Self>) {
+            self.0.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+    // Pending reads include a backend that advances its cursor before Pending.
+    for mode in [0, 8, 9] {
+        for cancel in [false, true] {
+            if mode == 9 && !cancel {
+                continue;
+            }
+            let m = mounted();
+            let mut r = Requests::default();
+            let mut fs = Fs::new(&m, wav(300));
+            let source = scan(&mut fs, &mut r, &m);
+            let mut q = [NormalizedSample::default(); 17];
+            let mut cols = [WaveformColumn::default(); 2];
+            let mut bytes = [0; 4096];
+            let mut pcm = [0.; 512];
+            let session = Session::new(
+                SessionConfig {
+                    sample_rate: 8000,
+                    channel_count: 1,
+                    total_frames: 300,
+                    frames_per_column: 256,
+                },
+                &mut q,
+                &mut cols,
+            )
+            .unwrap();
+            let mut w = source.worker(session, &mut bytes).unwrap();
+            let wake = Arc::new(WakeCount(AtomicUsize::new(0)));
+            let waker = std::task::Waker::from(wake.clone());
+            let mut cx = Context::from_waker(&waker);
+            fs.mode = mode;
+            let reads = fs.reads;
+            allocation::start();
+            {
+                let mut f = pin!(w.run(&mut fs, &r, &m, &mut pcm));
+                assert!(matches!(f.as_mut().poll(&mut cx), Poll::Pending));
+                if mode == 0 {
+                    assert_eq!(wake.0.load(Ordering::Relaxed), 1);
+                }
+                if !cancel {
+                    let mut finished = false;
+                    for _ in 0..1000 {
+                        if let Poll::Ready(value) = f.as_mut().poll(&mut cx) {
+                            value.unwrap();
+                            finished = true;
+                            break;
+                        }
+                    }
+                    assert!(finished);
+                }
+            }
+            if cancel {
+                assert_eq!(fs.reads, reads + 1);
+                fs.mode = 0;
+                assert!(run(w.step(&mut fs, &r, &m, &mut pcm)).is_err());
+                assert!(w.verified_worker().is_err());
+                run(w.abort(&mut fs)).unwrap();
+                assert!(run(w.abort(&mut fs)).is_err());
+            } else {
+                assert!(w.verified_worker().is_ok());
+                assert!(wake.0.load(Ordering::Relaxed) > 1);
+            }
+            assert_eq!(fs.closes, 2);
+            allocation::finish();
+        }
+    }
+}
+
+#[test]
+fn cooperative_run_closes_on_step_error_and_reports_cleanup_failure() {
+    for close_failure in [false, true] {
+        let m = mounted();
+        let mut r = Requests::default();
+        let mut fs = Fs::new(&m, wav(300));
+        let c = catalog(&m);
+        let request = SourceRequest::new(&mut r, &m, &c, 0).unwrap();
+        let mut bytes = [0; 4096];
+        let mut read = run(request.open_stream_with_limits(
+            &mut fs,
+            &r,
+            &m,
+            pajoniiir_apta_adapter::streaming::StreamLimits {
+                processing_steps: 0,
+                ..pajoniiir_apta_adapter::streaming::StreamLimits::UNLIMITED
+            },
+        ))
+        .unwrap();
+        while !run(read.step(&mut fs, &r, &m, &mut bytes)).unwrap() {}
+        let source = run(read.finish(&mut fs, &mut r, &m)).unwrap();
+        let mut q = [NormalizedSample::default(); 17];
+        let mut cols = [WaveformColumn::default(); 2];
+        let session = Session::new(
+            SessionConfig {
+                sample_rate: 8000,
+                channel_count: 1,
+                total_frames: 300,
+                frames_per_column: 256,
+            },
+            &mut q,
+            &mut cols,
+        )
+        .unwrap();
+        let mut w = source.worker(session, &mut bytes).unwrap();
+        if close_failure {
+            fs.mode = 5;
+        }
+        let mut pcm = [0.; 512];
+        let error = drive(w.run(&mut fs, &r, &m, &mut pcm)).unwrap_err();
+        if close_failure {
+            assert!(matches!(error, SourceError::Io(Fault::Io)));
+        } else {
+            assert!(matches!(error, SourceError::Limit));
+        }
+        assert_eq!(fs.closes, 2);
+        assert!(w.verified_worker().is_err());
+        assert!(run(w.abort(&mut fs)).is_err());
+        assert_eq!(fs.closes, 2);
     }
 }

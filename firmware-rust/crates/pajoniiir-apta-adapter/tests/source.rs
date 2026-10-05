@@ -194,17 +194,8 @@ fn analyze_stream<F: AsyncFileSystem>(
             )
             .unwrap();
         let worker = slot.as_mut().unwrap();
-        run(worker.open(&mut fs, &requests, media)).unwrap();
         let mut scratch = [0.; 512];
-        let mut done = false;
-        for _ in 0..40000 {
-            if run(worker.step(&mut fs, &requests, media, &mut scratch)).unwrap() {
-                done = true;
-                break;
-            }
-        }
-        assert!(done);
-        run(worker.finish(&mut fs, &requests, media)).unwrap();
+        drive(worker.run(&mut fs, &requests, media, &mut scratch)).unwrap();
         let worker = worker.verified_worker().unwrap();
         let completed = worker.complete(&requests, media, &mut bank).unwrap();
         let view = worker
