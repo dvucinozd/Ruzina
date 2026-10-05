@@ -329,6 +329,122 @@ pub struct LedUpdate {
     pub state: LedState,
 }
 
+pub const SEMANTIC_LED_SLOT_COUNT: usize = SemanticLedId::MAX_ID as usize + 1;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ControllerLedFrame {
+    global: [LedState; SEMANTIC_LED_SLOT_COUNT],
+    decks: [[LedState; SEMANTIC_LED_SLOT_COUNT]; 2],
+    valid_global: u128,
+    valid_decks: [u128; 2],
+    dirty_global: u128,
+    dirty_decks: [u128; 2],
+}
+
+impl Default for ControllerLedFrame {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ControllerLedFrame {
+    pub const fn new() -> Self {
+        Self {
+            global: [LedState::Off; SEMANTIC_LED_SLOT_COUNT],
+            decks: [[LedState::Off; SEMANTIC_LED_SLOT_COUNT]; 2],
+            valid_global: 0,
+            valid_decks: [0; 2],
+            dirty_global: 0,
+            dirty_decks: [0; 2],
+        }
+    }
+
+    pub fn set(&mut self, update: LedUpdate) -> bool {
+        let index = update.led.as_u8() as usize;
+        let bit = 1u128 << index;
+        let (states, valid, dirty) = match update.deck {
+            None => (&mut self.global, &mut self.valid_global, &mut self.dirty_global),
+            Some(DeckId::One) => (
+                &mut self.decks[0],
+                &mut self.valid_decks[0],
+                &mut self.dirty_decks[0],
+            ),
+            Some(DeckId::Two) => (
+                &mut self.decks[1],
+                &mut self.valid_decks[1],
+                &mut self.dirty_decks[1],
+            ),
+        };
+
+        let changed = *valid & bit == 0 || states[index] != update.state;
+        *valid |= bit;
+        states[index] = update.state;
+        if changed {
+            *dirty |= bit;
+        }
+        changed
+    }
+
+    pub fn state(&self, led: SemanticLedId, deck: Option<DeckId>) -> Option<LedState> {
+        let index = led.as_u8() as usize;
+        let bit = 1u128 << index;
+        let (states, valid) = match deck {
+            None => (&self.global, self.valid_global),
+            Some(DeckId::One) => (&self.decks[0], self.valid_decks[0]),
+            Some(DeckId::Two) => (&self.decks[1], self.valid_decks[1]),
+        };
+
+        if valid & bit == 0 {
+            None
+        } else {
+            Some(states[index])
+        }
+    }
+
+    pub fn mark_all_dirty(&mut self) {
+        self.dirty_global |= self.valid_global;
+        self.dirty_decks[0] |= self.valid_decks[0];
+        self.dirty_decks[1] |= self.valid_decks[1];
+    }
+
+    pub const fn has_dirty(&self) -> bool {
+        self.dirty_global != 0 || self.dirty_decks[0] != 0 || self.dirty_decks[1] != 0
+    }
+
+    pub fn take_next_dirty(&mut self) -> Option<LedUpdate> {
+        if let Some(update) =
+            take_dirty_scope(&mut self.dirty_decks[0], &self.decks[0], Some(DeckId::One))
+        {
+            return Some(update);
+        }
+        if let Some(update) =
+            take_dirty_scope(&mut self.dirty_decks[1], &self.decks[1], Some(DeckId::Two))
+        {
+            return Some(update);
+        }
+        take_dirty_scope(&mut self.dirty_global, &self.global, None)
+    }
+}
+
+fn take_dirty_scope(
+    dirty: &mut u128,
+    states: &[LedState; SEMANTIC_LED_SLOT_COUNT],
+    deck: Option<DeckId>,
+) -> Option<LedUpdate> {
+    if *dirty == 0 {
+        return None;
+    }
+
+    let index = dirty.trailing_zeros() as usize;
+    *dirty &= !(1u128 << index);
+    let led = SemanticLedId::from_raw(index as u8)?;
+    Some(LedUpdate {
+        led,
+        deck,
+        state: states[index],
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -404,6 +520,50 @@ mod tests {
         assert_eq!(LedState::On.wire_value(), 1);
         assert_eq!(LedState::Blink.wire_value(), 2);
         assert_eq!(LedState::Value(0xff).wire_value(), 0x7f);
+    }
+
+    #[test]
+    fn led_frame_tracks_only_changed_authoritative_values() {
+        let mut frame = ControllerLedFrame::new();
+        let play = LedUpdate {
+            led: SemanticLedId::PLAY,
+            deck: Some(DeckId::One),
+            state: LedState::On,
+        };
+
+        assert!(frame.set(play));
+        assert_eq!(frame.state(SemanticLedId::PLAY, Some(DeckId::One)), Some(LedState::On));
+        assert_eq!(frame.state(SemanticLedId::PLAY, Some(DeckId::Two)), None);
+        assert_eq!(frame.take_next_dirty(), Some(play));
+        assert!(!frame.has_dirty());
+
+        assert!(!frame.set(play));
+        assert!(!frame.has_dirty());
+
+        frame.mark_all_dirty();
+        assert_eq!(frame.take_next_dirty(), Some(play));
+        assert!(!frame.has_dirty());
+    }
+
+    #[test]
+    fn led_frame_keeps_global_and_deck_scopes_independent() {
+        let mut frame = ControllerLedFrame::new();
+        let master = LedUpdate {
+            led: SemanticLedId::MASTER_CUE,
+            deck: None,
+            state: LedState::On,
+        };
+        let sync = LedUpdate {
+            led: SemanticLedId::SYNC,
+            deck: Some(DeckId::Two),
+            state: LedState::Blink,
+        };
+
+        assert!(frame.set(master));
+        assert!(frame.set(sync));
+        assert_eq!(frame.take_next_dirty(), Some(sync));
+        assert_eq!(frame.take_next_dirty(), Some(master));
+        assert_eq!(frame.take_next_dirty(), None);
     }
 
 }
