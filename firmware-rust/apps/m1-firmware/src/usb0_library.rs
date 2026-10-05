@@ -169,19 +169,17 @@ struct Usb0LibraryCatalogStage {
 }
 
 impl Usb0LibraryCatalogStage {
-    /// Compile-only handoff from the actual retained catalog. Copies the selected
-    /// path/track/original lease; the catalog bank is not borrowed across I/O.
+    /// Owned handoff from the retained catalog; no analysis Requests access.
+    /// The Library caller handles bounded enqueue refusal explicitly.
     #[cfg(feature = "apta-owner-compile")]
+    #[allow(clippy::result_large_err)]
     fn select_analysis(
-        &self,
-        owner: &mut crate::usb0_analysis::AnalysisOwner<'_>,
-        index: usize,
-    ) -> Result<(), pajoniiir_apta_adapter::worker::WorkerError> {
-        let catalog = self
-            .publisher
-            .current()
-            .ok_or(pajoniiir_apta_adapter::worker::WorkerError::Stale)?;
-        owner.select_bank(&crate::usb0_msc::analysis_media_snapshot(), catalog, index)
+        &self, index: usize, deck: pajoniiir_controller_session::DeckId,
+    ) -> Result<(), Option<pajoniiir_apta_adapter::service::Command<'static>>> {
+        use pajoniiir_apta_adapter::service::{Command, Selection};
+        let catalog = self.publisher.current().ok_or(None)?;
+        let selection = Selection::from_bank(catalog, index).map_err(|_| None)?;
+        crate::usb0_analysis::command(Command::Analyze(selection, deck)).map_err(Some)
     }
 
     fn try_new() -> Result<Self, ()> {

@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+embassy-futures = { version = "=0.1.2", default-features = false }
 libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "25d09de364e9507532c0508c838a8fecf0772d13", default-features = false }
 pajoniiir-track-analysis.workspace = true
 pajoniiir-waveform.workspace = true

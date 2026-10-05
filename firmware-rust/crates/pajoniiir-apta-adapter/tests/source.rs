@@ -201,7 +201,64 @@ fn analyze<F: AsyncFileSystem>(
         },
     );
     assert!(owner.is_idle());
-    support::broker::free_buffer(owner.retire_buffer().unwrap());
+    // Run the actual long-lived handoff loop on every native FAT32/exFAT profile.
+    use pajoniiir_apta_adapter::service::{Command, Selection, Service};
+    let selection = Selection::from_bank(&catalog, 0).unwrap();
+    let mut service = Service::new(owner, [a.borrow(), b.borrow()]);
+    let state = std::rc::Rc::new(support::service::State::new(*media));
+    let mut port = support::service::HostPort(state.clone());
+    assert!(state.send(Command::Analyze(selection, DeckId::One)).is_ok());
+    allocation::start();
+    {
+        let mut task = core::pin::pin!(service.run(
+            &mut port,
+            pajoniiir_apta_adapter::streaming::StreamLimits::UNLIMITED,
+            256,
+            0x07e0
+        ));
+        for expected in 1..=2 {
+            for _ in 0..200_000 {
+                assert!(
+                    core::future::Future::poll(
+                        task.as_mut(),
+                        &mut core::task::Context::from_waker(core::task::Waker::noop())
+                    )
+                    .is_pending()
+                );
+                if state.published.get() == expected {
+                    break;
+                }
+            }
+            assert_eq!(state.published.get(), expected);
+            let outputs = state.outputs.borrow();
+            let output = outputs.back().unwrap();
+            let track = output.track(media).unwrap();
+            assert_eq!(track.generation(), 4 + expected as u32);
+            assert_eq!(
+                track.beat_grid().unwrap().beats(),
+                selected.track(media).unwrap().beat_grid().unwrap().beats()
+            );
+            assert_eq!(output.waveform(media).unwrap().columns, view.columns);
+            if expected == 1 {
+                assert!(state.send(Command::Analyze(selection, DeckId::Two)).is_ok());
+            }
+        }
+    }
+    allocation::finish();
+    for output in state.outputs.borrow().iter() {
+        verify_neutral(
+            output.track(media).unwrap(),
+            output.waveform(media).unwrap(),
+            if libapta::wav::Wav::parse(original).unwrap().encoding() == libapta::wav::Encoding::S16
+            {
+                4160
+            } else {
+                4120
+            },
+        );
+    }
+    assert!(service.owner_mut().is_idle());
+    support::broker::free_buffer(service.owner_mut().retire_buffer().unwrap());
 }
 fn analyze_stream<F: AsyncFileSystem>(
     fs: &mut F,
@@ -319,9 +376,18 @@ fn verify_consumers(
     media: &pajoniiir_media_session::MediaSession,
     expected_pixels: usize,
 ) {
-    let mut decks = DeckProductState::new();
+    let decks = DeckProductState::new();
     let pin = Pin::load(DeckId::One, &decks, completed, requests, media).unwrap();
     let track = pin.track(media).unwrap();
+    let _second = Pin::load(DeckId::Two, &decks, completed, requests, media).unwrap();
+    verify_neutral(track, view, expected_pixels);
+}
+fn verify_neutral(
+    track: pajoniiir_track_analysis::TrackAnalysis<'_>,
+    view: pajoniiir_waveform::WaveformView<'_>,
+    expected_pixels: usize,
+) {
+    let mut decks = DeckProductState::new();
     assert_eq!(track.bpm_x100(), 12000);
     assert_eq!(track.beat_grid().unwrap().beats().len(), 80);
     use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
@@ -339,7 +405,7 @@ fn verify_consumers(
         value: ControlValue::Pressed(true),
     };
     let mut staged = decks;
-    let refused = staged.handle_control_with_analysis(event, [pin.track(media), None]);
+    let refused = staged.handle_control_with_analysis(event, [Some(track), None]);
     assert!(!effects.try_push_all(refused));
     assert_eq!(decks.deck(DeckId::One).position_ms, beats[10].time_ms);
     assert_eq!(effects.transport_front(), Some(pending));
@@ -348,7 +414,7 @@ fn verify_consumers(
     assert_eq!(effects.transport_front(), Some(pending));
     assert!(effects.complete_transport(true));
     let mut staged = decks;
-    let accepted = staged.handle_control_with_analysis(event, [pin.track(media), None]);
+    let accepted = staged.handle_control_with_analysis(event, [Some(track), None]);
     assert!(effects.try_push_all(accepted));
     decks = staged;
     assert_eq!(
@@ -366,7 +432,6 @@ fn verify_consumers(
     assert!(!effects.complete_transport(true));
     assert!(effects.is_empty());
     assert_eq!(decks.deck(DeckId::One).position_ms, beats[11].time_ms);
-    let second = Pin::load(DeckId::Two, &decks, completed, requests, media).unwrap();
     let position = decks.deck(DeckId::One).position_ms;
     decks.set_position_ms(DeckId::Two, position + 17);
     decks.handle_control_with_analysis(
@@ -375,7 +440,7 @@ fn verify_consumers(
             control: SemanticControl::Sync,
             value: ControlValue::Pressed(true),
         },
-        [pin.track(media), second.track(media)],
+        [Some(track), Some(track)],
     );
     assert!(decks.deck(DeckId::One).sync_enabled);
     assert_eq!(decks.deck(DeckId::One).position_ms, position + 17);

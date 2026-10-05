@@ -51,6 +51,20 @@ impl<'a, T: Transport> Owner<'a, T> {
             workspace,
         }
     }
+    /// Reserve a generation only in the receiving owner, using the copied original lease.
+    pub fn select_owned(
+        &mut self,
+        media: &MediaSession,
+        selection: crate::service::Selection,
+    ) -> Result<(), WorkerError> {
+        self.selected = Some(SourceRequest {
+            job: self
+                .requests
+                .begin_source(media, selection.lease, selection.track)?,
+            path: selection.path,
+        });
+        Ok(())
+    }
     pub fn requests(&self) -> &Requests {
         &self.requests
     }

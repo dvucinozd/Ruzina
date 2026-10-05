@@ -38,7 +38,7 @@ pub enum WorkerError {
 #[derive(Default)]
 pub struct Requests {
     next: u32,
-    current: Option<Job>,
+    pub(crate) current: Option<Job>,
 }
 impl Requests {
     /// Use the lease carried by the originating catalog/media request, not a
@@ -303,8 +303,8 @@ impl<'a> Worker<'a> {
 /// Delivery is still checked against the current request at the deck boundary.
 #[derive(Clone, Copy, Debug)]
 pub struct Completed<'a> {
-    job: Job,
-    analysis: Analysis<'a>,
+    pub(crate) job: Job,
+    pub(crate) analysis: Analysis<'a>,
 }
 
 /// Retains one selected bank. Selection reads actual Deck state rather than a
@@ -363,7 +363,16 @@ fn check_delivery(
     requests: &Requests,
     media: &MediaSession,
 ) -> Result<(), WorkerError> {
-    if !requests.accepts(next.job, media) {
+    check_authority(deck, decks, next, requests.current, media)
+}
+pub(crate) fn check_authority(
+    deck: DeckId,
+    decks: &DeckProductState,
+    next: Completed<'_>,
+    current: Option<Job>,
+    media: &MediaSession,
+) -> Result<(), WorkerError> {
+    if current != Some(next.job) || !media.is_available() || !media.validate(next.job.lease) {
         return Err(WorkerError::Stale);
     }
     if !decks.deck(deck).can_replace_analysis() {

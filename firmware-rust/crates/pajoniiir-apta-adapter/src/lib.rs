@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 pub mod owner;
+pub mod service;
 pub mod source;
 pub mod storage;
 pub mod streaming;

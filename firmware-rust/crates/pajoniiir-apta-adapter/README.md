@@ -1124,3 +1124,98 @@ backend, catalog/display/other tasks, stack/interrupts and runtime placement. It
 not a physical memory budget or an apples-to-apples reduction against the older
 opaque-broker profile. No hardware, deployment, DSP accuracy or production-provider
 qualification follows from these diagnostics.
+
+## Long-lived owner handoff — 2026-10-05
+
+`service::Service` now runs the real persistent owner as an unspawned background
+loop. `Selection::from_bank` copies the original catalog lease, bounded path and
+track identity. The Library owner can release its catalog borrow immediately;
+only the receiving analysis owner reserves a generation in its existing Requests.
+The portable Libapta pin and algorithms are unchanged. The adapter reuses the
+foundation's Embassy select and bounded channel mechanisms, not a new executor.
+
+The narrow scheduling policy is latest **received** Analyze wins. Analyze/Cancel
+interrupt a borrowed job or recovery future; the same Client drains pending work
+and closes recovered handles before any replacement starts. A full enqueue returns
+the command to its sender, with no silent overwrite. Cancel clears queued work;
+RetryRecovery explicitly retries a blocked lane. A cleanup error parks the loop
+until another command, avoiding a retry spin. Quarantine stays in the Client and
+requires explicit investigation through `owner_mut`; no command discards it.
+Dropping the loop future preserves Service storage and re-entry cancels the old
+request before recovery. Never drop the Service/Client as a recovery mechanism.
+This job-drop permission still applies only to this concrete owned Client.
+
+Two output banks move between Service, the bounded delivery queue and the product
+owner. `Retained` stores owned mutable bank borrows and scalar result metadata,
+with no self-reference or unsafe code. Its short borrowed track/waveform views
+feed the existing neutral consumers. A read-only Authority snapshot invalidates
+unaccepted queued output after a later received Analyze/Cancel; it cannot issue
+or reset generations. Acceptance reuses the Pin delivery gate with fresh mounted
+media and actual Deck state. Accepted pins survive later requests. Retirement
+requires stopped, non-pending Deck state even when media has gone stale; borrowed
+views also prevent moving/recycling their bank at compile time. No free bank means
+explicit NoBank rejection. Playing/pending pins are never evicted for capacity.
+Unaccepted delivery refusal returns the bank; accepted output cannot use that path.
+Recycle received during a job interrupts it and explicitly retries the same
+selection after recovery under a fresh generation; it never resumes partial hashes.
+
+The firmware `apta-owner-compile` path now has actual depth-two Embassy command
+and output channels, a short-lock authority/status mailbox, retained Library
+selection enqueue, `Storage::claim_service`, and a concrete infinite Embassy task.
+`take_delivery` uses the actual ProductRuntime Deck state and a fresh USB0 media
+snapshot; callers keep the returned bank with the Deck, use its neutral views,
+and pass it through `retirement` before enqueueing Recycle. Failed enqueue returns
+ownership for retry. Channel depths, two-bank count and diagnostic work limits are
+reviewable contribution choices, not approved production limits. Main still has
+no endpoint claim, analysis spawn or APTA provider selection. The compile path
+adds no desktop libapta-runtime dependency and does not run on hardware.
+
+Host evidence covers the actual loop: success, replacement during pending reads,
+cancel during recovery, entire-loop cancellation/re-entry, stale selections and
+fresh-media delivery, source/close errors, queue refusal, unexpected-completion
+quarantine, repeated jobs, occupied banks and pending/playing retirement refusal.
+All native fragmented FAT32 and contiguous/fragmented exFAT profiles now run two
+additional loop jobs with persistent generations, exact beat/waveform comparisons,
+neutral Deck/Sync/Beat Jump, acknowledged effects and raster checks. The external
+real Embassy executor drives this loop with another runnable heartbeat and zero
+allocations after setup. Its broker completes native host I/O before delaying
+completion; this is not USB/DMA execution evidence.
+
+Run the existing verification scripts serially as above; the external
+`verify-service-owner-rest.py` runs the remaining artifact/native/task/P4 probes,
+unchanged library combined suite, ordinary owner-feature link and dependency
+exclusions. Exact final artifacts and storage observations are recorded below.
+Owner review still chooses production triggers/task adoption, approved queue/bank/
+object/duration/work capacities, and quarantine/hung-backend resolution versus
+lane disablement. Product activation, physical memory/DMA/cache/interrupt/audio
+coexistence/timing and original DSP accuracy remain separate gates.
+
+Final consumer acceptance `20261005T141054Z` passes 468 workspace, 127 focused
+release and 52 adapter ASan tests, plus two lifetime compile-fail doctests per
+suite; formatting/Clippy/allocation/portable-P4 checks pass. Original raster bytes
+remain identical (`20261005T142018Z`). Native/streaming probes are
+`20261005T142021Z` / `20261005T142026Z`; complete host Embassy/P4 task diagnostic
+`20261005T142027Z` passes three tests, now including the actual Service loop.
+Nested `task-nested-20261005T142037Z` has 1506 frame records; ordinary combined
+firmware `firmware-frames-20261005T142040Z` has 4213. Their separate compiler-profile
+exclusions continue to apply.
+
+Concrete actual-USB0 inventory `owner-firmware-frames-20261005T142108Z` links and
+contains 7465 frame records under the explicitly distinct link-dead-code/forced-
+frame-pointer/stack-size profile. `analysis_service_future_size` observes 6344 B;
+its Embassy pool is 6392 B. Service metadata is 1000 B, already including the
+680-B Owner; Command is 288 B, Retained is 200 B, Authority is 64 B. The two-slot
+command channel occupies 608 B, output channel 440 B, authority/status mailbox
+72 B. Service polling frame is 2400 B; underlying inner/outer owner polling frames
+remain 2336/800 B. These individual frames are not a complete call-path maximum.
+The retained one-job diagnostic remains a 5696-B future, separately observed.
+
+At queue 17 / 1250 columns / 128 beats, array payload remains 113772 B for working
+storage and two independent full output banks. Adding Storage/Bank Vec headers
+(72 + 48 B), Service (1000 B), broker scratch (4096 B), pool (6392 B), both channels
+(608 + 440 B) and mailbox (72 B) gives a **selected-component subtotal** of 126500 B.
+Do not add Owner again, or scanner/worker/child futures already inside the pool.
+This excludes allocator rounding/overhead, claim/StaticCell flags, actual USB
+backend/completion channels, product-held Retained metadata after delivery,
+catalog/display/other tasks, all stack/helper/interrupt/FP nesting and physical
+placement. No production memory/stack/timing budget or hardware acceptance follows.

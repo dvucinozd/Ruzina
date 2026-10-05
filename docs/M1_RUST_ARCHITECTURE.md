@@ -686,3 +686,15 @@ The adapter README's **Persistent native consumer owner** section owns contracts
 software evidence and compiler-profile exclusions. Review must choose production
 triggers/scheduling, capacities, bank retirement and unexpected/hung-backend policy;
 physical placement/DMA/cache/timing/coexistence and ADR-006 activation remain gated.
+
+### Long-lived native analysis handoff, unspawned — 2026-10-05
+
+The optional consumer now supplies a concrete bounded command loop, replacing the
+one-job task entry. Library selections carry their original lease/path/track by
+value; the receiving persistent owner alone issues generations. Latest received
+Analyze replaces active work after drain-and-close recovery. Full channels return
+ownership and occupied retained banks reject new work. Output banks move to the
+product owner, whose fresh media/actual Deck acceptance and stopped/non-pending
+retirement gates protect neutral consumers. See the adapter README's **Long-lived
+owner handoff** for policy, tests, compiler diagnostics and remaining adoption
+choices. Neither main nor the production provider selects or spawns this path.

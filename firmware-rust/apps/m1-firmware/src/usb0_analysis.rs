@@ -56,6 +56,15 @@ impl Storage {
             pcm: filled(512, 0.)?,
         })
     }
+    /// Allocate Storage and both Banks first; claim only after all allocations succeed.
+    pub(crate) fn claim_service<'a>(
+        &'a mut self,
+        lease: MediaLease,
+        a: &'a mut Bank,
+        b: &'a mut Bank,
+    ) -> Option<AnalysisService<'a>> {
+        Some(Service::new(self.claim(lease)?, [a.output(), b.output()]))
+    }
     /// Only the actual once-claimed USB0 Analysis endpoint can construct this
     /// concrete owner. Call after storage allocation succeeds. Keep it alive.
     pub(crate) fn claim(&mut self, lease: MediaLease) -> Option<AnalysisOwner<'_>> {
@@ -119,26 +128,110 @@ pub(crate) async fn run_selected<'b>(
         .await
 }
 
-// This task exists only to compile the complete concrete coroutine and Embassy
-// pool. main never calls/spawns it, and it cannot select the production provider.
-#[embassy_executor::task]
-pub(crate) async fn compile_owner_task(
-    owner: &'static mut AnalysisOwner<'static>,
-    bank: &'static mut Bank,
-) {
-    let _ = run_selected(
-        owner,
-        bank,
-        StreamLimits {
-            object_bytes: 2_000_000,
-            duration_ms: 40_000,
-            scan_steps: 20_000,
-            processing_steps: 40_000,
-        },
-        256,
-    )
-    .await;
+// Diagnostic channel capacities, not approved production limits.
+use core::cell::RefCell;
+use embassy_sync::{
+    blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex},
+    channel::{Channel, TrySendError},
+};
+use pajoniiir_apta_adapter::service::{Authority, Command, Port, Retained, Service, Status};
+pub(crate) type AnalysisService<'a> = Service<'a, Usb0AnalysisTransport>;
+static COMMANDS: Channel<CriticalSectionRawMutex, Command<'static>, 2> = Channel::new();
+static OUTPUTS: Channel<CriticalSectionRawMutex, Retained<'static>, 2> = Channel::new();
+static DELIVERY: CriticalSectionMutex<RefCell<(Authority, Option<Status>)>> =
+    CriticalSectionMutex::new(RefCell::new((Authority::EMPTY, None)));
+
+pub(crate) struct OwnerPort;
+impl Port<'static> for OwnerPort {
+    async fn receive(&mut self) -> Command<'static> {
+        COMMANDS.receive().await
+    }
+    fn media(&self) -> pajoniiir_media_session::MediaSession {
+        crate::usb0_msc::analysis_media_snapshot()
+    }
+    fn authority(&mut self, value: Authority) {
+        DELIVERY.lock(|s| s.borrow_mut().0 = value);
+    }
+    fn publish(&mut self, value: Retained<'static>) -> Result<(), Output<'static>> {
+        OUTPUTS
+            .try_send(value)
+            .map_err(|TrySendError::Full(value)| value.reject().ok().unwrap())
+    }
+    fn report(&mut self, value: Status) {
+        DELIVERY.lock(|s| s.borrow_mut().1 = Some(value));
+    }
 }
+/// Ownership-returning bounded enqueue; caller retries or reports refusal.
+#[allow(clippy::result_large_err)]
+pub(crate) fn command(value: Command<'static>) -> Result<(), Command<'static>> {
+    COMMANDS
+        .try_send(value)
+        .map_err(|TrySendError::Full(value)| value)
+}
+pub(crate) fn status() -> Option<Status> {
+    DELIVERY.lock(|s| s.borrow().1)
+}
+/// Actual product owner supplies its live Deck state. The returned bank must be
+/// kept with that Deck and used through its short neutral views. Rejected output
+/// is still owned and must be retired/recycled explicitly. No production call.
+#[allow(clippy::result_large_err)]
+pub(crate) fn take_delivery(
+    product: &crate::product_runtime::ProductRuntime,
+) -> Option<Result<Retained<'static>, Retained<'static>>> {
+    let mut output = OUTPUTS.try_receive().ok()?;
+    Some(DELIVERY.lock(|s| {
+        let media = crate::usb0_msc::analysis_media_snapshot();
+        match output.accept(s.borrow().0, &media, product.deck()) {
+            Ok(()) => Ok(output),
+            Err(_) => Err(output),
+        }
+    }))
+}
+/// Caller retains the returned Command on queue refusal. Playing/pending banks
+/// remain retained; they cannot be converted to a recycle command.
+#[allow(clippy::result_large_err)]
+pub(crate) fn retirement(
+    output: Retained<'static>,
+    product: &crate::product_runtime::ProductRuntime,
+) -> Result<Command<'static>, Retained<'static>> {
+    output.retire(product.deck()).map(Command::Recycle)
+}
+
+// Never spawned by main. All persistent resources live in the supplied service.
+#[embassy_executor::task]
+pub(crate) async fn compile_owner_task(service: &'static mut AnalysisService<'static>) {
+    service
+        .run(
+            &mut OwnerPort,
+            StreamLimits {
+                object_bytes: 2_000_000,
+                duration_ms: 40_000,
+                scan_steps: 20_000,
+                processing_steps: 40_000,
+            },
+            256,
+            0x07e0,
+        )
+        .await;
+}
+#[unsafe(no_mangle)]
+fn analysis_service_future_size(
+    service: &mut AnalysisService<'static>,
+    port: &mut OwnerPort,
+) -> usize {
+    core::mem::size_of_val(&service.run(port, StreamLimits::UNLIMITED, 256, 0x07e0))
+}
+#[used]
+#[unsafe(no_mangle)]
+static ANALYSIS_SERVICE_LAYOUT: [usize; 7] = [
+    core::mem::size_of::<AnalysisService<'static>>(),
+    core::mem::size_of::<Command<'static>>(),
+    core::mem::size_of::<Retained<'static>>(),
+    core::mem::size_of::<Authority>(),
+    core::mem::size_of::<Channel<CriticalSectionRawMutex, Command<'static>, 2>>(),
+    core::mem::size_of::<Channel<CriticalSectionRawMutex, Retained<'static>, 2>>(),
+    core::mem::size_of::<CriticalSectionMutex<RefCell<(Authority, Option<Status>)>>>(),
+];
 
 // Compiler-observed owner metadata only; PSRAM backing capacities are additional.
 #[used]

@@ -107,3 +107,9 @@ Pajoniiir ADR-006 and product requirement M1R-P1-001 currently defer Libapta int
 Do not expand this into an unsolicited rewrite of Pajoniiir's model or Libapta's engine. Prefer the smallest end-to-end native path, then extend it through demonstrated requirements. Run relevant tests in both repositories and distinguish host acceptance, cross-compilation, target execution and hardware qualification.
 
 When reporting, state what works end-to-end, what remains experimental, what C-only work was deferred, and what production gates remain. Open a focused PR if requested by your user; do not treat this context document alone as permission to publish or merge changes.
+
+The 2026-10-05 long-lived handoff continuation now implements the bounded owner
+loop, owned catalog commands and explicit retained-bank transfer/retirement.
+Follow the adapter README's **Long-lived owner handoff** and the latest external
+handoff for verification and adoption policy. The task remains unspawned and the
+production provider remains unselected; no hardware qualification follows.
