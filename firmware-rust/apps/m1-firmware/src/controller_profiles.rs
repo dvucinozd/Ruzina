@@ -10,7 +10,8 @@ use pajoniiir_controller_profile_storage::{
     ProfileSlot,
 };
 use pajoniiir_controller_session::{
-    ControllerSession, UsbMidiBatchError, UsbMidiBatchReport,
+    ControllerSession, SessionDeliverySink, SessionDispatchOutcome, UsbMidiBatchError,
+    UsbMidiBatchReport,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -32,6 +33,14 @@ pub(crate) enum ActiveProfileMidiError {
     StaleController,
     InvalidActiveProfile,
     Batch(UsbMidiBatchError),
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct ProductDispatchReport {
+    pub(crate) accepted: u32,
+    pub(crate) backpressured: bool,
+    pub(crate) idle: bool,
+    pub(crate) budget_exhausted: bool,
 }
 
 struct ProfileCatalog {
@@ -277,4 +286,50 @@ pub(crate) async fn process_active_midi_transfer(
     session
         .process_usb_midi_transfer(&profile, bytes)
         .map_err(ActiveProfileMidiError::Batch)
+}
+
+
+pub(crate) async fn dispatch_session_deliveries<S>(
+    controller_epoch: u32,
+    session: &mut ControllerSession,
+    sink: &mut S,
+    budget: usize,
+) -> ProductDispatchReport
+where
+    S: SessionDeliverySink,
+{
+    let active = ACTIVE_PROFILE.lock().await;
+    let active_is_current = PROFILE_CATALOG.lock(|cell| {
+        let catalog = cell.borrow();
+        catalog.registry.activation_state() == ProfileActivationState::Active
+            && catalog.registry.connected().map(|controller| controller.epoch)
+                == Some(controller_epoch)
+            && active.controller_epoch == controller_epoch
+            && active.index == catalog.registry.active_index()
+    });
+    let profile = if active_is_current {
+        Profile::parse(&active.bytes[..active.len]).ok()
+    } else {
+        None
+    };
+
+    let mut report = ProductDispatchReport::default();
+    for _ in 0..budget {
+        match session.dispatch_next(profile.as_ref(), sink) {
+            SessionDispatchOutcome::Idle => {
+                report.idle = true;
+                return report;
+            }
+            SessionDispatchOutcome::Accepted(_) => {
+                report.accepted = report.accepted.saturating_add(1);
+            }
+            SessionDispatchOutcome::Backpressured(_) => {
+                report.backpressured = true;
+                return report;
+            }
+        }
+    }
+
+    report.budget_exhausted = true;
+    report
 }

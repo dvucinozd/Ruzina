@@ -11,6 +11,8 @@ use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 #[allow(dead_code)]
 mod controller_profiles;
 #[allow(dead_code)]
+mod product_runtime;
+#[allow(dead_code)]
 mod usb0_library;
 #[allow(dead_code)]
 mod usb0_msc;

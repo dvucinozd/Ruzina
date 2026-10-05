@@ -324,8 +324,80 @@ impl DeckEffects {
             items: [Some(first), Some(second)],
         }
     }
+
+    pub const fn len(self) -> usize {
+        self.items[0].is_some() as usize + self.items[1].is_some() as usize
+    }
+
+    pub const fn is_empty(self) -> bool {
+        self.len() == 0
+    }
 }
 
+pub struct DeckEffectQueue<const N: usize> {
+    items: [Option<DeckEffect>; N],
+    head: usize,
+    tail: usize,
+    count: usize,
+}
+
+impl<const N: usize> Default for DeckEffectQueue<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<const N: usize> DeckEffectQueue<N> {
+    pub const fn new() -> Self {
+        Self {
+            items: [None; N],
+            head: 0,
+            tail: 0,
+            count: 0,
+        }
+    }
+
+    pub const fn len(&self) -> usize {
+        self.count
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
+    pub const fn remaining_capacity(&self) -> usize {
+        N.saturating_sub(self.count)
+    }
+
+    pub fn try_push_all(&mut self, effects: DeckEffects) -> bool {
+        let needed = effects.len();
+        if needed > self.remaining_capacity() {
+            return false;
+        }
+
+        for effect in effects.items.into_iter().flatten() {
+            if N == 0 {
+                return false;
+            }
+            self.items[self.tail] = Some(effect);
+            self.tail = (self.tail + 1) % N;
+            self.count += 1;
+        }
+        true
+    }
+
+    pub fn pop(&mut self) -> Option<DeckEffect> {
+        if self.count == 0 || N == 0 {
+            return None;
+        }
+        let effect = self.items[self.head].take();
+        self.head = (self.head + 1) % N;
+        self.count -= 1;
+        effect
+    }
+}
+
+#[derive(Clone, Copy)]
 pub struct DeckProductState {
     decks: [DeckState; 2],
     sync_master: Option<DeckId>,
@@ -2949,4 +3021,38 @@ mod tests {
         assert!(!state.deck(DeckId::One).controller_connected);
         assert!(!state.deck(DeckId::Two).controller_connected);
     }
+
+    #[test]
+    fn deck_effect_queue_rejects_multi_effect_delivery_atomically() {
+        let pause = DeckEffect::Pause { deck: DeckId::One };
+        let seek = DeckEffect::Seek {
+            deck: DeckId::One,
+            position_ms: 1_234,
+        };
+        let mut queue = DeckEffectQueue::<1>::new();
+
+        assert!(!queue.try_push_all(DeckEffects::two(pause, seek)));
+        assert!(queue.is_empty());
+
+        assert!(queue.try_push_all(DeckEffects::one(pause)));
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.pop(), Some(pause));
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn deck_effect_queue_preserves_effect_order() {
+        let first = DeckEffect::Pause { deck: DeckId::Two };
+        let second = DeckEffect::Seek {
+            deck: DeckId::Two,
+            position_ms: 9_876,
+        };
+        let mut queue = DeckEffectQueue::<2>::new();
+
+        assert!(queue.try_push_all(DeckEffects::two(first, second)));
+        assert_eq!(queue.pop(), Some(first));
+        assert_eq!(queue.pop(), Some(second));
+        assert_eq!(queue.pop(), None);
+    }
+
 }

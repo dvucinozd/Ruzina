@@ -2,9 +2,11 @@
 #![forbid(unsafe_code)]
 
 use pajoniiir_control_scheduler::{
-    ConnectionDelivery, ConnectionReconciler, ConnectionState, ContinuousMode, EventScheduler,
-    HeldStateReconciler, SchedulerStats,
+    ConnectionDelivery, ConnectionReconciler, ContinuousMode, EventScheduler, HeldStateReconciler,
+    SchedulerStats,
 };
+pub use pajoniiir_control_scheduler::ConnectionState;
+pub use pajoniiir_controller_core::ControlDomain;
 use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
 use pajoniiir_controller_profile::{
     MAX_INPUTS, Profile, ProfileRuntime, SemanticAdapterError, adapt_profile_event,
@@ -63,6 +65,17 @@ pub enum UsbMidiBatchError {
 pub enum SessionDelivery {
     Connection(ConnectionState),
     Control(ControlEvent),
+}
+
+pub trait SessionDeliverySink {
+    fn try_accept(&mut self, delivery: SessionDelivery) -> bool;
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SessionDispatchOutcome {
+    Idle,
+    Accepted(SessionDelivery),
+    Backpressured(SessionDelivery),
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -310,6 +323,26 @@ impl ControllerSession {
         }
 
         None
+    }
+
+    pub fn dispatch_next<S>(
+        &mut self,
+        profile: Option<&Profile<'_>>,
+        sink: &mut S,
+    ) -> SessionDispatchOutcome
+    where
+        S: SessionDeliverySink,
+    {
+        let Some(delivery) = self.next_delivery(profile) else {
+            return SessionDispatchOutcome::Idle;
+        };
+        let accepted = sink.try_accept(delivery);
+        self.complete_delivery(accepted);
+        if accepted {
+            SessionDispatchOutcome::Accepted(delivery)
+        } else {
+            SessionDispatchOutcome::Backpressured(delivery)
+        }
     }
 
     pub fn complete_delivery(&mut self, succeeded: bool) {
@@ -772,4 +805,80 @@ mod tests {
         assert_eq!(session.stats().reconnect_snapshots, 2);
         assert_eq!(session.stats().snapshot_events, 1);
     }
+
+    struct TestDeliverySink {
+        accept: bool,
+        calls: u32,
+        last: Option<SessionDelivery>,
+    }
+
+    impl TestDeliverySink {
+        const fn new(accept: bool) -> Self {
+            Self {
+                accept,
+                calls: 0,
+                last: None,
+            }
+        }
+    }
+
+    impl SessionDeliverySink for TestDeliverySink {
+        fn try_accept(&mut self, delivery: SessionDelivery) -> bool {
+            self.calls = self.calls.saturating_add(1);
+            self.last = Some(delivery);
+            self.accept
+        }
+    }
+
+    #[test]
+    fn dispatch_next_retries_buffered_control_after_backpressure() {
+        let mut session = ControllerSession::new();
+        let play = pressed(DeckId::One, SemanticControl::Play, true);
+        assert_eq!(session.schedule_event(play), IngestOutcome::Scheduled);
+
+        let mut sink = TestDeliverySink::new(false);
+        assert_eq!(
+            session.dispatch_next(None, &mut sink),
+            SessionDispatchOutcome::Backpressured(SessionDelivery::Control(play))
+        );
+        assert_eq!(session.stats().downstream_retries, 1);
+
+        sink.accept = true;
+        assert_eq!(
+            session.dispatch_next(None, &mut sink),
+            SessionDispatchOutcome::Accepted(SessionDelivery::Control(play))
+        );
+        assert_eq!(
+            session.dispatch_next(None, &mut sink),
+            SessionDispatchOutcome::Idle
+        );
+        assert_eq!(sink.calls, 2);
+    }
+
+    #[test]
+    fn connection_delivery_remains_pending_until_sink_accepts_it() {
+        let mut session = ControllerSession::new();
+        session.set_connected(true);
+
+        let mut sink = TestDeliverySink::new(false);
+        assert_eq!(
+            session.dispatch_next(None, &mut sink),
+            SessionDispatchOutcome::Backpressured(SessionDelivery::Connection(
+                ConnectionState::Connected
+            ))
+        );
+
+        sink.accept = true;
+        assert_eq!(
+            session.dispatch_next(None, &mut sink),
+            SessionDispatchOutcome::Accepted(SessionDelivery::Connection(
+                ConnectionState::Connected
+            ))
+        );
+        assert_eq!(
+            session.dispatch_next(None, &mut sink),
+            SessionDispatchOutcome::Idle
+        );
+    }
+
 }

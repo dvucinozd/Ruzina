@@ -117,6 +117,86 @@ pub enum SemanticControl {
     BeatFxBeatIncShift,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ControlDomain {
+    Deck,
+    Mixer,
+    Library,
+    Deferred,
+}
+
+impl SemanticControl {
+    pub const fn domain(self) -> ControlDomain {
+        match self {
+            Self::Play
+            | Self::Cue
+            | Self::JogScratch
+            | Self::JogBend
+            | Self::JogTouch
+            | Self::Tempo
+            | Self::Shift
+            | Self::ToStart
+            | Self::Sync
+            | Self::TempoRange
+            | Self::LoopIn
+            | Self::LoopOut
+            | Self::ReloopExit
+            | Self::LoopHalve
+            | Self::LoopDouble
+            | Self::BeatJumpBack
+            | Self::BeatJumpForward
+            | Self::PadModeHotCue
+            | Self::PadModeBeatLoop
+            | Self::PadModeBeatJump
+            | Self::PadAction
+            | Self::PadModePadFx1
+            | Self::PadModePadFx2
+            | Self::DeckExtAction
+            | Self::LoopSize
+            | Self::BeatFxSelectNext
+            | Self::BeatFxSelectPrev
+            | Self::BeatFxBeatDec
+            | Self::BeatFxBeatInc
+            | Self::BeatFxTarget
+            | Self::BeatFxDepth
+            | Self::BeatFxOn
+            | Self::BeatFxClear
+            | Self::BeatFxBeatDecShift
+            | Self::BeatFxBeatIncShift => ControlDomain::Deck,
+
+            Self::ChannelVolume
+            | Self::Crossfader
+            | Self::Trim
+            | Self::EqHigh
+            | Self::EqMid
+            | Self::EqLow
+            | Self::Filter
+            | Self::Pfl
+            | Self::HeadphoneMix
+            | Self::SmartCfx
+            | Self::SmartFader
+            | Self::MasterVolume
+            | Self::MasterCue
+            | Self::HeadphoneLevel => ControlDomain::Mixer,
+
+            Self::BrowseDelta
+            | Self::Load
+            | Self::BrowsePress
+            | Self::ShiftBrowseDelta
+            | Self::ShiftBrowsePress
+            | Self::ShiftLoad => ControlDomain::Library,
+
+            Self::PadModeKeyShift
+            | Self::PadModeKeyboard
+            | Self::PadModeSampler
+            | Self::JogSearch
+            | Self::JogSearchTouch
+            | Self::SmartCfxShift
+            | Self::SmartFaderShift => ControlDomain::Deferred,
+        }
+    }
+}
+
 /// Exact controller-independent payload.
 ///
 /// Absolute controls keep their integer range instead of being prematurely
@@ -184,4 +264,18 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn control_domains_do_not_silently_route_unimplemented_controls() {
+        assert_eq!(SemanticControl::Play.domain(), ControlDomain::Deck);
+        assert_eq!(SemanticControl::BeatFxOn.domain(), ControlDomain::Deck);
+        assert_eq!(SemanticControl::Crossfader.domain(), ControlDomain::Mixer);
+        assert_eq!(SemanticControl::BrowseDelta.domain(), ControlDomain::Library);
+        assert_eq!(SemanticControl::JogSearch.domain(), ControlDomain::Deferred);
+        assert_eq!(
+            SemanticControl::SmartCfxShift.domain(),
+            ControlDomain::Deferred
+        );
+    }
+
 }
