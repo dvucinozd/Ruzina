@@ -224,9 +224,7 @@ where
             };
 
             if entry_key == *incoming_key.as_bytes()
-                || seen[..seen_count]
-                    .iter()
-                    .any(|seen_key| *seen_key == entry_key)
+                || seen[..seen_count].contains(&entry_key)
             {
                 continue;
             }
