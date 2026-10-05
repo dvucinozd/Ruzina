@@ -3,7 +3,7 @@
 
 pub use pajoniiir_controller_profile::ProfileRegistry;
 use pajoniiir_controller_profile::{
-    MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, MAX_PROFILE_SIZE, ProfileId,
+    MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, MAX_PROFILE_SIZE, ProfileId, ProfileSlot,
 };
 use pajoniiir_media_fs::{AsyncFileSystem, EntryKind, FS_NAME_MAX, FileHandle};
 
@@ -64,6 +64,61 @@ impl ProfileScanBuffers {
         )
         .await
     }
+
+    /// Reload one previously scanned profile into the same bounded scratch.
+    ///
+    /// The caller must revalidate the returned bytes against its activation
+    /// ticket before publishing them. Storage I/O intentionally stays outside
+    /// the registry lock so a disconnect or rescan can invalidate the ticket.
+    pub async fn load_profile<'a, F>(
+        &'a mut self,
+        filesystem: &mut F,
+        slot: ProfileSlot,
+    ) -> Result<&'a [u8], ProfileLoadError<F::Error>>
+    where
+        F: AsyncFileSystem,
+    {
+        let path = ProfilePath::new(slot.id.as_str()).ok_or(ProfileLoadError::InvalidPath)?;
+        let mut file = filesystem
+            .open_read(path.as_str())
+            .await
+            .map_err(ProfileLoadError::Open)?;
+        let file_len = match usize::try_from(file.len()) {
+            Ok(len) if len <= MAX_PROFILE_SIZE => len,
+            _ => {
+                let _ = filesystem.close_file(file).await;
+                return Err(ProfileLoadError::TooLarge);
+            }
+        };
+
+        let mut offset = 0usize;
+        while offset < file_len {
+            match filesystem
+                .read(&mut file, &mut self.profile_storage[offset..file_len])
+                .await
+            {
+                Ok(0) => {
+                    let _ = filesystem.close_file(file).await;
+                    return Err(ProfileLoadError::ShortRead);
+                }
+                Ok(read) if read <= file_len - offset => offset += read,
+                Ok(_) => {
+                    let _ = filesystem.close_file(file).await;
+                    return Err(ProfileLoadError::ReadOverflow);
+                }
+                Err(error) => {
+                    let _ = filesystem.close_file(file).await;
+                    return Err(ProfileLoadError::Read(error));
+                }
+            }
+        }
+
+        filesystem
+            .close_file(file)
+            .await
+            .map_err(ProfileLoadError::Close)?;
+        Ok(&self.profile_storage[..file_len])
+    }
 }
 
 impl Default for ProfileScanBuffers {
@@ -77,6 +132,17 @@ pub enum ProfileScanError<E> {
     OpenRoot(E),
     ReadRoot(E),
     CloseRoot(E),
+}
+
+#[derive(Debug)]
+pub enum ProfileLoadError<E> {
+    InvalidPath,
+    Open(E),
+    TooLarge,
+    ShortRead,
+    ReadOverflow,
+    Read(E),
+    Close(E),
 }
 
 struct ProfilePath {
@@ -594,4 +660,26 @@ mod tests {
         assert!(report.stats.capacity_reached);
         assert_eq!(report.registry.match_index(0xaaaa, 0xbbbb), None);
     }
+
+    #[test]
+    fn reload_profile_uses_scanned_slot_and_bounded_scratch() {
+        let bytes = profile_blob(0x2b73, 0x0045);
+        let slot = ProfileSlot::from_blob("pioneer_ddj_flx4", &bytes).unwrap();
+        let mut filesystem = fs(std::vec![TestProfile {
+            id: "pioneer_ddj_flx4".to_string(),
+            bytes: bytes.clone(),
+            directory: true,
+            readable: true,
+        }]);
+        let mut buffers = ProfileScanBuffers::new();
+
+        let loaded = block_on_ready(buffers.load_profile(&mut filesystem, slot)).unwrap();
+
+        assert_eq!(loaded, bytes.as_slice());
+        assert_eq!(
+            pajoniiir_controller_profile::ProfileMeta::parse(loaded).unwrap(),
+            slot.meta
+        );
+    }
+
 }

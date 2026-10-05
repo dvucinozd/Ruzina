@@ -1,5 +1,6 @@
 use aligned::{A4, Aligned};
 use block_device_driver::BlockDevice as BlockDeviceDriver;
+use embassy_futures::select::{Either, select};
 use embassy_time::{Delay, Timer};
 use esp_hal::sdmmc::{Config, SdHostController, Slot, SlotConfig};
 use pajoniiir_controller_profile_storage::ProfileScanBuffers;
@@ -14,6 +15,10 @@ use pajoniiir_media_partition::{
 use pajoniiir_media_session::{ConnectResult, MediaSession, MediaSourceId};
 use sdio::{Addressable, BlockDevice, MmcError, sd::Card};
 use static_cell::StaticCell;
+
+use crate::controller_profiles::{
+    complete_profile_activation, fail_profile_activation, wait_for_profile_activation_request,
+};
 
 const CARD_HZ: u32 = 25_000_000;
 const RAIL_SETTLE_MS: u64 = 10;
@@ -233,14 +238,31 @@ pub(crate) async fn run_profile_storage_owner(
         };
         crate::controller_profiles::publish_scanned_registry(report.registry);
 
-        // Retain the filesystem/card owner and immutable scan report. USB1 can
-        // consume the bounded registry snapshot immediately; loading and
-        // validating the matched profile blob remains the next activation gate.
+        // Keep filesystem ownership in this task. USB1 requests only a bounded
+        // activation ticket; the SD owner performs the asynchronous reload and
+        // the registry revalidates that ticket before publishing active bytes.
         loop {
-            Timer::after_millis(OWNER_HEALTH_TICK_MS).await;
-            let _ = filesystem.boot_info();
-            let _ = report.registry.len();
-            let _ = report.stats.entries_seen;
+            match select(
+                wait_for_profile_activation_request(),
+                Timer::after_millis(OWNER_HEALTH_TICK_MS),
+            )
+            .await
+            {
+                Either::First(request) => match buffers
+                    .load_profile(&mut filesystem, request.slot)
+                    .await
+                {
+                    Ok(blob) => {
+                        let _ = complete_profile_activation(request, blob).await;
+                    }
+                    Err(_) => fail_profile_activation(request).await,
+                },
+                Either::Second(_) => {
+                    let _ = filesystem.boot_info();
+                    let _ = report.registry.len();
+                    let _ = report.stats.entries_seen;
+                }
+            }
         }
     }
 }
