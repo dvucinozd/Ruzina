@@ -324,7 +324,24 @@ impl<'a> Profile<'a> {
             Some(DeckId::Two) => 1,
             None => DECK_ANY,
         };
-        self.map_led(update.led.as_u8(), deck, update.state.wire_value())
+
+        for index in 0..self.output_count {
+            let entry = self.output(index)?;
+            if entry.led_id != update.led.as_u8() || entry.deck != deck {
+                continue;
+            }
+
+            let state = update.state.wire_value();
+            let value = match entry.kind {
+                OutputKind::CcValue => state & 0x7f,
+                OutputKind::NoteOnOff if state == 0 => entry.off_value,
+                OutputKind::NoteOnOff if state == 2 => entry.blink_value,
+                OutputKind::NoteOnOff => entry.on_value,
+            };
+            return Some([entry.status, entry.data1, value]);
+        }
+
+        None
     }
 }
 
@@ -613,6 +630,33 @@ mod tests {
             profile.map_led_update(LedUpdate {
                 led: SemanticLedId::PLAY,
                 deck: Some(DeckId::Two),
+                state: LedState::On,
+            }),
+            None
+        );
+    }
+
+    #[test]
+    fn typed_led_mapping_requires_exact_deck_scope() {
+        let mut bytes = minimal_profile();
+        let output = HEADER_SIZE + INPUT_ENTRY_SIZE;
+        bytes[output + 1] = DECK_ANY;
+        let checksum = crc32(&bytes[16..]);
+        bytes[12..16].copy_from_slice(&checksum.to_le_bytes());
+
+        let profile = Profile::parse(&bytes).unwrap();
+        assert_eq!(
+            profile.map_led_update(LedUpdate {
+                led: SemanticLedId::PLAY,
+                deck: None,
+                state: LedState::On,
+            }),
+            Some([0x90, 0x0b, 0x7f])
+        );
+        assert_eq!(
+            profile.map_led_update(LedUpdate {
+                led: SemanticLedId::PLAY,
+                deck: Some(DeckId::One),
                 state: LedState::On,
             }),
             None
