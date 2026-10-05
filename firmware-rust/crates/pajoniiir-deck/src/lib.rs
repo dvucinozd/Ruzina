@@ -267,6 +267,13 @@ impl Default for DeckState {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeckEffectTarget {
+    Transport,
+    Persistence,
+    AudioDsp,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DeckEffect {
     PlaybackRequest {
         deck: DeckId,
@@ -309,6 +316,21 @@ pub enum DeckEffect {
     },
 }
 
+impl DeckEffect {
+    pub const fn target(self) -> DeckEffectTarget {
+        match self {
+            Self::PlaybackRequest { .. }
+            | Self::Pause { .. }
+            | Self::Seek { .. }
+            | Self::SetPitchCentipercent { .. }
+            | Self::SetLoop { .. }
+            | Self::ClearLoop { .. } => DeckEffectTarget::Transport,
+            Self::PersistHotCues { .. } => DeckEffectTarget::Persistence,
+            Self::ApplyBeatFx { .. } | Self::ApplyPadFx { .. } => DeckEffectTarget::AudioDsp,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DeckEffects {
     pub items: [Option<DeckEffect>; 2],
@@ -330,8 +352,169 @@ impl DeckEffects {
             items: [Some(first), Some(second)],
         }
     }
+
+    pub const fn len(self) -> usize {
+        self.items[0].is_some() as usize + self.items[1].is_some() as usize
+    }
+
+    pub const fn is_empty(self) -> bool {
+        self.len() == 0
+    }
 }
 
+pub struct DeckEffectQueue<const N: usize> {
+    items: [Option<DeckEffect>; N],
+    head: usize,
+    tail: usize,
+    count: usize,
+}
+
+impl<const N: usize> Default for DeckEffectQueue<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<const N: usize> DeckEffectQueue<N> {
+    pub const fn new() -> Self {
+        Self {
+            items: [None; N],
+            head: 0,
+            tail: 0,
+            count: 0,
+        }
+    }
+
+    pub const fn len(&self) -> usize {
+        self.count
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
+    pub const fn remaining_capacity(&self) -> usize {
+        N.saturating_sub(self.count)
+    }
+
+    pub fn try_push_all(&mut self, effects: DeckEffects) -> bool {
+        let needed = effects.len();
+        if needed > self.remaining_capacity() {
+            return false;
+        }
+
+        for effect in effects.items.into_iter().flatten() {
+            if N == 0 {
+                return false;
+            }
+            self.items[self.tail] = Some(effect);
+            self.tail = (self.tail + 1) % N;
+            self.count += 1;
+        }
+        true
+    }
+
+    pub fn pop(&mut self) -> Option<DeckEffect> {
+        if self.count == 0 || N == 0 {
+            return None;
+        }
+        let effect = self.items[self.head].take();
+        self.head = (self.head + 1) % N;
+        self.count -= 1;
+        effect
+    }
+}
+
+pub struct DeckEffectBroker<const T: usize, const P: usize, const A: usize> {
+    transport: DeckEffectQueue<T>,
+    persistence: DeckEffectQueue<P>,
+    audio_dsp: DeckEffectQueue<A>,
+}
+
+impl<const T: usize, const P: usize, const A: usize> Default for DeckEffectBroker<T, P, A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<const T: usize, const P: usize, const A: usize> DeckEffectBroker<T, P, A> {
+    pub const fn new() -> Self {
+        Self {
+            transport: DeckEffectQueue::new(),
+            persistence: DeckEffectQueue::new(),
+            audio_dsp: DeckEffectQueue::new(),
+        }
+    }
+
+    pub const fn len(&self) -> usize {
+        self.transport.len() + self.persistence.len() + self.audio_dsp.len()
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub const fn transport_len(&self) -> usize {
+        self.transport.len()
+    }
+
+    pub const fn persistence_len(&self) -> usize {
+        self.persistence.len()
+    }
+
+    pub const fn audio_dsp_len(&self) -> usize {
+        self.audio_dsp.len()
+    }
+
+    pub fn try_push_all(&mut self, effects: DeckEffects) -> bool {
+        let mut transport = 0usize;
+        let mut persistence = 0usize;
+        let mut audio_dsp = 0usize;
+
+        for effect in effects.items.into_iter().flatten() {
+            match effect.target() {
+                DeckEffectTarget::Transport => transport += 1,
+                DeckEffectTarget::Persistence => persistence += 1,
+                DeckEffectTarget::AudioDsp => audio_dsp += 1,
+            }
+        }
+
+        if transport > self.transport.remaining_capacity()
+            || persistence > self.persistence.remaining_capacity()
+            || audio_dsp > self.audio_dsp.remaining_capacity()
+        {
+            return false;
+        }
+
+        for effect in effects.items.into_iter().flatten() {
+            let accepted = match effect.target() {
+                DeckEffectTarget::Transport => {
+                    self.transport.try_push_all(DeckEffects::one(effect))
+                }
+                DeckEffectTarget::Persistence => {
+                    self.persistence.try_push_all(DeckEffects::one(effect))
+                }
+                DeckEffectTarget::AudioDsp => self.audio_dsp.try_push_all(DeckEffects::one(effect)),
+            };
+            debug_assert!(accepted);
+        }
+        true
+    }
+
+    pub fn pop_transport(&mut self) -> Option<DeckEffect> {
+        self.transport.pop()
+    }
+
+    pub fn pop_persistence(&mut self) -> Option<DeckEffect> {
+        self.persistence.pop()
+    }
+
+    pub fn pop_audio_dsp(&mut self) -> Option<DeckEffect> {
+        self.audio_dsp.pop()
+    }
+}
+
+#[derive(Clone, Copy)]
 pub struct DeckProductState {
     decks: [DeckState; 2],
     sync_master: Option<DeckId>,
@@ -2954,5 +3137,79 @@ mod tests {
         );
         assert!(!state.deck(DeckId::One).controller_connected);
         assert!(!state.deck(DeckId::Two).controller_connected);
+    }
+
+    #[test]
+    fn deck_effect_queue_rejects_multi_effect_delivery_atomically() {
+        let pause = DeckEffect::Pause { deck: DeckId::One };
+        let seek = DeckEffect::Seek {
+            deck: DeckId::One,
+            position_ms: 1_234,
+        };
+        let mut queue = DeckEffectQueue::<1>::new();
+
+        assert!(!queue.try_push_all(DeckEffects::two(pause, seek)));
+        assert!(queue.is_empty());
+
+        assert!(queue.try_push_all(DeckEffects::one(pause)));
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.pop(), Some(pause));
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn deck_effect_queue_preserves_effect_order() {
+        let first = DeckEffect::Pause { deck: DeckId::Two };
+        let second = DeckEffect::Seek {
+            deck: DeckId::Two,
+            position_ms: 9_876,
+        };
+        let mut queue = DeckEffectQueue::<2>::new();
+
+        assert!(queue.try_push_all(DeckEffects::two(first, second)));
+        assert_eq!(queue.pop(), Some(first));
+        assert_eq!(queue.pop(), Some(second));
+        assert_eq!(queue.pop(), None);
+    }
+
+    #[test]
+    fn deck_effect_target_classification_is_explicit() {
+        assert_eq!(
+            DeckEffect::Pause { deck: DeckId::One }.target(),
+            DeckEffectTarget::Transport
+        );
+        assert_eq!(
+            DeckEffect::ApplyPadFx {
+                deck: DeckId::One,
+                bank: PadFxBank::One,
+                pad: 0,
+                active: true,
+            }
+            .target(),
+            DeckEffectTarget::AudioDsp
+        );
+    }
+
+    #[test]
+    fn effect_broker_reserves_all_lanes_before_committing_any_effect() {
+        let transport = DeckEffect::Pause { deck: DeckId::One };
+        let audio = DeckEffect::ApplyPadFx {
+            deck: DeckId::One,
+            bank: PadFxBank::One,
+            pad: 2,
+            active: true,
+        };
+        let mut broker = DeckEffectBroker::<1, 1, 0>::new();
+
+        assert!(!broker.try_push_all(DeckEffects::two(transport, audio)));
+        assert!(broker.is_empty());
+
+        let mut broker = DeckEffectBroker::<1, 1, 1>::new();
+        assert!(broker.try_push_all(DeckEffects::two(transport, audio)));
+        assert_eq!(broker.transport_len(), 1);
+        assert_eq!(broker.audio_dsp_len(), 1);
+        assert_eq!(broker.pop_transport(), Some(transport));
+        assert_eq!(broker.pop_audio_dsp(), Some(audio));
+        assert!(broker.is_empty());
     }
 }

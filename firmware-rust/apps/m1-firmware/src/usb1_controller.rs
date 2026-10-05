@@ -1,10 +1,12 @@
 use core::cell::RefCell;
 
 use crate::controller_profiles::{
-    ActiveProfileMidiError, bind_controller_descriptor, match_scanned_profile,
-    on_controller_disconnect, process_active_midi_transfer, request_profile_activation,
-    wait_for_profile_activation_change, wait_for_profile_catalog_change,
+    ActiveProfileMidiError, bind_controller_descriptor, dispatch_session_deliveries,
+    match_scanned_profile, on_controller_disconnect, process_active_midi_transfer,
+    request_profile_activation, wait_for_profile_activation_change,
+    wait_for_profile_catalog_change,
 };
+use crate::product_runtime::ProductRuntime;
 use embassy_futures::select::{Either, select};
 use embassy_usb_driver::{
     Direction as UsbDirection, EndpointAddress, EndpointInfo, EndpointType,
@@ -40,6 +42,8 @@ pub(crate) struct Usb1ControllerProbe {
     pub(crate) profile_catalog_revision: u32,
     pub(crate) profile_activation_state: ProfileActivationState,
     pub(crate) midi_ingest: UsbMidiBatchReport,
+    pub(crate) product_pending_deck_effects: u8,
+    pub(crate) product_backpressured: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -219,6 +223,7 @@ pub(crate) async fn run_root_controller_owner(
     let mut pending_speed = None;
     let mut controller_epoch = 0u32;
     let mut session = ControllerSession::new();
+    let mut product = ProductRuntime::new();
 
     loop {
         let speed = match pending_speed.take() {
@@ -285,10 +290,13 @@ pub(crate) async fn run_root_controller_owner(
             profile_catalog_revision: profile_match.revision,
             profile_activation_state: profile_match.activation_state,
             midi_ingest: UsbMidiBatchReport::default(),
+            product_pending_deck_effects: 0,
+            product_backpressured: false,
         };
         refresh_profile_probe(&mut probe, true);
         session.set_connected(true);
         session.reset_profile_state();
+        drain_product_dispatch(&mut probe, &mut session, &mut product).await;
         set_state(Usb1ControllerState::Ready(probe));
 
         pending_speed = wait_for_ready_change(
@@ -296,9 +304,9 @@ pub(crate) async fn run_root_controller_owner(
             &mut probe,
             midi_transport.as_mut(),
             &mut session,
+            &mut product,
         )
         .await;
-        session.set_connected(false);
         drop(midi_transport);
         bus.free_address(info.device_address);
     }
@@ -377,6 +385,7 @@ async fn wait_for_ready_change<'d, C, A>(
     probe: &mut Usb1ControllerProbe,
     mut midi_transport: Option<&mut Usb1MidiTransport<'d, A>>,
     session: &mut ControllerSession,
+    product: &mut ProductRuntime,
 ) -> Option<embassy_usb_driver::Speed>
 where
     C: UsbHostController<'d>,
@@ -391,6 +400,7 @@ where
         );
 
         if probe.profile_activation_state == ProfileActivationState::Active
+            && !probe.product_backpressured
             && let Some(transport) = midi_transport.as_mut()
         {
             let device_or_midi = select(
@@ -401,12 +411,14 @@ where
                 Either::First(Either::First(DeviceEvent::Disconnected)) => {
                     session.set_connected(false);
                     on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Detached);
                     return None;
                 }
                 Either::First(Either::First(DeviceEvent::Overcurrent)) => {
                     session.set_connected(false);
                     on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Failed(
                         Usb1ControllerFailure::Overcurrent,
                     ));
@@ -415,6 +427,7 @@ where
                 Either::First(Either::First(DeviceEvent::Connected(speed))) => {
                     session.set_connected(false);
                     on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Detached);
                     return Some(speed);
                 }
@@ -429,6 +442,7 @@ where
                     {
                         Ok(report) => {
                             probe.midi_ingest.accumulate(report);
+                            drain_product_dispatch(probe, session, product).await;
                             set_state(Usb1ControllerState::Ready(*probe));
                         }
                         Err(ActiveProfileMidiError::NotActive)
@@ -460,6 +474,7 @@ where
                 )))) => {
                     session.set_connected(false);
                     on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Detached);
                     return None;
                 }
@@ -474,11 +489,13 @@ where
                 Either::Second(Either::First(_revision)) => {
                     session.reset_profile_state();
                     refresh_profile_probe(probe, true);
+                    drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Ready(*probe));
                 }
                 Either::Second(Either::Second(_revision)) => {
                     session.reset_profile_state();
                     refresh_profile_probe(probe, false);
+                    drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Ready(*probe));
                 }
             }
@@ -510,13 +527,47 @@ where
             Either::Second(Either::First(_revision)) => {
                 session.reset_profile_state();
                 refresh_profile_probe(probe, true);
+                drain_product_dispatch(probe, session, product).await;
                 set_state(Usb1ControllerState::Ready(*probe));
             }
             Either::Second(Either::Second(_revision)) => {
                 session.reset_profile_state();
                 refresh_profile_probe(probe, false);
+                drain_product_dispatch(probe, session, product).await;
                 set_state(Usb1ControllerState::Ready(*probe));
             }
         }
     }
+}
+
+async fn drain_product_dispatch(
+    probe: &mut Usb1ControllerProbe,
+    session: &mut ControllerSession,
+    product: &mut ProductRuntime,
+) {
+    loop {
+        let report =
+            dispatch_session_deliveries(probe.controller_epoch, session, product, 32).await;
+
+        if report.backpressured {
+            probe.product_backpressured = true;
+            break;
+        }
+        if report.idle {
+            probe.product_backpressured = false;
+            break;
+        }
+
+        // Budget exhaustion is cooperative work chunking, not downstream
+        // backpressure. No producer can mutate this ControllerSession while this
+        // owner is draining it, so another bounded round must make progress or
+        // reach an actual sink refusal.
+        if !report.budget_exhausted {
+            probe.product_backpressured = false;
+            break;
+        }
+    }
+
+    probe.product_pending_deck_effects =
+        product.pending_deck_effects().min(u8::MAX as usize) as u8;
 }
