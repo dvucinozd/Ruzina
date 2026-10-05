@@ -604,8 +604,8 @@ mod tests {
     #[test]
     fn bounded_storage_key_matches_nvs_limit_and_is_deterministic() {
         let track = MediaTrackId([
-            0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
-            0x10, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc, 0xfe,
+            0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x10, 0x32, 0x54, 0x76, 0x98, 0xba,
+            0xdc, 0xfe,
         ]);
         let key = HotCueStorageKey::from_track_id(track);
         assert_eq!(key.as_bytes(), b"h0123456789abcd");
@@ -631,12 +631,12 @@ mod tests {
     fn truncated_backend_key_collision_fails_closed_on_full_track_id() {
         let prefix = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
         let first = MediaTrackId([
-            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6],
-            0x01, 0, 0, 0, 0, 0, 0, 0, 1,
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], 0x01, 0,
+            0, 0, 0, 0, 0, 0, 1,
         ]);
         let second = MediaTrackId([
-            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6],
-            0x02, 0, 0, 0, 0, 0, 0, 0, 2,
+            prefix[0], prefix[1], prefix[2], prefix[3], prefix[4], prefix[5], prefix[6], 0x02, 0,
+            0, 0, 0, 0, 0, 0, 2,
         ]);
         assert_eq!(
             HotCueStorageKey::from_track_id(first),
