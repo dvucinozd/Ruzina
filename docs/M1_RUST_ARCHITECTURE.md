@@ -652,3 +652,20 @@ acceptance; only incomplete frames are compacted before reads. Actual native
 FAT32/exFAT tests now cover S16/S24/S32/F32 through retained neutral consumers.
 See the adapter README's "Retained PCM cursor and multi-format consumers" section
 for exact behavior, software evidence and unchanged production ownership gates.
+
+### Isolated analysis-client ownership contribution — 2026-10-05
+
+The contribution now supplies a dedicated once-claimed USB0 Analysis endpoint
+using the existing filesystem request queue and backend dispatch. The small
+`pajoniiir-media-fs::analysis` bridge owns its original lease, pending ticket,
+handle and dedicated buffer across cancellation. Recovery drains and closes;
+unexpected resource-bearing completions are retained explicitly. Read limits
+preserve whole-buffer ownership for short sequential consumer reads. See the
+adapter README's **Owned analysis broker bridge** contract and tests.
+
+The existing native consumer and retained neutral consumers exercise this path
+on host native FAT32/exFAT fixtures. The endpoint remains unclaimed in production;
+no provider selection, task spawn, memory placement or audio call path changes.
+Owner review is needed for adopting this dedicated lane and its lifetime/recovery
+contract, selecting the long-lived task and existing SRAM/PSRAM storage policy.
+Software recovery does not establish backend deadlines or hardware DMA/cache safety.

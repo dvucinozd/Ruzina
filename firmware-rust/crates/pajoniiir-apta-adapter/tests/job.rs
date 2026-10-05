@@ -212,8 +212,14 @@ fn composed_jobs_reuse_arrays_and_persistent_requests_after_closed_control_scope
     let media = mounted();
     let catalog = catalog(&media);
     let mut requests = Requests::default();
-    let mut fs = Fs::new(&media, wav(300));
-    fs.mode = 8;
+    let control = std::rc::Rc::new(support::broker::Control::default());
+    control.yield_receive.set(true);
+    let broker = support::broker::Broker::new(Fs::new(&media, wav(300)), control.clone());
+    let mut fs = pajoniiir_media_fs::analysis::Client::new(
+        broker,
+        media.lease().unwrap(),
+        Box::leak(Box::new([0; 4096])),
+    );
     let mut bytes = [0; 4096];
     let mut pcm = [0.; 512];
     let mut queue = [NormalizedSample::default(); 17];
@@ -272,7 +278,9 @@ fn composed_jobs_reuse_arrays_and_persistent_requests_after_closed_control_scope
         .unwrap();
         assert_eq!(pin.track(&media).unwrap().generation(), generation);
         // Leaving this iteration releases closed control and its array borrows.
-        assert_eq!(fs.closes, generation as usize * 2);
+        assert_eq!(control.closes.get(), generation as usize * 2);
+        assert!(fs.is_idle());
     }
     allocation::finish();
+    support::broker::free_buffer(fs.retire_buffer().unwrap());
 }

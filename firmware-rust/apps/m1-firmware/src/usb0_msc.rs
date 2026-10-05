@@ -318,6 +318,7 @@ pub(crate) enum Usb0FsRequest {
         ticket: FileSystemRequestTicket,
         file: Usb0FsFileHandle,
         buffer: &'static mut [u8],
+        limit: usize,
     },
     Seek {
         ticket: FileSystemRequestTicket,
@@ -431,7 +432,8 @@ pub(crate) struct Usb0FilesystemClient {
 }
 
 impl Usb0FilesystemClient {
-    pub(crate) const fn new(client: FileSystemClientId) -> Self {
+    const fn new(client: FileSystemClientId) -> Self {
+        assert!(!matches!(client, FileSystemClientId::Analysis));
         Self {
             client,
             sequencer: FileSystemRequestSequencer::new(),
@@ -1668,6 +1670,7 @@ fn filesystem_completion_channel(
         FileSystemClientId::Library => &USB0_FS_LIBRARY_COMPLETIONS,
         FileSystemClientId::DeckA => &USB0_FS_DECK_A_COMPLETIONS,
         FileSystemClientId::DeckB => &USB0_FS_DECK_B_COMPLETIONS,
+        FileSystemClientId::Analysis => &USB0_FS_ANALYSIS_COMPLETIONS,
     }
 }
 
@@ -1855,9 +1858,13 @@ async fn process_filesystem_request(
             ticket,
             mut file,
             buffer,
+            limit,
         } => {
             let result = match active_filesystem_for_request(active, ticket) {
-                Ok(filesystem) => filesystem.read(&mut file, buffer).await,
+                Ok(filesystem) => {
+                    let size = limit.min(buffer.len());
+                    filesystem.read(&mut file, &mut buffer[..size]).await
+                }
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::Read {
@@ -2469,5 +2476,90 @@ fn complete_with_status(
             status,
         },
         Usb0MscRequest::Flush { ticket } => Usb0MscCompletion::Flush { ticket, status },
+    }
+}
+
+// Claim once for firmware lifetime. Jobs never create a second receiver.
+static USB0_FS_ANALYSIS_COMPLETIONS: Channel<
+    CriticalSectionRawMutex,
+    Usb0FsCompletion,
+    USB0_FS_COMPLETION_DEPTH,
+> = Channel::new();
+static USB0_ANALYSIS_CLAIMED: CriticalSectionMutex<RefCell<bool>> =
+    CriticalSectionMutex::new(RefCell::new(false));
+pub(crate) struct Usb0AnalysisTransport {
+    _private: (),
+}
+impl Usb0AnalysisTransport {
+    pub(crate) fn take() -> Option<Self> {
+        USB0_ANALYSIS_CLAIMED.lock(|v| {
+            let mut claimed = v.borrow_mut();
+            if *claimed {
+                None
+            } else {
+                *claimed = true;
+                Some(Self { _private: () })
+            }
+        })
+    }
+}
+impl pajoniiir_media_fs::analysis::Transport for Usb0AnalysisTransport {
+    type Handle = Usb0FsFileHandle;
+    type Error = Usb0FsOperationError;
+    type Unexpected = Usb0FsCompletion;
+    fn valid(&self, lease: MediaLease) -> bool {
+        with_lifecycle(|l| l.session().validate(lease))
+    }
+    fn kind(&self) -> FileSystemKind {
+        match filesystem_state() {
+            Usb0MscFilesystemState::Ready { probe, .. } => probe.kind(),
+            _ => FileSystemKind::Fat32,
+        }
+    }
+    fn try_send(
+        &mut self,
+        request: pajoniiir_media_fs::analysis::Request<Self::Handle>,
+    ) -> Result<(), pajoniiir_media_fs::analysis::Request<Self::Handle>> {
+        use pajoniiir_media_fs::analysis::Request;
+        let request = match request {
+            Request::Open(ticket, path) => Usb0FsRequest::OpenRead { ticket, path },
+            Request::Read(ticket, file, buffer, limit) => Usb0FsRequest::Read {
+                ticket,
+                file,
+                buffer,
+                limit,
+            },
+            Request::Close(ticket, file) => Usb0FsRequest::CloseFile { ticket, file },
+        };
+        USB0_FS_REQUESTS.try_send(request).map_err(|error| {
+            let embassy_sync::channel::TrySendError::Full(request) = error;
+            match request {
+                Usb0FsRequest::OpenRead { ticket, path } => Request::Open(ticket, path),
+                Usb0FsRequest::Read {
+                    ticket,
+                    file,
+                    buffer,
+                    limit,
+                } => Request::Read(ticket, file, buffer, limit),
+                Usb0FsRequest::CloseFile { ticket, file } => Request::Close(ticket, file),
+                _ => unreachable!(),
+            }
+        })
+    }
+    async fn receive(
+        &mut self,
+    ) -> pajoniiir_media_fs::analysis::Completion<Self::Handle, Self::Error, Self::Unexpected> {
+        use pajoniiir_media_fs::analysis::Completion;
+        match USB0_FS_ANALYSIS_COMPLETIONS.receive().await {
+            Usb0FsCompletion::OpenRead { ticket, result } => Completion::Open(ticket, result),
+            Usb0FsCompletion::Read {
+                ticket,
+                file,
+                buffer,
+                result,
+            } => Completion::Read(ticket, file, buffer, result),
+            Usb0FsCompletion::CloseFile { ticket, result } => Completion::Close(ticket, result),
+            completion => Completion::Unexpected(completion.ticket(), completion),
+        }
     }
 }

@@ -1,3 +1,5 @@
+#[allow(dead_code)]
+pub mod broker;
 use core::{
     future::Future,
     pin::pin,

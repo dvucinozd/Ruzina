@@ -550,6 +550,7 @@ async fn read_prefix(
     let ticket = client.issue_ticket(lease);
     match client
         .submit(Usb0FsRequest::Read {
+            limit: buffer.len(),
             ticket,
             file,
             buffer,

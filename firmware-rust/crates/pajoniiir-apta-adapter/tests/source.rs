@@ -23,12 +23,19 @@ const EMPTY: Beat = Beat {
 };
 
 fn analyze<F: AsyncFileSystem>(
-    mut fs: F,
+    fs: F,
     media: &pajoniiir_media_session::MediaSession,
     original: &[u8],
 ) where
     F::Error: core::fmt::Debug,
 {
+    let control = std::rc::Rc::new(support::broker::Control::default());
+    let broker = support::broker::Broker::new(fs, control.clone());
+    let mut fs = pajoniiir_media_fs::analysis::Client::new(
+        broker,
+        media.lease().unwrap(),
+        Box::leak(Box::new([0; 4096])),
+    );
     let snapshot = catalog(media);
     let mut catalog = pajoniiir_media_catalog::CatalogBankBuilder::new(
         snapshot.lease(),
@@ -123,10 +130,18 @@ fn analyze<F: AsyncFileSystem>(
     );
     let decks = DeckProductState::new();
     let selected = Pin::load(DeckId::One, &decks, completed, &requests, media).unwrap();
-    analyze_stream(fs, media, original, selected.track(media).unwrap(), view);
+    analyze_stream(
+        &mut fs,
+        media,
+        original,
+        selected.track(media).unwrap(),
+        view,
+    );
+    assert!(fs.is_idle());
+    support::broker::free_buffer(fs.retire_buffer().unwrap());
 }
 fn analyze_stream<F: AsyncFileSystem>(
-    mut fs: F,
+    fs: &mut F,
     media: &pajoniiir_media_session::MediaSession,
     original: &[u8],
     expected: pajoniiir_track_analysis::TrackAnalysis<'_>,
@@ -153,7 +168,7 @@ fn analyze_stream<F: AsyncFileSystem>(
     };
     let mut scan = None;
     let source =
-        drive(request.scan(&mut scan, &mut fs, &mut requests, media, limits, &mut bytes)).unwrap();
+        drive(request.scan(&mut scan, fs, &mut requests, media, limits, &mut bytes)).unwrap();
     assert!(scan.is_none());
     allocation::finish();
     assert_eq!(
@@ -202,7 +217,7 @@ fn analyze_stream<F: AsyncFileSystem>(
             .unwrap();
         let worker = slot.as_mut().unwrap();
         let mut scratch = [0.; 512];
-        drive(worker.run(&mut fs, &requests, media, &mut scratch)).unwrap();
+        drive(worker.run(fs, &requests, media, &mut scratch)).unwrap();
         let worker = worker.verified_worker().unwrap();
         let completed = worker.complete(&requests, media, &mut bank).unwrap();
         let view = worker
@@ -212,7 +227,6 @@ fn analyze_stream<F: AsyncFileSystem>(
         (completed, view)
     };
 
-    drop(fs);
     assert_eq!(view.columns, expected_waveform.columns);
     let decks = DeckProductState::new();
     let new = Pin::load(DeckId::One, &decks, completed, &requests, media).unwrap();

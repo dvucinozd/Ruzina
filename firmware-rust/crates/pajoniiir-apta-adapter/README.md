@@ -957,3 +957,84 @@ Actual combined firmware `firmware-frames-20261005T091530Z` compiles/links with
 4213 frame records and APTA absent. Inventories include unused functions and do
 not establish complete call-stack maxima, runtime high-water, placement, DMA/cache,
 interrupt nesting or simultaneous workload timing. No hardware was operated.
+
+## Owned analysis broker bridge — 2026-10-05
+
+`pajoniiir-media-fs::analysis::Client` implements the existing `AsyncFileSystem`
+contract for one sequential analysis file. It owns its transport endpoint, original
+media lease, monotonically checked ticket/file IDs and one dedicated broker scratch
+buffer. Open/read/close use the existing USB0 filesystem request queue and native
+FAT32/exFAT dispatch. A bounded read limit preserves short WAV framing/EOF reads
+while returning the entire owned buffer. Stat, seek and directories are deliberately
+unsupported: the two-pass sequential native consumer does not need them.
+
+`Usb0AnalysisTransport::take` claims a dedicated Analysis completion lane once for
+firmware lifetime. Its private, non-cloneable endpoint cannot be recreated through
+the old Library/Deck constructors. It is not selected or spawned by firmware.
+The bridge contains no Libapta dependency; portable Libapta and its immutable pin
+are unchanged. Desktop `libapta-runtime` remains outside firmware.
+
+Keep the client and existing Requests owner outside cancellable job futures.
+Before I/O and after completion the client validates the original lease; stale
+reads never copy bytes into consumer scratch. Pending ticket and operation kind
+must both match. Unexpected completions, including their handles/buffers, remain
+quarantined until explicitly taken for owner investigation/cleanup; the original
+pending ticket survives. Queue refusal returns resources to the client.
+
+Cancellation is drain-and-close, not a promise to abort USB/DMA in flight:
+`recover().await` receives the outstanding completion, restores exclusive handle
+and buffer ownership, then submits close through the same broker. Recovery may
+itself be cancelled and resumed. Errors are surfaced; retry recovery to finish
+remaining cleanup. `close_file` also performs this recovery for a cancelled read.
+A cancelled open/close with no surviving logical handle requires explicit client
+recovery. Never drop/recreate the client to recover it. A hung backend remains a
+hung backend; no timeout claims or unsafe buffer reclamation are introduced.
+
+Only idle clients may bind another validated media lease or retire their buffer.
+Sequences do not reset or wrap; open/read reserve the final available ticket for
+cleanup. Logical file tokens are non-cloneable and older tokens cannot close a
+new file. Retiring releases scratch but never returns/reissues the endpoint.
+
+Existing caller-owned core/conversion banks retain neutral output independently
+of broker scratch. The actual native filesystem fixtures now traverse this bridge
+for whole-object and both streaming passes, compare every beat/column, and retain
+Deck pins through the existing Sync/Beat Jump/rendered and acknowledged transport
+checks. No worker, filesystem operation or analysis allocation enters audio.
+Production bank placement, task scheduling and provider selection still require
+owner review and ADR-006/M1R-P1-001 qualification.
+
+Final consumer acceptance `20261005T094935Z`: 463 workspace tests, 122 focused
+release tests, 47 adapter ASan tests, plus the lifetime compile-fail doctest in
+each suite; formatting, Clippy, allocation counters and P4 adapter checks pass.
+Broker tests include cancelled open/read/close, wrong ticket/operation quarantine,
+queue refusal, backend errors, stale completion without output mutation, old
+logical-file rejection, replaced scan recovery and repeated jobs. A foundation
+regression covers queue refusal at the last reserved cleanup ticket: sequence
+numbers advance only after successful enqueue, so close remains retryable. The fifteen
+native filesystem profiles retain exact whole-object/streaming output comparisons.
+The host broker fixture executes native I/O before yielding the queued completion;
+it tests ownership across pending receives, not USB DMA execution.
+
+Artifacts `20261005T095211Z` preserve original impulse/silence PPM bytes.
+Native/streaming probes are `20261005T095214Z` / `20261005T095219Z`. Complete task
+`20261005T095219Z` passes three host tests; the actual Embassy test now uses the
+bridge and yielded completions alongside another runnable task, without measured
+allocation after setup. Other host task tests preserve direct-backend pending I/O
+and cancelled scan control. Existing verification scripts reproduce these checks.
+
+The added opaque-callback FAT32 broker RV32 probe measures a 3056-byte complete
+job future, 3432-byte Embassy pool, 176-byte client, 664-byte scanner control,
+4264-byte worker control, and separate 4096-byte broker scratch. Poll frame is
+4352 bytes; `submit` has a separate 1088-byte frame. The existing caller banks are
+108772 bytes, so banks + pool + client + both controls + scratch total 121404
+bytes for this probe only. It excludes actual USB transport/channel state,
+filesystem owner, other tasks, stack and physical placement. Direct FAT32/exFAT
+future/pool/control diagnostics retain their preceding values. Do not mix these
+profiles or treat a smaller coroutine as a smaller full system memory budget.
+
+Separate forced-frame-pointer inventory `task-nested-20261005T095224Z` records
+1502 frames, including broker polling 4352 bytes and initialization 3440 bytes.
+Actual combined firmware `firmware-frames-20261005T095227Z` compiles/links with
+4213 frame records and APTA unselected. Inventories include unused functions;
+none is a complete call-graph maximum, safe stack size, runtime high-water or
+hardware acceptance. Physical SRAM/PSRAM/DMA/cache/timing gates remain open.
