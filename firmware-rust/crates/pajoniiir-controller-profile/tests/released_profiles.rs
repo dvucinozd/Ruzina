@@ -1,4 +1,6 @@
-use pajoniiir_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
+use pajoniiir_controller_core::{
+    ControlEvent, ControlValue, DeckId, LedState, LedUpdate, SemanticControl, SemanticLedId,
+};
 use pajoniiir_controller_profile::{
     PROFILE_FLAG_JOG_TOUCH, PROFILE_FLAG_LED_FEEDBACK, PROFILE_FLAG_PITCH_14BIT,
     PROFILE_FLAG_USB_AUDIO, Profile, ProfileEvent, ProfileRuntime, adapt_profile_event,
@@ -78,6 +80,14 @@ fn released_flx4_profile_parses_and_matches_core_mappings() {
         }
     );
     assert_eq!(profile.map_led(1, 0, 1), Some([0x90, 0x0b, 0x7f]));
+    assert_eq!(
+        profile.map_led_update(LedUpdate {
+            led: SemanticLedId::PLAY,
+            deck: Some(DeckId::One),
+            state: LedState::On,
+        }),
+        Some([0x90, 0x0b, 0x7f])
+    );
     assert_eq!(profile.map_led(5, 1, 0x55), Some([0xb1, 0x02, 0x55]));
 
     assert_eq!(runtime.process(&profile, 0xb6, 0x1f, 0x40), None);
@@ -144,6 +154,14 @@ fn released_hercules_profile_parses_and_matches_core_mappings() {
         }
     );
     assert_eq!(profile.map_led(1, 0, 1), Some([0x91, 0x07, 0x7f]));
+    assert_eq!(
+        profile.map_led_update(LedUpdate {
+            led: SemanticLedId::PLAY,
+            deck: Some(DeckId::One),
+            state: LedState::On,
+        }),
+        Some([0x91, 0x07, 0x7f])
+    );
     assert_eq!(profile.map_led(5, 1, 0x44), Some([0xb2, 0x40, 0x44]));
 
     assert_eq!(runtime.process(&profile, 0xb0, 0x00, 0x40), None);

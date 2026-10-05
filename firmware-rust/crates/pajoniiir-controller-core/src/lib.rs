@@ -229,6 +229,106 @@ pub enum LedState {
     Value(u8),
 }
 
+impl LedState {
+    pub const fn wire_value(self) -> u8 {
+        match self {
+            Self::Off => 0,
+            Self::On => 1,
+            Self::Blink => 2,
+            Self::Value(value) => value & 0x7f,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct SemanticLedId(u8);
+
+impl SemanticLedId {
+    pub const CUE: Self = Self(0);
+    pub const PLAY: Self = Self(1);
+    pub const PFL: Self = Self(4);
+    pub const VU_METER: Self = Self(5);
+    pub const PAD_MODE_HOT_CUE: Self = Self(6);
+    pub const PAD_MODE_KEYBOARD: Self = Self(7);
+    pub const PAD_MODE_PAD_FX1: Self = Self(8);
+    pub const PAD_MODE_PAD_FX2: Self = Self(9);
+    pub const PAD_MODE_BEAT_JUMP: Self = Self(10);
+    pub const PAD_MODE_BEAT_LOOP: Self = Self(11);
+    pub const PAD_MODE_SAMPLER: Self = Self(12);
+    pub const PAD_MODE_KEY_SHIFT: Self = Self(13);
+    pub const SYNC: Self = Self(14);
+    pub const LOOP_IN: Self = Self(15);
+    pub const LOOP_OUT: Self = Self(16);
+    pub const SMART_CFX: Self = Self(41);
+    pub const SMART_FADER: Self = Self(42);
+    pub const BEAT_FX_ON: Self = Self(43);
+    pub const MASTER_CUE: Self = Self(52);
+    pub const CENSOR: Self = Self(53);
+    pub const CUE_SHIFT: Self = Self(54);
+    pub const LOOP_ADJUST_IN: Self = Self(55);
+    pub const LOOP_ADJUST_OUT: Self = Self(56);
+    pub const TRACK_LOAD_DECK1: Self = Self(57);
+    pub const TRACK_LOAD_DECK2: Self = Self(58);
+
+    pub const BEAT_LOOP_PAD_BASE: u8 = 17;
+    pub const PAD_FX1_PAD_BASE: u8 = 25;
+    pub const PAD_FX2_PAD_BASE: u8 = 33;
+    pub const HOT_CUE_PAD_BASE: u8 = 44;
+    pub const BEAT_JUMP_PAD_BASE: u8 = 59;
+    pub const BEAT_JUMP_SHIFT_HELPER_BASE: u8 = 67;
+    pub const MAX_ID: u8 = 68;
+
+    pub const fn from_raw(value: u8) -> Option<Self> {
+        match value {
+            0 | 1 | 4..=68 => Some(Self(value)),
+            _ => None,
+        }
+    }
+
+    pub const fn as_u8(self) -> u8 {
+        self.0
+    }
+
+    pub const fn beat_loop_pad(index: u8) -> Option<Self> {
+        Self::bank(Self::BEAT_LOOP_PAD_BASE, 8, index)
+    }
+
+    pub const fn pad_fx1_pad(index: u8) -> Option<Self> {
+        Self::bank(Self::PAD_FX1_PAD_BASE, 8, index)
+    }
+
+    pub const fn pad_fx2_pad(index: u8) -> Option<Self> {
+        Self::bank(Self::PAD_FX2_PAD_BASE, 8, index)
+    }
+
+    pub const fn hot_cue_pad(index: u8) -> Option<Self> {
+        Self::bank(Self::HOT_CUE_PAD_BASE, 8, index)
+    }
+
+    pub const fn beat_jump_pad(index: u8) -> Option<Self> {
+        Self::bank(Self::BEAT_JUMP_PAD_BASE, 8, index)
+    }
+
+    pub const fn beat_jump_shift_helper(index: u8) -> Option<Self> {
+        Self::bank(Self::BEAT_JUMP_SHIFT_HELPER_BASE, 2, index)
+    }
+
+    const fn bank(base: u8, count: u8, index: u8) -> Option<Self> {
+        if index < count {
+            Some(Self(base + index))
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LedUpdate {
+    pub led: SemanticLedId,
+    pub deck: Option<DeckId>,
+    pub state: LedState,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,4 +380,30 @@ mod tests {
             ControlDomain::Deferred
         );
     }
+
+    #[test]
+    fn released_semantic_led_ids_and_banks_are_stable() {
+        assert_eq!(SemanticLedId::PLAY.as_u8(), 1);
+        assert_eq!(SemanticLedId::SYNC.as_u8(), 14);
+        assert_eq!(SemanticLedId::BEAT_FX_ON.as_u8(), 43);
+        assert_eq!(SemanticLedId::MASTER_CUE.as_u8(), 52);
+        assert_eq!(SemanticLedId::hot_cue_pad(7).unwrap().as_u8(), 51);
+        assert_eq!(SemanticLedId::beat_jump_pad(7).unwrap().as_u8(), 66);
+        assert_eq!(
+            SemanticLedId::beat_jump_shift_helper(1).unwrap().as_u8(),
+            68
+        );
+        assert_eq!(SemanticLedId::hot_cue_pad(8), None);
+        assert_eq!(SemanticLedId::from_raw(2), None);
+        assert_eq!(SemanticLedId::from_raw(68), Some(SemanticLedId(68)));
+    }
+
+    #[test]
+    fn led_state_wire_encoding_preserves_value_semantics() {
+        assert_eq!(LedState::Off.wire_value(), 0);
+        assert_eq!(LedState::On.wire_value(), 1);
+        assert_eq!(LedState::Blink.wire_value(), 2);
+        assert_eq!(LedState::Value(0xff).wire_value(), 0x7f);
+    }
+
 }

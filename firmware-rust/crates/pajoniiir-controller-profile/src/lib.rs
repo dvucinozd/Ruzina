@@ -10,6 +10,8 @@ pub use semantic::{SemanticAdapterError, adapt_profile_event};
 #[cfg(test)]
 extern crate std;
 
+use pajoniiir_controller_core::{DeckId, LedUpdate};
+
 pub const S3CP_MAGIC: &[u8; 4] = b"S3CP";
 pub const S3CP_VERSION: u16 = 2;
 pub const HEADER_SIZE: usize = 32;
@@ -315,6 +317,15 @@ impl<'a> Profile<'a> {
 
         None
     }
+
+    pub fn map_led_update(&self, update: LedUpdate) -> Option<[u8; 3]> {
+        let deck = match update.deck {
+            Some(DeckId::One) => 0,
+            Some(DeckId::Two) => 1,
+            None => DECK_ANY,
+        };
+        self.map_led(update.led.as_u8(), deck, update.state.wire_value())
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -528,6 +539,7 @@ fn read_u32(data: &[u8], offset: usize) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pajoniiir_controller_core::{LedState, SemanticLedId};
 
     fn minimal_profile() -> [u8; HEADER_SIZE + INPUT_ENTRY_SIZE + OUTPUT_ENTRY_SIZE] {
         let mut bytes = [0u8; HEADER_SIZE + INPUT_ENTRY_SIZE + OUTPUT_ENTRY_SIZE];
@@ -589,6 +601,22 @@ mod tests {
             })
         );
         assert_eq!(profile.map_led(1, 0, 1), Some([0x90, 0x0b, 0x7f]));
+        assert_eq!(
+            profile.map_led_update(LedUpdate {
+                led: SemanticLedId::PLAY,
+                deck: Some(DeckId::One),
+                state: LedState::On,
+            }),
+            Some([0x90, 0x0b, 0x7f])
+        );
+        assert_eq!(
+            profile.map_led_update(LedUpdate {
+                led: SemanticLedId::PLAY,
+                deck: Some(DeckId::Two),
+                state: LedState::On,
+            }),
+            None
+        );
     }
 
     #[test]
