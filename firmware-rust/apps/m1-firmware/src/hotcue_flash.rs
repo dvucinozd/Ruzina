@@ -157,7 +157,7 @@ fn label_matches(field: &[u8], expected: &[u8]) -> bool {
     if field.len() != 16 || expected.len() >= field.len() {
         return false;
     }
-    field[..expected.len()] == *expected
+    &field[..expected.len()] == expected
         && field[expected.len()] == 0
         && field[expected.len() + 1..].iter().all(|byte| *byte == 0)
 }
