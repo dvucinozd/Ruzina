@@ -6,6 +6,9 @@ use crate::controller_profiles::{
     on_controller_disconnect, process_active_midi_transfer, request_profile_activation,
     wait_for_profile_activation_change, wait_for_profile_catalog_change,
 };
+use crate::deck_effect_owners::{
+    dispatch_product_effects, wait_for_effect_owner_progress,
+};
 use crate::product_runtime::ProductRuntime;
 use embassy_futures::select::{Either, select};
 use embassy_usb_driver::{
@@ -453,6 +456,7 @@ where
             wait_for_profile_catalog_change(),
             wait_for_profile_activation_change(),
         );
+        let runtime_change = select(profile_change, wait_for_effect_owner_progress());
 
         if probe.profile_activation_state == ProfileActivationState::Active
             && !probe.product_backpressured
@@ -462,7 +466,7 @@ where
                 controller.wait_for_device_event(),
                 transport.read_raw(&mut midi_buffer),
             );
-            match select(device_or_midi, profile_change).await {
+            match select(device_or_midi, runtime_change).await {
                 Either::First(Either::First(DeviceEvent::Disconnected)) => {
                     session.set_connected(false);
                     on_controller_disconnect();
@@ -541,15 +545,19 @@ where
                     ));
                     return None;
                 }
-                Either::Second(Either::First(_revision)) => {
+                Either::Second(Either::First(Either::First(_revision))) => {
                     session.reset_profile_state();
                     refresh_profile_probe(probe, true);
                     drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Ready(*probe));
                 }
-                Either::Second(Either::Second(_revision)) => {
+                Either::Second(Either::First(Either::Second(_revision))) => {
                     session.reset_profile_state();
                     refresh_profile_probe(probe, false);
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Ready(*probe));
+                }
+                Either::Second(Either::Second(())) => {
                     drain_product_dispatch(probe, session, product).await;
                     set_state(Usb1ControllerState::Ready(*probe));
                 }
@@ -557,7 +565,7 @@ where
             continue;
         }
 
-        match select(controller.wait_for_device_event(), profile_change).await {
+        match select(controller.wait_for_device_event(), runtime_change).await {
             Either::First(DeviceEvent::Disconnected) => {
                 session.set_connected(false);
                 on_controller_disconnect();
@@ -579,15 +587,19 @@ where
                 return Some(speed);
             }
             Either::First(_) => {}
-            Either::Second(Either::First(_revision)) => {
+            Either::Second(Either::First(Either::First(_revision))) => {
                 session.reset_profile_state();
                 refresh_profile_probe(probe, true);
                 drain_product_dispatch(probe, session, product).await;
                 set_state(Usb1ControllerState::Ready(*probe));
             }
-            Either::Second(Either::Second(_revision)) => {
+            Either::Second(Either::First(Either::Second(_revision))) => {
                 session.reset_profile_state();
                 refresh_profile_probe(probe, false);
+                drain_product_dispatch(probe, session, product).await;
+                set_state(Usb1ControllerState::Ready(*probe));
+            }
+            Either::Second(Either::Second(())) => {
                 drain_product_dispatch(probe, session, product).await;
                 set_state(Usb1ControllerState::Ready(*probe));
             }
@@ -601,10 +613,15 @@ async fn drain_product_dispatch(
     product: &mut ProductRuntime,
 ) {
     loop {
+        let before = dispatch_product_effects(product);
         let report =
             dispatch_session_deliveries(probe.controller_epoch, session, product, 32).await;
+        let after = dispatch_product_effects(product);
 
         if report.backpressured {
+            if before.made_progress() || after.made_progress() {
+                continue;
+            }
             probe.product_backpressured = true;
             break;
         }
@@ -623,6 +640,7 @@ async fn drain_product_dispatch(
         }
     }
 
+    let _ = dispatch_product_effects(product);
     probe.product_pending_deck_effects =
         product.pending_deck_effects().min(u8::MAX as usize) as u8;
 }

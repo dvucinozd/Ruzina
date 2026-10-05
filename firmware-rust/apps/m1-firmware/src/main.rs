@@ -11,6 +11,8 @@ use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 #[allow(dead_code)]
 mod controller_profiles;
 #[allow(dead_code)]
+mod deck_effect_owners;
+#[allow(dead_code)]
 mod product_runtime;
 #[allow(dead_code)]
 mod usb0_library;
@@ -43,6 +45,18 @@ async fn usb0_filesystem_task() {
 #[embassy_executor::task]
 async fn usb0_library_task() {
     usb0_library::run_usb0_library_worker().await
+}
+
+#[cfg(feature = "usb1-controller-bringup")]
+#[embassy_executor::task]
+async fn deck_transport_owner_task() {
+    deck_effect_owners::run_transport_owner().await
+}
+
+#[cfg(feature = "usb1-controller-bringup")]
+#[embassy_executor::task]
+async fn deck_audio_dsp_owner_task() {
+    deck_effect_owners::run_audio_dsp_owner().await
 }
 
 #[cfg(feature = "usb1-controller-bringup")]
@@ -137,6 +151,12 @@ async fn main(spawner: Spawner) -> ! {
 
     #[cfg(feature = "usb1-controller-bringup")]
     {
+        spawner.spawn(
+            deck_transport_owner_task().expect("deck transport owner task slot must be available"),
+        );
+        spawner.spawn(
+            deck_audio_dsp_owner_task().expect("deck audio DSP owner task slot must be available"),
+        );
         spawner.spawn(
             usb1_owner_task(peripherals.USB_FS, peripherals.GPIO27, peripherals.GPIO26)
                 .expect("USB1 owner task slot must be available"),

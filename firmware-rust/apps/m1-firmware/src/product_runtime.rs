@@ -53,6 +53,18 @@ impl ProductRuntime {
         self.deck_effects.len()
     }
 
+    pub(crate) const fn pending_transport_effects(&self) -> usize {
+        self.deck_effects.transport_len()
+    }
+
+    pub(crate) const fn pending_persistence_effects(&self) -> usize {
+        self.deck_effects.persistence_len()
+    }
+
+    pub(crate) const fn pending_audio_dsp_effects(&self) -> usize {
+        self.deck_effects.audio_dsp_len()
+    }
+
     pub(crate) fn next_transport_effect(&self) -> Option<DeckEffect> {
         self.deck_effects.transport_front()
     }
@@ -75,6 +87,21 @@ impl ProductRuntime {
 
     pub(crate) fn complete_audio_dsp_effect(&mut self, succeeded: bool) -> bool {
         self.deck_effects.complete_audio_dsp(succeeded)
+    }
+
+    pub(crate) fn resolve_playback_request(
+        &mut self,
+        deck: DeckId,
+        request_id: u32,
+        succeeded: bool,
+    ) -> bool {
+        let resolved = self
+            .deck
+            .resolve_playback_request(deck, request_id, succeeded);
+        if resolved {
+            self.refresh_leds();
+        }
+        resolved
     }
 
     pub(crate) const fn has_dirty_leds(&self) -> bool {
