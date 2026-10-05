@@ -6,11 +6,12 @@ use esp_hal::sdmmc::{Config, SdHostController, Slot, SlotConfig};
 use pajoniiir_controller_profile_storage::ProfileScanBuffers;
 use pajoniiir_media_block::{BlockGeometry, BlockRange, TransferError};
 use pajoniiir_media_fat32::{
-    Fat32AsyncFileSystem, parse_fat32_boot_sector, parse_fat32_fs_info,
+    Fat32AsyncFileSystem, Fat32BootInfo, parse_fat32_boot_sector, parse_fat32_fs_info,
 };
 use pajoniiir_media_io::{AsyncPartitionDevice, OwnedBlockDevice};
 use pajoniiir_media_partition::{
-    PartitionLayout, PartitionScanResult, VolumeKind, scan_mbr_or_superfloppy,
+    GptEntryStream, PartitionLayout, PartitionScanResult, VolumeKind, parse_gpt_header,
+    scan_mbr_or_superfloppy,
 };
 use pajoniiir_media_session::{ConnectResult, MediaSession, MediaSourceId};
 use sdio::{Addressable, BlockDevice, MmcError, sd::Card};
@@ -118,6 +119,95 @@ fn candidate_range(
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SdProfileDiscoveryError {
+    Read,
+    InvalidPartitionLayout,
+    InvalidGptHeader,
+    InvalidGptTable,
+    NoFat32Volume,
+}
+
+async fn read_profile_sector(
+    device: &mut SdProfileBlockDevice<'_>,
+    lba: u64,
+    buffer: SdProfileBlockBuffer,
+) -> Result<SdProfileBlockBuffer, (SdProfileDiscoveryError, SdProfileBlockBuffer)> {
+    match device.read_blocks_owned(lba, 1, buffer).await {
+        Ok(buffer) => Ok(buffer),
+        Err((_error, buffer)) => Err((SdProfileDiscoveryError::Read, buffer)),
+    }
+}
+
+async fn discover_fat32_volume(
+    device: &mut SdProfileBlockDevice<'_>,
+    mut scratch: SdProfileBlockBuffer,
+) -> Result<
+    (BlockRange, SdProfileBlockBuffer, Fat32BootInfo),
+    (SdProfileDiscoveryError, SdProfileBlockBuffer),
+> {
+    let geometry = device.geometry();
+    scratch = read_profile_sector(device, 0, scratch).await?;
+
+    let mut layout = PartitionLayout::new();
+    match scan_mbr_or_superfloppy(scratch.as_ref(), &mut layout) {
+        PartitionScanResult::Ok => {}
+        PartitionScanResult::NeedsGpt => {
+            scratch = read_profile_sector(device, 1, scratch).await?;
+            let Some(info) = parse_gpt_header(scratch.as_ref()) else {
+                return Err((SdProfileDiscoveryError::InvalidGptHeader, scratch));
+            };
+            let Some(mut stream) = GptEntryStream::new(info) else {
+                return Err((SdProfileDiscoveryError::InvalidGptHeader, scratch));
+            };
+
+            layout.clear();
+            let mut lba = info.entries_lba;
+            while !stream.is_complete() {
+                scratch = read_profile_sector(device, lba, scratch).await?;
+                let scanned = stream.push(scratch.as_ref(), &mut layout);
+                if scanned == 0 {
+                    return Err((SdProfileDiscoveryError::InvalidGptTable, scratch));
+                }
+                let Some(next_lba) = lba.checked_add(1) else {
+                    return Err((SdProfileDiscoveryError::InvalidGptTable, scratch));
+                };
+                lba = next_lba;
+            }
+
+            if stream.pending_bytes() != 0 {
+                return Err((SdProfileDiscoveryError::InvalidGptTable, scratch));
+            }
+        }
+        PartitionScanResult::Invalid | PartitionScanResult::NoCandidate => {
+            return Err((SdProfileDiscoveryError::InvalidPartitionLayout, scratch));
+        }
+    }
+
+    for index in 0..layout.count() {
+        let candidate = layout.candidates()[index];
+        if candidate.kind == VolumeKind::ExFat {
+            continue;
+        }
+
+        let Some(range) =
+            candidate_range(candidate.first_lba, candidate.sector_count, geometry)
+        else {
+            continue;
+        };
+
+        scratch = read_profile_sector(device, candidate.first_lba, scratch).await?;
+        if let Ok(boot) = parse_fat32_boot_sector(
+            scratch.as_ref(),
+            range.geometry(geometry.block_size),
+        ) {
+            return Ok((range, scratch, boot));
+        }
+    }
+
+    Err((SdProfileDiscoveryError::NoFat32Volume, scratch))
+}
+
 async fn park_profile_storage() -> core::convert::Infallible {
     core::future::pending().await
 }
@@ -125,14 +215,13 @@ async fn park_profile_storage() -> core::convert::Infallible {
 /// Persistent owner for the M1 microSD SDMMC0 path.
 ///
 /// This binds the board-authoritative ESP32-P4 slot-0 IO-MUX pins, enables the
-/// controlled 3V3_SD rail, initializes the SD card, mounts a FAT32
-/// superfloppy/MBR partition through Pajoniiir's native async filesystem, and
-/// scans the released /controllers/<id>/profile.s3bin layout without heap
-/// allocation.
+/// controlled 3V3_SD rail, initializes the SD card, discovers FAT32 across
+/// superfloppy, MBR and bounded GPT layouts through Pajoniiir's native async
+/// partition layer, and scans the released /controllers/<id>/profile.s3bin
+/// layout without heap allocation.
 ///
-/// GPT discovery, physical card removal/reinsert, rail power-cycle recovery and
-/// profile activation in the USB1 controller session remain explicit follow-on
-/// hardware/software gates.
+/// Physical card removal/reinsert and rail power-cycle recovery remain explicit
+/// follow-on hardware/software gates.
 pub(crate) async fn run_profile_storage_owner(
     sdhost: esp_hal::peripherals::SDHOST<'static>,
     d0: esp_hal::peripherals::GPIO39<'static>,
@@ -169,42 +258,13 @@ pub(crate) async fn run_profile_storage_owner(
         }
 
         let mut device = SdProfileBlockDevice::new(card);
-        let geometry = device.geometry();
         let scratch = SdProfileBlockBuffer::zeroed();
-
-        let scratch = match device.read_blocks_owned(0, 1, scratch).await {
-            Ok(scratch) => scratch,
+        let (range, scratch, boot) = match discover_fat32_volume(&mut device, scratch).await {
+            Ok(discovered) => discovered,
             Err(_) => match park_profile_storage().await {},
-        };
-
-        let mut layout = PartitionLayout::new();
-        if scan_mbr_or_superfloppy(scratch.as_ref(), &mut layout) != PartitionScanResult::Ok {
-            match park_profile_storage().await {}
-        }
-
-        let Some(candidate) = layout
-            .candidates()
-            .iter()
-            .copied()
-            .find(|candidate| candidate.kind == VolumeKind::Fat)
-        else {
-            match park_profile_storage().await {}
-        };
-
-        let Some(range) = candidate_range(candidate.first_lba, candidate.sector_count, geometry)
-        else {
-            match park_profile_storage().await {}
         };
 
         let mut partition = AsyncPartitionDevice::new(device, range);
-        let scratch = match partition.read_blocks_owned(0, 1, scratch).await {
-            Ok(scratch) => scratch,
-            Err(_) => match park_profile_storage().await {},
-        };
-        let boot = match parse_fat32_boot_sector(scratch.as_ref(), partition.geometry()) {
-            Ok(boot) => boot,
-            Err(_) => match park_profile_storage().await {},
-        };
 
         let scratch = match partition
             .read_blocks_owned(u64::from(boot.fs_info_sector), 1, scratch)
