@@ -2,8 +2,11 @@ use aligned::{A4, Aligned};
 use block_device_driver::BlockDevice as BlockDeviceDriver;
 use embassy_futures::select::{Either, select};
 use embassy_time::{Delay, Timer};
-use esp_hal::sdmmc::{Config, SdHostController, Slot, SlotConfig};
-use pajoniiir_controller_profile_storage::ProfileScanBuffers;
+use esp_hal::{
+    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
+    sdmmc::{Config, SdHostController, Slot, SlotConfig},
+};
+use pajoniiir_controller_profile_storage::{ProfileRegistry, ProfileScanBuffers};
 use pajoniiir_media_block::{BlockGeometry, BlockRange, TransferError};
 use pajoniiir_media_fat32::{
     Fat32AsyncFileSystem, Fat32BootInfo, parse_fat32_boot_sector, parse_fat32_fs_info,
@@ -23,8 +26,10 @@ use crate::controller_profiles::{
 
 const CARD_HZ: u32 = 25_000_000;
 const RAIL_SETTLE_MS: u64 = 10;
+const RAIL_OFF_MS: u64 = 20;
+const CARD_DEBOUNCE_MS: u64 = 50;
+const CARD_POLL_MS: u64 = 100;
 const INIT_RETRY_MS: u64 = 1_000;
-const OWNER_HEALTH_TICK_MS: u64 = 60_000;
 const SD_PROFILE_SOURCE_ID: u32 = 0x5344_0001;
 
 static SD_PROFILE_SCAN_BUFFERS: StaticCell<ProfileScanBuffers> = StaticCell::new();
@@ -70,6 +75,10 @@ impl<'d> SdProfileBlockDevice<'d> {
             },
             inner,
         }
+    }
+
+    fn into_inner(self) -> BlockDevice<Card, Slot<'d, 0, esp_hal::Async>, Delay, 512> {
+        self.inner
     }
 }
 
@@ -208,8 +217,35 @@ async fn discover_fat32_volume(
     Err((SdProfileDiscoveryError::NoFat32Volume, scratch))
 }
 
-async fn park_profile_storage() -> core::convert::Infallible {
-    core::future::pending().await
+fn card_is_present(card_detect: &Input<'_>) -> bool {
+    // GPIO46 is the board-authoritative active-low card-detect signal.
+    card_detect.is_low()
+}
+
+async fn wait_for_card_inserted(card_detect: &Input<'_>) {
+    loop {
+        while !card_is_present(card_detect) {
+            Timer::after_millis(CARD_POLL_MS).await;
+        }
+        Timer::after_millis(CARD_DEBOUNCE_MS).await;
+        if card_is_present(card_detect) {
+            return;
+        }
+    }
+}
+
+async fn wait_for_card_removed(card_detect: &Input<'_>) {
+    while card_is_present(card_detect) {
+        Timer::after_millis(CARD_POLL_MS).await;
+    }
+    Timer::after_millis(CARD_DEBOUNCE_MS).await;
+}
+
+async fn cycle_sd_rail(power: &mut Output<'_>) {
+    power.set_low();
+    Timer::after_millis(RAIL_OFF_MS).await;
+    power.set_high();
+    Timer::after_millis(RAIL_SETTLE_MS).await;
 }
 
 /// Persistent owner for the M1 microSD SDMMC0 path.
@@ -233,6 +269,12 @@ pub(crate) async fn run_profile_storage_owner(
     power_enable: esp_hal::peripherals::GPIO45<'static>,
     card_detect: esp_hal::peripherals::GPIO46<'static>,
 ) -> ! {
+    let mut sd_power = Output::new(power_enable, Level::Low, OutputConfig::default());
+    let card_detect = Input::new(
+        card_detect,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+
     let controller =
         SdHostController::new(sdhost, Config::default()).expect("SDMMC controller config is valid");
     let slot = controller
@@ -244,15 +286,20 @@ pub(crate) async fn run_profile_storage_owner(
         .with_data1(d1)
         .with_data2(d2)
         .with_data3(d3)
-        .with_power_enable(power_enable)
-        .with_card_detect(card_detect)
         .into_async();
 
-    Timer::after_millis(RAIL_SETTLE_MS).await;
-
+    let buffers = SD_PROFILE_SCAN_BUFFERS.init(ProfileScanBuffers::new());
+    let source = MediaSourceId::new(SD_PROFILE_SOURCE_ID)
+        .expect("M1 microSD profile-storage source id is non-zero");
+    let mut media_session = MediaSession::new();
     let mut card: BlockDevice<Card, _, _, 512> = BlockDevice::new_uninit_sd_card(slot, Delay);
+
     loop {
+        wait_for_card_inserted(&card_detect).await;
+        cycle_sd_rail(&mut sd_power).await;
+
         if card.reacquire(CARD_HZ).await.is_err() {
+            sd_power.set_low();
             Timer::after_millis(INIT_RETRY_MS).await;
             continue;
         }
@@ -261,26 +308,45 @@ pub(crate) async fn run_profile_storage_owner(
         let scratch = SdProfileBlockBuffer::zeroed();
         let (range, scratch, boot) = match discover_fat32_volume(&mut device, scratch).await {
             Ok(discovered) => discovered,
-            Err(_) => match park_profile_storage().await {},
+            Err((error, _scratch)) => {
+                card = device.into_inner();
+                sd_power.set_low();
+                match error {
+                    SdProfileDiscoveryError::Read => {
+                        Timer::after_millis(INIT_RETRY_MS).await;
+                    }
+                    SdProfileDiscoveryError::InvalidPartitionLayout
+                    | SdProfileDiscoveryError::InvalidGptHeader
+                    | SdProfileDiscoveryError::InvalidGptTable
+                    | SdProfileDiscoveryError::NoFat32Volume => {
+                        wait_for_card_removed(&card_detect).await;
+                    }
+                }
+                continue;
+            }
         };
 
         let mut partition = AsyncPartitionDevice::new(device, range);
-
         let scratch = match partition
             .read_blocks_owned(u64::from(boot.fs_info_sector), 1, scratch)
             .await
         {
             Ok(scratch) => scratch,
-            Err(_) => match park_profile_storage().await {},
+            Err((_error, _scratch)) => {
+                card = partition.into_inner().into_inner();
+                sd_power.set_low();
+                Timer::after_millis(INIT_RETRY_MS).await;
+                continue;
+            }
         };
         if parse_fat32_fs_info(scratch.as_ref(), &boot).is_err() {
-            match park_profile_storage().await {}
+            card = partition.into_inner().into_inner();
+            sd_power.set_low();
+            wait_for_card_removed(&card_detect).await;
+            continue;
         }
 
-        let source = MediaSourceId::new(SD_PROFILE_SOURCE_ID)
-            .expect("M1 microSD profile-storage source id is non-zero");
-        let mut session = MediaSession::new();
-        let lease = match session.on_connect(source) {
+        let lease = match media_session.on_connect(source) {
             ConnectResult::Accepted(lease)
             | ConnectResult::Duplicate(lease)
             | ConnectResult::IgnoredSecondary(lease) => lease,
@@ -288,23 +354,35 @@ pub(crate) async fn run_profile_storage_owner(
 
         let mut filesystem = match Fat32AsyncFileSystem::new(partition, scratch, boot, lease) {
             Ok(filesystem) => filesystem,
-            Err(_) => match park_profile_storage().await {},
+            Err((_error, partition, _scratch)) => {
+                let _ = media_session.on_disconnect(None);
+                card = partition.into_inner().into_inner();
+                sd_power.set_low();
+                Timer::after_millis(INIT_RETRY_MS).await;
+                continue;
+            }
         };
 
-        let buffers = SD_PROFILE_SCAN_BUFFERS.init(ProfileScanBuffers::new());
         let report = match buffers.scan(&mut filesystem).await {
             Ok(report) => report,
-            Err(_) => match park_profile_storage().await {},
+            Err(_) => {
+                let _ = media_session.on_disconnect(None);
+                let (partition, _scratch) = filesystem.into_parts();
+                card = partition.into_inner().into_inner();
+                sd_power.set_low();
+                Timer::after_millis(INIT_RETRY_MS).await;
+                continue;
+            }
         };
         crate::controller_profiles::publish_scanned_registry(report.registry);
 
-        // Keep filesystem ownership in this task. USB1 requests only a bounded
-        // activation ticket; the SD owner performs the asynchronous reload and
-        // the registry revalidates that ticket before publishing active bytes.
-        loop {
+        // Keep filesystem ownership in this task. Removal invalidates the
+        // registry before the filesystem/card stack is dismantled, so USB1
+        // cannot keep using an active profile from media that no longer exists.
+        card = loop {
             match select(
                 wait_for_profile_activation_request(),
-                Timer::after_millis(OWNER_HEALTH_TICK_MS),
+                Timer::after_millis(CARD_POLL_MS),
             )
             .await
             {
@@ -319,10 +397,19 @@ pub(crate) async fn run_profile_storage_owner(
                 },
                 Either::Second(_) => {
                     let _ = filesystem.boot_info();
-                    let _ = report.registry.len();
                     let _ = report.stats.entries_seen;
                 }
             }
-        }
+
+            if !card_is_present(&card_detect) {
+                crate::controller_profiles::publish_scanned_registry(ProfileRegistry::new());
+                let _ = media_session.on_disconnect(None);
+                let (partition, _scratch) = filesystem.into_parts();
+                break partition.into_inner().into_inner();
+            }
+        };
+
+        sd_power.set_low();
+        Timer::after_millis(RAIL_OFF_MS).await;
     }
 }
