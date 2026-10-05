@@ -47,7 +47,9 @@ impl UsbMidiBatchReport {
         self.ignored_non_channel_voice = self
             .ignored_non_channel_voice
             .saturating_add(other.ignored_non_channel_voice);
-        self.unsupported_cable = self.unsupported_cable.saturating_add(other.unsupported_cable);
+        self.unsupported_cable = self
+            .unsupported_cable
+            .saturating_add(other.unsupported_cable);
         self.semantic_errors = self.semantic_errors.saturating_add(other.semantic_errors);
     }
 }
@@ -190,8 +192,7 @@ impl ControllerSession {
         let mut report = UsbMidiBatchReport::default();
         for packet in bytes.chunks_exact(4) {
             report.packets = report.packets.saturating_add(1);
-            let Some(event) =
-                UsbMidiEvent::decode([packet[0], packet[1], packet[2], packet[3]])
+            let Some(event) = UsbMidiEvent::decode([packet[0], packet[1], packet[2], packet[3]])
             else {
                 continue;
             };
