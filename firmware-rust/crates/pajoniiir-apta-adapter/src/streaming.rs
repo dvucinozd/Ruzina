@@ -184,6 +184,27 @@ pub struct ScanRead<H> {
     remaining_steps: u64,
 }
 impl<H: FileHandle> ScanRead<H> {
+    /// Scan to the captured object end, yielding after every incomplete step.
+    /// This borrows caller control so cancellation retains the open handle.
+    /// Dropped reads or cooperative yields poison the scan. On success call
+    /// `finish` to close and verify framing/identity/duration; on error call
+    /// `abort` (after any required backend pending-operation recovery).
+    /// This method never closes, publishes a source, or resets the step budget.
+    pub async fn run<F: AsyncFileSystem<File = H>>(
+        &mut self,
+        fs: &mut F,
+        requests: &Requests,
+        media: &MediaSession,
+        scratch: &mut [u8; READ_BYTES],
+    ) -> Result<(), SourceError<F::Error>> {
+        while !self.step(fs, requests, media, scratch).await? {
+            self.reader.failed = true;
+            yield_once().await;
+            self.reader.failed = false;
+        }
+        Ok(())
+    }
+
     /// One <=4096-byte read plus bounded framing/hash work; no PCM processing.
     pub async fn step<F: AsyncFileSystem<File = H>>(
         &mut self,
@@ -388,17 +409,7 @@ impl<H: FileHandle> StreamWorker<'_, '_, H> {
                     // A dropped yield must not let a cancelled run resume via
                     // the manual step/finish APIs and authorize delivery.
                     self.failed = true;
-                    let mut yielded = false;
-                    core::future::poll_fn(|cx| {
-                        if yielded {
-                            core::task::Poll::Ready(())
-                        } else {
-                            yielded = true;
-                            cx.waker().wake_by_ref();
-                            core::task::Poll::Pending
-                        }
-                    })
-                    .await;
+                    yield_once().await;
                     self.failed = false;
                 }
                 Err(error) => {
@@ -583,3 +594,18 @@ pub const SCAN_CONTROL_BUDGET: usize = 768;
 pub const STREAM_CONTROL_BUDGET: usize = 4864;
 const _: () = assert!(core::mem::size_of::<ScanRead<()>>() <= SCAN_CONTROL_BUDGET);
 const _: () = assert!(core::mem::size_of::<StreamWorker<'_, '_, ()>>() <= STREAM_CONTROL_BUDGET);
+
+// One self-waking suspension, shared by both bounded pass drivers.
+async fn yield_once() {
+    let mut yielded = false;
+    core::future::poll_fn(|cx| {
+        if yielded {
+            core::task::Poll::Ready(())
+        } else {
+            yielded = true;
+            cx.waker().wake_by_ref();
+            core::task::Poll::Pending
+        }
+    })
+    .await;
+}

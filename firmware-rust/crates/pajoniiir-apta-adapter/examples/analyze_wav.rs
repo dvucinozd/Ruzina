@@ -64,15 +64,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let mut read = ready(request.open_stream_with_limits(&mut fs, &requests, &media, limits))
         .map_err(|e| format!("open: {e:?}"))?;
-    loop {
-        match ready(read.step(&mut fs, &requests, &media, &mut bytes)) {
-            Ok(true) => break,
-            Ok(false) => (),
-            Err(e) => {
-                let _ = ready(read.abort(&mut fs));
-                return Err(format!("read: {e:?}").into());
-            }
-        }
+    if let Err(error) = drive(read.run(&mut fs, &requests, &media, &mut bytes)) {
+        ready(read.abort(&mut fs)).map_err(|e| format!("abort: {e:?}"))?;
+        return Err(format!("read: {error:?}").into());
     }
     let wav =
         ready(read.finish(&mut fs, &mut requests, &media)).map_err(|e| format!("source: {e:?}"))?;

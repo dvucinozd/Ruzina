@@ -731,3 +731,93 @@ No hardware, deployment, production provider selection, C compatibility or new
 DSP accuracy acceptance is claimed. Broader runtime/C sanitizers and i686/Windows
 matrices were not rerun; Libapta separately passed its combined suite, 38 optimized
 ASan tests and portable AArch64 compilation for the constructor change.
+
+## Cooperative first pass and acknowledged effects — 2026-10-05
+
+`ScanRead::run` borrows caller-owned scan control and source scratch, drives the
+existing bounded `step`, and self-wakes/yields once after each incomplete step.
+It does not reset work limits, close a handle, or authorize a verified source.
+Call `finish` after success; call `abort` after failure, after recovering any
+backend pending operation. Both close futures must run to completion. Cancelling
+a pending read **or this driver's cooperative yield** poisons the scan and retains
+its handle in caller control. Manual `step` callers retain their existing contract;
+an arbitrary yield written by a caller does not automatically poison that scan.
+Completed driver calls perform no further I/O, spend no budget and do not yield.
+
+The host example, native fragmented FAT32 and contiguous/fragmented exFAT fixtures,
+and complete-task diagnostic use both cooperative pass drivers. Exact captured
+hashes, every retained beat/column, 120 BPM, 80 beats and 4120 green raster pixels
+remain unchanged. No executor dependency, allocation, source codec, portable-core
+change, or firmware/Slint provider selection was introduced.
+
+Foundation integration now uses `DeckEffectBroker::transport_front` plus
+`complete_transport`. The real native consumer fixture covers queue refusal before
+Deck commit, retention of the original Pause on downstream failure, retry from the
+same retained analysis pin, and retention of the exact Seek until acknowledgement.
+Successful acknowledgement drains it once; failed acknowledgement never advances
+the queue. This verifies the neutral consumer transaction, not a production audio
+owner or exactly-once execution of an external device command.
+
+The broker still exposes only Library/DeckA/DeckB completion clients. Its pending
+ticket survives cancelled receive and can be drained by that client, but client
+construction does not establish a unique analysis-owner lifetime. A production
+analysis client still needs foundation-owned unique lifetime, original lease
+checks, unexpected/pending completion recovery and exclusive handles/buffers.
+The integrated GPT integrity, profile hotplug and controller LED changes do not
+establish those analysis contracts. exFAT dispatch is already implemented.
+
+### Complete-task construction and final evidence
+
+The external diagnostic previously marked the full-job async constructor
+`#[inline(never)]`. Allowing it to inline removes a large coroutine construction
+copy in the enclosing Embassy task poll; it does not change the core or decrease
+resident task storage. The controlled pre-inline run is `20261005T073202Z` and
+final reproduction is `20261005T073653Z`, under the existing external evidence root.
+
+Pinned Rust 1.95 standard RV32 diagnostic, FAT32/exFAT:
+
+| Quantity | Before | After |
+|---|---:|---:|
+| Complete job future | 4040 / 4288 B | 4040 / 4288 B |
+| Embassy pool | 4416 / 4664 B | 4416 / 4664 B |
+| Poll frame | 8432 / 8800 B | 4432 / 4560 B |
+| Preparation frame | 128 B | 128 B |
+| Identified poll + preparation subtotal | 8560 / 8928 B | 4560 / 4688 B |
+| Initialization write_in_place frame | 4416 / 4672 B | 4416 / 4672 B |
+
+External scan slots remain 672/696 B; worker slots 4264/4288 B. Caller arrays
+remain 108772 B for the existing profile. Arrays + pool + both external controls
++ diagnostic backend remain 118716/119020 B, excluding other owners and stack.
+Do not count the coroutine again inside its pool. Future-size probe functions now
+return constants with zero stack frames; those zero frames are not zero-sized
+futures. Constructor inlining is a measured compiler result, not a portable bound.
+
+The panic-abort/forced-frame-pointer nested run `task-nested-20261005T073656Z`
+records 1491 frames. Its poll frames are 4432/4544 B and preparation 128 B; do not
+mix its exFAT number with the standard profile. Actual combined firmware compile/
+link `firmware-frames-20261005T073659Z` records 4213 frames with APTA absent. Both
+inventories include unused functions and are not complete call-path maxima.
+Initialization, indirect callees, interrupt nesting, placement, DMA/cache and
+simultaneous hardware workload timing remain unqualified.
+
+Final-source software checks, all run serially with two build/test workers:
+
+- Consumer `20261005T073545Z`: 454 ordinary workspace tests and one lifetime
+  compile-fail doctest; 114 focused release tests and that doctest; 39 adapter
+  ASan tests and that doctest. Formatting, Clippy, allocation instrumentation,
+  P4 compile/dependency/object checks pass.
+- Raster `20261005T073645Z`: impulse/silence PPM bytes exactly match the prior
+  inspected output; native source `20261005T073647Z` and streaming source
+  `20261005T073652Z` probes pass.
+- Complete task `20261005T073653Z`: three host tests pass, including actual
+  Embassy initialization/execution with a second self-yielding task progressing
+  during analysis, zero measured allocations after setup, and retained first-pass
+  recovery on cancellation at either a pending read or a cooperative yield.
+  This proves host executor progress, not fairness deadlines or target execution.
+
+Reproduce with the existing `verify-consumer.py`, `verify-extended-artifacts.py`,
+`verify-native-source-probe.py`, `verify-streaming-source-probe.py`,
+`verify-task-storage-probe.py`, `verify-task-nested.py` and
+`verify-firmware-frames.py`, serially. Explicit dated objects and Cargo-resolved
+libraries remain mandatory. Earlier failed/superseded logs remain archived.
+No hardware, broad runtime/C sanitizer, i686 or Windows acceptance is claimed.

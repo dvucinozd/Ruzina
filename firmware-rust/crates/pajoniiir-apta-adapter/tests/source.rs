@@ -142,11 +142,7 @@ fn analyze_stream<F: AsyncFileSystem>(
         processing_steps: 40_000,
     };
     let mut read = run(request.open_stream_with_limits(&mut fs, &requests, media, limits)).unwrap();
-    let mut steps = 0;
-    while !run(read.step(&mut fs, &requests, media, &mut bytes)).unwrap() {
-        steps += 1;
-        assert!(steps < 20000);
-    }
+    support::drive(read.run(&mut fs, &requests, media, &mut bytes)).unwrap();
     let source = run(read.finish(&mut fs, &mut requests, media)).unwrap();
     allocation::finish();
     assert_eq!(

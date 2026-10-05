@@ -620,3 +620,15 @@ remain independent gates.
 The controller-profile SD owner now uses the same bounded partition policy as the rest of the media stack. Protective-MBR media is promoted into GPT only after the primary header passes its declared-header CRC32; the declared partition-entry table is then streamed through a single 512-byte scratch buffer while a rolling IEEE CRC32 is computed across exactly the declared entries. Candidate partitions are not mounted unless the final entry-array checksum also matches. Header/table corruption therefore fails closed without allocating a full GPT table.
 
 The Rev A GPIO45/GPIO46 signals are also target-owned explicitly rather than hidden inside the SDMMC slot wrapper. GPIO46 is interpreted as active-low card detect with a bounded software debounce. On removal, the owner publishes an empty controller-profile registry before tearing down the filesystem, recovers the same SDIO object, drives GPIO45 low, and waits for a stable reinsertion. The next generation powers the rail, observes the provisional settle interval and calls `reacquire()` on the retained device owner. These transitions are compile-verified; actual TPS22918 timing, detect polarity/noise, back-power behavior and card compatibility require EVT hardware.
+
+### Cooperative scan and downstream effect acknowledgement — 2026-10-05
+
+The experimental native provider now borrows caller scan control through a
+cooperative first-pass driver as well as its second-pass driver. Dropped reads or
+driver yields poison analysis while retaining handles for explicit owner recovery;
+first-pass success still needs framing/hash/duration verification and close.
+Real FAT32/exFAT fixtures also exercise the foundation's peek/acknowledge transport
+lane: refused downstream delivery keeps the exact effect for retry. No production
+analysis client, playback owner or provider selection is added. The adapter README
+records exact software evidence and revised coroutine-construction diagnostics;
+physical stack, timing, memory placement and original DSP gates remain separate.

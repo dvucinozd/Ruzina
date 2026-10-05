@@ -700,3 +700,147 @@ fn cooperative_run_closes_on_step_error_and_reports_cleanup_failure() {
         assert_eq!(fs.closes, 2);
     }
 }
+
+#[test]
+fn cooperative_scan_retains_handle_and_poison_on_cancelled_yield_or_read() {
+    for mode in [0, 8, 9] {
+        for finish in [false, true] {
+            let m = mounted();
+            let c = catalog(&m);
+            let mut r = Requests::default();
+            let mut fs = Fs::new(&m, wav(3000));
+            let request = SourceRequest::new(&mut r, &m, &c, 0).unwrap();
+            let mut scan = run(request.open_stream(&mut fs, &r, &m)).unwrap();
+            let mut bytes = [0; 4096];
+            fs.mode = mode;
+            assert_pending(scan.run(&mut fs, &r, &m, &mut bytes));
+            assert_eq!(fs.reads, 1);
+            assert_eq!(fs.closes, 0);
+            fs.mode = 0;
+            assert!(matches!(
+                run(scan.run(&mut fs, &r, &m, &mut bytes)),
+                Err(SourceError::Failed)
+            ));
+            assert_eq!(fs.reads, 1);
+            if finish {
+                assert!(run(scan.finish(&mut fs, &mut r, &m)).is_err());
+            } else {
+                run(scan.abort(&mut fs)).unwrap();
+            }
+            assert_eq!(fs.closes, 1);
+        }
+    }
+}
+
+#[test]
+fn cooperative_scan_wakes_completes_exact_budget_and_still_requires_close() {
+    use core::{
+        pin::pin,
+        task::{Context, Poll},
+    };
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    struct WakeCount(AtomicUsize);
+    impl std::task::Wake for WakeCount {
+        fn wake(self: Arc<Self>) {
+            self.0.fetch_add(1, Ordering::Relaxed);
+        }
+        fn wake_by_ref(self: &Arc<Self>) {
+            self.0.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+    for mode in [0, 8] {
+        let m = mounted();
+        let c = catalog(&m);
+        let mut r = Requests::default();
+        let mut fs = Fs::new(&m, wav(3000));
+        fs.mode = mode;
+        let expected = pajoniiir_media_identity::sha256(&fs.bytes).0;
+        let steps = fs.bytes.len().div_ceil(fs.max);
+        let request = SourceRequest::new(&mut r, &m, &c, 0).unwrap();
+        let mut scan = run(request.open_stream_with_limits(
+            &mut fs,
+            &r,
+            &m,
+            pajoniiir_apta_adapter::streaming::StreamLimits {
+                scan_steps: steps as u64,
+                ..pajoniiir_apta_adapter::streaming::StreamLimits::UNLIMITED
+            },
+        ))
+        .unwrap();
+        let mut bytes = [0; 4096];
+        let wakes = Arc::new(WakeCount(AtomicUsize::new(0)));
+        let waker = wakes.clone().into();
+        let mut cx = Context::from_waker(&waker);
+        allocation::start();
+        let mut pending = 0;
+        {
+            let mut future = pin!(scan.run(&mut fs, &r, &m, &mut bytes));
+            loop {
+                match future.as_mut().poll(&mut cx) {
+                    Poll::Ready(result) => {
+                        result.unwrap();
+                        break;
+                    }
+                    Poll::Pending => {
+                        pending += 1;
+                        assert!(pending < 1000);
+                    }
+                }
+            }
+        }
+        assert_eq!(pending, steps - 1 + if mode == 8 { steps } else { 0 });
+        assert_eq!(wakes.0.load(Ordering::Relaxed), pending);
+        assert_eq!(fs.reads, steps);
+        assert_eq!(fs.closes, 0);
+        run(scan.run(&mut fs, &r, &m, &mut bytes)).unwrap();
+        assert_eq!(fs.reads, steps);
+        let source = run(scan.finish(&mut fs, &mut r, &m)).unwrap();
+        assert_eq!(source.source().fingerprint, expected);
+        assert_eq!(fs.closes, 1);
+        allocation::finish();
+    }
+}
+
+#[test]
+fn cooperative_scan_errors_leave_cleanup_to_owner_without_spending_more_io() {
+    for case in 0..4 {
+        let m = mounted();
+        let c = catalog(&m);
+        let mut r = Requests::default();
+        let mut fs = Fs::new(&m, wav(3000));
+        let request = SourceRequest::new(&mut r, &m, &c, 0).unwrap();
+        let mut scan = run(request.open_stream_with_limits(
+            &mut fs,
+            &r,
+            &m,
+            pajoniiir_apta_adapter::streaming::StreamLimits {
+                scan_steps: if case == 0 { 1 } else { 100 },
+                ..pajoniiir_apta_adapter::streaming::StreamLimits::UNLIMITED
+            },
+        ))
+        .unwrap();
+        match case {
+            1 => fs.mode = 1,
+            2 => fs.bytes[0] = 0,
+            3 => {
+                r.cancel();
+            }
+            _ => (),
+        }
+        let mut bytes = [0; 4096];
+        assert!(drive(scan.run(&mut fs, &r, &m, &mut bytes)).is_err());
+        let reads = fs.reads;
+        assert_eq!(fs.closes, 0);
+        assert!(matches!(
+            run(scan.run(&mut fs, &r, &m, &mut bytes)),
+            Err(SourceError::Failed)
+        ));
+        assert_eq!(fs.reads, reads);
+        fs.mode = 0;
+        run(scan.abort(&mut fs)).unwrap();
+        assert_eq!(fs.closes, 1);
+    }
+}
