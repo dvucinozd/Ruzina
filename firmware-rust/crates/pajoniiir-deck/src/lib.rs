@@ -3284,5 +3284,4 @@ mod tests {
         assert_eq!(broker.audio_dsp_front(), None);
         assert_eq!(broker.transport_front(), Some(transport));
     }
-
 }
