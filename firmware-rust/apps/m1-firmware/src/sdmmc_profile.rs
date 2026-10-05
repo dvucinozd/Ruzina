@@ -2,15 +2,19 @@ use aligned::{A4, Aligned};
 use block_device_driver::BlockDevice as BlockDeviceDriver;
 use embassy_futures::select::{Either, select};
 use embassy_time::{Delay, Timer};
-use esp_hal::sdmmc::{Config, SdHostController, Slot, SlotConfig};
-use pajoniiir_controller_profile_storage::ProfileScanBuffers;
+use esp_hal::{
+    gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull},
+    sdmmc::{Config, SdHostController, Slot, SlotConfig},
+};
+use pajoniiir_controller_profile_storage::{ProfileRegistry, ProfileScanBuffers};
 use pajoniiir_media_block::{BlockGeometry, BlockRange, TransferError};
 use pajoniiir_media_fat32::{
-    Fat32AsyncFileSystem, parse_fat32_boot_sector, parse_fat32_fs_info,
+    Fat32AsyncFileSystem, Fat32BootInfo, parse_fat32_boot_sector, parse_fat32_fs_info,
 };
 use pajoniiir_media_io::{AsyncPartitionDevice, OwnedBlockDevice};
 use pajoniiir_media_partition::{
-    PartitionLayout, PartitionScanResult, VolumeKind, scan_mbr_or_superfloppy,
+    GptEntryStream, PartitionLayout, PartitionScanResult, VolumeKind, parse_gpt_header,
+    scan_mbr_or_superfloppy,
 };
 use pajoniiir_media_session::{ConnectResult, MediaSession, MediaSourceId};
 use sdio::{Addressable, BlockDevice, MmcError, sd::Card};
@@ -22,8 +26,10 @@ use crate::controller_profiles::{
 
 const CARD_HZ: u32 = 25_000_000;
 const RAIL_SETTLE_MS: u64 = 10;
+const RAIL_OFF_MS: u64 = 20;
+const CARD_DEBOUNCE_MS: u64 = 50;
+const CARD_POLL_MS: u64 = 100;
 const INIT_RETRY_MS: u64 = 1_000;
-const OWNER_HEALTH_TICK_MS: u64 = 60_000;
 const SD_PROFILE_SOURCE_ID: u32 = 0x5344_0001;
 
 static SD_PROFILE_SCAN_BUFFERS: StaticCell<ProfileScanBuffers> = StaticCell::new();
@@ -69,6 +75,10 @@ impl<'d> SdProfileBlockDevice<'d> {
             },
             inner,
         }
+    }
+
+    fn into_inner(self) -> BlockDevice<Card, Slot<'d, 0, esp_hal::Async>, Delay, 512> {
+        self.inner
     }
 }
 
@@ -118,21 +128,136 @@ fn candidate_range(
     }
 }
 
-async fn park_profile_storage() -> core::convert::Infallible {
-    core::future::pending().await
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SdProfileDiscoveryError {
+    Read,
+    InvalidPartitionLayout,
+    InvalidGptHeader,
+    InvalidGptTable,
+    NoFat32Volume,
+}
+
+async fn read_profile_sector(
+    device: &mut SdProfileBlockDevice<'_>,
+    lba: u64,
+    buffer: SdProfileBlockBuffer,
+) -> Result<SdProfileBlockBuffer, (SdProfileDiscoveryError, SdProfileBlockBuffer)> {
+    match device.read_blocks_owned(lba, 1, buffer).await {
+        Ok(buffer) => Ok(buffer),
+        Err((_error, buffer)) => Err((SdProfileDiscoveryError::Read, buffer)),
+    }
+}
+
+async fn discover_fat32_volume(
+    device: &mut SdProfileBlockDevice<'_>,
+    mut scratch: SdProfileBlockBuffer,
+) -> Result<
+    (BlockRange, SdProfileBlockBuffer, Fat32BootInfo),
+    (SdProfileDiscoveryError, SdProfileBlockBuffer),
+> {
+    let geometry = device.geometry();
+    scratch = read_profile_sector(device, 0, scratch).await?;
+
+    let mut layout = PartitionLayout::new();
+    match scan_mbr_or_superfloppy(scratch.as_ref(), &mut layout) {
+        PartitionScanResult::Ok => {}
+        PartitionScanResult::NeedsGpt => {
+            scratch = read_profile_sector(device, 1, scratch).await?;
+            let Some(info) = parse_gpt_header(scratch.as_ref()) else {
+                return Err((SdProfileDiscoveryError::InvalidGptHeader, scratch));
+            };
+            let Some(mut stream) = GptEntryStream::new(info) else {
+                return Err((SdProfileDiscoveryError::InvalidGptHeader, scratch));
+            };
+
+            layout.clear();
+            let mut lba = info.entries_lba;
+            while !stream.is_complete() {
+                scratch = read_profile_sector(device, lba, scratch).await?;
+                let scanned = stream.push(scratch.as_ref(), &mut layout);
+                if scanned == 0 {
+                    return Err((SdProfileDiscoveryError::InvalidGptTable, scratch));
+                }
+                let Some(next_lba) = lba.checked_add(1) else {
+                    return Err((SdProfileDiscoveryError::InvalidGptTable, scratch));
+                };
+                lba = next_lba;
+            }
+
+            if !stream.is_valid_complete() {
+                return Err((SdProfileDiscoveryError::InvalidGptTable, scratch));
+            }
+        }
+        PartitionScanResult::Invalid | PartitionScanResult::NoCandidate => {
+            return Err((SdProfileDiscoveryError::InvalidPartitionLayout, scratch));
+        }
+    }
+
+    for index in 0..layout.count() {
+        let candidate = layout.candidates()[index];
+        if candidate.kind == VolumeKind::ExFat {
+            continue;
+        }
+
+        let Some(range) =
+            candidate_range(candidate.first_lba, candidate.sector_count, geometry)
+        else {
+            continue;
+        };
+
+        scratch = read_profile_sector(device, candidate.first_lba, scratch).await?;
+        if let Ok(boot) = parse_fat32_boot_sector(
+            scratch.as_ref(),
+            range.geometry(geometry.block_size),
+        ) {
+            return Ok((range, scratch, boot));
+        }
+    }
+
+    Err((SdProfileDiscoveryError::NoFat32Volume, scratch))
+}
+
+fn card_is_present(card_detect: &Input<'_>) -> bool {
+    // GPIO46 is the board-authoritative active-low card-detect signal.
+    card_detect.is_low()
+}
+
+async fn wait_for_card_inserted(card_detect: &Input<'_>) {
+    loop {
+        while !card_is_present(card_detect) {
+            Timer::after_millis(CARD_POLL_MS).await;
+        }
+        Timer::after_millis(CARD_DEBOUNCE_MS).await;
+        if card_is_present(card_detect) {
+            return;
+        }
+    }
+}
+
+async fn wait_for_card_removed(card_detect: &Input<'_>) {
+    while card_is_present(card_detect) {
+        Timer::after_millis(CARD_POLL_MS).await;
+    }
+    Timer::after_millis(CARD_DEBOUNCE_MS).await;
+}
+
+async fn cycle_sd_rail(power: &mut Output<'_>) {
+    power.set_low();
+    Timer::after_millis(RAIL_OFF_MS).await;
+    power.set_high();
+    Timer::after_millis(RAIL_SETTLE_MS).await;
 }
 
 /// Persistent owner for the M1 microSD SDMMC0 path.
 ///
 /// This binds the board-authoritative ESP32-P4 slot-0 IO-MUX pins, enables the
-/// controlled 3V3_SD rail, initializes the SD card, mounts a FAT32
-/// superfloppy/MBR partition through Pajoniiir's native async filesystem, and
-/// scans the released /controllers/<id>/profile.s3bin layout without heap
-/// allocation.
+/// controlled 3V3_SD rail, initializes the SD card, discovers FAT32 across
+/// superfloppy, MBR and bounded GPT layouts through Pajoniiir's native async
+/// partition layer, and scans the released /controllers/<id>/profile.s3bin
+/// layout without heap allocation.
 ///
-/// GPT discovery, physical card removal/reinsert, rail power-cycle recovery and
-/// profile activation in the USB1 controller session remain explicit follow-on
-/// hardware/software gates.
+/// Physical card removal/reinsert and rail power-cycle recovery remain explicit
+/// follow-on hardware/software gates.
 pub(crate) async fn run_profile_storage_owner(
     sdhost: esp_hal::peripherals::SDHOST<'static>,
     d0: esp_hal::peripherals::GPIO39<'static>,
@@ -144,6 +269,12 @@ pub(crate) async fn run_profile_storage_owner(
     power_enable: esp_hal::peripherals::GPIO45<'static>,
     card_detect: esp_hal::peripherals::GPIO46<'static>,
 ) -> ! {
+    let mut sd_power = Output::new(power_enable, Level::Low, OutputConfig::default());
+    let card_detect = Input::new(
+        card_detect,
+        InputConfig::default().with_pull(Pull::Up),
+    );
+
     let controller =
         SdHostController::new(sdhost, Config::default()).expect("SDMMC controller config is valid");
     let slot = controller
@@ -155,72 +286,67 @@ pub(crate) async fn run_profile_storage_owner(
         .with_data1(d1)
         .with_data2(d2)
         .with_data3(d3)
-        .with_power_enable(power_enable)
-        .with_card_detect(card_detect)
         .into_async();
 
-    Timer::after_millis(RAIL_SETTLE_MS).await;
-
+    let buffers = SD_PROFILE_SCAN_BUFFERS.init(ProfileScanBuffers::new());
+    let source = MediaSourceId::new(SD_PROFILE_SOURCE_ID)
+        .expect("M1 microSD profile-storage source id is non-zero");
+    let mut media_session = MediaSession::new();
     let mut card: BlockDevice<Card, _, _, 512> = BlockDevice::new_uninit_sd_card(slot, Delay);
+
     loop {
+        wait_for_card_inserted(&card_detect).await;
+        cycle_sd_rail(&mut sd_power).await;
+
         if card.reacquire(CARD_HZ).await.is_err() {
+            sd_power.set_low();
             Timer::after_millis(INIT_RETRY_MS).await;
             continue;
         }
 
         let mut device = SdProfileBlockDevice::new(card);
-        let geometry = device.geometry();
         let scratch = SdProfileBlockBuffer::zeroed();
-
-        let scratch = match device.read_blocks_owned(0, 1, scratch).await {
-            Ok(scratch) => scratch,
-            Err(_) => match park_profile_storage().await {},
-        };
-
-        let mut layout = PartitionLayout::new();
-        if scan_mbr_or_superfloppy(scratch.as_ref(), &mut layout) != PartitionScanResult::Ok {
-            match park_profile_storage().await {}
-        }
-
-        let Some(candidate) = layout
-            .candidates()
-            .iter()
-            .copied()
-            .find(|candidate| candidate.kind == VolumeKind::Fat)
-        else {
-            match park_profile_storage().await {}
-        };
-
-        let Some(range) = candidate_range(candidate.first_lba, candidate.sector_count, geometry)
-        else {
-            match park_profile_storage().await {}
+        let (range, scratch, boot) = match discover_fat32_volume(&mut device, scratch).await {
+            Ok(discovered) => discovered,
+            Err((error, _scratch)) => {
+                card = device.into_inner();
+                sd_power.set_low();
+                match error {
+                    SdProfileDiscoveryError::Read => {
+                        Timer::after_millis(INIT_RETRY_MS).await;
+                    }
+                    SdProfileDiscoveryError::InvalidPartitionLayout
+                    | SdProfileDiscoveryError::InvalidGptHeader
+                    | SdProfileDiscoveryError::InvalidGptTable
+                    | SdProfileDiscoveryError::NoFat32Volume => {
+                        wait_for_card_removed(&card_detect).await;
+                    }
+                }
+                continue;
+            }
         };
 
         let mut partition = AsyncPartitionDevice::new(device, range);
-        let scratch = match partition.read_blocks_owned(0, 1, scratch).await {
-            Ok(scratch) => scratch,
-            Err(_) => match park_profile_storage().await {},
-        };
-        let boot = match parse_fat32_boot_sector(scratch.as_ref(), partition.geometry()) {
-            Ok(boot) => boot,
-            Err(_) => match park_profile_storage().await {},
-        };
-
         let scratch = match partition
             .read_blocks_owned(u64::from(boot.fs_info_sector), 1, scratch)
             .await
         {
             Ok(scratch) => scratch,
-            Err(_) => match park_profile_storage().await {},
+            Err((_error, _scratch)) => {
+                card = partition.into_inner().into_inner();
+                sd_power.set_low();
+                Timer::after_millis(INIT_RETRY_MS).await;
+                continue;
+            }
         };
         if parse_fat32_fs_info(scratch.as_ref(), &boot).is_err() {
-            match park_profile_storage().await {}
+            card = partition.into_inner().into_inner();
+            sd_power.set_low();
+            wait_for_card_removed(&card_detect).await;
+            continue;
         }
 
-        let source = MediaSourceId::new(SD_PROFILE_SOURCE_ID)
-            .expect("M1 microSD profile-storage source id is non-zero");
-        let mut session = MediaSession::new();
-        let lease = match session.on_connect(source) {
+        let lease = match media_session.on_connect(source) {
             ConnectResult::Accepted(lease)
             | ConnectResult::Duplicate(lease)
             | ConnectResult::IgnoredSecondary(lease) => lease,
@@ -228,23 +354,35 @@ pub(crate) async fn run_profile_storage_owner(
 
         let mut filesystem = match Fat32AsyncFileSystem::new(partition, scratch, boot, lease) {
             Ok(filesystem) => filesystem,
-            Err(_) => match park_profile_storage().await {},
+            Err((_error, partition, _scratch)) => {
+                let _ = media_session.on_disconnect(None);
+                card = partition.into_inner().into_inner();
+                sd_power.set_low();
+                Timer::after_millis(INIT_RETRY_MS).await;
+                continue;
+            }
         };
 
-        let buffers = SD_PROFILE_SCAN_BUFFERS.init(ProfileScanBuffers::new());
         let report = match buffers.scan(&mut filesystem).await {
             Ok(report) => report,
-            Err(_) => match park_profile_storage().await {},
+            Err(_) => {
+                let _ = media_session.on_disconnect(None);
+                let (partition, _scratch) = filesystem.into_parts();
+                card = partition.into_inner().into_inner();
+                sd_power.set_low();
+                Timer::after_millis(INIT_RETRY_MS).await;
+                continue;
+            }
         };
         crate::controller_profiles::publish_scanned_registry(report.registry);
 
-        // Keep filesystem ownership in this task. USB1 requests only a bounded
-        // activation ticket; the SD owner performs the asynchronous reload and
-        // the registry revalidates that ticket before publishing active bytes.
-        loop {
+        // Keep filesystem ownership in this task. Removal invalidates the
+        // registry before the filesystem/card stack is dismantled, so USB1
+        // cannot keep using an active profile from media that no longer exists.
+        card = loop {
             match select(
                 wait_for_profile_activation_request(),
-                Timer::after_millis(OWNER_HEALTH_TICK_MS),
+                Timer::after_millis(CARD_POLL_MS),
             )
             .await
             {
@@ -259,10 +397,19 @@ pub(crate) async fn run_profile_storage_owner(
                 },
                 Either::Second(_) => {
                     let _ = filesystem.boot_info();
-                    let _ = report.registry.len();
                     let _ = report.stats.entries_seen;
                 }
             }
-        }
+
+            if !card_is_present(&card_detect) {
+                crate::controller_profiles::publish_scanned_registry(ProfileRegistry::new());
+                let _ = media_session.on_disconnect(None);
+                let (partition, _scratch) = filesystem.into_parts();
+                break partition.into_inner().into_inner();
+            }
+        };
+
+        sd_power.set_low();
+        Timer::after_millis(RAIL_OFF_MS).await;
     }
 }

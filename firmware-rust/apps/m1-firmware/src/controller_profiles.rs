@@ -10,9 +10,10 @@ use pajoniiir_controller_profile_storage::{
     ProfileSlot,
 };
 use pajoniiir_controller_session::{
-    ControllerSession, SessionDeliverySink, SessionDispatchOutcome, UsbMidiBatchError,
+    ControllerSession, LedUpdate, SessionDeliverySink, SessionDispatchOutcome, UsbMidiBatchError,
     UsbMidiBatchReport,
 };
+use pajoniiir_controller_usb::UsbMidiEvent;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct ProfileCatalogMatch {
@@ -33,6 +34,14 @@ pub(crate) enum ActiveProfileMidiError {
     StaleController,
     InvalidActiveProfile,
     Batch(UsbMidiBatchError),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ActiveProfileLedError {
+    NotActive,
+    StaleController,
+    InvalidActiveProfile,
+    InvalidMidiOutput,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -288,6 +297,49 @@ pub(crate) async fn process_active_midi_transfer(
         .map_err(ActiveProfileMidiError::Batch)
 }
 
+
+pub(crate) async fn map_active_led_update(
+    controller_epoch: u32,
+    update: LedUpdate,
+) -> Result<Option<UsbMidiEvent>, ActiveProfileLedError> {
+    let active = ACTIVE_PROFILE.lock().await;
+    let (state, active_index, connected_epoch) = PROFILE_CATALOG.lock(|cell| {
+        let catalog = cell.borrow();
+        (
+            catalog.registry.activation_state(),
+            catalog.registry.active_index(),
+            catalog.registry.connected().map(|controller| controller.epoch),
+        )
+    });
+
+    if state != ProfileActivationState::Active {
+        return Err(ActiveProfileLedError::NotActive);
+    }
+    if active.controller_epoch != controller_epoch
+        || connected_epoch != Some(controller_epoch)
+        || active.index != active_index
+    {
+        return Err(ActiveProfileLedError::StaleController);
+    }
+
+    let profile = Profile::parse(&active.bytes[..active.len])
+        .map_err(|_| ActiveProfileLedError::InvalidActiveProfile)?;
+    let Some([status, data1, data2]) = profile.map_led_update(update) else {
+        return Ok(None);
+    };
+
+    let cin = status >> 4;
+    if !(0x08..=0x0e).contains(&cin) || data1 > 0x7f || data2 > 0x7f {
+        return Err(ActiveProfileLedError::InvalidMidiOutput);
+    }
+
+    Ok(Some(UsbMidiEvent {
+        cable: 0,
+        cin,
+        bytes: [status, data1, data2],
+        len: if matches!(cin, 0x0c | 0x0d) { 2 } else { 3 },
+    }))
+}
 
 pub(crate) async fn dispatch_session_deliveries<S>(
     controller_epoch: u32,

@@ -248,18 +248,28 @@ fn verify_consumers(
     let refused = staged.handle_control_with_analysis(event, [pin.track(media), None]);
     assert!(!effects.try_push_all(refused));
     assert_eq!(decks.deck(DeckId::One).position_ms, beats[10].time_ms);
-    assert_eq!(effects.pop_transport(), Some(pending));
+    assert_eq!(effects.transport_front(), Some(pending));
+    assert!(effects.complete_transport(false));
+    assert!(!effects.try_push_all(refused));
+    assert_eq!(effects.transport_front(), Some(pending));
+    assert!(effects.complete_transport(true));
     let mut staged = decks;
     let accepted = staged.handle_control_with_analysis(event, [pin.track(media), None]);
     assert!(effects.try_push_all(accepted));
     decks = staged;
     assert_eq!(
-        effects.pop_transport(),
+        effects.transport_front(),
         Some(DeckEffect::Seek {
             deck: DeckId::One,
             position_ms: beats[11].time_ms,
         })
     );
+    let seek = effects.transport_front();
+    assert!(effects.complete_transport(false));
+    assert_eq!(effects.transport_front(), seek);
+    assert_eq!(effects.transport_len(), 1);
+    assert!(effects.complete_transport(true));
+    assert!(!effects.complete_transport(true));
     assert!(effects.is_empty());
     assert_eq!(decks.deck(DeckId::One).position_ms, beats[11].time_ms);
     let second = Pin::load(DeckId::Two, &decks, completed, requests, media).unwrap();
