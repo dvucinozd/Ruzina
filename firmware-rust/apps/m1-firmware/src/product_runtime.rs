@@ -1,10 +1,12 @@
 use pajoniiir_controller_session::{
     ConnectionState, ControlDomain, SessionDelivery, SessionDeliverySink,
 };
-use pajoniiir_deck::{DeckEffect, DeckEffectQueue, DeckProductState};
+use pajoniiir_deck::{DeckEffect, DeckEffectBroker, DeckProductState};
 use pajoniiir_mixer::MixerState;
 
-const PRODUCT_DECK_EFFECT_CAPACITY: usize = 16;
+const PRODUCT_TRANSPORT_EFFECT_CAPACITY: usize = 16;
+const PRODUCT_PERSISTENCE_EFFECT_CAPACITY: usize = 4;
+const PRODUCT_AUDIO_DSP_EFFECT_CAPACITY: usize = 16;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct ProductRuntimeStats {
@@ -18,7 +20,11 @@ pub(crate) struct ProductRuntimeStats {
 pub(crate) struct ProductRuntime {
     deck: DeckProductState,
     mixer: MixerState,
-    deck_effects: DeckEffectQueue<PRODUCT_DECK_EFFECT_CAPACITY>,
+    deck_effects: DeckEffectBroker<
+        PRODUCT_TRANSPORT_EFFECT_CAPACITY,
+        PRODUCT_PERSISTENCE_EFFECT_CAPACITY,
+        PRODUCT_AUDIO_DSP_EFFECT_CAPACITY,
+    >,
     stats: ProductRuntimeStats,
 }
 
@@ -27,7 +33,7 @@ impl ProductRuntime {
         Self {
             deck: DeckProductState::new(),
             mixer: MixerState::new(),
-            deck_effects: DeckEffectQueue::new(),
+            deck_effects: DeckEffectBroker::new(),
             stats: ProductRuntimeStats {
                 accepted_connections: 0,
                 accepted_deck_controls: 0,
@@ -42,8 +48,16 @@ impl ProductRuntime {
         self.deck_effects.len()
     }
 
-    pub(crate) fn pop_deck_effect(&mut self) -> Option<DeckEffect> {
-        self.deck_effects.pop()
+    pub(crate) fn pop_transport_effect(&mut self) -> Option<DeckEffect> {
+        self.deck_effects.pop_transport()
+    }
+
+    pub(crate) fn pop_persistence_effect(&mut self) -> Option<DeckEffect> {
+        self.deck_effects.pop_persistence()
+    }
+
+    pub(crate) fn pop_audio_dsp_effect(&mut self) -> Option<DeckEffect> {
+        self.deck_effects.pop_audio_dsp()
     }
 
     pub(crate) const fn stats(&self) -> ProductRuntimeStats {
