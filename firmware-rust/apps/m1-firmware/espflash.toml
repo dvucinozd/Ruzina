@@ -1,0 +1,5 @@
+[idf]
+partition_table = "partitions.bin"
+
+[flash]
+size = "16MB"

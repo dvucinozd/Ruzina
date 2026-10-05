@@ -82,3 +82,39 @@ GPIO45 is now owned explicitly as the 3V3_SD rail control and GPIO46 as the acti
 The microSD target now has a zero-allocation adapter from the initialized `sdio::BlockDevice<Card, ..., 512>` into Pajoniiir's existing `OwnedBlockDevice` contract. Its caller-owned sector buffer is a 4-byte-aligned 512-byte value matching the `block-device-driver` requirement, and the geometry is frozen from the SD card's reported block count after successful initialization.
 
 This deliberately reuses the same native async FAT32 path already exercised by USB0 instead of introducing a second filesystem implementation for controller profiles. The adapter, FAT32/GPT discovery, mount, profile scan, activation reload and remove/reinsert recovery are compile-verified software gates only; real sector reads, signal integrity, rail timing, card-detect behavior and card interoperability remain hardware-pending.
+
+
+## Internal flash / Hot Cue persistence
+
+The M1 schematic specifies a W25Q128JVPIQ 128-Mbit (16 MiB) QSPI flash. Native
+Rust therefore reserves the final 1 MiB exclusively for the Hot Cue journal:
+
+- partition table: `0x00008000`
+- factory application: `0x00010000..0x00F00000`
+- `hotcue` data partition: `0x00F00000..0x01000000` (1 MiB)
+- custom data subtype: `0x40`
+
+`partitions.csv` is the human-readable authority and `partitions.bin` is the
+deterministic ESP-IDF binary table consumed by `espflash.toml`. Regenerate the
+binary table with:
+
+```text
+espflash partition-table --to-binary partitions.csv > partitions.bin
+```
+
+The `hotcue-flash-storage` firmware feature uses `esp-storage = 0.10.0`. It
+does not trust the compile-time constants alone: before the first Hot Cue erase
+or write, the target reads the flashed partition table at `0x8000` and requires
+a non-encrypted `hotcue` data entry with exactly the expected subtype, offset
+and size. A missing or mismatched table permanently faults the persistence owner
+for that boot and leaves the queued Deck effect unacknowledged.
+
+The journal itself uses 128 hash buckets with two 4 KiB sectors per bucket.
+Entries and replacement-sector headers have separate commit words written last.
+An interrupted append is ignored; an interrupted compaction leaves the previous
+committed generation authoritative. Committed CRC/format corruption fails closed.
+
+USB1 controller bring-up implies `hotcue-flash-storage`, so a controller Hot Cue
+change is dequeued only after the persistence owner reports a successful durable
+journal operation. Target load/merge on track load remains part of the subsequent
+Library/deck-load ownership gate.

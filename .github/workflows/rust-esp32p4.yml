@@ -30,8 +30,38 @@ jobs:
           rustup toolchain install 1.95.0 --profile minimal
           rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
 
+      - name: Validate M1 Hot Cue partition table
+        run: |
+          python - <<'PY'
+          import hashlib
+          import struct
+          from pathlib import Path
+
+          data = Path("partitions.bin").read_bytes()
+          assert len(data) == 0xC00
+
+          def parse(entry):
+              magic, typ, subtype, offset, size, label, flags = struct.unpack("<HBBII16sI", entry)
+              return magic, typ, subtype, offset, size, label.split(b"\0", 1)[0], flags
+
+          first = parse(data[0:32])
+          second = parse(data[32:64])
+          assert first == (0x50AA, 0x00, 0x00, 0x00010000, 0x00EF0000, b"factory", 0)
+          assert second == (0x50AA, 0x01, 0x40, 0x00F00000, 0x00100000, b"hotcue", 0)
+          assert data[64:66] == b"\xeb\xeb"
+          assert data[80:96] == hashlib.md5(data[:64]).digest()
+          assert data[96:] == b"\xff" * (0xC00 - 96)
+
+          csv = Path("partitions.csv").read_text()
+          assert "factory, app, factory, 0x10000, 0xEF0000" in csv
+          assert "hotcue, data, 0x40, 0xF00000, 0x100000" in csv
+          PY
+
       - name: ESP32-P4 default cross compile
         run: cargo +1.95.0 check --locked
+
+      - name: ESP32-P4 Hot Cue flash persistence cross compile
+        run: cargo +1.95.0 check --locked --features hotcue-flash-storage
 
       - name: ESP32-P4 default link gate
         run: cargo +1.95.0 build --locked --release
