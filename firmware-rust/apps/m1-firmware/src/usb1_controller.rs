@@ -1,6 +1,10 @@
 use core::cell::RefCell;
 
-use crate::controller_profiles::{match_scanned_profile, wait_for_profile_catalog_change};
+use crate::controller_profiles::{
+    ActiveProfileMidiError, bind_controller_descriptor, match_scanned_profile,
+    on_controller_disconnect, process_active_midi_transfer, request_profile_activation,
+    wait_for_profile_activation_change, wait_for_profile_catalog_change,
+};
 use embassy_futures::select::{Either, select};
 use embassy_usb_driver::{
     Direction as UsbDirection, EndpointAddress, EndpointInfo, EndpointType,
@@ -10,6 +14,8 @@ use embassy_usb_driver::{
 };
 use embassy_usb_host::{BusController, BusRoute, BusState, handler::EnumerationInfo};
 use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
+use pajoniiir_controller_profile_storage::ProfileActivationState;
+use pajoniiir_controller_session::{ControllerSession, UsbMidiBatchReport};
 use pajoniiir_controller_usb::{
     ControllerUsbCapabilities, ControllerUsbDescriptorError, UsbMidiEvent,
     find_midi_streaming_interface, inspect_configuration,
@@ -29,14 +35,20 @@ pub(crate) struct Usb1ControllerProbe {
     pub(crate) product_id: u16,
     pub(crate) capabilities: ControllerUsbCapabilities,
     pub(crate) midi_transport_ready: bool,
+    pub(crate) controller_epoch: u32,
     pub(crate) profile_index: Option<u8>,
     pub(crate) profile_catalog_revision: u32,
+    pub(crate) profile_activation_state: ProfileActivationState,
+    pub(crate) midi_ingest: UsbMidiBatchReport,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Usb1ControllerFailure {
     Enumeration,
     MalformedConfiguration,
+    MalformedMidiTransfer,
+    ActiveProfile,
+    MidiTransport,
     Overcurrent,
 }
 
@@ -193,8 +205,9 @@ fn validate_fs_bulk_packet_size(max_packet_size: u16) -> Result<(), Usb1MidiTran
 
 /// Persistent owner for the M1 USB1 Full-Speed controller port.
 ///
-/// This compile boundary stops after enumeration and capability classification.
-/// MIDI pipes and UAC streaming are layered on later.
+/// This compile boundary owns enumeration, controller-profile activation and
+/// USB-MIDI Bulk-IN ingestion through the semantic controller session.
+/// Product-side SessionDelivery dispatch, LED feedback and UAC remain later gates.
 pub(crate) async fn run_root_controller_owner(
     usb_fs: esp_hal::peripherals::USB_FS<'static>,
     usb_dp: esp_hal::peripherals::GPIO27<'static>,
@@ -204,6 +217,8 @@ pub(crate) async fn run_root_controller_owner(
     let driver = esp_hal::usb::otg::embassy_usb_host::Driver::new(usb);
     let (mut controller, bus) = embassy_usb_host::bus(driver, &USB1_BUS_STATE);
     let mut pending_speed = None;
+    let mut controller_epoch = 0u32;
+    let mut session = ControllerSession::new();
 
     loop {
         let speed = match pending_speed.take() {
@@ -246,23 +261,44 @@ pub(crate) async fn run_root_controller_owner(
             }
         };
 
-        let midi_transport =
+        let mut midi_transport =
             Usb1MidiTransport::new(&bus, &config[..config_len], &info).ok();
         let midi_transport_ready = midi_transport.is_some();
-        let profile_match =
-            match_scanned_profile(info.device_desc.vendor_id, info.device_desc.product_id);
+        controller_epoch = controller_epoch.wrapping_add(1);
+        if controller_epoch == 0 {
+            controller_epoch = 1;
+        }
+        let profile_match = bind_controller_descriptor(
+            info.device_desc.vendor_id,
+            info.device_desc.product_id,
+            capability_flags(capabilities),
+            controller_epoch,
+        );
         let mut probe = Usb1ControllerProbe {
             device_address: info.device_address,
             vendor_id: info.device_desc.vendor_id,
             product_id: info.device_desc.product_id,
             capabilities,
             midi_transport_ready,
+            controller_epoch,
             profile_index: profile_match.index,
             profile_catalog_revision: profile_match.revision,
+            profile_activation_state: profile_match.activation_state,
+            midi_ingest: UsbMidiBatchReport::default(),
         };
+        refresh_profile_probe(&mut probe, true);
+        session.set_connected(true);
+        session.reset_profile_state();
         set_state(Usb1ControllerState::Ready(probe));
 
-        pending_speed = wait_for_ready_change(&mut controller, &mut probe).await;
+        pending_speed = wait_for_ready_change(
+            &mut controller,
+            &mut probe,
+            midi_transport.as_mut(),
+            &mut session,
+        )
+        .await;
+        session.set_connected(false);
         drop(midi_transport);
         bus.free_address(info.device_address);
     }
@@ -295,39 +331,190 @@ where
     }
 }
 
-async fn wait_for_ready_change<'d, C>(
+fn capability_flags(capabilities: ControllerUsbCapabilities) -> u16 {
+    let mut flags = 0u16;
+    if capabilities.has_midi_streaming() {
+        flags |= 1 << 0;
+    }
+    if capabilities.has_bidirectional_midi() {
+        flags |= 1 << 1;
+    }
+    if capabilities.has_usb_audio() {
+        flags |= 1 << 2;
+    }
+    if capabilities.has_audio_output() {
+        flags |= 1 << 3;
+    }
+    if capabilities.hid_interfaces != 0 {
+        flags |= 1 << 4;
+    }
+    if capabilities.vendor_interfaces != 0 {
+        flags |= 1 << 5;
+    }
+    flags
+}
+
+fn refresh_profile_probe(probe: &mut Usb1ControllerProbe, request_activation: bool) {
+    let mut profile_match = match_scanned_profile(probe.vendor_id, probe.product_id);
+    probe.profile_index = profile_match.index;
+    probe.profile_catalog_revision = profile_match.revision;
+    probe.profile_activation_state = profile_match.activation_state;
+
+    if request_activation
+        && profile_match.activation_state == ProfileActivationState::Matched
+        && let Some(index) = profile_match.index
+        && request_profile_activation(index)
+    {
+        profile_match = match_scanned_profile(probe.vendor_id, probe.product_id);
+        probe.profile_index = profile_match.index;
+        probe.profile_catalog_revision = profile_match.revision;
+        probe.profile_activation_state = profile_match.activation_state;
+    }
+}
+
+async fn wait_for_ready_change<'d, C, A>(
     controller: &mut BusController<'d, C>,
     probe: &mut Usb1ControllerProbe,
+    mut midi_transport: Option<&mut Usb1MidiTransport<'d, A>>,
+    session: &mut ControllerSession,
 ) -> Option<embassy_usb_driver::Speed>
 where
     C: UsbHostController<'d>,
+    A: UsbHostAllocator<'d>,
 {
+    let mut midi_buffer = [0u8; USB1_MIDI_FS_MAX_PACKET_BYTES as usize];
+
     loop {
-        match select(
-            controller.wait_for_device_event(),
+        let profile_change = select(
             wait_for_profile_catalog_change(),
-        )
-        .await
+            wait_for_profile_activation_change(),
+        );
+
+        if probe.profile_activation_state == ProfileActivationState::Active
+            && let Some(transport) = midi_transport.as_mut()
         {
+            let device_or_midi = select(
+                controller.wait_for_device_event(),
+                transport.read_raw(&mut midi_buffer),
+            );
+            match select(device_or_midi, profile_change).await {
+                Either::First(Either::First(DeviceEvent::Disconnected)) => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    set_state(Usb1ControllerState::Detached);
+                    return None;
+                }
+                Either::First(Either::First(DeviceEvent::Overcurrent)) => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    set_state(Usb1ControllerState::Failed(
+                        Usb1ControllerFailure::Overcurrent,
+                    ));
+                    return None;
+                }
+                Either::First(Either::First(DeviceEvent::Connected(speed))) => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    set_state(Usb1ControllerState::Detached);
+                    return Some(speed);
+                }
+                Either::First(Either::First(_)) => {}
+                Either::First(Either::Second(Ok(read))) => {
+                    match process_active_midi_transfer(
+                        probe.controller_epoch,
+                        session,
+                        &midi_buffer[..read],
+                    )
+                    .await
+                    {
+                        Ok(report) => {
+                            probe.midi_ingest.accumulate(report);
+                            set_state(Usb1ControllerState::Ready(*probe));
+                        }
+                        Err(ActiveProfileMidiError::NotActive)
+                        | Err(ActiveProfileMidiError::StaleController) => {
+                            session.reset_profile_state();
+                            refresh_profile_probe(probe, true);
+                            set_state(Usb1ControllerState::Ready(*probe));
+                        }
+                        Err(ActiveProfileMidiError::Batch(_)) => {
+                            session.set_connected(false);
+                            on_controller_disconnect();
+                            set_state(Usb1ControllerState::Failed(
+                                Usb1ControllerFailure::MalformedMidiTransfer,
+                            ));
+                            return None;
+                        }
+                        Err(ActiveProfileMidiError::InvalidActiveProfile) => {
+                            session.set_connected(false);
+                            on_controller_disconnect();
+                            set_state(Usb1ControllerState::Failed(
+                                Usb1ControllerFailure::ActiveProfile,
+                            ));
+                            return None;
+                        }
+                    }
+                }
+                Either::First(Either::Second(Err(Usb1MidiTransportError::Transfer(
+                    PipeError::Disconnected,
+                )))) => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    set_state(Usb1ControllerState::Detached);
+                    return None;
+                }
+                Either::First(Either::Second(Err(_))) => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    set_state(Usb1ControllerState::Failed(
+                        Usb1ControllerFailure::MidiTransport,
+                    ));
+                    return None;
+                }
+                Either::Second(Either::First(_revision)) => {
+                    session.reset_profile_state();
+                    refresh_profile_probe(probe, true);
+                    set_state(Usb1ControllerState::Ready(*probe));
+                }
+                Either::Second(Either::Second(_revision)) => {
+                    session.reset_profile_state();
+                    refresh_profile_probe(probe, false);
+                    set_state(Usb1ControllerState::Ready(*probe));
+                }
+            }
+            continue;
+        }
+
+        match select(controller.wait_for_device_event(), profile_change).await {
             Either::First(DeviceEvent::Disconnected) => {
+                session.set_connected(false);
+                on_controller_disconnect();
                 set_state(Usb1ControllerState::Detached);
                 return None;
             }
             Either::First(DeviceEvent::Overcurrent) => {
+                session.set_connected(false);
+                on_controller_disconnect();
                 set_state(Usb1ControllerState::Failed(
                     Usb1ControllerFailure::Overcurrent,
                 ));
                 return None;
             }
             Either::First(DeviceEvent::Connected(speed)) => {
+                session.set_connected(false);
+                on_controller_disconnect();
                 set_state(Usb1ControllerState::Detached);
                 return Some(speed);
             }
             Either::First(_) => {}
-            Either::Second(_revision) => {
-                let profile_match = match_scanned_profile(probe.vendor_id, probe.product_id);
-                probe.profile_index = profile_match.index;
-                probe.profile_catalog_revision = profile_match.revision;
+            Either::Second(Either::First(_revision)) => {
+                session.reset_profile_state();
+                refresh_profile_probe(probe, true);
+                set_state(Usb1ControllerState::Ready(*probe));
+            }
+            Either::Second(Either::Second(_revision)) => {
+                session.reset_profile_state();
+                refresh_profile_probe(probe, false);
                 set_state(Usb1ControllerState::Ready(*probe));
             }
         }
