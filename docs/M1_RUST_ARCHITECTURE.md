@@ -436,14 +436,14 @@ The M1 controller port is a separate ESP32-P4 Full-Speed OTG host on GPIO27 (DP)
 
 The HAL-independent `pajoniiir-controller-usb` crate parses the configuration descriptor into a bounded `ControllerUsbCapabilities` snapshot covering MIDI Streaming, USB Audio Control/Streaming, HID and vendor interfaces plus relevant endpoint directions. This preserves the product rule that transport discovery is separate from S3CP/profile semantics. A controller is not considered physically supported by descriptor compatibility alone.
 
-CI cross-compiles USB1 independently and links USB0 + USB1 + PSRAM together. Physical VBUS/fault behavior, MIDI traffic, LED output and UAC isochronous/feedback behavior remain `HARDWARE_PENDING`.
+CI cross-compiles USB1 independently and release-links it with USB0 + SDMMC + PSRAM. The target now exercises the compile boundary through profile activation and Bulk-IN MIDI ingestion, but physical VBUS/fault behavior, real MIDI traffic, LED output and UAC isochronous/feedback behavior remain `HARDWARE_PENDING`.
 
 
 ### USB-MIDI 1.0 transport boundary
 
 Above USB1 enumeration, `pajoniiir-controller-usb` now provides a transport-neutral locator for alternate-setting-zero Audio/MIDIStreaming interfaces plus allocation-free USB-MIDI 1.0 event-packet encode/decode. It preserves cable number, CIN, payload length, channel-voice status and endpoint max-packet sizes rather than collapsing USB framing into semantic controller events.
 
-The ESP32-P4 USB1 adapter allocates Embassy typed bulk IN and optional bulk OUT pipes from the enumerated device address and route. It rejects invalid Full-Speed bulk max-packet sizes and keeps pipe lifetime bounded to the current enumerated device. This layer intentionally stops before S3CP/profile dispatch: USB transport qualification, controller profile selection and product semantics remain separate gates.
+The ESP32-P4 USB1 adapter allocates Embassy typed bulk IN and optional bulk OUT pipes from the enumerated device address and route. It rejects invalid Full-Speed bulk max-packet sizes and keeps pipe lifetime bounded to the current enumerated device. Once the storage-backed profile is `Active`, the owner races device events, catalog/activation changes and Bulk-IN reads; dropping a losing Embassy pipe future is relied on only through the driver's documented cancellation-safe transfer contract. USB-MIDI bytes are then passed to the active S3CP profile/session boundary. Product-side semantic delivery, LED output and UAC remain separate gates.
 
 
 ### Controller profile registry and binding state
@@ -452,7 +452,7 @@ The released controller-profile selection state machine is now represented in th
 
 Connection descriptors carry a monotonic wrapping epoch. A descriptor with an old epoch, or the same epoch with a conflicting VID/PID, is rejected before it can replace the live binding. Rescanning profile storage preserves the current physical descriptor but intentionally drops the active profile back to `Matched`, forcing the newly read bytes to be revalidated and reactivated before use.
 
-This is the HAL-independent half of the microSD profile manager. Profile bytes remain external `/controllers/<id>/profile.s3bin` data; they are not embedded into the firmware image. The SD/MMC scanner, transactional upload/backup recovery and target activation worker remain separate platform boundaries.
+This remains the HAL-independent policy half of the microSD profile manager. Profile bytes stay external `/controllers/<id>/profile.s3bin` data; they are not embedded into the firmware image. The target SD/MMC owner now implements scan, matched-profile reload and activation publication, while transactional upload/backup recovery and removable-media recovery remain separate platform boundaries.
 
 
 ### microSD SDMMC0 target ownership
@@ -461,21 +461,23 @@ The profile-storage platform boundary now has a target-side compile gate matchin
 
 The `sdmmc-profile-storage-bringup` task constructs the native `esp-hal 1.2.2` SD host, binds the fixed slot-0 IO-MUX pins, owns the power-enable/card-detect pins and switches the slot into async interrupt-driven mode. It then follows the official `sdio 0.5.1` integration pattern: retain an uninitialized `BlockDevice<Card, ..., 512>` and call `reacquire` after the 3V3_SD settle interval. A failed initialization therefore keeps ownership available for retry instead of consuming the slot. The compile baseline is intentionally 25 MHz; higher-speed timing is deferred to EVT measurements.
 
-FAT profile storage, transactional install/recovery and profile activation remain separate follow-on gates. CI independently cross-compiles this SDMMC boundary and also release-links it together with USB0 HS, USB1 FS and PSRAM, proving compile-time resource coexistence only. Electrical rail timing, back-power avoidance, real card initialization, SD signal integrity, hot-plug and filesystem behavior remain `HARDWARE_PENDING`.
+FAT32 profile scanning and matched-profile activation are now wired into the target owner: USB1 requests a bounded activation ticket, SDMMC reloads the selected `profile.s3bin` without transferring filesystem ownership, and the ticket/blob are revalidated before publication. Transactional profile install/backup recovery, GPT discovery and removable-card power-cycle recovery remain follow-on gates. CI independently cross-compiles this SDMMC boundary and release-links it together with USB0 HS, USB1 FS and PSRAM, proving compile-time resource coexistence only. Electrical rail timing, back-power avoidance, real card initialization, SD signal integrity, hot-plug and filesystem behavior remain `HARDWARE_PENDING`.
 
 
 ### Connection-safe profile activation tickets
 
 Profile activation across microSD I/O now has an explicit stale-binding guard. `ProfileRegistry::begin_activation` captures a bounded ticket containing the matched registry index, connected VID/PID/capability/epoch snapshot, and the validated S3CP metadata expected from storage. After the potentially asynchronous file read, `validate_activation_blob` rechecks that the same physical connection and registry binding are still current and reparses the complete profile before it can be committed active.
 
-A disconnect/reconnect, a conflicting/newer connection epoch, or a registry rescan invalidates the outstanding ticket. Profile bytes whose validated metadata no longer matches the scanned registry entry are also rejected. This ports the released C manager's read-outside-lock / revalidate-before-commit invariant into the Rust domain layer without holding a lock across storage I/O.
+A disconnect/reconnect, a conflicting/newer connection epoch, or a registry rescan invalidates the outstanding ticket. Profile bytes whose validated metadata no longer matches the scanned registry entry are also rejected. The target broker now uses this ticket around real asynchronous SD filesystem I/O: the SD owner reloads into the bounded 16 KiB scratch, revalidation occurs before and after copying into the active-profile bank, and only a current ticket can transition the registry to `Active`. Validation failures fail closed to `Failed` when the ticket is still current; stale tickets cannot mutate a newer binding. This ports the released C manager's read-outside-lock / revalidate-before-commit invariant into the Rust target without holding a registry lock across storage I/O.
 
 
 ### USB-MIDI to semantic-session ingest boundary
 
-The controller session now accepts the transport-level `UsbMidiEvent` directly and converts only validated MIDI channel-voice packets into the existing S3CP runtime. USB framing therefore terminates before semantic scheduling/reconciliation; the profile/session layer never parses endpoint buffers itself.
+The controller session accepts transport-level `UsbMidiEvent` values and now also owns host-tested 4-byte USB-MIDI transfer batching. It converts only validated MIDI channel-voice packets into the existing S3CP runtime, so USB framing terminates before semantic scheduling/reconciliation and the target adapter does not duplicate profile semantics.
 
-S3CP v2 has no virtual-cable selector, so R1 fails closed for non-zero USB-MIDI cable numbers rather than silently merging multiple virtual cables. SysEx and other non-channel-voice CIN values remain ignored by the S3CP control runtime, consistent with ADR-004's explicit SysEx/MIDI-CI deferral. These outcomes are typed and host-tested.
+S3CP v2 has no virtual-cable selector, so R1 fails closed for non-zero USB-MIDI cable numbers rather than silently merging multiple virtual cables. SysEx and other non-channel-voice CIN values remain ignored by the S3CP control runtime, consistent with ADR-004's explicit SysEx/MIDI-CI deferral. Batch tests cover mapped and unmapped channel-voice messages, ignored SysEx, unsupported virtual cables, invalid CIN and partial-transfer rejection.
+
+On target, Bulk-IN is consumed only while the registry is `Active`. Before each transfer is interpreted, the active profile index and controller epoch must still agree with the live registry binding; a catalog rescan, disconnect or reconnect therefore invalidates stale bytes before semantic ingest. The resulting `ControllerSession` queue is not yet acknowledged into Deck/Mixer/audio ownership: a product-side `SessionDelivery` dispatcher with real downstream acceptance/backpressure is the next runtime gate.
 
 
 ### SDIO to native filesystem block boundary
@@ -489,4 +491,4 @@ The buffer is `aligned::Aligned<A4, [u8; 512]>`, matching `block-device-driver 0
 
 Controller profile discovery now has a HAL-independent `pajoniiir-controller-profile-storage` crate. It scans the released `/controllers/<id>/profile.s3bin` layout through the generic asynchronous filesystem contract, reuses one caller-owned 16 KiB profile buffer for every candidate, validates the released ASCII directory-name policy, and fills the bounded 16-entry `ProfileRegistry` with complete S3CP validation.
 
-A missing, unreadable, oversized or corrupt individual profile is counted and skipped so one bad controller package does not hide the remaining registry. Root-directory traversal errors remain fatal because publishing a silently partial scan would make controller availability nondeterministic. Host tests exercise fragmented reads, invalid IDs, corrupt blobs, unreadable profiles and the 16-profile capacity boundary.
+A missing, unreadable, oversized or corrupt individual profile is counted and skipped so one bad controller package does not hide the remaining registry. Root-directory traversal errors remain fatal because publishing a silently partial scan would make controller availability nondeterministic. The same workspace can reload a previously scanned `ProfileSlot` into its 16 KiB scratch for activation, preserving the single-owner filesystem model and bounded memory policy. Host tests exercise fragmented reads, invalid IDs, corrupt blobs, unreadable profiles, bounded reload and the 16-profile capacity boundary.

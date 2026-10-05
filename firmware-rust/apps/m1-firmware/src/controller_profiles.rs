@@ -195,6 +195,7 @@ pub(crate) async fn complete_profile_activation(
             .is_ok()
     });
     if !prevalidated {
+        fail_profile_activation(request).await;
         return false;
     }
 
@@ -245,7 +246,6 @@ pub(crate) async fn fail_profile_activation(request: ProfileActivationRequest) {
         PROFILE_ACTIVATION_CHANGED.signal(revision);
     }
 }
-
 
 pub(crate) async fn process_active_midi_transfer(
     controller_epoch: u32,
