@@ -2,14 +2,26 @@ use aligned::{A4, Aligned};
 use block_device_driver::BlockDevice as BlockDeviceDriver;
 use embassy_time::{Delay, Timer};
 use esp_hal::sdmmc::{Config, SdHostController, Slot, SlotConfig};
-use pajoniiir_media_block::{BlockGeometry, TransferError};
-use pajoniiir_media_io::OwnedBlockDevice;
+use pajoniiir_controller_profile_storage::ProfileScanBuffers;
+use pajoniiir_media_block::{BlockGeometry, BlockRange, TransferError};
+use pajoniiir_media_fat32::{
+    Fat32AsyncFileSystem, parse_fat32_boot_sector, parse_fat32_fs_info,
+};
+use pajoniiir_media_io::{AsyncPartitionDevice, OwnedBlockDevice};
+use pajoniiir_media_partition::{
+    PartitionLayout, PartitionScanResult, VolumeKind, scan_mbr_or_superfloppy,
+};
+use pajoniiir_media_session::{ConnectResult, MediaSession, MediaSourceId};
 use sdio::{Addressable, BlockDevice, MmcError, sd::Card};
+use static_cell::StaticCell;
 
 const CARD_HZ: u32 = 25_000_000;
 const RAIL_SETTLE_MS: u64 = 10;
 const INIT_RETRY_MS: u64 = 1_000;
+const OWNER_HEALTH_TICK_MS: u64 = 60_000;
+const SD_PROFILE_SOURCE_ID: u32 = 0x5344_0001;
 
+static SD_PROFILE_SCAN_BUFFERS: StaticCell<ProfileScanBuffers> = StaticCell::new();
 
 struct SdProfileBlockBuffer(Aligned<A4, [u8; 512]>);
 
@@ -53,10 +65,6 @@ impl<'d> SdProfileBlockDevice<'d> {
             inner,
         }
     }
-
-    fn into_inner(self) -> BlockDevice<Card, Slot<'d, 0, esp_hal::Async>, Delay, 512> {
-        self.inner
-    }
 }
 
 impl OwnedBlockDevice for SdProfileBlockDevice<'_> {
@@ -94,11 +102,32 @@ impl OwnedBlockDevice for SdProfileBlockDevice<'_> {
     }
 }
 
+fn candidate_range(
+    first_block: u64,
+    block_count: Option<core::num::NonZeroU64>,
+    geometry: BlockGeometry,
+) -> Option<BlockRange> {
+    match block_count {
+        Some(block_count) => BlockRange::new(first_block, block_count, geometry),
+        None => BlockRange::from_start(first_block, geometry),
+    }
+}
+
+async fn park_profile_storage() -> core::convert::Infallible {
+    core::future::pending().await
+}
+
 /// Persistent owner for the M1 microSD SDMMC0 path.
 ///
 /// This binds the board-authoritative ESP32-P4 slot-0 IO-MUX pins, enables the
-/// controlled 3V3_SD rail, and retains the initialized SD-card block device.
-/// Filesystem mounting and controller-profile I/O remain separate boundaries.
+/// controlled 3V3_SD rail, initializes the SD card, mounts a FAT32
+/// superfloppy/MBR partition through Pajoniiir's native async filesystem, and
+/// scans the released /controllers/<id>/profile.s3bin layout without heap
+/// allocation.
+///
+/// GPT discovery, physical card removal/reinsert, rail power-cycle recovery and
+/// profile activation in the USB1 controller session remain explicit follow-on
+/// hardware/software gates.
 pub(crate) async fn run_profile_storage_owner(
     sdhost: esp_hal::peripherals::SDHOST<'static>,
     d0: esp_hal::peripherals::GPIO39<'static>,
@@ -129,12 +158,88 @@ pub(crate) async fn run_profile_storage_owner(
 
     let mut card: BlockDevice<Card, _, _, 512> = BlockDevice::new_uninit_sd_card(slot, Delay);
     loop {
-        if card.reacquire(CARD_HZ).await.is_ok() {
-            let device = SdProfileBlockDevice::new(card);
-            let _ = device.geometry();
-            let _ = SdProfileBlockBuffer::zeroed();
-            match core::future::pending::<core::convert::Infallible>().await {}
+        if card.reacquire(CARD_HZ).await.is_err() {
+            Timer::after_millis(INIT_RETRY_MS).await;
+            continue;
         }
-        Timer::after_millis(INIT_RETRY_MS).await;
+
+        let mut device = SdProfileBlockDevice::new(card);
+        let geometry = device.geometry();
+        let scratch = SdProfileBlockBuffer::zeroed();
+
+        let scratch = match device.read_blocks_owned(0, 1, scratch).await {
+            Ok(scratch) => scratch,
+            Err(_) => match park_profile_storage().await {},
+        };
+
+        let mut layout = PartitionLayout::new();
+        if scan_mbr_or_superfloppy(scratch.as_ref(), &mut layout) != PartitionScanResult::Ok {
+            match park_profile_storage().await {}
+        }
+
+        let Some(candidate) = layout
+            .candidates()
+            .iter()
+            .copied()
+            .find(|candidate| candidate.kind == VolumeKind::Fat)
+        else {
+            match park_profile_storage().await {}
+        };
+
+        let Some(range) = candidate_range(candidate.first_lba, candidate.sector_count, geometry)
+        else {
+            match park_profile_storage().await {}
+        };
+
+        let mut partition = AsyncPartitionDevice::new(device, range);
+        let scratch = match partition.read_blocks_owned(0, 1, scratch).await {
+            Ok(scratch) => scratch,
+            Err(_) => match park_profile_storage().await {},
+        };
+        let boot = match parse_fat32_boot_sector(scratch.as_ref(), partition.geometry()) {
+            Ok(boot) => boot,
+            Err(_) => match park_profile_storage().await {},
+        };
+
+        let scratch = match partition
+            .read_blocks_owned(u64::from(boot.fs_info_sector), 1, scratch)
+            .await
+        {
+            Ok(scratch) => scratch,
+            Err(_) => match park_profile_storage().await {},
+        };
+        if parse_fat32_fs_info(scratch.as_ref(), &boot).is_err() {
+            match park_profile_storage().await {}
+        }
+
+        let source = MediaSourceId::new(SD_PROFILE_SOURCE_ID)
+            .expect("M1 microSD profile-storage source id is non-zero");
+        let mut session = MediaSession::new();
+        let lease = match session.on_connect(source) {
+            ConnectResult::Accepted(lease)
+            | ConnectResult::Duplicate(lease)
+            | ConnectResult::IgnoredSecondary(lease) => lease,
+        };
+
+        let mut filesystem = match Fat32AsyncFileSystem::new(partition, scratch, boot, lease) {
+            Ok(filesystem) => filesystem,
+            Err(_) => match park_profile_storage().await {},
+        };
+
+        let buffers = SD_PROFILE_SCAN_BUFFERS.init(ProfileScanBuffers::new());
+        let report = match buffers.scan(&mut filesystem).await {
+            Ok(report) => report,
+            Err(_) => match park_profile_storage().await {},
+        };
+
+        // Retain the filesystem/card owner and the immutable registry snapshot.
+        // A later USB1 integration gate will publish this registry to the
+        // controller session; until then, keep both alive in this task.
+        loop {
+            Timer::after_millis(OWNER_HEALTH_TICK_MS).await;
+            let _ = filesystem.boot_info();
+            let _ = report.registry.len();
+            let _ = report.stats.entries_seen;
+        }
     }
 }
