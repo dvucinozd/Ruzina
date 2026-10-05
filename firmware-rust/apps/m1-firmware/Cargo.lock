@@ -867,6 +867,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "esp-storage"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ef0e785f54e316f64a1e14a7a2f061a2ea0b038b284902ca71e1e1f5574cf47"
+dependencies = [
+ "document-features",
+ "esp-hal",
+ "esp-hal-procmacros",
+ "esp-metadata-generated",
+ "esp-rom-sys",
+ "esp-sync",
+ "esp32p4",
+]
+
+[[package]]
 name = "esp-sync"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1401,6 +1416,7 @@ dependencies = [
  "esp-alloc",
  "esp-hal",
  "esp-rtos",
+ "esp-storage",
  "pajoniiir-audio-dsp",
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-runtime",

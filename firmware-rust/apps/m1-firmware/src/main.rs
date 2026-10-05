@@ -12,6 +12,8 @@ use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 mod controller_profiles;
 #[allow(dead_code)]
 mod deck_effect_owners;
+#[cfg(feature = "hotcue-flash-storage")]
+mod hotcue_flash;
 #[allow(dead_code)]
 mod product_runtime;
 #[allow(dead_code)]
@@ -45,6 +47,12 @@ async fn usb0_filesystem_task() {
 #[embassy_executor::task]
 async fn usb0_library_task() {
     usb0_library::run_usb0_library_worker().await
+}
+
+#[cfg(feature = "hotcue-flash-storage")]
+#[embassy_executor::task]
+async fn deck_hot_cue_persistence_owner_task(flash: esp_hal::peripherals::FLASH<'static>) {
+    deck_effect_owners::run_persistence_owner(flash).await
 }
 
 #[cfg(feature = "usb1-controller-bringup")]
@@ -149,6 +157,14 @@ async fn main(spawner: Spawner) -> ! {
         );
     }
 
+    #[cfg(feature = "hotcue-flash-storage")]
+    {
+        spawner.spawn(
+            deck_hot_cue_persistence_owner_task(peripherals.FLASH)
+                .expect("Hot Cue persistence owner task slot must be available"),
+        );
+    }
+
     #[cfg(feature = "usb1-controller-bringup")]
     {
         spawner.spawn(
@@ -184,6 +200,7 @@ async fn main(spawner: Spawner) -> ! {
     #[cfg(not(any(
         feature = "usb0-hardware-bringup",
         feature = "usb1-controller-bringup",
+        feature = "hotcue-flash-storage",
         feature = "sdmmc-profile-storage-bringup"
     )))]
     let _ = spawner;
