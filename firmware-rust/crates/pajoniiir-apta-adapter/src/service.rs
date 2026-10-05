@@ -18,13 +18,26 @@ use pajoniiir_track_analysis::{BeatGrid, TrackAnalysis};
 use pajoniiir_waveform::WaveformView;
 
 /// Copy at the catalog owner. No Requests access or catalog borrow crosses I/O.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Selection {
     pub(crate) lease: MediaLease,
+    revision: u32,
     pub(crate) track: MediaTrackId,
     pub(crate) path: CatalogText<CATALOG_PATH_MAX>,
 }
 impl Selection {
+    /// Product intent serial, independent of the service's Requests generations.
+    /// Prevents a queued completion attaching after an A -> B -> A selection.
+    pub fn with_revision(mut self, revision: u32) -> Self {
+        self.revision = revision;
+        self
+    }
+    pub fn lease(self) -> MediaLease {
+        self.lease
+    }
+    pub fn track_id(self) -> MediaTrackId {
+        self.track
+    }
     pub fn new<const N: usize>(
         catalog: &CatalogSnapshot<N>,
         index: usize,
@@ -44,6 +57,7 @@ impl Selection {
         }
         Ok(Self {
             lease,
+            revision: 0,
             track: track.track_id,
             path: track.audio_path,
         })
@@ -77,6 +91,7 @@ pub struct Retained<'a> {
     beats: Option<usize>,
     columns: usize,
     target: DeckId,
+    selection: (MediaLease, MediaTrackId, u32),
     accepted: bool,
 }
 impl<'a> Retained<'a> {
@@ -105,6 +120,12 @@ impl<'a> Retained<'a> {
         check_authority(self.target, decks, self.completed(), authority.0, media)?;
         self.accepted = true;
         Ok(())
+    }
+    pub fn matches(&self, selection: Selection) -> bool {
+        self.selection == (selection.lease, selection.track, selection.revision)
+    }
+    pub fn track_id(&self) -> MediaTrackId {
+        self.selection.1
     }
     pub fn target(&self) -> DeckId {
         self.target
@@ -157,6 +178,8 @@ pub enum Status {
     Rejected,
     Failed,
     RecoveryBlocked,
+    /// Unexpected completion remains owned by the Client; explicit investigation required.
+    Quarantined,
 }
 
 /// Platform uses its existing bounded channel/short-lock snapshot mechanisms.
@@ -238,8 +261,14 @@ impl<'a, T: Transport> Service<'a, T> {
                     self.command(command, port);
                     continue;
                 }
-                Either::Second(Err(_)) => {
-                    port.report(Status::RecoveryBlocked);
+                Either::Second(Err(error)) => {
+                    port.report(
+                        if matches!(error, pajoniiir_media_fs::analysis::Error::Unexpected) {
+                            Status::Quarantined
+                        } else {
+                            Status::RecoveryBlocked
+                        },
+                    );
                     let command = port.receive().await;
                     self.command(command, port);
                     continue;
@@ -327,6 +356,7 @@ impl<'a, T: Transport> Service<'a, T> {
                         beats,
                         columns,
                         target: deck,
+                        selection: (selection.lease, selection.track, selection.revision),
                         accepted: false,
                     };
                     match port.publish(retained) {

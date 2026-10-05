@@ -175,11 +175,12 @@ impl Usb0LibraryCatalogStage {
     #[allow(clippy::result_large_err)]
     fn select_analysis(
         &self, index: usize, deck: pajoniiir_controller_session::DeckId,
-    ) -> Result<(), Option<pajoniiir_apta_adapter::service::Command<'static>>> {
-        use pajoniiir_apta_adapter::service::{Command, Selection};
-        let catalog = self.publisher.current().ok_or(None)?;
-        let selection = Selection::from_bank(catalog, index).map_err(|_| None)?;
-        crate::usb0_analysis::command(Command::Analyze(selection, deck)).map_err(Some)
+    ) -> Result<(), ()> {
+        use pajoniiir_apta_adapter::service::Selection;
+        let catalog = self.publisher.current().ok_or(())?;
+        let selection = Selection::from_bank(catalog, index).map_err(|_| ())?;
+        crate::usb0_analysis::catalog_selection(selection, deck)
+            .then_some(()).ok_or(())
     }
 
     fn try_new() -> Result<Self, ()> {

@@ -232,7 +232,7 @@ pub(crate) async fn run_root_controller_owner(
         let speed = match pending_speed.take() {
             Some(speed) => speed,
             None => loop {
-                match controller.wait_for_device_event().await {
+                match product_wait(&mut product, controller.wait_for_device_event()).await {
                     DeviceEvent::Connected(speed) => break speed,
                     DeviceEvent::Overcurrent => {
                         set_state(Usb1ControllerState::Failed(
@@ -391,7 +391,7 @@ async fn wait_for_ready_change<'d, C, A>(
     probe: &mut Usb1ControllerProbe,
     mut midi_transport: Option<&mut Usb1MidiTransport<'d, A>>,
     session: &mut ControllerSession,
-    product: &mut ProductRuntime,
+    product: &mut ProductRuntime<'static>,
 ) -> Option<embassy_usb_driver::Speed>
 where
     C: UsbHostController<'d>,
@@ -462,7 +462,7 @@ where
                 controller.wait_for_device_event(),
                 transport.read_raw(&mut midi_buffer),
             );
-            match select(device_or_midi, profile_change).await {
+            match product_wait(product, select(device_or_midi, profile_change)).await {
                 Either::First(Either::First(DeviceEvent::Disconnected)) => {
                     session.set_connected(false);
                     on_controller_disconnect();
@@ -557,7 +557,7 @@ where
             continue;
         }
 
-        match select(controller.wait_for_device_event(), profile_change).await {
+        match product_wait(product, select(controller.wait_for_device_event(), profile_change)).await {
             Either::First(DeviceEvent::Disconnected) => {
                 session.set_connected(false);
                 on_controller_disconnect();
@@ -598,9 +598,11 @@ where
 async fn drain_product_dispatch(
     probe: &mut Usb1ControllerProbe,
     session: &mut ControllerSession,
-    product: &mut ProductRuntime,
+    product: &mut ProductRuntime<'static>,
 ) {
     loop {
+        #[cfg(feature = "apta-owner-compile")]
+        crate::usb0_analysis::product_turn(product);
         let report =
             dispatch_session_deliveries(probe.controller_epoch, session, product, 32).await;
 
@@ -641,7 +643,7 @@ async fn flush_controller_leds<'d, C, A>(
     controller: &mut BusController<'d, C>,
     probe: &mut Usb1ControllerProbe,
     transport: &mut Usb1MidiTransport<'d, A>,
-    product: &mut ProductRuntime,
+    product: &mut ProductRuntime<'static>,
 ) -> LedFlushOutcome
 where
     C: UsbHostController<'d>,
@@ -710,4 +712,22 @@ where
     }
 
     LedFlushOutcome::Complete
+}
+
+async fn product_wait<F: core::future::Future>(product: &mut ProductRuntime<'static>, future: F) -> F::Output {
+    #[cfg(feature = "apta-owner-compile")]
+    { crate::usb0_analysis::while_waiting(product, future).await }
+    #[cfg(not(feature = "apta-owner-compile"))]
+    { let _ = product; future.await }
+}
+
+// Compile-only layout observation for the actual existing owner composition.
+#[cfg(feature = "apta-owner-compile")]
+#[unsafe(no_mangle)]
+fn usb1_product_future_size(
+    usb_fs: esp_hal::peripherals::USB_FS<'static>,
+    usb_dp: esp_hal::peripherals::GPIO27<'static>,
+    usb_dm: esp_hal::peripherals::GPIO26<'static>,
+) -> usize {
+    core::mem::size_of_val(&run_root_controller_owner(usb_fs, usb_dp, usb_dm))
 }

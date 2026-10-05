@@ -184,7 +184,7 @@ fn loop_errors_quarantine_stale_delivery_and_cancelled_loop_recovery() {
                 poll_until(&mut task, || {
                     matches!(
                         state.status.get(),
-                        Some(Status::Failed | Status::RecoveryBlocked)
+                        Some(Status::Failed | Status::RecoveryBlocked | Status::Quarantined)
                     )
                 });
                 assert_eq!(state.published.get(), 0);

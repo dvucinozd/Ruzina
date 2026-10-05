@@ -2908,6 +2908,7 @@ dependencies = [
  "embassy-futures",
  "libapta",
  "pajoniiir-controller-core",
+ "pajoniiir-controller-session",
  "pajoniiir-core",
  "pajoniiir-deck",
  "pajoniiir-media-block",
@@ -2918,6 +2919,7 @@ dependencies = [
  "pajoniiir-media-identity",
  "pajoniiir-media-io",
  "pajoniiir-media-session",
+ "pajoniiir-mixer",
  "pajoniiir-track-analysis",
  "pajoniiir-waveform",
 ]

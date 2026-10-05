@@ -24,3 +24,10 @@ pajoniiir-media-exfat.workspace = true
 pajoniiir-media-io.workspace = true
 pajoniiir-media-block.workspace = true
 pajoniiir-controller-core.workspace = true
+
+pajoniiir-controller-session.workspace = true
+pajoniiir-mixer.workspace = true
+
+[features]
+# Host source inclusion of the firmware product owner.
+apta-owner-compile = []

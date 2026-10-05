@@ -698,3 +698,16 @@ product owner, whose fresh media/actual Deck acceptance and stopped/non-pending
 retirement gates protect neutral consumers. See the adapter README's **Long-lived
 owner handoff** for policy, tests, compiler diagnostics and remaining adoption
 choices. Neither main nor the production provider selects or spawns this path.
+
+### Experimental actual product-owner lifecycle — 2026-10-05
+
+The optional `apta-owner-compile` path now retains banks in the existing firmware
+ProductRuntime and routes their short neutral views into Deck controls/waveforms.
+Its bounded Library handoff commits selection only after successful analysis
+enqueue. Product intent revisions complement existing media/track identities to
+reject delayed same-track and superseded selections. The existing controller owner
+services coalesced analysis notifications without cancelling its pending USB wait.
+Retirement waits for both Deck transport state and acknowledged transport effects;
+refused recycling remains product-owned. No production analysis claim, spawn or
+provider switch occurs. The adapter README's **Actual product-owner lifecycle**
+owns exact policy, host test seam, reproduction and remaining adoption/hardware gates.

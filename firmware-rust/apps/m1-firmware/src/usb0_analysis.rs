@@ -133,18 +133,38 @@ use core::cell::RefCell;
 use embassy_sync::{
     blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex},
     channel::{Channel, TrySendError},
+    signal::Signal,
 };
-use pajoniiir_apta_adapter::service::{Authority, Command, Port, Retained, Service, Status};
+use pajoniiir_apta_adapter::service::{Authority, Command, Port, Retained, Selection, Service, Status};
 pub(crate) type AnalysisService<'a> = Service<'a, Usb0AnalysisTransport>;
+static SELECTIONS: Channel<CriticalSectionRawMutex, (Selection, pajoniiir_controller_session::DeckId), 2> = Channel::new();
 static COMMANDS: Channel<CriticalSectionRawMutex, Command<'static>, 2> = Channel::new();
 static OUTPUTS: Channel<CriticalSectionRawMutex, Retained<'static>, 2> = Channel::new();
 static DELIVERY: CriticalSectionMutex<RefCell<(Authority, Option<Status>)>> =
     CriticalSectionMutex::new(RefCell::new((Authority::EMPTY, None)));
 
+static PRODUCT_WAKE: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+pub(crate) fn wake_product() { PRODUCT_WAKE.signal(()); }
+/// Keep the controller wait future alive while servicing analysis notifications.
+/// This does not cancel a USB transfer on each analysis wake.
+pub(crate) async fn while_waiting<F: core::future::Future>(
+    product: &mut crate::product_runtime::ProductRuntime<'static>, future: F,
+) -> F::Output {
+    let mut future = core::pin::pin!(future);
+    loop {
+        product_turn(product);
+        match embassy_futures::select::select(future.as_mut(), PRODUCT_WAKE.wait()).await {
+            embassy_futures::select::Either::First(value) => return value,
+            embassy_futures::select::Either::Second(()) => {}
+        }
+    }
+}
 pub(crate) struct OwnerPort;
 impl Port<'static> for OwnerPort {
     async fn receive(&mut self) -> Command<'static> {
-        COMMANDS.receive().await
+        let command = COMMANDS.receive().await;
+        wake_product(); // capacity became available for a retained recycle/selection
+        command
     }
     fn media(&self) -> pajoniiir_media_session::MediaSession {
         crate::usb0_msc::analysis_media_snapshot()
@@ -159,6 +179,7 @@ impl Port<'static> for OwnerPort {
     }
     fn report(&mut self, value: Status) {
         DELIVERY.lock(|s| s.borrow_mut().1 = Some(value));
+        wake_product();
     }
 }
 /// Ownership-returning bounded enqueue; caller retries or reports refusal.
@@ -171,30 +192,33 @@ pub(crate) fn command(value: Command<'static>) -> Result<(), Command<'static>> {
 pub(crate) fn status() -> Option<Status> {
     DELIVERY.lock(|s| s.borrow().1)
 }
-/// Actual product owner supplies its live Deck state. The returned bank must be
-/// kept with that Deck and used through its short neutral views. Rejected output
-/// is still owned and must be retired/recycled explicitly. No production call.
-#[allow(clippy::result_large_err)]
-pub(crate) fn take_delivery(
-    product: &crate::product_runtime::ProductRuntime,
-) -> Option<Result<Retained<'static>, Retained<'static>>> {
-    let mut output = OUTPUTS.try_receive().ok()?;
-    Some(DELIVERY.lock(|s| {
-        let media = crate::usb0_msc::analysis_media_snapshot();
-        match output.accept(s.borrow().0, &media, product.deck()) {
-            Ok(()) => Ok(output),
-            Err(_) => Err(output),
-        }
-    }))
+/// Library-to-product handoff. Failed enqueue leaves the catalog owner free to retry.
+pub(crate) fn catalog_selection(selection: Selection, deck: pajoniiir_controller_session::DeckId) -> bool {
+    let sent = SELECTIONS.try_send((selection, deck)).is_ok();
+    if sent { wake_product(); }
+    sent
 }
-/// Caller retains the returned Command on queue refusal. Playing/pending banks
-/// remain retained; they cannot be converted to a recycle command.
-#[allow(clippy::result_large_err)]
-pub(crate) fn retirement(
-    output: Retained<'static>,
-    product: &crate::product_runtime::ProductRuntime,
-) -> Result<Command<'static>, Retained<'static>> {
-    output.retire(product.deck()).map(Command::Recycle)
+/// Bounded owner turn. Refused deliveries remain owned until recycle succeeds.
+pub(crate) fn product_turn(product: &mut crate::product_runtime::ProductRuntime<'static>) {
+    let media = crate::usb0_msc::analysis_media_snapshot();
+    product.analysis_media(media, status());
+    if product.needs_catalog_selection() {
+        if let Ok((selection, deck)) = SELECTIONS.try_receive() {
+            assert!(product.queue_catalog_selection(selection, deck));
+        }
+    }
+    product.advance_analysis(&media, command);
+    if !product.flush_analysis_recycle(command) { return; }
+    if let Ok(output) = OUTPUTS.try_receive() {
+        DELIVERY.lock(|s| {
+            let media = crate::usb0_msc::analysis_media_snapshot();
+            if let Err(output) = product.accept_analysis(output, s.borrow().0, &media) {
+                // Both recycle slots were drained above; one is necessarily free.
+                assert!(product.reject_analysis(output).is_ok());
+            }
+        });
+    }
+    product.flush_analysis_recycle(command);
 }
 
 // Never spawned by main. All persistent resources live in the supplied service.
@@ -246,3 +270,11 @@ static ANALYSIS_OWNER_LAYOUT: [usize; 4] = [
 fn analysis_owner_future_size(owner: &mut AnalysisOwner<'_>, bank: &mut Bank) -> usize {
     core::mem::size_of_val(&run_selected(owner, bank, StreamLimits::UNLIMITED, 256))
 }
+
+#[used]
+#[unsafe(no_mangle)]
+static ANALYSIS_PRODUCT_LAYOUT: [usize; 3] = [
+    core::mem::size_of::<crate::product_runtime::ProductRuntime<'static>>(),
+    core::mem::size_of::<Signal<CriticalSectionRawMutex, ()>>(),
+    core::mem::size_of::<Channel<CriticalSectionRawMutex, (Selection, pajoniiir_controller_session::DeckId), 2>>(),
+];

@@ -592,7 +592,12 @@ impl Default for Usb0MscLifecycle {
 fn with_lifecycle_mut<R>(f: impl FnOnce(&mut Usb0MscLifecycle) -> R) -> R {
     USB0_MSC_LIFECYCLE.lock(|cell| {
         let mut lifecycle = cell.borrow_mut();
-        f(&mut lifecycle)
+        #[cfg(feature = "apta-owner-compile")]
+        let before = *lifecycle.session();
+        let result = f(&mut lifecycle);
+        #[cfg(feature = "apta-owner-compile")]
+        if before != *lifecycle.session() { crate::usb0_analysis::wake_product(); }
+        result
     })
 }
 

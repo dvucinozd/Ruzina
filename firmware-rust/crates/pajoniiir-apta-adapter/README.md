@@ -1219,3 +1219,96 @@ This excludes allocator rounding/overhead, claim/StaticCell flags, actual USB
 backend/completion channels, product-held Retained metadata after delivery,
 catalog/display/other tasks, all stack/helper/interrupt/FP nesting and physical
 placement. No production memory/stack/timing budget or hardware acceptance follows.
+
+## Actual product-owner lifecycle — 2026-10-05
+
+The compile-gated firmware `ProductRuntime` now owns the two Decks' retained
+analysis banks. Host tests source-include that exact file; there is no copied
+product state or alternative runtime. Library selections cross a bounded
+Library-to-product channel by value. The owner retains one pending selection when
+transport or the analysis command queue blocks it. Enqueue succeeds before Deck
+selection/Hot Cue track identity commits. Same-track retries preserve Hot Cues.
+The service alone continues to own and advance Requests.
+
+A checked product intent revision accompanies original lease and track identity.
+It distinguishes same-track retries and A→B→A changes even before the service
+receives the newer command. Delivery requires matching product intent, target
+Deck, existing Hot Cue track identity, fresh mounted media, current service
+authority, an empty Deck bank slot, stopped/non-pending transport and an empty
+transport-effect lane. Refusal retains ownership for bounded recycling.
+Accepted neutral views borrow the product-owned bank; Deck controls pass those
+views to the existing Sync/Beat Jump implementation, and waveform consumers use
+short borrowed views. Another Deck's accepted generation remains independent.
+
+Selection changes and media invalidation hide obsolete views. The owner retires
+hidden output only after transport is stopped, no playback request is pending,
+all transport effects are acknowledged and borrowed views have ended. The whole
+transport lane conservatively gates both Decks: Cue/ToStart can mark logical
+state stopped before Pause/Seek delivery succeeds. Failed acknowledgement retains
+the effect and blocks selection/retirement; successful PlaybackRequest completion
+resolves the existing Deck request ID. A refused recycle stays in one of two
+product-held free-bank slots, retried before receiving another output. Occupied
+service banks still report NoBank; there is no eviction or implicit pending job.
+A NoBank analysis requires an explicit retry after retirement.
+
+The existing USB1 owner processes analysis notifications while waiting for a
+controller, MIDI or profile event. Its wait future stays pinned across these
+notifications. Catalog enqueue, service status/output, freed command capacity and
+media-session changes wake that owner. No second ProductRuntime/task is created.
+Enumeration and other finite controller setup operations are not preempted;
+notifications coalesce until its next owner wait/dispatch boundary. Fresh media
+is read again at delivery and control consumption. RecoveryBlocked and
+Quarantined are bounded visible states; quarantine and pending USB resources
+remain with Service/Client. RetryRecovery never discards them or fixes a hung USB
+backend.
+
+This remains an optional compile/link path: no analysis endpoint claim, analysis
+task spawn or provider activation is added to main. Diagnostic selection,
+command and output depths are two; one pending catalog intent and two free-bank
+retry slots are explicit metadata capacity, not extra DSP output banks. Adoption
+still approves scheduling/capacities and backend-failure policy. Physical P4
+memory/DMA/cache/timing/coexistence and original DSP accuracy remain separate.
+
+Verification uses `tests/product.rs`, the existing native FAT32/exFAT cases in
+`tests/source.rs`, and the existing external host Embassy task probe. Allocation
+instrumentation excludes fixture construction and raster rendering. Delayed host
+broker completion is not actual USB execution. Run `verify-consumer.py`, then
+`verify-product-owner-rest.py` under the existing external evidence root, serially
+with Rust 1.95.0 and build/test workers at most two. The latter preserves the
+predecessor runner's commands while giving this continuation separate log names.
+Final dated evidence and compiler-profile exclusions follow in the external handoff.
+
+Consumer acceptance `20261005T153658Z` passes 470 workspace, 129 focused release,
+54 adapter ASan tests and two lifetime doctests per suite, plus formatting,
+Clippy, allocation and portable P4 checks. Raster bytes remain identical
+(`20261005T154610Z`). Host Embassy/task probe `20261005T154618Z` passes all three
+cases with the exact product implementation in its Service-loop executor case.
+
+Concrete USB0/product diagnostic `owner-firmware-frames-20261005T154654Z` contains
+7527 frame records under link-dead-code/forced-frame-pointer/stack-size metadata.
+Service future/pool are 6352/6400 B; Service is 1008 B including the 680-B Owner.
+Command/Retained/Authority are 292/232/64 B; depth-two command/output channels
+616/504 B, authority/status mailbox 72 B. ProductRuntime is 6608 B; its depth-two
+catalog selection channel is 616 B and wake signal 12 B. The actual USB1 owner
+future/pool are 13280/13328 B, ALREADY INCLUDING ProductRuntime. Do not add the
+product again, a future to its pool, Owner to Service, or contained child futures.
+Working and two full output arrays remain 113772 B at diagnostic 17/1250/128
+capacities; broker scratch is separately 4096 B, Storage/two Bank Vec headers
+72/48 B. No aggregate system budget is inferred.
+
+Individual Service/inner-Owner/outer-Owner poll frames are 2128/2336/800 B.
+Product turn/accept/advance frames are 960/368/928 B, with a separate 576-B delivery
+closure; USB1 owner poll is 256 B. These are not a complete nested stack bound.
+Allocator overhead, claim flags, complete backend/channel state, other owners,
+catalog/display, stacks, interrupts/FP/helpers and physical placement remain
+additional. Ordinary firmware (`20261005T154630Z`) and nested opaque-broker probe
+(`20261005T154627Z`) have separate profiles. Exact layout/commands/exclusions are
+in external `product-owner-diagnostics-20261005.json` and the complete handoff.
+
+The serial remainder runner passes all artifact/native/task/P4 probes, the
+unchanged Libapta combined suite, ordinary combined owner-feature firmware link
+and default/owner dependency exclusions. Logs are `product-owner-final-acceptance.log`,
+`product-owner-normal-firmware-link.log`, `product-owner-dependencies-{default,owner}.log`
+under the consumer evidence root and `product-owner-combined-20261005.log` under
+Libapta's external rust-rewrite root. The ordinary link retains the two existing
+foundation unused-import warnings. No failing final check is waived.

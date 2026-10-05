@@ -1,5 +1,10 @@
+// Bounded messages return ownership without allocating on refusal.
+#![allow(clippy::result_large_err)]
 #[path = "support/allocation.rs"]
 mod allocation;
+#[allow(dead_code)]
+#[path = "../../../apps/m1-firmware/src/product_runtime.rs"]
+mod product_runtime;
 mod support;
 use libapta::{
     WaveformColumn,
@@ -202,12 +207,14 @@ fn analyze<F: AsyncFileSystem>(
     );
     assert!(owner.is_idle());
     // Run the actual long-lived handoff loop on every native FAT32/exFAT profile.
-    use pajoniiir_apta_adapter::service::{Command, Selection, Service};
+    use pajoniiir_apta_adapter::service::{Selection, Service};
     let selection = Selection::from_bank(&catalog, 0).unwrap();
     let mut service = Service::new(owner, [a.borrow(), b.borrow()]);
     let state = std::rc::Rc::new(support::service::State::new(*media));
+    state.accept.set(false);
+    let mut product = product_runtime::ProductRuntime::new();
     let mut port = support::service::HostPort(state.clone());
-    assert!(state.send(Command::Analyze(selection, DeckId::One)).is_ok());
+    assert!(product.select_analysis(selection, DeckId::One, media, |c| state.send(c)));
     allocation::start();
     {
         let mut task = core::pin::pin!(service.run(
@@ -230,25 +237,40 @@ fn analyze<F: AsyncFileSystem>(
                 }
             }
             assert_eq!(state.published.get(), expected);
-            let outputs = state.outputs.borrow();
-            let output = outputs.back().unwrap();
-            let track = output.track(media).unwrap();
+            let deck = if expected == 1 {
+                DeckId::One
+            } else {
+                DeckId::Two
+            };
+            assert!(
+                product
+                    .accept_analysis(
+                        state.outputs.borrow_mut().pop_front().unwrap(),
+                        state.authority.get(),
+                        media
+                    )
+                    .is_ok()
+            );
+            let track = product.analysis_track(deck, media).unwrap();
             assert_eq!(track.generation(), 4 + expected as u32);
             assert_eq!(
                 track.beat_grid().unwrap().beats(),
                 selected.track(media).unwrap().beat_grid().unwrap().beats()
             );
-            assert_eq!(output.waveform(media).unwrap().columns, view.columns);
+            assert_eq!(
+                product.analysis_waveform(deck, media).unwrap().columns,
+                view.columns
+            );
             if expected == 1 {
-                assert!(state.send(Command::Analyze(selection, DeckId::Two)).is_ok());
+                assert!(product.select_analysis(selection, DeckId::Two, media, |c| state.send(c)));
             }
         }
     }
     allocation::finish();
-    for output in state.outputs.borrow().iter() {
+    for deck in [DeckId::One, DeckId::Two] {
         verify_neutral(
-            output.track(media).unwrap(),
-            output.waveform(media).unwrap(),
+            product.analysis_track(deck, media).unwrap(),
+            product.analysis_waveform(deck, media).unwrap(),
             if libapta::wav::Wav::parse(original).unwrap().encoding() == libapta::wav::Encoding::S16
             {
                 4160
