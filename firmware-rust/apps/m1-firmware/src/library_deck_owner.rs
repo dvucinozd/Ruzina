@@ -8,7 +8,7 @@ use embassy_sync::{
 use embassy_time::{Duration, Timer};
 use pajoniiir_controller_session::DeckId;
 use pajoniiir_hot_cues::HotCueBank;
-use pajoniiir_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
+use pajoniiir_media_catalog::CatalogLoadCandidate;
 use pajoniiir_media_fs::{BoundedPath, FileHandle};
 use pajoniiir_rekordbox::anlz_hot_cues::{
     ANLZ_PCPT_BYTES, ANLZ_PCOB_HEADER_BYTES, ANLZ_SECTION_HEADER_BYTES, ANLZ_TAG_PCOB,
@@ -97,8 +97,7 @@ pub(crate) fn dispatch_library_deck(
         };
 
         if expected != Some(effect) {
-            product.note_library_failure();
-            report.failed = report.failed.saturating_add(1);
+            esp_hal::system::software_reset();
         } else {
             match completion {
                 LibraryDeckCompletion::Applied { .. } => {
@@ -177,7 +176,7 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                 request_id: completed,
                 deck,
                 candidate,
-            } if completed == request_id && effect == LibraryEffect::Load { deck } => {
+            } if completed == request_id && effect == (LibraryEffect::Load { deck }) => {
                 if !catalog_publication_matches(candidate.publication) {
                     LibraryDeckCompletion::Failed { effect }
                 } else {
@@ -216,7 +215,9 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                 request_id: completed,
                 ..
             } if completed == request_id => LibraryDeckCompletion::Failed { effect },
-            _ => LibraryDeckCompletion::Failed { effect },
+            Usb0LibraryCompletion::Applied { .. }
+            | Usb0LibraryCompletion::LoadResolved { .. }
+            | Usb0LibraryCompletion::Failed { .. } => esp_hal::system::software_reset(),
         };
 
         LIBRARY_DECK_COMPLETIONS.send(completion).await;
@@ -336,7 +337,7 @@ async fn load_source_hot_cues(
     if position != file_len {
         valid = false;
     }
-    let _ = close_file(client, lease, file).await;
+    valid &= close_file(client, lease, file).await;
 
     if valid {
         for index in 0..8u8 {
@@ -499,9 +500,3 @@ async fn close_file(
     }
 }
 
-pub(crate) const fn publication_matches(
-    current: CatalogPublicationId,
-    candidate: CatalogPublicationId,
-) -> bool {
-    current.lease == candidate.lease && current.revision == candidate.revision
-}
