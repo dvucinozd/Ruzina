@@ -10,6 +10,8 @@ use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 
 #[allow(dead_code)]
 mod controller_profiles;
+#[cfg(feature = "wav-audio-source-bringup")]
+mod deck_audio_source;
 #[allow(dead_code)]
 mod deck_effect_owners;
 #[cfg(feature = "hotcue-flash-storage")]
@@ -55,6 +57,18 @@ async fn usb0_library_task() {
 #[embassy_executor::task]
 async fn library_deck_owner_task() {
     library_deck_owner::run_library_deck_owner().await
+}
+
+#[cfg(feature = "wav-audio-source-bringup")]
+#[embassy_executor::task]
+async fn deck_a_audio_source_owner_task() {
+    deck_audio_source::run_deck_a_audio_source_owner().await
+}
+
+#[cfg(feature = "wav-audio-source-bringup")]
+#[embassy_executor::task]
+async fn deck_b_audio_source_owner_task() {
+    deck_audio_source::run_deck_b_audio_source_owner().await
 }
 
 #[cfg(feature = "hotcue-flash-storage")]
@@ -169,6 +183,18 @@ async fn main(spawner: Spawner) -> ! {
     {
         spawner.spawn(
             library_deck_owner_task().expect("Library deck-load owner task slot must be available"),
+        );
+    }
+
+    #[cfg(feature = "wav-audio-source-bringup")]
+    {
+        spawner.spawn(
+            deck_a_audio_source_owner_task()
+                .expect("Deck A audio-source owner task slot must be available"),
+        );
+        spawner.spawn(
+            deck_b_audio_source_owner_task()
+                .expect("Deck B audio-source owner task slot must be available"),
         );
     }
 
