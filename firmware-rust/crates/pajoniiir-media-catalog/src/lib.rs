@@ -100,6 +100,116 @@ impl CatalogTrack {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CatalogPublicationId {
+    pub lease: MediaLease,
+    pub revision: u32,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CatalogLoadCandidate {
+    pub publication: CatalogPublicationId,
+    pub index: u16,
+    pub track: CatalogTrack,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CatalogSelection {
+    publication: Option<CatalogPublicationId>,
+    selected: u16,
+    count: u16,
+}
+
+impl CatalogSelection {
+    pub const fn new() -> Self {
+        Self {
+            publication: None,
+            selected: 0,
+            count: 0,
+        }
+    }
+
+    pub const fn publication(&self) -> Option<CatalogPublicationId> {
+        self.publication
+    }
+
+    pub const fn selected_index(&self) -> Option<u16> {
+        if self.count == 0 {
+            None
+        } else {
+            Some(self.selected)
+        }
+    }
+
+    pub const fn count(&self) -> u16 {
+        self.count
+    }
+
+    pub fn publish<B: CatalogBank>(&mut self, snapshot: &CatalogBankSnapshot<B>) {
+        let count = snapshot.len().min(u16::MAX as usize) as u16;
+        let publication = CatalogPublicationId {
+            lease: snapshot.lease(),
+            revision: snapshot.revision(),
+        };
+        let same_publication = self.publication == Some(publication);
+        self.publication = Some(publication);
+        self.count = count;
+        if count == 0 {
+            self.selected = 0;
+        } else if !same_publication {
+            self.selected = 0;
+        } else if self.selected >= count {
+            self.selected = count - 1;
+        }
+    }
+
+    pub fn invalidate(&mut self, lease: MediaLease) {
+        if self.publication.is_some_and(|current| current.lease == lease) {
+            self.publication = None;
+            self.selected = 0;
+            self.count = 0;
+        }
+    }
+
+    pub fn browse(&mut self, delta: i16, multiplier: u16) -> bool {
+        if self.count == 0 || delta == 0 {
+            return false;
+        }
+
+        let step = i32::from(delta).saturating_mul(i32::from(multiplier.max(1)));
+        let last = i32::from(self.count - 1);
+        let next = i32::from(self.selected).saturating_add(step).clamp(0, last) as u16;
+        let changed = next != self.selected;
+        self.selected = next;
+        changed
+    }
+
+    pub fn resolve<B: CatalogBank>(
+        &self,
+        snapshot: &CatalogBankSnapshot<B>,
+    ) -> Option<CatalogLoadCandidate> {
+        let publication = self.publication?;
+        if publication.lease != snapshot.lease()
+            || publication.revision != snapshot.revision()
+            || self.count as usize != snapshot.len()
+        {
+            return None;
+        }
+        let track = *snapshot.get(self.selected as usize)?;
+        Some(CatalogLoadCandidate {
+            publication,
+            index: self.selected,
+            track,
+        })
+    }
+}
+
+impl Default for CatalogSelection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CatalogBuildError {
     Full { capacity: usize },
     DuplicateTrackId(MediaTrackId),
@@ -649,4 +759,73 @@ mod tests {
         assert!(publisher.invalidate(lease(2)));
         assert!(publisher.current().is_none());
     }
+    #[test]
+    fn selection_is_bound_to_lease_and_revision() {
+        let mut builder = CatalogBuilder::<3>::new(lease(1));
+        builder.push(track(1, 101, "/a.wav")).unwrap();
+        builder.push(track(2, 102, "/b.wav")).unwrap();
+        builder.push(track(3, 103, "/c.wav")).unwrap();
+        let snapshot = builder.finish(7);
+
+        let mut selection = CatalogSelection::new();
+        selection.publish(&snapshot);
+        assert_eq!(selection.selected_index(), Some(0));
+        assert!(selection.browse(1, 1));
+        assert_eq!(selection.selected_index(), Some(1));
+        let candidate = selection.resolve(&snapshot).unwrap();
+        assert_eq!(candidate.publication.revision, 7);
+        assert_eq!(candidate.index, 1);
+        assert_eq!(candidate.track.source_track_id, 102);
+
+        let mut replacement = CatalogBuilder::<3>::new(lease(1));
+        replacement.push(track(4, 201, "/d.wav")).unwrap();
+        let replacement = replacement.finish(8);
+        assert_eq!(selection.resolve(&replacement), None);
+
+        selection.publish(&replacement);
+        assert_eq!(selection.selected_index(), Some(0));
+        assert_eq!(selection.resolve(&replacement).unwrap().track.source_track_id, 201);
+    }
+
+    #[test]
+    fn selection_clamps_normal_and_accelerated_browse() {
+        let mut builder = CatalogBuilder::<4>::new(lease(2));
+        for (id, source, path) in [
+            (1, 1, "/1.wav"),
+            (2, 2, "/2.wav"),
+            (3, 3, "/3.wav"),
+            (4, 4, "/4.wav"),
+        ] {
+            builder.push(track(id, source, path)).unwrap();
+        }
+        let snapshot = builder.finish(1);
+        let mut selection = CatalogSelection::new();
+        selection.publish(&snapshot);
+
+        assert!(selection.browse(1, 1));
+        assert_eq!(selection.selected_index(), Some(1));
+        assert!(selection.browse(1, 10));
+        assert_eq!(selection.selected_index(), Some(3));
+        assert!(selection.browse(-1, 10));
+        assert_eq!(selection.selected_index(), Some(0));
+        assert!(!selection.browse(-1, 1));
+    }
+
+    #[test]
+    fn selection_invalidation_is_generation_scoped() {
+        let mut builder = CatalogBuilder::<1>::new(lease(3));
+        builder.push(track(1, 1, "/one.wav")).unwrap();
+        let snapshot = builder.finish(1);
+        let mut selection = CatalogSelection::new();
+        selection.publish(&snapshot);
+
+        selection.invalidate(lease(4));
+        assert!(selection.resolve(&snapshot).is_some());
+
+        selection.invalidate(lease(3));
+        assert_eq!(selection.publication(), None);
+        assert_eq!(selection.selected_index(), None);
+        assert_eq!(selection.resolve(&snapshot), None);
+    }
+
 }
