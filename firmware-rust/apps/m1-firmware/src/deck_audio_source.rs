@@ -377,16 +377,7 @@ async fn run_owner(
 
         if source.eof_queued {
             prepared = Some(source);
-            match select(command_channel(deck).receive(), wait_for_media_lease_change()).await {
-                Either::First(command) => {
-                    // Put the command back into the bounded owner mailbox so the
-                    // single command path above preserves completion ordering.
-                    if command_channel(deck).try_send(command).is_err() {
-                        esp_hal::system::software_reset();
-                    }
-                }
-                Either::Second(()) => {}
-            }
+            Timer::after(Duration::from_millis(5)).await;
             continue;
         }
 
@@ -567,10 +558,7 @@ async fn seek_source(
         .data_bytes
         .saturating_sub(frame.saturating_mul(u64::from(format.block_align)));
 
-    let file = core::mem::replace(
-        &mut source.file,
-        placeholder_file(source.file),
-    );
+    let file = source.file;
     source.file = match seek_file(client, source.candidate.publication.lease, file, byte_offset).await {
         SeekOutcome::Ready(file) => file,
         SeekOutcome::Failed(file) => {
@@ -850,6 +838,3 @@ fn pcm_channel(
     }
 }
 
-fn placeholder_file(file: Usb0FsFileHandle) -> Usb0FsFileHandle {
-    file
-}
