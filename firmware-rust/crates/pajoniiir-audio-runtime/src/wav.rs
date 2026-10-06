@@ -178,6 +178,32 @@ pub struct WavPcm16Decoder {
 
 impl WavPcm16Decoder {
     pub fn new(format: WavPcm16Format, data_bytes: u64) -> Result<Self, WavError> {
+        if format.channels != 1 && format.channels != 2 {
+            return Err(WavError::UnsupportedChannels(format.channels));
+        }
+        if format.sample_rate_hz == 0 {
+            return Err(WavError::InvalidSampleRate);
+        }
+        let expected_block_align = format.channels * 2;
+        if format.block_align != expected_block_align {
+            return Err(WavError::InvalidBlockAlign {
+                expected: expected_block_align,
+                actual: format.block_align,
+            });
+        }
+        let expected_byte_rate = format
+            .sample_rate_hz
+            .checked_mul(u32::from(format.block_align))
+            .ok_or(WavError::InvalidByteRate {
+                expected: u32::MAX,
+                actual: format.byte_rate,
+            })?;
+        if format.byte_rate != expected_byte_rate {
+            return Err(WavError::InvalidByteRate {
+                expected: expected_byte_rate,
+                actual: format.byte_rate,
+            });
+        }
         if !data_bytes.is_multiple_of(u64::from(format.block_align)) {
             return Err(WavError::DataMisaligned {
                 data_bytes,
@@ -418,6 +444,19 @@ mod tests {
         assert_eq!(second.produced_frames, 1);
         assert!(second.finished);
         assert_eq!(decoder.decoded_frames(), 2);
+    }
+
+    #[test]
+    fn decoder_revalidates_public_format_values() {
+        let mut invalid = parse_pcm16_format(&fmt(2)).unwrap();
+        invalid.block_align = 0;
+        assert_eq!(
+            WavPcm16Decoder::new(invalid, 8).err(),
+            Some(WavError::InvalidBlockAlign {
+                expected: 4,
+                actual: 0,
+            })
+        );
     }
 
     #[test]
