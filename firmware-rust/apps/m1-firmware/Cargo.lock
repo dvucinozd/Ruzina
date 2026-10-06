@@ -1422,6 +1422,7 @@ dependencies = [
  "pajoniiir-audio-runtime",
  "pajoniiir-controller-core",
  "pajoniiir-controller-profile-storage",
+ "pajoniiir-core",
  "pajoniiir-controller-session",
  "pajoniiir-controller-usb",
  "pajoniiir-deck",
