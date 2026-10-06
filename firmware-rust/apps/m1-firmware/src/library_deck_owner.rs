@@ -162,8 +162,10 @@ pub(crate) fn dispatch_library_deck(
 pub(crate) async fn run_library_deck_owner() -> ! {
     let buffer = ANLZ_SCAN_BUFFER.init([0u8; ANLZ_SCAN_BUFFER_BYTES]);
     let mut buffer: &'static mut [u8] = &mut buffer[..];
-    let mut deck_a = Usb0FilesystemClient::deck_a();
-    let mut deck_b = Usb0FilesystemClient::deck_b();
+    // This lane is intentionally separate from DeckA/DeckB. The deck lanes are
+    // reserved for persistent audio-source owners so Library preflight/ANLZ
+    // reads cannot collide with long-lived playback file handles.
+    let mut library_load = Usb0FilesystemClient::library_load();
     let mut request_id = 0u32;
 
     loop {
@@ -190,10 +192,7 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                 if !catalog_publication_matches(candidate.publication) {
                     LibraryDeckCompletion::Failed { effect }
                 } else {
-                    let client = match deck {
-                        DeckId::One => &mut deck_a,
-                        DeckId::Two => &mut deck_b,
-                    };
+                    let client = &mut library_load;
                     if !validate_audio_source(client, candidate).await {
                         LibraryDeckCompletion::Failed { effect }
                     } else {
