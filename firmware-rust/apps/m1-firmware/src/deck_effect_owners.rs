@@ -4,7 +4,9 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use crate::product_runtime::ProductRuntime;
 #[cfg(feature = "pcm-transport-bringup")]
-use crate::deck_audio_source::{seek_wav_source, try_receive_pcm_block};
+use crate::deck_audio_source::seek_wav_source;
+#[cfg(all(feature = "pcm-transport-bringup", not(feature = "render-graph-bringup")))]
+use crate::deck_audio_source::try_receive_pcm_block;
 #[cfg(feature = "hotcue-flash-storage")]
 use crate::hotcue_flash::EspHotCueFlash;
 #[cfg(any(feature = "hotcue-flash-storage", feature = "pcm-transport-bringup"))]
@@ -16,13 +18,13 @@ use embassy_sync::{
 };
 use pajoniiir_audio_runtime::{
     AudioEffectCommand, map_deck_effect,
-    pcm_stream::{PcmBlockDisposition, PcmStreamBlock, PcmTransportCursor},
+    pcm_stream::{PcmBlockDisposition, PcmStreamBlock, PcmStreamProgress, PcmTransportCursor},
 };
 use pajoniiir_controller_session::DeckId;
 #[cfg(feature = "hotcue-flash-storage")]
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_deck::{DeckEffect, DeckEffectTarget};
-#[cfg(feature = "pcm-transport-bringup")]
+#[cfg(all(feature = "pcm-transport-bringup", not(feature = "render-graph-bringup")))]
 use embassy_time::{Duration, Timer};
 #[cfg(feature = "hotcue-flash-storage")]
 use pajoniiir_hot_cues::{
@@ -33,6 +35,8 @@ use pajoniiir_hot_cues::{
 const TRANSPORT_OWNER_QUEUE_DEPTH: usize = 16;
 const AUDIO_DSP_OWNER_QUEUE_DEPTH: usize = 16;
 const TRANSPORT_COMPLETION_DEPTH: usize = 16;
+#[cfg(feature = "render-graph-bringup")]
+const RENDER_PROGRESS_DEPTH: usize = 8;
 #[cfg(feature = "hotcue-flash-storage")]
 const PERSISTENCE_OWNER_QUEUE_DEPTH: usize = 1;
 #[cfg(feature = "hotcue-flash-storage")]
@@ -56,6 +60,12 @@ static TRANSPORT_COMPLETIONS: Channel<
     TRANSPORT_COMPLETION_DEPTH,
 > = Channel::new();
 static EFFECT_OWNER_PROGRESS: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+#[cfg(feature = "render-graph-bringup")]
+static RENDER_PROGRESS: Channel<
+    CriticalSectionRawMutex,
+    RenderTransportProgress,
+    RENDER_PROGRESS_DEPTH,
+> = Channel::new();
 
 #[cfg(feature = "hotcue-flash-storage")]
 static PERSISTENCE_COMMANDS: Channel<
@@ -228,6 +238,44 @@ impl TransportOwnerState {
         }
     }
 
+    #[cfg(feature = "render-graph-bringup")]
+    fn consume_render_progress(
+        &mut self,
+        deck: DeckId,
+        progress: PcmStreamProgress,
+        frames: u16,
+    ) -> Option<TransportCompletion> {
+        let state = self.deck_mut(deck);
+        match state.pcm_cursor.accept_progress(progress, frames) {
+            PcmBlockDisposition::Accepted {
+                position_ms, eof, ..
+            } => {
+                state.position_ms = position_ms;
+                if eof {
+                    state.playing = false;
+                    Some(TransportCompletion::StreamEnded {
+                        deck,
+                        position_ms,
+                        faulted: false,
+                    })
+                } else {
+                    None
+                }
+            }
+            PcmBlockDisposition::Stale => None,
+            PcmBlockDisposition::Fault { position_ms } => {
+                state.position_ms = position_ms;
+                state.playing = false;
+                state.stream_faults = state.stream_faults.saturating_add(1);
+                Some(TransportCompletion::StreamEnded {
+                    deck,
+                    position_ms,
+                    faulted: true,
+                })
+            }
+        }
+    }
+
     fn deck_mut(&mut self, deck: DeckId) -> &mut TransportDeckOwnerState {
         &mut self.decks[deck_index(deck)]
     }
@@ -255,6 +303,14 @@ impl AudioDspOwnerState {
         self.accepted_commands = self.accepted_commands.saturating_add(1);
         true
     }
+}
+
+#[cfg(feature = "render-graph-bringup")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct RenderTransportProgress {
+    deck: DeckId,
+    progress: PcmStreamProgress,
+    frames: u16,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -569,8 +625,78 @@ pub(crate) async fn run_persistence_owner(
     }
 }
 
+#[cfg(feature = "render-graph-bringup")]
+pub(crate) fn try_submit_render_progress(
+    deck: DeckId,
+    progress: PcmStreamProgress,
+    frames: u16,
+) -> bool {
+    match RENDER_PROGRESS.try_send(RenderTransportProgress {
+        deck,
+        progress,
+        frames,
+    }) {
+        Ok(()) => true,
+        Err(TrySendError::Full(_)) => false,
+    }
+}
+
 pub(crate) async fn run_transport_owner() -> ! {
-    #[cfg(feature = "pcm-transport-bringup")]
+    #[cfg(feature = "render-graph-bringup")]
+    {
+        let mut source_request_id = 0u32;
+        loop {
+            match select(TRANSPORT_COMMANDS.receive(), RENDER_PROGRESS.receive()).await {
+                Either::First(effect) => {
+                    if let DeckEffect::Seek { deck, position_ms } = effect {
+                        source_request_id = source_request_id.wrapping_add(1);
+                        if source_request_id == 0 {
+                            source_request_id = 1;
+                        }
+                        match seek_wav_source(deck, source_request_id, position_ms).await {
+                            Ok(seek) => {
+                                TRANSPORT_OWNER_STATE.lock(|cell| {
+                                    cell.borrow_mut().bind_seek(
+                                        deck,
+                                        position_ms,
+                                        seek.generation,
+                                        seek.frame,
+                                        seek.sample_rate_hz,
+                                    )
+                                });
+                            }
+                            Err(()) => esp_hal::system::software_reset(),
+                        }
+                    } else {
+                        let completion =
+                            TRANSPORT_OWNER_STATE.lock(|cell| cell.borrow_mut().apply(effect));
+                        if let Some(completion) = completion {
+                            TRANSPORT_COMPLETIONS.send(completion).await;
+                        }
+                    }
+                    EFFECT_OWNER_PROGRESS.signal(());
+                }
+                Either::Second(render) => {
+                    let completion = TRANSPORT_OWNER_STATE.lock(|cell| {
+                        cell.borrow_mut().consume_render_progress(
+                            render.deck,
+                            render.progress,
+                            render.frames,
+                        )
+                    });
+                    if let Some(completion) = completion {
+                        TRANSPORT_COMPLETIONS.send(completion).await;
+                    }
+                    EFFECT_OWNER_PROGRESS.signal(());
+                }
+            }
+        }
+    }
+
+    #[cfg(all(
+        feature = "pcm-transport-bringup",
+        not(feature = "render-graph-bringup")
+    ))]
     {
         let mut source_request_id = 0u32;
         loop {
@@ -586,9 +712,7 @@ pub(crate) async fn run_transport_owner() -> ! {
                         if source_request_id == 0 {
                             source_request_id = 1;
                         }
-                        let result =
-                            seek_wav_source(deck, source_request_id, position_ms).await;
-                        match result {
+                        match seek_wav_source(deck, source_request_id, position_ms).await {
                             Ok(seek) => {
                                 TRANSPORT_OWNER_STATE.lock(|cell| {
                                     cell.borrow_mut().bind_seek(
