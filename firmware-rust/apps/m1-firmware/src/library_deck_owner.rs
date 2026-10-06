@@ -9,7 +9,7 @@ use embassy_time::{Duration, Timer};
 use pajoniiir_controller_session::DeckId;
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
-use pajoniiir_media_fs::{BoundedPath, FileHandle};
+use pajoniiir_media_fs::{BoundedPath, EntryKind, FileHandle};
 use pajoniiir_rekordbox::anlz_hot_cues::{
     ANLZ_PCPT_BYTES, ANLZ_PCOB_HEADER_BYTES, ANLZ_SECTION_HEADER_BYTES, ANLZ_TAG_PCOB,
     AnlzSectionHeader, RekordboxCueKind, RekordboxHotCueBank, parse_pcob_header, parse_pcpt,
@@ -184,6 +184,9 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                         DeckId::One => &mut deck_a,
                         DeckId::Two => &mut deck_b,
                     };
+                    if !validate_audio_source(client, candidate).await {
+                        LibraryDeckCompletion::Failed { effect }
+                    } else {
                     let (next_buffer, source, source_cues_available) =
                         load_source_hot_cues(client, candidate, buffer).await;
                     buffer = next_buffer;
@@ -209,6 +212,7 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                             }
                         }
                     }
+                    }
                 }
             }
             Usb0LibraryCompletion::Failed {
@@ -222,6 +226,40 @@ pub(crate) async fn run_library_deck_owner() -> ! {
 
         LIBRARY_DECK_COMPLETIONS.send(completion).await;
         LIBRARY_DECK_PROGRESS.signal(());
+    }
+}
+
+async fn validate_audio_source(
+    client: &mut Usb0FilesystemClient,
+    candidate: CatalogLoadCandidate,
+) -> bool {
+    if candidate.track.audio_path.is_empty() {
+        return false;
+    }
+    let Ok(path) = BoundedPath::new(candidate.track.audio_path.as_str()) else {
+        return false;
+    };
+    let lease = candidate.publication.lease;
+    let mut request = Usb0FsRequest::Stat {
+        ticket: client.issue_ticket(lease),
+        path,
+    };
+    loop {
+        match client.submit(request).await {
+            Usb0FsSubmitResult::Completed(Usb0FsCompletion::Stat { result, .. }) => {
+                return result.is_ok_and(|stat| stat.kind == EntryKind::File && stat.len != 0);
+            }
+            Usb0FsSubmitResult::QueueFull(returned) => {
+                request = returned;
+                Timer::after(Duration::from_millis(1)).await;
+            }
+            Usb0FsSubmitResult::PendingCompletion(_)
+            | Usb0FsSubmitResult::WrongClient(_) => return false,
+            Usb0FsSubmitResult::Completed(_)
+            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+                esp_hal::system::software_reset()
+            }
+        }
     }
 }
 
