@@ -151,7 +151,7 @@ The generic controller-audio capability model shall be able to express at least:
 |---|---|---|
 | M1R-P0-080 | Settings/state storage is versioned and migrated; raw Rust struct layout is never the persistent format. | HOST_VERIFIED |
 | M1R-P0-081 | Persist at least released settings semantics: backlight, elapsed/remaining mode, cue mode, master trim preset and Wi-Fi remote enable state as applicable. | HOST_VERIFIED |
-| M1R-P0-082 | Persistent Hot Cue state survives normal reboot and rejects corrupt/incompatible records safely. | HOST_VERIFIED |
+| M1R-P0-082 | Persistent Hot Cue state survives normal reboot and rejects corrupt/incompatible records safely. | HOST_VERIFIED / COMPILE_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-083 | Telemetry/service logging uses fixed-size/bounded producer paths and cannot block the real-time path. | HOST_VERIFIED |
 | M1R-P0-084 | M1 telemetry adds INA238/system power, USB VBUS/fault state, memory reserves, recovery counts, audio/UAC metrics, storage faults, C6 link, OTA state and reset reason. | HOST_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-085 | Firmware health tracks running image identity, candidate/rollback state and explicit readiness. | HOST_VERIFIED |
