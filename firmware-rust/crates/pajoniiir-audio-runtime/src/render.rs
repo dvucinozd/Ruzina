@@ -1,6 +1,4 @@
-use pajoniiir_audio_dsp::{
-    DspFrame, EqState, FilterState, PcmFrame, ResamplerState,
-};
+use pajoniiir_audio_dsp::{DspFrame, EqState, FilterState, PcmFrame, ResamplerState};
 use pajoniiir_mixer::{LimiterStats, limit_main_sample};
 
 pub const RENDER_SAMPLE_RATE_HZ: u32 = 48_000;
@@ -178,9 +176,11 @@ impl FixedRateRenderGraph {
         for deck in 0..2 {
             let deck_control = control.decks[deck];
             let state = &mut self.decks[deck];
-            state
-                .eq
-                .set_raw(deck_control.eq_low, deck_control.eq_mid, deck_control.eq_high);
+            state.eq.set_raw(
+                deck_control.eq_low,
+                deck_control.eq_mid,
+                deck_control.eq_high,
+            );
             state.filter.set_raw(deck_control.filter_raw);
         }
 
@@ -218,8 +218,7 @@ impl FixedRateRenderGraph {
                     report.source_frames_consumed[deck].saturating_add(consumed);
 
                 if missed {
-                    report.underflow_frames[deck] =
-                        report.underflow_frames[deck].saturating_add(1);
+                    report.underflow_frames[deck] = report.underflow_frames[deck].saturating_add(1);
                     continue;
                 }
 
@@ -392,7 +391,12 @@ mod tests {
 
         assert_eq!(report.rendered_frames as usize, RENDER_BLOCK_FRAMES);
         assert_eq!(report.underflow_frames, [0, 0]);
-        assert!(output.main.iter().all(|frame| *frame == PcmFrame::default()));
+        assert!(
+            output
+                .main
+                .iter()
+                .all(|frame| *frame == PcmFrame::default())
+        );
 
         let mut sink = ReferenceSink::new();
         sink.write(&output);
@@ -454,7 +458,11 @@ mod tests {
         });
 
         assert!(report.underflow_frames[0] > 0);
-        assert!(output.main[8..].iter().all(|frame| *frame == PcmFrame::default()));
+        assert!(
+            output.main[8..]
+                .iter()
+                .all(|frame| *frame == PcmFrame::default())
+        );
     }
 
     #[test]
@@ -476,7 +484,12 @@ mod tests {
             })
         });
 
-        assert!(output.main.iter().all(|frame| *frame == PcmFrame::default()));
+        assert!(
+            output
+                .main
+                .iter()
+                .all(|frame| *frame == PcmFrame::default())
+        );
         assert_eq!(
             output.pfl[0][1],
             PcmFrame {
@@ -529,7 +542,12 @@ mod tests {
             })
         });
         assert_eq!(report.deferred_mode_frames[0], RENDER_BLOCK_FRAMES as u32);
-        assert!(output.main.iter().all(|frame| *frame == PcmFrame::default()));
+        assert!(
+            output
+                .main
+                .iter()
+                .all(|frame| *frame == PcmFrame::default())
+        );
 
         deck.master_tempo = false;
         deck.scratch_active = true;
