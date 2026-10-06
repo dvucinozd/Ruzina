@@ -9,6 +9,10 @@ use crate::controller_profiles::{
 use crate::deck_effect_owners::{
     dispatch_product_effects, wait_for_effect_owner_progress,
 };
+#[cfg(feature = "library-deck-load")]
+use crate::library_deck_owner::{
+    dispatch_library_deck, wait_for_library_deck_progress,
+};
 use crate::product_runtime::ProductRuntime;
 use embassy_futures::select::{Either, select};
 use embassy_usb_driver::{
@@ -47,6 +51,7 @@ pub(crate) struct Usb1ControllerProbe {
     pub(crate) profile_activation_state: ProfileActivationState,
     pub(crate) midi_ingest: UsbMidiBatchReport,
     pub(crate) product_pending_deck_effects: u8,
+    pub(crate) product_pending_library_effects: u8,
     pub(crate) product_backpressured: bool,
     pub(crate) led_updates_sent: u32,
 }
@@ -299,6 +304,7 @@ pub(crate) async fn run_root_controller_owner(
             profile_activation_state: profile_match.activation_state,
             midi_ingest: UsbMidiBatchReport::default(),
             product_pending_deck_effects: 0,
+            product_pending_library_effects: 0,
             product_backpressured: false,
             led_updates_sent: 0,
         };
@@ -456,7 +462,7 @@ where
             wait_for_profile_catalog_change(),
             wait_for_profile_activation_change(),
         );
-        let runtime_change = select(profile_change, wait_for_effect_owner_progress());
+        let runtime_change = select(profile_change, wait_for_product_owner_progress());
 
         if probe.profile_activation_state == ProfileActivationState::Active
             && !probe.product_backpressured
@@ -607,19 +613,49 @@ where
     }
 }
 
+async fn wait_for_product_owner_progress() {
+    #[cfg(feature = "library-deck-load")]
+    {
+        let _ = select(
+            wait_for_effect_owner_progress(),
+            wait_for_library_deck_progress(),
+        )
+        .await;
+    }
+
+    #[cfg(not(feature = "library-deck-load"))]
+    wait_for_effect_owner_progress().await;
+}
+
+#[cfg(feature = "library-deck-load")]
+fn dispatch_library_runtime(product: &mut ProductRuntime) -> bool {
+    dispatch_library_deck(product).made_progress()
+}
+
+#[cfg(not(feature = "library-deck-load"))]
+fn dispatch_library_runtime(_product: &mut ProductRuntime) -> bool {
+    false
+}
+
 async fn drain_product_dispatch(
     probe: &mut Usb1ControllerProbe,
     session: &mut ControllerSession,
     product: &mut ProductRuntime,
 ) {
     loop {
+        let library_before = dispatch_library_runtime(product);
         let before = dispatch_product_effects(product);
         let report =
             dispatch_session_deliveries(probe.controller_epoch, session, product, 32).await;
         let after = dispatch_product_effects(product);
+        let library_after = dispatch_library_runtime(product);
 
         if report.backpressured {
-            if before.made_progress() || after.made_progress() {
+            if library_before
+                || before.made_progress()
+                || after.made_progress()
+                || library_after
+            {
                 continue;
             }
             probe.product_backpressured = true;
@@ -641,8 +677,11 @@ async fn drain_product_dispatch(
     }
 
     let _ = dispatch_product_effects(product);
+    let _ = dispatch_library_runtime(product);
     probe.product_pending_deck_effects =
         product.pending_deck_effects().min(u8::MAX as usize) as u8;
+    probe.product_pending_library_effects =
+        product.pending_library_effects().min(u8::MAX as usize) as u8;
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

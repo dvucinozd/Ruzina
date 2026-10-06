@@ -1420,6 +1420,7 @@ dependencies = [
  "pajoniiir-audio-dsp",
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-runtime",
+ "pajoniiir-controller-core",
  "pajoniiir-controller-profile-storage",
  "pajoniiir-controller-session",
  "pajoniiir-controller-usb",

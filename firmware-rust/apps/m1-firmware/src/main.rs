@@ -14,6 +14,8 @@ mod controller_profiles;
 mod deck_effect_owners;
 #[cfg(feature = "hotcue-flash-storage")]
 mod hotcue_flash;
+#[cfg(feature = "library-deck-load")]
+mod library_deck_owner;
 #[allow(dead_code)]
 mod product_runtime;
 #[allow(dead_code)]
@@ -47,6 +49,12 @@ async fn usb0_filesystem_task() {
 #[embassy_executor::task]
 async fn usb0_library_task() {
     usb0_library::run_usb0_library_worker().await
+}
+
+#[cfg(feature = "library-deck-load")]
+#[embassy_executor::task]
+async fn library_deck_owner_task() {
+    library_deck_owner::run_library_deck_owner().await
 }
 
 #[cfg(feature = "hotcue-flash-storage")]
@@ -154,6 +162,13 @@ async fn main(spawner: Spawner) -> ! {
         );
         spawner.spawn(
             usb0_library_task().expect("USB0 library task slot must be available"),
+        );
+    }
+
+    #[cfg(feature = "library-deck-load")]
+    {
+        spawner.spawn(
+            library_deck_owner_task().expect("Library deck-load owner task slot must be available"),
         );
     }
 
