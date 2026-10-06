@@ -2,11 +2,15 @@ use core::cell::RefCell;
 
 #[cfg(feature = "p4-psram-storage")]
 use alloc::vec::Vec;
-use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
+use embassy_futures::select::{Either, select};
+use embassy_sync::{
+    blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex},
+    channel::Channel,
+};
 use pajoniiir_media_fs::{BoundedPath, FileHandle};
 use pajoniiir_media_catalog::{
-    CatalogBank, CatalogBankBuilder, CatalogBankPublisher, CatalogBuildError, CatalogTrack,
-    MEDIA_CATALOG_MAX_TRACKS,
+    CatalogBank, CatalogBankBuilder, CatalogBankPublisher, CatalogBuildError, CatalogLoadCandidate,
+    CatalogPublicationId, CatalogSelection, CatalogTrack, MEDIA_CATALOG_MAX_TRACKS,
 };
 use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 use pajoniiir_media_session::MediaLease;
@@ -22,6 +26,7 @@ use pajoniiir_rekordbox::{
 };
 use static_cell::StaticCell;
 
+use crate::product_runtime::LibraryEffect;
 use crate::usb0_msc::{
     USB0_LIBRARY_EVENTS, Usb0FsCompletion, Usb0FsFileHandle, Usb0FsOperationError, Usb0FsRequest,
     Usb0FsSubmitResult, Usb0FilesystemClient, Usb0LibraryEvent, Usb0MscBinding,
@@ -33,6 +38,63 @@ static USB0_LIBRARY_PDB_IO: StaticCell<[u8; USB0_LIBRARY_PDB_IO_BYTES]> = Static
 
 static USB0_LIBRARY_STATE: CriticalSectionMutex<RefCell<Usb0LibraryState>> =
     CriticalSectionMutex::new(RefCell::new(Usb0LibraryState::Idle));
+
+const USB0_LIBRARY_COMMAND_DEPTH: usize = 1;
+const USB0_LIBRARY_COMPLETION_DEPTH: usize = 1;
+
+pub(crate) static USB0_LIBRARY_COMMANDS: Channel<
+    CriticalSectionRawMutex,
+    Usb0LibraryCommand,
+    USB0_LIBRARY_COMMAND_DEPTH,
+> = Channel::new();
+
+pub(crate) static USB0_LIBRARY_COMPLETIONS: Channel<
+    CriticalSectionRawMutex,
+    Usb0LibraryCompletion,
+    USB0_LIBRARY_COMPLETION_DEPTH,
+> = Channel::new();
+
+static USB0_LIBRARY_PUBLICATION: CriticalSectionMutex<RefCell<Option<CatalogPublicationId>>> =
+    CriticalSectionMutex::new(RefCell::new(None));
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Usb0LibraryCommand {
+    pub(crate) request_id: u32,
+    pub(crate) effect: LibraryEffect,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0LibraryCommandError {
+    CatalogUnavailable,
+    EmptyCatalog,
+    StaleSelection,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Usb0LibraryCompletion {
+    Applied {
+        request_id: u32,
+    },
+    LoadResolved {
+        request_id: u32,
+        deck: pajoniiir_controller_session::DeckId,
+        candidate: CatalogLoadCandidate,
+    },
+    Failed {
+        request_id: u32,
+        error: Usb0LibraryCommandError,
+    },
+}
+
+pub(crate) fn catalog_publication_matches(publication: CatalogPublicationId) -> bool {
+    USB0_LIBRARY_PUBLICATION.lock(|cell| *cell.borrow() == Some(publication))
+}
+
+fn set_catalog_publication(publication: Option<CatalogPublicationId>) {
+    USB0_LIBRARY_PUBLICATION.lock(|cell| {
+        *cell.borrow_mut() = publication;
+    });
+}
 
 #[cfg(feature = "p4-psram-storage")]
 struct Usb0LibraryNameMap {
@@ -319,6 +381,34 @@ impl Usb0LibraryCatalogStage {
         }
 
         Ok(())
+    }
+
+    fn sync_selection(&self, selection: &mut CatalogSelection) {
+        #[cfg(feature = "p4-psram-storage")]
+        match self.publisher.current() {
+            Some(snapshot) => selection.publish(snapshot),
+            None => selection.clear(),
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        selection.clear();
+
+        set_catalog_publication(selection.publication());
+    }
+
+    fn resolve_selected(&self, selection: &CatalogSelection) -> Option<CatalogLoadCandidate> {
+        #[cfg(feature = "p4-psram-storage")]
+        {
+            self.publisher
+                .current()
+                .and_then(|snapshot| selection.resolve(snapshot))
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        {
+            let _ = selection;
+            None
+        }
     }
 
     fn abort(&mut self) {
@@ -1529,22 +1619,72 @@ async fn probe_export_pdb(
     (buffer, result)
 }
 
+fn handle_library_command(
+    catalog: Option<&Usb0LibraryCatalogStage>,
+    selection: &mut CatalogSelection,
+    command: Usb0LibraryCommand,
+) -> Usb0LibraryCompletion {
+    let request_id = command.request_id;
+    match command.effect {
+        LibraryEffect::Browse { delta, multiplier } => {
+            let _ = selection.browse(delta, multiplier);
+            Usb0LibraryCompletion::Applied { request_id }
+        }
+        LibraryEffect::OpenLibrary => Usb0LibraryCompletion::Applied { request_id },
+        LibraryEffect::Load { deck } => {
+            let Some(catalog) = catalog else {
+                return Usb0LibraryCompletion::Failed {
+                    request_id,
+                    error: Usb0LibraryCommandError::CatalogUnavailable,
+                };
+            };
+            if selection.count() == 0 {
+                return Usb0LibraryCompletion::Failed {
+                    request_id,
+                    error: Usb0LibraryCommandError::EmptyCatalog,
+                };
+            }
+            match catalog.resolve_selected(selection) {
+                Some(candidate) => Usb0LibraryCompletion::LoadResolved {
+                    request_id,
+                    deck,
+                    candidate,
+                },
+                None => Usb0LibraryCompletion::Failed {
+                    request_id,
+                    error: Usb0LibraryCommandError::StaleSelection,
+                },
+            }
+        }
+    }
+}
+
 pub(crate) async fn run_usb0_library_worker() -> ! {
     let mut client = Usb0FilesystemClient::library();
     let mut page_buffer = &mut USB0_LIBRARY_PDB_IO.init([0; USB0_LIBRARY_PDB_IO_BYTES])[..];
     let mut name_stage: Option<Usb0LibraryNameStage> = None;
     let mut catalog_stage: Option<Usb0LibraryCatalogStage> = None;
+    let mut selection = CatalogSelection::new();
 
     loop {
-        match USB0_LIBRARY_EVENTS.wait().await {
-            Usb0LibraryEvent::Ready {
+        match select(
+            USB0_LIBRARY_EVENTS.wait(),
+            USB0_LIBRARY_COMMANDS.receive(),
+        )
+        .await
+        {
+            Either::First(Usb0LibraryEvent::Ready {
                 binding,
                 kind: _,
                 volume_identity,
-            } => {
+            }) => {
                 let Some(volume_identity) = volume_identity else {
                     if let Some(catalog) = catalog_stage.as_mut() {
                         catalog.invalidate(binding.lease);
+                        catalog.sync_selection(&mut selection);
+                    } else {
+                        selection.clear();
+                        set_catalog_publication(None);
                     }
                     if let Some(staging) = name_stage.as_mut() {
                         staging.clear();
@@ -1578,6 +1718,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     continue;
                 };
                 catalog.prepare_generation(binding.lease);
+                catalog.sync_selection(&mut selection);
                 staging.clear();
 
                 set_library_state(Usb0LibraryState::Probing { binding });
@@ -1594,6 +1735,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
 
                 match result {
                     Ok(pdb) => {
+                        catalog.sync_selection(&mut selection);
                         set_library_state(Usb0LibraryState::Ready { binding, pdb });
                     }
                     Err(error) => {
@@ -1603,26 +1745,39 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     }
                 }
             }
-            Usb0LibraryEvent::FilesystemFailed { binding } => {
+            Either::First(Usb0LibraryEvent::FilesystemFailed { binding }) => {
                 if let Some(staging) = name_stage.as_mut() {
                     staging.clear();
                 }
                 if let Some(catalog) = catalog_stage.as_mut() {
                     catalog.invalidate(binding.lease);
+                    catalog.sync_selection(&mut selection);
+                } else {
+                    selection.clear();
+                    set_catalog_publication(None);
                 }
                 set_library_state(Usb0LibraryState::Failed {
                     binding,
                     error: Usb0LibraryError::FilesystemUnavailable,
                 });
             }
-            Usb0LibraryEvent::Detached { binding } => {
+            Either::First(Usb0LibraryEvent::Detached { binding }) => {
                 if let Some(staging) = name_stage.as_mut() {
                     staging.clear();
                 }
                 if let Some(catalog) = catalog_stage.as_mut() {
                     catalog.invalidate(binding.lease);
+                    catalog.sync_selection(&mut selection);
+                } else {
+                    selection.clear();
+                    set_catalog_publication(None);
                 }
                 set_library_state(Usb0LibraryState::Detached { binding });
+            }
+            Either::Second(command) => {
+                let completion =
+                    handle_library_command(catalog_stage.as_ref(), &mut selection, command);
+                USB0_LIBRARY_COMPLETIONS.send(completion).await;
             }
         }
     }
