@@ -1,6 +1,8 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod anlz_hot_cues;
+
 #[cfg(test)]
 use pajoniiir_media_catalog::CATALOG_KEY_MAX;
 use pajoniiir_media_catalog::{CatalogText, CatalogTextError, CatalogTrack};
