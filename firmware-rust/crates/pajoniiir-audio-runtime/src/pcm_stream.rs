@@ -2,7 +2,7 @@ use pajoniiir_audio_dsp::PcmFrame;
 
 pub const PCM_STREAM_BLOCK_FRAMES: usize = 256;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PcmStreamBlock {
     pub generation: u32,
     pub first_frame: u64,
