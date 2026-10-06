@@ -1,5 +1,6 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
     channel::{Channel, TrySendError},
@@ -22,7 +23,8 @@ use crate::{
     product_runtime::{LibraryEffect, ProductRuntime},
     usb0_library::{
         USB0_LIBRARY_COMMANDS, USB0_LIBRARY_COMPLETIONS, Usb0LibraryCommand,
-        Usb0LibraryCompletion, catalog_publication_matches,
+        Usb0LibraryCompletion, catalog_publication_matches, current_media_lease,
+        wait_for_media_lease_change,
     },
     usb0_msc::{
         Usb0FsCompletion, Usb0FsFileHandle, Usb0FsRequest, Usb0FsSubmitResult,
@@ -69,23 +71,29 @@ enum LibraryDeckCompletion {
 pub(crate) struct LibraryDeckDispatchReport {
     pub(crate) completed: u8,
     pub(crate) failed: u8,
+    pub(crate) invalidated: u8,
     pub(crate) blocked: bool,
 }
 
 impl LibraryDeckDispatchReport {
     pub(crate) const fn made_progress(self) -> bool {
-        self.completed != 0 || self.failed != 0
+        self.completed != 0 || self.failed != 0 || self.invalidated != 0
     }
 }
 
 pub(crate) async fn wait_for_library_deck_progress() {
-    LIBRARY_DECK_PROGRESS.wait().await;
+    let _ = select(
+        LIBRARY_DECK_PROGRESS.wait(),
+        wait_for_media_lease_change(),
+    )
+    .await;
 }
 
 pub(crate) fn dispatch_library_deck(
     product: &mut ProductRuntime,
 ) -> LibraryDeckDispatchReport {
     let mut report = LibraryDeckDispatchReport::default();
+    report.invalidated = product.invalidate_loaded_media(current_media_lease());
 
     if let Ok(completion) = LIBRARY_DECK_COMPLETIONS.try_receive() {
         LIBRARY_DECK_IN_FLIGHT.store(false, Ordering::Release);
@@ -111,13 +119,15 @@ pub(crate) fn dispatch_library_deck(
                     source_cues_available,
                     ..
                 } => {
-                    if product.commit_library_load(
-                        deck,
-                        candidate,
-                        source,
-                        persisted,
-                        source_cues_available,
-                    ) {
+                    if catalog_publication_matches(candidate.publication)
+                        && product.commit_library_load(
+                            deck,
+                            candidate,
+                            source,
+                            persisted,
+                            source_cues_available,
+                        )
+                    {
                         report.completed = report.completed.saturating_add(1);
                     } else {
                         product.note_library_failure();
