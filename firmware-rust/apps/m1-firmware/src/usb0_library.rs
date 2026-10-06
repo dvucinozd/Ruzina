@@ -6,6 +6,7 @@ use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex},
     channel::Channel,
+    signal::Signal,
 };
 use pajoniiir_media_fs::{BoundedPath, FileHandle};
 use pajoniiir_media_catalog::{
@@ -56,6 +57,9 @@ pub(crate) static USB0_LIBRARY_COMPLETIONS: Channel<
 
 static USB0_LIBRARY_PUBLICATION: CriticalSectionMutex<RefCell<Option<CatalogPublicationId>>> =
     CriticalSectionMutex::new(RefCell::new(None));
+static USB0_LIBRARY_MEDIA_LEASE: CriticalSectionMutex<RefCell<Option<MediaLease>>> =
+    CriticalSectionMutex::new(RefCell::new(None));
+static USB0_LIBRARY_MEDIA_LEASE_CHANGED: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Usb0LibraryCommand {
@@ -88,6 +92,44 @@ pub(crate) enum Usb0LibraryCompletion {
 
 pub(crate) fn catalog_publication_matches(publication: CatalogPublicationId) -> bool {
     USB0_LIBRARY_PUBLICATION.lock(|cell| *cell.borrow() == Some(publication))
+}
+
+pub(crate) fn current_media_lease() -> Option<MediaLease> {
+    USB0_LIBRARY_MEDIA_LEASE.lock(|cell| *cell.borrow())
+}
+
+pub(crate) async fn wait_for_media_lease_change() {
+    USB0_LIBRARY_MEDIA_LEASE_CHANGED.wait().await;
+}
+
+fn set_media_lease(lease: MediaLease) {
+    let changed = USB0_LIBRARY_MEDIA_LEASE.lock(|cell| {
+        let mut current = cell.borrow_mut();
+        if *current == Some(lease) {
+            false
+        } else {
+            *current = Some(lease);
+            true
+        }
+    });
+    if changed {
+        USB0_LIBRARY_MEDIA_LEASE_CHANGED.signal(());
+    }
+}
+
+fn clear_media_lease(lease: MediaLease) {
+    let changed = USB0_LIBRARY_MEDIA_LEASE.lock(|cell| {
+        let mut current = cell.borrow_mut();
+        if *current == Some(lease) {
+            *current = None;
+            true
+        } else {
+            false
+        }
+    });
+    if changed {
+        USB0_LIBRARY_MEDIA_LEASE_CHANGED.signal(());
+    }
 }
 
 fn set_catalog_publication(publication: Option<CatalogPublicationId>) {
@@ -1678,6 +1720,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                 kind: _,
                 volume_identity,
             }) => {
+                set_media_lease(binding.lease);
                 let Some(volume_identity) = volume_identity else {
                     if let Some(catalog) = catalog_stage.as_mut() {
                         catalog.invalidate(binding.lease);
@@ -1746,6 +1789,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                 }
             }
             Either::First(Usb0LibraryEvent::FilesystemFailed { binding }) => {
+                clear_media_lease(binding.lease);
                 if let Some(staging) = name_stage.as_mut() {
                     staging.clear();
                 }
@@ -1762,6 +1806,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                 });
             }
             Either::First(Usb0LibraryEvent::Detached { binding }) => {
+                clear_media_lease(binding.lease);
                 if let Some(staging) = name_stage.as_mut() {
                     staging.clear();
                 }
