@@ -3,20 +3,27 @@ use core::cell::RefCell;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use crate::product_runtime::ProductRuntime;
+#[cfg(feature = "pcm-transport-bringup")]
+use crate::deck_audio_source::{seek_wav_source, try_receive_pcm_block};
 #[cfg(feature = "hotcue-flash-storage")]
 use crate::hotcue_flash::EspHotCueFlash;
-#[cfg(feature = "hotcue-flash-storage")]
+#[cfg(any(feature = "hotcue-flash-storage", feature = "pcm-transport-bringup"))]
 use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex},
     channel::{Channel, TrySendError},
     signal::Signal,
 };
-use pajoniiir_audio_runtime::{AudioEffectCommand, map_deck_effect};
+use pajoniiir_audio_runtime::{
+    AudioEffectCommand, map_deck_effect,
+    pcm_stream::{PcmBlockDisposition, PcmStreamBlock, PcmTransportCursor},
+};
 use pajoniiir_controller_session::DeckId;
 #[cfg(feature = "hotcue-flash-storage")]
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_deck::{DeckEffect, DeckEffectTarget};
+#[cfg(feature = "pcm-transport-bringup")]
+use embassy_time::{Duration, Timer};
 #[cfg(feature = "hotcue-flash-storage")]
 use pajoniiir_hot_cues::{
     HotCueBank, HotCueStore, RecordBackedHotCueStore,
@@ -90,6 +97,8 @@ pub(crate) struct TransportDeckOwnerState {
     pub(crate) position_ms: u32,
     pub(crate) pitch_centipercent: i16,
     pub(crate) loop_region: Option<(u32, u32)>,
+    pub(crate) pcm_cursor: PcmTransportCursor,
+    pub(crate) stream_faults: u32,
 }
 
 impl TransportDeckOwnerState {
@@ -99,6 +108,8 @@ impl TransportDeckOwnerState {
             position_ms: 0,
             pitch_centipercent: 0,
             loop_region: None,
+            pcm_cursor: PcmTransportCursor::new(),
+            stream_faults: 0,
         }
     }
 }
@@ -124,7 +135,11 @@ impl TransportOwnerState {
                 playing,
                 request_id,
             } => {
-                self.deck_mut(deck).playing = playing;
+                let state = self.deck_mut(deck);
+                state.playing = playing;
+                if playing {
+                    state.pcm_cursor.begin_playback();
+                }
                 Some(TransportCompletion::Playback {
                     deck,
                     request_id,
@@ -159,6 +174,58 @@ impl TransportOwnerState {
         };
         self.accepted_commands = self.accepted_commands.saturating_add(1);
         completion
+    }
+
+    fn bind_seek(
+        &mut self,
+        deck: DeckId,
+        position_ms: u32,
+        generation: u32,
+        frame: u64,
+        sample_rate_hz: u32,
+    ) {
+        let state = self.deck_mut(deck);
+        state.position_ms = position_ms;
+        state
+            .pcm_cursor
+            .bind_seek(generation, frame, sample_rate_hz);
+        self.accepted_commands = self.accepted_commands.saturating_add(1);
+    }
+
+    fn consume_pcm_block(
+        &mut self,
+        deck: DeckId,
+        block: &PcmStreamBlock,
+    ) -> Option<TransportCompletion> {
+        let state = self.deck_mut(deck);
+        match state.pcm_cursor.accept(block) {
+            PcmBlockDisposition::Accepted {
+                position_ms, eof, ..
+            } => {
+                state.position_ms = position_ms;
+                if eof {
+                    state.playing = false;
+                    Some(TransportCompletion::StreamEnded {
+                        deck,
+                        position_ms,
+                        faulted: false,
+                    })
+                } else {
+                    None
+                }
+            }
+            PcmBlockDisposition::Stale => None,
+            PcmBlockDisposition::Fault { position_ms } => {
+                state.position_ms = position_ms;
+                state.playing = false;
+                state.stream_faults = state.stream_faults.saturating_add(1);
+                Some(TransportCompletion::StreamEnded {
+                    deck,
+                    position_ms,
+                    faulted: true,
+                })
+            }
+        }
     }
 
     fn deck_mut(&mut self, deck: DeckId) -> &mut TransportDeckOwnerState {
@@ -197,6 +264,11 @@ enum TransportCompletion {
         request_id: u32,
         succeeded: bool,
     },
+    StreamEnded {
+        deck: DeckId,
+        position_ms: u32,
+        faulted: bool,
+    },
 }
 
 #[cfg(feature = "hotcue-flash-storage")]
@@ -232,6 +304,8 @@ pub(crate) struct EffectOwnerDispatchReport {
     pub(crate) transport_accepted: u8,
     pub(crate) audio_dsp_accepted: u8,
     pub(crate) playback_completions: u8,
+    pub(crate) stream_completions: u8,
+    pub(crate) stream_faults: u8,
     pub(crate) persistence_completions: u8,
     pub(crate) transport_blocked: bool,
     pub(crate) audio_dsp_blocked: bool,
@@ -245,6 +319,8 @@ impl EffectOwnerDispatchReport {
         self.transport_accepted != 0
             || self.audio_dsp_accepted != 0
             || self.playback_completions != 0
+            || self.stream_completions != 0
+            || self.stream_faults != 0
             || self.persistence_completions != 0
     }
 }
@@ -301,6 +377,17 @@ pub(crate) fn dispatch_product_effects(
                 if product.resolve_playback_request(deck, request_id, succeeded) {
                     report.playback_completions =
                         report.playback_completions.saturating_add(1);
+                }
+            }
+            TransportCompletion::StreamEnded {
+                deck,
+                position_ms,
+                faulted,
+            } => {
+                product.finish_stream_playback(deck, position_ms);
+                report.stream_completions = report.stream_completions.saturating_add(1);
+                if faulted {
+                    report.stream_faults = report.stream_faults.saturating_add(1);
                 }
             }
         }
@@ -483,6 +570,71 @@ pub(crate) async fn run_persistence_owner(
 }
 
 pub(crate) async fn run_transport_owner() -> ! {
+    #[cfg(feature = "pcm-transport-bringup")]
+    {
+        let mut source_request_id = 0u32;
+        loop {
+            match select(
+                TRANSPORT_COMMANDS.receive(),
+                Timer::after(Duration::from_millis(1)),
+            )
+            .await
+            {
+                Either::First(effect) => {
+                    if let DeckEffect::Seek { deck, position_ms } = effect {
+                        source_request_id = source_request_id.wrapping_add(1);
+                        if source_request_id == 0 {
+                            source_request_id = 1;
+                        }
+                        let result =
+                            seek_wav_source(deck, source_request_id, position_ms).await;
+                        match result {
+                            Ok(seek) => {
+                                TRANSPORT_OWNER_STATE.lock(|cell| {
+                                    cell.borrow_mut().bind_seek(
+                                        deck,
+                                        position_ms,
+                                        seek.generation,
+                                        seek.frame,
+                                        seek.sample_rate_hz,
+                                    )
+                                });
+                            }
+                            Err(()) => esp_hal::system::software_reset(),
+                        }
+                    } else {
+                        let completion =
+                            TRANSPORT_OWNER_STATE.lock(|cell| cell.borrow_mut().apply(effect));
+                        if let Some(completion) = completion {
+                            TRANSPORT_COMPLETIONS.send(completion).await;
+                        }
+                    }
+                    EFFECT_OWNER_PROGRESS.signal(());
+                }
+                Either::Second(()) => {
+                    for deck in [DeckId::One, DeckId::Two] {
+                        let playing = TRANSPORT_OWNER_STATE
+                            .lock(|cell| cell.borrow().decks[deck_index(deck)].playing);
+                        if !playing {
+                            continue;
+                        }
+
+                        while let Some(block) = try_receive_pcm_block(deck) {
+                            let completion = TRANSPORT_OWNER_STATE
+                                .lock(|cell| cell.borrow_mut().consume_pcm_block(deck, &block));
+                            if let Some(completion) = completion {
+                                TRANSPORT_COMPLETIONS.send(completion).await;
+                                EFFECT_OWNER_PROGRESS.signal(());
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(not(feature = "pcm-transport-bringup"))]
     loop {
         let effect = TRANSPORT_COMMANDS.receive().await;
         let completion =
