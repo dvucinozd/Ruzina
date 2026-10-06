@@ -388,10 +388,7 @@ mod tests {
         );
 
         let bad_loop = pcob(1, &[pcpt(1, 2, 5_000, 4_000)]);
-        assert_eq!(
-            parse_hot_cues(&bad_loop),
-            Err(AnlzHotCueError::InvalidLoop)
-        );
+        assert_eq!(parse_hot_cues(&bad_loop), Err(AnlzHotCueError::InvalidLoop));
     }
 
     #[test]
