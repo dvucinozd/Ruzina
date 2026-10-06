@@ -185,9 +185,7 @@ pub fn frame_from_ms(position_ms: u32, sample_rate_hz: u32, frame_count: u64) ->
     if sample_rate_hz == 0 {
         return 0;
     }
-    let frame = u64::from(position_ms)
-        .saturating_mul(u64::from(sample_rate_hz))
-        / 1_000;
+    let frame = u64::from(position_ms).saturating_mul(u64::from(sample_rate_hz)) / 1_000;
     frame.min(frame_count)
 }
 
@@ -248,7 +246,10 @@ mod tests {
         let mut cursor = PcmTransportCursor::new();
         cursor.bind_seek(9, 4_800, 48_000);
 
-        assert_eq!(cursor.accept(&block(8, 0, 256, false)), PcmBlockDisposition::Stale);
+        assert_eq!(
+            cursor.accept(&block(8, 0, 256, false)),
+            PcmBlockDisposition::Stale
+        );
         assert_eq!(cursor.position_frame(), 4_800);
         assert_eq!(cursor.stale_blocks(), 1);
         assert_eq!(cursor.consumed_blocks(), 0);
