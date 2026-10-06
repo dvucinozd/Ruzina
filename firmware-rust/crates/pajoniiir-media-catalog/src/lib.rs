@@ -112,6 +112,17 @@ pub struct CatalogLoadCandidate {
     pub track: CatalogTrack,
 }
 
+pub trait CatalogView {
+    fn lease(&self) -> MediaLease;
+    fn revision(&self) -> u32;
+    fn len(&self) -> usize;
+    fn get(&self, index: usize) -> Option<&CatalogTrack>;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CatalogSelection {
     publication: Option<CatalogPublicationId>,
@@ -150,7 +161,7 @@ impl CatalogSelection {
         self.count = 0;
     }
 
-    pub fn publish<B: CatalogBank>(&mut self, snapshot: &CatalogBankSnapshot<B>) {
+    pub fn publish<V: CatalogView>(&mut self, snapshot: &V) {
         let count = snapshot.len().min(u16::MAX as usize) as u16;
         let publication = CatalogPublicationId {
             lease: snapshot.lease(),
@@ -189,10 +200,7 @@ impl CatalogSelection {
         changed
     }
 
-    pub fn resolve<B: CatalogBank>(
-        &self,
-        snapshot: &CatalogBankSnapshot<B>,
-    ) -> Option<CatalogLoadCandidate> {
+    pub fn resolve<V: CatalogView>(&self, snapshot: &V) -> Option<CatalogLoadCandidate> {
         let publication = self.publication?;
         if publication.lease != snapshot.lease()
             || publication.revision != snapshot.revision()
@@ -343,6 +351,24 @@ impl<const N: usize> CatalogSnapshot<N> {
             .iter()
             .enumerate()
             .find(|(_, track)| track.source_track_id == source_track_id)
+    }
+}
+
+impl<const N: usize> CatalogView for CatalogSnapshot<N> {
+    fn lease(&self) -> MediaLease {
+        self.lease()
+    }
+
+    fn revision(&self) -> u32 {
+        self.revision()
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn get(&self, index: usize) -> Option<&CatalogTrack> {
+        self.get(index)
     }
 }
 
@@ -522,6 +548,24 @@ impl<B: CatalogBank> CatalogBankSnapshot<B> {
 
     pub fn into_bank(self) -> B {
         self.bank
+    }
+}
+
+impl<B: CatalogBank> CatalogView for CatalogBankSnapshot<B> {
+    fn lease(&self) -> MediaLease {
+        self.lease()
+    }
+
+    fn revision(&self) -> u32 {
+        self.revision()
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn get(&self, index: usize) -> Option<&CatalogTrack> {
+        self.get(index)
     }
 }
 
