@@ -475,59 +475,69 @@ impl SessionDeliverySink for ProductRuntime {
                     true
                 }
                 ControlDomain::Library => {
-                    let effect = match (event.control, event.value) {
-                        (SemanticControl::BrowseDelta, ControlValue::Relative(delta))
-                            if delta != 0 =>
-                        {
-                            Some(LibraryEffect::Browse {
-                                delta,
-                                multiplier: 1,
-                            })
-                        }
-                        (SemanticControl::ShiftBrowseDelta, ControlValue::Relative(delta))
-                            if delta != 0 =>
-                        {
-                            Some(LibraryEffect::Browse {
-                                delta,
-                                multiplier: 10,
-                            })
-                        }
-                        (
-                            SemanticControl::BrowsePress | SemanticControl::ShiftBrowsePress,
-                            ControlValue::Pressed(true),
-                        ) => Some(LibraryEffect::OpenLibrary),
-                        (
-                            SemanticControl::Load | SemanticControl::ShiftLoad,
-                            ControlValue::Pressed(true),
-                        ) => {
-                            let Some(deck) = event.deck else {
-                                self.stats.accepted_library_controls =
-                                    self.stats.accepted_library_controls.saturating_add(1);
-                                return true;
-                            };
-                            if self.deck.deck(deck).playing {
-                                self.stats.library_load_locked =
-                                    self.stats.library_load_locked.saturating_add(1);
-                                self.stats.accepted_library_controls =
-                                    self.stats.accepted_library_controls.saturating_add(1);
-                                return true;
-                            }
-                            Some(LibraryEffect::Load { deck })
-                        }
-                        _ => None,
-                    };
-
-                    if let Some(effect) = effect
-                        && !self.library_effects.try_push(effect)
+                    #[cfg(feature = "library-deck-load")]
                     {
-                        self.stats.effect_backpressure =
-                            self.stats.effect_backpressure.saturating_add(1);
-                        return false;
+                        let effect = match (event.control, event.value) {
+                            (SemanticControl::BrowseDelta, ControlValue::Relative(delta))
+                                if delta != 0 =>
+                            {
+                                Some(LibraryEffect::Browse {
+                                    delta,
+                                    multiplier: 1,
+                                })
+                            }
+                            (SemanticControl::ShiftBrowseDelta, ControlValue::Relative(delta))
+                                if delta != 0 =>
+                            {
+                                Some(LibraryEffect::Browse {
+                                    delta,
+                                    multiplier: 10,
+                                })
+                            }
+                            (
+                                SemanticControl::BrowsePress | SemanticControl::ShiftBrowsePress,
+                                ControlValue::Pressed(true),
+                            ) => Some(LibraryEffect::OpenLibrary),
+                            (
+                                SemanticControl::Load | SemanticControl::ShiftLoad,
+                                ControlValue::Pressed(true),
+                            ) => {
+                                let Some(deck) = event.deck else {
+                                    self.stats.accepted_library_controls =
+                                        self.stats.accepted_library_controls.saturating_add(1);
+                                    return true;
+                                };
+                                if self.deck.deck(deck).playing {
+                                    self.stats.library_load_locked =
+                                        self.stats.library_load_locked.saturating_add(1);
+                                    self.stats.accepted_library_controls =
+                                        self.stats.accepted_library_controls.saturating_add(1);
+                                    return true;
+                                }
+                                Some(LibraryEffect::Load { deck })
+                            }
+                            _ => None,
+                        };
+
+                        if let Some(effect) = effect
+                            && !self.library_effects.try_push(effect)
+                        {
+                            self.stats.effect_backpressure =
+                                self.stats.effect_backpressure.saturating_add(1);
+                            return false;
+                        }
+
+                        self.stats.accepted_library_controls =
+                            self.stats.accepted_library_controls.saturating_add(1);
+                        true
                     }
 
-                    self.stats.accepted_library_controls =
-                        self.stats.accepted_library_controls.saturating_add(1);
-                    true
+                    #[cfg(not(feature = "library-deck-load"))]
+                    {
+                        self.stats.deferred_controls =
+                            self.stats.deferred_controls.saturating_add(1);
+                        false
+                    }
                 }
                 ControlDomain::Deferred => {
                     self.stats.deferred_controls = self.stats.deferred_controls.saturating_add(1);
