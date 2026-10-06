@@ -187,7 +187,7 @@ impl FixedRateRenderGraph {
         for frame_index in 0..RENDER_BLOCK_FRAMES {
             let mut deck_frames = [DspFrame::default(); 2];
 
-            for deck in 0..2 {
+            for (deck, deck_frame) in deck_frames.iter_mut().enumerate() {
                 let deck_control = control.decks[deck];
                 output.pfl[deck][frame_index] = PcmFrame::default();
 
@@ -236,7 +236,7 @@ impl FixedRateRenderGraph {
                 let post_gain = sanitize_gain(deck_control.post_gain);
                 dsp.left *= post_gain;
                 dsp.right *= post_gain;
-                deck_frames[deck] = dsp;
+                *deck_frame = dsp;
             }
 
             let master_gain = sanitize_gain(control.master_gain);
@@ -520,7 +520,7 @@ mod tests {
         });
 
         assert!(report.limiter.limited_samples > 0);
-        assert!(output.main[1].left <= i16::MAX);
+        assert_ne!(output.main[1].left, 20_000);
         assert_eq!(output.pfl[0][1].left, i16::MAX);
     }
 
