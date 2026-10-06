@@ -96,6 +96,12 @@ jobs:
       - name: ESP32-P4 WAV audio-source bring-up link gate
         run: cargo +1.95.0 build --locked --release --features wav-audio-source-bringup
 
+      - name: ESP32-P4 bounded PCM transport cross compile
+        run: cargo +1.95.0 check --locked --features pcm-transport-bringup
+
+      - name: ESP32-P4 bounded PCM transport link gate
+        run: cargo +1.95.0 build --locked --release --features pcm-transport-bringup
+
       - name: ESP32-P4 microSD profile-storage cross compile
         run: cargo +1.95.0 check --locked --features sdmmc-profile-storage-bringup
 
