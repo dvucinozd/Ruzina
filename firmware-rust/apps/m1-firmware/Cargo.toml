@@ -34,6 +34,10 @@ wav-audio-source-bringup = ["library-deck-load"]
 # PCM into fixed-capacity per-deck queues; the transport owner consumes only
 # generation-matched blocks and owns seek/EOF state transitions.
 pcm-transport-bringup = ["wav-audio-source-bringup"]
+# Fixed-rate software render graph ownership boundary. The render owner becomes
+# the only steady-state PCM consumer and returns compact progress to transport.
+# Output is still a reference/null sink; PCM5102A/I2S remains a later hardware gate.
+render-graph-bringup = ["pcm-transport-bringup"]
 # Compile-verified M1 microSD SDMMC0 ownership and card-init boundary. Runtime
 # card/FAT/profile success still requires EVT hardware qualification.
 sdmmc-profile-storage-bringup = []
