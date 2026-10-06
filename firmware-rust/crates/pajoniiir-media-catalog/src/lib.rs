@@ -180,7 +180,10 @@ impl CatalogSelection {
     }
 
     pub fn invalidate(&mut self, lease: MediaLease) {
-        if self.publication.is_some_and(|current| current.lease == lease) {
+        if self
+            .publication
+            .is_some_and(|current| current.lease == lease)
+        {
             self.publication = None;
             self.selected = 0;
             self.count = 0;
@@ -834,7 +837,14 @@ mod tests {
 
         selection.publish(&replacement);
         assert_eq!(selection.selected_index(), Some(0));
-        assert_eq!(selection.resolve(&replacement).unwrap().track.source_track_id, 201);
+        assert_eq!(
+            selection
+                .resolve(&replacement)
+                .unwrap()
+                .track
+                .source_track_id,
+            201
+        );
     }
 
     #[test]
@@ -877,5 +887,4 @@ mod tests {
         assert_eq!(selection.selected_index(), None);
         assert_eq!(selection.resolve(&snapshot), None);
     }
-
 }
