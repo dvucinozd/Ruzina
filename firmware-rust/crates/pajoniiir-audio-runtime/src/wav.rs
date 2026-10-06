@@ -113,12 +113,13 @@ pub fn parse_pcm16_format(input: &[u8]) -> Result<WavPcm16Format, WavError> {
         });
     }
 
-    let expected_byte_rate = sample_rate_hz
-        .checked_mul(u32::from(block_align))
-        .ok_or(WavError::InvalidByteRate {
-            expected: u32::MAX,
-            actual: byte_rate,
-        })?;
+    let expected_byte_rate =
+        sample_rate_hz
+            .checked_mul(u32::from(block_align))
+            .ok_or(WavError::InvalidByteRate {
+                expected: u32::MAX,
+                actual: byte_rate,
+            })?;
     if byte_rate != expected_byte_rate {
         return Err(WavError::InvalidByteRate {
             expected: expected_byte_rate,
@@ -219,8 +220,7 @@ impl WavPcm16Decoder {
         }
 
         while produced < output.len() && consumed + frame_bytes <= allowed {
-            output[produced] =
-                decode_frame(self.format, &input[consumed..consumed + frame_bytes]);
+            output[produced] = decode_frame(self.format, &input[consumed..consumed + frame_bytes]);
             consumed += frame_bytes;
             produced += 1;
         }
@@ -367,7 +367,10 @@ mod tests {
             output,
             [
                 PcmFrame { left: 1, right: 1 },
-                PcmFrame { left: -1, right: -1 },
+                PcmFrame {
+                    left: -1,
+                    right: -1
+                },
             ]
         );
     }
