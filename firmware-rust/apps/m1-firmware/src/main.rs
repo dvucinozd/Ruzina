@@ -10,6 +10,8 @@ use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 
 #[allow(dead_code)]
 mod controller_profiles;
+#[cfg(feature = "render-graph-bringup")]
+mod audio_render_owner;
 #[cfg(feature = "wav-audio-source-bringup")]
 mod deck_audio_source;
 #[allow(dead_code)]
@@ -69,6 +71,12 @@ async fn deck_a_audio_source_owner_task() {
 #[embassy_executor::task]
 async fn deck_b_audio_source_owner_task() {
     deck_audio_source::run_deck_b_audio_source_owner().await
+}
+
+#[cfg(feature = "render-graph-bringup")]
+#[embassy_executor::task]
+async fn audio_render_owner_task() {
+    audio_render_owner::run_audio_render_owner().await
 }
 
 #[cfg(feature = "hotcue-flash-storage")]
@@ -195,6 +203,13 @@ async fn main(spawner: Spawner) -> ! {
         spawner.spawn(
             deck_b_audio_source_owner_task()
                 .expect("Deck B audio-source owner task slot must be available"),
+        );
+    }
+
+    #[cfg(feature = "render-graph-bringup")]
+    {
+        spawner.spawn(
+            audio_render_owner_task().expect("audio render owner task slot must be available"),
         );
     }
 
