@@ -278,6 +278,8 @@ fn be32(bytes: &[u8]) -> u32 {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use super::*;
 
     fn put_be16(bytes: &mut [u8], value: u16) {
