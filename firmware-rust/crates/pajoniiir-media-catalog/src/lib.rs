@@ -144,6 +144,12 @@ impl CatalogSelection {
         self.count
     }
 
+    pub fn clear(&mut self) {
+        self.publication = None;
+        self.selected = 0;
+        self.count = 0;
+    }
+
     pub fn publish<B: CatalogBank>(&mut self, snapshot: &CatalogBankSnapshot<B>) {
         let count = snapshot.len().min(u16::MAX as usize) as u16;
         let publication = CatalogPublicationId {
