@@ -19,9 +19,10 @@ use pajoniiir_rekordbox::anlz_hot_cues::{
 };
 use static_cell::StaticCell;
 
+#[cfg(feature = "wav-audio-source-bringup")]
+use crate::deck_audio_source::{prepare_wav_source, request_source_release};
+
 use crate::{
-    #[cfg(feature = "wav-audio-source-bringup")]
-    deck_audio_source::{prepare_wav_source, request_source_release},
     deck_effect_owners::{HotCueLoadResult, load_persisted_hot_cues},
     product_runtime::{LibraryEffect, ProductRuntime},
     usb0_library::{
