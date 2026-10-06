@@ -697,6 +697,13 @@ impl DeckProductState {
         self.decks[deck_index(deck)].position_ms = position_ms;
     }
 
+    pub fn finish_playback(&mut self, deck: DeckId, position_ms: u32) {
+        let state = &mut self.decks[deck_index(deck)];
+        state.playing = false;
+        state.position_ms = position_ms;
+        state.pending_playback = None;
+    }
+
     pub fn set_controller_connected(&mut self, connected: bool) {
         for state in &mut self.decks {
             state.controller_connected = connected;
