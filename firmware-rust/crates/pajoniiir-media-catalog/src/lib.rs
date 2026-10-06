@@ -170,9 +170,7 @@ impl CatalogSelection {
         let same_publication = self.publication == Some(publication);
         self.publication = Some(publication);
         self.count = count;
-        if count == 0 {
-            self.selected = 0;
-        } else if !same_publication {
+        if count == 0 || !same_publication {
             self.selected = 0;
         } else if self.selected >= count {
             self.selected = count - 1;
