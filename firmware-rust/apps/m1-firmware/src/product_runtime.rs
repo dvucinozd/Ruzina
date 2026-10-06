@@ -8,6 +8,7 @@ use pajoniiir_deck::{
 };
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
+use pajoniiir_media_session::MediaLease;
 use pajoniiir_mixer::MixerState;
 
 const PRODUCT_LIBRARY_EFFECT_CAPACITY: usize = 8;
@@ -176,6 +177,24 @@ impl ProductRuntime {
 
     pub(crate) fn loaded_track(&self, deck: DeckId) -> Option<ProductLoadedTrack> {
         self.loaded_tracks[deck_index(deck)]
+    }
+
+    pub(crate) fn invalidate_loaded_media(&mut self, current: Option<MediaLease>) -> u8 {
+        let mut invalidated = 0u8;
+        for deck in [DeckId::One, DeckId::Two] {
+            let index = deck_index(deck);
+            let stale = self.loaded_tracks[index]
+                .is_some_and(|loaded| Some(loaded.candidate.publication.lease) != current);
+            if stale {
+                self.loaded_tracks[index] = None;
+                self.deck.unload_track(deck);
+                invalidated = invalidated.saturating_add(1);
+            }
+        }
+        if invalidated != 0 {
+            self.refresh_leds();
+        }
+        invalidated
     }
 
     pub(crate) const fn pending_deck_effects(&self) -> usize {
