@@ -178,7 +178,7 @@ pub struct WavPcm16Decoder {
 
 impl WavPcm16Decoder {
     pub fn new(format: WavPcm16Format, data_bytes: u64) -> Result<Self, WavError> {
-        if data_bytes % u64::from(format.block_align) != 0 {
+        if !data_bytes.is_multiple_of(u64::from(format.block_align)) {
             return Err(WavError::DataMisaligned {
                 data_bytes,
                 block_align: format.block_align,
