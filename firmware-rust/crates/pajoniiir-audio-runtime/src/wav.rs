@@ -32,11 +32,11 @@ impl WavChunkHeader {
         len + (len & 1)
     }
 
-    pub const fn is_format(self) -> bool {
+    pub fn is_format(self) -> bool {
         self.id == *b"fmt "
     }
 
-    pub const fn is_data(self) -> bool {
+    pub fn is_data(self) -> bool {
         self.id == *b"data"
     }
 }
