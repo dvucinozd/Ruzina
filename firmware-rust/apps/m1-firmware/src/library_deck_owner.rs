@@ -7,6 +7,7 @@ use embassy_sync::{
     signal::Signal,
 };
 use embassy_time::{Duration, Timer};
+use pajoniiir_audio_runtime::wav::WavPcm16SourceDescriptor;
 use pajoniiir_controller_session::DeckId;
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
@@ -19,6 +20,8 @@ use pajoniiir_rekordbox::anlz_hot_cues::{
 use static_cell::StaticCell;
 
 use crate::{
+    #[cfg(feature = "wav-audio-source-bringup")]
+    deck_audio_source::{prepare_wav_source, request_source_release},
     deck_effect_owners::{HotCueLoadResult, load_persisted_hot_cues},
     product_runtime::{LibraryEffect, ProductRuntime},
     usb0_library::{
@@ -61,6 +64,7 @@ enum LibraryDeckCompletion {
         source: HotCueBank,
         persisted: Option<HotCueBank>,
         source_cues_available: bool,
+        wav_source: Option<WavPcm16SourceDescriptor>,
     },
     Failed {
         effect: LibraryEffect,
@@ -117,6 +121,7 @@ pub(crate) fn dispatch_library_deck(
                     source,
                     persisted,
                     source_cues_available,
+                    wav_source,
                     ..
                 } => {
                     if catalog_publication_matches(candidate.publication)
@@ -126,10 +131,14 @@ pub(crate) fn dispatch_library_deck(
                             source,
                             persisted,
                             source_cues_available,
+                            wav_source,
                         )
                     {
                         report.completed = report.completed.saturating_add(1);
                     } else {
+                        if !release_prepared_wav_source(deck, wav_source) {
+                            esp_hal::system::software_reset();
+                        }
                         product.note_library_failure();
                         report.failed = report.failed.saturating_add(1);
                     }
@@ -207,13 +216,17 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                             HotCueLoadResult::Ready(persisted)
                                 if catalog_publication_matches(candidate.publication) =>
                             {
-                                LibraryDeckCompletion::LoadReady {
-                                    effect,
-                                    deck,
-                                    candidate,
-                                    source,
-                                    persisted,
-                                    source_cues_available,
+                                match prepare_optional_wav_source(deck, request_id, candidate).await {
+                                    Ok(wav_source) => LibraryDeckCompletion::LoadReady {
+                                        effect,
+                                        deck,
+                                        candidate,
+                                        source,
+                                        persisted,
+                                        source_cues_available,
+                                        wav_source,
+                                    },
+                                    Err(()) => LibraryDeckCompletion::Failed { effect },
                                 }
                             }
                             HotCueLoadResult::Ready(_) | HotCueLoadResult::Failed => {
@@ -235,6 +248,40 @@ pub(crate) async fn run_library_deck_owner() -> ! {
 
         LIBRARY_DECK_COMPLETIONS.send(completion).await;
         LIBRARY_DECK_PROGRESS.signal(());
+    }
+}
+
+
+async fn prepare_optional_wav_source(
+    deck: DeckId,
+    request_id: u32,
+    candidate: CatalogLoadCandidate,
+) -> Result<Option<WavPcm16SourceDescriptor>, ()> {
+    #[cfg(feature = "wav-audio-source-bringup")]
+    {
+        prepare_wav_source(deck, request_id, candidate).await.map(Some)
+    }
+
+    #[cfg(not(feature = "wav-audio-source-bringup"))]
+    {
+        let _ = (deck, request_id, candidate);
+        Ok(None)
+    }
+}
+
+fn release_prepared_wav_source(
+    deck: DeckId,
+    wav_source: Option<WavPcm16SourceDescriptor>,
+) -> bool {
+    #[cfg(feature = "wav-audio-source-bringup")]
+    {
+        wav_source.is_none() || request_source_release(deck)
+    }
+
+    #[cfg(not(feature = "wav-audio-source-bringup"))]
+    {
+        let _ = (deck, wav_source);
+        true
     }
 }
 
