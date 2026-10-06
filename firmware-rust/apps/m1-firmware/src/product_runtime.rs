@@ -1,3 +1,4 @@
+use pajoniiir_controller_core::{ControlValue, SemanticControl};
 use pajoniiir_controller_session::{
     BeatFxTarget, ConnectionState, ControlDomain, ControllerLedFrame, DeckId, LedState, LedUpdate,
     PadMode, SemanticLedId, SessionDelivery, SessionDeliverySink,
@@ -5,17 +6,87 @@ use pajoniiir_controller_session::{
 use pajoniiir_deck::{
     DeckEffect, DeckEffectBroker, DeckProductState, LoopAdjustMode, PadFxBank,
 };
+use pajoniiir_hot_cues::HotCueBank;
+use pajoniiir_media_catalog::CatalogLoadCandidate;
 use pajoniiir_mixer::MixerState;
 
+const PRODUCT_LIBRARY_EFFECT_CAPACITY: usize = 8;
 const PRODUCT_TRANSPORT_EFFECT_CAPACITY: usize = 16;
 const PRODUCT_PERSISTENCE_EFFECT_CAPACITY: usize = 4;
 const PRODUCT_AUDIO_DSP_EFFECT_CAPACITY: usize = 16;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum LibraryEffect {
+    Browse { delta: i16, multiplier: u16 },
+    OpenLibrary,
+    Load { deck: DeckId },
+}
+
+#[derive(Clone, Copy)]
+struct LibraryEffectQueue<const N: usize> {
+    items: [Option<LibraryEffect>; N],
+    head: usize,
+    tail: usize,
+    count: usize,
+}
+
+impl<const N: usize> LibraryEffectQueue<N> {
+    const fn new() -> Self {
+        Self {
+            items: [None; N],
+            head: 0,
+            tail: 0,
+            count: 0,
+        }
+    }
+
+    const fn len(&self) -> usize {
+        self.count
+    }
+
+    fn front(&self) -> Option<LibraryEffect> {
+        if self.count == 0 || N == 0 {
+            None
+        } else {
+            self.items[self.head]
+        }
+    }
+
+    fn try_push(&mut self, effect: LibraryEffect) -> bool {
+        if self.count == N || N == 0 {
+            return false;
+        }
+        self.items[self.tail] = Some(effect);
+        self.tail = (self.tail + 1) % N;
+        self.count += 1;
+        true
+    }
+
+    fn complete_front(&mut self) -> bool {
+        if self.count == 0 || N == 0 {
+            return false;
+        }
+        self.items[self.head] = None;
+        self.head = (self.head + 1) % N;
+        self.count -= 1;
+        true
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ProductLoadedTrack {
+    pub(crate) candidate: CatalogLoadCandidate,
+    pub(crate) source_cues_available: bool,
+}
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct ProductRuntimeStats {
     pub(crate) accepted_connections: u32,
     pub(crate) accepted_deck_controls: u32,
     pub(crate) accepted_mixer_controls: u32,
+    pub(crate) accepted_library_controls: u32,
+    pub(crate) library_load_locked: u32,
+    pub(crate) library_failures: u32,
     pub(crate) effect_backpressure: u32,
     pub(crate) deferred_controls: u32,
 }
@@ -23,6 +94,8 @@ pub(crate) struct ProductRuntimeStats {
 pub(crate) struct ProductRuntime {
     deck: DeckProductState,
     mixer: MixerState,
+    library_effects: LibraryEffectQueue<PRODUCT_LIBRARY_EFFECT_CAPACITY>,
+    loaded_tracks: [Option<ProductLoadedTrack>; 2],
     deck_effects: DeckEffectBroker<
         PRODUCT_TRANSPORT_EFFECT_CAPACITY,
         PRODUCT_PERSISTENCE_EFFECT_CAPACITY,
@@ -37,16 +110,72 @@ impl ProductRuntime {
         Self {
             deck: DeckProductState::new(),
             mixer: MixerState::new(),
+            library_effects: LibraryEffectQueue::new(),
+            loaded_tracks: [None, None],
             deck_effects: DeckEffectBroker::new(),
             leds: ControllerLedFrame::new(),
             stats: ProductRuntimeStats {
                 accepted_connections: 0,
                 accepted_deck_controls: 0,
                 accepted_mixer_controls: 0,
+                accepted_library_controls: 0,
+                library_load_locked: 0,
+                library_failures: 0,
                 effect_backpressure: 0,
                 deferred_controls: 0,
             },
         }
+    }
+
+    pub(crate) const fn pending_library_effects(&self) -> usize {
+        self.library_effects.len()
+    }
+
+    pub(crate) fn next_library_effect(&self) -> Option<LibraryEffect> {
+        self.library_effects.front()
+    }
+
+    pub(crate) fn complete_library_effect(&mut self) -> bool {
+        self.library_effects.complete_front()
+    }
+
+    pub(crate) fn note_library_failure(&mut self) {
+        self.stats.library_failures = self.stats.library_failures.saturating_add(1);
+    }
+
+    pub(crate) fn commit_library_load(
+        &mut self,
+        deck: DeckId,
+        candidate: CatalogLoadCandidate,
+        source: HotCueBank,
+        persisted: Option<HotCueBank>,
+        source_cues_available: bool,
+    ) -> bool {
+        if candidate.track.track_id != source.track_id()
+            || persisted.is_some_and(|bank| bank.track_id() != candidate.track.track_id)
+        {
+            return false;
+        }
+        if !self.deck.commit_track_load(
+            deck,
+            candidate.track.track_id,
+            candidate.track.bpm_x100,
+            source,
+            persisted,
+        ) {
+            return false;
+        }
+
+        self.loaded_tracks[deck_index(deck)] = Some(ProductLoadedTrack {
+            candidate,
+            source_cues_available,
+        });
+        self.refresh_leds();
+        true
+    }
+
+    pub(crate) fn loaded_track(&self, deck: DeckId) -> Option<ProductLoadedTrack> {
+        self.loaded_tracks[deck_index(deck)]
     }
 
     pub(crate) const fn pending_deck_effects(&self) -> usize {
@@ -134,6 +263,15 @@ impl ProductRuntime {
             let mixer_state = self.mixer.deck(deck);
 
             self.set_deck_led(SemanticLedId::PLAY, deck, deck_state.playing);
+            self.set_deck_led(
+                if deck == DeckId::One {
+                    SemanticLedId::TRACK_LOAD_DECK1
+                } else {
+                    SemanticLedId::TRACK_LOAD_DECK2
+                },
+                deck,
+                self.loaded_tracks[deck_index(deck)].is_some(),
+            );
             self.set_deck_led(SemanticLedId::PFL, deck, mixer_state.pfl_enabled);
             self.set_deck_led(SemanticLedId::SYNC, deck, deck_state.sync_enabled);
             self.set_deck_led(
@@ -317,11 +455,73 @@ impl SessionDeliverySink for ProductRuntime {
                         self.stats.accepted_mixer_controls.saturating_add(1);
                     true
                 }
-                ControlDomain::Library | ControlDomain::Deferred => {
+                ControlDomain::Library => {
+                    let effect = match (event.control, event.value) {
+                        (SemanticControl::BrowseDelta, ControlValue::Relative(delta))
+                            if delta != 0 =>
+                        {
+                            Some(LibraryEffect::Browse {
+                                delta,
+                                multiplier: 1,
+                            })
+                        }
+                        (SemanticControl::ShiftBrowseDelta, ControlValue::Relative(delta))
+                            if delta != 0 =>
+                        {
+                            Some(LibraryEffect::Browse {
+                                delta,
+                                multiplier: 10,
+                            })
+                        }
+                        (
+                            SemanticControl::BrowsePress | SemanticControl::ShiftBrowsePress,
+                            ControlValue::Pressed(true),
+                        ) => Some(LibraryEffect::OpenLibrary),
+                        (
+                            SemanticControl::Load | SemanticControl::ShiftLoad,
+                            ControlValue::Pressed(true),
+                        ) => {
+                            let Some(deck) = event.deck else {
+                                self.stats.accepted_library_controls =
+                                    self.stats.accepted_library_controls.saturating_add(1);
+                                return true;
+                            };
+                            if self.deck.deck(deck).playing {
+                                self.stats.library_load_locked =
+                                    self.stats.library_load_locked.saturating_add(1);
+                                self.stats.accepted_library_controls =
+                                    self.stats.accepted_library_controls.saturating_add(1);
+                                return true;
+                            }
+                            Some(LibraryEffect::Load { deck })
+                        }
+                        _ => None,
+                    };
+
+                    if let Some(effect) = effect
+                        && !self.library_effects.try_push(effect)
+                    {
+                        self.stats.effect_backpressure =
+                            self.stats.effect_backpressure.saturating_add(1);
+                        return false;
+                    }
+
+                    self.stats.accepted_library_controls =
+                        self.stats.accepted_library_controls.saturating_add(1);
+                    true
+                }
+                ControlDomain::Deferred => {
                     self.stats.deferred_controls = self.stats.deferred_controls.saturating_add(1);
                     false
                 }
             },
         }
+    }
+}
+
+const fn deck_index(deck: DeckId) -> usize {
+    match deck {
+        DeckId::One => 0,
+        DeckId::Two => 1,
     }
 }
