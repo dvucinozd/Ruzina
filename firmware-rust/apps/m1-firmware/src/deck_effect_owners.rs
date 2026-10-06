@@ -5,6 +5,8 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use crate::product_runtime::ProductRuntime;
 #[cfg(feature = "hotcue-flash-storage")]
 use crate::hotcue_flash::EspHotCueFlash;
+#[cfg(feature = "hotcue-flash-storage")]
+use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex},
     channel::{Channel, TrySendError},
@@ -12,10 +14,12 @@ use embassy_sync::{
 };
 use pajoniiir_audio_runtime::{AudioEffectCommand, map_deck_effect};
 use pajoniiir_controller_session::DeckId;
+#[cfg(feature = "hotcue-flash-storage")]
+use pajoniiir_core::MediaTrackId;
 use pajoniiir_deck::{DeckEffect, DeckEffectTarget};
 #[cfg(feature = "hotcue-flash-storage")]
 use pajoniiir_hot_cues::{
-    HotCueStore, RecordBackedHotCueStore,
+    HotCueBank, HotCueStore, RecordBackedHotCueStore,
     journal::HotCueJournalBackend,
 };
 
@@ -26,6 +30,8 @@ const TRANSPORT_COMPLETION_DEPTH: usize = 16;
 const PERSISTENCE_OWNER_QUEUE_DEPTH: usize = 1;
 #[cfg(feature = "hotcue-flash-storage")]
 const PERSISTENCE_COMPLETION_DEPTH: usize = 1;
+#[cfg(feature = "hotcue-flash-storage")]
+const HOT_CUE_LOAD_QUEUE_DEPTH: usize = 1;
 
 static TRANSPORT_COMMANDS: Channel<
     CriticalSectionRawMutex,
@@ -60,6 +66,18 @@ static PERSISTENCE_COMPLETIONS: Channel<
 static PERSISTENCE_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 #[cfg(feature = "hotcue-flash-storage")]
 static PERSISTENCE_FAULTED: AtomicBool = AtomicBool::new(false);
+#[cfg(feature = "hotcue-flash-storage")]
+static HOT_CUE_LOAD_REQUESTS: Channel<
+    CriticalSectionRawMutex,
+    HotCueLoadRequest,
+    HOT_CUE_LOAD_QUEUE_DEPTH,
+> = Channel::new();
+#[cfg(feature = "hotcue-flash-storage")]
+static HOT_CUE_LOAD_COMPLETIONS: Channel<
+    CriticalSectionRawMutex,
+    HotCueLoadCompletion,
+    HOT_CUE_LOAD_QUEUE_DEPTH,
+> = Channel::new();
 
 static TRANSPORT_OWNER_STATE: CriticalSectionMutex<RefCell<TransportOwnerState>> =
     CriticalSectionMutex::new(RefCell::new(TransportOwnerState::new()));
@@ -188,6 +206,27 @@ struct PersistenceCompletion {
     succeeded: bool,
 }
 
+#[cfg(feature = "hotcue-flash-storage")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct HotCueLoadRequest {
+    request_id: u32,
+    track_id: MediaTrackId,
+}
+
+#[cfg(feature = "hotcue-flash-storage")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct HotCueLoadCompletion {
+    request_id: u32,
+    result: HotCueLoadResult,
+}
+
+#[cfg(feature = "hotcue-flash-storage")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HotCueLoadResult {
+    Ready(Option<HotCueBank>),
+    Failed,
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct EffectOwnerDispatchReport {
     pub(crate) transport_accepted: u8,
@@ -220,6 +259,31 @@ pub(crate) fn audio_dsp_owner_state() -> AudioDspOwnerState {
 
 pub(crate) async fn wait_for_effect_owner_progress() {
     EFFECT_OWNER_PROGRESS.wait().await;
+}
+
+#[cfg(feature = "hotcue-flash-storage")]
+pub(crate) async fn load_persisted_hot_cues(
+    request_id: u32,
+    track_id: MediaTrackId,
+) -> HotCueLoadResult {
+    if PERSISTENCE_FAULTED.load(Ordering::Acquire) {
+        return HotCueLoadResult::Failed;
+    }
+
+    HOT_CUE_LOAD_REQUESTS
+        .send(HotCueLoadRequest {
+            request_id,
+            track_id,
+        })
+        .await;
+    let completion = HOT_CUE_LOAD_COMPLETIONS.receive().await;
+    if completion.request_id != request_id {
+        PERSISTENCE_FAULTED.store(true, Ordering::Release);
+        EFFECT_OWNER_PROGRESS.signal(());
+        HotCueLoadResult::Failed
+    } else {
+        completion.result
+    }
 }
 
 pub(crate) fn dispatch_product_effects(
@@ -367,22 +431,52 @@ pub(crate) async fn run_persistence_owner(
     let mut store = RecordBackedHotCueStore::new(backend);
 
     loop {
-        let effect = PERSISTENCE_COMMANDS.receive().await;
-        let succeeded = match effect {
-            DeckEffect::PersistHotCues { bank, .. } => store.save(&bank).is_ok(),
-            _ => false,
-        };
-        if !succeeded {
-            PERSISTENCE_FAULTED.store(true, Ordering::Release);
-        }
-        PERSISTENCE_COMPLETIONS
-            .send(PersistenceCompletion { effect, succeeded })
-            .await;
-        EFFECT_OWNER_PROGRESS.signal(());
+        match select(
+            PERSISTENCE_COMMANDS.receive(),
+            HOT_CUE_LOAD_REQUESTS.receive(),
+        )
+        .await
+        {
+            Either::First(effect) => {
+                let succeeded = match effect {
+                    DeckEffect::PersistHotCues { bank, .. } => store.save(&bank).is_ok(),
+                    _ => false,
+                };
+                if !succeeded {
+                    PERSISTENCE_FAULTED.store(true, Ordering::Release);
+                }
+                PERSISTENCE_COMPLETIONS
+                    .send(PersistenceCompletion { effect, succeeded })
+                    .await;
+                EFFECT_OWNER_PROGRESS.signal(());
 
-        if !succeeded {
-            loop {
-                core::future::pending::<()>().await;
+                if !succeeded {
+                    loop {
+                        core::future::pending::<()>().await;
+                    }
+                }
+            }
+            Either::Second(request) => {
+                let result = match store.load(request.track_id) {
+                    Ok(bank) => HotCueLoadResult::Ready(bank),
+                    Err(_) => {
+                        PERSISTENCE_FAULTED.store(true, Ordering::Release);
+                        HotCueLoadResult::Failed
+                    }
+                };
+                HOT_CUE_LOAD_COMPLETIONS
+                    .send(HotCueLoadCompletion {
+                        request_id: request.request_id,
+                        result,
+                    })
+                    .await;
+                EFFECT_OWNER_PROGRESS.signal(());
+
+                if result == HotCueLoadResult::Failed {
+                    loop {
+                        core::future::pending::<()>().await;
+                    }
+                }
             }
         }
     }
