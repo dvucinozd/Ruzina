@@ -607,6 +607,48 @@ impl DeckProductState {
         true
     }
 
+    pub fn commit_track_load(
+        &mut self,
+        deck: DeckId,
+        track_id: MediaTrackId,
+        bpm_x100: u32,
+        source: HotCueBank,
+        persisted: Option<HotCueBank>,
+    ) -> bool {
+        if source.track_id() != track_id
+            || persisted.is_some_and(|bank| bank.track_id() != track_id)
+        {
+            return false;
+        }
+
+        let local = persisted.unwrap_or_else(|| HotCueBank::empty(track_id));
+        let index = deck_index(deck);
+        let state = &mut self.decks[index];
+
+        // Track-lifecycle state is replaced atomically only after all identities
+        // have validated. User/controller configuration intentionally survives.
+        state.playing = false;
+        state.position_ms = 0;
+        state.cue_point_ms = 0;
+        state.active_pad_fx = None;
+        state.sync_enabled = false;
+        state.sync_master = false;
+        state.loop_adjust_mode = LoopAdjustMode::None;
+        state.loop_state = LoopState::new();
+        state.censor_active = false;
+        state.base_bpm_x100 = if bpm_x100 == 0 { 12_000 } else { bpm_x100 };
+        state.playback_generation = state.playback_generation.wrapping_add(1);
+        state.pending_playback = None;
+
+        if self.sync_master == Some(deck) {
+            self.sync_master = None;
+        }
+        self.shifted_loop_roll[index] = ShiftedLoopRoll::new();
+        self.hot_cue_sources[index] = Some(source.as_source());
+        self.hot_cue_locals[index] = Some(local);
+        true
+    }
+
     pub fn clear_loaded_track(&mut self, deck: DeckId) {
         let index = deck_index(deck);
         self.hot_cue_sources[index] = None;
@@ -2776,6 +2818,69 @@ mod tests {
             state.handle_control(hot_cue_pad(DeckId::Two, 6, true, true)),
             DeckEffects::NONE
         );
+    }
+
+    #[test]
+    fn track_load_commits_source_and_local_atomically() {
+        let first = media_id(0x31);
+        let second = media_id(0x32);
+        let mut state = DeckProductState::new();
+
+        let mut first_source = HotCueBank::empty(first);
+        assert!(first_source.set_single(0, 1_000));
+        assert!(state.commit_track_load(DeckId::One, first, 12_800, first_source, None));
+        state.set_position_ms(DeckId::One, 12_345);
+
+        let mut second_source = HotCueBank::empty(second);
+        assert!(second_source.set_single(1, 2_000));
+        let mut second_local = HotCueBank::empty(second);
+        assert!(second_local.clear(1));
+        assert!(second_local.set_single(3, 4_000));
+
+        assert!(state.commit_track_load(
+            DeckId::One,
+            second,
+            13_400,
+            second_source,
+            Some(second_local),
+        ));
+
+        let deck = state.deck(DeckId::One);
+        assert!(!deck.playing);
+        assert_eq!(deck.position_ms, 0);
+        assert_eq!(deck.cue_point_ms, 0);
+        assert_eq!(deck.base_bpm_x100, 13_400);
+        let effective = state.hot_cues(DeckId::One).unwrap();
+        assert_eq!(effective.slot(1), None);
+        assert_eq!(effective.slot(3), Some(HotCueSlot::single(4_000)));
+    }
+
+    #[test]
+    fn failed_track_load_identity_validation_preserves_previous_deck() {
+        let first = media_id(0x41);
+        let second = media_id(0x42);
+        let wrong = media_id(0x43);
+        let mut state = DeckProductState::new();
+
+        let mut source = HotCueBank::empty(first);
+        assert!(source.set_single(0, 1_500));
+        assert!(state.commit_track_load(DeckId::Two, first, 12_000, source, None));
+        state.set_position_ms(DeckId::Two, 7_000);
+        let before = *state.deck(DeckId::Two);
+        let before_cues = state.hot_cues(DeckId::Two);
+
+        let second_source = HotCueBank::empty(second);
+        let wrong_local = HotCueBank::empty(wrong);
+        assert!(!state.commit_track_load(
+            DeckId::Two,
+            second,
+            14_000,
+            second_source,
+            Some(wrong_local),
+        ));
+
+        assert_eq!(*state.deck(DeckId::Two), before);
+        assert_eq!(state.hot_cues(DeckId::Two), before_cues);
     }
 
     #[test]
