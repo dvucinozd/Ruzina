@@ -273,13 +273,16 @@ impl PcmTransportCursor {
     }
 
     pub fn accept(&mut self, block: &PcmStreamBlock) -> PcmBlockDisposition {
-        self.accept_progress(PcmStreamProgress {
-            generation: block.generation,
-            end_frame: block.end_frame(),
-            sample_rate_hz: block.sample_rate_hz,
-            eof: block.eof,
-            faulted: block.faulted,
-        }, block.len)
+        self.accept_progress(
+            PcmStreamProgress {
+                generation: block.generation,
+                end_frame: block.end_frame(),
+                sample_rate_hz: block.sample_rate_hz,
+                eof: block.eof,
+                faulted: block.faulted,
+            },
+            block.len,
+        )
     }
 
     pub fn accept_progress(
@@ -485,19 +488,34 @@ mod tests {
     fn block_feed_preserves_contiguous_frame_coordinates() {
         let mut feed = PcmBlockFeed::new();
         let mut first = block(4, 100, 2, false);
-        first.frames[0] = PcmFrame { left: 10, right: -10 };
-        first.frames[1] = PcmFrame { left: 20, right: -20 };
+        first.frames[0] = PcmFrame {
+            left: 10,
+            right: -10,
+        };
+        first.frames[1] = PcmFrame {
+            left: 20,
+            right: -20,
+        };
         let mut second = block(4, 102, 1, true);
-        second.frames[0] = PcmFrame { left: 30, right: -30 };
+        second.frames[0] = PcmFrame {
+            left: 30,
+            right: -30,
+        };
         let mut blocks = [Some(first), Some(second)].into_iter();
 
         assert_eq!(
             feed.pop(|| blocks.next().flatten()),
-            Some(PcmFrame { left: 10, right: -10 })
+            Some(PcmFrame {
+                left: 10,
+                right: -10
+            })
         );
         assert_eq!(
             feed.pop(|| blocks.next().flatten()),
-            Some(PcmFrame { left: 20, right: -20 })
+            Some(PcmFrame {
+                left: 20,
+                right: -20
+            })
         );
         let progress = feed.take_progress().unwrap();
         assert_eq!(progress.generation, 4);
@@ -506,7 +524,10 @@ mod tests {
 
         assert_eq!(
             feed.pop(|| blocks.next().flatten()),
-            Some(PcmFrame { left: 30, right: -30 })
+            Some(PcmFrame {
+                left: 30,
+                right: -30
+            })
         );
         let progress = feed.take_progress().unwrap();
         assert_eq!(progress.end_frame, 103);
