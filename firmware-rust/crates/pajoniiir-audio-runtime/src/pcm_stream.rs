@@ -61,6 +61,171 @@ impl PcmStreamBlock {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PcmStreamProgress {
+    pub generation: u32,
+    pub end_frame: u64,
+    pub sample_rate_hz: u32,
+    pub eof: bool,
+    pub faulted: bool,
+}
+
+pub struct PcmBlockFeed {
+    current: Option<PcmStreamBlock>,
+    offset: usize,
+    generation: Option<u32>,
+    next_frame: Option<u64>,
+    sample_rate_hz: u32,
+    progress_dirty: bool,
+    terminal_eof: bool,
+    terminal_faulted: bool,
+    stale_blocks: u32,
+    discontinuities: u32,
+}
+
+impl PcmBlockFeed {
+    pub const fn new() -> Self {
+        Self {
+            current: None,
+            offset: 0,
+            generation: None,
+            next_frame: None,
+            sample_rate_hz: 0,
+            progress_dirty: false,
+            terminal_eof: false,
+            terminal_faulted: false,
+            stale_blocks: 0,
+            discontinuities: 0,
+        }
+    }
+
+    pub fn reset(&mut self, expected_generation: Option<u32>) {
+        self.current = None;
+        self.offset = 0;
+        self.generation = expected_generation;
+        self.next_frame = None;
+        self.sample_rate_hz = 0;
+        self.progress_dirty = false;
+        self.terminal_eof = false;
+        self.terminal_faulted = false;
+    }
+
+    pub const fn generation(&self) -> Option<u32> {
+        self.generation
+    }
+
+    pub const fn stale_blocks(&self) -> u32 {
+        self.stale_blocks
+    }
+
+    pub const fn discontinuities(&self) -> u32 {
+        self.discontinuities
+    }
+
+    pub fn pop<F>(&mut self, mut next_block: F) -> Option<PcmFrame>
+    where
+        F: FnMut() -> Option<PcmStreamBlock>,
+    {
+        loop {
+            if self.current.is_none() {
+                let block = next_block()?;
+                if block.generation == 0 {
+                    self.discontinuities = self.discontinuities.saturating_add(1);
+                    self.mark_fault(block.generation, block.first_frame, block.sample_rate_hz);
+                    return None;
+                }
+
+                if let Some(expected) = self.generation {
+                    if block.generation != expected {
+                        self.stale_blocks = self.stale_blocks.saturating_add(1);
+                        continue;
+                    }
+                } else {
+                    self.generation = Some(block.generation);
+                }
+
+                if self.sample_rate_hz != 0 && self.sample_rate_hz != block.sample_rate_hz {
+                    self.discontinuities = self.discontinuities.saturating_add(1);
+                    self.mark_fault(block.generation, block.first_frame, block.sample_rate_hz);
+                    return None;
+                }
+                self.sample_rate_hz = block.sample_rate_hz;
+
+                if let Some(expected_frame) = self.next_frame
+                    && block.first_frame != expected_frame
+                {
+                    self.discontinuities = self.discontinuities.saturating_add(1);
+                    self.mark_fault(block.generation, expected_frame, block.sample_rate_hz);
+                    return None;
+                }
+
+                if block.len == 0 {
+                    self.next_frame = Some(block.first_frame);
+                    self.progress_dirty = true;
+                    self.terminal_eof = block.eof;
+                    self.terminal_faulted = block.faulted;
+                    return None;
+                }
+
+                self.offset = 0;
+                self.current = Some(block);
+            }
+
+            let block = self.current.as_ref()?;
+            let frame = block.frames[self.offset];
+            self.offset += 1;
+            self.next_frame = Some(block.first_frame.saturating_add(self.offset as u64));
+            self.progress_dirty = true;
+
+            if self.offset >= block.frame_count() {
+                self.terminal_eof = block.eof;
+                self.terminal_faulted = block.faulted;
+                self.current = None;
+                self.offset = 0;
+            }
+            return Some(frame);
+        }
+    }
+
+    pub fn take_progress(&mut self) -> Option<PcmStreamProgress> {
+        if !self.progress_dirty {
+            return None;
+        }
+        self.progress_dirty = false;
+        let progress = PcmStreamProgress {
+            generation: self.generation?,
+            end_frame: self.next_frame.unwrap_or(0),
+            sample_rate_hz: self.sample_rate_hz,
+            eof: self.terminal_eof,
+            faulted: self.terminal_faulted,
+        };
+        if progress.eof || progress.faulted {
+            self.terminal_eof = false;
+            self.terminal_faulted = false;
+        }
+        Some(progress)
+    }
+
+    fn mark_fault(&mut self, generation: u32, end_frame: u64, sample_rate_hz: u32) {
+        if generation != 0 {
+            self.generation = Some(generation);
+        }
+        self.next_frame = Some(end_frame);
+        self.sample_rate_hz = sample_rate_hz;
+        self.current = None;
+        self.offset = 0;
+        self.progress_dirty = true;
+        self.terminal_eof = true;
+        self.terminal_faulted = true;
+    }
+}
+
+impl Default for PcmBlockFeed {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PcmBlockDisposition {
     Accepted {
         frames: u16,
@@ -108,41 +273,55 @@ impl PcmTransportCursor {
     }
 
     pub fn accept(&mut self, block: &PcmStreamBlock) -> PcmBlockDisposition {
+        self.accept_progress(PcmStreamProgress {
+            generation: block.generation,
+            end_frame: block.end_frame(),
+            sample_rate_hz: block.sample_rate_hz,
+            eof: block.eof,
+            faulted: block.faulted,
+        }, block.len)
+    }
+
+    pub fn accept_progress(
+        &mut self,
+        progress: PcmStreamProgress,
+        frames: u16,
+    ) -> PcmBlockDisposition {
         if let Some(generation) = self.generation {
-            if generation != block.generation {
+            if generation != progress.generation {
                 self.stale_blocks = self.stale_blocks.saturating_add(1);
                 return PcmBlockDisposition::Stale;
             }
         } else {
-            self.generation = Some(block.generation);
+            self.generation = Some(progress.generation);
         }
 
-        if block.sample_rate_hz == 0 {
+        if progress.sample_rate_hz == 0 {
             self.ended = true;
             return PcmBlockDisposition::Fault {
                 position_ms: self.position_ms(),
             };
         }
 
-        self.sample_rate_hz = block.sample_rate_hz;
-        self.position_frame = block.end_frame();
+        self.sample_rate_hz = progress.sample_rate_hz;
+        self.position_frame = progress.end_frame;
         self.consumed_blocks = self.consumed_blocks.saturating_add(1);
 
-        if block.faulted {
+        if progress.faulted {
             self.ended = true;
             return PcmBlockDisposition::Fault {
                 position_ms: self.position_ms(),
             };
         }
 
-        if block.eof {
+        if progress.eof {
             self.ended = true;
         }
 
         PcmBlockDisposition::Accepted {
-            frames: block.len,
+            frames,
             position_ms: self.position_ms(),
-            eof: block.eof,
+            eof: progress.eof,
         }
     }
 
@@ -300,6 +479,79 @@ mod tests {
         assert!(block.set_len(PCM_STREAM_BLOCK_FRAMES));
         assert!(!block.set_len(PCM_STREAM_BLOCK_FRAMES + 1));
         assert_eq!(block.frame_count(), PCM_STREAM_BLOCK_FRAMES);
+    }
+
+    #[test]
+    fn block_feed_preserves_contiguous_frame_coordinates() {
+        let mut feed = PcmBlockFeed::new();
+        let mut first = block(4, 100, 2, false);
+        first.frames[0] = PcmFrame { left: 10, right: -10 };
+        first.frames[1] = PcmFrame { left: 20, right: -20 };
+        let mut second = block(4, 102, 1, true);
+        second.frames[0] = PcmFrame { left: 30, right: -30 };
+        let mut blocks = [Some(first), Some(second)].into_iter();
+
+        assert_eq!(
+            feed.pop(|| blocks.next().flatten()),
+            Some(PcmFrame { left: 10, right: -10 })
+        );
+        assert_eq!(
+            feed.pop(|| blocks.next().flatten()),
+            Some(PcmFrame { left: 20, right: -20 })
+        );
+        let progress = feed.take_progress().unwrap();
+        assert_eq!(progress.generation, 4);
+        assert_eq!(progress.end_frame, 102);
+        assert!(!progress.eof);
+
+        assert_eq!(
+            feed.pop(|| blocks.next().flatten()),
+            Some(PcmFrame { left: 30, right: -30 })
+        );
+        let progress = feed.take_progress().unwrap();
+        assert_eq!(progress.end_frame, 103);
+        assert!(progress.eof);
+        assert!(!progress.faulted);
+    }
+
+    #[test]
+    fn block_feed_rejects_stale_generation_and_discontinuity() {
+        let mut feed = PcmBlockFeed::new();
+        feed.reset(Some(7));
+
+        let stale = block(6, 0, 1, false);
+        let valid = block(7, 10, 1, false);
+        let mut blocks = [Some(stale), Some(valid)].into_iter();
+        assert!(feed.pop(|| blocks.next().flatten()).is_some());
+        assert_eq!(feed.stale_blocks(), 1);
+        assert_eq!(feed.take_progress().unwrap().end_frame, 11);
+
+        let gap = block(7, 20, 1, false);
+        assert_eq!(feed.pop(|| Some(gap.clone())), None);
+        let progress = feed.take_progress().unwrap();
+        assert!(progress.faulted);
+        assert!(progress.eof);
+        assert_eq!(feed.discontinuities(), 1);
+    }
+
+    #[test]
+    fn transport_progress_rejects_old_render_generation() {
+        let mut cursor = PcmTransportCursor::new();
+        cursor.bind_seek(12, 4_800, 48_000);
+        assert_eq!(
+            cursor.accept_progress(
+                PcmStreamProgress {
+                    generation: 11,
+                    end_frame: 5_000,
+                    sample_rate_hz: 48_000,
+                    eof: false,
+                    faulted: false,
+                },
+                200,
+            ),
+            PcmBlockDisposition::Stale
+        );
+        assert_eq!(cursor.position_frame(), 4_800);
     }
 
     #[test]
