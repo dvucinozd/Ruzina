@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 
-use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
+use embassy_sync::blocking_mutex::CriticalSectionMutex;
 use embassy_time::{Duration, Timer};
 use pajoniiir_audio_runtime::{
     pcm_stream::{PcmBlockFeed, PcmStreamProgress},
