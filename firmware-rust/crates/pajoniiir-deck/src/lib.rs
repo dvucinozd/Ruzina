@@ -649,6 +649,31 @@ impl DeckProductState {
         true
     }
 
+    pub fn unload_track(&mut self, deck: DeckId) {
+        let index = deck_index(deck);
+        let state = &mut self.decks[index];
+
+        state.playing = false;
+        state.position_ms = 0;
+        state.cue_point_ms = 0;
+        state.active_pad_fx = None;
+        state.sync_enabled = false;
+        state.sync_master = false;
+        state.loop_adjust_mode = LoopAdjustMode::None;
+        state.loop_state = LoopState::new();
+        state.censor_active = false;
+        state.base_bpm_x100 = 12_000;
+        state.playback_generation = state.playback_generation.wrapping_add(1);
+        state.pending_playback = None;
+
+        if self.sync_master == Some(deck) {
+            self.sync_master = None;
+        }
+        self.shifted_loop_roll[index] = ShiftedLoopRoll::new();
+        self.hot_cue_sources[index] = None;
+        self.hot_cue_locals[index] = None;
+    }
+
     pub fn clear_loaded_track(&mut self, deck: DeckId) {
         let index = deck_index(deck);
         self.hot_cue_sources[index] = None;
@@ -2881,6 +2906,33 @@ mod tests {
 
         assert_eq!(*state.deck(DeckId::Two), before);
         assert_eq!(state.hot_cues(DeckId::Two), before_cues);
+    }
+
+    #[test]
+    fn unload_track_clears_track_lifecycle_without_losing_pitch_configuration() {
+        let track = media_id(0x51);
+        let mut source = HotCueBank::empty(track);
+        assert!(source.set_single(0, 1_000));
+        let mut state = DeckProductState::new();
+        assert!(state.commit_track_load(DeckId::One, track, 12_800, source, None));
+
+        state.decks[0].pitch_centipercent = 275;
+        state.decks[0].pitch_range_percent = 16;
+        state.decks[0].master_tempo = true;
+        state.set_position_ms(DeckId::One, 9_000);
+        state.decks[0].playing = true;
+
+        state.unload_track(DeckId::One);
+
+        let deck = state.deck(DeckId::One);
+        assert!(!deck.playing);
+        assert_eq!(deck.position_ms, 0);
+        assert_eq!(deck.base_bpm_x100, 12_000);
+        assert_eq!(deck.pitch_centipercent, 275);
+        assert_eq!(deck.pitch_range_percent, 16);
+        assert!(deck.master_tempo);
+        assert_eq!(state.hot_cues(DeckId::One), None);
+        assert_eq!(state.local_hot_cues(DeckId::One), None);
     }
 
     #[test]
