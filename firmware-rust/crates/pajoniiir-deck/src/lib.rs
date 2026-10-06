@@ -2082,6 +2082,22 @@ mod tests {
     }
 
     #[test]
+    fn stream_completion_stops_playback_and_commits_final_position() {
+        let mut state = DeckProductState::new();
+        let (_, _, request) = playback_request(state.handle_control(pressed(
+            DeckId::One,
+            SemanticControl::Play,
+            true,
+        )));
+        assert!(state.resolve_playback_request(DeckId::One, request, true));
+        assert!(state.deck(DeckId::One).playing);
+
+        state.finish_playback(DeckId::One, 12_345);
+        assert!(!state.deck(DeckId::One).playing);
+        assert_eq!(state.deck(DeckId::One).position_ms, 12_345);
+    }
+
+    #[test]
     fn stale_playback_completion_cannot_overwrite_newer_request() {
         let mut state = DeckProductState::new();
         let (_, _, first) = playback_request(state.handle_control(pressed(
