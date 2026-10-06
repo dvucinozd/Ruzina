@@ -256,6 +256,11 @@ impl ProductRuntime {
         resolved
     }
 
+    pub(crate) fn finish_stream_playback(&mut self, deck: DeckId, position_ms: u32) {
+        self.deck.finish_playback(deck, position_ms);
+        self.refresh_leds();
+    }
+
     pub(crate) const fn has_dirty_leds(&self) -> bool {
         self.leds.has_dirty()
     }
