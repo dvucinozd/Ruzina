@@ -1,3 +1,4 @@
+use pajoniiir_audio_runtime::wav::WavPcm16SourceDescriptor;
 use pajoniiir_controller_core::{ControlValue, SemanticControl};
 use pajoniiir_controller_session::{
     BeatFxTarget, ConnectionState, ControlDomain, ControllerLedFrame, DeckId, LedState, LedUpdate,
@@ -78,6 +79,7 @@ impl<const N: usize> LibraryEffectQueue<N> {
 pub(crate) struct ProductLoadedTrack {
     pub(crate) candidate: CatalogLoadCandidate,
     pub(crate) source_cues_available: bool,
+    pub(crate) wav_source: Option<WavPcm16SourceDescriptor>,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -151,6 +153,7 @@ impl ProductRuntime {
         source: HotCueBank,
         persisted: Option<HotCueBank>,
         source_cues_available: bool,
+        wav_source: Option<WavPcm16SourceDescriptor>,
     ) -> bool {
         if candidate.track.track_id != source.track_id()
             || persisted.is_some_and(|bank| bank.track_id() != candidate.track.track_id)
@@ -170,6 +173,7 @@ impl ProductRuntime {
         self.loaded_tracks[deck_index(deck)] = Some(ProductLoadedTrack {
             candidate,
             source_cues_available,
+            wav_source,
         });
         self.refresh_leds();
         true
