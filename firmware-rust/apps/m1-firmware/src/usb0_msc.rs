@@ -76,7 +76,7 @@ pub(crate) static USB0_MSC_FILESYSTEM_EVENTS: Channel<
 pub(crate) static USB0_LIBRARY_EVENTS: Signal<CriticalSectionRawMutex, Usb0LibraryEvent> =
     Signal::new();
 
-pub(crate) const USB0_FS_REQUEST_DEPTH: usize = 3;
+pub(crate) const USB0_FS_REQUEST_DEPTH: usize = 4;
 const USB0_FS_COMPLETION_DEPTH: usize = 1;
 
 pub(crate) static USB0_FS_REQUESTS: Channel<
@@ -86,6 +86,12 @@ pub(crate) static USB0_FS_REQUESTS: Channel<
 > = Channel::new();
 
 static USB0_FS_LIBRARY_COMPLETIONS: Channel<
+    CriticalSectionRawMutex,
+    Usb0FsCompletion,
+    USB0_FS_COMPLETION_DEPTH,
+> = Channel::new();
+
+static USB0_FS_LIBRARY_LOAD_COMPLETIONS: Channel<
     CriticalSectionRawMutex,
     Usb0FsCompletion,
     USB0_FS_COMPLETION_DEPTH,
@@ -441,6 +447,10 @@ impl Usb0FilesystemClient {
 
     pub(crate) const fn library() -> Self {
         Self::new(FileSystemClientId::Library)
+    }
+
+    pub(crate) const fn library_load() -> Self {
+        Self::new(FileSystemClientId::LibraryLoad)
     }
 
     pub(crate) const fn deck_a() -> Self {
@@ -1666,6 +1676,7 @@ fn filesystem_completion_channel(
 ) -> &'static Channel<CriticalSectionRawMutex, Usb0FsCompletion, USB0_FS_COMPLETION_DEPTH> {
     match client {
         FileSystemClientId::Library => &USB0_FS_LIBRARY_COMPLETIONS,
+        FileSystemClientId::LibraryLoad => &USB0_FS_LIBRARY_LOAD_COMPLETIONS,
         FileSystemClientId::DeckA => &USB0_FS_DECK_A_COMPLETIONS,
         FileSystemClientId::DeckB => &USB0_FS_DECK_B_COMPLETIONS,
     }
