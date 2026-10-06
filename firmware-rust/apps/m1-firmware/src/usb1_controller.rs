@@ -1,5 +1,7 @@
 use core::cell::RefCell;
 
+#[cfg(feature = "render-graph-bringup")]
+use crate::audio_render_owner::publish_product_render_control;
 use crate::controller_profiles::{
     ActiveProfileLedError, ActiveProfileMidiError, bind_controller_descriptor,
     dispatch_session_deliveries, map_active_led_update, match_scanned_profile,
@@ -682,6 +684,9 @@ async fn drain_product_dispatch(
         product.pending_deck_effects().min(u8::MAX as usize) as u8;
     probe.product_pending_library_effects =
         product.pending_library_effects().min(u8::MAX as usize) as u8;
+
+    #[cfg(feature = "render-graph-bringup")]
+    publish_product_render_control(product);
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
