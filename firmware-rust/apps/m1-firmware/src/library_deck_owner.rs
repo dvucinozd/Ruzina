@@ -386,6 +386,11 @@ async fn open_file(
     }
 }
 
+enum SeekOutcome {
+    Ready(Usb0FsFileHandle),
+    Failed(Usb0FsFileHandle),
+}
+
 async fn read_at(
     client: &mut Usb0FilesystemClient,
     lease: pajoniiir_media_session::MediaLease,
@@ -394,8 +399,8 @@ async fn read_at(
     position: u64,
 ) -> (Usb0FsFileHandle, &'static mut [u8], usize) {
     let file = match seek_file(client, lease, file, position).await {
-        Some(file) => file,
-        None => return broker_invariant_reset_with_buffer(buffer),
+        SeekOutcome::Ready(file) => file,
+        SeekOutcome::Failed(file) => return (file, buffer, 0),
     };
     let mut request = Usb0FsRequest::Read {
         ticket: client.issue_ticket(lease),
@@ -422,7 +427,7 @@ async fn read_at(
             | Usb0FsSubmitResult::PendingCompletion(_)
             | Usb0FsSubmitResult::WrongClient(_)
             | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
-                return broker_invariant_reset_with_buffer(buffer_from_request(request));
+                esp_hal::system::software_reset()
             }
         }
     }
@@ -433,7 +438,7 @@ async fn seek_file(
     lease: pajoniiir_media_session::MediaLease,
     file: Usb0FsFileHandle,
     position: u64,
-) -> Option<Usb0FsFileHandle> {
+) -> SeekOutcome {
     let mut request = Usb0FsRequest::Seek {
         ticket: client.issue_ticket(lease),
         file,
@@ -442,7 +447,11 @@ async fn seek_file(
     loop {
         match client.submit(request).await {
             Usb0FsSubmitResult::Completed(Usb0FsCompletion::Seek { file, result, .. }) => {
-                return result.ok().map(|_| file);
+                return if result.is_ok() {
+                    SeekOutcome::Ready(file)
+                } else {
+                    SeekOutcome::Failed(file)
+                };
             }
             Usb0FsSubmitResult::QueueFull(returned) => {
                 request = returned;
@@ -450,12 +459,14 @@ async fn seek_file(
             }
             Usb0FsSubmitResult::PendingCompletion(Usb0FsRequest::Seek { file, .. })
             | Usb0FsSubmitResult::WrongClient(Usb0FsRequest::Seek { file, .. }) => {
-                return Some(file);
+                return SeekOutcome::Failed(file);
             }
             Usb0FsSubmitResult::Completed(_)
             | Usb0FsSubmitResult::PendingCompletion(_)
             | Usb0FsSubmitResult::WrongClient(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => return None,
+            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+                esp_hal::system::software_reset()
+            }
         }
     }
 }
@@ -479,23 +490,12 @@ async fn close_file(
                 Timer::after(Duration::from_millis(1)).await;
             }
             Usb0FsSubmitResult::PendingCompletion(_)
-            | Usb0FsSubmitResult::WrongClient(_)
-            | Usb0FsSubmitResult::Completed(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => return false,
+            | Usb0FsSubmitResult::WrongClient(_) => return false,
+            Usb0FsSubmitResult::Completed(_)
+            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+                esp_hal::system::software_reset()
+            }
         }
-    }
-}
-
-fn broker_invariant_reset_with_buffer(
-    _buffer: &'static mut [u8],
-) -> (Usb0FsFileHandle, &'static mut [u8], usize) {
-    esp_hal::system::software_reset()
-}
-
-fn buffer_from_request(request: Usb0FsRequest) -> &'static mut [u8] {
-    match request {
-        Usb0FsRequest::Read { buffer, .. } => buffer,
-        _ => esp_hal::system::software_reset(),
     }
 }
 
