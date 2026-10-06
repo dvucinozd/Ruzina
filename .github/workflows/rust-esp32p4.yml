@@ -102,6 +102,12 @@ jobs:
       - name: ESP32-P4 bounded PCM transport link gate
         run: cargo +1.95.0 build --locked --release --features pcm-transport-bringup
 
+      - name: ESP32-P4 fixed-rate render graph cross compile
+        run: cargo +1.95.0 check --locked --features render-graph-bringup
+
+      - name: ESP32-P4 fixed-rate render graph link gate
+        run: cargo +1.95.0 build --locked --release --features render-graph-bringup
+
       - name: ESP32-P4 microSD profile-storage cross compile
         run: cargo +1.95.0 check --locked --features sdmmc-profile-storage-bringup
 
