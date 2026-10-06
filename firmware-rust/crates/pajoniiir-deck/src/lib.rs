@@ -2917,7 +2917,7 @@ mod tests {
         assert!(state.commit_track_load(DeckId::One, track, 12_800, source, None));
 
         state.decks[0].pitch_centipercent = 275;
-        state.decks[0].pitch_range_percent = 16;
+        state.decks[0].tempo_range_percent = 16;
         state.decks[0].master_tempo = true;
         state.set_position_ms(DeckId::One, 9_000);
         state.decks[0].playing = true;
@@ -2929,7 +2929,7 @@ mod tests {
         assert_eq!(deck.position_ms, 0);
         assert_eq!(deck.base_bpm_x100, 12_000);
         assert_eq!(deck.pitch_centipercent, 275);
-        assert_eq!(deck.pitch_range_percent, 16);
+        assert_eq!(deck.tempo_range_percent, 16);
         assert!(deck.master_tempo);
         assert_eq!(state.hot_cues(DeckId::One), None);
         assert_eq!(state.local_hot_cues(DeckId::One), None);
