@@ -30,6 +30,10 @@ library-deck-load = [
 # a decoded PCM probe on the P4 target. It is intentionally bring-up only until
 # MP3/FLAC and the continuous transport/sink path are integrated.
 wav-audio-source-bringup = ["library-deck-load"]
+# Continuous bounded source-to-transport path. Source owners prefetch decoded
+# PCM into fixed-capacity per-deck queues; the transport owner consumes only
+# generation-matched blocks and owns seek/EOF state transitions.
+pcm-transport-bringup = ["wav-audio-source-bringup"]
 # Compile-verified M1 microSD SDMMC0 ownership and card-init boundary. Runtime
 # card/FAT/profile success still requires EVT hardware qualification.
 sdmmc-profile-storage-bringup = []
