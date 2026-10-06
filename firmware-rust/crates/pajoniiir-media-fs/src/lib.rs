@@ -22,6 +22,7 @@ pub const FS_PATH_MAX: usize = 1_024;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FileSystemClientId {
     Library,
+    LibraryLoad,
     DeckA,
     DeckB,
 }
@@ -495,13 +496,16 @@ mod tests {
     fn filesystem_request_sequences_are_client_and_lease_bound() {
         let mut sequencer = FileSystemRequestSequencer::new();
         let first = sequencer.issue(FileSystemClientId::Library, lease());
-        let second = sequencer.issue(FileSystemClientId::DeckA, lease());
+        let second = sequencer.issue(FileSystemClientId::LibraryLoad, lease());
+        let third = sequencer.issue(FileSystemClientId::DeckA, lease());
 
         assert_eq!(first.client(), FileSystemClientId::Library);
         assert_eq!(first.sequence(), 1);
         assert_eq!(first.lease(), lease());
-        assert_eq!(second.client(), FileSystemClientId::DeckA);
+        assert_eq!(second.client(), FileSystemClientId::LibraryLoad);
         assert_eq!(second.sequence(), 2);
+        assert_eq!(third.client(), FileSystemClientId::DeckA);
+        assert_eq!(third.sequence(), 3);
     }
 
     #[test]
