@@ -55,6 +55,32 @@ impl WavPcm16Format {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WavPcm16SourceDescriptor {
+    pub format: WavPcm16Format,
+    pub data_offset: u64,
+    pub data_bytes: u64,
+}
+
+impl WavPcm16SourceDescriptor {
+    pub fn new(
+        format: WavPcm16Format,
+        data_offset: u64,
+        data_bytes: u64,
+    ) -> Result<Self, WavError> {
+        let _ = WavPcm16Decoder::new(format, data_bytes)?;
+        Ok(Self {
+            format,
+            data_offset,
+            data_bytes,
+        })
+    }
+
+    pub const fn frame_count(self) -> u64 {
+        self.data_bytes / self.format.block_align as u64
+    }
+}
+
 pub fn parse_riff_header(input: &[u8]) -> Result<u32, WavError> {
     if input.len() < RIFF_HEADER_BYTES {
         return Err(WavError::TruncatedRiffHeader);
