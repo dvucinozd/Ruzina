@@ -1,3 +1,4 @@
+use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
@@ -71,6 +72,8 @@ static DECK_B_PCM: Channel<CriticalSectionRawMutex, PcmStreamBlock, PCM_QUEUE_DE
 
 static DECK_A_READ_BUFFER: StaticCell<[u8; SOURCE_READ_BUFFER_BYTES]> = StaticCell::new();
 static DECK_B_READ_BUFFER: StaticCell<[u8; SOURCE_READ_BUFFER_BYTES]> = StaticCell::new();
+static DECK_A_STREAM_GENERATION: AtomicU32 = AtomicU32::new(0);
+static DECK_B_STREAM_GENERATION: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DeckAudioSourceCommand {
@@ -194,6 +197,10 @@ pub(crate) fn try_receive_pcm_block(deck: DeckId) -> Option<PcmStreamBlock> {
     pcm_channel(deck).try_receive().ok()
 }
 
+pub(crate) fn current_stream_generation(deck: DeckId) -> u32 {
+    stream_generation_atomic(deck).load(Ordering::Acquire)
+}
+
 pub(crate) async fn run_deck_a_audio_source_owner() -> ! {
     let buffer = DECK_A_READ_BUFFER.init([0u8; SOURCE_READ_BUFFER_BYTES]);
     run_owner(
@@ -266,6 +273,7 @@ async fn run_owner(
                     match result {
                         Ok(source) => {
                             let descriptor = source.descriptor;
+                            stream_generation_atomic(deck).store(source.generation, Ordering::Release);
                             prepared = Some(source);
                             prepare_completion_channel(deck)
                                 .send(DeckAudioSourceCompletion::Prepared {
@@ -302,6 +310,7 @@ async fn run_owner(
                             .await
                             {
                                 Ok(result) => {
+                                    stream_generation_atomic(deck).store(result.generation, Ordering::Release);
                                     prepared = Some(source);
                                     Ok(result)
                                 }
@@ -336,6 +345,7 @@ async fn run_owner(
                 DeckAudioSourceCommand::Release => {
                     pending_block = None;
                     drain_pcm_blocks(deck);
+                    stream_generation_atomic(deck).store(0, Ordering::Release);
                     if let Some(source) = prepared.take()
                         && current_media_lease() == Some(source.candidate.publication.lease)
                     {
@@ -354,6 +364,7 @@ async fn run_owner(
         if prepared.as_ref().is_some_and(|source| {
             current_media_lease() != Some(source.candidate.publication.lease)
         }) {
+            stream_generation_atomic(deck).store(0, Ordering::Release);
             prepared = None;
             pending_block = None;
             drain_pcm_blocks(deck);
@@ -826,6 +837,13 @@ fn control_completion_channel(
     match deck {
         DeckId::One => &DECK_A_CONTROL_COMPLETIONS,
         DeckId::Two => &DECK_B_CONTROL_COMPLETIONS,
+    }
+}
+
+fn stream_generation_atomic(deck: DeckId) -> &'static AtomicU32 {
+    match deck {
+        DeckId::One => &DECK_A_STREAM_GENERATION,
+        DeckId::Two => &DECK_B_STREAM_GENERATION,
     }
 }
 
