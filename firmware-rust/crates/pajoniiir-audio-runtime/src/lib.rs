@@ -1,6 +1,8 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod wav;
+
 use pajoniiir_audio_dsp::{DelayConfig, DelayMode, FlangerConfig, PadFxConfig, PadFxMode};
 use pajoniiir_controller_core::{BeatFxTarget, DeckId};
 use pajoniiir_deck::{BeatFxEffect, BeatFxState, DeckEffect, PadFxBank};
