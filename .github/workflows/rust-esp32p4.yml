@@ -1,0 +1,134 @@
+name: Rust ESP32-P4 compile gate
+
+# Firmware Cargo.lock is committed; dependency resolution is intentionally --locked.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware-rust/apps/m1-firmware/**"
+      - "firmware-rust/crates/**"
+      - "firmware-rust/rust-toolchain.toml"
+      - ".github/workflows/rust-esp32p4.yml"
+  pull_request:
+    paths:
+      - "firmware-rust/apps/m1-firmware/**"
+      - "firmware-rust/crates/**"
+      - "firmware-rust/rust-toolchain.toml"
+      - ".github/workflows/rust-esp32p4.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p4:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware-rust/apps/m1-firmware
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal
+          rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
+
+      - name: Validate M1 Hot Cue partition table
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+
+          rows = []
+          with Path("partitions.csv").open(newline="") as handle:
+              for row in csv.reader(line for line in handle if not line.lstrip().startswith("#")):
+                  if not row:
+                      continue
+                  rows.append([field.strip() for field in row])
+
+          assert rows == [
+              ["factory", "app", "factory", "0x10000", "0xEF0000", ""],
+              ["hotcue", "data", "0x40", "0xF00000", "0x100000", ""],
+          ]
+
+          factory_offset = int(rows[0][3], 0)
+          factory_size = int(rows[0][4], 0)
+          hotcue_offset = int(rows[1][3], 0)
+          hotcue_size = int(rows[1][4], 0)
+
+          assert factory_offset == 0x10000
+          assert factory_offset + factory_size == hotcue_offset
+          assert hotcue_offset == 0xF00000
+          assert hotcue_size == 0x100000
+          assert hotcue_offset + hotcue_size == 0x1000000
+          assert hotcue_offset % 0x1000 == 0
+          assert hotcue_size % 0x1000 == 0
+
+          config = Path("espflash.toml").read_text()
+          assert 'partition_table = "partitions.csv"' in config
+          assert 'size = "16MB"' in config
+          PY
+
+      - name: ESP32-P4 default cross compile
+        run: cargo +1.95.0 check --locked
+
+      - name: ESP32-P4 Hot Cue flash persistence cross compile
+        run: cargo +1.95.0 check --locked --features hotcue-flash-storage
+
+      - name: ESP32-P4 default link gate
+        run: cargo +1.95.0 build --locked --release
+
+      - name: ESP32-P4 USB0 bring-up cross compile
+        run: cargo +1.95.0 check --locked --features usb0-hardware-bringup
+
+      - name: ESP32-P4 USB0 bring-up link gate
+        run: cargo +1.95.0 build --locked --release --features usb0-hardware-bringup
+
+      - name: ESP32-P4 USB1 controller bring-up cross compile
+        run: cargo +1.95.0 check --locked --features usb1-controller-bringup
+
+      - name: ESP32-P4 Library deck-load ownership cross compile
+        run: cargo +1.95.0 check --locked --features library-deck-load
+
+      - name: ESP32-P4 Library deck-load ownership link gate
+        run: cargo +1.95.0 build --locked --release --features library-deck-load
+
+      - name: ESP32-P4 WAV audio-source bring-up cross compile
+        run: cargo +1.95.0 check --locked --features wav-audio-source-bringup
+
+      - name: ESP32-P4 WAV audio-source bring-up link gate
+        run: cargo +1.95.0 build --locked --release --features wav-audio-source-bringup
+
+      - name: ESP32-P4 bounded PCM transport cross compile
+        run: cargo +1.95.0 check --locked --features pcm-transport-bringup
+
+      - name: ESP32-P4 bounded PCM transport link gate
+        run: cargo +1.95.0 build --locked --release --features pcm-transport-bringup
+
+      - name: ESP32-P4 fixed-rate render graph cross compile
+        run: cargo +1.95.0 check --locked --features render-graph-bringup
+
+      - name: ESP32-P4 fixed-rate render graph link gate
+        run: cargo +1.95.0 build --locked --release --features render-graph-bringup
+
+      - name: ESP32-P4 microSD profile-storage cross compile
+        run: cargo +1.95.0 check --locked --features sdmmc-profile-storage-bringup
+
+      - name: ESP32-P4 PSRAM storage boundary cross compile
+        run: cargo +1.95.0 check --locked --features p4-psram-storage
+
+      - name: ESP32-P4 USB0 + PSRAM combined link gate
+        run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,p4-psram-storage"
+
+      - name: ESP32-P4 dual USB + PSRAM combined link gate
+        run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage"
+
+      - name: ESP32-P4 Library + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
+        run: cargo +1.95.0 build --locked --release --features "library-deck-load,sdmmc-profile-storage-bringup"
+
+      - name: ESP32-P4 render + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
+        run: cargo +1.95.0 build --locked --release --features "render-graph-bringup,sdmmc-profile-storage-bringup"

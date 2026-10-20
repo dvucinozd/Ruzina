@@ -1,5 +1,7 @@
 # Pajoniiir-M1 current design status B10
 
+> Historical custom-PCB snapshot. The [2026-10-20 platform decision](M1_GUITION_PLATFORM_DECISION_2026-10-20.md) discontinues custom PCB development and selects Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y for native Rust development. The milestones and open manufacturing gates below apply to the retained custom-board design.
+
 **Date:** 2026-09-08
 
 **Electrical milestone:** M1-ELEC-B2

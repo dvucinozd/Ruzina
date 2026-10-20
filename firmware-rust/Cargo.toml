@@ -1,0 +1,106 @@
+[workspace]
+members = [
+    "apps/desktop-simulator",
+    "crates/pajoniiir-audio-dsp",
+    "crates/pajoniiir-audio-keylock",
+    "crates/pajoniiir-audio-runtime",
+    "crates/pajoniiir-audio-scratch",
+    "crates/pajoniiir-core",
+    "crates/pajoniiir-controller-core",
+    "crates/pajoniiir-controller-profile",
+    "crates/pajoniiir-controller-profile-storage",
+    "crates/pajoniiir-controller-session",
+    "crates/pajoniiir-controller-usb",
+    "crates/pajoniiir-control-scheduler",
+    "crates/pajoniiir-deck",
+    "crates/pajoniiir-hot-cues",
+    "crates/pajoniiir-mixer",
+    "crates/pajoniiir-media-block",
+    "crates/pajoniiir-media-catalog",
+    "crates/pajoniiir-media-exfat",
+    "crates/pajoniiir-media-fat32",
+    "crates/pajoniiir-media-fs",
+    "crates/pajoniiir-media-identity",
+    "crates/pajoniiir-media-io",
+    "crates/pajoniiir-media-partition",
+    "crates/pajoniiir-media-session",
+    "crates/pajoniiir-media-usb-msc",
+    "crates/pajoniiir-rekordbox",
+    "crates/pajoniiir-track-analysis",
+    "crates/pajoniiir-ui-model",
+    "crates/pajoniiir-waveform",
+]
+default-members = [
+    "apps/desktop-simulator",
+    "crates/pajoniiir-audio-dsp",
+    "crates/pajoniiir-audio-keylock",
+    "crates/pajoniiir-audio-runtime",
+    "crates/pajoniiir-audio-scratch",
+    "crates/pajoniiir-core",
+    "crates/pajoniiir-controller-core",
+    "crates/pajoniiir-controller-profile",
+    "crates/pajoniiir-controller-profile-storage",
+    "crates/pajoniiir-controller-session",
+    "crates/pajoniiir-controller-usb",
+    "crates/pajoniiir-control-scheduler",
+    "crates/pajoniiir-deck",
+    "crates/pajoniiir-hot-cues",
+    "crates/pajoniiir-mixer",
+    "crates/pajoniiir-media-block",
+    "crates/pajoniiir-media-catalog",
+    "crates/pajoniiir-media-exfat",
+    "crates/pajoniiir-media-fat32",
+    "crates/pajoniiir-media-fs",
+    "crates/pajoniiir-media-identity",
+    "crates/pajoniiir-media-io",
+    "crates/pajoniiir-media-partition",
+    "crates/pajoniiir-media-session",
+    "crates/pajoniiir-rekordbox",
+    "crates/pajoniiir-track-analysis",
+    "crates/pajoniiir-ui-model",
+    "crates/pajoniiir-waveform",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95.0"
+publish = false
+
+[workspace.dependencies]
+embedded-graphics = { version = "=0.8.2", default-features = false }
+embedded-sdmmc = { version = "=0.10.0", default-features = false }
+exfat-embedded = { version = "=0.1.3", default-features = false }
+libm = "=0.2.16"
+slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit-x11", "renderer-software", "compat-1-18"] }
+slint-build = { version = "=1.18.1" }
+
+pajoniiir-audio-dsp = { path = "crates/pajoniiir-audio-dsp" }
+pajoniiir-audio-keylock = { path = "crates/pajoniiir-audio-keylock" }
+pajoniiir-audio-runtime = { path = "crates/pajoniiir-audio-runtime" }
+pajoniiir-audio-scratch = { path = "crates/pajoniiir-audio-scratch" }
+pajoniiir-core = { path = "crates/pajoniiir-core" }
+pajoniiir-controller-core = { path = "crates/pajoniiir-controller-core" }
+pajoniiir-controller-profile = { path = "crates/pajoniiir-controller-profile" }
+pajoniiir-controller-profile-storage = { path = "crates/pajoniiir-controller-profile-storage" }
+pajoniiir-controller-session = { path = "crates/pajoniiir-controller-session" }
+pajoniiir-controller-usb = { path = "crates/pajoniiir-controller-usb" }
+pajoniiir-control-scheduler = { path = "crates/pajoniiir-control-scheduler" }
+pajoniiir-deck = { path = "crates/pajoniiir-deck" }
+pajoniiir-hot-cues = { path = "crates/pajoniiir-hot-cues" }
+pajoniiir-mixer = { path = "crates/pajoniiir-mixer" }
+pajoniiir-media-block = { path = "crates/pajoniiir-media-block" }
+pajoniiir-media-catalog = { path = "crates/pajoniiir-media-catalog" }
+pajoniiir-media-exfat = { path = "crates/pajoniiir-media-exfat" }
+pajoniiir-media-fat32 = { path = "crates/pajoniiir-media-fat32" }
+pajoniiir-media-fs = { path = "crates/pajoniiir-media-fs" }
+pajoniiir-media-identity = { path = "crates/pajoniiir-media-identity" }
+pajoniiir-media-io = { path = "crates/pajoniiir-media-io" }
+pajoniiir-media-partition = { path = "crates/pajoniiir-media-partition" }
+pajoniiir-media-session = { path = "crates/pajoniiir-media-session" }
+pajoniiir-media-usb-msc = { path = "crates/pajoniiir-media-usb-msc" }
+pajoniiir-rekordbox = { path = "crates/pajoniiir-rekordbox" }
+pajoniiir-track-analysis = { path = "crates/pajoniiir-track-analysis" }
+pajoniiir-ui-model = { path = "crates/pajoniiir-ui-model" }
+pajoniiir-waveform = { path = "crates/pajoniiir-waveform" }

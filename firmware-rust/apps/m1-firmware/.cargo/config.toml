@@ -1,0 +1,12 @@
+[build]
+target = "riscv32imafc-unknown-none-elf"
+
+[target.'cfg(target_arch = "riscv32")']
+rustflags = [
+  "-C", "link-arg=-Tlinkall.x",
+  "-C", "force-frame-pointers",
+]
+
+[env]
+# M1 production policy: ESP32-P4 silicon revision v3.2 or newer.
+ESP_HAL_CONFIG_MIN_CHIP_REVISION = "302"

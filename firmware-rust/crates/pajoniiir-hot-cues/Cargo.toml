@@ -1,0 +1,10 @@
+[package]
+name = "pajoniiir-hot-cues"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pajoniiir-core.workspace = true
+pajoniiir-media-identity.workspace = true

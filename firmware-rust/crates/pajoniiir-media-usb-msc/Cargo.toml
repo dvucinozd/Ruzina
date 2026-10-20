@@ -1,0 +1,12 @@
+[package]
+name = "pajoniiir-media-usb-msc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pajoniiir-media-block.workspace = true
+pajoniiir-media-session.workspace = true
+pajoniiir-media-fs.workspace = true
+pajoniiir-media-partition.workspace = true

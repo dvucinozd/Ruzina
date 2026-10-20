@@ -1,0 +1,63 @@
+name: Rust host foundation
+
+# Cargo.lock is committed; dependency resolution is intentionally --locked.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware-rust/**"
+      - "docs/M1_RUST_*.md"
+      - "docs/adr/**"
+      - ".github/workflows/rust-host.yml"
+  pull_request:
+    paths:
+      - "firmware-rust/**"
+      - "docs/M1_RUST_*.md"
+      - "docs/adr/**"
+      - ".github/workflows/rust-host.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: firmware-rust
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Slint Linux dependencies
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libfontconfig1-dev \
+            libx11-xcb-dev \
+            xinput \
+            libxcursor-dev \
+            libxkbcommon-x11-dev \
+            libx11-dev
+
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+          rustup override set 1.95.0
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+
+      - name: Unit tests
+        run: cargo test --locked --workspace
+
+      - name: Desktop simulator compile gate
+        run: cargo check --locked -p desktop-simulator

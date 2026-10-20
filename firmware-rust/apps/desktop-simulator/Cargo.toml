@@ -1,0 +1,16 @@
+[package]
+name = "desktop-simulator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+build = "build.rs"
+
+[dependencies]
+pajoniiir-core.workspace = true
+pajoniiir-ui-model.workspace = true
+pajoniiir-waveform.workspace = true
+slint.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true

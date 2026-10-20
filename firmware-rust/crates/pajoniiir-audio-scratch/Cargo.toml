@@ -1,0 +1,9 @@
+[package]
+name = "pajoniiir-audio-scratch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pajoniiir-audio-dsp.workspace = true

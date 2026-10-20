@@ -1,0 +1,10 @@
+[package]
+name = "pajoniiir-rekordbox"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pajoniiir-media-catalog.workspace = true
+pajoniiir-media-identity.workspace = true

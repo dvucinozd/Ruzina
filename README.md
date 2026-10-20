@@ -1,10 +1,18 @@
 # Pajoniiir-M1
 
-Purpose-built Rev A mainboard for the **Pajoniiir standalone dual-deck DJ system**.
+**Pajoniiir standalone dual-deck DJ system** — native Rust development on Guition ESP32-P4 boards.
 
-This repository contains the live hierarchical KiCad design, electrical and firmware contracts, mechanical evidence, placement/routing screening contracts, local CAD libraries and fail-closed validation tools.
+## Active direction — 2026-10-20
 
-## Current status
+Custom M1 PCB development has been discontinued by project decision. The selected development boards are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, both with **ESP32-P4 silicon v3.2**, as reported by the project owner. Exact unit identity and board peripherals still require bring-up evidence.
+
+The native Rust foundation is being integrated into `main` through [PR #1](https://github.com/dvucinozd/Pajoniiir-M1/pull/1). Its `ESP_HAL_CONFIG_MIN_CHIP_REVISION=302` matches the selected silicon revision. Firmware sources are in `firmware-rust/`; the separate `codex/native-apta-consumer` branch is retained and is not part of this integration.
+
+See [Guition platform decision and migration plan](docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md) for scope, current evidence and the next development steps.
+
+The KiCad design, electrical contracts, mechanical evidence, libraries and validators are retained as historical engineering work. The custom-board pin map, peripheral wiring, flash layout and manufacturing gates do not define the Guition board configuration. The custom-PCB status, architecture and manufacturing sections below describe the historical baseline; native Rust development remains active.
+
+## Historical custom-PCB status
 
 **Electrical milestone:** M1-ELEC-B2
 
@@ -228,3 +236,26 @@ python hardware/Pajoniiir-M1/tools/report_mech_gate_snapshot.py
 Native KiCad 10 CI loads every schematic, exports and cross-checks the manufacturing BOM, exports the hierarchy netlist/PDF, enforces ERC cleanliness and validates the B10 PCB routing contract against a fresh DRC report.
 
 Final placement, routing, Gerbers and EVT ordering remain blocked until every `blocks_layout_freeze` gate is closed and the production impedance geometry is recorded.
+
+## Native Rust firmware foundation
+
+The M1 software rewrite is developed in `firmware-rust/`. The released Pajoniiir M2.2 firmware is the functional/product golden reference. Exact Guition schematics and board profiles will define the selected boards' electrical integration; the retained custom-PCB contracts apply only to the historical custom board.
+
+Current Rust architecture decisions:
+
+- native `no_std` ESP32-P4 product direction;
+- Slint for UI;
+- dedicated RGB565 Rust waveform renderer with embedded-graphics for suitable primitives;
+- data-driven multi-controller profiles;
+- provider-neutral TrackAnalysis for Rekordbox/APTA;
+- host regression and desktop simulation, followed by separate bring-up on each selected Guition board.
+
+References:
+
+- [M1 Rust Product Requirements](docs/M1_RUST_PRODUCT_REQUIREMENTS.md)
+- [M1 Rust Architecture](docs/M1_RUST_ARCHITECTURE.md)
+- [Architecture Decision Records](docs/adr/)
+- [Rust workspace](firmware-rust/README.md)
+
+Rust host/simulator success does not close any physical PCB, USB, audio, DSI, PSRAM/DMA, C6 or power qualification gate.
+

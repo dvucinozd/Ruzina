@@ -1,0 +1,95 @@
+[package]
+name = "pajoniiir-m1-firmware"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95.0"
+publish = false
+
+[features]
+default = []
+# Compile-verified target wiring only. Do not enable in normal firmware until
+# USB0 VBUS/power switching, PHY and hot-plug are EVT-verified.
+usb0-hardware-bringup = []
+# Compile-verified USB1 Full-Speed controller ownership/enumeration boundary.
+# GPIO27 is DP and GPIO26 is DM on the ESP32-P4 M1 routing. This does not
+# claim physical MIDI/UAC/VBUS qualification.
+usb1-controller-bringup = ["hotcue-flash-storage"]
+# Compile-verified internal-flash Hot Cue journal. This feature is implied by
+# USB1 product control because a controller must not acknowledge Hot Cue changes
+# without a durable owner.
+hotcue-flash-storage = ["dep:esp-storage"]
+# End-to-end Library browse/load ownership: published PSRAM catalog + USB0
+# filesystem clients + USB1 semantic controls + durable Hot Cue flash owner.
+library-deck-load = [
+    "usb0-hardware-bringup",
+    "usb1-controller-bringup",
+    "p4-psram-storage",
+]
+# Compile-verified first real deck source path. It keeps DeckA/DeckB broker
+# lanes open for persistent WAV file handles and proves RIFF/PCM16 parsing plus
+# a decoded PCM probe on the P4 target. It is intentionally bring-up only until
+# MP3/FLAC and the continuous transport/sink path are integrated.
+wav-audio-source-bringup = ["library-deck-load"]
+# Continuous bounded source-to-transport path. Source owners prefetch decoded
+# PCM into fixed-capacity per-deck queues; the transport owner consumes only
+# generation-matched blocks and owns seek/EOF state transitions.
+pcm-transport-bringup = ["wav-audio-source-bringup"]
+# Fixed-rate software render graph ownership boundary. The render owner becomes
+# the only steady-state PCM consumer and returns compact progress to transport.
+# Output is still a reference/null sink; PCM5102A/I2S remains a later hardware gate.
+render-graph-bringup = ["pcm-transport-bringup"]
+# Compile-verified M1 microSD SDMMC0 ownership and card-init boundary. Runtime
+# card/FAT/profile success still requires EVT hardware qualification.
+sdmmc-profile-storage-bringup = []
+# Compile-verified PSRAM allocator boundary for large retained library/UI storage.
+# This does not claim DMA/cache coherency or hardware qualification.
+p4-psram-storage = ["dep:esp-alloc"]
+
+[dependencies]
+aligned = { version = "=0.4.3", default-features = false }
+block-device-driver = { version = "=0.2.0", default-features = false }
+embassy-executor = { version = "=0.10.0", default-features = false }
+embassy-futures = { version = "=0.1.2", default-features = false }
+embassy-usb-driver = { version = "=0.2.2", default-features = false }
+embassy-usb-host = { version = "=0.1.0", default-features = false }
+embassy-sync = { version = "=0.8.0", default-features = false }
+embassy-time = { version = "=0.5.1", default-features = false }
+esp-alloc = { version = "=0.11.0", default-features = false, features = ["esp32p4", "global-allocator"], optional = true }
+esp-hal = { version = "=1.2.2", features = ["esp32p4", "unstable"] }
+esp-rtos = { version = "=0.4.0", default-features = false, features = ["embassy", "esp32p4"] }
+esp-storage = { version = "=0.10.0", default-features = false, features = ["critical-section", "esp32p4"], optional = true }
+sdio = { version = "=0.5.1", default-features = false }
+static_cell = { version = "=2.1.1", default-features = false }
+pajoniiir-audio-dsp = { path = "../../crates/pajoniiir-audio-dsp" }
+pajoniiir-audio-keylock = { path = "../../crates/pajoniiir-audio-keylock" }
+pajoniiir-audio-runtime = { path = "../../crates/pajoniiir-audio-runtime" }
+pajoniiir-controller-core = { path = "../../crates/pajoniiir-controller-core" }
+pajoniiir-core = { path = "../../crates/pajoniiir-core" }
+pajoniiir-controller-profile-storage = { path = "../../crates/pajoniiir-controller-profile-storage" }
+pajoniiir-controller-session = { path = "../../crates/pajoniiir-controller-session" }
+pajoniiir-controller-usb = { path = "../../crates/pajoniiir-controller-usb" }
+pajoniiir-deck = { path = "../../crates/pajoniiir-deck" }
+pajoniiir-hot-cues = { path = "../../crates/pajoniiir-hot-cues" }
+pajoniiir-mixer = { path = "../../crates/pajoniiir-mixer" }
+pajoniiir-media-block = { path = "../../crates/pajoniiir-media-block" }
+pajoniiir-media-catalog = { path = "../../crates/pajoniiir-media-catalog" }
+pajoniiir-media-exfat = { path = "../../crates/pajoniiir-media-exfat" }
+pajoniiir-media-fat32 = { path = "../../crates/pajoniiir-media-fat32" }
+pajoniiir-media-fs = { path = "../../crates/pajoniiir-media-fs" }
+pajoniiir-media-identity = { path = "../../crates/pajoniiir-media-identity" }
+pajoniiir-media-io = { path = "../../crates/pajoniiir-media-io" }
+pajoniiir-media-partition = { path = "../../crates/pajoniiir-media-partition" }
+pajoniiir-media-session = { path = "../../crates/pajoniiir-media-session" }
+pajoniiir-media-usb-msc = { path = "../../crates/pajoniiir-media-usb-msc" }
+pajoniiir-rekordbox = { path = "../../crates/pajoniiir-rekordbox" }
+pajoniiir-ui-model = { path = "../../crates/pajoniiir-ui-model" }
+pajoniiir-waveform = { path = "../../crates/pajoniiir-waveform" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
+[workspace]
+resolver = "2"
