@@ -5,7 +5,7 @@
 
 ## 1. Goals
 
-M1 Rust is a native Rust product implementation preserving the released Pajoniiir M2.2 feature contract. Since 2026-10-20 the selected development boards are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with owner-reported ESP32-P4 v3.2 silicon; custom-PCB development is discontinued. The [platform decision](M1_GUITION_PLATFORM_DECISION_2026-10-20.md) governs that migration. Board profiles/BSPs for both exact models remain pending.
+M1 Rust is a native Rust product implementation preserving the released Pajoniiir M2.2 feature contract. Since 2026-10-20 the selected development boards are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with owner-reported ESP32-P4 v3.2 silicon; custom-PCB development is discontinued. The [platform decision](M1_GUITION_PLATFORM_DECISION_2026-10-20.md) governs that migration. Source-audited board profiles and scheduler-only BSP skeletons are implemented for both models; peripheral adapters and physical acceptance remain pending. See the [hardware matrix](boards/GUITION_HARDWARE_MATRIX_2026-10-20.md).
 
 Custom-M1 pin maps, component names, memory sizes and peripheral topologies below document the existing integration implementation and historical design. They must not be treated as Guition board specifications. Product/domain boundaries remain applicable; each board's electrical integration requires its own sourced configuration and acceptance evidence.
 
@@ -34,7 +34,7 @@ Guition JC1060P470C_I_W_Y / JC8012P4A1C_I_W_Y
         |
     esp-hal 1.2.2
         |
-   platform / per-board BSP (pending)
+   platform / per-board BSP skeleton (peripheral adapters pending)
         |
  product-domain crates
 ```

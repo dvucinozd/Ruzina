@@ -10,6 +10,8 @@ Native Rust development now uses `main` after [PR #1](https://github.com/dvucino
 
 See [Guition platform decision and migration plan](docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md) for scope, current evidence and the next development steps.
 
+Source-based board preparation is recorded in the [Guition hardware matrix](docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md). The Rust target now has explicit, mutually exclusive `board-jc1060`, `board-jc8012` and `board-legacy-m1` selectors. Guition selectors currently run only the scheduler BSP skeleton; historical M1 hardware features require the explicit legacy selector.
+
 The KiCad design, electrical contracts, mechanical evidence, libraries and validators are retained as historical engineering work. The custom-board pin map, peripheral wiring, flash layout and manufacturing gates do not define the Guition board configuration. The custom-PCB status, architecture and manufacturing sections below describe the historical baseline; native Rust development remains active.
 
 ## Historical custom-PCB status

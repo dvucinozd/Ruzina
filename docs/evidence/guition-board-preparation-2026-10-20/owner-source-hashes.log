@@ -1,0 +1,16 @@
+PASS: jc1060-schematic.pdf
+PASS: jc1060-spec.pdf
+PASS: jc1060-user-manual.pdf
+PASS: jc1060-v3-bsp.h
+PASS: jc1060-v3-bsp.c
+PASS: jc1060-v3-sdkconfig
+PASS: jc1060-v3-panel.c
+PASS: jc8012-local-schematic.pdf
+PASS: jc8012-local-spec.pdf
+PASS: jc8012-v3-bsp.h
+PASS: jc8012-v3-bsp.c
+PASS: jc8012-v3-sdkconfig
+PASS: jc1060-v3-display.h
+PASS: jc8012-v3-display.h
+PASS: jc1060-new-panel-template-pins
+Owner source hashes: 15 passed

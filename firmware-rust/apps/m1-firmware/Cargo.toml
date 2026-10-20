@@ -7,6 +7,10 @@ publish = false
 
 [features]
 default = []
+# Explicit board identity. Guition selectors currently run only the idle core.
+board-legacy-m1 = []
+board-jc1060 = []
+board-jc8012 = []
 # Compile-verified target wiring only. Do not enable in normal firmware until
 # USB0 VBUS/power switching, PHY and hot-plug are EVT-verified.
 usb0-hardware-bringup = []
@@ -46,6 +50,7 @@ sdmmc-profile-storage-bringup = []
 p4-psram-storage = ["dep:esp-alloc"]
 
 [dependencies]
+pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
 aligned = { version = "=0.4.3", default-features = false }
 block-device-driver = { version = "=0.2.0", default-features = false }
 embassy-executor = { version = "=0.10.0", default-features = false }
