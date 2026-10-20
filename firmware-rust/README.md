@@ -18,6 +18,8 @@ The workspace retains host-tested product crates and a separate P4 integration t
 
 The native Rust foundation is integrated into `main`; `codex/native-apta-consumer` remains a separate, unmerged analysis-integration branch.
 
+The [PCM history/routing gate](../docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) implements bounded live source arbitration in the legacy render integration and a host-tested modular output router. Headphones always use controller UAC. Guition `board-diagnostics` is an opt-in service-only first-boot report, not peripheral or audio acceptance.
+
 ## Toolchain
 
 Starting baseline:

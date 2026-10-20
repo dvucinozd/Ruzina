@@ -1332,9 +1332,18 @@ version = "0.1.0"
 dependencies = [
  "libm",
  "pajoniiir-audio-dsp",
+ "pajoniiir-audio-keylock",
+ "pajoniiir-audio-scratch",
  "pajoniiir-controller-core",
  "pajoniiir-deck",
  "pajoniiir-mixer",
+]
+
+[[package]]
+name = "pajoniiir-audio-scratch"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-audio-dsp",
 ]
 
 [[package]]
@@ -1428,9 +1437,9 @@ dependencies = [
  "pajoniiir-board-profile",
  "pajoniiir-controller-core",
  "pajoniiir-controller-profile-storage",
- "pajoniiir-core",
  "pajoniiir-controller-session",
  "pajoniiir-controller-usb",
+ "pajoniiir-core",
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
  "pajoniiir-media-block",

@@ -1,0 +1,6 @@
+firmware-rust/Cargo.lock: complete external package records unchanged (503 packages)
+firmware-rust/apps/m1-firmware/Cargo.lock: complete external package records unchanged (207 packages)
+Primary hardware snapshot: 18 pre-existing modified files unchanged
+Host tests: 509 passed
+P4 workflow configurations: 29 passed
+Feature guards: 20 expected rejections passed

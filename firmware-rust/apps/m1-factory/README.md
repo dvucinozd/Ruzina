@@ -1,8 +1,8 @@
 # m1-factory
 
-Reserved for the M1 factory/bring-up firmware.
+Reserved for a complete factory/bring-up firmware. The initial Guition service-only report is implemented in `apps/m1-firmware` behind an explicit board selector plus `board-diagnostics`; see [first-boot preparation](../../../docs/boards/GUITION_FIRST_BOOT_2026-10-20.md).
 
-Planned checks include:
+The historical custom-board checks below still require a per-Guition disposition; they are not claims that those components are fitted:
 
 - P4 revision >= product minimum;
 - 16 MiB external flash and 32 MiB PSRAM;
@@ -15,4 +15,4 @@ Planned checks include:
 - PCM5102A test tone;
 - UART0 and USB Serial/JTAG service paths.
 
-The target remains HARDWARE_PENDING until EVT hardware exists.
+Hardware checks remain pending for the arriving Guition units. Custom PCB EVT fabrication is no longer a prerequisite. The current diagnostic image reads chip revision/reset reason; memory identity, recovery and all peripheral tests remain unqualified.

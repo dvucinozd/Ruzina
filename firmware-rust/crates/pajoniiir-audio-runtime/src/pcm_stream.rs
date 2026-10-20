@@ -1,4 +1,53 @@
+use core::sync::atomic::{AtomicU32, Ordering};
 use pajoniiir_audio_dsp::PcmFrame;
+
+/// Preparation is not activation. The product owner commits the exact token
+/// returned by prepare; seeks temporarily revoke it while replacing the stream.
+pub struct StreamActivation {
+    prepared: AtomicU32,
+    active: AtomicU32,
+}
+impl StreamActivation {
+    pub const fn new() -> Self {
+        Self {
+            prepared: AtomicU32::new(0),
+            active: AtomicU32::new(0),
+        }
+    }
+    pub fn invalidate(&self) {
+        self.active.store(0, Ordering::Release);
+        self.prepared.store(0, Ordering::Release);
+    }
+    pub fn prepared(&self, generation: u32) {
+        self.prepared.store(generation, Ordering::Release);
+    }
+    pub fn current(&self) -> u32 {
+        self.prepared.load(Ordering::Acquire)
+    }
+    pub fn active(&self) -> u32 {
+        let active = self.active.load(Ordering::Acquire);
+        if self.current() == active { active } else { 0 }
+    }
+    pub fn accepts_progress(&self, generation: u32) -> bool {
+        generation != 0 && self.active() == generation
+    }
+    pub fn activate(&self, generation: u32) -> bool {
+        if generation == 0 || self.current() != generation {
+            return false;
+        }
+        self.active.store(generation, Ordering::Release);
+        if self.current() != generation {
+            self.active.store(0, Ordering::Release);
+            return false;
+        }
+        true
+    }
+}
+impl Default for StreamActivation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 pub const PCM_STREAM_BLOCK_FRAMES: usize = 256;
 
@@ -67,6 +116,35 @@ pub struct PcmStreamProgress {
     pub sample_rate_hz: u32,
     pub eof: bool,
     pub faulted: bool,
+}
+
+/// Bounded latest-progress publication. Congestion must not stop render.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PendingRenderProgress {
+    pending: Option<(PcmStreamProgress, u16)>,
+}
+
+impl PendingRenderProgress {
+    pub fn clear(&mut self) {
+        self.pending = None;
+    }
+    pub const fn peek(&self) -> Option<(PcmStreamProgress, u16)> {
+        self.pending
+    }
+
+    pub fn record(&mut self, mut progress: PcmStreamProgress, frames: u16) {
+        let mut frames = frames;
+        if let Some((previous, count)) = self.pending
+            && previous.generation == progress.generation
+        {
+            // A vinyl release can move the audible cursor backwards within
+            // the same retained source. Latest position/EOF are authoritative.
+            progress.eof |= previous.faulted;
+            progress.faulted |= previous.faulted;
+            frames = frames.saturating_add(count);
+        }
+        self.pending = Some((progress, frames));
+    }
 }
 
 pub struct PcmBlockFeed {
@@ -317,15 +395,33 @@ impl PcmTransportCursor {
             };
         }
 
-        if progress.eof {
-            self.ended = true;
-        }
+        self.ended = progress.eof;
 
         PcmBlockDisposition::Accepted {
             frames,
             position_ms: self.position_ms(),
             eof: progress.eof,
         }
+    }
+
+    /// The product activation token, rather than a Play command, determines
+    /// which source may publish time. This also supports a newly loaded deck
+    /// being scratched while paused. Reject obsolete progress before rebinding.
+    pub fn accept_active_progress(
+        &mut self,
+        progress: PcmStreamProgress,
+        frames: u16,
+        active_generation: u32,
+    ) -> PcmBlockDisposition {
+        if active_generation == 0 || progress.generation != active_generation {
+            self.stale_blocks = self.stale_blocks.saturating_add(1);
+            return PcmBlockDisposition::Stale;
+        }
+        if self.generation != Some(active_generation) {
+            self.generation = Some(active_generation);
+            self.ended = false;
+        }
+        self.accept_progress(progress, frames)
     }
 
     pub const fn generation(&self) -> Option<u32> {
@@ -579,5 +675,143 @@ mod tests {
     fn stream_generation_skips_zero_on_wrap() {
         assert_eq!(next_stream_generation(0), 1);
         assert_eq!(next_stream_generation(u32::MAX), 1);
+    }
+
+    #[test]
+    fn paused_track_replacement_adopts_only_the_active_source_without_play() {
+        let mut cursor = PcmTransportCursor::new();
+        cursor.bind_seek(7, 48_000, 48_000);
+        let progress = PcmStreamProgress {
+            generation: 8,
+            end_frame: 2_400,
+            sample_rate_hz: 48_000,
+            eof: false,
+            faulted: false,
+        };
+        assert_eq!(
+            cursor.accept_active_progress(progress, 0, 0),
+            PcmBlockDisposition::Stale
+        );
+        assert_eq!(cursor.generation(), Some(7));
+        assert!(matches!(
+            cursor.accept_active_progress(progress, 0, 8),
+            PcmBlockDisposition::Accepted {
+                position_ms: 50,
+                ..
+            }
+        ));
+        assert_eq!(cursor.generation(), Some(8));
+        assert_eq!(
+            cursor.accept_active_progress(
+                PcmStreamProgress {
+                    generation: 7,
+                    ..progress
+                },
+                0,
+                8
+            ),
+            PcmBlockDisposition::Stale
+        );
+        assert_eq!(cursor.position_frame(), 2_400);
+        assert_eq!(cursor.generation(), Some(8));
+    }
+
+    #[test]
+    fn source_prepare_requires_exact_product_commit_and_invalidates_old_activation() {
+        let gate = StreamActivation::new();
+        gate.prepared(1);
+        assert_eq!(gate.current(), 1);
+        assert_eq!(gate.active(), 0);
+        assert!(!gate.activate(0));
+        assert!(gate.activate(1));
+        gate.invalidate();
+        assert_eq!(gate.active(), 0);
+        assert!(!gate.accepts_progress(1));
+        gate.prepared(2);
+        assert!(!gate.activate(1));
+        assert_eq!(gate.active(), 0);
+        assert!(gate.activate(2));
+        assert!(gate.accepts_progress(2));
+        assert!(!gate.accepts_progress(1));
+        gate.prepared(3);
+        assert_eq!(gate.active(), 0);
+    }
+
+    #[test]
+    fn latest_vinyl_position_can_rewind_without_stale_prefetched_eof() {
+        let mut pending = PendingRenderProgress::default();
+        let progress = PcmStreamProgress {
+            generation: 1,
+            end_frame: 1_000,
+            sample_rate_hz: 48_000,
+            eof: true,
+            faulted: false,
+        };
+        pending.record(progress, 128);
+        pending.record(
+            PcmStreamProgress {
+                end_frame: 800,
+                eof: false,
+                ..progress
+            },
+            0,
+        );
+        let (latest, _) = pending.peek().unwrap();
+        assert_eq!(latest.end_frame, 800);
+        assert!(!latest.eof);
+        let mut transport = PcmTransportCursor::new();
+        transport.accept_progress(progress, 128);
+        assert!(matches!(
+            transport.accept_progress(latest, 0),
+            PcmBlockDisposition::Accepted { eof: false, .. }
+        ));
+        assert_eq!(transport.position_frame(), 800);
+        assert!(!transport.ended());
+    }
+
+    #[test]
+    fn congested_progress_coalesces_without_losing_terminal_state_or_crossing_generations() {
+        let mut mailbox = PendingRenderProgress::default();
+        let initial = PcmStreamProgress {
+            generation: 7,
+            end_frame: 128,
+            sample_rate_hz: 48_000,
+            eof: false,
+            faulted: false,
+        };
+        mailbox.record(initial, 128);
+        mailbox.record(
+            PcmStreamProgress {
+                end_frame: 256,
+                eof: true,
+                faulted: true,
+                ..initial
+            },
+            128,
+        );
+        mailbox.record(
+            PcmStreamProgress {
+                end_frame: 256,
+                ..initial
+            },
+            0,
+        );
+        let (terminal, frames) = mailbox.peek().unwrap();
+        assert_eq!(frames, 256);
+        assert!(terminal.eof && terminal.faulted);
+        mailbox.record(
+            PcmStreamProgress {
+                generation: 8,
+                end_frame: 10_000,
+                ..initial
+            },
+            0,
+        );
+        let (new, frames) = mailbox.peek().unwrap();
+        assert_eq!(new.generation, 8);
+        assert!(!new.eof && !new.faulted);
+        assert_eq!(frames, 0);
+        mailbox.clear();
+        assert!(mailbox.peek().is_none());
     }
 }

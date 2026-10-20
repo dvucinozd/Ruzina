@@ -1,3 +1,4 @@
+use crate::source::{CanonicalSource, SourceControl, SourceSample};
 use pajoniiir_audio_dsp::{DspFrame, EqState, FilterState, PcmFrame, ResamplerState};
 use pajoniiir_mixer::{LimiterStats, limit_main_sample};
 
@@ -7,10 +8,13 @@ pub const RENDER_BLOCK_FRAMES: usize = 128;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RenderDeckControl {
     pub playing: bool,
+    pub stream_generation: u32,
     pub source_sample_rate_hz: u32,
     pub pitch_centipercent: i16,
     pub master_tempo: bool,
     pub scratch_active: bool,
+    pub scratch_epoch: u32,
+    pub censor_active: bool,
     pub pre_gain: f32,
     pub post_gain: f32,
     pub eq_low: u16,
@@ -24,10 +28,13 @@ impl RenderDeckControl {
     pub const fn idle() -> Self {
         Self {
             playing: false,
+            stream_generation: 0,
             source_sample_rate_hz: RENDER_SAMPLE_RATE_HZ,
             pitch_centipercent: 0,
             master_tempo: false,
             scratch_active: false,
+            scratch_epoch: 0,
+            censor_active: false,
             pre_gain: 1.0,
             post_gain: 1.0,
             eq_low: pajoniiir_audio_dsp::EQ_RAW_CENTER,
@@ -39,7 +46,19 @@ impl RenderDeckControl {
     }
 
     pub const fn requires_deferred_source_arbitration(self) -> bool {
-        self.master_tempo || self.scratch_active
+        self.master_tempo || self.scratch_active || self.censor_active
+    }
+
+    pub fn source_control(self) -> SourceControl {
+        SourceControl {
+            playing: self.playing,
+            master_tempo: self.master_tempo,
+            scratch: self.scratch_active,
+            scratch_epoch: self.scratch_epoch,
+            censor: self.censor_active,
+            tempo_factor: tempo_factor_from_centipercent(self.pitch_centipercent),
+            output_sample_rate_hz: RENDER_SAMPLE_RATE_HZ,
+        }
     }
 }
 
@@ -170,6 +189,78 @@ impl FixedRateRenderGraph {
     where
         F: FnMut(usize) -> Option<PcmFrame>,
     {
+        self.render_with(control, output, |deck, control, state| {
+            if !control.playing {
+                return SourceSample::default();
+            }
+            if control.requires_deferred_source_arbitration() {
+                return SourceSample {
+                    deferred: true,
+                    ..SourceSample::default()
+                };
+            }
+            let step = source_step_factor(
+                control.source_sample_rate_hz,
+                RENDER_SAMPLE_RATE_HZ,
+                control.pitch_centipercent,
+            );
+            let mut missed = false;
+            let mut received = false;
+            let (pcm, consumed) = state.resampler.next(step, || {
+                let frame = pop_source(deck);
+                missed |= frame.is_none();
+                received |= frame.is_some();
+                frame
+            });
+            if missed {
+                state.source_starved = true;
+                state.resampler.silence_history();
+            } else if received {
+                state.source_starved = false;
+            }
+            SourceSample {
+                frame: pcm,
+                advanced: consumed,
+                starved: state.source_starved,
+                ..SourceSample::default()
+            }
+        })
+    }
+
+    /// Random-access live history path. The pop-only compatibility API above
+    /// deliberately retains its guard for modes that need random access.
+    pub fn render_canonical_block(
+        &mut self,
+        control: RenderControl,
+        output: &mut RenderOutputBlock,
+        sources: &mut [CanonicalSource<'_>; 2],
+    ) -> RenderBlockReport {
+        self.render_with(control, output, |deck, control, _| {
+            if control.stream_generation == 0
+                || control.stream_generation != sources[deck].generation()
+            {
+                let mut idle = control.source_control();
+                idle.playing = false;
+                idle.scratch = false;
+                sources[deck].next_sample(idle);
+                return SourceSample {
+                    silent: true,
+                    ..SourceSample::default()
+                };
+            }
+            sources[deck].next_sample(control.source_control())
+        })
+    }
+
+    fn render_with<F>(
+        &mut self,
+        control: RenderControl,
+        output: &mut RenderOutputBlock,
+        mut source: F,
+    ) -> RenderBlockReport
+    where
+        F: FnMut(usize, RenderDeckControl, &mut RenderDeckState) -> SourceSample,
+    {
         let mut report = RenderBlockReport {
             rendered_frames: RENDER_BLOCK_FRAMES as u16,
             ..RenderBlockReport::default()
@@ -194,49 +285,22 @@ impl FixedRateRenderGraph {
                 let deck_control = control.decks[deck];
                 output.pfl[deck][frame_index] = PcmFrame::default();
 
-                if !deck_control.playing {
-                    continue;
-                }
-
-                if deck_control.requires_deferred_source_arbitration() {
-                    report.deferred_mode_frames[deck] =
-                        report.deferred_mode_frames[deck].saturating_add(1);
-                    continue;
-                }
-
-                let step = source_step_factor(
-                    deck_control.source_sample_rate_hz,
-                    RENDER_SAMPLE_RATE_HZ,
-                    deck_control.pitch_centipercent,
-                );
-                let mut missed = false;
-                let mut received = false;
-                let (pcm, consumed) = self.decks[deck].resampler.next(step, || {
-                    let frame = pop_source(deck);
-                    if frame.is_none() {
-                        missed = true;
-                    } else {
-                        received = true;
-                    }
-                    frame
-                });
+                let sample = source(deck, deck_control, &mut self.decks[deck]);
                 report.source_frames_consumed[deck] =
-                    report.source_frames_consumed[deck].saturating_add(consumed);
-
-                if missed {
-                    self.decks[deck].source_starved = true;
-                    self.decks[deck].resampler.silence_history();
-                } else if received {
-                    self.decks[deck].source_starved = false;
-                }
-                // Interpolation-only frames must stay silent after a missed
-                // source read. Phase still advances so new PCM can recover.
-                if self.decks[deck].source_starved {
-                    report.underflow_frames[deck] = report.underflow_frames[deck].saturating_add(1);
+                    report.source_frames_consumed[deck].saturating_add(sample.advanced);
+                report.underflow_frames[deck] =
+                    report.underflow_frames[deck].saturating_add(u32::from(sample.starved));
+                report.deferred_mode_frames[deck] =
+                    report.deferred_mode_frames[deck].saturating_add(u32::from(sample.deferred));
+                if (!deck_control.playing && !deck_control.scratch_active)
+                    || sample.starved
+                    || sample.deferred
+                    || sample.silent
+                {
                     continue;
                 }
 
-                let mut dsp = DspFrame::from(pcm);
+                let mut dsp = DspFrame::from(sample.frame);
                 let pre_gain = sanitize_gain(deck_control.pre_gain);
                 dsp.left *= pre_gain;
                 dsp.right *= pre_gain;
@@ -383,10 +447,13 @@ mod tests {
     fn active_deck() -> RenderDeckControl {
         RenderDeckControl {
             playing: true,
+            stream_generation: 0,
             source_sample_rate_hz: RENDER_SAMPLE_RATE_HZ,
             pitch_centipercent: 0,
             master_tempo: false,
             scratch_active: false,
+            scratch_epoch: 0,
+            censor_active: false,
             pre_gain: 1.0,
             post_gain: 1.0,
             eq_low: EQ_RAW_CENTER,

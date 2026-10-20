@@ -2908,6 +2908,8 @@ version = "0.1.0"
 dependencies = [
  "libm",
  "pajoniiir-audio-dsp",
+ "pajoniiir-audio-keylock",
+ "pajoniiir-audio-scratch",
  "pajoniiir-controller-core",
  "pajoniiir-deck",
  "pajoniiir-mixer",
@@ -3068,19 +3070,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "pajoniiir-rekordbox"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-media-catalog",
- "pajoniiir-media-identity",
-]
-
-[[package]]
 name = "pajoniiir-mixer"
 version = "0.1.0"
 dependencies = [
  "pajoniiir-audio-dsp",
  "pajoniiir-controller-core",
+]
+
+[[package]]
+name = "pajoniiir-rekordbox"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-media-catalog",
+ "pajoniiir-media-identity",
 ]
 
 [[package]]

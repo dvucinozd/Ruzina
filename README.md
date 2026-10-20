@@ -14,6 +14,8 @@ Source-based board preparation is recorded in the [Guition hardware matrix](docs
 
 The [development review after PR #4](docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md) records open product decisions, implementation and acceptance gates, and the recommended next work while the boards are in transit.
 
+The [live PCM history, routing and diagnostic preparation gate](docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) adds the canonical Master Tempo/scratch path, host-tested DAC/controller selection with controller-only headphones, and opt-in Guition boot diagnostics. Physical audio/display/storage and exact-board acceptance remain pending.
+
 The KiCad design, electrical contracts, mechanical evidence, libraries and validators are retained as historical engineering work. The custom-board pin map, peripheral wiring, flash layout and manufacturing gates do not define the Guition board configuration. The custom-PCB status, architecture and manufacturing sections below describe the historical baseline; native Rust development remains active.
 
 ## Historical custom-PCB status

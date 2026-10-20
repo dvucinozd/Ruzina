@@ -15,6 +15,10 @@ for board in [None, "board-jc1060", "board-jc8012"]:
         cases.append(([value for value in [board, feature] if value],
                       "legacy hardware features require board-legacy-m1"))
 
+for board in [None, "board-legacy-m1"]:
+    cases.append(([value for value in [board, "board-diagnostics"] if value],
+                  "board-diagnostics requires a Guition board selector"))
+
 for features, diagnostic in cases:
     result = subprocess.run(
         ["cargo", "+1.95.0", "check", "--locked", "--features", ",".join(features)],

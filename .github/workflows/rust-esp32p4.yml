@@ -150,5 +150,21 @@ jobs:
       - name: ESP32-P4 JC8012 idle BSP link gate
         run: cargo +1.95.0 build --locked --release --features board-jc8012
 
+      - name: ESP32-P4 JC1060 diagnostic cross compile
+        run: cargo +1.95.0 check --locked --features board-jc1060,board-diagnostics
+
+      - name: ESP32-P4 JC1060 diagnostic link gate
+        env:
+          M1_IMAGE_ID: ${{ github.sha }}
+        run: cargo +1.95.0 build --locked --release --features board-jc1060,board-diagnostics
+
+      - name: ESP32-P4 JC8012 diagnostic cross compile
+        run: cargo +1.95.0 check --locked --features board-jc8012,board-diagnostics
+
+      - name: ESP32-P4 JC8012 diagnostic link gate
+        env:
+          M1_IMAGE_ID: ${{ github.sha }}
+        run: cargo +1.95.0 build --locked --release --features board-jc8012,board-diagnostics
+
       - name: Reject ambiguous boards and legacy features on Guition
         run: python ../../tools/check_board_selection.py
