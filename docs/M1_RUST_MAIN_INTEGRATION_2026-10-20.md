@@ -43,3 +43,16 @@ Validation results, command summary and SHA-256 hashes of the source/workflow/lo
 The review found that the previous GitHub checks failed before starting because of account billing/spending limits. The complete local workflow checks above provide current software evidence; final PR and main CI status must still be inspected after push/merge and reported independently.
 
 Hardware bring-up, display/touch, physical USB/audio, exact flash/PSRAM and operator acceptance remain pending for both boards. No device flashing or release publication is part of this integration.
+
+## Completed integration
+
+- Audio repair: `bb638fb`.
+- Validated source/workflow/documentation tip pushed to foundation: `9881d373b17fc7eaae9134a4a72b7dd61efe7230`.
+- PR #1 merged with history preserved at `7409535d42ef55932d1ed46bfaa96f842a360444`. The merge tree exactly matches the validated foundation tip.
+- Primary checkout `D:/AI/M1_PCB` was fast-forwarded to the merge. SHA-256 checks confirmed all 18 pre-existing locally modified KiCad files remained byte-for-byte unchanged.
+- `codex/native-apta-consumer` remains at `fd7ebd592b469b27c9f45337dced2f9b2912966f`, with all 24 unique commits still outside main.
+- The pre-integration local documentation snapshot was preserved in a named Git stash before updating the primary checkout. Updated documents and review evidence are committed in main.
+
+GitHub ran the new push triggers on the merge commit: [host run 39483651267](https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39483651267) and [P4 run 39483651283](https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39483651283). Both jobs again failed before executing any steps. Their account billing/spending-limit annotations are retained beside the local validation logs. GitHub CI execution remains an account-action gate; the completed local checks must not be described as green GitHub checks.
+
+Subsequent completion-documentation updates do not change the validated Rust source, dependency locks or workflow matrix.

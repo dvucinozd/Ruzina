@@ -70,7 +70,7 @@ Fresh local checks on the exact reviewed tip, using isolated Rust 1.95.0 in Ubun
 
 Host format/Clippy cover the host workspace; the nested embedded workspace is checked by the P4 release builds above. The fresh P4 checks cover default and combined render/USB0/USB1/PSRAM/SDMMC ownership, not every separate CI feature configuration.
 
-Logs and the standalone failing test are retained in `docs/evidence/m1-rust-foundation-review-2026-10-20/`. The clean review checkout is `C:/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB`; the runnable probe and local runner are in its sibling `review-evidence/` directory.
+Logs and the standalone failing test are retained in `docs/evidence/m1-rust-foundation-review-2026-10-20/`. Review used the isolated checkout `C:/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB`. The permanent regression tests now live in the audio-runtime crate; the review checkout is no longer needed after integration.
 
 Both Rust workflows currently trigger only for pull requests and manual dispatch. Add path-filtered `push` checks for `main` when adopting it as the active baseline, so direct updates and the merged main commit receive Rust checks too. Also keep or strengthen the pre-merge PR checks; changing triggers does not resolve the billing condition.
 

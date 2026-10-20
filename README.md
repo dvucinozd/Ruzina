@@ -6,7 +6,7 @@
 
 Custom M1 PCB development has been discontinued by project decision. The selected development boards are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, both with **ESP32-P4 silicon v3.2**, as reported by the project owner. Exact unit identity and board peripherals still require bring-up evidence.
 
-The native Rust foundation is being integrated into `main` through [PR #1](https://github.com/dvucinozd/Pajoniiir-M1/pull/1). Its `ESP_HAL_CONFIG_MIN_CHIP_REVISION=302` matches the selected silicon revision. Firmware sources are in `firmware-rust/`; the separate `codex/native-apta-consumer` branch is retained and is not part of this integration.
+Native Rust development now uses `main` after [PR #1](https://github.com/dvucinozd/Pajoniiir-M1/pull/1). Its `ESP_HAL_CONFIG_MIN_CHIP_REVISION=302` matches the selected silicon revision. Firmware sources are in `firmware-rust/`; the separate `codex/native-apta-consumer` branch is retained and is not part of this integration. See the [integration validation](docs/M1_RUST_MAIN_INTEGRATION_2026-10-20.md) for tests and remaining gates.
 
 See [Guition platform decision and migration plan](docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md) for scope, current evidence and the next development steps.
 

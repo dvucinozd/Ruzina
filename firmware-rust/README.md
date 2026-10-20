@@ -16,7 +16,7 @@ The workspace retains host-tested product crates and a separate P4 integration t
 
 `apps/m1-firmware` is a standalone embedded workspace with feature-gated storage, controller and software audio owners. Its current hardware bindings still describe the historical custom M1 board. Guition BSPs, display/touch, audio sinks and exact-board peripheral qualification remain pending. Do not flash custom-board bring-up features onto Guition boards before their pin, memory and power contracts are established.
 
-The native Rust foundation is being integrated into `main`; `codex/native-apta-consumer` remains a separate, unmerged analysis-integration branch.
+The native Rust foundation is integrated into `main`; `codex/native-apta-consumer` remains a separate, unmerged analysis-integration branch.
 
 ## Toolchain
 
