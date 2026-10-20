@@ -2,17 +2,19 @@
 
 **Status:** baseline v0.1  
 **Recorded:** 2026-09-24  
-**Target:** Pajoniiir-M1 custom ESP32-P4 mainboard  
+**Target:** Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y, ESP32-P4 v3.2
 **Software direction:** native Rust, bare-metal/no_std application architecture
 
 ## 1. Purpose and authority
 
 This document defines the product-level acceptance requirements for the Pajoniiir-M1 Rust firmware.
 
+References to PCM5102A, INA238, C6 and custom-board wiring below identify original design roles. Each selected board needs an explicit mapping or product decision for those roles; these names do not establish that the components are fitted to Guition boards. Product and physical acceptance requirements remain open until that mapping is qualified.
+
 The authorities are intentionally split:
 
 1. **Pajoniiir M2.2** is the functional/product golden reference. M1 Rust must preserve or deliberately supersede its released DJ behavior.
-2. **Pajoniiir-M1 hardware contracts** are the electrical and board-integration authority.
+2. **Exact selected Guition board schematics and per-board BSP contracts** define electrical integration. The [2026-10-20 platform decision](M1_GUITION_PLATFORM_DECISION_2026-10-20.md) discontinues custom-PCB development; custom M1 pin maps and component assumptions remain historical references only. Both selected boards still require BSP implementation and physical qualification.
 3. **Pajoniiir-M3** is supporting hardware/integration evidence only; it is not the feature-parity target.
 4. **Current Rust ecosystem documentation** defines the initial implementation baseline but does not override product behavior.
 
@@ -22,7 +24,7 @@ M1 Rust R1 is not accepted merely because it boots or compiles on ESP32-P4. It i
 
 Initial dependency/target assumptions as of 2026-09-24:
 
-- ESP32-P4NRW32X, M1 production target silicon v3.2 or newer approved revision.
+- ESP32-P4 silicon v3.2 or newer approved revision; the owner reports v3.2 for both selected Guition models. Exact package, memory and board revision must be recorded per unit.
 - Rust target: `riscv32imafc-unknown-none-elf`.
 - `esp-hal 1.2.2`, with ESP32-P4 support for chip revision >= v3.x.
 - `esp-hal` P4 USB, MIPI DSI, I2S, SDMMC and PSRAM APIs are treated as unstable integration surfaces.
@@ -197,17 +199,17 @@ The generic controller-audio capability model shall be able to express at least:
 
 ## 8. Controller-independent cue product gate
 
-The current M1 hardware provides:
+The historical custom M1 design specified:
 
 - PCM5102A MAIN stereo output.
 - Headphone cue through a compatible DJ controller USB audio interface.
 
-Therefore a MIDI-only controller can control M1 but cannot provide controller-independent headphone cue with the current board.
+For each selected Guition board, establish the actual MAIN and headphone-output paths, accessible peripherals and any required adapters. Controller-independent cue is not established by the board model or by the historical PCM5102A design.
 
-Before final PCB layout freeze, product ownership must explicitly choose one of:
+Before board/product acceptance, product ownership must explicitly choose one of:
 
 - **A:** MIDI-only controllers are supported for control, but CUE requires a compatible USB-audio controller.
-- **B:** add a second stereo DAC/codec + headphone amplifier + 3.5 mm output to M1.
+- **B:** provide a separately qualified controller-independent DAC/codec, headphone amplifier and output path compatible with the selected board.
 
 This is a hardware/product decision, not a software workaround.
 
@@ -226,11 +228,11 @@ The pre-hardware sequence is:
 9. port audio/DSP as deterministic host-testable code;
 10. add storage, OTA, Web API, settings and telemetry state machines;
 11. add P4 BSP/driver adapters and compile gates;
-12. execute hardware bring-up only when M1 EVT hardware exists.
+12. implement each selected Guition BSP and execute exact-board bring-up.
 
 ## 10. Hardware bring-up order
 
-When EVT hardware becomes available:
+For each selected Guition model, use its actual sourced peripherals and record an explicit disposition for unavailable or substituted hardware. The historical custom-board sequence below is a checklist reference; custom PCB EVT fabrication is no longer required:
 
 `boot/service -> flash/PSRAM -> rails/INA238 -> PCM5102A -> DSI/Slint/touch -> USB0 MSC -> USB1 MIDI -> USB1 UAC -> C6 SDIO/Wi-Fi -> integrated stress -> OTA/rollback -> release soak`
 

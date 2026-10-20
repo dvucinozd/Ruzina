@@ -1,0 +1,49 @@
+    Checking pajoniiir-core v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-core)
+    Checking pajoniiir-media-block v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-block)
+    Checking byteorder v1.5.0
+    Checking bitflags v2.13.2
+    Checking stable_deref_trait v1.2.1
+    Checking arbitrary-int v2.2.0
+    Checking pajoniiir-media-partition v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-partition)
+    Checking pajoniiir-track-analysis v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-track-analysis)
+    Checking embedded-io v0.7.1
+    Checking libm v0.2.16
+    Checking az v1.2.1
+    Checking micromath v2.1.0
+    Checking embedded-hal v1.0.0
+    Checking hex-literal v1.1.0
+    Checking num-traits v0.2.19
+    Checking exfat-embedded v0.1.3
+    Checking thiserror v2.0.21
+    Checking pajoniiir-controller-usb v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-controller-usb)
+    Checking pajoniiir-controller-core v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-controller-core)
+    Checking pajoniiir-media-identity v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-identity)
+    Checking pajoniiir-ui-model v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-ui-model)
+    Checking pajoniiir-media-session v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-session)
+    Checking hash32 v0.3.1
+    Checking pajoniiir-media-io v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-io)
+    Checking heapless v0.9.3
+    Checking pajoniiir-hot-cues v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-hot-cues)
+    Checking pajoniiir-media-fs v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-fs)
+    Checking pajoniiir-controller-profile v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-controller-profile)
+    Checking pajoniiir-control-scheduler v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-control-scheduler)
+    Checking pajoniiir-media-catalog v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-catalog)
+    Checking pajoniiir-media-usb-msc v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-usb-msc)
+    Checking pajoniiir-media-exfat v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-exfat)
+    Checking pajoniiir-rekordbox v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-rekordbox)
+    Checking float-cmp v0.9.0
+    Checking pajoniiir-deck v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-deck)
+    Checking pajoniiir-controller-profile-storage v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-controller-profile-storage)
+    Checking pajoniiir-controller-session v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-controller-session)
+    Checking embedded-graphics-core v0.4.1
+    Checking pajoniiir-audio-dsp v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-audio-dsp)
+    Checking embedded-sdmmc-types v0.1.0
+    Checking pajoniiir-mixer v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-mixer)
+    Checking pajoniiir-audio-keylock v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-audio-keylock)
+    Checking pajoniiir-audio-scratch v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-audio-scratch)
+    Checking pajoniiir-audio-runtime v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-audio-runtime)
+    Checking embedded-graphics v0.8.2
+    Checking embedded-sdmmc v0.10.0
+    Checking pajoniiir-media-fat32 v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-media-fat32)
+    Checking pajoniiir-waveform v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-waveform)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.66s

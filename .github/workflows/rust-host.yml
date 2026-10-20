@@ -3,6 +3,13 @@ name: Rust host foundation
 # Cargo.lock is committed; dependency resolution is intentionally --locked.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware-rust/**"
+      - "docs/M1_RUST_*.md"
+      - "docs/adr/**"
+      - ".github/workflows/rust-host.yml"
   pull_request:
     paths:
       - "firmware-rust/**"

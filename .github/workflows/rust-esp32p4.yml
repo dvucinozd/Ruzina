@@ -3,6 +3,13 @@ name: Rust ESP32-P4 compile gate
 # Firmware Cargo.lock is committed; dependency resolution is intentionally --locked.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware-rust/apps/m1-firmware/**"
+      - "firmware-rust/crates/**"
+      - "firmware-rust/rust-toolchain.toml"
+      - ".github/workflows/rust-esp32p4.yml"
   pull_request:
     paths:
       - "firmware-rust/apps/m1-firmware/**"
@@ -122,3 +129,6 @@ jobs:
 
       - name: ESP32-P4 Library + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
         run: cargo +1.95.0 build --locked --release --features "library-deck-load,sdmmc-profile-storage-bringup"
+
+      - name: ESP32-P4 render + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
+        run: cargo +1.95.0 build --locked --release --features "render-graph-bringup,sdmmc-profile-storage-bringup"

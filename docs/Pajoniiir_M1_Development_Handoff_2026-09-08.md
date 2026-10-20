@@ -1,5 +1,7 @@
 # Pajoniiir-M1 development handoff
 
+> Superseded for active development on 2026-10-20: custom PCB development has been discontinued. Native Rust development moves to Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y with owner-reported ESP32-P4 v3.2 silicon. See the [platform decision](M1_GUITION_PLATFORM_DECISION_2026-10-20.md). The PCB progress estimate and B11-B16 sequence below remain historical records.
+
 **Recorded:** 2026-09-08
 
 **Continuation baseline:** M1-PRELAYOUT-B10 on `main`

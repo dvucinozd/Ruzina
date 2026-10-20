@@ -1,0 +1,2 @@
+# Preserve captured stdout line endings and its intentional final blank lines.
+/docs/evidence/**/*.log text eol=lf whitespace=-blank-at-eof

@@ -1,6 +1,8 @@
 # m1-firmware
 
-Native ESP32-P4 Pajoniiir-M1 production firmware target.
+Native ESP32-P4 Pajoniiir-M1 firmware integration target.
+
+Active development boards are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y** with owner-reported v3.2 silicon. Their BSPs are not implemented or hardware-qualified by the foundation merge. The feature descriptions below record the historical custom-M1 wiring and memory assumptions, including USB FS GPIO27/26, microSD GPIO39..46, 16 MiB flash and the Hot Cue partition. Reconcile those assumptions against each exact board before enabling hardware features. See the [platform decision](../../../docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md).
 
 The firmware is a **standalone Cargo workspace** nested under `firmware-rust`.
 It is intentionally excluded from the host workspace dependency graph so
@@ -18,17 +20,17 @@ It is intentionally excluded from the host workspace dependency graph so
 
 ## Current gate
 
-`src/main.rs` is deliberately minimal: it initializes `esp-hal` and creates
-compile-time anchors to the HAL-independent product crates. This gives CI a real
-ESP32-P4 architecture gate without pretending that USB, display, audio or board
-pinout have been hardware-qualified.
+`src/main.rs` initializes `esp-hal` and the scheduler, retains compile-time
+anchors to the HAL-independent product crates, and starts feature-gated owner
+tasks. The default image does not start USB or microSD owners. USB, display,
+audio and the selected boards' pinouts remain hardware-pending.
 
-The dedicated `Rust ESP32-P4 compile gate` workflow generates a firmware lock
-artifact and cross-compiles this target. Passing that workflow means
+The dedicated `Rust ESP32-P4 compile gate` workflow uses the committed firmware
+lockfile with `--locked` and cross-compiles/links this target. Passing that workflow means
 **compile-verified for ESP32-P4**, not hardware-verified.
 
-Hardware verification remains blocked until the custom Pajoniiir-M1 board with a
-supported P4 revision is available.
+Hardware verification proceeds per selected Guition board after its BSP and
+exact-unit identity are established. Custom PCB fabrication is no longer a prerequisite.
 
 
 ## PSRAM storage boundary

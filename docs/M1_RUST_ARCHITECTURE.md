@@ -5,7 +5,9 @@
 
 ## 1. Goals
 
-M1 Rust is a clean product implementation for the custom Pajoniiir-M1 hardware while preserving the released Pajoniiir M2.2 feature contract.
+M1 Rust is a native Rust product implementation preserving the released Pajoniiir M2.2 feature contract. Since 2026-10-20 the selected development boards are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with owner-reported ESP32-P4 v3.2 silicon; custom-PCB development is discontinued. The [platform decision](M1_GUITION_PLATFORM_DECISION_2026-10-20.md) governs that migration. Board profiles/BSPs for both exact models remain pending.
+
+Custom-M1 pin maps, component names, memory sizes and peripheral topologies below document the existing integration implementation and historical design. They must not be treated as Guition board specifications. Product/domain boundaries remain applicable; each board's electrical integration requires its own sourced configuration and acceptance evidence.
 
 The architecture optimizes for:
 
@@ -24,14 +26,15 @@ The permanent application architecture is native Rust `no_std` on ESP32-P4. The 
 
 ESP-IDF application runtime, FreeRTOS and `esp-idf-sys` are not architectural dependencies. Compatibility with the Espressif boot/partition/OTA ecosystem may be retained using Rust-native bootloader/partition support where appropriate.
 
-Current starting platform:
+Selected platform direction:
 
 ```text
-ESP32-P4NRW32X v3.2+
+Guition JC1060P470C_I_W_Y / JC8012P4A1C_I_W_Y
+           ESP32-P4 v3.2
         |
     esp-hal 1.2.2
         |
-   platform / M1 BSP
+   platform / per-board BSP (pending)
         |
  product-domain crates
 ```
@@ -138,6 +141,8 @@ Only one runtime context owns Slint. Other workers communicate through bounded m
 ## 6. Framebuffer policy
 
 Initial target is full-frame correctness before optimization.
+
+The 800x480 sizing example below is the historical initial UI model. Each selected Guition BSP must establish its actual panel dimensions and memory budget; the example does not specify either board's display or PSRAM capacity.
 
 For 800x480:
 
