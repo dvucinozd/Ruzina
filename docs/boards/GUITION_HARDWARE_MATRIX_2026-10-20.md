@@ -50,7 +50,7 @@ The recorded local hashes can be replayed from the repository root with `python 
 | FS GPIO binding | Unresolved for exact v3.2 module/board | Unresolved for exact v3.2 board | Old raw schematic labels 24/25 and copied BSP USB macros 19/20 must not be translated into a working v3.2 HAL binding by assumption |
 | Audio codec | ES8311, differential mono speaker path | ES8311, differential mono speaker path | SCH and vendor mono I2S configuration; not a stereo PCM5102A MAIN replacement |
 | Audio I2S | MCLK13, BCLK12, LRCK10, DOUT9, DIN48; PA enable11 | MCLK13, BCLK12, LRCK10, DOUT9, DIN11; PA enable20 | V3 BSPs; physical sample-rate/clock/mute tests remain pending |
-| Stereo MAIN / headphone | No qualified onboard stereo MAIN or independent headphone path | Same | Explicit external stereo DAC or qualified controller audio routing is a remaining product/integration decision |
+| Stereo MAIN / headphone | No qualified onboard stereo MAIN or independent headphone path | Same | MAIN prefers a ready external stereo DAC, then compatible controller MAIN audio. Headphones always use controller UAC; hardware wiring, detection and channel mappings remain unqualified. See [routing policy](../M1_RUST_PRODUCT_REQUIREMENTS.md#8-controller-only-headphone-policy). |
 | Other hardware | Ethernet PHY/RJ45, RS485/UART, camera, RTC and battery circuitry shown | Camera, RTC, battery circuitry and expansion FPCs shown | Keep inactive until needed and individually mapped; schematic presence is not unit acceptance |
 
 ## Panel and revision conflicts

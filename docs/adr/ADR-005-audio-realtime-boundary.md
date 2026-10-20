@@ -19,5 +19,6 @@ It must not perform filesystem, network, OTA, controller profile parsing, format
 
 - DSP and state machines are written as host-testable product crates.
 - I2S and UAC are sink adapters rather than owners of product logic.
+- Owner routing clarification (2026-10-20): MAIN automatically prefers a ready external stereo DAC, then compatible controller MAIN audio, then mute. Headphones/CUE/PFL always use controller UAC headphone channels; no DAC/onboard-codec headphone fallback is permitted. MAIN changes preserve the independent headphone route; controller absence leaves headphones unavailable. Physical sink implementation and channel mapping still require qualification.
 - Telemetry uses counters/fixed records and deferred formatting.
 - Hardware soak remains mandatory even after host parity passes.

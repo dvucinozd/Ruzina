@@ -179,12 +179,14 @@ media source
    -> dual-deck sum
    -> master volume / trim
    -> MAIN limiter
-   -> PCM5102A MAIN
+   -> MAIN sink selector (external stereo DAC / controller MAIN UAC)
 ```
 
 The real-time path does not perform filesystem, network, OTA, logging-format, profile parsing or unbounded allocation.
 
 Audio health is observable through counters rather than logs in deadline-critical code.
+
+Owner policy, clarified on 2026-10-20: headphone/CUE/PFL output always uses the controller UAC headphone channels. Automatic MAIN selection prefers a ready external stereo DAC, then compatible controller MAIN audio, then mute. MAIN switching cannot change the headphone destination. Without a ready compatible controller, headphones are unavailable; no external DAC or onboard-codec headphone fallback is allowed. Controller MAIN and headphone channels must have separately validated mappings. Physical sink adapters remain pending; see [the routing requirements](M1_RUST_PRODUCT_REQUIREMENTS.md#8-controller-only-headphone-policy).
 
 ## 8. Controller architecture
 

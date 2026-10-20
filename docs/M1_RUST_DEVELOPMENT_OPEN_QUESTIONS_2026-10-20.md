@@ -22,6 +22,10 @@ Both Guition profiles are independently represented and compile/link, but their 
 
 The functional reference remains the checked-in M2.2 contract in [product requirements](M1_RUST_PRODUCT_REQUIREMENTS.md). This review does not silently broaden that baseline to a later donor release.
 
+## Owner audio routing clarification
+
+After this review, the owner specified automatic MAIN preference for an available external DAC, with compatible controller audio as fallback, and clarified that headphones must always use the controller. The mandatory [headphone policy](M1_RUST_PRODUCT_REQUIREMENTS.md#8-controller-only-headphone-policy) closes that part of D2. Headphones remain on the controller when MAIN uses the external DAC; without compatible controller headphone audio, CUE is unavailable. No independent headphone DAC/amp is in scope. Physical output drivers and MAIN DAC detection/wiring remain open.
+
 ## Decisions affecting implementation
 
 These remain open decisions, not requests that must stop all development. Work independent of them can proceed now.
@@ -29,7 +33,7 @@ These remain open decisions, not requests that must stop all development. Work i
 | ID | Open question and current evidence | Needed outcome | When |
 |---|---|---|---|
 | D1 | Which board is the first bring-up reference? Both models remain selected. JC1060 has GT911, while JC8012 adds the unresolved GSL3680 payload path. | Recommend JC1060 first, subject to actual unit condition and panel identity; keep both profiles and qualify each independently. This recommendation does not select it on the owner's behalf. | Before the first physical campaign |
-| D2 | What provides stereo MAIN and headphone/PFL? The sourced onboard ES8311 speaker path is mono. Neither board is a qualified replacement for the old stereo PCM5102A design. | Choose external stereo DAC wiring or qualified controller audio for MAIN; choose whether cue requires a compatible UAC controller or a separate headphone DAC/amplifier. Record supported controller/audio combinations. | Before committing the output adapter |
+| D2 | MAIN routing policy is defined: ready external stereo DAC first, compatible controller MAIN audio second, otherwise mute. Headphones/PFL always use controller UAC. The sourced onboard ES8311 speaker path is mono. | Select and wire the external MAIN DAC, establish presence/readiness detection, and qualify independent controller MAIN/headphone channel mappings. No controller-independent headphone hardware is planned. | Headphone policy closed; MAIN hardware and adapters remain open |
 | D3 | What are the exact USB-FS mapping and host-power arrangements on these v3.2 units? Sources conflict, connectors share `USB5V_IN`, and independent M1 VBUS/fault controls are not established. | Confirm package/pad mapping, HS/FS roles, adapters and supply/backfeed/current behavior. Reserve HS storage and FS controller roles only after those connections are established. Do not copy legacy GPIO27/26 or assume powered-host operation from Type-C presence. | Before physical USB host use |
 | D4 | What is the Guition flash/storage layout? Profiles record documented 16 MiB flash and 32 MiB PSRAM, but no actual unit identity or Guition partition plan exists. The existing CSV has only `factory` and `hotcue`. | Identify each unit and factory image/recovery path; design application, A/B OTA metadata/slots and persistent-data budgets together. Decide whether the current 1 MiB Hot Cue journal fits that layout. Preserve recovery before writes. | Before the first persistent write; A/B plan before OTA implementation |
 | D5 | Which fitted panel/init table, orientation and touch mapping belong to each unit? JC1060 is documented 1024x600; JC8012 is natively 800x1280. Old/new tables and JC1060 touch reset/IRQ definitions conflict. | Record panel/PCB markings and choose an exact sourced initialization sequence. Define logical UI geometry/rotation, touch transform, reset/IRQ policy and a documented GSL3680 payload/provisioning source before importing that payload. | Source preparation now; exact selection/acceptance on arrival |
@@ -67,7 +71,7 @@ The [hardware matrix](boards/GUITION_HARDWARE_MATRIX_2026-10-20.md) and [source 
 
 - Native APTA stays unmerged by owner instruction. The provider-neutral Rekordbox path remains developable independently. Reconsider APTA only with separate upstream/release and resource evidence plus owner authorization.
 - Ordinary folder libraries, tag readers and transactional `/PAJONIIIR` sidecars/playlists remain SHOULD work. They should follow the reliable core source/analysis/storage contracts rather than expand the first audible milestone.
-- Recorder and SysEx/MIDI-CI remain LATER. Secure Boot/Flash Encryption pilot qualification remains SHOULD and must not become an accidental first-bring-up requirement. Controller-independent cue hardware remains a deliberate D2 product choice.
+- Recorder and SysEx/MIDI-CI remain LATER. Secure Boot/Flash Encryption pilot qualification remains SHOULD and must not become an accidental first-bring-up requirement. Controller-independent headphone hardware is excluded by the owner clarification above.
 - Custom PCB routing, Gerbers, manufacturing closure and fabrication are discontinued milestones. Historical INA238/PCM5102A or independent VBUS requirements need an explicit Guition disposition, not an assumption that those components exist on the purchased boards.
 
 ## Recommended execution order

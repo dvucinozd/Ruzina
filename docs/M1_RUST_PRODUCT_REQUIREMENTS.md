@@ -143,7 +143,7 @@ The generic controller-audio capability model shall be able to express at least:
 | M1R-P0-070 | Deadline-critical audio path performs no filesystem I/O, network I/O, OTA work, controller-profile parsing or unbounded allocation. | HOST_VERIFIED |
 | M1R-P0-071 | Audio queues/rings are bounded and expose underflow/overflow/late metrics. | HOST_VERIFIED |
 | M1R-P0-072 | DSP has deterministic host fixtures/golden comparisons before hardware output is trusted. | HOST_VERIFIED |
-| M1R-P0-073 | PCM5102A MAIN and controller headphone UAC are distinct sinks fed from explicit routing points. | HOST_VERIFIED / HARDWARE_PENDING |
+| M1R-P0-073 | MAIN and headphone/PFL are distinct sinks. MAIN may use an external stereo DAC or compatible controller audio; headphones/PFL must always use the controller UAC headphone channels. No headphone fallback to an external DAC or onboard codec is permitted. | HOST_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-074 | Controller UAC health distinguishes idle underflow, temporary starvation, real active data loss, re-enumeration and clock drift. | HOST_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-075 | M1 hardware qualification includes mixed sample-rate dual-deck playback, Master Tempo, scratch, FX, MAIN and cue under sustained load. | HARDWARE_PENDING |
 
@@ -195,23 +195,19 @@ The generic controller-audio capability model shall be able to express at least:
 |---|---|
 | M1R-P2-001 | Audio recorder: retain design/test knowledge but do not make R1 release depend on recorder enablement until SD latency and power-loss behavior are qualified. |
 | M1R-P2-002 | SysEx/MIDI-CI extensions beyond the current 3-byte note/CC profile model. |
-| M1R-P2-003 | Controller-independent headphone output using an additional onboard stereo DAC/codec + headphone amplifier, if the product decision requires full cue support with MIDI-only controllers. |
+| M1R-P2-003 | Excluded by the 2026-10-20 owner decision: controller-independent headphone DAC/codec/amplifier output. Headphones must always use the controller. |
 
-## 8. Controller-independent cue product gate
+## 8. Controller-only headphone policy
 
-The historical custom M1 design specified:
+The owner clarified the mandatory headphone policy on 2026-10-20:
 
-- PCM5102A MAIN stereo output.
-- Headphone cue through a compatible DJ controller USB audio interface.
+- Headphones/CUE/PFL always use a compatible controller's UAC headphone channels, regardless of the active MAIN sink.
+- In automatic MAIN selection, a present and initialized external stereo DAC has priority; compatible controller MAIN audio is the fallback. If neither MAIN sink is ready, MAIN is muted.
+- Switching MAIN must not reroute PFL or duplicate it into MAIN. Switching to controller MAIN requires distinct, verified MAIN/headphone channel mappings.
+- Without a compatible controller headphone-audio capability, headphone output is unavailable and reported as such. MIDI-only control can remain available, and an external DAC can continue MAIN playback.
+- Controller detach immediately invalidates its headphone route; reconnect restores it only after capability validation, stream initialization and fresh route binding. An external DAC or onboard speaker is never a headphone fallback.
 
-For each selected Guition board, establish the actual MAIN and headphone-output paths, accessible peripherals and any required adapters. Controller-independent cue is not established by the board model or by the historical PCM5102A design.
-
-Before board/product acceptance, product ownership must explicitly choose one of:
-
-- **A:** MIDI-only controllers are supported for control, but CUE requires a compatible USB-audio controller.
-- **B:** provide a separately qualified controller-independent DAC/codec, headphone amplifier and output path compatible with the selected board.
-
-This is a hardware/product decision, not a software workaround.
+This closes the earlier A/B headphone product choice in favor of controller-only cue. The external MAIN DAC module, its detection/wiring, controller-specific channel mapping and physical qualification remain open. These are required routing semantics, not a claim that the current reference-sink firmware implements physical audio output.
 
 ## 9. Host-first development sequence
 
