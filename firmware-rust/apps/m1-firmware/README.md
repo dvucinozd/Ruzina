@@ -2,7 +2,17 @@
 
 Native ESP32-P4 Pajoniiir-M1 firmware integration target.
 
-Active development boards are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y** with owner-reported v3.2 silicon. Their BSPs are not implemented or hardware-qualified by the foundation merge. The feature descriptions below record the historical custom-M1 wiring and memory assumptions, including USB FS GPIO27/26, microSD GPIO39..46, 16 MiB flash and the Hot Cue partition. Reconcile those assumptions against each exact board before enabling hardware features. See the [platform decision](../../../docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md).
+Active development boards are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y** with owner-reported v3.2 silicon. Source-audited profiles and scheduler-only BSP skeletons are implemented; peripheral drivers and hardware qualification are pending. The feature descriptions below record the historical custom-M1 wiring and memory assumptions, including USB FS GPIO27/26, microSD GPIO39..46, 16 MiB flash and the Hot Cue partition. Reconcile those assumptions against each exact board before implementing Guition hardware features. See the [hardware matrix](../../../docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md) and [platform decision](../../../docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md).
+
+## Board selection
+
+`default = []` remains a generic scheduler-only P4 target. Choose at most one of:
+
+- `board-jc1060`: JC1060 candidate profile, no peripheral activation.
+- `board-jc8012`: JC8012 candidate profile, no peripheral activation or touch payload.
+- `board-legacy-m1`: historical custom-board peripheral ownership and wiring.
+
+Every existing USB/SD/flash/PSRAM bring-up feature now requires `board-legacy-m1`; indirect feature dependencies are checked too. A Guition selector combined with those features is a compile-time error. For example, the historical render check is now `cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup`. Guition profile builds use `cargo +1.95.0 build --locked --release --features board-jc1060` or `board-jc8012` alone. These are compile instructions; no Guition flash/partition configuration is selected.
 
 The firmware is a **standalone Cargo workspace** nested under `firmware-rust`.
 It is intentionally excluded from the host workspace dependency graph so

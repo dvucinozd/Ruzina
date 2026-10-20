@@ -2921,6 +2921,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-board-profile"
+version = "0.1.0"
+
+[[package]]
 name = "pajoniiir-control-scheduler"
 version = "0.1.0"
 dependencies = [

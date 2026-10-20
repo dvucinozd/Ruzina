@@ -40,11 +40,11 @@ Reuse product crates independently of board wiring. Evaluate panel/touch initial
 
 ## Next development sequence
 
-1. Collect the exact board-revision schematics, vendor examples and component identities for both models. Record flash/PSRAM size and mode, display controller and timing, touch controller, SD wiring, wireless companion, accessible USB controllers, VBUS circuitry and audio path. Leave unknown fields open rather than inheriting the custom-board values.
-2. Integrate `codex/m1-rust-foundation` into `main` after the reviewed underflow repair and validation. The project owner approved this sequence on 2026-10-20 and explicitly deferred merging `codex/native-apta-consumer`. Keep its unique work and all local KiCad changes intact.
-3. Add explicit profiles/BSP boundaries for both exact models. Keep dependency locks and silicon minimum unchanged unless a documented compatibility issue requires a change. Confirm partition bounds against the actual flash before enabling persistent writes.
-4. Build and boot a minimal Rust image on each board independently. Capture detected chip revision, flash/PSRAM identity, boot log and exact firmware commit/image identity. Establish reset and recovery behavior.
-5. Bring up display/backlight and touch per board, followed by required storage, USB and audio paths. Record unavailable interfaces or any required adapters against the product requirements before enabling the existing custom-M1 bring-up features.
-6. Reconnect product functionality and native analysis integration, then run the relevant host checks, embedded builds and physical operator tests. Record acceptance separately for each board and each image.
+Completed software preparation: foundation is integrated into main; both owner-supplied vendor bundles have a [source-pinned hardware matrix](boards/GUITION_HARDWARE_MATRIX_2026-10-20.md), separate Rust board profiles and scheduler-only BSP selectors. Legacy GPIO/peripheral ownership is isolated behind an explicit legacy-board selector. Peripheral runtime acceptance remains open.
+
+1. On arrival, capture exact unit/PCB/panel identity and chip, flash and PSRAM observations. Select the actual panel variant and reconcile USB-FS pad mapping, shared USB power and the required stereo audio output path.
+2. Build and boot a minimal Rust image on each board independently. Capture boot log and exact firmware commit/image identity; establish reset and recovery behavior before activating other peripherals.
+3. Implement and test memory, display/backlight and touch adapters per board, followed by SD, USB and agreed audio paths. Confirm actual partition bounds before any persistent writes. No legacy M1 bring-up feature is a Guition adapter.
+4. Reconnect product functionality, then run relevant host, embedded and physical operator checks. Record acceptance separately for each board and image. Native APTA integration remains deferred by the owner's explicit instruction.
 
 Primary bring-up order between the two models remains unselected. Both are selected development targets; neither is marked hardware-qualified by this decision.

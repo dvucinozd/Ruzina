@@ -9,12 +9,14 @@ on:
       - "firmware-rust/apps/m1-firmware/**"
       - "firmware-rust/crates/**"
       - "firmware-rust/rust-toolchain.toml"
+      - "firmware-rust/tools/check_board_selection.py"
       - ".github/workflows/rust-esp32p4.yml"
   pull_request:
     paths:
       - "firmware-rust/apps/m1-firmware/**"
       - "firmware-rust/crates/**"
       - "firmware-rust/rust-toolchain.toml"
+      - "firmware-rust/tools/check_board_selection.py"
       - ".github/workflows/rust-esp32p4.yml"
   workflow_dispatch:
 
@@ -77,58 +79,76 @@ jobs:
         run: cargo +1.95.0 check --locked
 
       - name: ESP32-P4 Hot Cue flash persistence cross compile
-        run: cargo +1.95.0 check --locked --features hotcue-flash-storage
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,hotcue-flash-storage
 
       - name: ESP32-P4 default link gate
         run: cargo +1.95.0 build --locked --release
 
       - name: ESP32-P4 USB0 bring-up cross compile
-        run: cargo +1.95.0 check --locked --features usb0-hardware-bringup
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb0-hardware-bringup
 
       - name: ESP32-P4 USB0 bring-up link gate
-        run: cargo +1.95.0 build --locked --release --features usb0-hardware-bringup
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,usb0-hardware-bringup
 
       - name: ESP32-P4 USB1 controller bring-up cross compile
-        run: cargo +1.95.0 check --locked --features usb1-controller-bringup
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb1-controller-bringup
 
       - name: ESP32-P4 Library deck-load ownership cross compile
-        run: cargo +1.95.0 check --locked --features library-deck-load
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,library-deck-load
 
       - name: ESP32-P4 Library deck-load ownership link gate
-        run: cargo +1.95.0 build --locked --release --features library-deck-load
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,library-deck-load
 
       - name: ESP32-P4 WAV audio-source bring-up cross compile
-        run: cargo +1.95.0 check --locked --features wav-audio-source-bringup
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,wav-audio-source-bringup
 
       - name: ESP32-P4 WAV audio-source bring-up link gate
-        run: cargo +1.95.0 build --locked --release --features wav-audio-source-bringup
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,wav-audio-source-bringup
 
       - name: ESP32-P4 bounded PCM transport cross compile
-        run: cargo +1.95.0 check --locked --features pcm-transport-bringup
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,pcm-transport-bringup
 
       - name: ESP32-P4 bounded PCM transport link gate
-        run: cargo +1.95.0 build --locked --release --features pcm-transport-bringup
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,pcm-transport-bringup
 
       - name: ESP32-P4 fixed-rate render graph cross compile
-        run: cargo +1.95.0 check --locked --features render-graph-bringup
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup
 
       - name: ESP32-P4 fixed-rate render graph link gate
-        run: cargo +1.95.0 build --locked --release --features render-graph-bringup
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,render-graph-bringup
 
       - name: ESP32-P4 microSD profile-storage cross compile
-        run: cargo +1.95.0 check --locked --features sdmmc-profile-storage-bringup
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,sdmmc-profile-storage-bringup
 
       - name: ESP32-P4 PSRAM storage boundary cross compile
-        run: cargo +1.95.0 check --locked --features p4-psram-storage
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,p4-psram-storage
 
       - name: ESP32-P4 USB0 + PSRAM combined link gate
-        run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,p4-psram-storage"
+        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,usb0-hardware-bringup,p4-psram-storage"
 
       - name: ESP32-P4 dual USB + PSRAM combined link gate
-        run: cargo +1.95.0 build --locked --release --features "usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage"
+        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage"
 
       - name: ESP32-P4 Library + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
-        run: cargo +1.95.0 build --locked --release --features "library-deck-load,sdmmc-profile-storage-bringup"
+        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,library-deck-load,sdmmc-profile-storage-bringup"
 
       - name: ESP32-P4 render + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
-        run: cargo +1.95.0 build --locked --release --features "render-graph-bringup,sdmmc-profile-storage-bringup"
+        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup"
+
+      - name: ESP32-P4 explicit legacy idle profile
+        run: cargo +1.95.0 check --locked --features board-legacy-m1
+
+      - name: ESP32-P4 JC1060 idle BSP cross compile
+        run: cargo +1.95.0 check --locked --features board-jc1060
+
+      - name: ESP32-P4 JC1060 idle BSP link gate
+        run: cargo +1.95.0 build --locked --release --features board-jc1060
+
+      - name: ESP32-P4 JC8012 idle BSP cross compile
+        run: cargo +1.95.0 check --locked --features board-jc8012
+
+      - name: ESP32-P4 JC8012 idle BSP link gate
+        run: cargo +1.95.0 build --locked --release --features board-jc8012
+
+      - name: Reject ambiguous boards and legacy features on Guition
+        run: python ../../tools/check_board_selection.py

@@ -14,7 +14,7 @@ The workspace retains host-tested product crates and a separate P4 integration t
 - `pajoniiir-ui-model` establishes immutable UI snapshot boundaries.
 - `pajoniiir-waveform` establishes a no_std RGB565 waveform rasterizer.
 
-`apps/m1-firmware` is a standalone embedded workspace with feature-gated storage, controller and software audio owners. Its current hardware bindings still describe the historical custom M1 board. Guition BSPs, display/touch, audio sinks and exact-board peripheral qualification remain pending. Do not flash custom-board bring-up features onto Guition boards before their pin, memory and power contracts are established.
+`apps/m1-firmware` is a standalone embedded workspace with feature-gated storage, controller and software audio owners. `pajoniiir-board-profile` records audited candidate data separately for JC1060 and JC8012. Their explicit selectors start scheduler-only BSP skeletons; display/touch, audio sinks and peripheral qualification remain pending. Historical M1 tasks and wiring are isolated in `src/platform/legacy_m1.rs` and require `board-legacy-m1`. They cannot be activated through either Guition selector. See the [hardware matrix and source audit](../docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md).
 
 The native Rust foundation is integrated into `main`; `codex/native-apta-consumer` remains a separate, unmerged analysis-integration branch.
 

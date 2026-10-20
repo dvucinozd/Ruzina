@@ -1,0 +1,273 @@
+{
+  "date": "2026-10-20",
+  "hardware_status": "NOT_RUN_BOARDS_IN_TRANSIT",
+  "primary_sources": "owner-supplied vendor bundles",
+  "source_sets": {
+    "jc1060-owner-p4v3x-2026-10-20": [
+      "jc1060-schematic.pdf",
+      "jc1060-spec.pdf",
+      "jc1060-v3-bsp.h",
+      "jc1060-v3-bsp.c",
+      "jc1060-v3-display.h"
+    ],
+    "jc8012-owner-p4v3x-2026-10-20": [
+      "jc8012-local-schematic.pdf",
+      "jc8012-local-spec.pdf",
+      "jc8012-v3-bsp.h",
+      "jc8012-v3-bsp.c",
+      "jc8012-v3-display.h"
+    ]
+  },
+  "files": [
+    {
+      "id": "jc1060-schematic.pdf",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\5-Schematic\\JC1060P470C_I_W_Y-V1.0.pdf",
+      "sha256": "ae3f41fe9a66b201358ef8cf1f531fdced68c63f84c8bde36e23cde5132a23ee",
+      "bytes": 919176,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "5-Schematic/JC1060P470C_I_W_Y-V1.0.pdf",
+      "git_blob": "f73dcdd5c680a2ec705345fd192d4469bafa2441",
+      "public_byte_match": {
+        "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+        "path": "JC1060P470C_I_W_Y/JC1060P470C_I_W_Y/5-Schematic/JC1060P470C_I_W_Y-V1.0.pdf"
+      }
+    },
+    {
+      "id": "jc1060-spec.pdf",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\2-Specification\\JC1060P470C_I_W_Y Specifications-EN.pdf",
+      "sha256": "a19323b7d9ee1af360b6d08c23e7b568ae13bbe150568a239da1885e3a75adb6",
+      "bytes": 916913,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "2-Specification/JC1060P470C_I_W_Y Specifications-EN.pdf",
+      "git_blob": "3e62a396051e3ed162df38d9274a90c7efb89973",
+      "public_byte_match": {
+        "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+        "path": "JC1060P470C_I_W_Y/JC1060P470C_I_W_Y/2-Specification/JC1060P470C_I_W_Y Specifications-EN.pdf"
+      }
+    },
+    {
+      "id": "jc1060-user-manual.pdf",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\6-User_Manual\\Getting started JC1060P470C_I_W_Y.pdf",
+      "sha256": "7714a5613a11523277031eb930f59d224e29e7a6b97d50e50bd3ee4c4fe1ad0b",
+      "bytes": 3308873,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "6-User_Manual/Getting started JC1060P470C_I_W_Y.pdf",
+      "git_blob": "0b9b086cb980eaf4630cf06383f14c6961a4754b",
+      "public_byte_match": {
+        "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+        "path": "JC1060P470C_I_W_Y/JC1060P470C_I_W_Y/6-User_Manual/Getting started JC1060P470C_I_W_Y.pdf"
+      }
+    },
+    {
+      "id": "jc1060-v3-bsp.h",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\P4V3X_DEMO\\IDF_6.1.0(P4V3_V3.8)\\common_components\\espressif__esp32_p4_function_ev_board\\include\\bsp\\esp32_p4_function_ev_board.h",
+      "sha256": "fceef360cd6765088a03e28b45b33a76dd20b58d83bbe9c46f36fe186c3cea9e",
+      "bytes": 17491,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo/P4V3X_DEMO/IDF_6.1.0(P4V3_V3.8)/common_components/espressif__esp32_p4_function_ev_board/include/bsp/esp32_p4_function_ev_board.h",
+      "git_blob": "07a0dfd660767a56b6002f2996f7967a8da3df9d"
+    },
+    {
+      "id": "jc1060-v3-bsp.c",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\P4V3X_DEMO\\IDF_6.1.0(P4V3_V3.8)\\common_components\\espressif__esp32_p4_function_ev_board\\esp32_p4_function_ev_board.c",
+      "sha256": "876fe2ba4b881ce90b2d01a9af1b44cefbd913a97312f30d57c54801135fc89f",
+      "bytes": 29339,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo/P4V3X_DEMO/IDF_6.1.0(P4V3_V3.8)/common_components/espressif__esp32_p4_function_ev_board/esp32_p4_function_ev_board.c",
+      "git_blob": "6e9ff0f41f38a038b6a483855aa27cce8b68f4ec"
+    },
+    {
+      "id": "jc1060-v3-sdkconfig",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\P4V3X_DEMO\\IDF_6.1.0(P4V3_V3.8)\\lvgl_demo_v9\\sdkconfig.defaults",
+      "sha256": "562586f63b3e7fd9298ed1a7abac40737b32616df7949fe5b1fb013632f49763",
+      "bytes": 1782,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo/P4V3X_DEMO/IDF_6.1.0(P4V3_V3.8)/lvgl_demo_v9/sdkconfig.defaults",
+      "git_blob": "3a7d1d0a82fb7c4da9cc7609306c17f6b1d07170"
+    },
+    {
+      "id": "jc1060-v3-panel.c",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\P4V3X_DEMO\\Demo_Arduino\\JC1060P470C_I_W_Y(P4V3X_V3)_New_Panel\\lvgl_v9_sw_rotation\\src\\lcd\\esp_lcd_jd9165.c",
+      "sha256": "dd1340d01db80326f7d885e86dea113bc6f9340ae2117c14134aa440c9c14327",
+      "bytes": 12589,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo/P4V3X_DEMO/Demo_Arduino/JC1060P470C_I_W_Y(P4V3X_V3)_New_Panel/lvgl_v9_sw_rotation/src/lcd/esp_lcd_jd9165.c",
+      "git_blob": "c9cf23ea151afde203768e6c74cc20f2048df0c8"
+    },
+    {
+      "id": "jc8012-local-schematic.pdf",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC8012P4A1C_I_W_Y\\5-Schematic\\JC8012P4A1.pdf",
+      "sha256": "716ad3d9037d46635d67bcb88b1c35ffb2bef4bbe21e32d40a7018db77e7cd34",
+      "bytes": 1497190,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "5-Schematic/JC8012P4A1.pdf",
+      "git_blob": "6070e3bce7bf6ee0ed602126070634ecce34335b"
+    },
+    {
+      "id": "jc8012-local-spec.pdf",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC8012P4A1C_I_W_Y\\2-Specification\\JC8012P4A1C_I_W Specifications-EN-v1.1(2).pdf",
+      "sha256": "92541f1424fbb7597eeee9ecb22373c4bf9def163565fcdaff85ae234c1f1c23",
+      "bytes": 559802,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "2-Specification/JC8012P4A1C_I_W Specifications-EN-v1.1(2).pdf",
+      "git_blob": "1cf27c44a720fdbdf86d7c6f3a292854c802b7bc",
+      "public_byte_match": {
+        "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+        "path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/2-Specification/JC8012P4A1C_I_W Specifications-EN-v1.1(2).pdf"
+      }
+    },
+    {
+      "id": "jc8012-v3-bsp.h",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC8012P4A1C_I_W_Y\\1-Demo\\P4V3X_demo\\IDF_6.0.2\\JC8012P4A1C_I_W_Y_NewPanel(P4V3x)\\common_components\\esp32_p4_function_ev_board\\include\\bsp\\esp32_p4_function_ev_board.h",
+      "sha256": "b304622e68900b5c39720e95fd11e1c9b53b44125b31ee94b4f0e01377a1d4f5",
+      "bytes": 17492,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo/P4V3X_demo/IDF_6.0.2/JC8012P4A1C_I_W_Y_NewPanel(P4V3x)/common_components/esp32_p4_function_ev_board/include/bsp/esp32_p4_function_ev_board.h",
+      "git_blob": "47122fdad6a09c9650fadc64c1a10c016ee05393"
+    },
+    {
+      "id": "jc8012-v3-bsp.c",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC8012P4A1C_I_W_Y\\1-Demo\\P4V3X_demo\\IDF_6.0.2\\JC8012P4A1C_I_W_Y_NewPanel(P4V3x)\\common_components\\esp32_p4_function_ev_board\\esp32_p4_function_ev_board.c",
+      "sha256": "9dd83ba0c023c7ace470cb94a33b0110da7040a36d56049e9cd5c53a23c14ff0",
+      "bytes": 36158,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo/P4V3X_demo/IDF_6.0.2/JC8012P4A1C_I_W_Y_NewPanel(P4V3x)/common_components/esp32_p4_function_ev_board/esp32_p4_function_ev_board.c",
+      "git_blob": "a64692f1cc92a2891692ef581ef0e95925479cf2"
+    },
+    {
+      "id": "jc8012-v3-sdkconfig",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC8012P4A1C_I_W_Y\\1-Demo\\P4V3X_demo\\IDF_6.0.2\\JC8012P4A1C_I_W_Y_NewPanel(P4V3x)\\lvgl_demo_v9\\sdkconfig.defaults",
+      "sha256": "9d645e642745d98791ddb27cee3b8d5ea631e0e795508b051e8ecd1945654b4e",
+      "bytes": 1820,
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo/P4V3X_demo/IDF_6.0.2/JC8012P4A1C_I_W_Y_NewPanel(P4V3x)/lvgl_demo_v9/sdkconfig.defaults",
+      "git_blob": "c0b84f617475693cc1cf3ce7cf3f65dd0ded1e6e"
+    },
+    {
+      "id": "jc8012-vendor-bsp.c",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/1-Demo/idf-examples/common_components/esp32_p4_function_ev_board/esp32_p4_function_ev_board.c",
+      "sha256": "8490a2687d95d9866c090522e45210e8aaa751f71362d69a973fd6e42f82eefd",
+      "bytes": 22946,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "59ff17f0033e48119e97b65756a7a232e6246c16",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/1-Demo/idf-examples/common_components/esp32_p4_function_ev_board/esp32_p4_function_ev_board.c"
+    },
+    {
+      "id": "jc8012-vendor-bsp.h",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/1-Demo/idf-examples/common_components/esp32_p4_function_ev_board/include/bsp/esp32_p4_function_ev_board.h",
+      "sha256": "3b1e53a396a8d022979e7956fed1f331cb410ae9bb7eb9eea086c0d2796fcfad",
+      "bytes": 12622,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "c0eb31f860b31c31fc9b018bc67c4a0f8d4f29ff",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/1-Demo/idf-examples/common_components/esp32_p4_function_ev_board/include/bsp/esp32_p4_function_ev_board.h"
+    },
+    {
+      "id": "jc8012-spec.pdf",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/2-Specification/JC8012P4A1C_I_W%20Specifications-EN-v1.1%282%29.pdf",
+      "sha256": "92541f1424fbb7597eeee9ecb22373c4bf9def163565fcdaff85ae234c1f1c23",
+      "bytes": 559802,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "1cf27c44a720fdbdf86d7c6f3a292854c802b7bc",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/2-Specification/JC8012P4A1C_I_W Specifications-EN-v1.1(2).pdf"
+    },
+    {
+      "id": "jc8012-1_PWR.png",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/1_PWR.png",
+      "sha256": "78401974e10c4ade07db960ce313ee0b3c3c98951a0ae998e582e7bfd4ef461b",
+      "bytes": 127803,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "6315c65757c6690073572222e1f1515b5a3c642a",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/1_PWR.png"
+    },
+    {
+      "id": "jc8012-2_LCD.png",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/2_LCD.png",
+      "sha256": "73fb21d7b370a93946bee867d725844988089296e1d819237f5d2cd1b119737b",
+      "bytes": 122823,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "c14122a7b715a16a08b2155876bb0e5008d337c7",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/2_LCD.png"
+    },
+    {
+      "id": "jc8012-3_ESP32-P4.png",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/3_ESP32-P4.png",
+      "sha256": "cf5a0c0ec0574365171dccc1e245152476c0b640c5f2db5d5a60cf5128c412fb",
+      "bytes": 170922,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "ae2f96a1d3fcbad20c7f28225c300841ea621ca2",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/3_ESP32-P4.png"
+    },
+    {
+      "id": "jc8012-4_CONN.png",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/4_CONN.png",
+      "sha256": "3bfcb4b35e15162ae60ca0a4e88b5ba6d539fe0d4066d78227cc75d0718dda9e",
+      "bytes": 278706,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "91e8ea57a1d9beb07a3d6f3079c69f9ca0107dc7",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/4_CONN.png"
+    },
+    {
+      "id": "jc8012-5_ESP32-C6.png",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/5_ESP32-C6.png",
+      "sha256": "fb91c52113504db60abf41c678f65d0dd6add42cfd22d38498f140a8b72797e3",
+      "bytes": 175073,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "f1e39c6f43530f147f7a338db3a4d247d2e764fb",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/5_ESP32-C6.png"
+    },
+    {
+      "id": "jc8012-6_USB.png",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/6_USB.png",
+      "sha256": "3b391469f727e12220e31acce37b38cbd70e39e176c87bbb7552dbfa8918241d",
+      "bytes": 191639,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "6718340c95b5832237a1da959eea3bcd63565436",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/6_USB.png"
+    },
+    {
+      "id": "jc8012-7_CODEC.png",
+      "origin": "https://raw.githubusercontent.com/guitionofficial/P4-series/9f1510954d281e30b19cd8baf115e2ed2a65a90a/JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/7_CODEC.png",
+      "sha256": "a557c1b77dd2cd118b46cc0a4d97b0edcb2279169c17cd9af60e4ff8f62c8885",
+      "bytes": 205835,
+      "kind": "vendor-repository",
+      "commit": "9f1510954d281e30b19cd8baf115e2ed2a65a90a",
+      "git_blob": "e40728105b5c608a5ec9ecf0add98ad10c79c867",
+      "repository_path": "JC8012P4A1C_I_W_Y/JC8012P4A1C_I_W_Y/5-Schematic/7_CODEC.png"
+    },
+    {
+      "id": "jc1060-v3-display.h",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\P4V3X_DEMO\\IDF_6.1.0(P4V3_V3.8)\\common_components\\espressif__esp32_p4_function_ev_board\\include\\bsp\\display.h",
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo\\P4V3X_DEMO\\IDF_6.1.0(P4V3_V3.8)\\common_components\\espressif__esp32_p4_function_ev_board\\include\\bsp\\display.h",
+      "sha256": "93c316abb090f56c4d178b60377d1c28749b1aaa24bc6018dda34f105fed33ca",
+      "bytes": 7277,
+      "git_blob": "f781e64b11fd5986a7b0557b33401e3267ea4329"
+    },
+    {
+      "id": "jc8012-v3-display.h",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC8012P4A1C_I_W_Y\\1-Demo\\P4V3X_demo\\IDF_6.0.2\\JC8012P4A1C_I_W_Y_NewPanel(P4V3x)\\common_components\\esp32_p4_function_ev_board\\include\\bsp\\display.h",
+      "kind": "owner-supplied-vendor-bundle",
+      "relative_path": "1-Demo\\P4V3X_demo\\IDF_6.0.2\\JC8012P4A1C_I_W_Y_NewPanel(P4V3x)\\common_components\\esp32_p4_function_ev_board\\include\\bsp\\display.h",
+      "sha256": "c52d268608a3083f864b9790bf9d93198af33bf4a1790fb18458d52feaf1c9ce",
+      "bytes": 6721,
+      "git_blob": "e28aa644afde3cff754fecced7500fba8d2769bb"
+    },
+    {
+      "id": "jc1060-new-panel-template-pins",
+      "origin": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\P4V3X_DEMO\\Demo_Arduino\\JC1060P470C_I_W_Y(P4V3X_V3)_New_Panel\\lvgl_v9_sw_rotation\\pins_config.h",
+      "kind": "owner-supplied-vendor-bundle",
+      "sha256": "2fd93ff8bd0231d0cb4ea08088e08062188db8470a70363948ed9fa09bf6010e",
+      "bytes": 855,
+      "git_blob": "3a81882d56f9b408e1477c41c950d2eee086f9c3"
+    }
+  ]
+}
