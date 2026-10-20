@@ -115,6 +115,7 @@ pub struct RenderHealth {
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct RenderDeckState {
     resampler: ResamplerState,
+    source_starved: bool,
     eq: EqState,
     filter: FilterState,
 }
@@ -123,6 +124,7 @@ impl RenderDeckState {
     fn new() -> Self {
         Self {
             resampler: ResamplerState::new(),
+            source_starved: false,
             eq: EqState::new(RENDER_SAMPLE_RATE_HZ),
             filter: FilterState::new(RENDER_SAMPLE_RATE_HZ),
         }
@@ -130,6 +132,7 @@ impl RenderDeckState {
 
     fn reset(&mut self) {
         self.resampler.reset();
+        self.source_starved = false;
         self.eq.reset_filters();
         self.filter.reset();
     }
@@ -207,10 +210,13 @@ impl FixedRateRenderGraph {
                     deck_control.pitch_centipercent,
                 );
                 let mut missed = false;
+                let mut received = false;
                 let (pcm, consumed) = self.decks[deck].resampler.next(step, || {
                     let frame = pop_source(deck);
                     if frame.is_none() {
                         missed = true;
+                    } else {
+                        received = true;
                     }
                     frame
                 });
@@ -218,6 +224,14 @@ impl FixedRateRenderGraph {
                     report.source_frames_consumed[deck].saturating_add(consumed);
 
                 if missed {
+                    self.decks[deck].source_starved = true;
+                    self.decks[deck].resampler.silence_history();
+                } else if received {
+                    self.decks[deck].source_starved = false;
+                }
+                // Interpolation-only frames must stay silent after a missed
+                // source read. Phase still advances so new PCM can recover.
+                if self.decks[deck].source_starved {
                     report.underflow_frames[deck] = report.underflow_frames[deck].saturating_add(1);
                     continue;
                 }
@@ -463,6 +477,154 @@ mod tests {
                 .iter()
                 .all(|frame| *frame == PcmFrame::default())
         );
+    }
+
+    #[test]
+    fn sub_unity_starvation_stays_silent_on_main_and_pfl_across_blocks() {
+        for (sample_rate, pitch) in [(24_000, 0), (44_100, 0), (48_000, -100), (48_000, -5_000)] {
+            let mut graph = FixedRateRenderGraph::new();
+            let mut output = RenderOutputBlock::default();
+            let mut deck = active_deck();
+            deck.source_sample_rate_hz = sample_rate;
+            deck.pitch_centipercent = pitch;
+            deck.pfl_enabled = true;
+            let control = RenderControl {
+                decks: [deck, RenderDeckControl::idle()],
+                master_gain: 1.0,
+            };
+            let mut remaining = 4;
+            graph.render_block(control, &mut output, |index| {
+                if index != 0 || remaining == 0 {
+                    return None;
+                }
+                remaining -= 1;
+                Some(PcmFrame {
+                    left: 1_000,
+                    right: -1_000,
+                })
+            });
+            assert!(
+                output.main[16..]
+                    .iter()
+                    .all(|frame| *frame == PcmFrame::default()),
+                "MAIN at {sample_rate}/{pitch}"
+            );
+            assert!(
+                output.pfl[0][16..]
+                    .iter()
+                    .all(|frame| *frame == PcmFrame::default()),
+                "PFL at {sample_rate}/{pitch}"
+            );
+            let report = graph.render_block(control, &mut output, |_| None);
+            assert_eq!(report.underflow_frames, [RENDER_BLOCK_FRAMES as u32, 0]);
+            assert!(
+                output
+                    .main
+                    .iter()
+                    .all(|frame| *frame == PcmFrame::default())
+            );
+            assert!(
+                output.pfl[0]
+                    .iter()
+                    .all(|frame| *frame == PcmFrame::default())
+            );
+        }
+    }
+
+    #[test]
+    fn sub_unity_starvation_recovers_with_new_samples_and_preserves_other_deck() {
+        for sample_rate in [480, 24_000, 44_100] {
+            let mut graph = FixedRateRenderGraph::new();
+            let mut output = RenderOutputBlock::default();
+            let mut one = active_deck();
+            one.source_sample_rate_hz = sample_rate;
+            one.pfl_enabled = true;
+            let mut two = active_deck();
+            two.pfl_enabled = true;
+            let control = RenderControl {
+                decks: [one, two],
+                master_gain: 1.0,
+            };
+            // Prime with an old positive signal, then empty deck one's source.
+            graph.render_block(control, &mut output, |_| {
+                Some(PcmFrame {
+                    left: 1_000,
+                    right: 1_000,
+                })
+            });
+            graph.render_block(control, &mut output, |index| {
+                (index == 1).then_some(PcmFrame {
+                    left: 200,
+                    right: 200,
+                })
+            });
+            let starved = graph.render_block(control, &mut output, |index| {
+                (index == 1).then_some(PcmFrame {
+                    left: 200,
+                    right: 200,
+                })
+            });
+            assert_eq!(starved.underflow_frames, [RENDER_BLOCK_FRAMES as u32, 0]);
+            assert!(
+                output.pfl[0]
+                    .iter()
+                    .all(|frame| *frame == PcmFrame::default())
+            );
+            assert!(output.pfl[1].iter().all(|frame| frame.left == 200));
+            assert!(output.main.iter().all(|frame| frame.left == 200));
+
+            let recovery = graph.render_block(control, &mut output, |index| {
+                Some(if index == 0 {
+                    PcmFrame {
+                        left: -2_000,
+                        right: -2_000,
+                    }
+                } else {
+                    PcmFrame {
+                        left: 200,
+                        right: 200,
+                    }
+                })
+            });
+            assert!(
+                recovery.source_frames_consumed[0] > 0,
+                "source recovery at {sample_rate}"
+            );
+            assert!(
+                output.pfl[0].iter().all(|frame| frame.left <= 0),
+                "old positive audio at {sample_rate}"
+            );
+            assert!(
+                output.pfl[0].iter().any(|frame| frame.left < 0),
+                "silent recovery at {sample_rate}"
+            );
+            assert!(output.pfl[1].iter().all(|frame| frame.left == 200));
+        }
+    }
+
+    #[test]
+    fn reset_deck_discards_underflow_and_previous_source_history() {
+        let mut graph = FixedRateRenderGraph::new();
+        let mut output = RenderOutputBlock::default();
+        let mut deck = active_deck();
+        deck.source_sample_rate_hz = 24_000;
+        deck.pfl_enabled = true;
+        let control = RenderControl {
+            decks: [deck, RenderDeckControl::idle()],
+            master_gain: 1.0,
+        };
+        graph.render_block(control, &mut output, |_| None);
+        graph.reset_deck(0);
+        let report = graph.render_block(control, &mut output, |index| {
+            (index == 0).then_some(PcmFrame {
+                left: -1_000,
+                right: -1_000,
+            })
+        });
+        assert_eq!(report.underflow_frames, [0, 0]);
+        assert!(output.main.iter().any(|frame| frame.left < 0));
+        assert!(output.main.iter().all(|frame| frame.left <= 0));
+        assert_eq!(output.main, output.pfl[0]);
     }
 
     #[test]

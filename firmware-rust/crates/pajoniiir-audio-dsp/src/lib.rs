@@ -188,6 +188,14 @@ impl ResamplerState {
         *self = Self::new();
     }
 
+    /// Discard cached audio after source starvation without restarting the
+    /// fractional phase. Keeping that phase lets sub-unity rates reach their
+    /// next source read and recover even while repeated reads are empty.
+    pub fn silence_history(&mut self) {
+        self.previous = PcmFrame::default();
+        self.current = PcmFrame::default();
+    }
+
     pub fn next<F>(&mut self, pitch_factor: f32, mut pop_source: F) -> (PcmFrame, u32)
     where
         F: FnMut() -> Option<PcmFrame>,
