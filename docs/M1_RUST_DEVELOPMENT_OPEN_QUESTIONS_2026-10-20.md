@@ -44,6 +44,8 @@ The [hardware matrix](boards/GUITION_HARDWARE_MATRIX_2026-10-20.md) and [source 
 
 Follow-up implementation: [the PCM history/routing gate](M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) implements S1's bounded live source path, S2's host routing contract and the initial diagnostic slice of S11. Physical sinks/pacing and complete subsystem health remain open. The table below preserves what was missing at the review baseline, rather than claiming these follow-up slices are still absent.
 
+The [consumer-clock delivery follow-up](M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md) adds S2's bounded PCM queues, frame requests, mute/fades and counters, integrated with the render graph in a headless simulation. The embedded reference task is unchanged; physical pacing, driver ownership and delivery-to-transport acknowledgement remain open.
+
 "Now" means substantial work can run without boards. "After Dn" means a dependency or interface decision is needed, not that all source work must wait for hardware.
 
 | ID / order | What was open at the review baseline | Concrete next closure / acceptance | Dependency |

@@ -5,6 +5,7 @@ pub mod history;
 pub mod pcm_stream;
 pub mod render;
 pub mod routing;
+pub mod sink;
 pub mod source;
 pub mod wav;
 

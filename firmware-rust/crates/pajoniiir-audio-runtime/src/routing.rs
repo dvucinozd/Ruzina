@@ -109,6 +109,8 @@ pub struct OutputRouter {
     desired: OutputRoutes,
     pending: Option<RouteTransition>,
     revision: u64,
+    main_revision: u64,
+    headphone_revision: u64,
 }
 
 impl OutputRouter {
@@ -118,6 +120,12 @@ impl OutputRouter {
     pub const fn pending(&self) -> Option<RouteTransition> {
         self.pending
     }
+    pub const fn main_revision(&self) -> u64 {
+        self.main_revision
+    }
+    pub const fn headphone_revision(&self) -> u64 {
+        self.headphone_revision
+    }
 
     /// Invalidate changed bindings before the caller awaits any device work.
     /// A MAIN-only transition leaves the controller headphone binding active.
@@ -125,6 +133,12 @@ impl OutputRouter {
         let desired = select_routes(availability);
         if desired == self.desired {
             return None;
+        }
+        if desired.main != self.desired.main {
+            self.main_revision = self.main_revision.wrapping_add(1).max(1);
+        }
+        if desired.headphones != self.desired.headphones {
+            self.headphone_revision = self.headphone_revision.wrapping_add(1).max(1);
         }
         self.desired = desired;
         self.revision = self.revision.wrapping_add(1).max(1);

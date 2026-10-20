@@ -4,6 +4,8 @@
 
 ## Active direction — 2026-10-20
 
+Latest software follow-up: [consumer-clock PCM delivery and simulation](docs/M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md). Physical audio drivers and exact-board qualification remain pending.
+
 Custom M1 PCB development has been discontinued by project decision. The selected development boards are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, both with **ESP32-P4 silicon v3.2**, as reported by the project owner. Exact unit identity and board peripherals still require bring-up evidence.
 
 Native Rust development now uses `main` after [PR #1](https://github.com/dvucinozd/Pajoniiir-M1/pull/1). Its `ESP_HAL_CONFIG_MIN_CHIP_REVISION=302` matches the selected silicon revision. Firmware sources are in `firmware-rust/`; the separate `codex/native-apta-consumer` branch is retained and is not part of this integration. See the [integration validation](docs/M1_RUST_MAIN_INTEGRATION_2026-10-20.md) for tests and remaining gates.

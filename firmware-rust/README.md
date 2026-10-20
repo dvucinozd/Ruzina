@@ -6,6 +6,8 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
+The [consumer-clock delivery gate](../docs/M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md) adds bounded MAIN/controller-headphone queues and a headless render-to-consumer example: `cargo run --locked -p pajoniiir-audio-runtime --example clocked_output`. Actual embedded I2S/UAC pacing and driver integration remain open.
+
 The workspace retains host-tested product crates and a separate P4 integration target:
 
 - `desktop-simulator` proves the Slint UI development path without ESP32-P4 hardware.

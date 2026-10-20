@@ -4,6 +4,8 @@ Date: 2026-10-20
 
 Base: `7bad2ea106c6300679f3662731cb9bbc5bb71add`. This implements the first software steps approved after the [development review](M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md). Evidence is local host and P4 compile/link only. Boards remain in transit; no image has been flashed or heard.
 
+Follow-up: [consumer-clock delivery](M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md) adds bounded per-output queues, mute/fades, delivery counters and an executable simulated-consumer path. Validation below remains the history/routing baseline evidence.
+
 ## Live canonical PCM path
 
 [PcmHistory](../firmware-rust/crates/pajoniiir-audio-runtime/src/history.rs) is a fixed-capacity ring with absolute frame coordinates and an explicit stream generation. Reads reject old generations and evicted coordinates. Appends reject discontinuities and checked-coordinate overflow.
