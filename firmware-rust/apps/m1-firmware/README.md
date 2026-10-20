@@ -47,7 +47,7 @@ exact-unit identity are established. Custom PCB fabrication is no longer a prere
 
 ## Canonical audio integration
 
-The legacy `render-graph-bringup` feature now consumes bounded canonical PCM history for normal playback, Master Tempo, scratch and censor. Prefetch is separated from audible progress and exact source activation; source/gesture epochs guard load/seek/reconnect transitions. The 128 KiB history allocation and fixed-depth PCM queues use static memory. Output remains the reference sink; see [current implementation and remaining audio gates](../../../docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md).
+The legacy `render-graph-bringup` feature now consumes bounded canonical PCM history for normal playback, Master Tempo, scratch and censor. Prefetch is separated from progress and exact source activation; source/gesture epochs guard load/seek/reconnect transitions. History and fixed-depth PCM/delivery queues use static memory. Render output passes through `PlaybackOutput`; progress is published only after reference consumption completes. The explicit reference sink remains software-timed, with no physical I2S/UAC output. See [completed-output progress and remaining gates](../../../docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md).
 
 ## PSRAM storage boundary
 

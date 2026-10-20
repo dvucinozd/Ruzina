@@ -5,11 +5,13 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channe
 use embassy_time::{Duration, Timer};
 use pajoniiir_audio_dsp::PcmFrame;
 use pajoniiir_audio_runtime::{
-    pcm_stream::{PcmStreamBlock, PendingRenderProgress},
+    pcm_stream::PcmStreamBlock,
+    playback::PlaybackOutput,
     render::{
         FixedRateRenderGraph, RENDER_BLOCK_FRAMES, RENDER_SAMPLE_RATE_HZ, ReferenceSink,
         RenderControl, RenderDeckControl, RenderOutputBlock,
     },
+    sink::{BlockProgress, SinkBlock, SinkRole},
     source::{CanonicalSource, IngestResult, SOURCE_HISTORY_FRAMES, SOURCE_PREFETCH_BLOCK_LIMIT},
 };
 use pajoniiir_controller_session::DeckId;
@@ -37,6 +39,9 @@ static HISTORY_A: ConstStaticCell<[PcmFrame; SOURCE_HISTORY_FRAMES]> =
     ConstStaticCell::new([PcmFrame { left: 0, right: 0 }; SOURCE_HISTORY_FRAMES]);
 static HISTORY_B: ConstStaticCell<[PcmFrame; SOURCE_HISTORY_FRAMES]> =
     ConstStaticCell::new([PcmFrame { left: 0, right: 0 }; SOURCE_HISTORY_FRAMES]);
+static PLAYBACK_MAIN: ConstStaticCell<[SinkBlock; 2]> = ConstStaticCell::new([SinkBlock::EMPTY; 2]);
+static PLAYBACK_PHONES: ConstStaticCell<[SinkBlock; 1]> =
+    ConstStaticCell::new([SinkBlock::EMPTY; 1]);
 
 #[derive(Clone, Copy)]
 struct ScratchJog {
@@ -139,7 +144,9 @@ pub(crate) async fn run_audio_render_owner() -> ! {
     ];
     let mut pending_blocks: [Option<PcmStreamBlock>; 2] = [None, None];
     let mut observed_generation = [0u32; 2];
-    let mut pending_progress = [PendingRenderProgress::default(); 2];
+    // Explicit reference consumer: no physical DAC/UAC readiness is advertised.
+    let mut playback = PlaybackOutput::new_reference(PLAYBACK_MAIN.take(), PLAYBACK_PHONES.take())
+        .expect("reference delivery capacity");
 
     loop {
         for (index, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
@@ -148,18 +155,7 @@ pub(crate) async fn run_audio_render_owner() -> ! {
                 observed_generation[index] = generation;
                 sources[index].reset(generation);
                 pending_blocks[index] = None;
-                pending_progress[index].clear();
                 graph.reset_deck(index);
-            }
-            if let Some((progress, frames)) = pending_progress[index].peek() {
-                if try_submit_render_progress(deck, progress, frames) {
-                    pending_progress[index].clear();
-                } else {
-                    RENDER_STATS.lock(|cell| {
-                        let mut stats = cell.borrow_mut();
-                        stats.progress_backpressure = stats.progress_backpressure.saturating_add(1);
-                    });
-                }
             }
             for _ in 0..SOURCE_PREFETCH_BLOCK_LIMIT {
                 let Some(block) = pending_blocks[index]
@@ -179,7 +175,40 @@ pub(crate) async fn run_audio_render_owner() -> ! {
             }
         }
 
-        let control = current_render_control();
+        let mut control = current_render_control();
+        let active_generations = [
+            active_stream_generation(DeckId::One),
+            active_stream_generation(DeckId::Two),
+        ];
+        for (index, active) in active_generations.into_iter().enumerate() {
+            if control.decks[index].stream_generation != active {
+                control.decks[index].stream_generation = 0;
+                control.decks[index].playing = false;
+                control.decks[index].scratch_active = false;
+            }
+        }
+        let first_frame = playback.lane(SinkRole::Main).clock_frame();
+        playback
+            .sync_sources(active_generations, first_frame)
+            .expect("reference playback epoch");
+        let token = playback
+            .lane(SinkRole::Main)
+            .token()
+            .expect("reference binding");
+        playback
+            .lane_mut(SinkRole::Main)
+            .set_mute(token, false, 0)
+            .expect("reference unmute");
+        playback
+            .lane_mut(SinkRole::Main)
+            .expect_active(
+                token,
+                control
+                    .decks
+                    .iter()
+                    .any(|deck| deck.playing || deck.scratch_active),
+            )
+            .expect("reference activity");
         for _ in 0..16 {
             let Ok(jog) = SCRATCH_JOGS.try_receive() else {
                 break;
@@ -193,8 +222,12 @@ pub(crate) async fn run_audio_render_owner() -> ! {
             }
         }
 
+        let permit = playback.render_permit();
+        let first_frame = playback
+            .next_block_frame()
+            .expect("reference output demand");
         let report = graph.render_canonical_block(control, output, &mut sources);
-        sink.write(output);
+        let mut block_progress = BlockProgress::default();
 
         for index in 0..2 {
             if control.decks[index].stream_generation == 0
@@ -206,7 +239,32 @@ pub(crate) async fn run_audio_render_owner() -> ! {
                 sources[index].take_progress(control.decks[index].source_control())
             {
                 let frames = report.source_frames_consumed[index].min(u16::MAX as u32) as u16;
-                pending_progress[index].record(progress, frames);
+                block_progress.decks[index] = Some(progress);
+                block_progress.source_frames[index] = frames;
+            }
+        }
+
+        let submitted =
+            playback.submit_render(permit, first_frame, output, &output.pfl[0], block_progress);
+        submitted[0].expect("reference block delivery");
+        // The reference consumer accepts immediately. Physical drivers must
+        // retain this receipt until DMA/UAC completion, never acknowledge fill.
+        let receipt = playback
+            .lane_mut(SinkRole::Main)
+            .issue(token, first_frame, RENDER_BLOCK_FRAMES, &mut output.main)
+            .expect("reference request");
+        sink.write(output);
+        playback.complete(receipt).expect("reference completion");
+        for (index, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
+            if let Some((progress, frames)) = playback.pending_progress(index) {
+                if try_submit_render_progress(deck, progress, frames) {
+                    playback.clear_progress(index);
+                } else {
+                    RENDER_STATS.lock(|cell| {
+                        let mut stats = cell.borrow_mut();
+                        stats.progress_backpressure = stats.progress_backpressure.saturating_add(1);
+                    });
+                }
             }
         }
 

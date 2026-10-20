@@ -4,6 +4,8 @@ Date: 2026-10-20
 
 Base: `8675aeb522e66446be566e908fb5b34989729d23`, following the [history/routing gate](M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md). This implements the next host-testable slice of S2. No firmware was flashed and no physical I2S/UAC sink is enabled.
 
+Follow-up: [completed-output transport progress](M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md) adds split issue/completion receipts, source-bound queue resets, authority selection and transport publication after completion. It integrates the reference target and upgrades the host example to canonical PCM with delayed confirmations. Validation and integration gaps below describe this earlier delivery baseline.
+
 ## Delivery and clock contract
 
 [`SinkLane` and `OutputDelivery`](../firmware-rust/crates/pajoniiir-audio-runtime/src/sink.rs) provide independent MAIN and controller-only headphone queues. Each borrows caller-owned storage for 1..8 blocks of 128 stereo PCM16 frames. Four blocks retain 2 KiB of PCM per lane plus metadata. Delivery performs no allocation, blocking wait, filesystem access or driver call. Access must be serialized by its owner; it does not itself provide ISR/task synchronization or DMA-safe storage.

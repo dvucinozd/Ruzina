@@ -2,13 +2,20 @@
 //! A driver serializes access, supplies its consumed-frame clock, and copies PCM
 //! into DMA/UAC-owned storage. No hardware ownership or clock correction lives here.
 use crate::{
+    pcm_stream::PcmStreamProgress,
     render::{RENDER_BLOCK_FRAMES, RenderOutputBlock},
     routing::{HeadphoneRoute, MainRoute, OutputRouter},
 };
+use core::sync::atomic::{AtomicU32, Ordering};
 use pajoniiir_audio_dsp::PcmFrame;
+
+// Constructor identities are never reused in a process/boot, including when
+// an adapter recreates an owner and its frame clock starts from zero again.
+static NEXT_LANE_INSTANCE: AtomicU32 = AtomicU32::new(1);
 
 pub const MAX_SINK_BLOCKS: usize = 8;
 pub const MAX_FADE_FRAMES: u32 = 48_000;
+pub const MAX_IN_FLIGHT_RECEIPTS: usize = 8;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SinkRole {
@@ -20,11 +27,13 @@ pub enum SinkRole {
 enum Binding {
     Main(MainRoute),
     Headphones(HeadphoneRoute),
+    Reference,
 }
 
 /// Invalidated by route changes, explicit PCM reset, or consumer-clock restart.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SinkToken {
+    instance: u32,
     role: SinkRole,
     revision: u64,
     binding: Binding,
@@ -39,17 +48,52 @@ pub enum SinkError {
     Order,
     Invalid,
     Overflow,
+    InFlightFull,
+}
+
+/// Conservative block-boundary transport snapshots, captured by render but
+/// published only after completion of the output carrying the whole block.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct BlockProgress {
+    pub decks: [Option<PcmStreamProgress>; 2],
+    pub source_frames: [u16; 2],
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Checkpoint {
+    pub output_end: u64,
+    pub progress: BlockProgress,
+}
+
+/// Issued PCM is not consumed PCM. Drivers retain this opaque ticket with their
+/// DMA/UAC buffer and return it only on completion, in issue order per lane.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SinkReceipt {
+    pub(crate) token: SinkToken,
+    pub(crate) first: u64,
+    pub(crate) end: u64,
+    pub(crate) checkpoint: Option<Checkpoint>,
+}
+impl SinkReceipt {
+    pub const fn role(&self) -> SinkRole {
+        self.token.role
+    }
 }
 
 #[derive(Clone, Copy)]
 pub struct SinkBlock {
     first_frame: u64,
     frames: [PcmFrame; RENDER_BLOCK_FRAMES],
+    progress: BlockProgress,
 }
 impl SinkBlock {
     pub const EMPTY: Self = Self {
         first_frame: 0,
         frames: [PcmFrame { left: 0, right: 0 }; RENDER_BLOCK_FRAMES],
+        progress: BlockProgress {
+            decks: [None; 2],
+            source_frames: [0; 2],
+        },
     };
 }
 
@@ -67,6 +111,10 @@ pub struct SinkStats {
     pub stale_calls: u64,
     pub order_errors: u64,
     pub high_water_blocks: usize,
+    pub completed_frames: u64,
+    pub in_flight_full: u64,
+    pub completion_errors: u64,
+    pub revoked_in_flight_frames: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -99,6 +147,7 @@ impl Fade {
 }
 
 pub struct SinkLane<'a> {
+    instance: u32,
     role: SinkRole,
     storage: &'a mut [SinkBlock],
     head: usize,
@@ -111,6 +160,8 @@ pub struct SinkLane<'a> {
     starved: bool,
     fade: Fade,
     stats: SinkStats,
+    completed_frame: u64,
+    in_flight: usize,
 }
 
 impl<'a> SinkLane<'a> {
@@ -118,7 +169,13 @@ impl<'a> SinkLane<'a> {
         if storage.is_empty() || storage.len() > MAX_SINK_BLOCKS {
             return Err(SinkError::Capacity);
         }
+        let instance = NEXT_LANE_INSTANCE
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |next| {
+                next.checked_add(1)
+            })
+            .map_err(|_| SinkError::Overflow)?;
         Ok(Self {
+            instance,
             role,
             storage,
             head: 0,
@@ -131,6 +188,8 @@ impl<'a> SinkLane<'a> {
             starved: false,
             fade: Fade::default(),
             stats: SinkStats::default(),
+            completed_frame: 0,
+            in_flight: 0,
         })
     }
 
@@ -164,6 +223,13 @@ impl<'a> SinkLane<'a> {
         self.replace_binding(self.token.map(|token| token.binding), first_frame)
     }
 
+    pub(crate) fn bind_reference(&mut self, first_frame: u64) -> Result<(), SinkError> {
+        if self.role != SinkRole::Main {
+            return Err(SinkError::Invalid);
+        }
+        self.replace_binding(Some(Binding::Reference), first_frame)
+    }
+
     fn replace_binding(
         &mut self,
         binding: Option<Binding>,
@@ -179,9 +245,16 @@ impl<'a> SinkLane<'a> {
         self.expected_active = false;
         self.starved = false;
         self.fade = Fade::default();
+        self.stats.revoked_in_flight_frames = self
+            .stats
+            .revoked_in_flight_frames
+            .saturating_add(self.clock_frame.saturating_sub(self.completed_frame));
         self.clock_frame = first_frame;
+        self.completed_frame = first_frame;
+        self.in_flight = 0;
         self.revision = self.revision.checked_add(1).ok_or(SinkError::Overflow)?;
         self.token = binding.map(|binding| SinkToken {
+            instance: self.instance,
             role: self.role,
             revision: self.revision,
             binding,
@@ -263,6 +336,16 @@ impl<'a> SinkLane<'a> {
         first_frame: u64,
         frames: &[PcmFrame; RENDER_BLOCK_FRAMES],
     ) -> Result<(), SinkError> {
+        self.submit_tracked(token, first_frame, frames, BlockProgress::default())
+    }
+
+    pub fn submit_tracked(
+        &mut self,
+        token: SinkToken,
+        first_frame: u64,
+        frames: &[PcmFrame; RENDER_BLOCK_FRAMES],
+        progress: BlockProgress,
+    ) -> Result<(), SinkError> {
         self.check(token)?;
         first_frame
             .checked_add(RENDER_BLOCK_FRAMES as u64)
@@ -286,6 +369,7 @@ impl<'a> SinkLane<'a> {
         self.storage[tail] = SinkBlock {
             first_frame,
             frames: *frames,
+            progress,
         };
         self.count += 1;
         self.stats.high_water_blocks = self.stats.high_water_blocks.max(self.count);
@@ -302,9 +386,8 @@ impl<'a> SinkLane<'a> {
             .sum()
     }
 
-    /// One DMA/UAC request of 1..128 frames. first_frame is a monotonically
-    /// consumed-frame clock, not a timestamp in rounded microseconds. A stale
-    /// token or duplicate/out-of-order callback returns zeros without consuming.
+    /// Immediate-consumer compatibility helper for simulations. Physical
+    /// adapters must use issue/complete and acknowledge on actual completion.
     pub fn consume(
         &mut self,
         token: SinkToken,
@@ -312,8 +395,30 @@ impl<'a> SinkLane<'a> {
         len: usize,
         output: &mut [PcmFrame; RENDER_BLOCK_FRAMES],
     ) -> Result<(), SinkError> {
+        if self.in_flight != 0 {
+            output.fill(PcmFrame::default());
+            return Err(SinkError::Order);
+        }
+        let receipt = self.issue(token, first_frame, len, output)?;
+        self.complete(receipt)
+    }
+
+    /// Fill a DMA/UAC-owned buffer. No transport snapshot is confirmed here.
+    /// first_frame is the ordered output submission clock. At most eight
+    /// completion receipts may be outstanding; exhaustion does not dequeue PCM.
+    pub fn issue(
+        &mut self,
+        token: SinkToken,
+        first_frame: u64,
+        len: usize,
+        output: &mut [PcmFrame; RENDER_BLOCK_FRAMES],
+    ) -> Result<SinkReceipt, SinkError> {
         output.fill(PcmFrame::default());
         self.check(token)?;
+        if self.in_flight == MAX_IN_FLIGHT_RECEIPTS {
+            self.stats.in_flight_full = self.stats.in_flight_full.saturating_add(1);
+            return Err(SinkError::InFlightFull);
+        }
         if len == 0 || len > RENDER_BLOCK_FRAMES {
             return Err(SinkError::Invalid);
         }
@@ -324,6 +429,7 @@ impl<'a> SinkLane<'a> {
             self.stats.order_errors = self.stats.order_errors.saturating_add(1);
             return Err(SinkError::Order);
         }
+        let mut checkpoint = None;
         for (index, output_frame) in output[..len].iter_mut().enumerate() {
             let frame = first_frame + index as u64;
             while self.count != 0
@@ -355,6 +461,12 @@ impl<'a> SinkLane<'a> {
             }
             self.starved = underrun;
             if let Some(pcm) = pcm {
+                if frame + 1 == self.storage[self.head].first_frame + RENDER_BLOCK_FRAMES as u64 {
+                    checkpoint = Some(Checkpoint {
+                        output_end: frame + 1,
+                        progress: self.storage[self.head].progress,
+                    });
+                }
                 self.stats.pcm_frames = self.stats.pcm_frames.saturating_add(1);
                 *output_frame = PcmFrame {
                     left: scale(pcm.left, gain),
@@ -371,6 +483,30 @@ impl<'a> SinkLane<'a> {
             self.count -= 1;
         }
         self.stats.clock_frames = self.stats.clock_frames.saturating_add(len as u64);
+        self.in_flight += 1;
+        Ok(SinkReceipt {
+            token,
+            first: first_frame,
+            end,
+            checkpoint,
+        })
+    }
+
+    pub fn complete(&mut self, receipt: SinkReceipt) -> Result<(), SinkError> {
+        self.check(receipt.token)?;
+        if self.in_flight == 0
+            || receipt.first != self.completed_frame
+            || receipt.end > self.clock_frame
+        {
+            self.stats.completion_errors = self.stats.completion_errors.saturating_add(1);
+            return Err(SinkError::Order);
+        }
+        self.in_flight -= 1;
+        self.completed_frame = receipt.end;
+        self.stats.completed_frames = self
+            .stats
+            .completed_frames
+            .saturating_add(receipt.end - receipt.first);
         Ok(())
     }
 }
@@ -413,15 +549,37 @@ impl<'a> OutputDelivery<'a> {
         block: &RenderOutputBlock,
         cue: &[PcmFrame; RENDER_BLOCK_FRAMES],
     ) -> [Result<(), SinkError>; 2] {
+        self.submit_render_tracked(
+            main,
+            headphones,
+            first_frame,
+            block,
+            cue,
+            BlockProgress::default(),
+        )
+    }
+
+    pub fn submit_render_tracked(
+        &mut self,
+        main: Option<SinkToken>,
+        headphones: Option<SinkToken>,
+        first_frame: u64,
+        block: &RenderOutputBlock,
+        cue: &[PcmFrame; RENDER_BLOCK_FRAMES],
+        progress: BlockProgress,
+    ) -> [Result<(), SinkError>; 2] {
         if block.len as usize != RENDER_BLOCK_FRAMES {
             return [Err(SinkError::Invalid); 2];
         }
         [
-            main.ok_or(SinkError::Stale)
-                .and_then(|token| self.main.submit(token, first_frame, &block.main)),
-            headphones
-                .ok_or(SinkError::Stale)
-                .and_then(|token| self.headphones.submit(token, first_frame, cue)),
+            main.ok_or(SinkError::Stale).and_then(|token| {
+                self.main
+                    .submit_tracked(token, first_frame, &block.main, progress)
+            }),
+            headphones.ok_or(SinkError::Stale).and_then(|token| {
+                self.headphones
+                    .submit_tracked(token, first_frame, cue, progress)
+            }),
         ]
     }
 }

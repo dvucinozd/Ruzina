@@ -1,9 +1,12 @@
 //! Headless deterministic consumer-clock demonstration; no audio device opened.
 use pajoniiir_audio_dsp::PcmFrame;
 use pajoniiir_audio_runtime::{
+    pcm_stream::{PcmStreamBlock, PcmTransportCursor},
+    playback::PlaybackOutput,
     render::{FixedRateRenderGraph, RenderControl, RenderDeckControl, RenderOutputBlock},
     routing::{ChannelPair, OutputAvailability, OutputRouter, ReadyStream},
-    sink::{OutputDelivery, SinkBlock},
+    sink::{BlockProgress, SinkBlock, SinkRole},
+    source::{CanonicalSource, IngestResult, SOURCE_HISTORY_FRAMES},
 };
 
 #[cfg(not(test))]
@@ -33,14 +36,26 @@ pub fn run_simulation() {
     assert!(router.commit_prepared(pending));
     let mut main_storage = [SinkBlock::EMPTY; 4];
     let mut phone_storage = [SinkBlock::EMPTY; 4];
-    let mut delivery = OutputDelivery::new(&mut main_storage, &mut phone_storage).unwrap();
-    delivery.sync_routes(&router, 0).unwrap();
-    let main = delivery.main.token().unwrap();
-    let phones = delivery.headphones.token().unwrap();
-    delivery.main.expect_active(main, true).unwrap();
-    delivery.headphones.expect_active(phones, true).unwrap();
-    delivery.main.set_mute(main, false, 64).unwrap();
-    delivery.headphones.set_mute(phones, false, 64).unwrap();
+    let mut playback = PlaybackOutput::new(&mut main_storage, &mut phone_storage).unwrap();
+    playback.sync_routes(&router, 0).unwrap();
+    playback.sync_sources([1, 0], 0).unwrap();
+    let main = playback.lane(SinkRole::Main).token().unwrap();
+    let phones = playback.lane(SinkRole::Headphones).token().unwrap();
+    for (role, token) in [(SinkRole::Main, main), (SinkRole::Headphones, phones)] {
+        playback.lane_mut(role).expect_active(token, true).unwrap();
+        playback.lane_mut(role).set_mute(token, false, 64).unwrap();
+    }
+    let mut history_a = [PcmFrame::default(); SOURCE_HISTORY_FRAMES];
+    let mut history_b = [PcmFrame::default(); SOURCE_HISTORY_FRAMES];
+    let mut sources = [
+        CanonicalSource::new(&mut history_a).unwrap(),
+        CanonicalSource::new(&mut history_b).unwrap(),
+    ];
+    sources[0].reset(1);
+    let mut prefetched = 0;
+    let mut transport = PcmTransportCursor::new();
+    let mut pending_main = None;
+    let mut pending_phones = None;
 
     let mut graph = FixedRateRenderGraph::new();
     let mut render = RenderOutputBlock::silence();
@@ -49,6 +64,7 @@ pub fn run_simulation() {
         decks: [
             RenderDeckControl {
                 playing: true,
+                stream_generation: 1,
                 pfl_enabled: true,
                 post_gain: 0.25,
                 ..RenderDeckControl::idle()
@@ -62,48 +78,94 @@ pub fn run_simulation() {
     // 16-frame virtual steps: exact 48-frame USB requests and 128-frame DMA
     // requests share a 48 kHz clock. No rounded microsecond sleep accumulates.
     for tick in 0..30_000u64 {
+        // A driver completes on the following virtual turn, not at buffer fill.
+        for receipt in [pending_main.take(), pending_phones.take()]
+            .into_iter()
+            .flatten()
+        {
+            playback.complete(receipt).unwrap();
+        }
+        if let Some((progress, frames)) = playback.pending_progress(0) {
+            transport.accept_active_progress(progress, frames, 1);
+            playback.clear_progress(0);
+        }
         // MAIN is the explicit clock authority in this scenario. Render only
         // after checking space; bounded lookahead is two 128-frame blocks.
-        while delivery.main.queued_blocks() < 2 {
-            let first = delivery.main.next_block_frame().unwrap();
-            graph.render_block(control, &mut render, |_| {
-                Some(PcmFrame {
+        while playback.lane(SinkRole::Main).queued_blocks() < 2 {
+            let first = playback.next_block_frame().unwrap();
+            for _ in 0..16 {
+                let mut block = PcmStreamBlock::empty(1, prefetched, 48_000);
+                block.set_len(256);
+                block.frames.fill(PcmFrame {
                     left: 8_000,
                     right: -8_000,
-                })
-            });
+                });
+                match sources[0].ingest(&block) {
+                    IngestResult::Accepted => prefetched += 256,
+                    IngestResult::Backpressure => break,
+                    other => panic!("unexpected source result: {other:?}"),
+                }
+            }
+            let permit = playback.render_permit();
+            let report = graph.render_canonical_block(control, &mut render, &mut sources);
+            let progress = BlockProgress {
+                decks: [
+                    sources[0].take_progress(control.decks[0].source_control()),
+                    None,
+                ],
+                source_frames: [report.source_frames_consumed[0] as u16, 0],
+            };
             // Explicit demonstration mix: deck-one PFL only. Product cue/master
             // mixing and headphone gain are still a separate integration step.
-            let results =
-                delivery.submit_render(Some(main), Some(phones), first, &render, &render.pfl[0]);
+            let results = playback.submit_render(permit, first, &render, &render.pfl[0], progress);
             assert_eq!(results, [Ok(()); 2]);
         }
         if tick % 8 == 0 {
-            delivery
-                .main
-                .consume(main, tick * 16, 128, &mut output)
-                .unwrap();
+            pending_main = Some(
+                playback
+                    .lane_mut(SinkRole::Main)
+                    .issue(main, tick * 16, 128, &mut output)
+                    .unwrap(),
+            );
             main_peak = main_peak.max(output.iter().map(|f| f.left).max().unwrap());
         }
         if tick % 3 == 0 {
-            delivery
-                .headphones
-                .consume(phones, tick * 16, 48, &mut output)
-                .unwrap();
+            pending_phones = Some(
+                playback
+                    .lane_mut(SinkRole::Headphones)
+                    .issue(phones, tick * 16, 48, &mut output)
+                    .unwrap(),
+            );
             phone_peak = phone_peak.max(output[..48].iter().map(|f| f.left).max().unwrap());
         }
     }
-    assert_eq!(delivery.main.clock_frame(), 480_000);
-    assert_eq!(delivery.headphones.clock_frame(), 480_000);
-    assert_eq!(delivery.main.stats().underrun_frames, 0);
-    assert_eq!(delivery.headphones.stats().underrun_frames, 0);
+    for receipt in [pending_main, pending_phones].into_iter().flatten() {
+        playback.complete(receipt).unwrap();
+    }
+    if let Some((progress, frames)) = playback.pending_progress(0) {
+        transport.accept_active_progress(progress, frames, 1);
+    }
+    assert_eq!(playback.lane(SinkRole::Main).clock_frame(), 480_000);
+    assert_eq!(playback.lane(SinkRole::Headphones).clock_frame(), 480_000);
+    assert_eq!(playback.lane(SinkRole::Main).stats().underrun_frames, 0);
+    assert_eq!(
+        playback.lane(SinkRole::Headphones).stats().underrun_frames,
+        0
+    );
+    assert_eq!(transport.position_frame(), 480_000);
+    assert!(sources[0].position() > transport.position_frame());
     assert_eq!((main_peak, phone_peak), (2_000, 8_000));
     println!(
         "SIMULATION_ONLY frames=480000 duration=10s MAIN_peak={main_peak} PFL_peak={phone_peak}"
     );
     println!(
         "MAIN {:?}\nHEADPHONES {:?}",
-        delivery.main.stats(),
-        delivery.headphones.stats()
+        playback.lane(SinkRole::Main).stats(),
+        playback.lane(SinkRole::Headphones).stats()
+    );
+    println!(
+        "TRANSPORT confirmed={} rendered={} prefetched={prefetched}",
+        transport.position_frame(),
+        sources[0].position()
     );
 }
