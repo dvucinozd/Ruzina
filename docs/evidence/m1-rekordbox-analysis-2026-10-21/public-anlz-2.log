@@ -1,0 +1,3 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.62s
+     Running `/home/daniel/.cache/m1-rust-review/host-target/debug/examples/analysis_inspect /mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/research/anlz-public-corpus/2.DAT /mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/research/anlz-public-corpus/2.EXT`
+{"beats":257,"preview":400,"detail":19208,"cues":0,"bpm_x100":12000,"beat_hash":"c0aabaa1c57f20e8","preview_hash":"4828a21018635f82","detail_hash":"afaf36642bc44fc0"}

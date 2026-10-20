@@ -1,0 +1,219 @@
+{
+  "source": {
+    "repository": "https://github.com/Holzhaus/rekordcrate",
+    "commit": "14d54eded7b0d2f6fe67c7871533dca35a73e5fa",
+    "license": "MPL-2.0 repository; raw corpus retained outside product tree",
+    "pairs": [
+      {
+        "id": 0,
+        "files": [
+          {
+            "local": "0.DAT",
+            "path": "data/anlz/sweep/ANLZ0000.DAT",
+            "url": "https://raw.githubusercontent.com/Holzhaus/rekordcrate/14d54eded7b0d2f6fe67c7871533dca35a73e5fa/data/anlz/sweep/ANLZ0000.DAT",
+            "bytes": 4426,
+            "sha256": "f83b79681e4a83b2d02780bd6e8c8cb01a7ebfa29ada241055304adcd0ed23d7"
+          },
+          {
+            "local": "0.EXT",
+            "path": "data/anlz/sweep/ANLZ0000.EXT",
+            "url": "https://raw.githubusercontent.com/Holzhaus/rekordcrate/14d54eded7b0d2f6fe67c7871533dca35a73e5fa/data/anlz/sweep/ANLZ0000.EXT",
+            "bytes": 75792,
+            "sha256": "80ca6a0b01c60ce4c4ac079dafbff3ccb3b086df5504258befa60709021d2d28"
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "files": [
+          {
+            "local": "1.DAT",
+            "path": "data/complete_export/demo_tracks/PIONEER/USBANLZ/P016/0000875E/ANLZ0000.DAT",
+            "url": "https://raw.githubusercontent.com/Holzhaus/rekordcrate/14d54eded7b0d2f6fe67c7871533dca35a73e5fa/data/complete_export/demo_tracks/PIONEER/USBANLZ/P016/0000875E/ANLZ0000.DAT",
+            "bytes": 5324,
+            "sha256": "b938b44af10da3d33ff7c352fb605be353219f009be35ab0c3a3313508bbcacf"
+          },
+          {
+            "local": "1.EXT",
+            "path": "data/complete_export/demo_tracks/PIONEER/USBANLZ/P016/0000875E/ANLZ0000.EXT",
+            "url": "https://raw.githubusercontent.com/Holzhaus/rekordcrate/14d54eded7b0d2f6fe67c7871533dca35a73e5fa/data/complete_export/demo_tracks/PIONEER/USBANLZ/P016/0000875E/ANLZ0000.EXT",
+            "bytes": 86386,
+            "sha256": "e5fbc932a0f22869bc66f6f8228fabc912fb159c4fdcee3ae34b6e8b98465de8"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "files": [
+          {
+            "local": "2.DAT",
+            "path": "data/complete_export/demo_tracks/PIONEER/USBANLZ/P053/0001D21F/ANLZ0000.DAT",
+            "url": "https://raw.githubusercontent.com/Holzhaus/rekordcrate/14d54eded7b0d2f6fe67c7871533dca35a73e5fa/data/complete_export/demo_tracks/PIONEER/USBANLZ/P053/0001D21F/ANLZ0000.DAT",
+            "bytes": 4436,
+            "sha256": "b9aeb37d559042629512754612b20fda9e4614e9c64c6b934d4055f15209c0e8"
+          },
+          {
+            "local": "2.EXT",
+            "path": "data/complete_export/demo_tracks/PIONEER/USBANLZ/P053/0001D21F/ANLZ0000.EXT",
+            "url": "https://raw.githubusercontent.com/Holzhaus/rekordcrate/14d54eded7b0d2f6fe67c7871533dca35a73e5fa/data/complete_export/demo_tracks/PIONEER/USBANLZ/P053/0001D21F/ANLZ0000.EXT",
+            "bytes": 65998,
+            "sha256": "837ac9acbcf19b19d489d8650acfff1e638330aded9433dca7b491f27c1956ea"
+          }
+        ]
+      }
+    ]
+  },
+  "released_reference": {
+    "repository": "https://github.com/dvucinozd/Pajoniiir",
+    "tag": "M2.2",
+    "commit": "2c2ec32c253d368765123d7bbf8d37389b790b55",
+    "scope": "read-only comparison; C implementation not copied into Rust product"
+  },
+  "results": [
+    {
+      "id": 0,
+      "result": "PASS",
+      "tags": [
+        "PCO2",
+        "PCOB",
+        "PPTH",
+        "PQT2",
+        "PQTZ",
+        "PSSI",
+        "PVBR",
+        "PWAV",
+        "PWV2",
+        "PWV3",
+        "PWV4",
+        "PWV5"
+      ],
+      "actual": {
+        "beats": 257,
+        "preview": 400,
+        "detail": 22500,
+        "cues": 0,
+        "bpm_x100": 10258,
+        "beat_hash": "d17f0ac8a00c554d",
+        "preview_hash": "83552354aef6367e",
+        "detail_hash": "1c63d0d997c2c903"
+      },
+      "expected_independent_wire_decode": {
+        "beats": 257,
+        "preview": 400,
+        "detail": 22500,
+        "cues": 0,
+        "bpm_x100": 10258,
+        "beat_hash": "d17f0ac8a00c554d",
+        "preview_hash": "83552354aef6367e",
+        "detail_hash": "1c63d0d997c2c903"
+      },
+      "released_m22_normalized": {
+        "beats": 257,
+        "preview": 400,
+        "detail": 22500,
+        "cues": 0,
+        "bpm_x100": 10258,
+        "beat_hash": "d17f0ac8a00c554d",
+        "preview_hash": "83552354aef6367e",
+        "detail_hash": "1c63d0d997c2c903"
+      }
+    },
+    {
+      "id": 1,
+      "result": "PASS",
+      "tags": [
+        "PCO2",
+        "PCOB",
+        "PPTH",
+        "PQT2",
+        "PQTZ",
+        "PSSI",
+        "PVBR",
+        "PWAV",
+        "PWV2",
+        "PWV3",
+        "PWV4",
+        "PWV5"
+      ],
+      "actual": {
+        "beats": 368,
+        "preview": 400,
+        "detail": 25866,
+        "cues": 0,
+        "bpm_x100": 12800,
+        "beat_hash": "5f2f4084ddee5263",
+        "preview_hash": "ef478bb378cdec24",
+        "detail_hash": "82124b9849c818b2"
+      },
+      "expected_independent_wire_decode": {
+        "beats": 368,
+        "preview": 400,
+        "detail": 25866,
+        "cues": 0,
+        "bpm_x100": 12800,
+        "beat_hash": "5f2f4084ddee5263",
+        "preview_hash": "ef478bb378cdec24",
+        "detail_hash": "82124b9849c818b2"
+      },
+      "released_m22_normalized": {
+        "beats": 368,
+        "preview": 400,
+        "detail": 25866,
+        "cues": 0,
+        "bpm_x100": 12800,
+        "beat_hash": "5f2f4084ddee5263",
+        "preview_hash": "ef478bb378cdec24",
+        "detail_hash": "82124b9849c818b2"
+      }
+    },
+    {
+      "id": 2,
+      "result": "PASS",
+      "tags": [
+        "PCO2",
+        "PCOB",
+        "PPTH",
+        "PQT2",
+        "PQTZ",
+        "PSSI",
+        "PVBR",
+        "PWAV",
+        "PWV2",
+        "PWV3",
+        "PWV4",
+        "PWV5"
+      ],
+      "actual": {
+        "beats": 257,
+        "preview": 400,
+        "detail": 19208,
+        "cues": 0,
+        "bpm_x100": 12000,
+        "beat_hash": "c0aabaa1c57f20e8",
+        "preview_hash": "4828a21018635f82",
+        "detail_hash": "afaf36642bc44fc0"
+      },
+      "expected_independent_wire_decode": {
+        "beats": 257,
+        "preview": 400,
+        "detail": 19208,
+        "cues": 0,
+        "bpm_x100": 12000,
+        "beat_hash": "c0aabaa1c57f20e8",
+        "preview_hash": "4828a21018635f82",
+        "detail_hash": "afaf36642bc44fc0"
+      },
+      "released_m22_normalized": {
+        "beats": 257,
+        "preview": 400,
+        "detail": 19208,
+        "cues": 0,
+        "bpm_x100": 12000,
+        "beat_hash": "c0aabaa1c57f20e8",
+        "preview_hash": "4828a21018635f82",
+        "detail_hash": "afaf36642bc44fc0"
+      }
+    }
+  ],
+  "scope": "bounded parser/canonical data comparison; no device/audio or full export-version qualification; real pairs contain no imported hot cues"
+}

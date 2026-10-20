@@ -1,6 +1,8 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "analysis")]
+pub mod anlz_analysis;
 pub mod anlz_hot_cues;
 
 #[cfg(test)]

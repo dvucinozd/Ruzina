@@ -4,6 +4,8 @@
 
 ## Active direction — 2026-10-20
 
+Latest analysis work: [pinned Rekordbox import and deck consumers](docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md), isolated from the open audio PR. Interactive UI and physical board/audio qualification remain pending.
+
 Latest software gate: [completed-output position and EOF](docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md), integrated in the reference target and canonical host simulation. Physical I2S/UAC completion and clock qualification remain open.
 
 Latest software follow-up: [consumer-clock PCM delivery and simulation](docs/M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md). Physical audio drivers and exact-board qualification remain pending.

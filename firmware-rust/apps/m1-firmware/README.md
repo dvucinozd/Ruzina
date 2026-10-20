@@ -47,6 +47,8 @@ exact-unit identity are established. Custom PCB fabrication is no longer a prere
 
 ## Canonical audio integration
 
+`library-deck-load` now loads and pins classic Rekordbox DAT/optional EXT analysis outside render. Publication is bound to media/track/catalog/load generation; semantic deck controls use it for Sync, Beat Jump and quantized loops. Source Hot Cues retain local override/tombstone behavior. Owned allocation stays behind the PSRAM-requiring feature. See [analysis scope, evidence and open UI/device gates](../../../docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md).
+
 The legacy `render-graph-bringup` feature now consumes bounded canonical PCM history for normal playback, Master Tempo, scratch and censor. Prefetch is separated from progress and exact source activation; source/gesture epochs guard load/seek/reconnect transitions. History and fixed-depth PCM/delivery queues use static memory. Render output passes through `PlaybackOutput`; progress is published only after reference consumption completes. The explicit reference sink remains software-timed, with no physical I2S/UAC output. See [completed-output progress and remaining gates](../../../docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md).
 
 ## PSRAM storage boundary

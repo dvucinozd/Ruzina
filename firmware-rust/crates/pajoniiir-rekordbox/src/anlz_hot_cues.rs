@@ -184,7 +184,7 @@ pub fn parse_pcpt(
 ) -> Result<Option<RekordboxHotCue>, AnlzHotCueError> {
     if bytes.len() < ANLZ_PCPT_BYTES
         || &bytes[0..4] != b"PCPT"
-        || be32(&bytes[4..8]) < 28
+        || !(28..=ANLZ_PCPT_BYTES as u32).contains(&be32(&bytes[4..8]))
         || be32(&bytes[8..12]) != ANLZ_PCPT_BYTES as u32
     {
         return Err(AnlzHotCueError::InvalidPcpt);

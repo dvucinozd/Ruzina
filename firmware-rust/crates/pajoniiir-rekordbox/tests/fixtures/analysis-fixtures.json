@@ -1,0 +1,18 @@
+{
+  "reference": "https://djl-analysis.deepsymmetry.org/rekordbox-export-analysis/anlz.html",
+  "origin": "synthetic standards-layout fixtures; not physical Rekordbox export qualification",
+  "files": {
+    "track-a.DAT": {
+      "bytes": 771,
+      "sha256": "27bbf8b092d621dfa5b9bdbf40261c11b7b898b29a820d31039c3cb240412aa5"
+    },
+    "track-b.DAT": {
+      "bytes": 771,
+      "sha256": "969d6ac4026491ab25c9d7960641f65a8cc25034b447fb0745db191a4e412b4d"
+    },
+    "track-a.EXT": {
+      "bytes": 1077,
+      "sha256": "2095fe6ab3f6a6342941ac57ec180918fdfcf7b5d0173263fabc7d8fa9c0677d"
+    }
+  }
+}
