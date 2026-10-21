@@ -88,6 +88,13 @@ CI retains all existing legacy feature configurations under explicit board selec
 
 ## First work after arrival
 
+The [memory/display preparation](../M1_RUST_GUITION_MEMORY_DISPLAY_PREP_2026-10-21.md)
+adds opt-in read-only flash RDID, release-only 80 MHz/64 KiB PSRAM scratch images
+and HAL-independent panel/touch adapter contracts. These are separate from idle/
+basic-diagnostic profiles. Source fingerprints identify candidate panel arrays;
+no table/payload is imported and no Guition display/touch port is activated.
+Observed-capacity, clock, cache/DMA and peripheral acceptance remain pending.
+
 The opt-in Rust `board-diagnostics` feature and [first-boot procedure](GUITION_FIRST_BOOT_2026-10-20.md) prepare native USB Serial/JTAG reporting. Connector reachability, actual flash/PSRAM observations and all peripheral acceptance remain pending; ordinary board selectors still start only the scheduler.
 
 Record photos/PCB and panel markings, detected chip revision, flash identity/capacity/mode, PSRAM size and the factory firmware identity before choosing a hardware profile. Resolve the USB-FS package/pad mapping and host-power wiring before connecting a controller or memory stick as a host. Then implement one peripheral adapter at a time: memory, DSI/backlight/touch, SD, USB and an agreed audio-output path. Acceptance is per exact board and flashed image. APTA remains deferred.

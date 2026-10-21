@@ -1,0 +1,60 @@
+{
+  "complete_records": 1,
+  "partial_records": 0,
+  "errors": [],
+  "observation_match": true,
+  "memory_diagnostic": {
+    "complete_records": 1,
+    "partial_records": 0,
+    "errors": [],
+    "frames": [
+      {
+        "board_profile": "JC1060P470C_I_W_Y",
+        "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-psram",
+        "flash_probe": "NOT_REQUESTED",
+        "flash_rdid_raw": "NOT_MEASURED",
+        "flash_bytes_rdid": "NOT_MEASURED",
+        "psram_probe": "CPU_SCRATCH_PASSED",
+        "psram_bytes_mapped": "33554432",
+        "psram_scratch_bytes": "65536",
+        "psram_clock_mhz": "80",
+        "psram_failure_word": "NONE",
+        "psram_expected": "NONE",
+        "psram_actual": "NONE",
+        "test_scope": "CPU_CACHED_SCRATCH_ONLY",
+        "readiness": "NOT_QUALIFIED"
+      }
+    ],
+    "observation_match": true
+  },
+  "frames": [
+    {
+      "board_profile": "JC1060P470C_I_W_Y",
+      "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-psram",
+      "chip_revision_detected": "302",
+      "chip_minimum_required": "302",
+      "chip_policy_match": "true",
+      "flash_bytes_documented": "16777216",
+      "psram_bytes_documented": "33554432",
+      "flash_bytes_observed": "NOT_MEASURED",
+      "psram_bytes_observed": "33554432",
+      "readiness": "NOT_QUALIFIED"
+    }
+  ],
+  "rom_signature_seen": false,
+  "reset_reasons": [
+    "Some(SoftwareCpu)"
+  ],
+  "readiness": "NOT_QUALIFIED",
+  "schema": 1,
+  "unit": "SOFTWARE_FIXTURE-jc1060-psram",
+  "scenario": "cold-boot",
+  "package_manifest_sha256": "a80c1a37e2a46c8ab942b7d08d7b32d161cbf50a236f96eff357f52dacaf8c38",
+  "expected_elf_sha256": "35553a9a1e12a034fdde39a9b1d28551d6314944b9e8ed2af591b300bc70a69b",
+  "expected_image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-psram",
+  "raw_log_sha256": "6bb16272e2d2b4c6b5d8a22994cbbf04c0523436e7be2ff7fafb455832629029",
+  "operator_result": "NOT_RUN",
+  "operator_note": "",
+  "scenario_acceptance": "NOT_QUALIFIED",
+  "capture_error": null
+}

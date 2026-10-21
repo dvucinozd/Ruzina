@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-21",
+  "authority": "owner bundles pinned by docs/boards/source-manifest.json",
+  "panel_candidates": [
+    {
+      "board": "jc1060",
+      "source_id": "jc1060-v3-bsp.c",
+      "source_sha256": "876fe2ba4b881ce90b2d01a9af1b44cefbd913a97312f30d57c54801135fc89f",
+      "candidate_array": "lcd_cmd",
+      "first_line": 404,
+      "last_line": 466,
+      "array_sha256_lf": "47ce90460389a39d9adfa9050f9ceab36efaf8b87ba82c4fb20a08f71118d6ec",
+      "commands": 60,
+      "source_license_label": "Apache-2.0",
+      "unit_panel_selection": "PENDING",
+      "table_imported": false,
+      "hardware": "NOT_RUN"
+    },
+    {
+      "board": "jc8012",
+      "source_id": "jc8012-v3-bsp.c",
+      "source_sha256": "9dd83ba0c023c7ace470cb94a33b0110da7040a36d56049e9cd5c53a23c14ff0",
+      "candidate_array": "lcd_init_cmds",
+      "first_line": 491,
+      "last_line": 727,
+      "array_sha256_lf": "9e4231d5b3618c18bfea679891003e09bc1e984c83974598b9f567d569e0e073",
+      "commands": 204,
+      "source_license_label": "Apache-2.0",
+      "unit_panel_selection": "PENDING",
+      "table_imported": false,
+      "hardware": "NOT_RUN"
+    }
+  ],
+  "jc8012_gsl3680_candidates": [
+    {
+      "relative_path": "esp_lcd_touch_gsl3680.c",
+      "sha256": "2d1e9567d8a52a3c67711c8e9ff229075140d0f83f22e985f7a86d859baed317",
+      "bytes": 22978,
+      "imported": false,
+      "distribution_clearance": "NOT_ESTABLISHED"
+    },
+    {
+      "relative_path": "include/gsl_point_id.h",
+      "sha256": "da3e81d0124bc04ac57b8314c2e92fd8c0fd94aa9649935d3299c299de954dae",
+      "bytes": 319,
+      "imported": false,
+      "distribution_clearance": "NOT_ESTABLISHED"
+    },
+    {
+      "relative_path": "gsl_point_id.c",
+      "sha256": "47dd32cd86a2d7175f455896b0ace1b00150a2a0d84e48590e793907bb26e27c",
+      "bytes": 78784,
+      "imported": false,
+      "distribution_clearance": "NOT_ESTABLISHED"
+    }
+  ],
+  "jc1060_touch_pins": "UNRESOLVED: schematic reset/interrupt 22/21; BSP NC/NC",
+  "jc1060_coordinate_mapping": "PENDING: BSP rescales candidate 800x480 touch data to 1024x600; do not assume actual unit calibration",
+  "hardware": "NOT_RUN",
+  "firmware_payloads_imported": false
+}

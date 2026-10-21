@@ -1,0 +1,62 @@
+{
+  "complete_records": 1,
+  "partial_records": 0,
+  "errors": [
+    "Observed silicon fails policy"
+  ],
+  "observation_match": false,
+  "memory_diagnostic": {
+    "complete_records": 1,
+    "partial_records": 0,
+    "errors": [],
+    "frames": [
+      {
+        "board_profile": "JC8012P4A1C_I_W_Y",
+        "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc8012-none",
+        "flash_probe": "NOT_REQUESTED",
+        "flash_rdid_raw": "NOT_MEASURED",
+        "flash_bytes_rdid": "NOT_MEASURED",
+        "psram_probe": "NOT_REQUESTED",
+        "psram_bytes_mapped": "NOT_MEASURED",
+        "psram_scratch_bytes": "0",
+        "psram_clock_mhz": "0",
+        "psram_failure_word": "NONE",
+        "psram_expected": "NONE",
+        "psram_actual": "NONE",
+        "test_scope": "CPU_CACHED_SCRATCH_ONLY",
+        "readiness": "NOT_QUALIFIED"
+      }
+    ],
+    "observation_match": true
+  },
+  "frames": [
+    {
+      "board_profile": "JC8012P4A1C_I_W_Y",
+      "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc8012-none",
+      "chip_revision_detected": "301",
+      "chip_minimum_required": "302",
+      "chip_policy_match": "false",
+      "flash_bytes_documented": "16777216",
+      "psram_bytes_documented": "33554432",
+      "flash_bytes_observed": "NOT_MEASURED",
+      "psram_bytes_observed": "NOT_MEASURED",
+      "readiness": "NOT_QUALIFIED"
+    }
+  ],
+  "rom_signature_seen": false,
+  "reset_reasons": [
+    "Some(SoftwareCpu)"
+  ],
+  "readiness": "NOT_QUALIFIED",
+  "schema": 1,
+  "unit": "SOFTWARE_FIXTURE-jc8012-none",
+  "scenario": "cold-boot",
+  "package_manifest_sha256": "aaf844b0389fa0261e52f4cfedb2ca050a3bb1ef0e7ef46f8112f66a3001cccd",
+  "expected_elf_sha256": "13ac19ab09eba83bc00295c175af7379f4fb4b1d9cbd6ff0dc67d1c544b425cb",
+  "expected_image_id": "8bc11e3d06a6-src-6c048e6200441927-jc8012-none",
+  "raw_log_sha256": "74706cbffd3cbc15d35520401dc536c6a22cf215ba342a4bb119f1b839ea72f8",
+  "operator_result": "NOT_RUN",
+  "operator_note": "",
+  "scenario_acceptance": "NOT_QUALIFIED",
+  "capture_error": null
+}

@@ -1,0 +1,14 @@
+{
+  "jc1060": {
+    "archive": "jc1060-diagnostics.zip",
+    "sha256": "c76cb34249369345f84d63bda0d8b13b2c21ffe1e68b95c3ef060a1419d17631",
+    "elf_sha256": "c66af9b9807c08f0b03fa6d40bb0c052bee129c89cdd04774a9445a30bfd8302",
+    "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-memory"
+  },
+  "jc8012": {
+    "archive": "jc8012-diagnostics.zip",
+    "sha256": "d620d304d63738c377955bcc8755c0f28edac986d1ce8a31fb70f68640bb70d7",
+    "elf_sha256": "8c6c45679d6149b02d635dfbfec411629c412405914bef76cebb8a1ec043b12f",
+    "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc8012-memory"
+  }
+}

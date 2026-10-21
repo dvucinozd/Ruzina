@@ -297,3 +297,7 @@ The [APTA observation, lifecycle stress and Guition first-boot package](docs/M1_
 adds visible captured analysis diagnostics, reproducible owner stress evidence and
 separate hashed diagnostic images for both boards. Physical qualification and
 Guition peripheral activation remain open.
+
+The [Guition memory/display preparation](docs/M1_RUST_GUITION_MEMORY_DISPLAY_PREP_2026-10-21.md)
+adds separate read-only flash and bounded PSRAM diagnostic images, plus inactive
+panel/touch adapter contracts with source provenance and explicit unit gates.

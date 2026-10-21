@@ -24,6 +24,16 @@ Build each separately and preserve/hash each ELF before the next configuration o
 
 This is a compile procedure, not a flash command. Select a board-specific image/partition and programming method only after the observations above. No firmware was flashed in preparing this gate.
 
+The [memory/display preparation](../M1_RUST_GUITION_MEMORY_DISPLAY_PREP_2026-10-21.md)
+adds separate `guition-flash-probe` and `guition-psram-test` diagnostic variants.
+Ordinary `board-diagnostics` still activates neither. The PSRAM image is
+release-only, initializes at 80 MHz and overwrites an exclusive 64 KiB scratch
+span without registering an allocator. Its CPU-cached result is not full-memory
+or DMA qualification. Build variants with the package tool's explicit
+`--probe flash`, `--probe psram` or `--probe memory` into separate new folders.
+New packages retain and validate a separate memory report; older boot-only
+packages remain supported. There is still no flash/partition instruction.
+
 ## What this image can observe
 
 `board-diagnostics` emits `M1_BOOT_DIAGNOSTIC_V1` over the P4 native USB Serial/JTAG service peripheral. Its bounded task repeats the report without blocking indefinitely if the host is absent. Confirm that the exact unit exposes that peripheral; JC8012's CH340 USB-UART connection is a different transport. If native service is not reachable, prepare a separately verified UART/service adapter instead of guessing pins.

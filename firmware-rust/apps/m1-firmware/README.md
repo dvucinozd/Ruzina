@@ -30,6 +30,14 @@ It is intentionally excluded from the host workspace dependency graph so
 
 ## Embedded baseline
 
+Separate `guition-flash-probe` and release-only `guition-psram-test` variants
+are available for either Guition selector. They imply diagnostics, run before
+application tasks, and retain a separate memory frame. The former reads RDID
+with bounded polling; the latter uses autodetection, 80 MHz and an exclusive
+64 KiB CPU-cached scratch span without an allocator. Physical results are NOT
+RUN. Basic diagnostics activates neither. See [memory/display preparation](../../../docs/M1_RUST_GUITION_MEMORY_DISPLAY_PREP_2026-10-21.md)
+for commands, limits and the inactive panel/touch adapter contracts.
+
 The opt-in `board-diagnostics` feature can accompany `board-jc1060` or `board-jc8012`. It reports profile/image identity, detected chip revision and reset reason through native USB Serial/JTAG, with unmeasured flash/PSRAM explicitly marked. It performs no storage or audio activation. Check the [first-boot procedure](../../../docs/boards/GUITION_FIRST_BOOT_2026-10-20.md) before selecting a service connector, image or partition layout.
 
 - Rust: `1.95.0`

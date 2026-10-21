@@ -3,8 +3,10 @@
 #![no_std]
 
 pub mod diagnostics;
+pub mod display;
 pub mod jc1060;
 pub mod jc8012;
+pub mod memory;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BoardId {

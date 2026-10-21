@@ -1,0 +1,65 @@
+{
+  "complete_records": 1,
+  "partial_records": 0,
+  "errors": [
+    "Image identity mismatch",
+    "Memory identity mismatch"
+  ],
+  "observation_match": false,
+  "memory_diagnostic": {
+    "complete_records": 1,
+    "partial_records": 0,
+    "errors": [
+      "Memory identity mismatch"
+    ],
+    "frames": [
+      {
+        "board_profile": "JC8012P4A1C_I_W_Y",
+        "image_id": "WRONG-IMAGE-SOFTWARE-FIXTURE",
+        "flash_probe": "ID_DECODED",
+        "flash_rdid_raw": "1840ef",
+        "flash_bytes_rdid": "16777216",
+        "psram_probe": "NOT_REQUESTED",
+        "psram_bytes_mapped": "NOT_MEASURED",
+        "psram_scratch_bytes": "0",
+        "psram_clock_mhz": "0",
+        "psram_failure_word": "NONE",
+        "psram_expected": "NONE",
+        "psram_actual": "NONE",
+        "test_scope": "CPU_CACHED_SCRATCH_ONLY",
+        "readiness": "NOT_QUALIFIED"
+      }
+    ],
+    "observation_match": false
+  },
+  "frames": [
+    {
+      "board_profile": "JC8012P4A1C_I_W_Y",
+      "image_id": "WRONG-IMAGE-SOFTWARE-FIXTURE",
+      "chip_revision_detected": "302",
+      "chip_minimum_required": "302",
+      "chip_policy_match": "true",
+      "flash_bytes_documented": "16777216",
+      "psram_bytes_documented": "33554432",
+      "flash_bytes_observed": "16777216",
+      "psram_bytes_observed": "NOT_MEASURED",
+      "readiness": "NOT_QUALIFIED"
+    }
+  ],
+  "rom_signature_seen": false,
+  "reset_reasons": [
+    "Some(SoftwareCpu)"
+  ],
+  "readiness": "NOT_QUALIFIED",
+  "schema": 1,
+  "unit": "SOFTWARE_FIXTURE-jc8012-flash",
+  "scenario": "cold-boot",
+  "package_manifest_sha256": "2044d9889d7b4919e96c87b191d4bae38d7ebcde438670fab9d8069e41c3693d",
+  "expected_elf_sha256": "ac0e62c130ba1f88d0441448f64b8d079b68ce00c7a71b526aee39735e7f1e61",
+  "expected_image_id": "8bc11e3d06a6-src-6c048e6200441927-jc8012-flash",
+  "raw_log_sha256": "ddc95e3706f1b3e2e81accc8732498560e7f621b6a6217a25495c94ce7d7b729",
+  "operator_result": "NOT_RUN",
+  "operator_note": "",
+  "scenario_acceptance": "NOT_QUALIFIED",
+  "capture_error": null
+}

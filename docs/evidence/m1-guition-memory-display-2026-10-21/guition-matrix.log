@@ -1,0 +1,48 @@
+1/48 cargo +1.95.0 check --locked
+2/48 cargo +1.95.0 check --locked --features board-legacy-m1,hotcue-flash-storage
+3/48 cargo +1.95.0 build --locked --release
+4/48 cargo +1.95.0 check --locked --features board-legacy-m1,usb0-hardware-bringup
+5/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,usb0-hardware-bringup
+6/48 cargo +1.95.0 check --locked --features board-legacy-m1,usb1-controller-bringup
+7/48 cargo +1.95.0 check --locked --features board-legacy-m1,library-deck-load
+8/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,library-deck-load
+9/48 cargo +1.95.0 check --locked --features board-legacy-m1,wav-audio-source-bringup
+10/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,wav-audio-source-bringup
+11/48 cargo +1.95.0 check --locked --features board-legacy-m1,pcm-transport-bringup
+12/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,pcm-transport-bringup
+13/48 cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup
+14/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,render-graph-bringup
+15/48 cargo +1.95.0 check --locked --features board-legacy-m1,sdmmc-profile-storage-bringup
+16/48 cargo +1.95.0 check --locked --features board-legacy-m1,p4-psram-storage
+17/48 cargo +1.95.0 build --locked --release --features "board-legacy-m1,usb0-hardware-bringup,p4-psram-storage"
+18/48 cargo +1.95.0 build --locked --release --features "board-legacy-m1,usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage"
+19/48 cargo +1.95.0 build --locked --release --features "board-legacy-m1,library-deck-load,sdmmc-profile-storage-bringup"
+20/48 cargo +1.95.0 build --locked --release --features "board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup"
+21/48 cargo +1.95.0 check --locked --features board-legacy-m1
+22/48 cargo +1.95.0 check --locked --features board-jc1060
+23/48 cargo +1.95.0 build --locked --release --features board-jc1060
+24/48 cargo +1.95.0 check --locked --features board-jc8012
+25/48 cargo +1.95.0 build --locked --release --features board-jc8012
+26/48 cargo +1.95.0 check --locked --features board-jc1060,board-diagnostics
+27/48 cargo +1.95.0 build --locked --release --features board-jc1060,board-diagnostics
+28/48 cargo +1.95.0 check --locked --features board-jc8012,board-diagnostics
+29/48 cargo +1.95.0 build --locked --release --features board-jc8012,board-diagnostics
+30/48 cargo +1.95.0 check --locked --release --features board-jc1060,guition-flash-probe
+31/48 cargo +1.95.0 build --locked --release --features board-jc1060,guition-flash-probe
+32/48 cargo +1.95.0 check --locked --release --features board-jc1060,guition-psram-test
+33/48 cargo +1.95.0 build --locked --release --features board-jc1060,guition-psram-test
+34/48 cargo +1.95.0 check --locked --release --features board-jc1060,guition-flash-probe,guition-psram-test
+35/48 cargo +1.95.0 build --locked --release --features board-jc1060,guition-flash-probe,guition-psram-test
+36/48 cargo +1.95.0 check --locked --release --features board-jc8012,guition-flash-probe
+37/48 cargo +1.95.0 build --locked --release --features board-jc8012,guition-flash-probe
+38/48 cargo +1.95.0 check --locked --release --features board-jc8012,guition-psram-test
+39/48 cargo +1.95.0 build --locked --release --features board-jc8012,guition-psram-test
+40/48 cargo +1.95.0 check --locked --release --features board-jc8012,guition-flash-probe,guition-psram-test
+41/48 cargo +1.95.0 build --locked --release --features board-jc8012,guition-flash-probe,guition-psram-test
+42/48 cargo +1.95.0 check --locked --features board-legacy-m1,usb0-hardware-bringup,runtime-health
+43/48 cargo +1.95.0 check --locked --features board-legacy-m1,usb1-controller-bringup,runtime-health
+44/48 cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health
+45/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health
+46/48 cargo +1.95.0 check --locked --features board-legacy-m1,apta-usb0-bringup
+47/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,apta-usb0-bringup
+48/48 cargo +1.95.0 build --locked --release --features board-legacy-m1,apta-usb0-bringup,sdmmc-profile-storage-bringup,runtime-health

@@ -1,0 +1,60 @@
+{
+  "complete_records": 1,
+  "partial_records": 0,
+  "errors": [],
+  "observation_match": true,
+  "memory_diagnostic": {
+    "complete_records": 1,
+    "partial_records": 0,
+    "errors": [],
+    "frames": [
+      {
+        "board_profile": "JC1060P470C_I_W_Y",
+        "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-none",
+        "flash_probe": "NOT_REQUESTED",
+        "flash_rdid_raw": "NOT_MEASURED",
+        "flash_bytes_rdid": "NOT_MEASURED",
+        "psram_probe": "NOT_REQUESTED",
+        "psram_bytes_mapped": "NOT_MEASURED",
+        "psram_scratch_bytes": "0",
+        "psram_clock_mhz": "0",
+        "psram_failure_word": "NONE",
+        "psram_expected": "NONE",
+        "psram_actual": "NONE",
+        "test_scope": "CPU_CACHED_SCRATCH_ONLY",
+        "readiness": "NOT_QUALIFIED"
+      }
+    ],
+    "observation_match": true
+  },
+  "frames": [
+    {
+      "board_profile": "JC1060P470C_I_W_Y",
+      "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-none",
+      "chip_revision_detected": "302",
+      "chip_minimum_required": "302",
+      "chip_policy_match": "true",
+      "flash_bytes_documented": "16777216",
+      "psram_bytes_documented": "33554432",
+      "flash_bytes_observed": "NOT_MEASURED",
+      "psram_bytes_observed": "NOT_MEASURED",
+      "readiness": "NOT_QUALIFIED"
+    }
+  ],
+  "rom_signature_seen": false,
+  "reset_reasons": [
+    "Some(SoftwareCpu)"
+  ],
+  "readiness": "NOT_QUALIFIED",
+  "schema": 1,
+  "unit": "SOFTWARE_FIXTURE-jc1060-none",
+  "scenario": "cold-boot",
+  "package_manifest_sha256": "2cf63a1b6bbcee5d54e995fbae8c7820fa37ba15cc0b306599a8cfdd3f2a9073",
+  "expected_elf_sha256": "efc084ca3348edb7c30c5ff6386b9fdd006e29593cf10da1cdbb40fc9162b0d6",
+  "expected_image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-none",
+  "raw_log_sha256": "c443872a223d9c5b2bc60a756011ccd4153dbae518867723b7e77c60365af875",
+  "operator_result": "NOT_RUN",
+  "operator_note": "",
+  "scenario_acceptance": "NOT_QUALIFIED",
+  "capture_error": null
+}
