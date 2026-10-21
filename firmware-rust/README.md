@@ -6,7 +6,7 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
-Latest audio work: [streamed PCM loop execution](../docs/M1_RUST_PCM_LOOP_GATE_2026-10-21.md) repeats WAV regions without a steady-wrap generation reset, maps confirmed media position through pitch/Master Tempo/scratch/Censor, and wires SetLoop/ClearLoop into both PCM target variants. Physical rewind/output timing and listening remain separate gates.
+Latest audio work: [Beat/Pad FX PCM execution](../docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) binds fixed per-deck FX storage to source epochs/generations and processes samples before PFL/faders. The streamed PCM loops are merged through PR #13. Physical rewind/output timing and listening remain separate gates.
 
 Latest reliability work: [composed Library/source/transport/cue-write failure policy](../docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) contains ordinary seek failures to one deck, keeps a faulted persistence owner responsive, fences stale completions and preserves unconfirmed cue banks. Physical driver recovery remains a separate gate.
 
@@ -14,7 +14,7 @@ Integration review: [development stack corrections and validation](../docs/M1_RU
 
 Latest service: [composed runtime owner publication and recovery](../docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md). Existing product/controller/media loops have opt-in legacy health wiring and composed host failure tests. Guition peripheral ownership remains inactive; its boot diagnostics still repeat an immutable snapshot, not a heartbeat.
 
-Latest mixer/FX: [mixer/PFL, headphone and Beat/Pad FX host controls](../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) use authoritative shared state and 24 reviewed pixel goldens. Actual audible DSP/output and device UI qualification remain open.
+Latest mixer/FX UI: [mixer/PFL, headphone and Beat/Pad FX host controls](../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) use authoritative shared state and 24 reviewed pixel goldens. PCM effects now run in the reference target; physical audio/output and device UI qualification remain open.
 
 Latest UI: [interactive decks, Library, Hot Cues and session Settings](../docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md), with the shared waveform rasterizer and reviewed headless goldens for both documented board sizes. See [simulator controls and scope](apps/desktop-simulator/README.md).
 
