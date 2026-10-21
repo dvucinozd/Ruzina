@@ -67,6 +67,8 @@ jobs:
         run: |
           mkdir -p target
           cargo test --locked -p pajoniiir-service --features runtime-owners --test runtime_owners -- --nocapture --test-threads=1 > target/runtime-owners.log 2>&1
+          cargo clippy --locked -p pajoniiir-service --features runtime-owners --tests -- -D warnings
+          cargo test --locked -p pajoniiir-service --features runtime-owners --test composed_failures -- --nocapture --test-threads=1 > target/composed-failures.log 2>&1
 
       - name: Interactive UI and screenshot goldens
         run: |
@@ -82,3 +84,4 @@ jobs:
             firmware-rust/target/ui-smoke/*.ppm
             firmware-rust/target/ui-smoke/*.txt
             firmware-rust/target/runtime-owners.log
+            firmware-rust/target/composed-failures.log

@@ -16,6 +16,10 @@ mod controller_profiles;
 mod deck_audio_source;
 #[allow(dead_code)]
 mod deck_effect_owners;
+#[allow(dead_code)]
+mod transport_owner_state;
+#[cfg(feature = "hotcue-flash-storage")]
+mod hotcue_access;
 #[cfg(feature = "hotcue-flash-storage")]
 mod hotcue_flash;
 #[cfg(feature = "library-deck-load")]
