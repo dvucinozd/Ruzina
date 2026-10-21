@@ -6,6 +6,5 @@ use pajoniiir_board_profile::{BoardProfile, jc1060};
 pub(super) const PROFILE: &BoardProfile = &jc1060::PROFILE;
 
 pub(super) fn start(spawner: Spawner, peripherals: Peripherals) {
-    let _ = PROFILE;
-    super::start_idle(spawner, peripherals);
+    super::start_guition(spawner, peripherals, PROFILE);
 }

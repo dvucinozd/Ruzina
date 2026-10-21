@@ -4,6 +4,10 @@
 
 ## Active direction — 2026-10-20
 
+Latest software gate: [completed-output position and EOF](docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md), integrated in the reference target and canonical host simulation. Physical I2S/UAC completion and clock qualification remain open.
+
+Latest software follow-up: [consumer-clock PCM delivery and simulation](docs/M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md). Physical audio drivers and exact-board qualification remain pending.
+
 Custom M1 PCB development has been discontinued by project decision. The selected development boards are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, both with **ESP32-P4 silicon v3.2**, as reported by the project owner. Exact unit identity and board peripherals still require bring-up evidence.
 
 Native Rust development now uses `main` after [PR #1](https://github.com/dvucinozd/Pajoniiir-M1/pull/1). Its `ESP_HAL_CONFIG_MIN_CHIP_REVISION=302` matches the selected silicon revision. Firmware sources are in `firmware-rust/`; the separate `codex/native-apta-consumer` branch is retained and is not part of this integration. See the [integration validation](docs/M1_RUST_MAIN_INTEGRATION_2026-10-20.md) for tests and remaining gates.
@@ -13,6 +17,8 @@ See [Guition platform decision and migration plan](docs/M1_GUITION_PLATFORM_DECI
 Source-based board preparation is recorded in the [Guition hardware matrix](docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md). The Rust target now has explicit, mutually exclusive `board-jc1060`, `board-jc8012` and `board-legacy-m1` selectors. Guition selectors currently run only the scheduler BSP skeleton; historical M1 hardware features require the explicit legacy selector.
 
 The [development review after PR #4](docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md) records open product decisions, implementation and acceptance gates, and the recommended next work while the boards are in transit.
+
+The [live PCM history, routing and diagnostic preparation gate](docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) adds the canonical Master Tempo/scratch path, host-tested DAC/controller selection with controller-only headphones, and opt-in Guition boot diagnostics. Physical audio/display/storage and exact-board acceptance remain pending.
 
 The KiCad design, electrical contracts, mechanical evidence, libraries and validators are retained as historical engineering work. The custom-board pin map, peripheral wiring, flash layout and manufacturing gates do not define the Guition board configuration. The custom-PCB status, architecture and manufacturing sections below describe the historical baseline; native Rust development remains active.
 

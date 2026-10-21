@@ -10,6 +10,18 @@ use esp_hal::peripherals::Peripherals;
 compile_error!("select at most one board profile");
 
 #[cfg(all(
+    feature = "board-diagnostics",
+    not(any(feature = "board-jc1060", feature = "board-jc8012"))
+))]
+compile_error!("board-diagnostics requires a Guition board selector");
+
+#[cfg(all(
+    feature = "board-diagnostics",
+    any(feature = "board-jc1060", feature = "board-jc8012")
+))]
+mod diagnostics;
+
+#[cfg(all(
     not(feature = "board-legacy-m1"),
     any(
         feature = "usb0-hardware-bringup",
@@ -47,8 +59,29 @@ pub(crate) fn start(spawner: Spawner, peripherals: Peripherals) {
 
 /// Scheduler-only skeleton. It does not take display, USB, SD, codec, flash or
 /// PSRAM ownership. The board identity does not imply a working driver.
-#[cfg(not(feature = "board-legacy-m1"))]
+#[cfg(not(any(
+    feature = "board-legacy-m1",
+    feature = "board-jc1060",
+    feature = "board-jc8012"
+)))]
 fn start_idle(_spawner: Spawner, peripherals: Peripherals) {
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
+}
+
+#[cfg(any(feature = "board-jc1060", feature = "board-jc8012"))]
+fn start_guition(
+    spawner: Spawner,
+    peripherals: Peripherals,
+    profile: &'static pajoniiir_board_profile::BoardProfile,
+) {
+    let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
+    esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
+    #[cfg(feature = "board-diagnostics")]
+    spawner.spawn(
+        diagnostics::report_task(peripherals.USB_DEVICE, profile)
+            .expect("boot diagnostic task slot"),
+    );
+    #[cfg(not(feature = "board-diagnostics"))]
+    let _ = (spawner, profile);
 }

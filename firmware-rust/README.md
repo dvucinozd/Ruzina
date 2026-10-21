@@ -6,6 +6,10 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
+Latest: [completed-output transport progress](../docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md) connects canonical PCM through delayed output confirmations to position/EOF. The reference target uses the same completion bookkeeping; its timer and physical driver gaps remain explicit.
+
+The [consumer-clock delivery gate](../docs/M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md) adds bounded MAIN/controller-headphone queues and a headless render-to-consumer example: `cargo run --locked -p pajoniiir-audio-runtime --example clocked_output`. Actual embedded I2S/UAC pacing and driver integration remain open.
+
 The workspace retains host-tested product crates and a separate P4 integration target:
 
 - `desktop-simulator` proves the Slint UI development path without ESP32-P4 hardware.
@@ -17,6 +21,8 @@ The workspace retains host-tested product crates and a separate P4 integration t
 `apps/m1-firmware` is a standalone embedded workspace with feature-gated storage, controller and software audio owners. `pajoniiir-board-profile` records audited candidate data separately for JC1060 and JC8012. Their explicit selectors start scheduler-only BSP skeletons; display/touch, audio sinks and peripheral qualification remain pending. Historical M1 tasks and wiring are isolated in `src/platform/legacy_m1.rs` and require `board-legacy-m1`. They cannot be activated through either Guition selector. See the [hardware matrix and source audit](../docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md).
 
 The native Rust foundation is integrated into `main`; `codex/native-apta-consumer` remains a separate, unmerged analysis-integration branch.
+
+The [PCM history/routing gate](../docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) implements bounded live source arbitration in the legacy render integration and a host-tested modular output router. Headphones always use controller UAC. Guition `board-diagnostics` is an opt-in service-only first-boot report, not peripheral or audio acceptance.
 
 ## Toolchain
 

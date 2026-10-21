@@ -1,4 +1,3 @@
-use core::sync::atomic::{AtomicU32, Ordering};
 use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
@@ -8,7 +7,8 @@ use embassy_time::{Duration, Timer};
 use pajoniiir_audio_dsp::PcmFrame;
 use pajoniiir_audio_runtime::{
     pcm_stream::{
-        PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock, frame_from_ms, next_stream_generation,
+        PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock, StreamActivation, frame_from_ms,
+        next_stream_generation,
     },
     wav::{
         CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16Decoder,
@@ -23,16 +23,22 @@ use static_cell::StaticCell;
 use crate::{
     usb0_library::{current_media_lease, wait_for_media_lease_change},
     usb0_msc::{
-        Usb0FsCompletion, Usb0FsFileHandle, Usb0FsRequest, Usb0FsSubmitResult,
-        Usb0FilesystemClient,
+        Usb0FilesystemClient, Usb0FsCompletion, Usb0FsFileHandle, Usb0FsRequest, Usb0FsSubmitResult,
     },
 };
 
 const SOURCE_QUEUE_DEPTH: usize = 1;
-const PCM_QUEUE_DEPTH: usize = 3;
+// Each stereo read yields 128 frames. A queue can fill the complete bounded
+// lookahead in one owner turn, including high-rate/keylock playback. Capacity
+// remains fixed; real throughput/jitter still requires hardware measurement.
+const PCM_QUEUE_DEPTH: usize = 16;
 // 512 bytes produces at most 256 mono PCM16 frames or 128 stereo frames,
 // fitting one fixed PcmStreamBlock without hidden input retention.
 const SOURCE_READ_BUFFER_BYTES: usize = 512;
+const _: () = assert!(
+    PCM_QUEUE_DEPTH * (SOURCE_READ_BUFFER_BYTES / 4)
+        >= pajoniiir_audio_runtime::source::SOURCE_LOOKAHEAD_FRAMES as usize
+);
 
 static DECK_A_COMMANDS: Channel<
     CriticalSectionRawMutex,
@@ -72,8 +78,14 @@ static DECK_B_PCM: Channel<CriticalSectionRawMutex, PcmStreamBlock, PCM_QUEUE_DE
 
 static DECK_A_READ_BUFFER: StaticCell<[u8; SOURCE_READ_BUFFER_BYTES]> = StaticCell::new();
 static DECK_B_READ_BUFFER: StaticCell<[u8; SOURCE_READ_BUFFER_BYTES]> = StaticCell::new();
-static DECK_A_STREAM_GENERATION: AtomicU32 = AtomicU32::new(0);
-static DECK_B_STREAM_GENERATION: AtomicU32 = AtomicU32::new(0);
+static DECK_A_STREAM_GENERATION: StreamActivation = StreamActivation::new();
+static DECK_B_STREAM_GENERATION: StreamActivation = StreamActivation::new();
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct PreparedWavToken {
+    pub(crate) descriptor: WavPcm16SourceDescriptor,
+    pub(crate) generation: u32,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DeckAudioSourceCommand {
@@ -93,6 +105,7 @@ enum DeckAudioSourceCompletion {
     Prepared {
         request_id: u32,
         descriptor: WavPcm16SourceDescriptor,
+        generation: u32,
     },
     Failed {
         request_id: u32,
@@ -133,7 +146,7 @@ pub(crate) async fn prepare_wav_source(
     deck: DeckId,
     request_id: u32,
     candidate: CatalogLoadCandidate,
-) -> Result<WavPcm16SourceDescriptor, ()> {
+) -> Result<PreparedWavToken, ()> {
     command_channel(deck)
         .send(DeckAudioSourceCommand::Prepare {
             request_id,
@@ -145,7 +158,11 @@ pub(crate) async fn prepare_wav_source(
         DeckAudioSourceCompletion::Prepared {
             request_id: completed,
             descriptor,
-        } if completed == request_id => Ok(descriptor),
+            generation,
+        } if completed == request_id => Ok(PreparedWavToken {
+            descriptor,
+            generation,
+        }),
         DeckAudioSourceCompletion::Failed {
             request_id: completed,
         } if completed == request_id => Err(()),
@@ -198,27 +215,24 @@ pub(crate) fn try_receive_pcm_block(deck: DeckId) -> Option<PcmStreamBlock> {
 }
 
 pub(crate) fn current_stream_generation(deck: DeckId) -> u32 {
-    stream_generation_atomic(deck).load(Ordering::Acquire)
+    stream_generation_atomic(deck).current()
+}
+
+pub(crate) fn active_stream_generation(deck: DeckId) -> u32 {
+    stream_generation_atomic(deck).active()
+}
+pub(crate) fn activate_prepared_source(deck: DeckId, generation: u32) -> bool {
+    stream_generation_atomic(deck).activate(generation)
 }
 
 pub(crate) async fn run_deck_a_audio_source_owner() -> ! {
     let buffer = DECK_A_READ_BUFFER.init([0u8; SOURCE_READ_BUFFER_BYTES]);
-    run_owner(
-        DeckId::One,
-        Usb0FilesystemClient::deck_a(),
-        &mut buffer[..],
-    )
-    .await
+    run_owner(DeckId::One, Usb0FilesystemClient::deck_a(), &mut buffer[..]).await
 }
 
 pub(crate) async fn run_deck_b_audio_source_owner() -> ! {
     let buffer = DECK_B_READ_BUFFER.init([0u8; SOURCE_READ_BUFFER_BYTES]);
-    run_owner(
-        DeckId::Two,
-        Usb0FilesystemClient::deck_b(),
-        &mut buffer[..],
-    )
-    .await
+    run_owner(DeckId::Two, Usb0FilesystemClient::deck_b(), &mut buffer[..]).await
 }
 
 async fn run_owner(
@@ -234,7 +248,12 @@ async fn run_owner(
         let command = if let Ok(command) = command_channel(deck).try_receive() {
             Some(command)
         } else if prepared.is_none() {
-            match select(command_channel(deck).receive(), wait_for_media_lease_change()).await {
+            match select(
+                command_channel(deck).receive(),
+                wait_for_media_lease_change(),
+            )
+            .await
+            {
                 Either::First(command) => Some(command),
                 Either::Second(()) => None,
             }
@@ -250,6 +269,8 @@ async fn run_owner(
                 } => {
                     pending_block = None;
                     drain_pcm_blocks(deck);
+
+                    stream_generation_atomic(deck).invalidate();
 
                     if let Some(previous) = prepared.take()
                         && current_media_lease() == Some(previous.candidate.publication.lease)
@@ -273,12 +294,13 @@ async fn run_owner(
                     match result {
                         Ok(source) => {
                             let descriptor = source.descriptor;
-                            stream_generation_atomic(deck).store(source.generation, Ordering::Release);
+                            stream_generation_atomic(deck).prepared(source.generation);
                             prepared = Some(source);
                             prepare_completion_channel(deck)
                                 .send(DeckAudioSourceCompletion::Prepared {
                                     request_id,
                                     descriptor,
+                                    generation,
                                 })
                                 .await;
                         }
@@ -296,21 +318,22 @@ async fn run_owner(
                     pending_block = None;
                     drain_pcm_blocks(deck);
 
+                    let was_active = active_stream_generation(deck) != 0;
+                    stream_generation_atomic(deck).invalidate();
+
                     let result = if let Some(mut source) = prepared.take() {
                         if current_media_lease() != Some(source.candidate.publication.lease) {
                             Err(())
                         } else {
                             generation = next_stream_generation(generation);
-                            match seek_source(
-                                &mut client,
-                                &mut source,
-                                generation,
-                                position_ms,
-                            )
-                            .await
+                            match seek_source(&mut client, &mut source, generation, position_ms)
+                                .await
                             {
                                 Ok(result) => {
-                                    stream_generation_atomic(deck).store(result.generation, Ordering::Release);
+                                    stream_generation_atomic(deck).prepared(result.generation);
+                                    if was_active {
+                                        stream_generation_atomic(deck).activate(result.generation);
+                                    }
                                     prepared = Some(source);
                                     Ok(result)
                                 }
@@ -345,7 +368,7 @@ async fn run_owner(
                 DeckAudioSourceCommand::Release => {
                     pending_block = None;
                     drain_pcm_blocks(deck);
-                    stream_generation_atomic(deck).store(0, Ordering::Release);
+                    stream_generation_atomic(deck).invalidate();
                     if let Some(source) = prepared.take()
                         && current_media_lease() == Some(source.candidate.publication.lease)
                     {
@@ -361,10 +384,11 @@ async fn run_owner(
             continue;
         }
 
-        if prepared.as_ref().is_some_and(|source| {
-            current_media_lease() != Some(source.candidate.publication.lease)
-        }) {
-            stream_generation_atomic(deck).store(0, Ordering::Release);
+        if prepared
+            .as_ref()
+            .is_some_and(|source| current_media_lease() != Some(source.candidate.publication.lease))
+        {
+            stream_generation_atomic(deck).invalidate();
             prepared = None;
             pending_block = None;
             drain_pcm_blocks(deck);
@@ -446,8 +470,7 @@ async fn prepare_source(
     let mut format = None;
 
     while position + CHUNK_HEADER_BYTES as u64 <= riff_end {
-        let (next_file, next_buffer, bytes) =
-            read_at(client, lease, file, buffer, position).await;
+        let (next_file, next_buffer, bytes) = read_at(client, lease, file, buffer, position).await;
         file = next_file;
         buffer = next_buffer;
         if bytes < CHUNK_HEADER_BYTES {
@@ -490,25 +513,20 @@ async fn prepare_source(
             let Some(format) = format else {
                 break;
             };
-            let descriptor = match WavPcm16SourceDescriptor::new(
-                format,
-                chunk_data,
-                u64::from(chunk.len),
-            ) {
-                Ok(descriptor) if descriptor.data_bytes >= u64::from(format.block_align) => {
-                    descriptor
-                }
-                Ok(_) | Err(_) => break,
-            };
+            let descriptor =
+                match WavPcm16SourceDescriptor::new(format, chunk_data, u64::from(chunk.len)) {
+                    Ok(descriptor) if descriptor.data_bytes >= u64::from(format.block_align) => {
+                        descriptor
+                    }
+                    Ok(_) | Err(_) => break,
+                };
 
             let (next_file, next_buffer, bytes) =
                 read_at(client, lease, file, buffer, descriptor.data_offset).await;
             file = next_file;
             buffer = next_buffer;
-            let mut probe =
-                WavPcm16Decoder::new(descriptor.format, descriptor.data_bytes).expect(
-                    "descriptor construction validates WAV data alignment before decode probe",
-                );
+            let mut probe = WavPcm16Decoder::new(descriptor.format, descriptor.data_bytes)
+                .expect("descriptor construction validates WAV data alignment before decode probe");
             let mut first_frame = [PcmFrame::default(); 1];
             let progress = probe.decode(&buffer[..bytes], &mut first_frame);
             if progress.produced_frames != 1 {
@@ -570,7 +588,14 @@ async fn seek_source(
         .saturating_sub(frame.saturating_mul(u64::from(format.block_align)));
 
     let file = source.file;
-    source.file = match seek_file(client, source.candidate.publication.lease, file, byte_offset).await {
+    source.file = match seek_file(
+        client,
+        source.candidate.publication.lease,
+        file,
+        byte_offset,
+    )
+    .await
+    {
         SeekOutcome::Ready(file) => file,
         SeekOutcome::Failed(file) => {
             source.file = file;
@@ -593,11 +618,7 @@ async fn produce_pcm_block(
     client: &mut Usb0FilesystemClient,
     mut source: PreparedWavSource,
     buffer: &'static mut [u8],
-) -> (
-    &'static mut [u8],
-    PreparedWavSource,
-    Option<PcmStreamBlock>,
-) {
+) -> (&'static mut [u8], PreparedWavSource, Option<PcmStreamBlock>) {
     if source.decoder.is_finished() {
         let mut block = PcmStreamBlock::empty(
             source.generation,
@@ -630,9 +651,7 @@ async fn produce_pcm_block(
         first_frame,
         source.descriptor.format.sample_rate_hz,
     );
-    let progress = source
-        .decoder
-        .decode(&buffer[..bytes], block.frames_mut());
+    let progress = source.decoder.decode(&buffer[..bytes], block.frames_mut());
     if progress.produced_frames > PCM_STREAM_BLOCK_FRAMES
         || !block.set_len(progress.produced_frames)
     {
@@ -735,9 +754,7 @@ async fn read_next(
             Usb0FsSubmitResult::Completed(_)
             | Usb0FsSubmitResult::PendingCompletion(_)
             | Usb0FsSubmitResult::WrongClient(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
-                esp_hal::system::software_reset()
-            }
+            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => esp_hal::system::software_reset(),
         }
     }
 }
@@ -773,9 +790,7 @@ async fn seek_file(
             Usb0FsSubmitResult::Completed(_)
             | Usb0FsSubmitResult::PendingCompletion(_)
             | Usb0FsSubmitResult::WrongClient(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
-                esp_hal::system::software_reset()
-            }
+            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => esp_hal::system::software_reset(),
         }
     }
 }
@@ -798,10 +813,10 @@ async fn close_file(
                 request = returned;
                 Timer::after(Duration::from_millis(1)).await;
             }
-            Usb0FsSubmitResult::PendingCompletion(_)
-            | Usb0FsSubmitResult::WrongClient(_) => return false,
-            Usb0FsSubmitResult::Completed(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+            Usb0FsSubmitResult::PendingCompletion(_) | Usb0FsSubmitResult::WrongClient(_) => {
+                return false;
+            }
+            Usb0FsSubmitResult::Completed(_) | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
                 esp_hal::system::software_reset()
             }
         }
@@ -840,7 +855,7 @@ fn control_completion_channel(
     }
 }
 
-fn stream_generation_atomic(deck: DeckId) -> &'static AtomicU32 {
+fn stream_generation_atomic(deck: DeckId) -> &'static StreamActivation {
     match deck {
         DeckId::One => &DECK_A_STREAM_GENERATION,
         DeckId::Two => &DECK_B_STREAM_GENERATION,
@@ -855,4 +870,3 @@ fn pcm_channel(
         DeckId::Two => &DECK_B_PCM,
     }
 }
-

@@ -11,6 +11,8 @@ default = []
 board-legacy-m1 = []
 board-jc1060 = []
 board-jc8012 = []
+# Opt-in USB Serial/JTAG first-boot report; no storage or audio activation.
+board-diagnostics = []
 # Compile-verified target wiring only. Do not enable in normal firmware until
 # USB0 VBUS/power switching, PHY and hot-plug are EVT-verified.
 usb0-hardware-bringup = []

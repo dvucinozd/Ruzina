@@ -220,6 +220,7 @@ pub struct DeckState {
     pub controller_connected: bool,
     pub shift_held: bool,
     pub jog_touched: bool,
+    pub scratch_epoch: u32,
     pub base_bpm_x100: u32,
     playback_generation: u32,
     pending_playback: Option<PendingPlayback>,
@@ -247,6 +248,7 @@ impl DeckState {
             controller_connected: false,
             shift_held: false,
             jog_touched: false,
+            scratch_epoch: 0,
             base_bpm_x100: 12_000,
             playback_generation: 0,
             pending_playback: None,
@@ -285,6 +287,11 @@ pub enum DeckEffect {
         deck: DeckId,
         value: i16,
     },
+    ScratchJog {
+        deck: DeckId,
+        ticks: i16,
+        epoch: u32,
+    },
     SetLoop {
         deck: DeckId,
         start_ms: u32,
@@ -317,6 +324,7 @@ impl DeckEffect {
             | Self::Pause { .. }
             | Self::Seek { .. }
             | Self::SetPitchCentipercent { .. }
+            | Self::ScratchJog { .. }
             | Self::SetLoop { .. }
             | Self::ClearLoop { .. } => DeckEffectTarget::Transport,
             Self::PersistHotCues { .. } => DeckEffectTarget::Persistence,
@@ -636,6 +644,7 @@ impl DeckProductState {
         state.loop_adjust_mode = LoopAdjustMode::None;
         state.loop_state = LoopState::new();
         state.censor_active = false;
+        state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
         state.base_bpm_x100 = if bpm_x100 == 0 { 12_000 } else { bpm_x100 };
         state.playback_generation = state.playback_generation.wrapping_add(1);
         state.pending_playback = None;
@@ -662,6 +671,7 @@ impl DeckProductState {
         state.loop_adjust_mode = LoopAdjustMode::None;
         state.loop_state = LoopState::new();
         state.censor_active = false;
+        state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
         state.base_bpm_x100 = 12_000;
         state.playback_generation = state.playback_generation.wrapping_add(1);
         state.pending_playback = None;
@@ -709,6 +719,7 @@ impl DeckProductState {
             state.controller_connected = connected;
             if !connected {
                 state.jog_touched = false;
+                state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
                 state.loop_adjust_mode = LoopAdjustMode::None;
             }
         }
@@ -738,7 +749,24 @@ impl DeckProductState {
             SemanticControl::Tempo => self.handle_tempo(deck, event.value),
             SemanticControl::TempoRange => self.handle_tempo_range(deck, event.value),
             SemanticControl::JogScratch | SemanticControl::JogBend => {
-                self.handle_loop_adjust_jog(deck, event.value)
+                if self.decks[deck_index(deck)].loop_adjust_mode != LoopAdjustMode::None {
+                    self.handle_loop_adjust_jog(deck, event.value)
+                } else if event.control == SemanticControl::JogScratch
+                    && self.decks[deck_index(deck)].jog_touched
+                {
+                    match event.value {
+                        ControlValue::Relative(ticks) if ticks != 0 => {
+                            DeckEffects::one(DeckEffect::ScratchJog {
+                                deck,
+                                ticks,
+                                epoch: self.decks[deck_index(deck)].scratch_epoch,
+                            })
+                        }
+                        _ => DeckEffects::NONE,
+                    }
+                } else {
+                    DeckEffects::NONE
+                }
             }
             SemanticControl::Sync => self.handle_sync(deck, event.value, analysis),
             SemanticControl::BeatJumpBack => {
@@ -762,7 +790,11 @@ impl DeckProductState {
             }
             SemanticControl::JogTouch => {
                 if let ControlValue::Pressed(pressed) = event.value {
-                    self.decks[deck_index(deck)].jog_touched = pressed;
+                    let state = &mut self.decks[deck_index(deck)];
+                    if state.jog_touched != pressed {
+                        state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
+                    }
+                    state.jog_touched = pressed;
                 }
                 DeckEffects::NONE
             }
@@ -3381,6 +3413,60 @@ mod tests {
             state.deck(DeckId::One).loop_adjust_mode,
             LoopAdjustMode::None
         );
+    }
+
+    #[test]
+    fn touched_scratch_jog_is_a_retryable_transport_effect_and_loop_adjust_keeps_priority() {
+        let mut state = DeckProductState::new();
+        let jog = relative(DeckId::One, SemanticControl::JogScratch, -7);
+        assert!(state.handle_control(jog).is_empty());
+        state.decks[0].jog_touched = true;
+        let effects = state.handle_control(jog);
+        assert_eq!(
+            effects,
+            DeckEffects::one(DeckEffect::ScratchJog {
+                deck: DeckId::One,
+                ticks: -7,
+                epoch: 0,
+            })
+        );
+        let mut broker = DeckEffectBroker::<1, 1, 1>::new();
+        assert!(broker.try_push_all(effects));
+        assert!(!broker.try_push_all(effects));
+        assert_eq!(broker.transport_front(), effects.items[0]);
+        state.decks[0].loop_state.active = Some(loop_region(1_000, 2_000));
+        state.handle_control(ext(DeckId::One, DeckExtAction::LoopAdjustIn, true));
+        let adjusted = state.handle_control(jog);
+        assert!(matches!(
+            adjusted.items[0],
+            Some(DeckEffect::SetLoop { .. })
+        ));
+    }
+
+    #[test]
+    fn touch_release_reconnect_and_track_replacement_invalidate_scratch_gestures() {
+        let mut state = DeckProductState::new();
+        let touch = ControlEvent {
+            deck: Some(DeckId::One),
+            control: SemanticControl::JogTouch,
+            value: ControlValue::Pressed(true),
+        };
+        state.handle_control(touch);
+        let first = state.deck(DeckId::One).scratch_epoch;
+        state.handle_control(touch);
+        assert_eq!(state.deck(DeckId::One).scratch_epoch, first);
+        state.handle_control(ControlEvent {
+            value: ControlValue::Pressed(false),
+            ..touch
+        });
+        state.handle_control(touch);
+        let second = state.deck(DeckId::One).scratch_epoch;
+        assert_ne!(first, second);
+        state.set_controller_connected(false);
+        let disconnected = state.deck(DeckId::One).scratch_epoch;
+        assert_ne!(second, disconnected);
+        state.unload_track(DeckId::One);
+        assert_ne!(state.deck(DeckId::One).scratch_epoch, disconnected);
     }
 
     #[test]

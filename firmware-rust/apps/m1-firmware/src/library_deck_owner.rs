@@ -13,26 +13,26 @@ use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
 use pajoniiir_media_fs::{BoundedPath, EntryKind, FileHandle};
 use pajoniiir_rekordbox::anlz_hot_cues::{
-    ANLZ_PCPT_BYTES, ANLZ_PCOB_HEADER_BYTES, ANLZ_SECTION_HEADER_BYTES, ANLZ_TAG_PCOB,
+    ANLZ_PCOB_HEADER_BYTES, ANLZ_PCPT_BYTES, ANLZ_SECTION_HEADER_BYTES, ANLZ_TAG_PCOB,
     AnlzSectionHeader, RekordboxCueKind, RekordboxHotCueBank, parse_pcob_header, parse_pcpt,
     parse_section_header,
 };
 use static_cell::StaticCell;
 
 #[cfg(feature = "wav-audio-source-bringup")]
-use crate::deck_audio_source::{prepare_wav_source, request_source_release};
+use crate::deck_audio_source::{
+    activate_prepared_source, prepare_wav_source, request_source_release,
+};
 
 use crate::{
     deck_effect_owners::{HotCueLoadResult, load_persisted_hot_cues},
     product_runtime::{LibraryEffect, ProductRuntime},
     usb0_library::{
-        USB0_LIBRARY_COMMANDS, USB0_LIBRARY_COMPLETIONS, Usb0LibraryCommand,
-        Usb0LibraryCompletion, catalog_publication_matches, current_media_lease,
-        wait_for_media_lease_change,
+        USB0_LIBRARY_COMMANDS, USB0_LIBRARY_COMPLETIONS, Usb0LibraryCommand, Usb0LibraryCompletion,
+        catalog_publication_matches, current_media_lease, wait_for_media_lease_change,
     },
     usb0_msc::{
-        Usb0FsCompletion, Usb0FsFileHandle, Usb0FsRequest, Usb0FsSubmitResult,
-        Usb0FilesystemClient,
+        Usb0FilesystemClient, Usb0FsCompletion, Usb0FsFileHandle, Usb0FsRequest, Usb0FsSubmitResult,
     },
 };
 
@@ -66,6 +66,7 @@ enum LibraryDeckCompletion {
         persisted: Option<HotCueBank>,
         source_cues_available: bool,
         wav_source: Option<WavPcm16SourceDescriptor>,
+        wav_generation: u32,
     },
     Failed {
         effect: LibraryEffect,
@@ -87,16 +88,10 @@ impl LibraryDeckDispatchReport {
 }
 
 pub(crate) async fn wait_for_library_deck_progress() {
-    let _ = select(
-        LIBRARY_DECK_PROGRESS.wait(),
-        wait_for_media_lease_change(),
-    )
-    .await;
+    let _ = select(LIBRARY_DECK_PROGRESS.wait(), wait_for_media_lease_change()).await;
 }
 
-pub(crate) fn dispatch_library_deck(
-    product: &mut ProductRuntime,
-) -> LibraryDeckDispatchReport {
+pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeckDispatchReport {
     let mut report = LibraryDeckDispatchReport::default();
     report.invalidated = product.invalidate_loaded_media(current_media_lease());
 
@@ -123,9 +118,10 @@ pub(crate) fn dispatch_library_deck(
                     persisted,
                     source_cues_available,
                     wav_source,
+                    wav_generation,
                     ..
                 } => {
-                    if catalog_publication_matches(candidate.publication)
+                    let committed = catalog_publication_matches(candidate.publication)
                         && product.commit_library_load(
                             deck,
                             candidate,
@@ -133,10 +129,13 @@ pub(crate) fn dispatch_library_deck(
                             persisted,
                             source_cues_available,
                             wav_source,
-                        )
-                    {
+                        );
+                    if committed && activate_optional_wav_source(deck, wav_source, wav_generation) {
                         report.completed = report.completed.saturating_add(1);
                     } else {
+                        if committed {
+                            product.invalidate_deck_source(deck);
+                        }
                         if !release_prepared_wav_source(deck, wav_source) {
                             esp_hal::system::software_reset();
                         }
@@ -206,35 +205,42 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                     if !validate_audio_source(client, candidate).await {
                         LibraryDeckCompletion::Failed { effect }
                     } else {
-                    let (next_buffer, source, source_cues_available) =
-                        load_source_hot_cues(client, candidate, buffer).await;
-                    buffer = next_buffer;
+                        let (next_buffer, source, source_cues_available) =
+                            load_source_hot_cues(client, candidate, buffer).await;
+                        buffer = next_buffer;
 
-                    if !catalog_publication_matches(candidate.publication) {
-                        LibraryDeckCompletion::Failed { effect }
-                    } else {
-                        match load_persisted_hot_cues(request_id, candidate.track.track_id).await {
-                            HotCueLoadResult::Ready(persisted)
-                                if catalog_publication_matches(candidate.publication) =>
+                        if !catalog_publication_matches(candidate.publication) {
+                            LibraryDeckCompletion::Failed { effect }
+                        } else {
+                            match load_persisted_hot_cues(request_id, candidate.track.track_id)
+                                .await
                             {
-                                match prepare_optional_wav_source(deck, request_id, candidate).await {
-                                    Ok(wav_source) => LibraryDeckCompletion::LoadReady {
-                                        effect,
-                                        deck,
-                                        candidate,
-                                        source,
-                                        persisted,
-                                        source_cues_available,
-                                        wav_source,
-                                    },
-                                    Err(()) => LibraryDeckCompletion::Failed { effect },
+                                HotCueLoadResult::Ready(persisted)
+                                    if catalog_publication_matches(candidate.publication) =>
+                                {
+                                    match prepare_optional_wav_source(deck, request_id, candidate)
+                                        .await
+                                    {
+                                        Ok((wav_source, wav_generation)) => {
+                                            LibraryDeckCompletion::LoadReady {
+                                                effect,
+                                                deck,
+                                                candidate,
+                                                source,
+                                                persisted,
+                                                source_cues_available,
+                                                wav_source,
+                                                wav_generation,
+                                            }
+                                        }
+                                        Err(()) => LibraryDeckCompletion::Failed { effect },
+                                    }
+                                }
+                                HotCueLoadResult::Ready(_) | HotCueLoadResult::Failed => {
+                                    LibraryDeckCompletion::Failed { effect }
                                 }
                             }
-                            HotCueLoadResult::Ready(_) | HotCueLoadResult::Failed => {
-                                LibraryDeckCompletion::Failed { effect }
-                            }
                         }
-                    }
                     }
                 }
             }
@@ -252,28 +258,42 @@ pub(crate) async fn run_library_deck_owner() -> ! {
     }
 }
 
-
 async fn prepare_optional_wav_source(
     deck: DeckId,
     request_id: u32,
     candidate: CatalogLoadCandidate,
-) -> Result<Option<WavPcm16SourceDescriptor>, ()> {
+) -> Result<(Option<WavPcm16SourceDescriptor>, u32), ()> {
     #[cfg(feature = "wav-audio-source-bringup")]
     {
-        prepare_wav_source(deck, request_id, candidate).await.map(Some)
+        prepare_wav_source(deck, request_id, candidate)
+            .await
+            .map(|prepared| (Some(prepared.descriptor), prepared.generation))
     }
 
     #[cfg(not(feature = "wav-audio-source-bringup"))]
     {
         let _ = (deck, request_id, candidate);
-        Ok(None)
+        Ok((None, 0))
     }
 }
 
-fn release_prepared_wav_source(
+fn activate_optional_wav_source(
     deck: DeckId,
-    wav_source: Option<WavPcm16SourceDescriptor>,
+    source: Option<WavPcm16SourceDescriptor>,
+    generation: u32,
 ) -> bool {
+    #[cfg(feature = "wav-audio-source-bringup")]
+    {
+        source.is_none() || activate_prepared_source(deck, generation)
+    }
+    #[cfg(not(feature = "wav-audio-source-bringup"))]
+    {
+        let _ = (deck, source, generation);
+        true
+    }
+}
+
+fn release_prepared_wav_source(deck: DeckId, wav_source: Option<WavPcm16SourceDescriptor>) -> bool {
     #[cfg(feature = "wav-audio-source-bringup")]
     {
         wav_source.is_none() || request_source_release(deck)
@@ -310,10 +330,10 @@ async fn validate_audio_source(
                 request = returned;
                 Timer::after(Duration::from_millis(1)).await;
             }
-            Usb0FsSubmitResult::PendingCompletion(_)
-            | Usb0FsSubmitResult::WrongClient(_) => return false,
-            Usb0FsSubmitResult::Completed(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+            Usb0FsSubmitResult::PendingCompletion(_) | Usb0FsSubmitResult::WrongClient(_) => {
+                return false;
+            }
+            Usb0FsSubmitResult::Completed(_) | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
                 esp_hal::system::software_reset()
             }
         }
@@ -359,17 +379,14 @@ async fn load_source_hot_cues(
             valid = false;
             break;
         }
-        let section = match parse_section_header(
-            position,
-            file_len,
-            &buffer[..ANLZ_SECTION_HEADER_BYTES],
-        ) {
-            Ok(section) => section,
-            Err(_) => {
-                valid = false;
-                break;
-            }
-        };
+        let section =
+            match parse_section_header(position, file_len, &buffer[..ANLZ_SECTION_HEADER_BYTES]) {
+                Ok(section) => section,
+                Err(_) => {
+                    valid = false;
+                    break;
+                }
+            };
 
         if section.tag == ANLZ_TAG_PCOB {
             let (next_file, next_buffer, bytes) =
@@ -380,11 +397,8 @@ async fn load_source_hot_cues(
                 valid = false;
                 break;
             }
-            let plan = match parse_pcob_header(
-                position,
-                section,
-                &buffer[..ANLZ_PCOB_HEADER_BYTES],
-            ) {
+            let plan = match parse_pcob_header(position, section, &buffer[..ANLZ_PCOB_HEADER_BYTES])
+            {
                 Ok(plan) => plan,
                 Err(_) => {
                     valid = false;
@@ -452,7 +466,11 @@ async fn load_source_hot_cues(
     if valid {
         (buffer, source.as_source(), true)
     } else {
-        (buffer, HotCueBank::empty(candidate.track.track_id).as_source(), false)
+        (
+            buffer,
+            HotCueBank::empty(candidate.track.track_id).as_source(),
+            false,
+        )
     }
 }
 
@@ -522,9 +540,7 @@ async fn read_at(
             Usb0FsSubmitResult::Completed(_)
             | Usb0FsSubmitResult::PendingCompletion(_)
             | Usb0FsSubmitResult::WrongClient(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
-                esp_hal::system::software_reset()
-            }
+            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => esp_hal::system::software_reset(),
         }
     }
 }
@@ -560,9 +576,7 @@ async fn seek_file(
             Usb0FsSubmitResult::Completed(_)
             | Usb0FsSubmitResult::PendingCompletion(_)
             | Usb0FsSubmitResult::WrongClient(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
-                esp_hal::system::software_reset()
-            }
+            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => esp_hal::system::software_reset(),
         }
     }
 }
@@ -585,13 +599,12 @@ async fn close_file(
                 request = returned;
                 Timer::after(Duration::from_millis(1)).await;
             }
-            Usb0FsSubmitResult::PendingCompletion(_)
-            | Usb0FsSubmitResult::WrongClient(_) => return false,
-            Usb0FsSubmitResult::Completed(_)
-            | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+            Usb0FsSubmitResult::PendingCompletion(_) | Usb0FsSubmitResult::WrongClient(_) => {
+                return false;
+            }
+            Usb0FsSubmitResult::Completed(_) | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
                 esp_hal::system::software_reset()
             }
         }
     }
 }
-

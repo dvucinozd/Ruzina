@@ -1,0 +1,145 @@
+{
+  "base": "7bad2ea106c6300679f3662731cb9bbc5bb71add",
+  "files": [
+    {
+      "path": ".github/workflows/rust-esp32p4.yml",
+      "sha256_lf": "1f328b7456a1fcfd74e4fe0b5dfc3999034205bc8b38de0025ddc3e15e419467"
+    },
+    {
+      "path": "README.md",
+      "sha256_lf": "8728e2ac1e7d5bd86b2b610c8ce36eef24067414882285f52944cfd8a7879b4f"
+    },
+    {
+      "path": "docs/M1_RUST_ARCHITECTURE.md",
+      "sha256_lf": "ac5b0ab89ec8df9a51f63cd5b6ea1297ae4572c495b69940c34e2fac1cdc99de"
+    },
+    {
+      "path": "docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md",
+      "sha256_lf": "712addc2375b7aecb709db22efa8020960f2dfda3f9f94e799d7e41a07a21fcf"
+    },
+    {
+      "path": "docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md",
+      "sha256_lf": "32085734b845ad172922b116fc03a0611963006e21ed45577dc2c700865fb8a2"
+    },
+    {
+      "path": "docs/boards/GUITION_FIRST_BOOT_2026-10-20.md",
+      "sha256_lf": "bc2000a113a6a2005607d77410fdb9efc364661457cf315d82d668e86ff64186"
+    },
+    {
+      "path": "docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md",
+      "sha256_lf": "86c6f72ae345781efe627ab4e266081e0caf769dcb69272577177343d6ad50fd"
+    },
+    {
+      "path": "firmware-rust/Cargo.lock",
+      "sha256_lf": "f3e8b111969c56bcc6c2cddfd59a8bdc2523d5da8a0c85466f24a73f4db9a9dd"
+    },
+    {
+      "path": "firmware-rust/README.md",
+      "sha256_lf": "f42f557c6a87d841a8e2a43660ec987daec0d3e9af4c37434b7fa6806828e822"
+    },
+    {
+      "path": "firmware-rust/apps/m1-factory/README.md",
+      "sha256_lf": "5624563aff4c0db13c136a22d99a2250668963a7719c0058f5e5a05835e58af1"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.lock",
+      "sha256_lf": "0a99858a7dffe52f6c45e603e006b89542bc4789b22596a52238730bd2432510"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.toml",
+      "sha256_lf": "f06dbe913ae0e7cc1262e12665bf390eccab226bc44b149707d8775b87209bb6"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/README.md",
+      "sha256_lf": "6f86868e269bfacbd78cca2ebc51f6ad9efa1e926d7cd42ab505c896512a6a45"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/audio_render_owner.rs",
+      "sha256_lf": "ddf2e89d3d675aa8cabe7e57dccd1f8e6a3a30888e59c08b4d5949640cf4735e"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/deck_audio_source.rs",
+      "sha256_lf": "d3c082e7053111c77c28a16ffb76e7ce7e4b99c9ab61d40c44a47a7dee67d3b3"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/deck_effect_owners.rs",
+      "sha256_lf": "4e7aa82119e06445ca4eb208f20559f09a86c8aea7032309ae2787fa3d7a960a"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/library_deck_owner.rs",
+      "sha256_lf": "8c60eee1ed967332cfb68df3424f4cff1106cae004c9cac9bf209c750331b97a"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/platform/diagnostics.rs",
+      "sha256_lf": "9b53339e23ee07398b521486fe3c88d48f401be11b2aaedeaf6f6160dbb46568"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/platform/jc1060.rs",
+      "sha256_lf": "190885e9c732d34166ac84c30658e055dc9c16706501376455eff0a457d18355"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/platform/jc8012.rs",
+      "sha256_lf": "f14f0713aad52c9382c89731190316c866795b84fc0898554173a32e191844a8"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/platform/mod.rs",
+      "sha256_lf": "6a863e858b68b940d92c0c4809865c93904f3e274b85cf908e8ff78426a00956"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/product_runtime.rs",
+      "sha256_lf": "8a2ac99eb9e63f6e9c0b41effd8fb5a11e581f3eb84b516f6f9920f70bcb4935"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/Cargo.toml",
+      "sha256_lf": "dad1fbd2f191f1f6b95f8f8f96636bce7f5a10280cc96c8c5e3c256ba01f9cb4"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/history.rs",
+      "sha256_lf": "3097143f3ea7407a246cf42f6f70c68c0efe6f6f7afe16bb43a494c43f90b2e5"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/lib.rs",
+      "sha256_lf": "b162796244ca88587df1b32c6cd23ebf16b6810729a3b43ca304b51d810e007e"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/pcm_stream.rs",
+      "sha256_lf": "b03b2b6820ca903fff804ade2a1b62ef5923388289225df7d8448a4e9eb99ce0"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/render.rs",
+      "sha256_lf": "7a466bf3f6987b41c4403be1d86e561d718f706680bd07deb6cfc6453726cdc8"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/routing.rs",
+      "sha256_lf": "7a29634705ab216bcca1d3df22b5a940ee2ecc2991c64c6d55d7c54b446294c7"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/source.rs",
+      "sha256_lf": "ada1ec7427856c5fa47909b3fb6e963b2fdb55095fb967568bbf484582a69adc"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/tests/canonical_source.rs",
+      "sha256_lf": "e9e43e3433ec80604c6866813b7075613014a344c0b6170843266bde7bd5e587"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-scratch/src/lib.rs",
+      "sha256_lf": "d48b5df12d103074531d5ed4f82afd77dc9ce5c9a40c5180310d8101fbba86c8"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-board-profile/src/diagnostics.rs",
+      "sha256_lf": "91bf98e7d01661e000ee7a453e98ba04e24460fe7feb3a271c5d58a33778a3eb"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-board-profile/src/lib.rs",
+      "sha256_lf": "03e3580784eba81091711c4dcac571f8a26d360a1db9626a725f99d60a9e4f6f"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-deck/src/lib.rs",
+      "sha256_lf": "c33c5d0267fe4993ff3d139bca2b30474713b49115e2fbf463a54a61130ef644"
+    },
+    {
+      "path": "firmware-rust/tools/check_board_selection.py",
+      "sha256_lf": "b3f0bbcc1a29e156830f9402d383be3ea073e3c7e1ef208c84990d2d84105904"
+    }
+  ]
+}

@@ -130,6 +130,17 @@ impl ScratchState {
         self.edge_latch = 0;
     }
 
+    /// Preserve the absolute scratch head as the canonical history receives
+    /// newer frames. This changes the reference, not platter velocity.
+    pub fn advance_reference(&mut self, frames: u32) {
+        if self.active {
+            self.head_back += frames as f32;
+            if frames != 0 && self.edge_latch > 0 {
+                self.edge_latch = 0;
+            }
+        }
+    }
+
     pub fn jog(&mut self, ticks: i16) {
         if ticks == 0 {
             return;

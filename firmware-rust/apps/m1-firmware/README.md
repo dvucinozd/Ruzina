@@ -20,6 +20,8 @@ It is intentionally excluded from the host workspace dependency graph so
 
 ## Embedded baseline
 
+The opt-in `board-diagnostics` feature can accompany `board-jc1060` or `board-jc8012`. It reports profile/image identity, detected chip revision and reset reason through native USB Serial/JTAG, with unmeasured flash/PSRAM explicitly marked. It performs no storage or audio activation. Check the [first-boot procedure](../../../docs/boards/GUITION_FIRST_BOOT_2026-10-20.md) before selecting a service connector, image or partition layout.
+
 - Rust: `1.95.0`
 - Target: `riscv32imafc-unknown-none-elf`
 - HAL: `esp-hal = 1.2.2`
@@ -30,9 +32,9 @@ It is intentionally excluded from the host workspace dependency graph so
 
 ## Current gate
 
-`src/main.rs` initializes `esp-hal` and the scheduler, retains compile-time
-anchors to the HAL-independent product crates, and starts feature-gated owner
-tasks. The default image does not start USB or microSD owners. USB, display,
+`src/main.rs` initializes `esp-hal` and dispatches the selected platform. The
+platform starts the scheduler; only the explicit legacy selector starts the
+historical feature-gated product owners. The default image does not start USB or microSD owners. USB, display,
 audio and the selected boards' pinouts remain hardware-pending.
 
 The dedicated `Rust ESP32-P4 compile gate` workflow uses the committed firmware
@@ -42,6 +44,10 @@ lockfile with `--locked` and cross-compiles/links this target. Passing that work
 Hardware verification proceeds per selected Guition board after its BSP and
 exact-unit identity are established. Custom PCB fabrication is no longer a prerequisite.
 
+
+## Canonical audio integration
+
+The legacy `render-graph-bringup` feature now consumes bounded canonical PCM history for normal playback, Master Tempo, scratch and censor. Prefetch is separated from progress and exact source activation; source/gesture epochs guard load/seek/reconnect transitions. History and fixed-depth PCM/delivery queues use static memory. Render output passes through `PlaybackOutput`; progress is published only after reference consumption completes. The explicit reference sink remains software-timed, with no physical I2S/UAC output. See [completed-output progress and remaining gates](../../../docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md).
 
 ## PSRAM storage boundary
 

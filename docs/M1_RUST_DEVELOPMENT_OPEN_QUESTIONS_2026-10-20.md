@@ -42,9 +42,15 @@ The [hardware matrix](boards/GUITION_HARDWARE_MATRIX_2026-10-20.md) and [source 
 
 ## Software gates
 
+Follow-up implementation: [the PCM history/routing gate](M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) implements S1's bounded live source path, S2's host routing contract and the initial diagnostic slice of S11. Physical sinks/pacing and complete subsystem health remain open. The table below preserves what was missing at the review baseline, rather than claiming these follow-up slices are still absent.
+
+The [consumer-clock delivery follow-up](M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md) adds S2's bounded PCM queues, frame requests, mute/fades and counters, integrated with the render graph in a headless simulation. The embedded reference task is unchanged; physical pacing, driver ownership and delivery-to-transport acknowledgement remain open.
+
+The [completed-output progress gate](M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md) subsequently connects S2's delivery-to-transport acknowledgements in the reference target and canonical host simulation. It adds ordered completion receipts, source-bound resets and MAIN/headphone authority. The reference task still has software timing; physical adapters, actual completion/clock semantics and audio acceptance remain open.
+
 "Now" means substantial work can run without boards. "After Dn" means a dependency or interface decision is needed, not that all source work must wait for hardware.
 
-| ID / order | What is open in current code | Concrete next closure / acceptance | Dependency |
+| ID / order | What was open at the review baseline | Concrete next closure / acceptance | Dependency |
 |---|---|---|---|
 | S1 / first | Live canonical PCM history and source arbitration. [RenderDeckControl](../firmware-rust/crates/pajoniiir-audio-runtime/src/render.rs) explicitly treats Master Tempo or scratch as deferred; those frames are silent. Standalone keylock/scratch crates are not connected to the live stream. | Add bounded per-deck history with absolute-frame/generation tags and random access; keep canonical progression separate from jog/censor position; connect keylock and scratch priority. Host fixtures must cover transitions, seek/reset, history expiry, starvation/recovery and independence of the other deck. Then P4 link. | Now; preferred next software gate |
 | S2 / first | Render-to-sink clock and delivery. [audio_render_owner](../firmware-rust/apps/m1-firmware/src/audio_render_owner.rs) writes only `ReferenceSink` and waits on a software timer; progress backpressure can pause the whole render owner. No physical audio sink owns cadence. | Define bounded sink delivery, DMA/clock-driven consumption and independent MAIN/PFL routing. Specify active starvation vs idle silence, late/drop counters and control-progress backpressure handling. A 128-frame block at 48 kHz spans about 2.67 ms; deadline behavior needs measurement. Actual I2S/UAC endpoint, feedback, drift and channel mapping are separate adapter/physical gates. | Sink contract now; output adapter after D2 |
@@ -74,7 +80,7 @@ The [hardware matrix](boards/GUITION_HARDWARE_MATRIX_2026-10-20.md) and [source 
 - Recorder and SysEx/MIDI-CI remain LATER. Secure Boot/Flash Encryption pilot qualification remains SHOULD and must not become an accidental first-bring-up requirement. Controller-independent headphone hardware is excluded by the owner clarification above.
 - Custom PCB routing, Gerbers, manufacturing closure and fabrication are discontinued milestones. Historical INA238/PCM5102A or independent VBUS requirements need an explicit Guition disposition, not an assumption that those components exist on the purchased boards.
 
-## Recommended execution order
+## Recommended execution order at the review baseline
 
 1. While boards are in transit, start S1: canonical PCM history and source arbitration with deterministic host fixtures. Develop S2's sink contract alongside it, without choosing unverified board pins or output hardware.
 2. In parallel work streams over time, close S5's Rekordbox analysis publication and S6's interactive simulator; choose D2's MAIN/PFL route and prepare board diagnostic logging. Resolve Q1 at account level.
@@ -82,4 +88,4 @@ The [hardware matrix](boards/GUITION_HARDWARE_MATRIX_2026-10-20.md) and [source 
 4. Prove the first audible milestone: one WAV PCM16 source, stable real sink cadence, stereo MAIN/PFL routing as agreed, no false support claim. Then dual deck, S3 live performance modes/FX, S4 MP3/FLAC and combined-load acceptance.
 5. Complete settings/write transactions, OTA/boot health and C6/Web Remote, then close the per-requirement and exact-image release campaigns. This ordering does not remove any R1 MUST gate.
 
-The first bounded development task is S1. It does not depend on board arrival or merging APTA.
+S1's software history/arbitration path and the host routing/first-boot preparation are now implemented in the linked follow-up gate. The next physical milestone is exact-unit service/recovery and memory/peripheral bring-up followed by real I2S/UAC output. Loop/FX, decoder, analysis and interactive UI work remain independent host development paths. None requires merging APTA.

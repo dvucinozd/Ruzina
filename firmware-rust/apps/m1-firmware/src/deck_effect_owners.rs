@@ -2,13 +2,16 @@ use core::cell::RefCell;
 #[cfg(feature = "hotcue-flash-storage")]
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use crate::product_runtime::ProductRuntime;
 #[cfg(feature = "pcm-transport-bringup")]
 use crate::deck_audio_source::seek_wav_source;
-#[cfg(all(feature = "pcm-transport-bringup", not(feature = "render-graph-bringup")))]
+#[cfg(all(
+    feature = "pcm-transport-bringup",
+    not(feature = "render-graph-bringup")
+))]
 use crate::deck_audio_source::try_receive_pcm_block;
 #[cfg(feature = "hotcue-flash-storage")]
 use crate::hotcue_flash::EspHotCueFlash;
+use crate::product_runtime::ProductRuntime;
 #[cfg(any(feature = "hotcue-flash-storage", feature = "pcm-transport-bringup"))]
 use embassy_futures::select::{Either, select};
 use embassy_sync::{
@@ -16,6 +19,11 @@ use embassy_sync::{
     channel::{Channel, TrySendError},
     signal::Signal,
 };
+#[cfg(all(
+    feature = "pcm-transport-bringup",
+    not(feature = "render-graph-bringup")
+))]
+use embassy_time::{Duration, Timer};
 use pajoniiir_audio_runtime::{
     AudioEffectCommand, map_deck_effect,
     pcm_stream::{PcmBlockDisposition, PcmStreamBlock, PcmStreamProgress, PcmTransportCursor},
@@ -24,12 +32,9 @@ use pajoniiir_controller_session::DeckId;
 #[cfg(feature = "hotcue-flash-storage")]
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_deck::{DeckEffect, DeckEffectTarget};
-#[cfg(all(feature = "pcm-transport-bringup", not(feature = "render-graph-bringup")))]
-use embassy_time::{Duration, Timer};
 #[cfg(feature = "hotcue-flash-storage")]
 use pajoniiir_hot_cues::{
-    HotCueBank, HotCueStore, RecordBackedHotCueStore,
-    journal::HotCueJournalBackend,
+    HotCueBank, HotCueStore, RecordBackedHotCueStore, journal::HotCueJournalBackend,
 };
 
 const TRANSPORT_OWNER_QUEUE_DEPTH: usize = 16;
@@ -245,8 +250,12 @@ impl TransportOwnerState {
         progress: PcmStreamProgress,
         frames: u16,
     ) -> Option<TransportCompletion> {
+        let active_generation = crate::deck_audio_source::active_stream_generation(deck);
         let state = self.deck_mut(deck);
-        match state.pcm_cursor.accept_progress(progress, frames) {
+        match state
+            .pcm_cursor
+            .accept_active_progress(progress, frames, active_generation)
+        {
             PcmBlockDisposition::Accepted {
                 position_ms, eof, ..
             } => {
@@ -418,9 +427,7 @@ pub(crate) async fn load_persisted_hot_cues(
     }
 }
 
-pub(crate) fn dispatch_product_effects(
-    product: &mut ProductRuntime,
-) -> EffectOwnerDispatchReport {
+pub(crate) fn dispatch_product_effects(product: &mut ProductRuntime) -> EffectOwnerDispatchReport {
     let mut report = EffectOwnerDispatchReport::default();
 
     while let Ok(completion) = TRANSPORT_COMPLETIONS.try_receive() {
@@ -431,8 +438,7 @@ pub(crate) fn dispatch_product_effects(
                 succeeded,
             } => {
                 if product.resolve_playback_request(deck, request_id, succeeded) {
-                    report.playback_completions =
-                        report.playback_completions.saturating_add(1);
+                    report.playback_completions = report.playback_completions.saturating_add(1);
                 }
             }
             TransportCompletion::StreamEnded {
@@ -481,7 +487,6 @@ pub(crate) fn dispatch_product_effects(
     report.persistence_pending = product.pending_persistence_effects() != 0;
     report
 }
-
 
 #[cfg(feature = "hotcue-flash-storage")]
 fn dispatch_persistence_effect(
@@ -557,9 +562,7 @@ fn try_submit<const N: usize>(
 }
 
 #[cfg(feature = "hotcue-flash-storage")]
-pub(crate) async fn run_persistence_owner(
-    flash: esp_hal::peripherals::FLASH<'static>,
-) -> ! {
+pub(crate) async fn run_persistence_owner(flash: esp_hal::peripherals::FLASH<'static>) -> ! {
     let flash = match EspHotCueFlash::open(flash) {
         Ok(flash) => flash,
         Err(_) => {
@@ -667,6 +670,8 @@ pub(crate) async fn run_transport_owner() -> ! {
                             }
                             Err(()) => esp_hal::system::software_reset(),
                         }
+                    } else if let DeckEffect::ScratchJog { deck, ticks, epoch } = effect {
+                        crate::audio_render_owner::queue_scratch_jog(deck, ticks, epoch).await;
                     } else {
                         let completion =
                             TRANSPORT_OWNER_STATE.lock(|cell| cell.borrow_mut().apply(effect));
@@ -761,8 +766,7 @@ pub(crate) async fn run_transport_owner() -> ! {
     #[cfg(not(feature = "pcm-transport-bringup"))]
     loop {
         let effect = TRANSPORT_COMMANDS.receive().await;
-        let completion =
-            TRANSPORT_OWNER_STATE.lock(|cell| cell.borrow_mut().apply(effect));
+        let completion = TRANSPORT_OWNER_STATE.lock(|cell| cell.borrow_mut().apply(effect));
         if let Some(completion) = completion {
             TRANSPORT_COMPLETIONS.send(completion).await;
         }

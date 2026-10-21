@@ -2,6 +2,7 @@
 //! Values describe the audited vendor bundles, not acceptance of arriving units.
 #![no_std]
 
+pub mod diagnostics;
 pub mod jc1060;
 pub mod jc8012;
 

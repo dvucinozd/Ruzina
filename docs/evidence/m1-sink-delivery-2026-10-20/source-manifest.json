@@ -1,0 +1,45 @@
+{
+  "base": "8675aeb522e66446be566e908fb5b34989729d23",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256_lf": "fac518c1697c03dbe15206139f2d6d54cfcb647074afbb9c003c1dd0429ae418"
+    },
+    {
+      "path": "docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md",
+      "sha256_lf": "3d8e2d272d7b3e41e5ce7c4d179138be56978a77ccd1fd29c0a7e9a4893e00fa"
+    },
+    {
+      "path": "docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md",
+      "sha256_lf": "764a675ce3966ebe82cab8a7e6f767ffd160f2b8e7db01f08b5930f06a21e2ee"
+    },
+    {
+      "path": "docs/M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md",
+      "sha256_lf": "d8981b363711522f017dbc1f580050143a326d25e6660dd6d651c1cd0a83cb03"
+    },
+    {
+      "path": "firmware-rust/README.md",
+      "sha256_lf": "77b75f4181809f74093e6b24798c44d69829245504afba9c565502b59ef956fa"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/examples/clocked_output.rs",
+      "sha256_lf": "9127494173c09972630c48f60924455bbedecdf4c52686a455de84c3871e2590"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/lib.rs",
+      "sha256_lf": "9b7329c75ec186e0922202d48bd7e434e94911b8b2935350ce8850a19df383e9"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/routing.rs",
+      "sha256_lf": "020e8d926a91e9a157a784221acc5f72a3b25b45c30086f147f8963d747df932"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/src/sink.rs",
+      "sha256_lf": "ab2da9a071c243afd8cc847822c1df4f374eaa4e79949f545b8580831ecdd67f"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-audio-runtime/tests/sink_delivery.rs",
+      "sha256_lf": "e857041362733a7b30d33c187fda3abc8bfde41f685c84003af695e3ba665352"
+    }
+  ]
+}

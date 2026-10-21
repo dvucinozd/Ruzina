@@ -4,9 +4,7 @@ use pajoniiir_controller_session::{
     BeatFxTarget, ConnectionState, ControlDomain, ControllerLedFrame, DeckId, LedState, LedUpdate,
     PadMode, SemanticLedId, SessionDelivery, SessionDeliverySink,
 };
-use pajoniiir_deck::{
-    DeckEffect, DeckEffectBroker, DeckProductState, LoopAdjustMode, PadFxBank,
-};
+use pajoniiir_deck::{DeckEffect, DeckEffectBroker, DeckProductState, LoopAdjustMode, PadFxBank};
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
 use pajoniiir_media_session::MediaLease;
@@ -181,6 +179,12 @@ impl ProductRuntime {
 
     pub(crate) fn loaded_track(&self, deck: DeckId) -> Option<ProductLoadedTrack> {
         self.loaded_tracks[deck_index(deck)]
+    }
+
+    pub(crate) fn invalidate_deck_source(&mut self, deck: DeckId) {
+        self.loaded_tracks[deck_index(deck)] = None;
+        self.deck.unload_track(deck);
+        self.refresh_leds();
     }
 
     pub(crate) fn invalidate_loaded_media(&mut self, current: Option<MediaLease>) -> u8 {
@@ -408,24 +412,24 @@ impl ProductRuntime {
             SemanticLedId::BEAT_FX_ON,
             DeckId::One,
             beat_fx.enabled
-                && matches!(beat_fx.target, BeatFxTarget::ChannelOne | BeatFxTarget::Both),
+                && matches!(
+                    beat_fx.target,
+                    BeatFxTarget::ChannelOne | BeatFxTarget::Both
+                ),
         );
         self.set_deck_led(
             SemanticLedId::BEAT_FX_ON,
             DeckId::Two,
             beat_fx.enabled
-                && matches!(beat_fx.target, BeatFxTarget::ChannelTwo | BeatFxTarget::Both),
+                && matches!(
+                    beat_fx.target,
+                    BeatFxTarget::ChannelTwo | BeatFxTarget::Both
+                ),
         );
 
         self.set_global_led(SemanticLedId::SMART_CFX, self.mixer.smart_cfx_enabled());
-        self.set_global_led(
-            SemanticLedId::SMART_FADER,
-            self.mixer.smart_fader_enabled(),
-        );
-        self.set_global_led(
-            SemanticLedId::MASTER_CUE,
-            self.mixer.master_cue_enabled(),
-        );
+        self.set_global_led(SemanticLedId::SMART_FADER, self.mixer.smart_fader_enabled());
+        self.set_global_led(SemanticLedId::MASTER_CUE, self.mixer.master_cue_enabled());
     }
 
     fn set_deck_led(&mut self, led: SemanticLedId, deck: DeckId, enabled: bool) {
@@ -455,8 +459,7 @@ impl SessionDeliverySink for ProductRuntime {
                 if state == ConnectionState::Connected {
                     self.mark_led_resync();
                 }
-                self.stats.accepted_connections =
-                    self.stats.accepted_connections.saturating_add(1);
+                self.stats.accepted_connections = self.stats.accepted_connections.saturating_add(1);
                 true
             }
             SessionDelivery::Control(event) => match event.control.domain() {
