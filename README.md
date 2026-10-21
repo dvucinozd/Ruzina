@@ -4,7 +4,7 @@
 
 ## Active direction — 2026-10-20
 
-Latest service work: [bounded health observations, diagnostics UI and boot report adapter](docs/M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md), with real host event/recovery evidence and 34 pixel goldens. Unmeasured device values stay unknown; runtime owner health/freshness and physical acceptance remain open.
+Latest service work: [generation and freshness-aware runtime publications](docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md), with host session heartbeat/recovery, opt-in owner counter adapters and 38 pixel goldens. Device task integration and physical acceptance remain open.
 
 Latest mixer/FX work: [authoritative mixer/PFL and Beat/Pad FX controls](docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) in both host UI geometries, with momentary release/recovery tests and 24 reviewed pixel goldens. Audible FX execution and physical output remain open.
 

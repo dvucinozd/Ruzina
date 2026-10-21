@@ -37,6 +37,11 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         ui.set_health_events(false);
         ui.set_page(6);
         health_smoke::capture_health(&ui, &state, output, &format!("{name}-health-initial"))?;
+        health_smoke::freshness(&ui, &state, output, name)?;
+        // Keep all existing scenario clocks/counters independent of this replay.
+        let board = state.borrow().diagnostics().identity.board;
+        *state.borrow_mut() = Session::for_board(board);
+        refresh(&ui, &state.borrow());
         ui.set_page(0);
         ui.invoke_select_track(0);
         ui.invoke_load_track(0);
@@ -82,7 +87,7 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         health_smoke::recovery(&ui, &state, output, name, width as f32)?;
     }
     println!(
-        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 34 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 38 software-rendered snapshots: PASS"
     );
     Ok(())
 }

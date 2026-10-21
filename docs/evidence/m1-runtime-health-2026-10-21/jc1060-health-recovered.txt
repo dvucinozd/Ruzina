@@ -1,0 +1,35 @@
+M1_SERVICE_DIAGNOSTIC_V2
+environment=HostSimulation
+board_profile=JC1060P470C_I_W_Y
+image_id=NOT_RECORDED
+minimum_revision_documented=302
+flash_bytes_documented=16777216
+psram_bytes_documented=33554432
+chip_revision_observed=NOT_MEASURED
+flash_bytes_observed=NOT_MEASURED
+psram_bytes_observed=NOT_MEASURED
+reset_code_observed=NOT_MEASURED
+identity_check=NotMeasured
+sample_elapsed_ms=1820
+runtime_publication=Some(Observation { freshness: Fresh, generation: Some(5), stamp: Some(Stamp { generation: 5, sequence: 1, sampled_ms: 1820, activity: Idle }), age_ms: Some(0) })
+health_scope=DemoMediaReady
+media=Connected
+analysis=[Unloaded, Unloaded]
+counters=Counters { media_connects: 3, media_removals: 2, load_attempts: 4, loads_completed: 4, loads_blocked: 0, analysis_ready: 3, analysis_missing: 0, analysis_rejected: 1, playback_rejected: 0, end_of_track: 0, control_events: 70 }
+events_retained=14
+events_overwritten=0
+event=1 t=0 Boot
+event=2 t=0 MediaConnected
+event=3 t=0 LoadAttempt(One)
+event=4 t=0 Loaded { deck: One, analysis: Ready }
+event=5 t=0 LoadAttempt(Two)
+event=6 t=0 Loaded { deck: Two, analysis: Ready }
+event=7 t=1770 LoadAttempt(One)
+event=8 t=1770 Loaded { deck: One, analysis: Rejected }
+event=9 t=1770 MediaRemoved
+event=10 t=1770 MediaConnected
+event=11 t=1770 LoadAttempt(One)
+event=12 t=1770 Loaded { deck: One, analysis: Ready }
+event=13 t=1820 MediaRemoved
+event=14 t=1820 MediaConnected
+readiness=NOT_QUALIFIED

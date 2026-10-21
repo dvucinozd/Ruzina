@@ -1,5 +1,8 @@
 # M1 service/health observations and diagnostics UI
 
+Follow-up: [runtime publication generation/freshness and owner adapters](M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md).
+This gate and its V1 reports remain the evidence for the earlier source revision.
+
 Date: 2026-10-21
 
 Base: `eac8481e2a91f7eaf8971c36bfa8188ba42a3f3e`, open mixer/FX PR #8 above UI

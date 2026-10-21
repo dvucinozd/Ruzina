@@ -70,11 +70,18 @@ python3 tools/check_ui_goldens.py target/ui-smoke
 The actual compiled Slint view runs on its software renderer, without X11 or a
 physical display. Callback replay plus pointer hit testing/keyboard input cover
 both geometries, including a refresh during held Play and cue-delete clicks.
-Thirty-four PPM screenshots are compared with reviewed raw RGB SHA-256 goldens in
+Thirty-eight PPM screenshots are compared with reviewed raw RGB SHA-256 goldens in
 `tests/ui-goldens.json`. These pixel baselines require Linux x86_64, Slint 1.18.1,
 the pinned Fluent style, DejaVu Sans and scale 1. Font/raster environment changes require visual review,
 not automatic baseline replacement. Reviewed PNGs and logs are retained in the
-[service/Health gate](../../../docs/M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md).
+[runtime freshness gate](../../../docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md).
+
+The host session publishes a heartbeat after owner work, including while Idle.
+Health shows generation, sequence and sample age; age above 1000 ms is Stale.
+Reading or drawing Health never renews a publication. Replay separately advances
+the observer to exercise a stopped publisher and Idle recovery. This is not an
+event-loop watchdog. V2 diagnostic reports include publication metadata; the
+device boot report remains a static snapshot.
 
 This package covers interactive decks, Library, cues, mixer/PFL/FX and session settings.
 Full M2.2 UI parity, runtime diagnostics/performance owner adapters, arbitrary external

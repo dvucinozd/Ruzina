@@ -196,3 +196,49 @@ fn service_clock_advances_while_paused_but_eof_is_recorded_once() {
     assert_eq!(s.diagnostics().counters.playback_rejected, 1);
     assert_eq!(s.diagnostics().elapsed_ms, 40_100);
 }
+
+#[test]
+fn runtime_heartbeat_is_independent_of_playback_and_refresh_reads() {
+    use pajoniiir_service::{
+        Health,
+        publication::{Activity, Freshness},
+    };
+    let mut s = loaded();
+    let initial = s.diagnostics().observation.unwrap();
+    assert_eq!(initial.stamp.unwrap().activity, Activity::Idle);
+    s.observe_elapsed(session::RUNTIME_MAX_AGE_MS as u32);
+    assert_eq!(
+        s.diagnostics().observation.unwrap().freshness,
+        Freshness::Fresh
+    );
+    s.observe_elapsed(1);
+    assert_eq!(s.diagnostics().health(), Health::RuntimeStale);
+    assert_eq!(s.diagnostics().observation.unwrap().stamp, initial.stamp);
+    // Repeated snapshot/UI reads cannot renew the publication.
+    assert_eq!(s.diagnostics().health(), Health::RuntimeStale);
+    s.tick(0);
+    assert_eq!(s.diagnostics().health(), Health::DemoMediaReady);
+    assert_eq!(
+        s.diagnostics().observation.unwrap().stamp.unwrap().activity,
+        Activity::Idle
+    );
+    press(&mut s, DeckAction::Play);
+    assert_eq!(
+        s.diagnostics().observation.unwrap().stamp.unwrap().activity,
+        Activity::Active
+    );
+    s.detach();
+    let removed = s.diagnostics().observation.unwrap();
+    assert!(removed.generation > initial.generation);
+    assert_eq!(removed.stamp.unwrap().activity, Activity::Idle);
+    assert_eq!(s.diagnostics().health(), Health::MediaUnavailable);
+    s.reconnect();
+    let connected = s.diagnostics().observation.unwrap();
+    assert!(connected.generation > removed.generation);
+    s.reconnect();
+    assert_eq!(
+        s.diagnostics().observation.unwrap().generation,
+        connected.generation
+    );
+    assert_eq!(s.diagnostics().counters.media_removals, 1);
+}

@@ -7,6 +7,11 @@ use core::fmt::{self, Write};
 use pajoniiir_board_profile::{BoardId, profile};
 use pajoniiir_core::DeckId;
 
+#[cfg(feature = "owner-adapters")]
+pub mod adapters;
+pub mod publication;
+use publication::{Freshness, Observation, Slot};
+
 pub const EVENT_CAPACITY: usize = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -95,6 +100,8 @@ impl RuntimeStatus {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Health {
+    RuntimeStale,
+    RuntimeAwaiting,
     BootOnly,
     DemoMediaReady,
     AnalysisFallback,
@@ -214,12 +221,21 @@ pub struct Snapshot {
     pub elapsed_ms: u64,
     pub counters: Counters,
     pub runtime: RuntimeStatus,
+    /// None is an explicitly synchronous/boot snapshot, not a heartbeat.
+    pub observation: Option<Observation>,
     pub events: EventLog,
 }
 impl Snapshot {
     pub fn health(&self) -> Health {
         if self.identity.check() == IdentityCheck::Mismatch {
             return Health::IdentityMismatch;
+        }
+        if self.identity.environment != Environment::DeviceBootSnapshot {
+            match self.observation.map(|o| o.freshness) {
+                Some(Freshness::Stale | Freshness::ClockReversed) => return Health::RuntimeStale,
+                Some(Freshness::Unbound | Freshness::Awaiting) => return Health::RuntimeAwaiting,
+                _ => {}
+            }
         }
         if self.identity.environment == Environment::DeviceBootSnapshot
             || self.runtime.media == MediaStatus::NotStarted
@@ -242,7 +258,7 @@ impl Snapshot {
     /// Caller must discard the entire buffer on error, never emit a partial record.
     pub fn write_to(&self, output: &mut impl Write) -> fmt::Result {
         let board = profile(self.identity.board);
-        writeln!(output, "M1_SERVICE_DIAGNOSTIC_V1")?;
+        writeln!(output, "M1_SERVICE_DIAGNOSTIC_V2")?;
         writeln!(output, "environment={:?}", self.identity.environment)?;
         writeln!(output, "board_profile={}", board.model)?;
         writeln!(output, "image_id={}", self.identity.image_label())?;
@@ -269,6 +285,7 @@ impl Snapshot {
         }
         writeln!(output, "identity_check={:?}", self.identity.check())?;
         writeln!(output, "sample_elapsed_ms={}", self.elapsed_ms)?;
+        writeln!(output, "runtime_publication={:?}", self.observation)?;
         writeln!(output, "health_scope={:?}", self.health())?;
         writeln!(output, "media={:?}", self.runtime.media)?;
         writeln!(output, "analysis={:?}", self.runtime.analysis)?;
@@ -309,6 +326,15 @@ impl Service {
     pub fn advance(&mut self, elapsed_ms: u64) {
         self.elapsed_ms = self.elapsed_ms.saturating_add(elapsed_ms);
     }
+    pub const fn elapsed_ms(&self) -> u64 {
+        self.elapsed_ms
+    }
+    pub fn observed_snapshot(&self, slot: &Slot<RuntimeStatus>) -> Snapshot {
+        let mut snapshot =
+            self.snapshot(slot.latest().map_or(RuntimeStatus::BOOT_ONLY, |s| s.value));
+        snapshot.observation = Some(slot.observation(self.elapsed_ms));
+        snapshot
+    }
     pub fn note_control(&mut self) {
         self.counters.control_events = self.counters.control_events.saturating_add(1);
     }
@@ -342,6 +368,7 @@ impl Service {
             elapsed_ms: self.elapsed_ms,
             counters: self.counters,
             runtime,
+            observation: None,
             events: self.events,
         }
     }
@@ -468,6 +495,6 @@ mod tests {
             .unwrap();
         let text = core::str::from_utf8(buffer.bytes()).unwrap();
         assert!(text.starts_with("M1_BOOT_DIAGNOSTIC_V1\n"));
-        assert!(text.contains("M1_SERVICE_DIAGNOSTIC_V1\n"));
+        assert!(text.contains("M1_SERVICE_DIAGNOSTIC_V2\n"));
     }
 }

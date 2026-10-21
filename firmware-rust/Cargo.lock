@@ -3104,7 +3104,10 @@ dependencies = [
 name = "pajoniiir-service"
 version = "0.1.0"
 dependencies = [
+ "pajoniiir-audio-runtime",
  "pajoniiir-board-profile",
+ "pajoniiir-control-scheduler",
+ "pajoniiir-controller-core",
  "pajoniiir-core",
 ]
 
