@@ -7,14 +7,8 @@ use crate::{
 };
 use pajoniiir_audio_dsp::PcmFrame;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum WavStreamChange {
-    SeekMilliseconds(u32),
-    Loop {
-        position_frame: u64,
-        region_ms: Option<(u32, u32)>,
-    },
-}
+// Compatibility name for existing WAV callers; controls are codec-neutral.
+pub use crate::decode::StreamChange as WavStreamChange;
 
 pub struct WavStreamDecoder {
     descriptor: WavPcm16SourceDescriptor,

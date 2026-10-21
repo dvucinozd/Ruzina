@@ -6,7 +6,9 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
-Latest audio work: [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) combines both wet PFL taps with limited stereo master and separate monitor gains. The render owner publishes these controls and submits the composed headphone bus. Physical output timing and listening remain separate gates.
+Latest audio work: [shared WAV/MP3/FLAC source decoding](../docs/M1_RUST_CODEC_STREAM_GATE_2026-10-21.md) uses one codec-neutral read/block/control contract behind the Library source owner. Fixed per-deck contexts live in PSRAM; the existing render/FX/PFL and confirmed transport consumers are shared by all formats. Physical output timing and listening remain separate gates.
+
+The [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) is merged through PR #15. The render owner submits the complete controller-only headphone bus.
 
 [Beat/Pad FX PCM execution](../docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) is merged through PR #14; streamed PCM loops are merged through PR #13. Fixed per-deck FX storage remains scoped to source epochs/generations.
 

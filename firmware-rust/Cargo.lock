@@ -2445,6 +2445,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanoaudio-core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22ff788a8aae291c8eba3697cacac1666b86cdb702bd342b41b4c5d58baeffb5"
+
+[[package]]
+name = "nanoaudio-flac"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea8197dcb88a39a49d4bdf666dcaaf26177cd1e8c50186dbcd1e6bf5d919e0c8"
+dependencies = [
+ "nanoaudio-core",
+ "wide",
+]
+
+[[package]]
+name = "nanoaudio-mp3"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214"
+dependencies = [
+ "nanoaudio-core",
+ "nanomp3-core",
+]
+
+[[package]]
+name = "nanomp3-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c"
+
+[[package]]
 name = "natord"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2916,6 +2948,9 @@ name = "pajoniiir-audio-runtime"
 version = "0.1.0"
 dependencies = [
  "libm",
+ "nanoaudio-core",
+ "nanoaudio-flac",
+ "nanoaudio-mp3",
  "pajoniiir-audio-dsp",
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-scratch",
@@ -3654,6 +3689,15 @@ name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
+
+[[package]]
+name = "safe_arch"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42c6efa15875e6ecb39ca61fb0b0c1a40b84fac5a5ffe71eef7d1000c8eb3f5f"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "same-file"
@@ -4751,6 +4795,16 @@ dependencies = [
  "naga-types",
  "raw-window-handle",
  "static_assertions",
+]
+
+[[package]]
+name = "wide"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d920ac99c3c8edce110cb8d07dbb324d6d026011dce85b1e9355b70f0adacc4f"
+dependencies = [
+ "bytemuck",
+ "safe_arch",
 ]
 
 [[package]]

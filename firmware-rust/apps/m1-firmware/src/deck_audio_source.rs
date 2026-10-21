@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+use allocator_api2::boxed::Box;
 use embassy_futures::select::{Either, select};
 use embassy_sync::{
     blocking_mutex::raw::CriticalSectionRawMutex,
@@ -6,12 +8,15 @@ use embassy_sync::{
 use embassy_time::{Duration, Timer};
 use pajoniiir_audio_dsp::PcmFrame;
 use pajoniiir_audio_runtime::{
+    decode::{
+        AudioCodec, DecodeAction, DecoderStorage, ENCODED_BUFFER_BYTES, Mp3CheckpointStorage,
+        SourceDecoder, SourceDescriptor, StreamChange,
+    },
     pcm_stream::{PcmStreamBlock, StreamActivation, next_stream_generation},
     wav::{
         CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16Decoder,
         WavPcm16SourceDescriptor, parse_chunk_header, parse_pcm16_format, parse_riff_header,
     },
-    wav_stream::{WavStreamChange, WavStreamDecoder},
 };
 use pajoniiir_controller_session::DeckId;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
@@ -26,12 +31,12 @@ use crate::{
 };
 
 const SOURCE_QUEUE_DEPTH: usize = 1;
-// Each stereo read yields 128 frames. A queue can fill the complete bounded
+// Decoders publish at most 256 frames per block. A queue can fill the bounded
 // lookahead in one owner turn, including high-rate/keylock playback. Capacity
 // remains fixed; real throughput/jitter still requires hardware measurement.
 const PCM_QUEUE_DEPTH: usize = 16;
-// 512 bytes produces at most 256 mono PCM16 frames or 128 stereo frames,
-// fitting one fixed PcmStreamBlock without hidden input retention.
+// Filesystem transfers remain 512 bytes; compressed decoders retain only their
+// fixed encoded window and one bounded output staging frame in PSRAM.
 const SOURCE_READ_BUFFER_BYTES: usize = 512;
 const _: () = assert!(
     PCM_QUEUE_DEPTH * (SOURCE_READ_BUFFER_BYTES / 4)
@@ -80,8 +85,8 @@ static DECK_A_STREAM_GENERATION: StreamActivation = StreamActivation::new();
 static DECK_B_STREAM_GENERATION: StreamActivation = StreamActivation::new();
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct PreparedWavToken {
-    pub(crate) descriptor: WavPcm16SourceDescriptor,
+pub(crate) struct PreparedAudioToken {
+    pub(crate) descriptor: SourceDescriptor,
     pub(crate) generation: u32,
 }
 
@@ -93,7 +98,7 @@ enum DeckAudioSourceCommand {
     },
     Control {
         request_id: u32,
-        change: WavStreamChange,
+        change: StreamChange,
         expected_generation: u32,
     },
     Release,
@@ -103,7 +108,7 @@ enum DeckAudioSourceCommand {
 enum DeckAudioSourceCompletion {
     Prepared {
         request_id: u32,
-        descriptor: WavPcm16SourceDescriptor,
+        descriptor: SourceDescriptor,
         generation: u32,
     },
     Failed {
@@ -125,25 +130,26 @@ enum DeckAudioSourceControlCompletion {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct WavSeekResult {
+pub(crate) struct AudioSeekResult {
     pub(crate) generation: u32,
     pub(crate) frame: u64,
     pub(crate) sample_rate_hz: u32,
 }
 
-struct PreparedWavSource {
+struct PreparedAudioSource {
     candidate: CatalogLoadCandidate,
     file: Usb0FsFileHandle,
-    descriptor: WavPcm16SourceDescriptor,
-    stream: WavStreamDecoder,
+    descriptor: SourceDescriptor,
+    stream: SourceDecoder,
+    primed: Option<PcmStreamBlock>,
     eof_queued: bool,
 }
 
-pub(crate) async fn prepare_wav_source(
+pub(crate) async fn prepare_audio_source(
     deck: DeckId,
     request_id: u32,
     candidate: CatalogLoadCandidate,
-) -> Result<PreparedWavToken, ()> {
+) -> Result<PreparedAudioToken, ()> {
     command_channel(deck)
         .send(DeckAudioSourceCommand::Prepare {
             request_id,
@@ -156,7 +162,7 @@ pub(crate) async fn prepare_wav_source(
             request_id: completed,
             descriptor,
             generation,
-        } if completed == request_id => Ok(PreparedWavToken {
+        } if completed == request_id => Ok(PreparedAudioToken {
             descriptor,
             generation,
         }),
@@ -169,24 +175,24 @@ pub(crate) async fn prepare_wav_source(
     }
 }
 
-pub(crate) async fn seek_wav_source(
+pub(crate) async fn seek_audio_source(
     deck: DeckId,
     request_id: u32,
     position_ms: u32,
-) -> Result<WavSeekResult, ()> {
-    change_wav_source(
+) -> Result<AudioSeekResult, ()> {
+    change_audio_source(
         deck,
         request_id,
-        WavStreamChange::SeekMilliseconds(position_ms),
+        StreamChange::SeekMilliseconds(position_ms),
     )
     .await
 }
 
-pub(crate) async fn change_wav_source(
+pub(crate) async fn change_audio_source(
     deck: DeckId,
     request_id: u32,
-    change: WavStreamChange,
-) -> Result<WavSeekResult, ()> {
+    change: StreamChange,
+) -> Result<AudioSeekResult, ()> {
     let expected_generation = active_stream_generation(deck);
     if expected_generation == 0 {
         return Err(());
@@ -205,7 +211,7 @@ pub(crate) async fn change_wav_source(
             generation,
             frame,
             sample_rate_hz,
-        } if completed == request_id => Ok(WavSeekResult {
+        } if completed == request_id => Ok(AudioSeekResult {
             generation,
             frame,
             sample_rate_hz,
@@ -255,7 +261,24 @@ async fn run_owner(
     mut client: Usb0FilesystemClient,
     mut buffer: &'static mut [u8],
 ) -> ! {
-    let mut prepared: Option<PreparedWavSource> = None;
+    let mut storage = match allocate_decoder() {
+        Ok(storage) => storage,
+        Err(_) => allocation_failed(deck).await,
+    };
+    let mut checkpoints = [None, None, None];
+    for slot in &mut checkpoints {
+        match allocate_checkpoint() {
+            Ok(checkpoint) => *slot = Some(checkpoint),
+            Err(_) => allocation_failed(deck).await,
+        }
+    }
+    let mut checkpoints = checkpoints.map(|slot| slot.expect("provisioned checkpoint"));
+    let mut encoded = Vec::new();
+    if encoded.try_reserve_exact(ENCODED_BUFFER_BYTES).is_err() {
+        allocation_failed(deck).await;
+    }
+    encoded.resize(ENCODED_BUFFER_BYTES, 0u8);
+    let mut prepared: Option<PreparedAudioSource> = None;
     let mut pending_block: Option<PcmStreamBlock> = None;
     let mut generation = 0u32;
 
@@ -303,8 +326,17 @@ async fn run_owner(
                     }
 
                     generation = next_stream_generation(generation);
-                    let (next_buffer, result) =
-                        prepare_source(&mut client, candidate, buffer, generation).await;
+                    let (next_buffer, result) = prepare_source(
+                        deck,
+                        &mut client,
+                        candidate,
+                        buffer,
+                        generation,
+                        &mut storage,
+                        &mut checkpoints,
+                        &mut encoded,
+                    )
+                    .await;
                     buffer = next_buffer;
                     match result {
                         Ok(source) => {
@@ -350,7 +382,20 @@ async fn run_owner(
                             Err(())
                         } else {
                             generation = next_stream_generation(generation);
-                            match seek_source(&mut client, &mut source, generation, change).await {
+                            let (next_buffer, seek_result) = seek_source(
+                                deck,
+                                &mut client,
+                                &mut source,
+                                generation,
+                                change,
+                                buffer,
+                                &mut storage,
+                                &mut checkpoints,
+                                &mut encoded,
+                            )
+                            .await;
+                            buffer = next_buffer;
+                            match seek_result {
                                 Ok(result) => {
                                     stream_generation_atomic(deck).prepared(result.generation);
                                     if was_active {
@@ -445,19 +490,53 @@ async fn run_owner(
             continue;
         }
 
-        let (next_buffer, source, produced) = produce_pcm_block(&mut client, source, buffer).await;
+        let (next_buffer, source, produced) = produce_pcm_block(
+            &mut client,
+            source,
+            buffer,
+            &mut storage,
+            &mut checkpoints,
+            &mut encoded,
+        )
+        .await;
         buffer = next_buffer;
         prepared = Some(source);
         pending_block = produced;
     }
 }
 
+// Isolate provisioning from the large async poll frame. Cloning immutable flash
+// templates avoids materializing the full FLAC/context aggregate on its stack.
+// The remaining MP3 clone scratch is checked in the retained P4 assembly audit.
+#[inline(never)]
+fn allocate_decoder() -> Result<Box<DecoderStorage>, allocator_api2::alloc::AllocError> {
+    static INITIAL: DecoderStorage = DecoderStorage::new();
+    let slot = Box::<DecoderStorage>::try_new_uninit()?;
+    Ok(Box::write(slot, INITIAL.clone()))
+}
+
+#[inline(never)]
+fn allocate_checkpoint() -> Result<Box<Mp3CheckpointStorage>, allocator_api2::alloc::AllocError> {
+    static INITIAL: Mp3CheckpointStorage = Mp3CheckpointStorage::new();
+    let slot = Box::<Mp3CheckpointStorage>::try_new_uninit()?;
+    Ok(Box::write(slot, INITIAL.clone()))
+}
+
+fn checkpoint_views(slots: &mut [Box<Mp3CheckpointStorage>; 3]) -> [&mut Mp3CheckpointStorage; 3] {
+    let [a, b, c] = slots;
+    [a.as_mut(), b.as_mut(), c.as_mut()]
+}
+
 async fn prepare_source(
+    deck: DeckId,
     client: &mut Usb0FilesystemClient,
     candidate: CatalogLoadCandidate,
     buffer: &'static mut [u8],
     generation: u32,
-) -> (&'static mut [u8], Result<PreparedWavSource, ()>) {
+    storage: &mut DecoderStorage,
+    checkpoints: &mut [Box<Mp3CheckpointStorage>; 3],
+    encoded: &mut [u8],
+) -> (&'static mut [u8], Result<PreparedAudioSource, ()>) {
     let lease = candidate.publication.lease;
     if current_media_lease() != Some(lease) || candidate.track.audio_path.is_empty() {
         return (buffer, Err(()));
@@ -475,6 +554,54 @@ async fn prepare_source(
     if bytes < RIFF_HEADER_BYTES {
         let _ = close_file(client, lease, file).await;
         return (buffer, Err(()));
+    }
+
+    if &buffer[..4] != b"RIFF" {
+        let codec = if &buffer[..4] == b"fLaC" {
+            AudioCodec::Flac
+        } else if &buffer[..3] == b"ID3" || buffer[0] == 0xff && buffer[1] & 0xe0 == 0xe0 {
+            AudioCodec::Mp3
+        } else {
+            let _ = close_file(client, lease, file).await;
+            return (buffer, Err(()));
+        };
+        let Some(mut stream) = SourceDecoder::compressed(codec, file_len, generation, storage)
+        else {
+            let _ = close_file(client, lease, file).await;
+            return (buffer, Err(()));
+        };
+        let (buffer, file, primed) = prime(
+            deck,
+            client,
+            lease,
+            file,
+            &mut stream,
+            buffer,
+            storage,
+            checkpoints,
+            encoded,
+        )
+        .await;
+        return match primed {
+            Some(block) if block.len != 0 && !block.faulted => {
+                let descriptor = stream.descriptor().expect("decoded source descriptor");
+                (
+                    buffer,
+                    Ok(PreparedAudioSource {
+                        candidate,
+                        file,
+                        descriptor,
+                        stream,
+                        primed: Some(block),
+                        eof_queued: false,
+                    }),
+                )
+            }
+            _ => {
+                let _ = close_file(client, lease, file).await;
+                (buffer, Err(()))
+            }
+        };
     }
 
     let riff_size = match parse_riff_header(&buffer[..RIFF_HEADER_BYTES]) {
@@ -572,17 +699,37 @@ async fn prepare_source(
             if current_media_lease() != Some(lease) {
                 return (buffer, Err(()));
             }
-            return (
+            let mut stream =
+                SourceDecoder::wav(descriptor, file_len, generation).expect("validated WAV stream");
+            let (buffer, file, primed) = prime(
+                deck,
+                client,
+                lease,
+                file,
+                &mut stream,
                 buffer,
-                Ok(PreparedWavSource {
-                    candidate,
-                    file,
-                    descriptor,
-                    stream: WavStreamDecoder::new(descriptor, generation, 0, None)
-                        .expect("validated WAV stream"),
-                    eof_queued: false,
-                }),
-            );
+                storage,
+                checkpoints,
+                encoded,
+            )
+            .await;
+            return match primed {
+                Some(block) if block.len != 0 && !block.faulted => (
+                    buffer,
+                    Ok(PreparedAudioSource {
+                        candidate,
+                        file,
+                        descriptor: descriptor.into(),
+                        stream,
+                        primed: Some(block),
+                        eof_queued: false,
+                    }),
+                ),
+                _ => {
+                    let _ = close_file(client, lease, file).await;
+                    (buffer, Err(()))
+                }
+            };
         }
 
         position = next_position;
@@ -593,82 +740,151 @@ async fn prepare_source(
 }
 
 async fn seek_source(
+    deck: DeckId,
     client: &mut Usb0FilesystemClient,
-    source: &mut PreparedWavSource,
+    source: &mut PreparedAudioSource,
     generation: u32,
-    change: WavStreamChange,
-) -> Result<WavSeekResult, ()> {
-    let stream = source.stream.changed(generation, change).ok_or(())?;
-    let frame = stream.media_frame();
-    let byte_offset = source
-        .descriptor
-        .data_offset
-        .checked_add(
-            frame
-                .checked_mul(u64::from(source.descriptor.format.block_align))
-                .ok_or(())?,
-        )
-        .ok_or(())?;
-    source.file = match seek_file(
+    change: StreamChange,
+    buffer: &'static mut [u8],
+    storage: &mut DecoderStorage,
+    checkpoints: &mut [Box<Mp3CheckpointStorage>; 3],
+    encoded: &mut [u8],
+) -> (&'static mut [u8], Result<AudioSeekResult, ()>) {
+    if !source.stream.change(
+        storage,
+        &mut checkpoint_views(checkpoints),
+        encoded,
+        generation,
+        change,
+    ) {
+        return (buffer, Err(()));
+    }
+    let frame = source.stream.media_frame();
+    let (buffer, file, primed) = prime(
+        deck,
         client,
         source.candidate.publication.lease,
         source.file,
-        byte_offset,
+        &mut source.stream,
+        buffer,
+        storage,
+        checkpoints,
+        encoded,
     )
-    .await
-    {
-        SeekOutcome::Ready(file) => file,
-        SeekOutcome::Failed(file) => {
-            source.file = file;
-            return Err(());
+    .await;
+    source.file = file;
+    match primed {
+        Some(block) if !block.faulted => {
+            source.primed = Some(block);
+            source.eof_queued = false;
+            (
+                buffer,
+                Ok(AudioSeekResult {
+                    generation,
+                    frame,
+                    sample_rate_hz: source.descriptor.sample_rate_hz(),
+                }),
+            )
         }
-    };
-    source.stream = stream;
-    source.eof_queued = false;
-    Ok(WavSeekResult {
-        generation,
-        frame,
-        sample_rate_hz: source.descriptor.format.sample_rate_hz,
-    })
+        _ => (buffer, Err(())),
+    }
+}
+
+async fn prime(
+    deck: DeckId,
+    client: &mut Usb0FilesystemClient,
+    lease: pajoniiir_media_session::MediaLease,
+    mut file: Usb0FsFileHandle,
+    stream: &mut SourceDecoder,
+    mut buffer: &'static mut [u8],
+    storage: &mut DecoderStorage,
+    checkpoints: &mut [Box<Mp3CheckpointStorage>; 3],
+    encoded: &mut [u8],
+) -> (&'static mut [u8], Usb0FsFileHandle, Option<PcmStreamBlock>) {
+    loop {
+        if current_media_lease() != Some(lease) || !command_channel(deck).is_empty() {
+            return (buffer, file, None);
+        }
+        match stream.step(storage, &mut checkpoint_views(checkpoints), encoded) {
+            DecodeAction::Read { offset, maximum } => {
+                let (next_file, next_buffer, bytes) =
+                    read_at(client, lease, file, buffer, offset).await;
+                file = next_file;
+                buffer = next_buffer;
+                if bytes > maximum || !stream.provide(encoded, &buffer[..bytes]) {
+                    return (buffer, file, None);
+                }
+            }
+            DecodeAction::Pending => embassy_futures::yield_now().await,
+            DecodeAction::Block(block) => return (buffer, file, Some(block)),
+        }
+    }
 }
 
 async fn produce_pcm_block(
     client: &mut Usb0FilesystemClient,
-    mut source: PreparedWavSource,
+    mut source: PreparedAudioSource,
     buffer: &'static mut [u8],
-) -> (&'static mut [u8], PreparedWavSource, Option<PcmStreamBlock>) {
-    if let Some(block) = source.stream.cached_block() {
+    storage: &mut DecoderStorage,
+    checkpoints: &mut [Box<Mp3CheckpointStorage>; 3],
+    encoded: &mut [u8],
+) -> (
+    &'static mut [u8],
+    PreparedAudioSource,
+    Option<PcmStreamBlock>,
+) {
+    if let Some(block) = source.primed.take() {
         source.eof_queued = block.eof || block.faulted;
         return (buffer, source, Some(block));
     }
-    let lease = source.candidate.publication.lease;
-    if let Some(frame) = source.stream.rewind_frame() {
-        let offset =
-            source.descriptor.data_offset + frame * u64::from(source.descriptor.format.block_align);
-        match seek_file(client, lease, source.file, offset).await {
-            SeekOutcome::Ready(file) => {
-                source.file = file;
-                if !source.stream.complete_rewind() {
-                    let block = source.stream.fault_block();
-                    source.eof_queued = true;
-                    return (buffer, source, Some(block));
-                }
-            }
-            SeekOutcome::Failed(file) => {
-                source.file = file;
-                let block = source.stream.fault_block();
+    let block = match source
+        .stream
+        .step(storage, &mut checkpoint_views(checkpoints), encoded)
+    {
+        DecodeAction::Read { offset, maximum } => {
+            let (file, buffer, bytes) = read_at(
+                client,
+                source.candidate.publication.lease,
+                source.file,
+                buffer,
+                offset,
+            )
+            .await;
+            source.file = file;
+            let block = if bytes > maximum || !source.stream.provide(encoded, &buffer[..bytes]) {
                 source.eof_queued = true;
-                return (buffer, source, Some(block));
+                Some(source.stream.fault_block())
+            } else {
+                None
+            };
+            return (buffer, source, block);
+        }
+        DecodeAction::Pending => {
+            embassy_futures::yield_now().await;
+            None
+        }
+        DecodeAction::Block(block) => Some(block),
+    };
+    source.eof_queued = block.as_ref().is_some_and(|b| b.eof || b.faulted);
+    (buffer, source, block)
+}
+
+async fn allocation_failed(deck: DeckId) -> ! {
+    loop {
+        match command_channel(deck).receive().await {
+            DeckAudioSourceCommand::Prepare { request_id, .. } => {
+                prepare_completion_channel(deck)
+                    .send(DeckAudioSourceCompletion::Failed { request_id })
+                    .await
             }
+            DeckAudioSourceCommand::Control { request_id, .. } => {
+                control_completion_channel(deck)
+                    .send(DeckAudioSourceControlCompletion::Failed { request_id })
+                    .await
+            }
+            DeckAudioSourceCommand::Release => stream_generation_atomic(deck).invalidate(),
         }
     }
-    let (file, buffer, bytes) = read_next(client, lease, source.file, buffer).await;
-    source.file = file;
-    let block = source.stream.decode(&buffer[..bytes]);
-    source.eof_queued = block
-        .as_ref()
-        .is_some_and(|block| block.eof || block.faulted);
-    (buffer, source, block)
 }
 
 async fn open_file(

@@ -1,5 +1,5 @@
 use crate::transport_owner_state::{TransportCompletion, TransportOutcome};
-use pajoniiir_audio_runtime::wav::WavPcm16SourceDescriptor;
+use pajoniiir_audio_runtime::decode::SourceDescriptor;
 #[cfg(feature = "library-deck-load")]
 use pajoniiir_controller_core::{ControlValue, SemanticControl};
 use pajoniiir_controller_session::{
@@ -89,7 +89,7 @@ impl<const N: usize> LibraryEffectQueue<N> {
 pub(crate) struct ProductLoadedTrack {
     pub(crate) candidate: CatalogLoadCandidate,
     pub(crate) source_cues_available: bool,
-    pub(crate) wav_source: Option<WavPcm16SourceDescriptor>,
+    pub(crate) audio_source: Option<SourceDescriptor>,
     #[cfg(feature = "library-deck-load")]
     pub(crate) analysis_identity: Option<AnalysisIdentity>,
 }
@@ -178,7 +178,7 @@ impl ProductRuntime {
         source: HotCueBank,
         persisted: Option<HotCueBank>,
         source_cues_available: bool,
-        wav_source: Option<WavPcm16SourceDescriptor>,
+        audio_source: Option<SourceDescriptor>,
         #[cfg(feature = "library-deck-load")] analysis: ProductAnalysisLoad,
     ) -> bool {
         if candidate.track.track_id != source.track_id()
@@ -230,7 +230,7 @@ impl ProductRuntime {
         self.loaded_tracks[deck_index(deck)] = Some(ProductLoadedTrack {
             candidate,
             source_cues_available,
-            wav_source,
+            audio_source,
             #[cfg(feature = "library-deck-load")]
             analysis_identity: analysis.publication.as_ref().map(|_| analysis_identity),
         });
