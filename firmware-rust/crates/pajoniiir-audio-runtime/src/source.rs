@@ -6,6 +6,7 @@ use pajoniiir_audio_scratch::{ScratchConfig, ScratchState};
 use crate::{
     history::{HistoryError, PcmHistory},
     pcm_stream::{PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock, PcmStreamProgress},
+    timeline::PcmTimeline,
 };
 
 pub const SOURCE_LOOKAHEAD_FRAMES: u64 = 2_048;
@@ -51,6 +52,7 @@ enum Mode {
 pub struct CanonicalSource<'a> {
     history: PcmHistory<'a>,
     generation: u32,
+    timeline: PcmTimeline,
     sample_rate: u32,
     bound: bool,
     cursor: u64,
@@ -82,6 +84,7 @@ impl<'a> CanonicalSource<'a> {
         Ok(Self {
             history: PcmHistory::new(storage)?,
             generation: 0,
+            timeline: PcmTimeline::linear(),
             sample_rate: 0,
             bound: false,
             cursor: 0,
@@ -107,6 +110,7 @@ impl<'a> CanonicalSource<'a> {
     pub fn reset(&mut self, generation: u32) {
         self.history.reset(generation, 0);
         self.generation = generation;
+        self.timeline = PcmTimeline::linear();
         self.sample_rate = 0;
         self.bound = false;
         self.cursor = 0;
@@ -135,8 +139,10 @@ impl<'a> CanonicalSource<'a> {
         if block.frame_count() > PCM_STREAM_BLOCK_FRAMES
             || block.sample_rate_hz == 0
             || block.first_frame.checked_add(block.len as u64).is_none()
+            || block.timeline.media_frame(block.first_frame).is_none()
             || (self.bound
                 && (block.first_frame != self.history.end()
+                    || block.timeline != self.timeline
                     || block.sample_rate_hz != self.sample_rate
                     || self.terminal))
             || (block.len == 0 && !block.eof && !block.faulted)
@@ -147,6 +153,7 @@ impl<'a> CanonicalSource<'a> {
         }
         if !self.bound {
             self.bound = true;
+            self.timeline = block.timeline;
             self.cursor = block.first_frame;
             self.sample_rate = block.sample_rate_hz;
             self.history.reset(self.generation, block.first_frame);
@@ -472,7 +479,7 @@ impl<'a> CanonicalSource<'a> {
         self.progress_dirty = false;
         Some(PcmStreamProgress {
             generation: self.generation,
-            end_frame: self.audible_position(),
+            end_frame: self.timeline.media_frame(self.audible_position())?,
             sample_rate_hz: self.sample_rate,
             eof: self.faulted
                 || (self.terminal

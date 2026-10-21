@@ -8,7 +8,9 @@ pub mod render;
 pub mod routing;
 pub mod sink;
 pub mod source;
+pub mod timeline;
 pub mod wav;
+pub mod wav_stream;
 
 use pajoniiir_audio_dsp::{DelayConfig, DelayMode, FlangerConfig, PadFxConfig, PadFxMode};
 use pajoniiir_controller_core::{BeatFxTarget, DeckId};

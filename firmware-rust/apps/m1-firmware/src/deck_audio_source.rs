@@ -6,14 +6,12 @@ use embassy_sync::{
 use embassy_time::{Duration, Timer};
 use pajoniiir_audio_dsp::PcmFrame;
 use pajoniiir_audio_runtime::{
-    pcm_stream::{
-        PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock, StreamActivation, frame_from_ms,
-        next_stream_generation,
-    },
+    pcm_stream::{PcmStreamBlock, StreamActivation, next_stream_generation},
     wav::{
         CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16Decoder,
         WavPcm16SourceDescriptor, parse_chunk_header, parse_pcm16_format, parse_riff_header,
     },
+    wav_stream::{WavStreamChange, WavStreamDecoder},
 };
 use pajoniiir_controller_session::DeckId;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
@@ -93,9 +91,9 @@ enum DeckAudioSourceCommand {
         request_id: u32,
         candidate: CatalogLoadCandidate,
     },
-    Seek {
+    Control {
         request_id: u32,
-        position_ms: u32,
+        change: WavStreamChange,
         expected_generation: u32,
     },
     Release,
@@ -137,9 +135,7 @@ struct PreparedWavSource {
     candidate: CatalogLoadCandidate,
     file: Usb0FsFileHandle,
     descriptor: WavPcm16SourceDescriptor,
-    decoder: WavPcm16Decoder,
-    generation: u32,
-    next_frame: u64,
+    stream: WavStreamDecoder,
     eof_queued: bool,
 }
 
@@ -178,14 +174,27 @@ pub(crate) async fn seek_wav_source(
     request_id: u32,
     position_ms: u32,
 ) -> Result<WavSeekResult, ()> {
+    change_wav_source(
+        deck,
+        request_id,
+        WavStreamChange::SeekMilliseconds(position_ms),
+    )
+    .await
+}
+
+pub(crate) async fn change_wav_source(
+    deck: DeckId,
+    request_id: u32,
+    change: WavStreamChange,
+) -> Result<WavSeekResult, ()> {
     let expected_generation = active_stream_generation(deck);
     if expected_generation == 0 {
         return Err(());
     }
     command_channel(deck)
-        .send(DeckAudioSourceCommand::Seek {
+        .send(DeckAudioSourceCommand::Control {
             request_id,
-            position_ms,
+            change,
             expected_generation,
         })
         .await;
@@ -300,7 +309,7 @@ async fn run_owner(
                     match result {
                         Ok(source) => {
                             let descriptor = source.descriptor;
-                            stream_generation_atomic(deck).prepared(source.generation);
+                            stream_generation_atomic(deck).prepared(source.stream.generation());
                             prepared = Some(source);
                             prepare_completion_channel(deck)
                                 .send(DeckAudioSourceCompletion::Prepared {
@@ -317,9 +326,9 @@ async fn run_owner(
                         }
                     }
                 }
-                DeckAudioSourceCommand::Seek {
+                DeckAudioSourceCommand::Control {
                     request_id,
-                    position_ms,
+                    change,
                     expected_generation,
                 } => {
                     // A Library Prepare may have overtaken this queued seek.
@@ -341,9 +350,7 @@ async fn run_owner(
                             Err(())
                         } else {
                             generation = next_stream_generation(generation);
-                            match seek_source(&mut client, &mut source, generation, position_ms)
-                                .await
-                            {
+                            match seek_source(&mut client, &mut source, generation, change).await {
                                 Ok(result) => {
                                     stream_generation_atomic(deck).prepared(result.generation);
                                     if was_active {
@@ -565,17 +572,14 @@ async fn prepare_source(
             if current_media_lease() != Some(lease) {
                 return (buffer, Err(()));
             }
-            let decoder = WavPcm16Decoder::new(descriptor.format, descriptor.data_bytes)
-                .expect("validated descriptor must construct streaming decoder");
             return (
                 buffer,
                 Ok(PreparedWavSource {
                     candidate,
                     file,
                     descriptor,
-                    decoder,
-                    generation,
-                    next_frame: 0,
+                    stream: WavStreamDecoder::new(descriptor, generation, 0, None)
+                        .expect("validated WAV stream"),
                     eof_queued: false,
                 }),
             );
@@ -592,28 +596,23 @@ async fn seek_source(
     client: &mut Usb0FilesystemClient,
     source: &mut PreparedWavSource,
     generation: u32,
-    position_ms: u32,
+    change: WavStreamChange,
 ) -> Result<WavSeekResult, ()> {
-    let format = source.descriptor.format;
-    let frame = frame_from_ms(
-        position_ms,
-        format.sample_rate_hz,
-        source.descriptor.frame_count(),
-    );
-    let byte_offset = frame
-        .checked_mul(u64::from(format.block_align))
-        .and_then(|bytes| source.descriptor.data_offset.checked_add(bytes))
-        .ok_or(())?;
-    let remaining_bytes = source
+    let stream = source.stream.changed(generation, change).ok_or(())?;
+    let frame = stream.media_frame();
+    let byte_offset = source
         .descriptor
-        .data_bytes
-        .saturating_sub(frame.saturating_mul(u64::from(format.block_align)));
-
-    let file = source.file;
+        .data_offset
+        .checked_add(
+            frame
+                .checked_mul(u64::from(source.descriptor.format.block_align))
+                .ok_or(())?,
+        )
+        .ok_or(())?;
     source.file = match seek_file(
         client,
         source.candidate.publication.lease,
-        file,
+        source.file,
         byte_offset,
     )
     .await
@@ -624,15 +623,12 @@ async fn seek_source(
             return Err(());
         }
     };
-    source.decoder = WavPcm16Decoder::new(format, remaining_bytes).map_err(|_| ())?;
-    source.generation = generation;
-    source.next_frame = frame;
+    source.stream = stream;
     source.eof_queued = false;
-
     Ok(WavSeekResult {
         generation,
         frame,
-        sample_rate_hz: format.sample_rate_hz,
+        sample_rate_hz: source.descriptor.format.sample_rate_hz,
     })
 }
 
@@ -641,64 +637,38 @@ async fn produce_pcm_block(
     mut source: PreparedWavSource,
     buffer: &'static mut [u8],
 ) -> (&'static mut [u8], PreparedWavSource, Option<PcmStreamBlock>) {
-    if source.decoder.is_finished() {
-        let mut block = PcmStreamBlock::empty(
-            source.generation,
-            source.next_frame,
-            source.descriptor.format.sample_rate_hz,
-        );
-        block.mark_eof();
-        source.eof_queued = true;
+    if let Some(block) = source.stream.cached_block() {
+        source.eof_queued = block.eof || block.faulted;
         return (buffer, source, Some(block));
     }
-
     let lease = source.candidate.publication.lease;
+    if let Some(frame) = source.stream.rewind_frame() {
+        let offset =
+            source.descriptor.data_offset + frame * u64::from(source.descriptor.format.block_align);
+        match seek_file(client, lease, source.file, offset).await {
+            SeekOutcome::Ready(file) => {
+                source.file = file;
+                if !source.stream.complete_rewind() {
+                    let block = source.stream.fault_block();
+                    source.eof_queued = true;
+                    return (buffer, source, Some(block));
+                }
+            }
+            SeekOutcome::Failed(file) => {
+                source.file = file;
+                let block = source.stream.fault_block();
+                source.eof_queued = true;
+                return (buffer, source, Some(block));
+            }
+        }
+    }
     let (file, buffer, bytes) = read_next(client, lease, source.file, buffer).await;
     source.file = file;
-
-    if bytes == 0 {
-        let mut block = PcmStreamBlock::empty(
-            source.generation,
-            source.next_frame,
-            source.descriptor.format.sample_rate_hz,
-        );
-        block.mark_faulted();
-        source.eof_queued = true;
-        return (buffer, source, Some(block));
-    }
-
-    let first_frame = source.next_frame;
-    let mut block = PcmStreamBlock::empty(
-        source.generation,
-        first_frame,
-        source.descriptor.format.sample_rate_hz,
-    );
-    let progress = source.decoder.decode(&buffer[..bytes], block.frames_mut());
-    if progress.produced_frames > PCM_STREAM_BLOCK_FRAMES
-        || !block.set_len(progress.produced_frames)
-    {
-        block.mark_faulted();
-        source.eof_queued = true;
-        return (buffer, source, Some(block));
-    }
-
-    source.next_frame = source
-        .next_frame
-        .saturating_add(progress.produced_frames as u64);
-
-    if progress.finished {
-        block.mark_eof();
-        source.eof_queued = true;
-    } else if progress.consumed_bytes != bytes {
-        block.mark_faulted();
-        source.eof_queued = true;
-    }
-
-    if block.len == 0 && !block.eof && !block.faulted {
-        return (buffer, source, None);
-    }
-
-    (buffer, source, Some(block))
+    let block = source.stream.decode(&buffer[..bytes]);
+    source.eof_queued = block
+        .as_ref()
+        .is_some_and(|block| block.eof || block.faulted);
+    (buffer, source, block)
 }
 
 async fn open_file(

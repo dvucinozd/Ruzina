@@ -275,6 +275,14 @@ impl ProductRuntime {
             return false;
         }
         match completion.outcome {
+            TransportOutcome::Progress {
+                generation,
+                position_ms,
+                ..
+            } if generation != 0 && generation == stream_generation => {
+                self.deck.set_position_ms(deck, position_ms);
+                true
+            }
             TransportOutcome::Playback {
                 request_id,
                 succeeded,

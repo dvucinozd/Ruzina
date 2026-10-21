@@ -1,3 +1,4 @@
+use crate::timeline::PcmTimeline;
 use core::sync::atomic::{AtomicU32, Ordering};
 use pajoniiir_audio_dsp::PcmFrame;
 
@@ -54,6 +55,7 @@ pub const PCM_STREAM_BLOCK_FRAMES: usize = 256;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PcmStreamBlock {
     pub generation: u32,
+    pub timeline: PcmTimeline,
     pub first_frame: u64,
     pub sample_rate_hz: u32,
     pub len: u16,
@@ -66,6 +68,7 @@ impl PcmStreamBlock {
     pub const fn empty(generation: u32, first_frame: u64, sample_rate_hz: u32) -> Self {
         Self {
             generation,
+            timeline: PcmTimeline::linear(),
             first_frame,
             sample_rate_hz,
             len: 0,
@@ -354,10 +357,10 @@ impl PcmTransportCursor {
         self.accept_progress(
             PcmStreamProgress {
                 generation: block.generation,
-                end_frame: block.end_frame(),
+                end_frame: block.timeline.media_frame(block.end_frame()).unwrap_or(0),
                 sample_rate_hz: block.sample_rate_hz,
                 eof: block.eof,
-                faulted: block.faulted,
+                faulted: block.faulted || block.timeline.media_frame(block.end_frame()).is_none(),
             },
             block.len,
         )

@@ -1,0 +1,21 @@
+{
+  "pr12": {
+    "headRefOid": "8d11a6bb74beeeabe1c7b2fd4467f025f53d3ab4",
+    "mergeCommit": {
+      "oid": "d81a300784f81da4e3c7288135c6504e8d6f8623"
+    },
+    "mergedAt": "2026-10-21T13:27:34Z",
+    "state": "MERGED",
+    "url": "https://github.com/dvucinozd/Pajoniiir-M1/pull/12"
+  },
+  "selected_head_tree": "b1ac466d6d04f996a1734eaeeb289010be6a8f57",
+  "merged_main_tree": "b1ac466d6d04f996a1734eaeeb289010be6a8f57",
+  "ci_account_annotations": {
+    "119249339653": [
+      "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+    ],
+    "119249337970": [
+      "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+    ]
+  }
+}

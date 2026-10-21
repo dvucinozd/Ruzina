@@ -1,6 +1,6 @@
 //! Pure transport transitions shared by the P4 owner and composed host tests.
 use pajoniiir_audio_runtime::pcm_stream::{
-    PcmBlockDisposition, PcmStreamBlock, PcmStreamProgress, PcmTransportCursor,
+    PcmBlockDisposition, PcmStreamBlock, PcmStreamProgress, PcmTransportCursor, frame_to_ms,
 };
 use pajoniiir_controller_session::DeckId;
 use pajoniiir_deck::DeckEffect;
@@ -144,6 +144,34 @@ impl TransportOwnerState {
         self.accepted_commands = self.accepted_commands.saturating_add(1);
     }
 
+    pub(crate) fn bind_source_control(
+        &mut self,
+        command: TransportCommand,
+        generation: u32,
+        frame: u64,
+        sample_rate: u32,
+    ) -> bool {
+        if !self.accepts(command) {
+            return false;
+        }
+        let deck = command.deck();
+        match command.effect {
+            DeckEffect::SetLoop {
+                start_ms, end_ms, ..
+            } => self.deck_mut(deck).loop_region = Some((start_ms, end_ms)),
+            DeckEffect::ClearLoop { .. } => self.deck_mut(deck).loop_region = None,
+            _ => {}
+        }
+        self.bind_seek(
+            deck,
+            frame_to_ms(frame, sample_rate),
+            generation,
+            frame,
+            sample_rate,
+        );
+        true
+    }
+
     pub(crate) fn consume_pcm_block(
         &mut self,
         deck: DeckId,
@@ -165,7 +193,11 @@ impl TransportOwnerState {
                         faulted: false,
                     })
                 } else {
-                    None
+                    Some(TransportOutcome::Progress {
+                        deck,
+                        generation: block.generation,
+                        position_ms,
+                    })
                 }
             }
             PcmBlockDisposition::Stale => None,
@@ -214,7 +246,11 @@ impl TransportOwnerState {
                             faulted: false,
                         })
                     } else {
-                        None
+                        Some(TransportOutcome::Progress {
+                            deck,
+                            generation: progress.generation,
+                            position_ms,
+                        })
                     }
                 }
                 PcmBlockDisposition::Stale => None,
@@ -262,6 +298,11 @@ pub(crate) struct TransportCompletion {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum TransportOutcome {
+    Progress {
+        deck: DeckId,
+        generation: u32,
+        position_ms: u32,
+    },
     Playback {
         deck: DeckId,
         request_id: u32,
@@ -281,7 +322,8 @@ pub(crate) enum TransportOutcome {
 impl TransportOutcome {
     pub(crate) const fn deck(self) -> DeckId {
         match self {
-            Self::Playback { deck, .. }
+            Self::Progress { deck, .. }
+            | Self::Playback { deck, .. }
             | Self::StreamEnded { deck, .. }
             | Self::SourceFailed { deck } => deck,
         }
