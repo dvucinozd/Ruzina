@@ -10,3 +10,4 @@ pajoniiir-core.workspace = true
 pajoniiir-controller-core.workspace = true
 pajoniiir-deck.workspace = true
 pajoniiir-hot-cues.workspace = true
+pajoniiir-mixer.workspace = true

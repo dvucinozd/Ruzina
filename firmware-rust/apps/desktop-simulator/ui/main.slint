@@ -1,4 +1,10 @@
+import { Slider } from "std-widgets.slint";
+
 export struct CueView { label: string, occupied: bool }
+export struct MixerChannelView { volume: int, trim: int, high: int, mid: int, low: int, filter: int, pfl: bool }
+export struct MixerView { crossfader: int, master: int, headphone-mix: int, headphone-level: int, master-cue: bool, smart-cfx: bool, smart-fader: bool }
+export struct FxView { effect: string, beat: string, target: int, depth: int, enabled: bool }
+export struct PadFxView { bank: int, active-bank: int, active-pad: int, loaded: bool }
 export struct DeckView {
     title: string, bpm: string, time: string, status: string, analysis: string,
     loaded: bool, playing: bool, synced: bool, quantize: bool, range: string,
@@ -88,6 +94,121 @@ component DeckPanel inherits Rectangle {
     }
 }
 
+component NavAction inherits Action {
+    min-width: 0px; preferred-width: 0px; horizontal-stretch: 1;
+}
+
+component Level inherits Rectangle {
+    in property <string> label;
+    in property <int> value;
+    in property <int> maximum: 16383;
+    in property <bool> centered: false;
+    callback edited(int);
+    height: 44px;
+    // The native slider writes its local value during a gesture. Reapply later
+    // authoritative publications without replacing the focused slider item.
+    changed value => { slider.value = self.value; }
+    VerticalLayout { spacing: 2px;
+        HorizontalLayout { height: 16px;
+            Text { text: root.label; color: #aebed1; font-size: 12px; }
+            Text { text: (root.centered ? round((root.value - 8192) * 100 / 8192) : round(root.value * 100 / root.maximum)) + "%"; color: #edf5fb; font-size: 12px; horizontal-alignment: right; }
+        }
+        slider := Slider { minimum: 0; maximum: root.maximum; step: max(1, round(root.maximum / 100)); value: root.value; changed(v) => { root.edited(round(v)); } }
+    }
+}
+
+component MixerChannel inherits Rectangle {
+    in property <MixerChannelView> data;
+    in property <int> number;
+    callback level(int, int);
+    callback pfl;
+    background: #131d29; border-radius: 8px;
+    VerticalLayout { padding: 12px; spacing: 6px;
+        Text { height: 26px; text: "CHANNEL " + root.number; color: root.number == 1 ? #74d5ff : #ffbc8a; font-size: 18px; font-weight: 700; }
+        Level { label: "TRIM"; value: root.data.trim; centered: true; edited(v) => { root.level(1, v); } }
+        Level { label: "EQ HIGH"; value: root.data.high; centered: true; edited(v) => { root.level(2, v); } }
+        Level { label: "EQ MID"; value: root.data.mid; centered: true; edited(v) => { root.level(3, v); } }
+        Level { label: "EQ LOW"; value: root.data.low; centered: true; edited(v) => { root.level(4, v); } }
+        Level { label: "FILTER"; value: root.data.filter; centered: true; edited(v) => { root.level(5, v); } }
+        Level { label: "CHANNEL LEVEL"; value: root.data.volume; edited(v) => { root.level(0, v); } }
+        Action { text: "PFL / CUE"; active: root.data.pfl; clicked => { root.pfl(); } }
+        Rectangle { background: transparent; vertical-stretch: 1; }
+    }
+}
+
+component HoldAction inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    in property <bool> enabled: true;
+    in property <int> token;
+    private property <bool> engaged;
+    private property <int> captured-token;
+    callback held(int, bool);
+    height: 42px;
+    background: !enabled ? #161e28 : active ? #175d64 : touch.has-hover ? #304054 : #243244;
+    border-radius: 5px; border-width: 1px;
+    border-color: focus.has-focus ? #dce8f3 : active ? #58d9bd : #3b4a5b;
+    accessible-role: button; accessible-label: text; accessible-enabled: enabled;
+    forward-focus: focus;
+    public function set-held(pressed: bool) {
+        if (pressed && (!root.enabled || root.engaged)) { return; }
+        if (root.engaged != pressed) {
+            if (pressed) { root.captured-token = root.token; }
+            root.engaged = pressed;
+            root.held(root.captured-token, pressed);
+        }
+    }
+    changed enabled => { if (!self.enabled) { self.set-held(false); } }
+    Text { text: root.text; color: root.enabled ? #eef5fb : #586676; horizontal-alignment: center; vertical-alignment: center; font-size: 14px; }
+    touch := TouchArea {
+        enabled: root.enabled;
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.cancel) { root.set-held(false); }
+            else if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) { focus.focus(); root.set-held(true); }
+                else if (event.kind == PointerEventKind.up) { root.set-held(false); }
+            }
+        }
+    }
+    focus := FocusScope {
+        enabled: root.enabled; focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") { root.set-held(true); return accept; }
+            return reject;
+        }
+        key-released(event) => {
+            if (event.text == " " || event.text == "\n") { root.set-held(false); return accept; }
+            return reject;
+        }
+        focus-lost(reason) => { root.set-held(false); }
+    }
+}
+
+component PadStrip inherits Rectangle {
+    in property <PadFxView> data;
+    in property <int> number;
+    callback bank(int);
+    callback pad(int, int, bool);
+    background: #131d29; border-radius: 8px;
+    VerticalLayout { padding: 12px; spacing: 8px;
+        Text { height: 26px; text: "DECK " + root.number + " / PAD FX"; color: root.number == 1 ? #74d5ff : #ffbc8a; font-size: 18px; font-weight: 700; }
+        HorizontalLayout { height: 40px; spacing: 8px;
+            Action { text: "BANK 1"; active: root.data.bank == 0; enabled: root.data.loaded; clicked => { root.bank(0); } }
+            Action { text: "BANK 2"; active: root.data.bank == 1; enabled: root.data.loaded; clicked => { root.bank(1); } }
+        }
+        HorizontalLayout { height: 42px; spacing: 6px;
+            for pad in 8: HoldAction {
+                text: "" + (pad + 1); token: root.data.bank;
+                enabled: root.data.loaded;
+                active: root.data.active-bank == root.data.bank && root.data.active-pad == pad;
+                held(bank, pressed) => { root.pad(bank, pad, pressed); }
+            }
+        }
+        Text { height: 18px; text: !root.data.loaded ? "Load a track to use Pad FX" : root.data.active-pad < 0 ? "Hold a pad · release to stop" : "ACTIVE: BANK " + (root.data.active-bank + 1) + " / PAD " + (root.data.active-pad + 1); color: #8eb9ca; font-size: 12px; }
+        Rectangle { background: transparent; vertical-stretch: 1; }
+    }
+}
+
 export component MainWindow inherits Window {
     preferred-width: 1024px; preferred-height: 600px;
     min-width: 800px; min-height: 600px;
@@ -96,6 +217,10 @@ export component MainWindow inherits Window {
     background: #0b111a;
     in-out property <int> page: 0;
     in property <[DeckView]> decks;
+    in property <[MixerChannelView]> channels;
+    in property <MixerView> mixer;
+    in property <FxView> fx;
+    in property <[PadFxView]> pads;
     in property <[string]> tracks;
     in property <int> selection;
     in property <bool> media-ready;
@@ -109,6 +234,15 @@ export component MainWindow inherits Window {
     callback load-track(int);
     callback media-action;
     callback display-changed;
+    callback mixer-level(int, int, int);
+    callback mixer-toggle(int, int);
+    callback fx-action(int);
+    callback fx-target(int);
+    callback fx-depth(int);
+    callback pad-bank(int, int);
+    callback pad-fx(int, int, int, bool);
+    callback cancel-pads;
+    changed page => { if (self.page != 5) { self.cancel-pads(); } }
 
     VerticalLayout {
         padding: 16px; spacing: 12px;
@@ -117,10 +251,12 @@ export component MainWindow inherits Window {
             Text { text: root.board-label; color: #8297ae; font-size: 13px; horizontal-alignment: right; vertical-alignment: center; }
         }
         HorizontalLayout { height: 42px; spacing: 8px;
-            Action { text: "DECKS"; active: root.page == 0; clicked => { root.page = 0; } }
-            Action { text: "LIBRARY"; active: root.page == 1; clicked => { root.page = 1; } }
-            Action { text: "HOT CUES"; active: root.page == 2; clicked => { root.page = 2; } }
-            Action { text: "SETTINGS"; active: root.page == 3; clicked => { root.page = 3; } }
+            NavAction { text: "DECKS"; active: root.page == 0; clicked => { root.page = 0; } }
+            NavAction { text: "LIBRARY"; active: root.page == 1; clicked => { root.page = 1; } }
+            NavAction { text: "HOT CUES"; active: root.page == 2; clicked => { root.page = 2; } }
+            NavAction { text: "SETTINGS"; active: root.page == 3; clicked => { root.page = 3; } }
+            NavAction { text: "MIXER"; active: root.page == 4; clicked => { root.page = 4; } }
+            NavAction { text: "FX"; active: root.page == 5; clicked => { root.page = 5; } }
         }
         if root.page == 0 || root.page == 2: Rectangle {
             vertical-stretch: 1;
@@ -161,6 +297,80 @@ export component MainWindow inherits Window {
                 Text { height: 54px; text: "MAIN: ready external DAC → controller → mute\nHeadphones / CUE / PFL: controller only"; color: #8eb9ca; font-size: 15px; }
                 Text { height: 45px; text: "Demo transport clock · no audio output\nSettings and local cue edits last for this session."; color: #8195ab; font-size: 13px; }
                 Rectangle { vertical-stretch: 1; background: transparent; }
+            }
+        }
+        if root.page == 4: Rectangle {
+            for data[i] in root.channels: MixerChannel {
+                x: root.portrait ? i * (parent.width + 12px) / 2 : i * (parent.width + 12px) * 2 / 3;
+                y: 0px;
+                width: root.portrait ? (parent.width - 12px) / 2 : (parent.width - 24px) / 3;
+                height: root.portrait ? 440px : parent.height;
+                data: data; number: i + 1;
+                level(code, value) => { root.mixer-level(i, code, value); }
+                pfl => { root.mixer-toggle(i, 0); }
+            }
+            Rectangle {
+                x: root.portrait ? 0px : (parent.width + 12px) / 3;
+                y: root.portrait ? 452px : 0px;
+                width: root.portrait ? parent.width : (parent.width - 24px) / 3;
+                height: root.portrait ? parent.height - 452px : parent.height;
+                background: #131d29; border-radius: 8px;
+                VerticalLayout { padding: 12px; spacing: 6px;
+                    Text { height: 26px; text: "MASTER / PHONES"; color: #edf5fb; font-size: 18px; font-weight: 700; }
+                    Level { label: "CROSSFADER  D1 ↔ D2"; value: root.mixer.crossfader; centered: true; edited(v) => { root.mixer-level(-1, 6, v); } }
+                    Level { label: "MASTER LEVEL"; value: root.mixer.master; edited(v) => { root.mixer-level(-1, 7, v); } }
+                    Level { label: "PHONES MIX  CUE ↔ MAIN"; value: root.mixer.headphone-mix; edited(v) => { root.mixer-level(-1, 8, v); } }
+                    Level { label: "PHONES LEVEL"; value: root.mixer.headphone-level; edited(v) => { root.mixer-level(-1, 9, v); } }
+                    HorizontalLayout { height: 40px; spacing: 6px;
+                        Action { text: "MASTER CUE"; active: root.mixer.master-cue; clicked => { root.mixer-toggle(-1, 1); } }
+                        Action { text: "SMART CFX"; active: root.mixer.smart-cfx; clicked => { root.mixer-toggle(-1, 2); } }
+                    }
+                    Action { height: 40px; text: "SMART FADER"; active: root.mixer.smart-fader; clicked => { root.mixer-toggle(-1, 3); } }
+                    Text { height: 30px; text: "Headphones / PFL: controller only\nHost controls · no audio output"; color: #8eb9ca; font-size: 11px; }
+                    Rectangle { background: transparent; vertical-stretch: 1; }
+                }
+            }
+        }
+        if root.page == 5: Rectangle {
+            Rectangle {
+                x: 0px; y: 0px;
+                width: root.portrait ? parent.width : (parent.width - 12px) * 0.4;
+                height: root.portrait ? 380px : parent.height;
+                background: #131d29; border-radius: 8px;
+                VerticalLayout { padding: 12px; spacing: 10px;
+                    Text { height: 26px; text: "BEAT FX"; color: #edf5fb; font-size: 18px; font-weight: 700; }
+                    HorizontalLayout { height: 40px; spacing: 8px;
+                        Action { text: "‹"; clicked => { root.fx-action(0); } }
+                        Text { text: root.fx.effect; color: #8ed9bb; horizontal-alignment: center; vertical-alignment: center; font-size: 18px; }
+                        Action { text: "›"; clicked => { root.fx-action(1); } }
+                    }
+                    HorizontalLayout { height: 40px; spacing: 8px;
+                        Action { text: "BEAT −"; clicked => { root.fx-action(2); } }
+                        Text { text: root.fx.beat; color: #eef5fb; horizontal-alignment: center; vertical-alignment: center; }
+                        Action { text: "BEAT +"; clicked => { root.fx-action(3); } }
+                    }
+                    HorizontalLayout { height: 40px; spacing: 8px;
+                        Action { text: "CH 1"; active: root.fx.target == 0; clicked => { root.fx-target(0); } }
+                        Action { text: "CH 2"; active: root.fx.target == 1; clicked => { root.fx-target(1); } }
+                        Action { text: "BOTH"; active: root.fx.target == 2; clicked => { root.fx-target(2); } }
+                    }
+                    Level { label: "DEPTH"; value: root.fx.depth; maximum: 127; edited(v) => { root.fx-depth(v); } }
+                    HorizontalLayout { height: 40px; spacing: 8px;
+                        Action { text: root.fx.enabled ? "FX ON" : "FX OFF"; active: root.fx.enabled; clicked => { root.fx-action(4); } }
+                        Action { text: "CLEAR"; clicked => { root.fx-action(5); } }
+                    }
+                    Text { height: 28px; text: "Semantic FX state · no processed audio"; color: #8eb9ca; font-size: 12px; }
+                    Rectangle { background: transparent; vertical-stretch: 1; }
+                }
+            }
+            for data[i] in root.pads: PadStrip {
+                x: root.portrait ? 0px : (parent.width - 12px) * 0.4 + 12px;
+                y: root.portrait ? 392px + i * (parent.height - 392px + 12px) / 2 : i * (parent.height + 12px) / 2;
+                width: root.portrait ? parent.width : (parent.width - 12px) * 0.6;
+                height: root.portrait ? (parent.height - 404px) / 2 : (parent.height - 12px) / 2;
+                data: data; number: i + 1;
+                bank(b) => { root.pad-bank(i, b); }
+                pad(bank, pad, pressed) => { root.pad-fx(i, bank, pad, pressed); }
             }
         }
         Text { height: 22px; text: root.message; color: #8ed9bb; font-size: 13px; overflow: elide; vertical-alignment: center; }

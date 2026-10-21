@@ -4,6 +4,8 @@
 
 ## Active direction — 2026-10-20
 
+Latest mixer/FX work: [authoritative mixer/PFL and Beat/Pad FX controls](docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) in both host UI geometries, with momentary release/recovery tests and 24 reviewed pixel goldens. Audible FX execution and physical output remain open.
+
 Latest UI work: [interactive deck/Library/cue/session-settings simulator](docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md) uses authoritative deck state, imported waveforms and reviewed screenshots for both Guition geometries. Full UI parity and physical board/audio qualification remain open.
 
 Latest analysis work: [pinned Rekordbox import and deck consumers](docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md), isolated from the open audio PR.

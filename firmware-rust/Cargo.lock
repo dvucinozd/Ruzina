@@ -771,6 +771,7 @@ dependencies = [
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
  "pajoniiir-media-session",
+ "pajoniiir-mixer",
  "pajoniiir-rekordbox",
  "pajoniiir-track-analysis",
  "pajoniiir-ui-model",
@@ -3114,6 +3115,7 @@ dependencies = [
  "pajoniiir-core",
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
+ "pajoniiir-mixer",
 ]
 
 [[package]]
