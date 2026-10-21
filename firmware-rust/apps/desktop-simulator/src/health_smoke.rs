@@ -82,7 +82,7 @@ pub fn recovery(
     );
     assert_eq!(ui.get_health_severity(), 2);
     capture_health(ui, state, output, &format!("{name}-health-removed"))?;
-    click(ui, width / 2.0, 144.0);
+    click(ui, width * 0.38, 144.0);
     assert!(ui.get_health_events());
     if !ui.get_portrait() {
         let before = ui.window().take_snapshot()?;

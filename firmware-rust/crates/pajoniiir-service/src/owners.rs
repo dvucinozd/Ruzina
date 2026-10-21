@@ -117,6 +117,7 @@ impl RuntimeOwners {
     /// Reading never drains, renews, or performs owner work.
     pub fn view(&self, now_ms: u64) -> RuntimeView {
         RuntimeView {
+            analysis: crate::analysis::Observation::DISABLED,
             elapsed_ms: now_ms,
             product: self.product.view(now_ms),
             controller: self.controller.view(now_ms),
@@ -190,6 +191,7 @@ impl Default for MediaHandoff {
 }
 #[derive(Clone, Copy, Debug)]
 pub struct RuntimeView {
+    pub analysis: crate::analysis::Observation,
     pub elapsed_ms: u64,
     pub product: OwnerView<ProductObservation>,
     pub controller: OwnerView<ControllerObservation>,
@@ -204,6 +206,7 @@ impl RuntimeView {
         writeln!(output, "product={:?}", self.product)?;
         writeln!(output, "controller={:?}", self.controller)?;
         writeln!(output, "media={:?}", self.media)?;
-        writeln!(output, "readiness=NOT_QUALIFIED")
+        writeln!(output, "readiness=NOT_QUALIFIED")?;
+        self.analysis.write_to(output)
     }
 }

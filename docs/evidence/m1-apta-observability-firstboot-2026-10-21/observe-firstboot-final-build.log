@@ -1,0 +1,14 @@
+{
+  "jc1060": {
+    "archive": "jc1060-diagnostics.zip",
+    "sha256": "fba142cc3aec2ea6bf72ff1738de1404b541a9af759f87e39a2850656c0cea54",
+    "elf_sha256": "be17e191890d4de3b0cb3a53781ba8fcfe85719ac48ffc7bbbb8e8822ca11cca",
+    "image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc1060"
+  },
+  "jc8012": {
+    "archive": "jc8012-diagnostics.zip",
+    "sha256": "34b4c8dc87feda3821a39c6bf7a10346e0069f2efbbb24035296cbd92721a43a",
+    "elf_sha256": "5dc6d2bbed52ba6a3d26d781ce137cfa22e719567046e4870042c9cc48b0f517",
+    "image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc8012"
+  }
+}

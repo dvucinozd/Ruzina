@@ -35,18 +35,22 @@ static OUTPUTS: Channel<CriticalSectionRawMutex, Retained<'static>, 1> = Channel
 static PROGRESS: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 static ALLOWED: AtomicBool = AtomicBool::new(false);
 static READY: AtomicBool = AtomicBool::new(false);
+use pajoniiir_service::analysis::{Monitor, Observation, Reason, Sample};
 struct Snapshot {
+    diagnostic: Monitor,
     authority: Authority,
     report: Report,
     selected: Option<Selection>,
 }
 static SNAPSHOT: CriticalSectionMutex<RefCell<Snapshot>> =
     CriticalSectionMutex::new(RefCell::new(Snapshot {
+        diagnostic: Monitor::new(),
         authority: Authority::EMPTY,
         report: Report {
             serial: 0,
             selection: None,
             status: None,
+            reason: Reason::None,
         },
         selected: None,
     }));
@@ -83,6 +87,13 @@ pub(crate) async fn product_wait<F: core::future::Future>(
 }
 struct ProductPort;
 impl crate::analysis_product::Port<'static> for ProductPort {
+    fn observe(&mut self, sample: Sample) {
+        SNAPSHOT.lock(|s| {
+            s.borrow_mut()
+                .diagnostic
+                .observe(sample, embassy_time::Instant::now().as_millis())
+        });
+    }
     fn ready(&self) -> bool {
         READY.load(Ordering::Acquire)
     }
@@ -137,22 +148,42 @@ impl Port<'static> for OwnerPort {
                 },
             )
     }
-    fn report(&mut self, status: Status) {
-        SNAPSHOT.lock(|s| {
-            let mut s = s.borrow_mut();
-            // Exhaustion fails visibly rather than reusing an old report serial.
-            s.report = Report {
-                serial: s
-                    .report
-                    .serial
-                    .checked_add(1)
-                    .expect("analysis status serial exhausted"),
-                selection: s.selected,
-                status: Some(status),
-            };
-        });
-        PROGRESS.signal(());
+    fn failure(&mut self, reason: pajoniiir_apta_adapter::service::Failure) {
+        report_status(
+            Status::Failed,
+            crate::analysis_product::failure_reason(reason),
+        );
     }
+    fn report(&mut self, status: Status) {
+        report_status(
+            status,
+            if status == Status::Rejected {
+                Reason::Rejected
+            } else {
+                Reason::None
+            },
+        );
+    }
+}
+pub(crate) fn diagnostic_snapshot() -> Observation {
+    SNAPSHOT.lock(|s| s.borrow().diagnostic.snapshot())
+}
+fn report_status(status: Status, reason: Reason) {
+    SNAPSHOT.lock(|s| {
+        let mut s = s.borrow_mut();
+        // Exhaustion fails visibly rather than reusing an old report serial.
+        s.report = Report {
+            serial: s
+                .report
+                .serial
+                .checked_add(1)
+                .expect("analysis status serial exhausted"),
+            selection: s.selected,
+            status: Some(status),
+            reason,
+        };
+    });
+    PROGRESS.signal(());
 }
 
 fn array<T: Clone>(len: usize, value: T) -> Result<Vec<T>, ()> {
@@ -204,7 +235,7 @@ impl Storage {
 #[embassy_executor::task]
 pub(crate) async fn owner_task() {
     let Ok(storage) = Storage::new() else {
-        OwnerPort.report(Status::Failed);
+        report_status(Status::Failed, Reason::Allocation);
         return;
     };
     let lease = loop {
@@ -217,7 +248,7 @@ pub(crate) async fn owner_task() {
         embassy_time::Timer::after_millis(20).await;
     };
     let Some(endpoint) = crate::usb0_msc::Usb0AnalysisTransport::take() else {
-        OwnerPort.report(Status::Failed);
+        report_status(Status::Failed, Reason::Contract);
         return;
     };
     // Leak once, only after EVERY fallible allocation and endpoint acquisition.

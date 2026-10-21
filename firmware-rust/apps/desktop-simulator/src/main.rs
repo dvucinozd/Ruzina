@@ -1,3 +1,5 @@
+mod analysis_smoke;
+mod analysis_ui;
 mod compositor;
 mod health_smoke;
 mod health_ui;
@@ -122,6 +124,7 @@ fn refresh(ui: &MainWindow, session: &Session) {
     ui.set_message(session.message.clone().into());
     mix_fx_ui::refresh(ui, session);
     health_ui::refresh(ui, session.diagnostics());
+    analysis_ui::refresh(ui, session.analysis_observation);
 }
 
 fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
@@ -211,7 +214,25 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let analysis = if let Some(index) = args.iter().position(|s| s == "--analysis-observation") {
+        let path = args
+            .get(index + 1)
+            .ok_or("--analysis-observation requires a record file")?
+            .clone();
+        let value = analysis_ui::read(std::path::Path::new(&path))?;
+        args.drain(index..=index + 1);
+        Some(value)
+    } else {
+        None
+    };
+    if analysis.is_some()
+        && args
+            .first()
+            .is_some_and(|a| a == "--smoke" || a == "--diagnostic-report")
+    {
+        return Err("--analysis-observation is an interactive captured-record option".into());
+    }
     if args.first().is_some_and(|a| a == "--diagnostic-report") {
         let (output, board) = match args.as_slice() {
             [_, output] => (output, BoardId::GuitionJc1060P470cIwY),
@@ -244,7 +265,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             profile(BoardId::GuitionJc8012P4a1cIwY)
         }
         _ => {
-            return Err("Usage: desktop-simulator [--board jc1060|jc8012] | --smoke OUTPUT".into());
+            return Err("Usage: desktop-simulator [--board jc1060|jc8012] [--analysis-observation FILE] | --smoke OUTPUT".into());
         }
     };
     let ui = MainWindow::new()?;
@@ -254,6 +275,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
     ui.set_board_label(format!("{} · HOST SIMULATOR", board.model).into());
     let state = Rc::new(RefCell::new(Session::for_board(board.id)));
+    if let Some(value) = analysis {
+        state.borrow_mut().analysis_observation = value;
+    }
     bind(&ui, state.clone());
     refresh(&ui, &state.borrow());
     let timer = slint::Timer::default();

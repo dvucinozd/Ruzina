@@ -248,6 +248,43 @@ pub enum Status {
     Quarantined,
 }
 
+/// Scalar diagnostic category; never transports backend-owned resources.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Failure {
+    Storage,
+    Format,
+    Capacity,
+    WorkLimit,
+    Contract,
+    Stale,
+    Analysis,
+    Exhausted,
+}
+impl Failure {
+    fn source<E>(
+        error: &crate::source::SourceError<pajoniiir_media_fs::analysis::Error<E>>,
+    ) -> Self {
+        use crate::source::SourceError as S;
+        use pajoniiir_media_fs::analysis::Error as E;
+        match error {
+            S::Capacity => Self::Capacity,
+            S::Worker(WorkerError::Analysis(crate::Error::Capacity))
+            | S::Worker(WorkerError::Core(
+                libapta::Error::BufferTooSmall | libapta::Error::LimitExceeded,
+            )) => Self::Capacity,
+            S::Worker(WorkerError::Analysis(crate::Error::Generation)) => Self::Exhausted,
+            S::Limit => Self::WorkLimit,
+            S::Contract => Self::Contract,
+            S::Decode(_) => Self::Format,
+            S::Io(E::Stale) | S::Worker(WorkerError::Stale) => Self::Stale,
+            S::Io(E::Exhausted) => Self::Exhausted,
+            S::Io(E::Contract | E::Unexpected) => Self::Contract,
+            S::Io(_) => Self::Storage,
+            _ => Self::Analysis,
+        }
+    }
+}
+
 /// Platform uses its existing bounded channel/short-lock snapshot mechanisms.
 /// report is a bounded status snapshot, not an unbounded event log. publish must
 /// return ownership on refusal; authority updates and consumer acceptance must
@@ -260,6 +297,9 @@ pub trait Port<'a> {
     #[allow(clippy::result_large_err)]
     fn publish(&mut self, output: Retained<'a>) -> Result<(), Output<'a>>;
     fn report(&mut self, status: Status);
+    fn failure(&mut self, _reason: Failure) {
+        self.report(Status::Failed);
+    }
 }
 
 /// Client, generations, scratch borrows and free banks outlive every job future.
@@ -382,10 +422,10 @@ impl<'a, T: Transport> Service<'a, T> {
                     self.selected = Some((selection, deck));
                     self.command(command, port);
                 }
-                Either::Second(Err(_)) => {
+                Either::Second(Err(error)) => {
                     self.owner.cancel();
                     port.authority(Authority::new(self.owner.requests()));
-                    port.report(Status::Failed);
+                    port.failure(Failure::source(&error));
                 }
                 Either::Second(Ok(Delivery {
                     completed,

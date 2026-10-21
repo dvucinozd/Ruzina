@@ -7,6 +7,7 @@ use pajoniiir_apta_adapter::{
 };
 use pajoniiir_core::DeckId;
 use pajoniiir_media_session::MediaSession;
+use pajoniiir_service::analysis::{Reason, Sample, State};
 use pajoniiir_track_analysis::owned::AnalysisIdentity;
 
 #[derive(Clone, Copy)]
@@ -14,8 +15,10 @@ pub(crate) struct Report {
     pub serial: u64,
     pub selection: Option<Selection>,
     pub status: Option<Status>,
+    pub reason: Reason,
 }
 pub(crate) trait Port<'a> {
+    fn observe(&mut self, _sample: Sample) {}
     fn ready(&self) -> bool;
     fn media(&self) -> MediaSession;
     fn allow_io(&mut self, allowed: bool);
@@ -26,6 +29,8 @@ pub(crate) trait Port<'a> {
     fn output(&mut self) -> Option<Retained<'a>>;
 }
 pub(crate) struct Driver<'a> {
+    last: Option<(DeckId, u32)>,
+    disposition: Option<(State, Reason)>,
     observed: [Option<AnalysisIdentity>; 2],
     active: Option<(Selection, DeckId, AnalysisIdentity)>,
     waiting_cancel: bool,
@@ -38,6 +43,8 @@ pub(crate) struct Driver<'a> {
 impl<'a> Driver<'a> {
     pub(crate) const fn new() -> Self {
         Self {
+            last: None,
+            disposition: None,
             observed: [None, None],
             active: None,
             waiting_cancel: false,
@@ -62,6 +69,57 @@ impl<'a> Driver<'a> {
         true
     }
     pub(crate) fn turn(
+        &mut self,
+        product: &mut ProductRuntime,
+        port: &mut impl Port<'a>,
+        transport_idle: bool,
+    ) {
+        self.drive(product, port, transport_idle);
+        let report = port.report();
+        let state_reason = if !port.ready() {
+            if report.status == Some(Status::Failed) {
+                (State::Failed, report.reason)
+            } else {
+                (State::Waiting, Reason::Startup)
+            }
+        } else if report.status == Some(Status::Quarantined) {
+            (State::Quarantined, Reason::UnexpectedCompletion)
+        } else if report.status == Some(Status::RecoveryBlocked) {
+            (State::RecoveryBlocked, Reason::Storage)
+        } else if !port.media().is_available() {
+            (State::Waiting, Reason::NoMedia)
+        } else if self.pending.is_some() {
+            (State::Deferred, Reason::PlaybackOrTransport)
+        } else if self.waiting_cancel
+            || !transport_idle
+            || product.pending_transport_effects() != 0
+            || [DeckId::One, DeckId::Two]
+                .iter()
+                .any(|&d| !product.deck().deck(d).can_replace_analysis())
+        {
+            (State::Paused, Reason::PlaybackOrTransport)
+        } else if self.recycle.is_some() {
+            (State::Waiting, Reason::Recycle)
+        } else if let Some((selection, _, _)) = self.active {
+            if report.selection == Some(selection) && report.status == Some(Status::NoBank) {
+                (State::Waiting, Reason::NoBank)
+            } else if report.selection == Some(selection) && report.status == Some(Status::Started)
+            {
+                (State::Analyzing, Reason::None)
+            } else {
+                (State::Waiting, Reason::Queued)
+            }
+        } else {
+            self.disposition.unwrap_or((State::Waiting, Reason::NoWork))
+        };
+        port.observe(Sample {
+            state: state_reason.0,
+            reason: state_reason.1,
+            deck: self.last.map(|v| v.0),
+            load_generation: self.last.map(|v| v.1),
+        });
+    }
+    fn drive(
         &mut self,
         product: &mut ProductRuntime,
         port: &mut impl Port<'a>,
@@ -93,6 +151,14 @@ impl<'a> Driver<'a> {
                     if !allowed && let Some((_, deck, _)) = self.active {
                         self.observed[index(deck)] = None;
                     }
+                    self.disposition = Some((
+                        if report.status == Some(Status::Rejected) {
+                            State::Rejected
+                        } else {
+                            State::Failed
+                        },
+                        report.reason,
+                    ));
                     self.active = None;
                 }
                 Some(Status::Started | Status::Published | Status::Cancelled) => {
@@ -152,8 +218,18 @@ impl<'a> Driver<'a> {
                 });
             match outcome {
                 Outcome::Deferred => return,
-                Outcome::Published(bank) | Outcome::Rejected(bank) => self.recycle = Some(bank),
-                Outcome::BuildFailed(_) => self.recycle = pending.discard(),
+                Outcome::Published(bank) => {
+                    self.disposition = Some((State::Published, Reason::None));
+                    self.recycle = Some(bank);
+                }
+                Outcome::Rejected(bank) => {
+                    self.disposition = Some((State::Rejected, Reason::Rejected));
+                    self.recycle = Some(bank);
+                }
+                Outcome::BuildFailed(_) => {
+                    self.disposition = Some((State::Failed, Reason::Capacity));
+                    self.recycle = pending.discard();
+                }
             }
             self.pending = None;
             self.active = None;
@@ -202,9 +278,13 @@ impl<'a> Driver<'a> {
             else {
                 continue;
             };
+            self.last = Some((deck, identity.load_generation));
             if port.send(Command::Analyze(selection, deck)).is_ok() {
+                self.disposition = None;
                 self.observed[index(deck)] = Some(identity);
                 self.active = Some((selection, deck, identity));
+            } else {
+                self.disposition = Some((State::Waiting, Reason::QueueFull));
             }
             break;
         }
@@ -214,5 +294,20 @@ const fn index(deck: DeckId) -> usize {
     match deck {
         DeckId::One => 0,
         DeckId::Two => 1,
+    }
+}
+
+/// Same scalar mapping in the concrete port and real-service host harness.
+pub(crate) fn failure_reason(value: pajoniiir_apta_adapter::service::Failure) -> Reason {
+    use pajoniiir_apta_adapter::service::Failure as F;
+    match value {
+        F::Storage => Reason::Storage,
+        F::Format => Reason::Format,
+        F::Capacity => Reason::Capacity,
+        F::WorkLimit => Reason::WorkLimit,
+        F::Contract => Reason::Contract,
+        F::Stale => Reason::Stale,
+        F::Analysis => Reason::Analysis,
+        F::Exhausted => Reason::Exhausted,
     }
 }

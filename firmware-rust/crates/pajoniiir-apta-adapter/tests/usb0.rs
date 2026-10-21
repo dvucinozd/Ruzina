@@ -106,6 +106,7 @@ mod transport_activity;
 use analysis_product::{Driver, Report};
 use std::cell::{Cell, RefCell};
 struct Bridge<'a> {
+    observation: Cell<pajoniiir_service::analysis::Sample>,
     state: service::State<'a>,
     report: Cell<Report>,
     selected: Cell<Option<Selection>>,
@@ -119,11 +120,13 @@ impl<'a> Bridge<'a> {
         let state = service::State::new(media);
         state.accept.set(false);
         Self {
+            observation: Cell::new(pajoniiir_service::analysis::Sample::DISABLED),
             state,
             report: Cell::new(Report {
                 serial: 0,
                 selection: None,
                 status: None,
+                reason: pajoniiir_service::analysis::Reason::None,
             }),
             selected: Cell::new(None),
             allowed: Cell::new(false),
@@ -138,11 +141,15 @@ impl<'a> Bridge<'a> {
             serial: old.serial + 1,
             selection: self.selected.get(),
             status: Some(status),
+            reason: pajoniiir_service::analysis::Reason::None,
         });
     }
 }
 struct ProductPort<'a>(Rc<Bridge<'a>>);
 impl<'a> analysis_product::Port<'a> for ProductPort<'a> {
+    fn observe(&mut self, value: pajoniiir_service::analysis::Sample) {
+        self.0.observation.set(value);
+    }
     fn ready(&self) -> bool {
         self.0.ready.get()
     }
@@ -212,22 +219,26 @@ impl<'a> pajoniiir_apta_adapter::service::Port<'a> for OwnerPort<'a> {
         self.0.state.outputs.borrow_mut().push_back(output);
         Ok(())
     }
+    fn failure(&mut self, reason: pajoniiir_apta_adapter::service::Failure) {
+        self.0.report(Status::Failed);
+        let mut report = self.0.report.get();
+        report.reason = analysis_product::failure_reason(reason);
+        self.0.report.set(report);
+    }
     fn report(&mut self, status: Status) {
         self.0.report(status);
     }
 }
 macro_rules! scenario {
-    ($product:ident,$driver:ident,$port:ident,$state:ident,$control:ident,$task:ident => $body:block) => {{
+    ($product:ident,$driver:ident,$port:ident,$state:ident,$control:ident,$task:ident => $body:block) => {scenario!(wav(320000),StreamLimits::UNLIMITED;$product,$driver,$port,$state,$control,$task=>$body)};
+    ($bytes:expr,$limits:expr;$product:ident,$driver:ident,$port:ident,$state:ident,$control:ident,$task:ident => $body:block) => {{
         let media = mounted();
         let $control = Rc::new(broker::Control::default());
         $control.yield_receive.set(true);
-        let mut fs = Fs::new(&media, wav(320000));
+        let mut fs = Fs::new(&media, $bytes);
         fs.max = 512;
-        let client = Client::new(
-            broker::Broker::new(fs, $control.clone()),
-            media.lease().unwrap(),
-            Box::leak(vec![0; 512].into_boxed_slice()),
-        );
+        let io_buffer=Box::leak(vec![0;512].into_boxed_slice());let original_buffer=io_buffer.as_ptr();
+        let client = Client::new(broker::Broker::new(fs,$control.clone()),media.lease().unwrap(),io_buffer);
         let mut work = owner::Work::new();
         let mut a = owner::Bank::new();
         let mut b = owner::Bank::new();
@@ -240,8 +251,17 @@ macro_rules! scenario {
         let mut $port = ProductPort($state.clone());
         let mut $product = ProductRuntime::new();
         let mut $driver = Driver::new();
-        let mut $task = pin!(service.run(&mut op, StreamLimits::UNLIMITED, 256, 0x07e0));
-        $body
+        {
+            let mut $task=pin!(service.run(&mut op,$limits,256,0x07e0));
+            $body
+        }
+        // Shutdown the test owner explicitly; prove the broker returned the
+        // original allocation after all submitted operations/handles drained.
+        drive(service.owner_mut().recover()).unwrap();
+        let returned=service.owner_mut().retire_buffer().unwrap();assert_eq!(returned.as_ptr(),original_buffer);assert_eq!(returned.len(),512);
+        // SAFETY: the exact Box::leak above is exclusively retired by this client.
+        unsafe {drop(Box::from_raw(returned as *mut [u8]));}
+
     }};
 }
 #[test]
@@ -363,6 +383,82 @@ fn disconnected_control_health_tick_returns_even_without_usb_event() {
     }
     assert_eq!(run(analysis_io::owner_tick(ready(7), ready(()))), Some(7));
     assert_eq!(run(analysis_io::owner_tick(ready(8), pending())), Some(8));
+}
+
+#[test]
+fn repeated_pending_read_cancel_and_reload_returns_banks_and_eventually_publishes() {
+    scenario!(p,d,port,s,c,t=>{
+        use pajoniiir_service::analysis::{State,Reason};
+        let media=s.state.media.get();
+        for generation in 1..=64 {
+            load(&mut p,&media,DeckId::One,generation,false);
+            let reads=c.reads.get();d.turn(&mut p,&mut port,true);until(&mut t,||c.reads.get()>reads);
+            d.turn(&mut p,&mut port,true);assert_eq!(s.observation.get().state,State::Analyzing);
+            c.pause.set(true);d.turn(&mut p,&mut port,false);
+            assert_eq!(s.observation.get().reason,Reason::PlaybackOrTransport);
+            until(&mut t,||s.report.get().status==Some(Status::Cancelled));
+            d.turn(&mut p,&mut port,false);c.pause.set(false);
+            until(&mut t,||c.opens.get()==c.closes.get());
+            assert!(p.analysis_view(DeckId::One).is_none());
+            assert!(s.state.outputs.borrow().is_empty());assert!(s.state.commands.borrow().is_empty());
+        }
+        load(&mut p,&media,DeckId::One,65,false);d.turn(&mut p,&mut port,true);
+        until(&mut t,||!s.state.outputs.borrow().is_empty());
+        // Saturate recycle during acceptance, then drain on the SAME service.
+        s.refuse.set(true);d.turn(&mut p,&mut port,true);assert!(p.analysis_view(DeckId::One).is_some());
+        for _ in 0..64 {d.turn(&mut p,&mut port,true);}
+        assert_eq!(s.observation.get().reason,Reason::Recycle);s.refuse.set(false);d.turn(&mut p,&mut port,true);
+        until(&mut t,||s.received.borrow().contains(&"recycle"));d.turn(&mut p,&mut port,true);
+        assert_eq!(s.observation.get().state,State::Published);assert_eq!(c.opens.get(),c.closes.get());
+        if let Ok(path)=std::env::var("M1_APTA_STRESS_RECORD") {
+            use std::io::Write;
+            let mut monitor=pajoniiir_service::analysis::Monitor::new();monitor.observe(s.observation.get(),0);
+            let mut record=String::new();monitor.snapshot().write_to(&mut record).unwrap();
+            let mut file=std::fs::OpenOptions::new().write(true).create_new(true).open(path).unwrap();file.write_all(record.as_bytes()).unwrap();
+        }
+        println!("stress cancel/reload: 64 cycles; fixed owner/work/banks; opens={} closes={}; final publication and recycle PASS",c.opens.get(),c.closes.get());
+    });
+}
+#[test]
+fn repeated_detach_during_io_never_publishes_and_drains_each_client() {
+    for _ in 0..32 {
+        scenario!(p,d,port,s,c,t=>{
+            let media=s.state.media.get();load(&mut p,&media,DeckId::One,7,false);
+            d.turn(&mut p,&mut port,true);until(&mut t,||c.reads.get()>0);c.pause.set(true);
+            let mut detached=media;detached.on_disconnect(media.handle());s.state.media.set(detached);
+            d.turn(&mut p,&mut port,true);until(&mut t,||s.report.get().status==Some(Status::Cancelled));
+            c.pause.set(false);until(&mut t,||c.opens.get()==c.closes.get());d.turn(&mut p,&mut port,true);
+            assert!(p.analysis_view(DeckId::One).is_none());assert!(s.state.outputs.borrow().is_empty());assert!(!s.allowed.get());
+        });
+    }
+    println!(
+        "stress detach: 32 independent media/client lifetimes; no stale publication; all handles closed PASS"
+    );
+}
+#[test]
+fn invalid_format_work_limit_and_capacity_have_real_visible_reasons() {
+    use pajoniiir_service::analysis::{Reason, State};
+    for (bytes, limits, expected) in [
+        (vec![0; 88], StreamLimits::UNLIMITED, Reason::Format),
+        (
+            wav(320000),
+            StreamLimits {
+                object_bytes: 128,
+                ..StreamLimits::UNLIMITED
+            },
+            Reason::WorkLimit,
+        ),
+        (wav(320001), StreamLimits::UNLIMITED, Reason::Capacity),
+    ] {
+        scenario!(bytes,limits;p,d,port,s,c,t=>{
+            let media=s.state.media.get();load(&mut p,&media,DeckId::One,7,false);d.turn(&mut p,&mut port,true);
+            until(&mut t,||s.report.get().status==Some(Status::Failed));d.turn(&mut p,&mut port,true);
+            assert_eq!(s.observation.get().state,State::Failed);assert_eq!(s.observation.get().reason,expected);
+            assert!(p.analysis_view(DeckId::One).is_none());assert_eq!(c.opens.get(),c.closes.get());
+            for _ in 0..100{d.turn(&mut p,&mut port,true);}
+            assert!(s.state.commands.borrow().is_empty());
+        });
+    }
 }
 #[test]
 fn two_missing_decks_are_analyzed_in_order_with_banks_recycled() {

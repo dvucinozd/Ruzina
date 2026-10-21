@@ -229,6 +229,12 @@ export component MainWindow inherits Window {
     in property <[string]> health-history;
     in property <string> health-history-label;
     in-out property <bool> health-events: false;
+    in-out property <bool> health-analysis: false;
+    in property <string> health-analysis-text;
+    in property <string> analysis-status;
+    in property <int> analysis-severity;
+    in property <string> analysis-recovery;
+    private property <int> shown-health-severity: root.health-analysis ? root.analysis-severity : root.health-severity;
     in property <[string]> tracks;
     in property <int> selection;
     in property <bool> media-ready;
@@ -386,13 +392,14 @@ export component MainWindow inherits Window {
             background: #131d29; border-radius: 8px;
             VerticalLayout { padding: 12px; spacing: 8px;
                 HorizontalLayout { height: 40px; spacing: 8px;
-                    Action { text: "SUMMARY"; active: !root.health-events; clicked => { root.health-events = false; } }
-                    Action { text: "EVENTS"; active: root.health-events; clicked => { root.health-events = true; } }
+                    Action { text: "SUMMARY"; active: !root.health-events && !root.health-analysis; clicked => { root.health-events = false; root.health-analysis = false; } }
+                    Action { text: "EVENTS"; active: root.health-events; clicked => { root.health-events = true; root.health-analysis = false; } }
+                    Action { text: "ANALYSIS"; active: root.health-analysis; clicked => { root.health-analysis = true; root.health-events = false; } }
                     Action { text: "OPEN LIBRARY"; clicked => { root.page = 1; } }
                 }
-                Text { height: 24px; text: root.health-status; color: root.health-severity == 0 ? #8ed9bb : root.health-severity == 1 ? #ffce85 : #ff9c99; font-size: 19px; font-weight: 700; }
-                Text { height: 20px; text: root.health-recovery; color: #aebed1; font-size: 13px; overflow: elide; }
-                if !root.health-events: Rectangle {
+                Text { height: 24px; text: root.health-analysis ? root.analysis-status : root.health-status; color: root.shown-health-severity == 0 ? #8ed9bb : root.shown-health-severity == 1 ? #ffce85 : #ff9c99; font-size: 19px; font-weight: 700; }
+                Text { height: 20px; text: root.health-analysis ? root.analysis-recovery : root.health-recovery; color: #aebed1; font-size: 13px; overflow: elide; }
+                if !root.health-events && !root.health-analysis: Rectangle {
                     for section[i] in [root.health-identity, root.health-runtime]: Rectangle {
                         x: root.portrait ? 0px : i * (parent.width + 12px) / 2;
                         y: root.portrait ? i * (parent.height + 12px) / 2 : 0px;
@@ -401,6 +408,10 @@ export component MainWindow inherits Window {
                         background: #0b111a; border-radius: 5px;
                         Text { x: 12px; y: 10px; width: parent.width - 24px; height: parent.height - 20px; text: section; color: #bed0e3; font-size: 13px; vertical-alignment: top; overflow: elide; }
                     }
+                }
+                if root.health-analysis: Rectangle {
+                    background: #0b111a; border-radius: 5px;
+                    Text { x: 12px; y: 10px; width: parent.width - 24px; height: parent.height - 20px; text: root.health-analysis-text; color: #bed0e3; font-size: 14px; vertical-alignment: top; wrap: word-wrap; }
                 }
                 if root.health-events: Rectangle {
                     min-height: 0px; preferred-height: 0px; vertical-stretch: 1;

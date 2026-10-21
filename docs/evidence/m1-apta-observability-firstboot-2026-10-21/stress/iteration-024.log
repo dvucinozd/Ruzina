@@ -1,0 +1,9 @@
+
+running 2 tests
+test repeated_detach_during_io_never_publishes_and_drains_each_client ... stress detach: 32 independent media/client lifetimes; no stale publication; all handles closed PASS
+ok
+test repeated_pending_read_cancel_and_reload_returns_banks_and_eventually_publishes ... stress cancel/reload: 64 cycles; fixed owner/work/banks; opens=66 closes=66; final publication and recycle PASS
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.12s
+

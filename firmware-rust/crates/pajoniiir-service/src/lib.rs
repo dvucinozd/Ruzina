@@ -9,6 +9,7 @@ use pajoniiir_core::DeckId;
 
 #[cfg(feature = "owner-adapters")]
 pub mod adapters;
+pub mod analysis;
 pub mod handoff;
 #[cfg(feature = "runtime-owners")]
 pub mod owners;

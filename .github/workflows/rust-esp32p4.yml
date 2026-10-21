@@ -9,14 +9,14 @@ on:
       - "firmware-rust/apps/m1-firmware/**"
       - "firmware-rust/crates/**"
       - "firmware-rust/rust-toolchain.toml"
-      - "firmware-rust/tools/check_board_selection.py"
+      - "firmware-rust/tools/**"
       - ".github/workflows/rust-esp32p4.yml"
   pull_request:
     paths:
       - "firmware-rust/apps/m1-firmware/**"
       - "firmware-rust/crates/**"
       - "firmware-rust/rust-toolchain.toml"
-      - "firmware-rust/tools/check_board_selection.py"
+      - "firmware-rust/tools/**"
       - ".github/workflows/rust-esp32p4.yml"
   workflow_dispatch:
 
@@ -189,3 +189,13 @@ jobs:
 
       - name: Opt-in USB0 analysis with full runtime ownership release link
         run: cargo +1.95.0 build --locked --release --features board-legacy-m1,apta-usb0-bringup,sdmmc-profile-storage-bringup,runtime-health
+
+      - name: Package separate Guition diagnostic images without flashing
+        run: python ../../tools/guition_first_boot.py build --output "${{ runner.temp }}/guition-firstboot" --target-dir ../../target
+
+      - name: Retain Guition first-boot packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guition-firstboot-diagnostics
+          path: ${{ runner.temp }}/guition-firstboot/
