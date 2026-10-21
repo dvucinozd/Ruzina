@@ -71,6 +71,13 @@ static TRANSPORT_COMPLETIONS: Channel<
     TRANSPORT_COMPLETION_DEPTH,
 > = Channel::new();
 static EFFECT_OWNER_PROGRESS: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+#[cfg(feature = "apta-usb0-bringup")]
+static TRANSPORT_ACTIVITY: crate::transport_activity::TransportActivity =
+    crate::transport_activity::TransportActivity::new();
+#[cfg(feature = "apta-usb0-bringup")]
+pub(crate) fn analysis_transport_idle() -> bool {
+    TRANSPORT_ACTIVITY.idle() && TRANSPORT_COMPLETIONS.is_empty()
+}
 #[cfg(feature = "render-graph-bringup")]
 static RENDER_PROGRESS: Channel<
     CriticalSectionRawMutex,
@@ -274,6 +281,8 @@ pub(crate) fn dispatch_product_effects(product: &mut ProductRuntime) -> EffectOw
             effect,
             source_epoch: product.source_epoch(effect.source_deck().expect("transport deck")),
         };
+        #[cfg(feature = "apta-usb0-bringup")]
+        TRANSPORT_ACTIVITY.reserve();
         match TRANSPORT_COMMANDS.try_send(command) {
             Ok(()) => {
                 let completed = product.complete_transport_effect(true);
@@ -281,6 +290,8 @@ pub(crate) fn dispatch_product_effects(product: &mut ProductRuntime) -> EffectOw
                 report.transport_accepted = report.transport_accepted.saturating_add(1);
             }
             Err(TrySendError::Full(_)) => {
+                #[cfg(feature = "apta-usb0-bringup")]
+                TRANSPORT_ACTIVITY.release();
                 report.transport_blocked = true;
                 break;
             }
@@ -542,6 +553,8 @@ pub(crate) async fn run_transport_owner() -> ! {
         loop {
             match select(TRANSPORT_COMMANDS.receive(), RENDER_PROGRESS.receive()).await {
                 Either::First(command) => {
+                    #[cfg(feature = "apta-usb0-bringup")]
+                    let _executing = TRANSPORT_ACTIVITY.executing();
                     if !TRANSPORT_OWNER_STATE.lock(|cell| cell.borrow().accepts(command)) {
                         EFFECT_OWNER_PROGRESS.signal(());
                         continue;

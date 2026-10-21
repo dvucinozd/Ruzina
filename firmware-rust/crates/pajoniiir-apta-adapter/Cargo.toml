@@ -65,3 +65,7 @@ required-features = ["workers"]
 [[test]]
 name = "product"
 required-features = ["library-deck-load"]
+
+[[test]]
+name = "usb0"
+required-features = ["library-deck-load"]

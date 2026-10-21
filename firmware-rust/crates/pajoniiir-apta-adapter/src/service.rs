@@ -51,6 +51,21 @@ impl Selection {
     ) -> Result<Self, WorkerError> {
         Self::track(catalog.lease(), catalog.revision(), catalog.get(index))
     }
+    /// Copy an already committed Library candidate; bind it to that exact load.
+    pub fn from_candidate(
+        candidate: pajoniiir_media_catalog::CatalogLoadCandidate,
+        load_generation: u32,
+    ) -> Result<Self, WorkerError> {
+        if load_generation == 0 {
+            return Err(WorkerError::Failed);
+        }
+        Self::track(
+            candidate.publication.lease,
+            candidate.publication.revision,
+            Some(&candidate.track),
+        )
+        .map(|value| value.with_revision(load_generation))
+    }
     fn track(
         lease: MediaLease,
         catalog_revision: u32,

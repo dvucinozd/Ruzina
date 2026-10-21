@@ -5,7 +5,7 @@ import subprocess
 target = Path(__file__).resolve().parents[1] / "apps/m1-firmware"
 boards = ["board-legacy-m1", "board-jc1060", "board-jc8012"]
 legacy = ["usb0-hardware-bringup", "usb1-controller-bringup", "hotcue-flash-storage",
-          "p4-psram-storage", "sdmmc-profile-storage-bringup"]
+          "p4-psram-storage", "sdmmc-profile-storage-bringup", "apta-usb0-bringup"]
 cases = []
 for index, board in enumerate(boards):
     for other in boards[index + 1:]:

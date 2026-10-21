@@ -13,7 +13,7 @@ use crate::deck_effect_owners::{dispatch_product_effects, wait_for_effect_owner_
 use crate::library_deck_owner::{dispatch_library_deck, wait_for_library_deck_progress};
 use crate::product_runtime::ProductRuntime;
 use embassy_futures::select::{Either, select};
-use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
+use embassy_sync::blocking_mutex::CriticalSectionMutex;
 use embassy_usb_driver::{
     Direction as UsbDirection, EndpointAddress, EndpointInfo, EndpointType,
     host::{DeviceEvent, PipeError, UsbHostAllocator, UsbHostController, UsbPipe, pipe},
@@ -247,7 +247,25 @@ pub(crate) async fn run_root_controller_owner(
             None => loop {
                 #[cfg(feature = "runtime-health")]
                 crate::runtime_health::publish_control(&product, &session, false);
-                #[cfg(feature = "runtime-health")]
+                #[cfg(all(feature = "apta-usb0-bringup", feature = "runtime-health"))]
+                let Some(event) = crate::usb0_analysis::product_wait(
+                    &mut product,
+                    crate::analysis_io::owner_tick(
+                        controller.wait_for_device_event(),
+                        embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+                    ),
+                )
+                .await
+                else {
+                    continue;
+                };
+                #[cfg(all(feature = "apta-usb0-bringup", not(feature = "runtime-health")))]
+                let event = crate::usb0_analysis::product_wait(
+                    &mut product,
+                    controller.wait_for_device_event(),
+                )
+                .await;
+                #[cfg(all(feature = "runtime-health", not(feature = "apta-usb0-bringup")))]
                 let event = match select(
                     controller.wait_for_device_event(),
                     embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
@@ -257,7 +275,7 @@ pub(crate) async fn run_root_controller_owner(
                     Either::First(event) => event,
                     Either::Second(()) => continue,
                 };
-                #[cfg(not(feature = "runtime-health"))]
+                #[cfg(not(any(feature = "runtime-health", feature = "apta-usb0-bringup")))]
                 let event = controller.wait_for_device_event().await;
                 match event {
                     DeviceEvent::Connected(speed) => break speed,
@@ -291,7 +309,8 @@ pub(crate) async fn run_root_controller_owner(
                     Usb1ControllerFailure::MalformedConfiguration,
                 ));
                 bus.free_address(info.device_address);
-                pending_speed = wait_for_device_change(&mut controller, &session, &product).await;
+                pending_speed =
+                    wait_for_device_change(&mut controller, &session, &mut product).await;
                 continue;
             }
         };
@@ -352,17 +371,32 @@ pub(crate) async fn run_root_controller_owner(
 async fn wait_for_device_change<'d, C>(
     controller: &mut BusController<'d, C>,
     session: &ControllerSession,
-    product: &ProductRuntime,
+    product: &mut ProductRuntime,
 ) -> Option<embassy_usb_driver::Speed>
 where
     C: UsbHostController<'d>,
 {
     #[cfg(not(feature = "runtime-health"))]
-    let _ = (session, product);
+    let _ = (session, &*product);
     loop {
         #[cfg(feature = "runtime-health")]
         crate::runtime_health::publish_control(product, session, false);
-        #[cfg(feature = "runtime-health")]
+        #[cfg(all(feature = "apta-usb0-bringup", feature = "runtime-health"))]
+        let Some(event) = crate::usb0_analysis::product_wait(
+            product,
+            crate::analysis_io::owner_tick(
+                controller.wait_for_device_event(),
+                embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+            ),
+        )
+        .await
+        else {
+            continue;
+        };
+        #[cfg(all(feature = "apta-usb0-bringup", not(feature = "runtime-health")))]
+        let event =
+            crate::usb0_analysis::product_wait(product, controller.wait_for_device_event()).await;
+        #[cfg(all(feature = "runtime-health", not(feature = "apta-usb0-bringup")))]
         let event = match select(
             controller.wait_for_device_event(),
             embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
@@ -372,7 +406,7 @@ where
             Either::First(event) => event,
             Either::Second(()) => continue,
         };
-        #[cfg(not(feature = "runtime-health"))]
+        #[cfg(not(any(feature = "runtime-health", feature = "apta-usb0-bringup")))]
         let event = controller.wait_for_device_event().await;
         match event {
             DeviceEvent::Disconnected => {
@@ -526,7 +560,12 @@ where
                 controller.wait_for_device_event(),
                 transport.read_raw(&mut midi_buffer),
             );
-            match select(device_or_midi, runtime_change).await {
+            let change = select(device_or_midi, runtime_change);
+            #[cfg(feature = "apta-usb0-bringup")]
+            let change = crate::usb0_analysis::product_wait(product, change).await;
+            #[cfg(not(feature = "apta-usb0-bringup"))]
+            let change = change.await;
+            match change {
                 Either::First(Either::First(DeviceEvent::Disconnected)) => {
                     session.set_connected(false);
                     on_controller_disconnect();
@@ -625,7 +664,12 @@ where
             continue;
         }
 
-        match select(controller.wait_for_device_event(), runtime_change).await {
+        let change = select(controller.wait_for_device_event(), runtime_change);
+        #[cfg(feature = "apta-usb0-bringup")]
+        let change = crate::usb0_analysis::product_wait(product, change).await;
+        #[cfg(not(feature = "apta-usb0-bringup"))]
+        let change = change.await;
+        match change {
             Either::First(DeviceEvent::Disconnected) => {
                 session.set_connected(false);
                 on_controller_disconnect();
@@ -676,7 +720,6 @@ async fn wait_for_product_owner_progress() {
         )
         .await;
     }
-
     #[cfg(not(feature = "library-deck-load"))]
     wait_for_effect_owner_progress().await;
 }
@@ -732,6 +775,8 @@ async fn drain_product_dispatch(
     probe.product_pending_library_effects =
         product.pending_library_effects().min(u8::MAX as usize) as u8;
 
+    #[cfg(feature = "apta-usb0-bringup")]
+    crate::usb0_analysis::product_turn(product);
     #[cfg(feature = "render-graph-bringup")]
     publish_product_render_control(product);
     #[cfg(feature = "runtime-health")]

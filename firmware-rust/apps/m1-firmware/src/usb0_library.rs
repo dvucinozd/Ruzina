@@ -481,6 +481,8 @@ pub(crate) enum Usb0LibraryError {
     BrokerBusy,
     BrokerPending,
     BrokerWrongClient,
+    #[cfg(feature = "apta-usb0-bringup")]
+    FilesystemAnalysisPaused,
     FilesystemNoMedia,
     FilesystemStaleLease,
     FilesystemHandleKindMismatch,
@@ -570,6 +572,8 @@ pub(crate) fn library_state() -> Usb0LibraryState {
 
 fn map_filesystem_error(error: Usb0FsOperationError) -> Usb0LibraryError {
     match error {
+        #[cfg(feature = "apta-usb0-bringup")]
+        Usb0FsOperationError::AnalysisPaused => Usb0LibraryError::FilesystemAnalysisPaused,
         Usb0FsOperationError::NoMedia => Usb0LibraryError::FilesystemNoMedia,
         Usb0FsOperationError::StaleLease => Usb0LibraryError::FilesystemStaleLease,
         Usb0FsOperationError::HandleKindMismatch => {

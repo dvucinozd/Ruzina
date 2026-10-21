@@ -1,0 +1,11 @@
+   Compiling pajoniiir-m1-firmware v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/apps/m1-firmware)
+warning: function `audio_render_owner_stats` is never used
+  --> src/audio_render_owner.rs:98:15
+   |
+98 | pub(crate) fn audio_render_owner_stats() -> AudioRenderOwnerStats {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pajoniiir-m1-firmware` (bin "pajoniiir-m1-firmware") generated 1 warning
+    Finished `release` profile [optimized] target(s) in 8.11s

@@ -248,6 +248,8 @@ type Usb0ExFatOperationError = ExFatAsyncFsError<AsyncPartitionError<Usb0MscIoEr
 
 #[derive(Debug)]
 pub(crate) enum Usb0FsOperationError {
+    #[cfg(feature = "apta-usb0-bringup")]
+    AnalysisPaused,
     NoMedia,
     StaleLease,
     HandleKindMismatch,
@@ -311,6 +313,13 @@ impl LeaseBound for Usb0FsDirectoryHandle {
 impl DirectoryHandle for Usb0FsDirectoryHandle {}
 
 pub(crate) enum Usb0FsRequest {
+    #[cfg(feature = "apta-usb0-bringup")]
+    AnalysisRead {
+        ticket: FileSystemRequestTicket,
+        file: Usb0FsFileHandle,
+        buffer: &'static mut [u8],
+        limit: usize,
+    },
     Stat {
         ticket: FileSystemRequestTicket,
         path: BoundedPath,
@@ -351,6 +360,8 @@ pub(crate) enum Usb0FsRequest {
 impl Usb0FsRequest {
     pub(crate) const fn ticket(&self) -> FileSystemRequestTicket {
         match self {
+            #[cfg(feature = "apta-usb0-bringup")]
+            Self::AnalysisRead { ticket, .. } => *ticket,
             Self::Stat { ticket, .. }
             | Self::OpenRead { ticket, .. }
             | Self::Read { ticket, .. }
@@ -437,6 +448,8 @@ pub(crate) struct Usb0FilesystemClient {
 
 impl Usb0FilesystemClient {
     pub(crate) const fn new(client: FileSystemClientId) -> Self {
+        #[cfg(feature = "apta-usb0-bringup")]
+        assert!(!matches!(client, FileSystemClientId::Analysis));
         Self {
             client,
             sequencer: FileSystemRequestSequencer::new(),
@@ -1744,6 +1757,8 @@ fn filesystem_completion_channel(
         FileSystemClientId::LibraryLoad => &USB0_FS_LIBRARY_LOAD_COMPLETIONS,
         FileSystemClientId::DeckA => &USB0_FS_DECK_A_COMPLETIONS,
         FileSystemClientId::DeckB => &USB0_FS_DECK_B_COMPLETIONS,
+        #[cfg(feature = "apta-usb0-bringup")]
+        FileSystemClientId::Analysis => &USB0_FS_ANALYSIS_COMPLETIONS,
     }
 }
 
@@ -1913,6 +1928,31 @@ async fn process_filesystem_request(
     request: Usb0FsRequest,
 ) -> Usb0FsCompletion {
     match request {
+        #[cfg(feature = "apta-usb0-bringup")]
+        Usb0FsRequest::AnalysisRead {
+            ticket,
+            mut file,
+            buffer,
+            limit,
+        } => {
+            let result = match crate::analysis_io::read_limit(
+                crate::usb0_analysis::io_allowed(),
+                limit,
+                buffer.len(),
+            ) {
+                None => Err(Usb0FsOperationError::AnalysisPaused),
+                Some(size) => match active_filesystem_for_request(active, ticket) {
+                    Ok(filesystem) => filesystem.read(&mut file, &mut buffer[..size]).await,
+                    Err(error) => Err(error),
+                },
+            };
+            Usb0FsCompletion::Read {
+                ticket,
+                file,
+                buffer,
+                result,
+            }
+        }
         Usb0FsRequest::Stat { ticket, path } => {
             let result = match active_filesystem_for_request(active, ticket) {
                 Ok(filesystem) => filesystem.stat(path.as_str()).await,
@@ -1921,6 +1961,15 @@ async fn process_filesystem_request(
             Usb0FsCompletion::Stat { ticket, result }
         }
         Usb0FsRequest::OpenRead { ticket, path } => {
+            #[cfg(feature = "apta-usb0-bringup")]
+            if ticket.client() == FileSystemClientId::Analysis
+                && !crate::usb0_analysis::io_allowed()
+            {
+                return Usb0FsCompletion::OpenRead {
+                    ticket,
+                    result: Err(Usb0FsOperationError::AnalysisPaused),
+                };
+            }
             let result = match active_filesystem_for_request(active, ticket) {
                 Ok(filesystem) => filesystem.open_read(path.as_str()).await,
                 Err(error) => Err(error),
@@ -2143,7 +2192,7 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
     loop {
         match select(
             USB0_MSC_FILESYSTEM_EVENTS.receive(),
-            USB0_FS_REQUESTS.receive(),
+            next_filesystem_request(),
         )
         .await
         {
@@ -2545,5 +2594,113 @@ fn complete_with_status(
             status,
         },
         Usb0MscRequest::Flush { ticket } => Usb0MscCompletion::Flush { ticket, status },
+    }
+}
+
+// Exclusive endpoint, bounded independently of foreground Library/Deck traffic.
+#[cfg(feature = "apta-usb0-bringup")]
+static USB0_FS_ANALYSIS_REQUESTS: Channel<CriticalSectionRawMutex, Usb0FsRequest, 1> =
+    Channel::new();
+#[cfg(feature = "apta-usb0-bringup")]
+static USB0_FS_ANALYSIS_COMPLETIONS: Channel<CriticalSectionRawMutex, Usb0FsCompletion, 1> =
+    Channel::new();
+#[cfg(feature = "apta-usb0-bringup")]
+static ANALYSIS_CLAIMED: CriticalSectionMutex<RefCell<bool>> =
+    CriticalSectionMutex::new(RefCell::new(false));
+async fn next_filesystem_request() -> Usb0FsRequest {
+    #[cfg(feature = "apta-usb0-bringup")]
+    {
+        crate::analysis_io::foreground_first(
+            USB0_FS_REQUESTS.receive(),
+            USB0_FS_ANALYSIS_REQUESTS.receive(),
+        )
+        .await
+    }
+    #[cfg(not(feature = "apta-usb0-bringup"))]
+    USB0_FS_REQUESTS.receive().await
+}
+#[cfg(feature = "apta-usb0-bringup")]
+pub(crate) fn analysis_media_snapshot() -> MediaSession {
+    with_lifecycle(|l| *l.session())
+}
+#[cfg(feature = "apta-usb0-bringup")]
+pub(crate) struct Usb0AnalysisTransport {
+    _private: (),
+}
+#[cfg(feature = "apta-usb0-bringup")]
+impl Usb0AnalysisTransport {
+    pub(crate) fn take() -> Option<Self> {
+        ANALYSIS_CLAIMED.lock(|cell| {
+            let mut claimed = cell.borrow_mut();
+            if *claimed {
+                None
+            } else {
+                *claimed = true;
+                Some(Self { _private: () })
+            }
+        })
+    }
+}
+#[cfg(feature = "apta-usb0-bringup")]
+impl pajoniiir_media_fs::analysis::Transport for Usb0AnalysisTransport {
+    type Handle = Usb0FsFileHandle;
+    type Error = Usb0FsOperationError;
+    type Unexpected = Usb0FsCompletion;
+    fn valid(&self, lease: MediaLease) -> bool {
+        with_lifecycle(|l| l.session().is_available() && l.session().validate(lease))
+    }
+    fn kind(&self) -> FileSystemKind {
+        match filesystem_state() {
+            Usb0MscFilesystemState::Ready { probe, .. } => probe.kind(),
+            _ => FileSystemKind::Fat32,
+        }
+    }
+    fn try_send(
+        &mut self,
+        request: pajoniiir_media_fs::analysis::Request<Self::Handle>,
+    ) -> Result<(), pajoniiir_media_fs::analysis::Request<Self::Handle>> {
+        use pajoniiir_media_fs::analysis::Request;
+        let request = match request {
+            Request::Open(ticket, path) => Usb0FsRequest::OpenRead { ticket, path },
+            Request::Read(ticket, file, buffer, limit) => Usb0FsRequest::AnalysisRead {
+                ticket,
+                file,
+                buffer,
+                limit,
+            },
+            Request::Close(ticket, file) => Usb0FsRequest::CloseFile { ticket, file },
+        };
+        USB0_FS_ANALYSIS_REQUESTS
+            .try_send(request)
+            .map_err(|error| {
+                let embassy_sync::channel::TrySendError::Full(request) = error;
+                match request {
+                    Usb0FsRequest::OpenRead { ticket, path } => Request::Open(ticket, path),
+                    Usb0FsRequest::AnalysisRead {
+                        ticket,
+                        file,
+                        buffer,
+                        limit,
+                    } => Request::Read(ticket, file, buffer, limit),
+                    Usb0FsRequest::CloseFile { ticket, file } => Request::Close(ticket, file),
+                    _ => unreachable!(),
+                }
+            })
+    }
+    async fn receive(
+        &mut self,
+    ) -> pajoniiir_media_fs::analysis::Completion<Self::Handle, Self::Error, Self::Unexpected> {
+        use pajoniiir_media_fs::analysis::Completion;
+        match USB0_FS_ANALYSIS_COMPLETIONS.receive().await {
+            Usb0FsCompletion::OpenRead { ticket, result } => Completion::Open(ticket, result),
+            Usb0FsCompletion::Read {
+                ticket,
+                file,
+                buffer,
+                result,
+            } => Completion::Read(ticket, file, buffer, result),
+            Usb0FsCompletion::CloseFile { ticket, result } => Completion::Close(ticket, result),
+            other => Completion::Unexpected(other.ticket(), other),
+        }
     }
 }

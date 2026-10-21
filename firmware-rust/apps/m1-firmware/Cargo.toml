@@ -48,6 +48,9 @@ pcm-transport-bringup = ["wav-audio-source-bringup"]
 # the only steady-state PCM consumer and returns compact progress to transport.
 # Output is still a reference/null sink; PCM5102A/I2S remains a later hardware gate.
 render-graph-bringup = ["pcm-transport-bringup"]
+# Explicit legacy reference integration; Guition selectors remain guarded.
+# Analysis yields storage to foreground and is cancelled while playback is active.
+apta-usb0-bringup = ["render-graph-bringup", "dep:pajoniiir-apta-adapter", "dep:libapta"]
 # Compile-verified M1 microSD SDMMC0 ownership and card-init boundary. Runtime
 # card/FAT/profile success still requires EVT hardware qualification.
 sdmmc-profile-storage-bringup = []
@@ -56,6 +59,8 @@ sdmmc-profile-storage-bringup = []
 p4-psram-storage = ["dep:esp-alloc", "dep:allocator-api2"]
 
 [dependencies]
+libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "25d09de364e9507532c0508c838a8fecf0772d13", default-features = false, optional = true }
+pajoniiir-apta-adapter = { path = "../../crates/pajoniiir-apta-adapter", features = ["owned-handoff"], optional = true }
 allocator-api2 = { version = "=0.3.1", default-features = false, features = ["alloc"], optional = true }
 pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
 pajoniiir-service = { path = "../../crates/pajoniiir-service" }

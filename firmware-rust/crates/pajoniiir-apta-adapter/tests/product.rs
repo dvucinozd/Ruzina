@@ -1,7 +1,7 @@
 //! The current firmware product and transport transitions, not the old APTA copy.
 #![allow(clippy::result_large_err)]
 // Existing Library load API includes one feature-gated analysis argument.
-#[allow(dead_code, clippy::too_many_arguments)]
+#[allow(dead_code, unexpected_cfgs, clippy::too_many_arguments)]
 #[path = "../../../apps/m1-firmware/src/product_runtime.rs"]
 mod product_runtime;
 #[allow(dead_code)]

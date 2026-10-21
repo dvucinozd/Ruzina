@@ -148,6 +148,9 @@ pub(super) fn start(spawner: Spawner, peripherals: esp_hal::peripherals::Periphe
         spawner.spawn(usb0_library_task().expect("USB0 library task slot must be available"));
     }
 
+    #[cfg(feature = "apta-usb0-bringup")]
+    spawner.spawn(crate::usb0_analysis::owner_task().expect("USB0 analysis task slot"));
+
     #[cfg(feature = "library-deck-load")]
     {
         spawner.spawn(
