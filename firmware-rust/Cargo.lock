@@ -885,6 +885,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
 
 [[package]]
+name = "embassy-futures"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc2d050bdc5c21e0862a89256ed8029ae6c290a93aecefc73084b3002cdebb01"
+
+[[package]]
 name = "embedded-graphics"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2940,10 +2946,24 @@ dependencies = [
 name = "pajoniiir-apta-adapter"
 version = "0.1.0"
 dependencies = [
+ "embassy-futures",
  "libapta",
+ "pajoniiir-audio-runtime",
  "pajoniiir-controller-core",
+ "pajoniiir-controller-session",
  "pajoniiir-core",
  "pajoniiir-deck",
+ "pajoniiir-hot-cues",
+ "pajoniiir-media-block",
+ "pajoniiir-media-catalog",
+ "pajoniiir-media-exfat",
+ "pajoniiir-media-fat32",
+ "pajoniiir-media-fs",
+ "pajoniiir-media-identity",
+ "pajoniiir-media-io",
+ "pajoniiir-media-session",
+ "pajoniiir-mixer",
+ "pajoniiir-service",
  "pajoniiir-track-analysis",
  "pajoniiir-waveform",
 ]

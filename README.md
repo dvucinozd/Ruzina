@@ -4,7 +4,9 @@
 
 ## Active direction — 2026-10-20
 
-Selective APTA adoption: [experimental result/cache conversion and waveform views](docs/M1_RUST_APTA_CORE_GATE_2026-10-21.md) are isolated in a portable adapter. Production provider activation, native analysis workers and firmware integration remain deferred.
+Selective APTA adoption: [experimental result/cache conversion and waveform views](docs/M1_RUST_APTA_CORE_GATE_2026-10-21.md) are isolated in a portable adapter. Production provider activation and embedded service wiring remain deferred.
+
+The next opt-in package, [APTA worker lifecycle and owned handoff](docs/M1_RUST_APTA_WORKER_GATE_2026-10-21.md), retains bank-starved jobs and temporarily deferred results, budgets both waveform banks, and tests the current product/transport implementation. Firmware does not select or start the analysis service.
 
 Latest audio work: [shared WAV/MP3/FLAC source decoding](docs/M1_RUST_CODEC_STREAM_GATE_2026-10-21.md) connects bounded per-deck decoders to Library, canonical PCM, loops, FX and receipt-confirmed transport. Twenty new scenarios cover independent PCM references, exact seek/loop samples, malformed input and mixed-rate two-deck rendering. Physical output and listening qualification remain open.
 
@@ -30,7 +32,7 @@ Latest software follow-up: [consumer-clock PCM delivery and simulation](docs/M1_
 
 Custom M1 PCB development has been discontinued by project decision. The selected development boards are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, both with **ESP32-P4 silicon v3.2**, as reported by the project owner. Exact unit identity and board peripherals still require bring-up evidence.
 
-Native Rust development now uses `main` after [PR #1](https://github.com/dvucinozd/Pajoniiir-M1/pull/1). Its `ESP_HAL_CONFIG_MIN_CHIP_REVISION=302` matches the selected silicon revision. Firmware sources are in `firmware-rust/`; the separate `codex/native-apta-consumer` branch remains unmerged. Only its portable result/cache/waveform subset is selectively adopted; its worker/service and firmware changes remain deferred. See the [integration validation](docs/M1_RUST_MAIN_INTEGRATION_2026-10-20.md) for the original integration and remaining gates.
+Native Rust development now uses `main` after [PR #1](https://github.com/dvucinozd/Pajoniiir-M1/pull/1). Its `ESP_HAL_CONFIG_MIN_CHIP_REVISION=302` matches the selected silicon revision. Firmware sources are in `firmware-rust/`; the separate `codex/native-apta-consumer` branch remains unmerged. Its portable core and optional worker lifecycle are selectively adapted; embedded worker/service activation remains deferred. See the [integration validation](docs/M1_RUST_MAIN_INTEGRATION_2026-10-20.md) for the original integration and remaining gates.
 
 See [Guition platform decision and migration plan](docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md) for scope, current evidence and the next development steps.
 

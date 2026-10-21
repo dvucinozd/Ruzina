@@ -227,6 +227,11 @@ pub struct DeckState {
 }
 
 impl DeckState {
+    /// A pending playback request pins the selected analysis even before playing.
+    pub const fn can_replace_analysis(&self) -> bool {
+        !self.playing && self.pending_playback.is_none()
+    }
+
     pub const fn new() -> Self {
         Self {
             playing: false,

@@ -22,6 +22,13 @@ pub(crate) struct ProductAnalysisLoad {
     pub(crate) publication: Option<AnalysisPublication>,
 }
 
+#[cfg(feature = "library-deck-load")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum BackgroundAnalysisRefusal {
+    Deferred,
+    Rejected,
+}
+
 const PRODUCT_LIBRARY_EFFECT_CAPACITY: usize = 8;
 const PRODUCT_TRANSPORT_EFFECT_CAPACITY: usize = 16;
 const PRODUCT_PERSISTENCE_EFFECT_CAPACITY: usize = 4;
@@ -232,7 +239,7 @@ impl ProductRuntime {
             source_cues_available,
             audio_source,
             #[cfg(feature = "library-deck-load")]
-            analysis_identity: analysis.publication.as_ref().map(|_| analysis_identity),
+            analysis_identity: Some(analysis_identity),
         });
         self.advance_source_epoch(deck);
         #[cfg(feature = "library-deck-load")]
@@ -251,6 +258,43 @@ impl ProductRuntime {
 
     pub(crate) fn loaded_track(&self, deck: DeckId) -> Option<ProductLoadedTrack> {
         self.loaded_tracks[deck_index(deck)]
+    }
+
+    /// Background copies use the current load identity and existing owned pins.
+    /// No caller is wired in firmware yet. `transport_idle` must include actual
+    /// downstream queues/in-flight work, not just accepted product commands.
+    #[cfg(feature = "library-deck-load")]
+    #[allow(clippy::result_large_err)]
+    pub(crate) fn publish_background_analysis(
+        &mut self,
+        deck: DeckId,
+        publication: AnalysisPublication,
+        media: &pajoniiir_media_session::MediaSession,
+        transport_idle: bool,
+    ) -> Result<(), (BackgroundAnalysisRefusal, AnalysisPublication)> {
+        let index = deck_index(deck);
+        let identity = publication.identity();
+        if !media.is_available()
+            || !media.validate(identity.lease)
+            || self.loaded_tracks[index].and_then(|t| t.analysis_identity) != Some(identity)
+            || self.analyses.view(index, identity).is_some()
+            || !matches!(
+                publication.view().provider(),
+                pajoniiir_track_analysis::AnalysisProvider::AptaNative
+                    | pajoniiir_track_analysis::AnalysisProvider::AptaCache
+            )
+        {
+            return Err((BackgroundAnalysisRefusal::Rejected, publication));
+        }
+        if !transport_idle
+            || self.pending_transport_effects() != 0
+            || !self.deck.deck(deck).can_replace_analysis()
+        {
+            return Err((BackgroundAnalysisRefusal::Deferred, publication));
+        }
+        let published = self.analyses.publish(index, identity, publication);
+        debug_assert!(published);
+        Ok(())
     }
 
     pub(crate) const fn source_epoch(&self, deck: DeckId) -> u32 {

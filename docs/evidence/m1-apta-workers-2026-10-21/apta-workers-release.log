@@ -1,0 +1,195 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling pajoniiir-media-block v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-block)
+   Compiling unicode-ident v1.0.26
+   Compiling quote v1.0.47
+   Compiling pajoniiir-media-session v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-session)
+   Compiling libm v0.2.16
+   Compiling syn v3.0.6
+   Compiling thiserror v2.0.21
+   Compiling pajoniiir-audio-dsp v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-dsp)
+   Compiling syn v2.0.119
+   Compiling thiserror-impl v2.0.21
+   Compiling pajoniiir-track-analysis v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-track-analysis)
+   Compiling bytemuck v1.25.2
+   Compiling heapless v0.9.3
+   Compiling safe_arch v1.2.0
+   Compiling hash32 v0.3.1
+   Compiling pajoniiir-media-fs v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-fs)
+   Compiling arbitrary-int v2.2.0
+   Compiling bitbybit v2.0.1
+   Compiling bitflags v2.13.2
+   Compiling stable_deref_trait v1.2.1
+   Compiling nanoaudio-core v0.1.1
+   Compiling embedded-sdmmc-types v0.1.0
+   Compiling pajoniiir-deck v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-deck)
+   Compiling wide v1.7.1
+   Compiling pajoniiir-media-io v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-io)
+   Compiling embedded-hal v1.0.0
+   Compiling hex-literal v1.1.0
+   Compiling embedded-io v0.7.1
+   Compiling nanomp3-core v0.2.0
+   Compiling nanoaudio-mp3 v0.1.1
+   Compiling embedded-sdmmc v0.10.0
+   Compiling pajoniiir-waveform v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-waveform)
+   Compiling pajoniiir-audio-scratch v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-scratch)
+   Compiling pajoniiir-audio-keylock v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-keylock)
+   Compiling pajoniiir-mixer v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-mixer)
+   Compiling libapta v0.1.0 (https://github.com/dvucinozd/libapta-audio.git?rev=25d09de364e9507532c0508c838a8fecf0772d13#25d09de3)
+   Compiling nanoaudio-flac v0.1.2
+   Compiling pajoniiir-control-scheduler v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-control-scheduler)
+   Compiling pajoniiir-controller-profile v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-controller-profile)
+   Compiling pajoniiir-media-catalog v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-catalog)
+   Compiling exfat-embedded v0.1.3
+   Compiling pajoniiir-media-partition v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-partition)
+   Compiling pajoniiir-board-profile v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-board-profile)
+   Compiling embassy-futures v0.1.2
+   Compiling pajoniiir-controller-usb v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-controller-usb)
+   Compiling pajoniiir-controller-session v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-controller-session)
+   Compiling pajoniiir-service v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-service)
+   Compiling pajoniiir-media-fat32 v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-fat32)
+   Compiling pajoniiir-media-exfat v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-exfat)
+   Compiling pajoniiir-audio-runtime v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-runtime)
+   Compiling pajoniiir-apta-adapter v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-apta-adapter)
+    Finished `release` profile [optimized] target(s) in 36.04s
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/pajoniiir_apta_adapter-37af9e2e4046dac8)
+
+running 1 test
+test worker::tests::generation_exhaustion_preserves_last_request_without_wrapping ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/broker.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/broker-24384901a0656b72)
+
+running 3 tests
+test errors_stale_completion_and_replacement_preserve_recovery ... ok
+test owned_completion_recovery_and_repeated_jobs ... ok
+test replaced_scan_drains_broker_before_next_job ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/global.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/global-27ca7c4c78ec1f07)
+
+running 1 test
+test real_global_pcm_cache_and_consumers ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/job.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/job-dce0cc0a2a301576)
+
+running 4 tests
+test scan_composition_closes_errors_and_preserves_occupied_or_cancelled_control ... ok
+test scan_composition_preserves_limits_and_cleanup_error_precedence ... ok
+test composed_jobs_reuse_arrays_and_persistent_requests_after_closed_control_scope ... ok
+test second_pass_composition_cancellation_retains_control_and_closes_failures ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/native.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/native-f77bd8907c713af0)
+
+running 4 tests
+test unit_rounding_and_overflow ... ok
+test pcm_backpressure_invalid_input_and_cancellation ... ok
+test waveform_capacity_and_signed_endpoints_are_transactional ... ok
+test pcm_to_deck_sync_and_jump ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/owner.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/owner-0932c49b8d9b57e4)
+
+running 2 tests
+test quarantine_queue_refusal_stale_media_and_errors_preserve_recovery ... ok
+test cancellation_at_each_broker_phase_recovers_same_owner_and_reuses_banks ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.35s
+
+     Running tests/policy.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/policy-f3c403476cda140d)
+
+running 6 tests
+test duration_limit_is_exact_and_checked_after_close_before_source_verification ... ok
+test local_tempo_array_budget_is_checked_including_two_retained_banks ... ok
+test opened_object_limit_closes_without_reading_and_close_failure_is_visible ... ok
+test processing_budget_survives_partial_acceptance_and_never_releases_partial_output ... ok
+test scan_exhaustion_is_terminal_and_handle_remains_available_for_abort_or_finish ... ok
+test service_plan_matches_actual_two_bank_payload_and_broker_scratch ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/product.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/product-b761ef141b5224a3)
+
+running 3 tests
+test queued_pending_playing_and_actual_stop_completion_gate_publication ... ok
+test temporary_other_deck_transport_retains_delivery_until_actual_completion ... ok
+test stale_load_media_authority_and_anlz_priority_reject_without_mutation ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+
+     Running tests/service.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/service-24e31208fab7a3fd)
+
+running 3 tests
+test loop_handoff_replacement_retirement_and_bounded_backpressure ... ok
+test loop_rechecks_live_media_and_decks_and_recovers_refused_output_bank ... ok
+test loop_errors_quarantine_stale_delivery_and_cancelled_loop_recovery ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests/source.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/source-86f5caf2a8d8cad8)
+
+running 10 tests
+test capacity_close_failure_invalid_wav_and_incomplete_fail_closed ... ok
+test invalid_float_decode_is_terminal_even_with_a_valid_file_hash ... ok
+test pending_completion_replacement_and_geometry_mismatch_are_rejected ... ok
+test original_lease_is_rechecked_after_whole_object_io ... ok
+test read_failures_and_cancellation_cannot_finish_and_close_once ... ok
+test pending_read_resumes_once_and_unmounted_completion_is_closed ... ok
+test replacement_cancel_and_original_catalog_lease_are_checked ... ok
+test short_reads_exact_hash_bounded_decode_and_retained_consumers ... ok
+test native_async_fat32_fragmented_file_reaches_actual_consumers ... ok
+test native_async_exfat_contiguous_and_fragmented_files_reach_consumers ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.27s
+
+     Running tests/streaming.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/streaming-18f0e73b8786b025)
+
+running 15 tests
+test both_passes_reject_bad_io_and_dropped_pending_reads_and_close_once ... ok
+test changed_object_bytes_never_release_analysis_even_with_identical_geometry ... ok
+test cooperative_run_closes_on_step_error_and_reports_cleanup_failure ... ok
+test close_failure_incomplete_pcm_and_nonfinite_input_cannot_release_worker ... ok
+test cooperative_scan_errors_leave_cleanup_to_owner_without_spending_more_io ... ok
+test cooperative_run_yields_wakes_and_retains_control_after_cancellation ... ok
+test cooperative_scan_retains_handle_and_poison_on_cancelled_yield_or_read ... ok
+test local_tempo_preparation_preserves_occupied_handle_and_empty_slot_on_error ... ok
+test cooperative_scan_wakes_completes_exact_budget_and_still_requires_close ... ok
+test original_lease_survives_backend_replacement_during_both_passes ... ok
+test premature_extraction_preserves_handle_and_cancelled_close_never_authorizes_output ... ok
+test reopen_length_session_geometry_stale_request_and_scan_validation_fail_closed ... ok
+test second_pass_pending_resume_once_and_stale_abort ... ok
+test single_byte_stereo_packed24_and_data_before_format_preserve_every_frame ... ok
+test pcm_cursor_preserves_all_formats_across_partial_frames_and_short_queues ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/window.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/window-c65efa9a17748e69)
+
+running 2 tests
+test real_partial_eof_columns_have_explicit_whole_column_rendering ... ok
+test real_sparse_pcm_and_detail_windows_render_without_bridging_holes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/worker.rs (/home/daniel/.cache/m1-rust-review/host-target/release/deps/worker-82c9b051273c1709)
+
+running 2 tests
+test cancellation_replacement_unmount_and_source_failure_never_publish ... ok
+test retained_pcm_banks_follow_media_requests_and_actual_deck_state ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests pajoniiir_apta_adapter
+
+running 2 tests
+test crates/pajoniiir-apta-adapter/src/service.rs - service::Retained (line 85) - compile fail ... ok
+test crates/pajoniiir-apta-adapter/src/lib.rs - convert (line 74) - compile fail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
