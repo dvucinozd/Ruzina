@@ -1,0 +1,25 @@
+PASS (rejected): board-legacy-m1,board-jc1060
+PASS (rejected): board-legacy-m1,board-jc8012
+PASS (rejected): board-jc1060,board-jc8012
+PASS (rejected): usb0-hardware-bringup
+PASS (rejected): usb1-controller-bringup
+PASS (rejected): hotcue-flash-storage
+PASS (rejected): p4-psram-storage
+PASS (rejected): sdmmc-profile-storage-bringup
+PASS (rejected): board-jc1060,usb0-hardware-bringup
+PASS (rejected): board-jc1060,usb1-controller-bringup
+PASS (rejected): board-jc1060,hotcue-flash-storage
+PASS (rejected): board-jc1060,p4-psram-storage
+PASS (rejected): board-jc1060,sdmmc-profile-storage-bringup
+PASS (rejected): board-jc8012,usb0-hardware-bringup
+PASS (rejected): board-jc8012,usb1-controller-bringup
+PASS (rejected): board-jc8012,hotcue-flash-storage
+PASS (rejected): board-jc8012,p4-psram-storage
+PASS (rejected): board-jc8012,sdmmc-profile-storage-bringup
+PASS (rejected): board-diagnostics
+PASS (rejected): board-legacy-m1,board-diagnostics
+PASS (rejected): runtime-health
+PASS (rejected): board-jc1060,runtime-health
+PASS (rejected): board-jc8012,runtime-health
+PASS (rejected): board-legacy-m1,runtime-health
+Board selection guards: 24 passed

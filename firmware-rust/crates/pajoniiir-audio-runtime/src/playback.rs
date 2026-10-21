@@ -2,14 +2,13 @@
 //! otherwise controller headphones; no output means no confirmed progression.
 use crate::{
     pcm_stream::{PcmStreamProgress, PendingRenderProgress},
-    render::{RENDER_BLOCK_FRAMES, RenderOutputBlock},
+    render::RenderOutputBlock,
     routing::OutputRouter,
     sink::{
         BlockProgress, OutputDelivery, SinkBlock, SinkError, SinkLane, SinkReceipt, SinkRole,
         SinkToken,
     },
 };
-use pajoniiir_audio_dsp::PcmFrame;
 
 #[derive(Clone, Copy)]
 pub struct RenderPermit {
@@ -126,12 +125,13 @@ impl<'a> PlaybackOutput<'a> {
             headphones: self.delivery.headphones.token(),
         }
     }
+    /// Submit the graph's MAIN and fully composed headphone buses together.
+    /// Routing still decides whether each lane has a valid destination.
     pub fn submit_render(
         &mut self,
         permit: RenderPermit,
         first_frame: u64,
         block: &RenderOutputBlock,
-        cue: &[PcmFrame; RENDER_BLOCK_FRAMES],
         progress: BlockProgress,
     ) -> [Result<(), SinkError>; 2] {
         if permit.revision != self.revision {
@@ -151,7 +151,7 @@ impl<'a> PlaybackOutput<'a> {
             permit.headphones,
             first_frame,
             block,
-            cue,
+            &block.headphones,
             progress,
         )
     }

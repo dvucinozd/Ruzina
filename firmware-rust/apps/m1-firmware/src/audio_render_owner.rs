@@ -105,6 +105,7 @@ pub(crate) fn publish_product_render_control(product: &ProductRuntime) {
     let effects = product_fx_controls(product.deck());
     let mut control = RenderControl::idle();
     control.master_gain = gains.master;
+    control.headphones = mixer.headphone_gains();
 
     for (index, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
         let deck_state = *product.deck().deck(deck);
@@ -268,8 +269,7 @@ pub(crate) async fn run_audio_render_owner() -> ! {
             }
         }
 
-        let submitted =
-            playback.submit_render(permit, first_frame, output, &output.pfl[0], block_progress);
+        let submitted = playback.submit_render(permit, first_frame, output, block_progress);
         submitted[0].expect("reference block delivery");
         // The reference consumer accepts immediately. Physical drivers must
         // retain this receipt until DMA/UAC completion, never acknowledge fill.

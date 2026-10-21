@@ -4,7 +4,9 @@
 
 ## Active direction — 2026-10-20
 
-Latest audio work: [Beat/Pad FX in the PCM render graph](docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) processes real samples before the PFL tap and faders, with bounded effect memory and source-bound reset/tail handling. The streamed PCM loop package is merged through PR #13. Physical output and listening qualification remain open.
+Latest audio work: [controller headphone CUE/master mix](docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) combines both wet PFL taps, stereo master, monitor mix and headphone level in the PCM graph, with controller-only delivery and 11 new scenarios. Physical output and listening qualification remain open.
+
+The [Beat/Pad FX PCM package](docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) is merged through PR #14, following streaming PCM loops in PR #13. Source-bound effect memory and reset/tail handling remain active in the reference target.
 
 Latest reliability work: [composed Library/source/transport/cue-write failures](docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) adds per-deck seek failure handling, responsive faulted cue storage and stale-source completion rejection, with ten new composed tests. Hardware driver recovery remains pending.
 

@@ -1,7 +1,7 @@
 use crate::fx::{DeckFx, DeckFxControl, FxBufferError};
 use crate::source::{CanonicalSource, SourceControl, SourceSample};
 use pajoniiir_audio_dsp::{DspFrame, EqState, FilterState, PcmFrame, ResamplerState};
-use pajoniiir_mixer::{LimiterStats, limit_main_sample};
+use pajoniiir_mixer::{HeadphoneGains, LimiterStats, limit_main_sample};
 
 pub const RENDER_SAMPLE_RATE_HZ: u32 = 48_000;
 pub const RENDER_BLOCK_FRAMES: usize = 128;
@@ -77,6 +77,7 @@ impl Default for RenderDeckControl {
 pub struct RenderControl {
     pub decks: [RenderDeckControl; 2],
     pub master_gain: f32,
+    pub headphones: HeadphoneGains,
 }
 
 impl RenderControl {
@@ -84,6 +85,7 @@ impl RenderControl {
         Self {
             decks: [RenderDeckControl::idle(), RenderDeckControl::idle()],
             master_gain: 1.0,
+            headphones: HeadphoneGains::master(),
         }
     }
 }
@@ -98,6 +100,7 @@ impl Default for RenderControl {
 pub struct RenderOutputBlock {
     pub main: [PcmFrame; RENDER_BLOCK_FRAMES],
     pub pfl: [[PcmFrame; RENDER_BLOCK_FRAMES]; 2],
+    pub headphones: [PcmFrame; RENDER_BLOCK_FRAMES],
     pub len: u16,
 }
 
@@ -106,6 +109,7 @@ impl RenderOutputBlock {
         Self {
             main: [PcmFrame { left: 0, right: 0 }; RENDER_BLOCK_FRAMES],
             pfl: [[PcmFrame { left: 0, right: 0 }; RENDER_BLOCK_FRAMES]; 2],
+            headphones: [PcmFrame { left: 0, right: 0 }; RENDER_BLOCK_FRAMES],
             len: RENDER_BLOCK_FRAMES as u16,
         }
     }
@@ -325,6 +329,7 @@ impl<'a> FixedRateRenderGraph<'a> {
 
         for frame_index in 0..RENDER_BLOCK_FRAMES {
             let mut deck_frames = [DspFrame::default(); 2];
+            let mut pfl_sum = DspFrame::default();
 
             for (deck, deck_frame) in deck_frames.iter_mut().enumerate() {
                 let deck_control = control.decks[deck];
@@ -361,6 +366,9 @@ impl<'a> FixedRateRenderGraph<'a> {
 
                 if deck_control.pfl_enabled {
                     output.pfl[deck][frame_index] = PcmFrame::from(dsp);
+                    // Preserve headroom: sum and attenuate before PCM conversion.
+                    pfl_sum.left += dsp.left;
+                    pfl_sum.right += dsp.right;
                 }
 
                 let post_gain = sanitize_gain(deck_control.post_gain);
@@ -376,6 +384,15 @@ impl<'a> FixedRateRenderGraph<'a> {
                 left: limit_main_sample(mixed_left, &mut report.limiter),
                 right: limit_main_sample(mixed_right, &mut report.limiter),
             };
+            let cue =
+                (pfl_sum.left + pfl_sum.right) * 0.5 * sanitize_unit_gain(control.headphones.cue);
+            let master = sanitize_unit_gain(control.headphones.master);
+            let level = sanitize_unit_gain(control.headphones.level);
+            let monitor = output.main[frame_index];
+            output.headphones[frame_index] = PcmFrame::from(DspFrame {
+                left: (cue + monitor.left as f32 * master) * level,
+                right: (cue + monitor.right as f32 * master) * level,
+            });
         }
 
         self.health.rendered_blocks = self.health.rendered_blocks.saturating_add(1);
@@ -427,6 +444,14 @@ fn sanitize_gain(gain: f32) -> f32 {
         0.0
     } else {
         gain.min(4.0)
+    }
+}
+
+fn sanitize_unit_gain(gain: f32) -> f32 {
+    if gain.is_finite() {
+        gain.clamp(0.0, 1.0)
+    } else {
+        0.0
     }
 }
 
@@ -547,6 +572,7 @@ mod tests {
         let control = RenderControl {
             decks: [active_deck(), RenderDeckControl::idle()],
             master_gain: 1.0,
+            ..RenderControl::idle()
         };
         let mut sequence = 0i16;
         let report = graph.render_block(control, &mut output, |deck| {
@@ -579,6 +605,7 @@ mod tests {
         let control = RenderControl {
             decks: [active_deck(), RenderDeckControl::idle()],
             master_gain: 1.0,
+            ..RenderControl::idle()
         };
         let mut remaining = 4usize;
         let report = graph.render_block(control, &mut output, |deck| {
@@ -612,6 +639,7 @@ mod tests {
             let control = RenderControl {
                 decks: [deck, RenderDeckControl::idle()],
                 master_gain: 1.0,
+                ..RenderControl::idle()
             };
             let mut remaining = 4;
             graph.render_block(control, &mut output, |index| {
@@ -665,6 +693,7 @@ mod tests {
             let control = RenderControl {
                 decks: [one, two],
                 master_gain: 1.0,
+                ..RenderControl::idle()
             };
             // Prime with an old positive signal, then empty deck one's source.
             graph.render_block(control, &mut output, |_| {
@@ -733,6 +762,7 @@ mod tests {
         let control = RenderControl {
             decks: [deck, RenderDeckControl::idle()],
             master_gain: 1.0,
+            ..RenderControl::idle()
         };
         graph.render_block(control, &mut output, |_| None);
         graph.reset_deck(0);
@@ -758,6 +788,7 @@ mod tests {
         let control = RenderControl {
             decks: [deck, RenderDeckControl::idle()],
             master_gain: 1.0,
+            ..RenderControl::idle()
         };
 
         let _ = graph.render_block(control, &mut output, |deck| {
@@ -793,6 +824,7 @@ mod tests {
         let control = RenderControl {
             decks: [one, two],
             master_gain: 2.0,
+            ..RenderControl::idle()
         };
 
         let report = graph.render_block(control, &mut output, |_| {
@@ -816,6 +848,7 @@ mod tests {
         let control = RenderControl {
             decks: [deck, RenderDeckControl::idle()],
             master_gain: 1.0,
+            ..RenderControl::idle()
         };
 
         let report = graph.render_block(control, &mut output, |_| {
@@ -838,6 +871,7 @@ mod tests {
             RenderControl {
                 decks: [deck, RenderDeckControl::idle()],
                 master_gain: 1.0,
+                ..RenderControl::idle()
             },
             &mut output,
             |_| Some(PcmFrame { left: 1, right: 1 }),
@@ -860,6 +894,7 @@ mod tests {
             let control = RenderControl {
                 decks: [active_deck(), RenderDeckControl::idle()],
                 master_gain: 1.0,
+                ..RenderControl::idle()
             };
             let mut sample = -4_000i16;
             let _ = graph.render_block(control, &mut output, |deck| {

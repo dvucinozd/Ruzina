@@ -72,6 +72,11 @@ pub fn run_simulation() {
             RenderDeckControl::idle(),
         ],
         master_gain: 1.0,
+        headphones: pajoniiir_mixer::HeadphoneGains {
+            cue: 1.0,
+            master: 0.0,
+            level: 1.0,
+        },
     };
     let mut main_peak = 0i16;
     let mut phone_peak = 0i16;
@@ -98,7 +103,7 @@ pub fn run_simulation() {
                 block.set_len(256);
                 block.frames.fill(PcmFrame {
                     left: 8_000,
-                    right: -8_000,
+                    right: 8_000,
                 });
                 match sources[0].ingest(&block) {
                     IngestResult::Accepted => prefetched += 256,
@@ -115,9 +120,8 @@ pub fn run_simulation() {
                 ],
                 source_frames: [report.source_frames_consumed[0] as u16, 0],
             };
-            // Explicit demonstration mix: deck-one PFL only. Product cue/master
-            // mixing and headphone gain are still a separate integration step.
-            let results = playback.submit_render(permit, first, &render, &render.pfl[0], progress);
+            // Product monitor bus, with cue-only settings for this simulation.
+            let results = playback.submit_render(permit, first, &render, progress);
             assert_eq!(results, [Ok(()); 2]);
         }
         if tick % 8 == 0 {

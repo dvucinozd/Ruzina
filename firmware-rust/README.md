@@ -6,7 +6,9 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
-Latest audio work: [Beat/Pad FX PCM execution](../docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) binds fixed per-deck FX storage to source epochs/generations and processes samples before PFL/faders. The streamed PCM loops are merged through PR #13. Physical rewind/output timing and listening remain separate gates.
+Latest audio work: [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) combines both wet PFL taps with limited stereo master and separate monitor gains. The render owner publishes these controls and submits the composed headphone bus. Physical output timing and listening remain separate gates.
+
+[Beat/Pad FX PCM execution](../docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) is merged through PR #14; streamed PCM loops are merged through PR #13. Fixed per-deck FX storage remains scoped to source epochs/generations.
 
 Latest reliability work: [composed Library/source/transport/cue-write failure policy](../docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) contains ordinary seek failures to one deck, keeps a faulted persistence owner responsive, fences stale completions and preserves unconfirmed cue banks. Physical driver recovery remains a separate gate.
 
