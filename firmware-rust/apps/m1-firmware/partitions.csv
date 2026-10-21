@@ -1,4 +1,0 @@
-# ESP-IDF Partition Table
-# Name, Type, SubType, Offset, Size, Flags
-factory, app, factory, 0x10000, 0xEF0000,
-hotcue, data, 0x40, 0xF00000, 0x100000,

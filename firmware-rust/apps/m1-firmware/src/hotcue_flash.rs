@@ -1,13 +1,11 @@
 use esp_storage::{FlashStorage, FlashStorageError};
 use pajoniiir_hot_cues::journal::{
     HOT_CUE_JOURNAL_PARTITION_SIZE, HOT_CUE_JOURNAL_SECTOR_SIZE, HotCueJournalFlash,
+    JournalFlashLayout,
 };
 
-pub(crate) const M1_FLASH_CAPACITY: u32 = 0x0100_0000;
-pub(crate) const HOT_CUE_PARTITION_OFFSET: u32 = 0x00f0_0000;
 pub(crate) const HOT_CUE_PARTITION_SIZE: u32 = HOT_CUE_JOURNAL_PARTITION_SIZE;
 
-const PARTITION_TABLE_OFFSET: u32 = 0x8000;
 const PARTITION_ENTRY_SIZE: u32 = 32;
 const PARTITION_ENTRY_COUNT: u32 = 96;
 const PARTITION_MAGIC: u16 = 0x50aa;
@@ -20,7 +18,7 @@ const MAX_TRANSFER_SIZE: usize = 168;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HotCueFlashError {
     Storage(FlashStorageError),
-    FlashTooSmall,
+    InvalidLayoutOrCapacity,
     InvalidPartitionTable,
     MissingPartition,
     PartitionMismatch,
@@ -32,24 +30,23 @@ struct AlignedTransfer([u8; MAX_TRANSFER_SIZE]);
 
 pub(crate) struct EspHotCueFlash {
     storage: FlashStorage<'static>,
+    layout: JournalFlashLayout,
 }
 
 impl EspHotCueFlash {
     pub(crate) fn open(
         flash: esp_hal::peripherals::FLASH<'static>,
+        layout: JournalFlashLayout,
     ) -> Result<Self, HotCueFlashError> {
         let mut storage = FlashStorage::new(flash).multicore_auto_park();
-        if storage.capacity() < M1_FLASH_CAPACITY as usize {
-            return Err(HotCueFlashError::FlashTooSmall);
+        if !layout.is_valid() || storage.capacity() != layout.flash_bytes as usize {
+            return Err(HotCueFlashError::InvalidLayoutOrCapacity);
         }
-        verify_hot_cue_partition(&mut storage)?;
-        Ok(Self { storage })
+        verify_hot_cue_partition(&mut storage, layout)?;
+        Ok(Self { storage, layout })
     }
 
-    fn absolute_range(
-        offset: u32,
-        len: usize,
-    ) -> Result<(u32, u32), HotCueFlashError> {
+    fn absolute_range(&self, offset: u32, len: usize) -> Result<(u32, u32), HotCueFlashError> {
         let len = u32::try_from(len).map_err(|_| HotCueFlashError::InvalidTransfer)?;
         let end = offset
             .checked_add(len)
@@ -57,7 +54,9 @@ impl EspHotCueFlash {
         if end > HOT_CUE_PARTITION_SIZE {
             return Err(HotCueFlashError::InvalidTransfer);
         }
-        let start = HOT_CUE_PARTITION_OFFSET
+        let start = self
+            .layout
+            .journal_offset
             .checked_add(offset)
             .ok_or(HotCueFlashError::InvalidTransfer)?;
         let absolute_end = start
@@ -77,7 +76,7 @@ impl HotCueJournalFlash for EspHotCueFlash {
         {
             return Err(HotCueFlashError::InvalidTransfer);
         }
-        let (absolute, _) = Self::absolute_range(offset, output.len())?;
+        let (absolute, _) = self.absolute_range(offset, output.len())?;
         let mut aligned = AlignedTransfer([0u8; MAX_TRANSFER_SIZE]);
         self.storage
             .read_nor(absolute, &mut aligned.0[..output.len()])
@@ -93,7 +92,7 @@ impl HotCueJournalFlash for EspHotCueFlash {
         {
             return Err(HotCueFlashError::InvalidTransfer);
         }
-        let (absolute, _) = Self::absolute_range(offset, data.len())?;
+        let (absolute, _) = self.absolute_range(offset, data.len())?;
         let mut aligned = AlignedTransfer([0u8; MAX_TRANSFER_SIZE]);
         aligned.0[..data.len()].copy_from_slice(data);
         self.storage
@@ -105,8 +104,7 @@ impl HotCueJournalFlash for EspHotCueFlash {
         if !offset.is_multiple_of(HOT_CUE_JOURNAL_SECTOR_SIZE) {
             return Err(HotCueFlashError::InvalidTransfer);
         }
-        let (absolute, end) =
-            Self::absolute_range(offset, HOT_CUE_JOURNAL_SECTOR_SIZE as usize)?;
+        let (absolute, end) = self.absolute_range(offset, HOT_CUE_JOURNAL_SECTOR_SIZE as usize)?;
         self.storage
             .erase(absolute, end)
             .map_err(HotCueFlashError::Storage)
@@ -115,13 +113,14 @@ impl HotCueJournalFlash for EspHotCueFlash {
 
 fn verify_hot_cue_partition(
     storage: &mut FlashStorage<'static>,
+    layout: JournalFlashLayout,
 ) -> Result<(), HotCueFlashError> {
     let mut aligned = AlignedTransfer([0u8; MAX_TRANSFER_SIZE]);
     let mut found_hot_cue = false;
-    let hot_cue_end = HOT_CUE_PARTITION_OFFSET + HOT_CUE_PARTITION_SIZE;
+    let hot_cue_end = layout.journal_offset + HOT_CUE_PARTITION_SIZE;
 
     for index in 0..PARTITION_ENTRY_COUNT {
-        let table_offset = PARTITION_TABLE_OFFSET + index * PARTITION_ENTRY_SIZE;
+        let table_offset = layout.partition_table_offset + index * PARTITION_ENTRY_SIZE;
         let entry = &mut aligned.0[..PARTITION_ENTRY_SIZE as usize];
         storage
             .read_nor(table_offset, entry)
@@ -147,7 +146,7 @@ fn verify_hot_cue_partition(
             if found_hot_cue
                 || entry[2] != PARTITION_TYPE_DATA
                 || entry[3] != HOT_CUE_PARTITION_SUBTYPE
-                || offset != HOT_CUE_PARTITION_OFFSET
+                || offset != layout.journal_offset
                 || size != HOT_CUE_PARTITION_SIZE
                 || flags != 0
             {
@@ -157,7 +156,7 @@ fn verify_hot_cue_partition(
             continue;
         }
 
-        if offset < hot_cue_end && end > HOT_CUE_PARTITION_OFFSET {
+        if offset < hot_cue_end && end > layout.journal_offset {
             return Err(HotCueFlashError::PartitionMismatch);
         }
     }

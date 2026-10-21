@@ -34,11 +34,11 @@ def main() -> None:
                 "--target",
                 "riscv32imafc-unknown-none-elf",
                 "--features",
-                "board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup",
+                "integration-check,render-graph-bringup,sdmmc-profile-storage-bringup",
             ],
         ),
     ]
-    profiles.append(("firmware explicit USB0 analysis", ["--manifest-path",str(root / "apps/m1-firmware/Cargo.toml"),"--target","riscv32imafc-unknown-none-elf","--features","board-legacy-m1,apta-usb0-bringup"]))
+    profiles.append(("firmware explicit USB0 analysis", ["--manifest-path",str(root / "apps/m1-firmware/Cargo.toml"),"--target","riscv32imafc-unknown-none-elf","--features","integration-check,apta-usb0-bringup"]))
     for name, arguments in profiles:
         command = [
             "cargo",

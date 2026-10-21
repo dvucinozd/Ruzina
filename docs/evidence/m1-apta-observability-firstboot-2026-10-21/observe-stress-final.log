@@ -1,7 +1,0 @@
-{
-  "status": "PASS",
-  "iterations_completed": 25,
-  "cancel_reload_cycles": 1600,
-  "detach_client_lifetimes": 800,
-  "hardware": "NOT_RUN"
-}

@@ -1,9 +1,15 @@
 #![no_std]
 #![no_main]
 #![deny(clippy::mem_forget)]
+// These modules are type-checked without starting product tasks.
+#![cfg_attr(feature = "integration-check", allow(dead_code))]
 
 #[cfg(feature = "p4-psram-storage")]
 extern crate alloc;
+// Compile the allocator-dependent owner modules with an empty global allocator.
+// No heap region or PSRAM capability is initialized by integration-check.
+#[cfg(feature = "p4-psram-storage")]
+extern crate esp_alloc as _;
 
 #[cfg(feature = "apta-usb0-bringup")]
 mod analysis_io;

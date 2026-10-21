@@ -1,6 +1,6 @@
 # Pajoniiir-M1 Rust Product Requirements
 
-**Status:** baseline v0.1  
+**Status:** Guition requirements baseline; updated 2026-10-21
 **Recorded:** 2026-09-24  
 **Target:** Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y, ESP32-P4 v3.2
 **Software direction:** native Rust, bare-metal/no_std application architecture
@@ -9,12 +9,10 @@
 
 This document defines the product-level acceptance requirements for the Pajoniiir-M1 Rust firmware.
 
-References to PCM5102A, INA238, C6 and custom-board wiring below identify original design roles. Each selected board needs an explicit mapping or product decision for those roles; these names do not establish that the components are fitted to Guition boards. Product and physical acceptance requirements remain open until that mapping is qualified.
-
 The authorities are intentionally split:
 
 1. **Pajoniiir M2.2** is the functional/product golden reference. M1 Rust must preserve or deliberately supersede its released DJ behavior.
-2. **Exact selected Guition board schematics and per-board BSP contracts** define electrical integration. The [2026-10-20 platform decision](M1_GUITION_PLATFORM_DECISION_2026-10-20.md) discontinues custom-PCB development; custom M1 pin maps and component assumptions remain historical references only. Both selected boards still require BSP implementation and physical qualification.
+2. **Exact selected Guition schematics and per-board BSP contracts** define electrical integration. Both models require unit identification, resource ownership and physical qualification.
 3. **Pajoniiir-M3** is supporting hardware/integration evidence only; it is not the feature-parity target.
 4. **Current Rust ecosystem documentation** defines the initial implementation baseline but does not override product behavior.
 
@@ -57,20 +55,26 @@ No requirement may be promoted from COMPILE_VERIFIED to HARDWARE_VERIFIED by inf
 
 ## 5. MUST requirements
 
+The table's evidence column specifies the required verification level, not a
+claim that every requirement is implemented. General settings persistence,
+OTA/rollback and networking/Web Remote remain unfinished. Current implementation
+and open gates are recorded in [development status](DEVELOPMENT.md) and
+[validation scope](VALIDATION.md). Host results never establish device acceptance.
+
 ### 5.1 Platform and board contract
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-001 | Native Rust application architecture on ESP32-P4; no permanent ESP-IDF app runtime. | COMPILE_VERIFIED |
 | M1R-P0-002 | M1 BSP owns all board-specific GPIO, rail, USB VBUS, display, touch, audio, SD and C6 definitions. Product crates must not contain raw M1 GPIO numbers. | HOST_VERIFIED |
 | M1R-P0-003 | Enforce P4 minimum production revision policy consistent with M1 v3.2+ hardware target. | HOST_VERIFIED / HARDWARE_PENDING |
-| M1R-P0-004 | Preserve safe boot state: PCM5102A muted, USB VBUS switches off until explicitly enabled, display brightness initially off. | HOST_VERIFIED / HARDWARE_PENDING |
+| M1R-P0-004 | Preserve safe boot state: audio muted, host power enabled only by the board-qualified policy, display brightness initially off. | HOST_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-005 | Preserve UART0 and USB Serial/JTAG service/recovery paths. | COMPILE_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-006 | Hardware abstraction must isolate unstable esp-hal APIs behind platform/BSP crates. | HOST_VERIFIED |
 
 ### 5.2 Product behavior parity
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-010 | Two independent decks with deterministic load/play/pause/cue lifecycle. | HOST_VERIFIED |
 | M1R-P0-011 | MP3, WAV and FLAC playback behavior equivalent to released M2.2, with explicit unsupported-format errors. | HOST_VERIFIED |
@@ -86,7 +90,7 @@ No requirement may be promoted from COMPILE_VERIFIED to HARDWARE_VERIFIED by inf
 
 ### 5.3 Controller platform
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-030 | Controller handling is semantic and data-driven, not hard-coded to one controller. | HOST_VERIFIED |
 | M1R-P0-031 | Existing S3CP v2 compiled controller profile format remains readable for R1 unless a migration document explicitly versions a successor format. | HOST_VERIFIED |
@@ -103,7 +107,7 @@ The generic controller-audio capability model shall be able to express at least:
 
 ### 5.4 Storage, media and library
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-040 | USB0 remains the primary High-Speed mass-storage path. | COMPILE_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-041 | FAT32 and exFAT media are product requirements. | HOST_VERIFIED / HARDWARE_PENDING |
@@ -116,7 +120,7 @@ The generic controller-audio capability model shall be able to express at least:
 
 ### 5.5 Rekordbox and neutral analysis
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-050 | Existing Rekordbox PDB and ANLZ behavior remains compatible. | HOST_VERIFIED |
 | M1R-P0-051 | Deck/UI/Beat Jump/Sync consume a provider-neutral immutable `TrackAnalysis` model, not Rekordbox-specific structs. | HOST_VERIFIED |
@@ -125,7 +129,7 @@ The generic controller-audio capability model shall be able to express at least:
 
 ### 5.6 UI and waveform
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-060 | Slint is the M1 primary UI framework. | SIMULATOR_VERIFIED |
 | M1R-P0-061 | Desktop simulator uses the same UI model and Slint views intended for M1. | SIMULATOR_VERIFIED |
@@ -138,7 +142,7 @@ The generic controller-audio capability model shall be able to express at least:
 
 ### 5.7 Audio real-time contract
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-070 | Deadline-critical audio path performs no filesystem I/O, network I/O, OTA work, controller-profile parsing or unbounded allocation. | HOST_VERIFIED |
 | M1R-P0-071 | Audio queues/rings are bounded and expose underflow/overflow/late metrics. | HOST_VERIFIED |
@@ -149,18 +153,18 @@ The generic controller-audio capability model shall be able to express at least:
 
 ### 5.8 Settings, diagnostics and health
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-080 | Settings/state storage is versioned and migrated; raw Rust struct layout is never the persistent format. | HOST_VERIFIED |
 | M1R-P0-081 | Persist at least released settings semantics: backlight, elapsed/remaining mode, cue mode, master trim preset and Wi-Fi remote enable state as applicable. | HOST_VERIFIED |
 | M1R-P0-082 | Persistent Hot Cue state survives normal reboot and rejects corrupt/incompatible records safely. | HOST_VERIFIED / COMPILE_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-083 | Telemetry/service logging uses fixed-size/bounded producer paths and cannot block the real-time path. | HOST_VERIFIED |
-| M1R-P0-084 | M1 telemetry adds INA238/system power, USB VBUS/fault state, memory reserves, recovery counts, audio/UAC metrics, storage faults, C6 link, OTA state and reset reason. | HOST_VERIFIED / HARDWARE_PENDING |
+| M1R-P0-084 | Telemetry reports board-observable power/USB state, memory reserves, recovery counts, audio/UAC metrics, storage faults, C6 link, OTA state and reset reason. | HOST_VERIFIED / HARDWARE_PENDING |
 | M1R-P0-085 | Firmware health tracks running image identity, candidate/rollback state and explicit readiness. | HOST_VERIFIED |
 
 ### 5.9 OTA and recovery
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-090 | Signed application update bundles remain mandatory; preserve `.ddjota` compatibility where technically practical. | HOST_VERIFIED |
 | M1R-P0-091 | A/B update, interrupted-transfer safety, rollback and wired recovery are MUST behavior. | HOST_VERIFIED / HARDWARE_PENDING |
@@ -169,7 +173,7 @@ The generic controller-audio capability model shall be able to express at least:
 
 ### 5.10 Web / Wi-Fi Remote
 
-| ID | Requirement | Pre-hardware evidence |
+| ID | Requirement | Required evidence |
 |---|---|---|
 | M1R-P0-100 | Web, touch and physical controllers all produce the same semantic `ControlEvent` path. | HOST_VERIFIED |
 | M1R-P0-101 | Wi-Fi Remote preserves released transport, waveform seek, library/status/diagnostics, controller-profile update and signed OTA capability. | HOST_VERIFIED / SIMULATOR_VERIFIED |
@@ -187,7 +191,7 @@ The generic controller-audio capability model shall be able to express at least:
 | M1R-P1-005 | Add factory firmware target for board bring-up and manufacturing/service tests. |
 | M1R-P1-006 | Add property tests, fuzzing and fault injection for parsers, profile format, OTA manifest, media identity and storage write boundaries. |
 | M1R-P1-007 | Qualify production Secure Boot v2 + Flash Encryption release provisioning on dedicated pilot hardware before batch enablement. |
-| M1R-P1-008 | Add M1-specific power/current health thresholds using INA238 evidence. |
+| M1R-P1-008 | Add per-board power/current health thresholds where a qualified measurement path exists. |
 
 ## 7. LATER requirements
 
@@ -207,7 +211,7 @@ The owner clarified the mandatory headphone policy on 2026-10-20:
 - Without a compatible controller headphone-audio capability, headphone output is unavailable and reported as such. MIDI-only control can remain available, and an external DAC can continue MAIN playback.
 - Controller detach immediately invalidates its headphone route; reconnect restores it only after capability validation, stream initialization and fresh route binding. An external DAC or onboard speaker is never a headphone fallback.
 
-This closes the earlier A/B headphone product choice in favor of controller-only cue. The external MAIN DAC module, its detection/wiring, controller-specific channel mapping and physical qualification remain open. These are required routing semantics, not a claim that the current reference-sink firmware implements physical audio output.
+The external MAIN DAC module, its detection/wiring, controller-specific channel mapping and physical qualification remain open. These are required routing semantics, not a claim that the current reference-sink firmware implements physical audio output.
 
 ## 9. Host-first development sequence
 
@@ -228,9 +232,9 @@ The pre-hardware sequence is:
 
 ## 10. Hardware bring-up order
 
-For each selected Guition model, use its actual sourced peripherals and record an explicit disposition for unavailable or substituted hardware. The historical custom-board sequence below is a checklist reference; custom PCB EVT fabrication is no longer required:
+For each selected Guition model, qualify its actual peripherals and record an explicit disposition for unavailable hardware:
 
-`boot/service -> flash/PSRAM -> rails/INA238 -> PCM5102A -> DSI/Slint/touch -> USB0 MSC -> USB1 MIDI -> USB1 UAC -> C6 SDIO/Wi-Fi -> integrated stress -> OTA/rollback -> release soak`
+`unit identity / backup / ROM recovery -> boot/service -> flash/PSRAM -> DSI/backlight/touch -> SD -> USB power/data -> controller MIDI/UAC and external MAIN DAC -> C6 networking -> integrated stress -> OTA/rollback -> listening and release soak`
 
 Each step creates recorded HARDWARE_VERIFIED evidence; later steps do not retroactively waive earlier failures.
 

@@ -5,7 +5,7 @@
 
 ## Context
 
-M1 has 32 MiB in-package PSRAM and uses USB, audio, PPA and DSI workloads where DMA/cache placement matters. Large UI/media allocations should not consume scarce internal SRAM, while latency-critical/DMA structures cannot be placed blindly in PSRAM.
+The selected Guition profiles document 32 MiB PSRAM, pending actual unit detection, and uses USB, audio, PPA and DSI workloads where DMA/cache placement matters. Large UI/media allocations should not consume scarce internal SRAM, while latency-critical/DMA structures cannot be placed blindly in PSRAM.
 
 ## Decision
 

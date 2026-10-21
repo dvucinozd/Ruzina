@@ -1,5 +1,0 @@
-    Checking pajoniiir-core v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-core)
-   Compiling desktop-simulator v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/apps/desktop-simulator)
-    Checking pajoniiir-waveform v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-waveform)
-    Checking pajoniiir-ui-model v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-rust-review/M1_PCB/firmware-rust/crates/pajoniiir-ui-model)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.56s

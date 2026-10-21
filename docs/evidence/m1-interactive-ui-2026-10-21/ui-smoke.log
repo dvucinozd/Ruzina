@@ -1,6 +1,0 @@
-   Compiling desktop-simulator v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/apps/desktop-simulator)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.10s
-     Running `/home/daniel/.cache/m1-rust-review/host-target/debug/desktop-simulator --smoke /mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/research/ui-captures`
-Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete: PASS at width 1024
-Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete: PASS at width 800
-Slint callback + pointer/keyboard smoke in both geometries; 14 software-rendered snapshots: PASS

@@ -1,8 +1,0 @@
-firmware-rust/Cargo.lock: unchanged
-firmware-rust/apps/m1-firmware/Cargo.lock: unchanged
-Primary hardware snapshot: 18 modified files unchanged
-Canonical transport: confirmed=480000, rendered=480256, prefetched=482048; no prefetch/issue publication
-Host tests: 536 passed
-P4 workflow: 29 configurations passed
-Board feature guards: 20 expected rejections passed
-10 virtual seconds: 480000 frames per lane, zero underrun, MAIN/PFL peak isolation passed

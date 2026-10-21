@@ -1,5 +1,0 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.32s
-     Running `/home/daniel/.cache/m1-rust-review/host-target/debug/examples/clocked_output`
-SIMULATION_ONLY frames=480000 duration=10s MAIN_peak=2000 PFL_peak=8000
-MAIN SinkStats { clock_frames: 480000, pcm_frames: 480000, underrun_frames: 0, underrun_events: 0, idle_frames: 0, muted_frames: 0, late_blocks: 0, full_blocks: 0, discarded_frames: 0, stale_calls: 0, order_errors: 0, high_water_blocks: 2 }
-HEADPHONES SinkStats { clock_frames: 480000, pcm_frames: 480000, underrun_frames: 0, underrun_events: 0, idle_frames: 0, muted_frames: 0, late_blocks: 0, full_blocks: 0, discarded_frames: 0, stale_calls: 0, order_errors: 0, high_water_blocks: 3 }

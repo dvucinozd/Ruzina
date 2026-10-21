@@ -1,8 +1,0 @@
-firmware-rust/Cargo.lock: complete external records unchanged (503); only local graph changed
-firmware-rust/apps/m1-firmware/Cargo.lock: complete external records unchanged (207); only local graph changed
-Primary KiCad snapshot: 18 pre-existing modified files unchanged
-Host tests: 554 passed, including 13 importer and 5 consumer integration cases
-P4 workflow: partition validation and 29 check/link configurations passed
-Board guards: 20 expected rejections passed
-Public DAT/EXT: three immutable pairs match independent wire decode and M2.2 normalized beat/waveform data
-Synthetic DAT/EXT raw SHA-256 identities verified

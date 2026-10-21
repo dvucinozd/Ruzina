@@ -39,192 +39,131 @@ jobs:
           rustup toolchain install 1.95.0 --profile minimal
           rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
 
-      - name: Validate M1 Hot Cue partition table
-        run: |
-          python - <<'PY'
-          import csv
-          from pathlib import Path
-
-          rows = []
-          with Path("partitions.csv").open(newline="") as handle:
-              for row in csv.reader(line for line in handle if not line.lstrip().startswith("#")):
-                  if not row:
-                      continue
-                  rows.append([field.strip() for field in row])
-
-          assert rows == [
-              ["factory", "app", "factory", "0x10000", "0xEF0000", ""],
-              ["hotcue", "data", "0x40", "0xF00000", "0x100000", ""],
-          ]
-
-          factory_offset = int(rows[0][3], 0)
-          factory_size = int(rows[0][4], 0)
-          hotcue_offset = int(rows[1][3], 0)
-          hotcue_size = int(rows[1][4], 0)
-
-          assert factory_offset == 0x10000
-          assert factory_offset + factory_size == hotcue_offset
-          assert hotcue_offset == 0xF00000
-          assert hotcue_size == 0x100000
-          assert hotcue_offset + hotcue_size == 0x1000000
-          assert hotcue_offset % 0x1000 == 0
-          assert hotcue_size % 0x1000 == 0
-
-          config = Path("espflash.toml").read_text()
-          assert 'partition_table = "partitions.csv"' in config
-          assert 'size = "16MB"' in config
-          PY
-
-      - name: ESP32-P4 default cross compile
+      - name: P4 check (default)
         run: cargo +1.95.0 check --locked
 
-      - name: ESP32-P4 Hot Cue flash persistence cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,hotcue-flash-storage
+      - name: Compile product modules (integration-check,hotcue-flash-storage)
+        run: cargo +1.95.0 check --locked --features integration-check,hotcue-flash-storage
 
-      - name: ESP32-P4 default link gate
+      - name: P4 build (default)
         run: cargo +1.95.0 build --locked --release
 
-      - name: ESP32-P4 USB0 bring-up cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb0-hardware-bringup
+      - name: Compile product modules (integration-check,usb0-hardware-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,usb0-hardware-bringup
 
-      - name: ESP32-P4 USB0 bring-up link gate
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,usb0-hardware-bringup
+      - name: Compile product modules (integration-check,usb1-controller-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,usb1-controller-bringup
 
-      - name: ESP32-P4 USB1 controller bring-up cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb1-controller-bringup
+      - name: Compile product modules (integration-check,library-deck-load)
+        run: cargo +1.95.0 check --locked --features integration-check,library-deck-load
 
-      - name: ESP32-P4 Library deck-load ownership cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,library-deck-load
+      - name: Compile product modules (integration-check,wav-audio-source-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,wav-audio-source-bringup
 
-      - name: ESP32-P4 Library deck-load ownership link gate
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,library-deck-load
+      - name: Compile product modules (integration-check,pcm-transport-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,pcm-transport-bringup
 
-      - name: ESP32-P4 WAV audio-source bring-up cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,wav-audio-source-bringup
+      - name: Compile product modules (integration-check,render-graph-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,render-graph-bringup
 
-      - name: ESP32-P4 WAV audio-source bring-up link gate
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,wav-audio-source-bringup
+      - name: Compile product modules (integration-check,sdmmc-profile-storage-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,sdmmc-profile-storage-bringup
 
-      - name: ESP32-P4 bounded PCM transport cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,pcm-transport-bringup
+      - name: Compile product modules (integration-check,p4-psram-storage)
+        run: cargo +1.95.0 check --locked --features integration-check,p4-psram-storage
 
-      - name: ESP32-P4 bounded PCM transport link gate
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,pcm-transport-bringup
+      - name: Compile product modules (integration-check,usb0-hardware-bringup,p4-psram-storage)
+        run: cargo +1.95.0 check --locked --features integration-check,usb0-hardware-bringup,p4-psram-storage
 
-      - name: ESP32-P4 fixed-rate render graph cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup
+      - name: Compile product modules (integration-check,usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage)
+        run: cargo +1.95.0 check --locked --features integration-check,usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage
 
-      - name: ESP32-P4 fixed-rate render graph link gate
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,render-graph-bringup
+      - name: Compile product modules (integration-check,library-deck-load,sdmmc-profile-storage-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,library-deck-load,sdmmc-profile-storage-bringup
 
-      - name: ESP32-P4 microSD profile-storage cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,sdmmc-profile-storage-bringup
+      - name: Compile product modules (integration-check,render-graph-bringup,sdmmc-profile-storage-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,render-graph-bringup,sdmmc-profile-storage-bringup
 
-      - name: ESP32-P4 PSRAM storage boundary cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,p4-psram-storage
+      - name: Compile product modules (integration-check)
+        run: cargo +1.95.0 check --locked --features integration-check
 
-      - name: ESP32-P4 USB0 + PSRAM combined link gate
-        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,usb0-hardware-bringup,p4-psram-storage"
-
-      - name: ESP32-P4 dual USB + PSRAM combined link gate
-        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,usb0-hardware-bringup,usb1-controller-bringup,p4-psram-storage"
-
-      - name: ESP32-P4 Library + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
-        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,library-deck-load,sdmmc-profile-storage-bringup"
-
-      - name: ESP32-P4 render + USB0 + USB1 + SDMMC + PSRAM full ownership link gate
-        run: cargo +1.95.0 build --locked --release --features "board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup"
-
-      - name: ESP32-P4 explicit legacy idle profile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1
-
-      - name: ESP32-P4 JC1060 idle BSP cross compile
+      - name: P4 check (board-jc1060)
         run: cargo +1.95.0 check --locked --features board-jc1060
 
-      - name: ESP32-P4 JC1060 idle BSP link gate
+      - name: P4 build (board-jc1060)
         run: cargo +1.95.0 build --locked --release --features board-jc1060
 
-      - name: ESP32-P4 JC8012 idle BSP cross compile
+      - name: P4 check (board-jc8012)
         run: cargo +1.95.0 check --locked --features board-jc8012
 
-      - name: ESP32-P4 JC8012 idle BSP link gate
+      - name: P4 build (board-jc8012)
         run: cargo +1.95.0 build --locked --release --features board-jc8012
 
-      - name: ESP32-P4 JC1060 diagnostic cross compile
+      - name: P4 check (board-jc1060,board-diagnostics)
         run: cargo +1.95.0 check --locked --features board-jc1060,board-diagnostics
 
-      - name: ESP32-P4 JC1060 diagnostic link gate
-        env:
-          M1_IMAGE_ID: ${{ github.sha }}
+      - name: P4 build (board-jc1060,board-diagnostics)
         run: cargo +1.95.0 build --locked --release --features board-jc1060,board-diagnostics
 
-      - name: ESP32-P4 JC8012 diagnostic cross compile
+      - name: P4 check (board-jc8012,board-diagnostics)
         run: cargo +1.95.0 check --locked --features board-jc8012,board-diagnostics
 
-      - name: ESP32-P4 JC8012 diagnostic link gate
-        env:
-          M1_IMAGE_ID: ${{ github.sha }}
+      - name: P4 build (board-jc8012,board-diagnostics)
         run: cargo +1.95.0 build --locked --release --features board-jc8012,board-diagnostics
 
-      - name: JC1060 flash probe release check
+      - name: P4 check (board-jc1060,guition-flash-probe)
         run: cargo +1.95.0 check --locked --release --features board-jc1060,guition-flash-probe
 
-      - name: JC1060 flash probe release link
+      - name: P4 build (board-jc1060,guition-flash-probe)
         run: cargo +1.95.0 build --locked --release --features board-jc1060,guition-flash-probe
 
-      - name: JC1060 PSRAM scratch release check
+      - name: P4 check (board-jc1060,guition-psram-test)
         run: cargo +1.95.0 check --locked --release --features board-jc1060,guition-psram-test
 
-      - name: JC1060 PSRAM scratch release link
+      - name: P4 build (board-jc1060,guition-psram-test)
         run: cargo +1.95.0 build --locked --release --features board-jc1060,guition-psram-test
 
-      - name: JC1060 combined memory probe release check
+      - name: P4 check (board-jc1060,guition-flash-probe,guition-psram-test)
         run: cargo +1.95.0 check --locked --release --features board-jc1060,guition-flash-probe,guition-psram-test
 
-      - name: JC1060 combined memory probe release link
+      - name: P4 build (board-jc1060,guition-flash-probe,guition-psram-test)
         run: cargo +1.95.0 build --locked --release --features board-jc1060,guition-flash-probe,guition-psram-test
 
-      - name: JC8012 flash probe release check
+      - name: P4 check (board-jc8012,guition-flash-probe)
         run: cargo +1.95.0 check --locked --release --features board-jc8012,guition-flash-probe
 
-      - name: JC8012 flash probe release link
+      - name: P4 build (board-jc8012,guition-flash-probe)
         run: cargo +1.95.0 build --locked --release --features board-jc8012,guition-flash-probe
 
-      - name: JC8012 PSRAM scratch release check
+      - name: P4 check (board-jc8012,guition-psram-test)
         run: cargo +1.95.0 check --locked --release --features board-jc8012,guition-psram-test
 
-      - name: JC8012 PSRAM scratch release link
+      - name: P4 build (board-jc8012,guition-psram-test)
         run: cargo +1.95.0 build --locked --release --features board-jc8012,guition-psram-test
 
-      - name: JC8012 combined memory probe release check
+      - name: P4 check (board-jc8012,guition-flash-probe,guition-psram-test)
         run: cargo +1.95.0 check --locked --release --features board-jc8012,guition-flash-probe,guition-psram-test
 
-      - name: JC8012 combined memory probe release link
+      - name: P4 build (board-jc8012,guition-flash-probe,guition-psram-test)
         run: cargo +1.95.0 build --locked --release --features board-jc8012,guition-flash-probe,guition-psram-test
 
-      - name: Reject ambiguous boards and legacy features on Guition
+      - name: Compile product modules (integration-check,usb0-hardware-bringup,runtime-health)
+        run: cargo +1.95.0 check --locked --features integration-check,usb0-hardware-bringup,runtime-health
+
+      - name: Compile product modules (integration-check,usb1-controller-bringup,runtime-health)
+        run: cargo +1.95.0 check --locked --features integration-check,usb1-controller-bringup,runtime-health
+
+      - name: Compile product modules (integration-check,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health)
+        run: cargo +1.95.0 check --locked --features integration-check,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health
+
+      - name: Compile product modules (integration-check,apta-usb0-bringup)
+        run: cargo +1.95.0 check --locked --features integration-check,apta-usb0-bringup
+
+      - name: Compile product modules (integration-check,apta-usb0-bringup,sdmmc-profile-storage-bringup,runtime-health)
+        run: cargo +1.95.0 check --locked --features integration-check,apta-usb0-bringup,sdmmc-profile-storage-bringup,runtime-health
+
+      - name: Reject unsupported board and diagnostic combinations
         run: python ../../tools/check_board_selection.py
-
-      - name: Runtime health USB0 owner cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb0-hardware-bringup,runtime-health
-
-      - name: Runtime health USB1 and product owners cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb1-controller-bringup,runtime-health
-
-      - name: Runtime health full render ownership cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health
-
-      - name: Runtime health full render ownership link gate
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health
-
-      - name: Opt-in USB0 analysis supervisor cross compile
-        run: cargo +1.95.0 check --locked --features board-legacy-m1,apta-usb0-bringup
-
-      - name: Opt-in USB0 analysis supervisor release link
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,apta-usb0-bringup
-
-      - name: Opt-in USB0 analysis with full runtime ownership release link
-        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,apta-usb0-bringup,sdmmc-profile-storage-bringup,runtime-health
 
       - name: Package separate Guition diagnostic images without flashing
         run: python ../../tools/guition_first_boot.py build --output "${{ runner.temp }}/guition-firstboot" --target-dir ../../target

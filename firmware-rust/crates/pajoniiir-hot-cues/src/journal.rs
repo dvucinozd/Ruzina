@@ -8,6 +8,81 @@ pub const HOT_CUE_JOURNAL_SECTORS_PER_BUCKET: u32 = 2;
 pub const HOT_CUE_JOURNAL_PARTITION_SIZE: u32 =
     HOT_CUE_JOURNAL_SECTOR_SIZE * HOT_CUE_JOURNAL_BUCKET_COUNT * HOT_CUE_JOURNAL_SECTORS_PER_BUCKET;
 
+/// Explicit board-qualified layout. No capacity, partition-table location or
+/// writable journal address is selected by the portable journal implementation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct JournalFlashLayout {
+    pub flash_bytes: u32,
+    pub partition_table_offset: u32,
+    pub journal_offset: u32,
+}
+impl JournalFlashLayout {
+    pub fn is_valid(self) -> bool {
+        let Some(table_end) = self.partition_table_offset.checked_add(96 * 32) else {
+            return false;
+        };
+        let Some(journal_end) = self
+            .journal_offset
+            .checked_add(HOT_CUE_JOURNAL_PARTITION_SIZE)
+        else {
+            return false;
+        };
+        self.partition_table_offset != 0
+            && self.journal_offset != 0
+            && self
+                .partition_table_offset
+                .is_multiple_of(HOT_CUE_JOURNAL_SECTOR_SIZE)
+            && self
+                .journal_offset
+                .is_multiple_of(HOT_CUE_JOURNAL_SECTOR_SIZE)
+            && table_end <= self.flash_bytes
+            && journal_end <= self.flash_bytes
+            && (table_end <= self.journal_offset || journal_end <= self.partition_table_offset)
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+    #[test]
+    fn explicit_layout_rejects_overflow_overlap_and_unaligned_or_out_of_range_storage() {
+        let valid = JournalFlashLayout {
+            flash_bytes: 8 * 1024 * 1024,
+            partition_table_offset: 0x9000,
+            journal_offset: 0x600000,
+        };
+        assert!(valid.is_valid());
+        for invalid in [
+            JournalFlashLayout {
+                journal_offset: u32::MAX,
+                ..valid
+            },
+            JournalFlashLayout {
+                journal_offset: 0x9000,
+                ..valid
+            },
+            JournalFlashLayout {
+                partition_table_offset: u32::MAX,
+                ..valid
+            },
+            JournalFlashLayout {
+                journal_offset: 0,
+                ..valid
+            },
+            JournalFlashLayout {
+                partition_table_offset: 1,
+                ..valid
+            },
+            JournalFlashLayout {
+                journal_offset: valid.flash_bytes,
+                ..valid
+            },
+        ] {
+            assert!(!invalid.is_valid(), "{invalid:?}");
+        }
+    }
+}
+
 const SECTOR_HEADER_SIZE: u32 = 32;
 const ENTRY_SIZE: u32 = 168;
 const ENTRIES_PER_SECTOR: usize =

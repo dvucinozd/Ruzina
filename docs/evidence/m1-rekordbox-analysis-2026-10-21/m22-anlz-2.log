@@ -1,8 +1,0 @@
-[I][anlz] PPTH: "/Contents/Loopmasters/UnknownAlbum/Demo Track 2.mp3"
-[I][anlz] PVBR: 400 seek entries. First 10: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-[I][anlz] PQTZ: 257 beats, BPM=120 (raw=12000)
-[I][anlz] PWAV: 400/400 bytes
-[I][anlz] PCOB: 0 cue/loop entries
-[I][anlz] DAT transaction published: bpm=120 beats=257 cues=0
-[I][anlz] PWV3: 19208 bytes high-res waveform
-{"beats":257,"preview":400,"detail":19208,"cues":0,"bpm_x100":12000,"beat_hash":"c0aabaa1c57f20e8","preview_hash":"4828a21018635f82","detail_hash":"afaf36642bc44fc0"}

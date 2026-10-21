@@ -1,103 +1,57 @@
-# Pajoniiir-M1 native Rust firmware
+# Pajoniiir M1 Rust workspace
 
-This directory is the new native Rust software workspace for Pajoniiir-M1.
+The host workspace contains the reusable DJ product logic and the interactive
+Slint simulator. Active hardware targets are Guition JC1060P470C_I_W_Y and
+JC8012P4A1C_I_W_Y, ESP32-P4 minimum silicon revision 302.
 
-The released Pajoniiir M2.2 product is the functional golden reference. Active hardware targets are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with owner-reported ESP32-P4 v3.2 silicon. See the [platform decision](../docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md). Custom M1 hardware contracts are historical and do not define these boards' wiring.
+## Boundaries
 
-## Current phase
+- Product crates own semantic controls, controller profiles, decks, media identity,
+  Rekordbox analysis, bounded decoding/render/FX and headphone routing.
+- `pajoniiir-board-profile` owns source-audited candidate data, observations,
+  memory-test policy and inactive panel/touch adapter contracts.
+- `apps/desktop-simulator` uses the shared model and Slint views with simulated
+  media/clock and captured diagnostics. It provides no physical audio or USB.
+- `apps/m1-firmware` is a separate embedded workspace so HAL dependencies stay
+  outside the default host graph. Only its selected Guition BSP may acquire board
+  resources. Product-owner modules have a separate compile-only integration gate.
+- Optional `pajoniiir-apta-adapter` converts native analysis behind neutral
+  ownership/publication contracts. It is excluded from default product graphs.
 
-Selective APTA adoption: [result/cache conversion and waveform windows](../docs/M1_RUST_APTA_CORE_GATE_2026-10-21.md) are available in the experimental `pajoniiir-apta-adapter` workspace member. The simulator and default firmware dependency graphs exclude this adapter; activation requires an explicit bring-up feature.
+## Toolchain and checks
 
-The opt-in [worker lifecycle/owned publication package](../docs/M1_RUST_APTA_WORKER_GATE_2026-10-21.md) adds the portable broker/worker/service behind explicit features, automatic retry after bank recycling, retained temporary delivery and current-product handoff tests. The subsequent [USB0 service gate](../docs/M1_RUST_APTA_USB0_GATE_2026-10-21.md) adds legacy-only `apta-usb0-bringup`; it stays OFF in all defaults and on Guition.
+Pinned Rust 1.95.0, Slint 1.18.1, embedded-graphics 0.8.2 and esp-hal 1.2.2 are
+recorded in the manifests and committed lockfiles. From this directory:
 
-Latest audio work: [shared WAV/MP3/FLAC source decoding](../docs/M1_RUST_CODEC_STREAM_GATE_2026-10-21.md) uses one codec-neutral read/block/control contract behind the Library source owner. Fixed per-deck contexts live in PSRAM; the existing render/FX/PFL and confirmed transport consumers are shared by all formats. Physical output timing and listening remain separate gates.
-
-The [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) is merged through PR #15. The render owner submits the complete controller-only headphone bus.
-
-[Beat/Pad FX PCM execution](../docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) is merged through PR #14; streamed PCM loops are merged through PR #13. Fixed per-deck FX storage remains scoped to source epochs/generations.
-
-Latest reliability work: [composed Library/source/transport/cue-write failure policy](../docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) contains ordinary seek failures to one deck, keeps a faulted persistence owner responsive, fences stale completions and preserves unconfirmed cue banks. Physical driver recovery remains a separate gate.
-
-Integration review: [development stack corrections and validation](../docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md) closes the confirmed shared-cue, EOF-counter and early media cleanup regressions before main consolidation. APTA worker/service integration remains an explicit opt-in boundary separate from normal product profiles.
-
-Latest service: [composed runtime owner publication and recovery](../docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md). Existing product/controller/media loops have opt-in legacy health wiring and composed host failure tests. Guition peripheral ownership remains inactive; its boot diagnostics still repeat an immutable snapshot, not a heartbeat.
-
-Latest mixer/FX UI: [mixer/PFL, headphone and Beat/Pad FX host controls](../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) use authoritative shared state and 24 reviewed pixel goldens. PCM effects now run in the reference target; physical audio/output and device UI qualification remain open.
-
-Latest UI: [interactive decks, Library, Hot Cues and session Settings](../docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md), with the shared waveform rasterizer and reviewed headless goldens for both documented board sizes. See [simulator controls and scope](apps/desktop-simulator/README.md).
-
-Latest analysis work: [generation-bound Rekordbox DAT/EXT publication](../docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md) supplies Sync, Beat Jump, quantized loops and neutral waveform/cue views. Host inspection: `cargo run --locked -p pajoniiir-rekordbox --example analysis_inspect -- FILE.DAT FILE.EXT`.
-
-Latest: [completed-output transport progress](../docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md) connects canonical PCM through delayed output confirmations to position/EOF. The reference target uses the same completion bookkeeping; its timer and physical driver gaps remain explicit.
-
-The [consumer-clock delivery gate](../docs/M1_RUST_SINK_DELIVERY_GATE_2026-10-20.md) adds bounded MAIN/controller-headphone queues and a headless render-to-consumer example: `cargo run --locked -p pajoniiir-audio-runtime --example clocked_output`. Actual embedded I2S/UAC pacing and driver integration remain open.
-
-The workspace retains host-tested product crates and a separate P4 integration target:
-
-- `desktop-simulator` proves the Slint UI development path without ESP32-P4 hardware.
-- `pajoniiir-core` contains shared product identifiers/state primitives.
-- `pajoniiir-controller-core` establishes semantic controller events.
-- `pajoniiir-ui-model` establishes immutable UI snapshot boundaries.
-- `pajoniiir-waveform` establishes a no_std RGB565 waveform rasterizer.
-
-`apps/m1-firmware` is a standalone embedded workspace with feature-gated storage, controller and software audio owners. `pajoniiir-board-profile` records audited candidate data separately for JC1060 and JC8012. Their explicit selectors start scheduler-only BSP skeletons; display/touch, audio sinks and peripheral qualification remain pending. Historical M1 tasks and wiring are isolated in `src/platform/legacy_m1.rs` and require `board-legacy-m1`. They cannot be activated through either Guition selector. See the [hardware matrix and source audit](../docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md).
-
-The native Rust foundation is integrated into `main`; `codex/native-apta-consumer` remains a separate, unmerged analysis-integration branch.
-
-The [PCM history/routing gate](../docs/M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) implements bounded live source arbitration in the legacy render integration and a host-tested modular output router. Headphones always use controller UAC. Guition `board-diagnostics` is an opt-in service-only first-boot report, not peripheral or audio acceptance.
-
-## Toolchain
-
-Starting baseline:
-
-- Rust 1.95.0
-- Slint 1.18.1
-- embedded-graphics 0.8.2
-- esp-hal 1.2.2 for the ESP32-P4 target integration
-- target `riscv32imafc-unknown-none-elf`
-
-The host workspace and standalone ESP32-P4 firmware `Cargo.lock` files are committed. CI resolves both graphs with `--locked`; dependency changes therefore require an explicit reviewed lockfile update.
-
-## Host commands
-
-From this directory:
-
-```bash
+```sh
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo test --locked -p pajoniiir-audio-runtime --test loop_playback
-cargo test --locked -p pajoniiir-service --features runtime-owners --test composed_failures
+python3 -m unittest discover -s tools/tests -v
+python3 tools/check_docs.py
+python3 tools/check_apta_core_boundary.py
 cargo run --locked -p desktop-simulator -- --board jc1060
 cargo run --locked -p desktop-simulator -- --board jc8012
 cargo run --locked -p desktop-simulator -- --smoke target/ui-smoke
 python3 tools/check_ui_goldens.py target/ui-smoke
 ```
 
-The simulator selects documented 1024×600 or 800×1280 geometry; decks stack in portrait. It uses synthetic demo media and a host transport clock, with no physical audio or peripherals.
+The host build needs the desktop/window/font dependencies documented in
+[host CI](../.github/workflows/rust-host.yml). See [simulator controls](apps/desktop-simulator/README.md).
 
-## Verification rule
+## Current scope
 
-Host success must not be reported as hardware success.
+WAV/MP3/FLAC sources feed the same bounded PCM/history/render path. Loops, scratch,
+Master Tempo, FX, PFL and output completion are host tested. The reference sink
+uses software timing; physical I2S/UAC cadence and listening remain pending.
+Headphones always use controller UAC channels; MAIN prefers a ready external
+stereo DAC and otherwise uses compatible controller MAIN audio.
 
-Use these states in development evidence:
+Guition idle/diagnostic/probe images compile independently. The PSRAM diagnostic
+uses an exclusive 64 KiB CPU-cached span at 80 MHz, without an allocator. It does
+not prove full-array, cache/DMA or production-clock behavior. Panel tables and
+touch firmware are not bundled. No product peripheral is activated by a selector.
 
-`HOST_VERIFIED -> SIMULATOR_VERIFIED -> COMPILE_VERIFIED -> HARDWARE_PENDING -> HARDWARE_VERIFIED`
-
-See:
-
-- `../docs/M1_RUST_PRODUCT_REQUIREMENTS.md`
-- `../docs/M1_RUST_ARCHITECTURE.md`
-- `../docs/adr/`
-
-
-APTA observations, repeated lifecycle checks and Guition first-boot packaging:
-see [the three-part software gate](../docs/M1_RUST_APTA_OBSERVABILITY_FIRST_BOOT_2026-10-21.md).
-The simulator's Health → Analysis tab displays a bounded captured record via
-`--analysis-observation FILE`; it does not select the native worker or connect
-live device telemetry. Default dependency exclusion and Guition hardware gates
-remain unchanged.
-
-Separate Guition flash RDID and release-only PSRAM scratch configurations, and
-inactive panel/touch adapter preparation, are described in the
-[memory/display gate](../docs/M1_RUST_GUITION_MEMORY_DISPLAY_PREP_2026-10-21.md).
+See [firmware build profiles](apps/m1-firmware/README.md),
+[development status](../docs/DEVELOPMENT.md), [validation](../docs/VALIDATION.md)
+and the [first-boot procedure](../docs/boards/GUITION_FIRST_BOOT_2026-10-20.md).

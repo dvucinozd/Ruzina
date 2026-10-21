@@ -221,17 +221,12 @@ fn validate_fs_bulk_packet_size(max_packet_size: u16) -> Result<(), Usb1MidiTran
     }
 }
 
-/// Persistent owner for the M1 USB1 Full-Speed controller port.
+/// Controller owner accepting an explicitly supplied, board-qualified USB instance.
 ///
 /// This compile boundary owns enumeration, controller-profile activation and
 /// USB-MIDI Bulk-IN ingestion through the semantic controller session plus
 /// profile-driven Bulk-OUT LED feedback. UAC remains a later gate.
-pub(crate) async fn run_root_controller_owner(
-    usb_fs: esp_hal::peripherals::USB_FS<'static>,
-    usb_dp: esp_hal::peripherals::GPIO27<'static>,
-    usb_dm: esp_hal::peripherals::GPIO26<'static>,
-) -> ! {
-    let usb = esp_hal::usb::otg::Usb::new_fs(usb_fs, usb_dp, usb_dm);
+pub(crate) async fn run_root_controller_owner(usb: esp_hal::usb::otg::Usb<'static>) -> ! {
     let driver = esp_hal::usb::otg::embassy_usb_host::Driver::new(usb);
     let (mut controller, bus) = embassy_usb_host::bus(driver, &USB1_BUS_STATE);
     let mut pending_speed = None;
