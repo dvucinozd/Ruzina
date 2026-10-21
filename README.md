@@ -4,7 +4,9 @@
 
 ## Active direction — 2026-10-20
 
-Latest analysis work: [pinned Rekordbox import and deck consumers](docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md), isolated from the open audio PR. Interactive UI and physical board/audio qualification remain pending.
+Latest UI work: [interactive deck/Library/cue/session-settings simulator](docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md) uses authoritative deck state, imported waveforms and reviewed screenshots for both Guition geometries. Full UI parity and physical board/audio qualification remain open.
+
+Latest analysis work: [pinned Rekordbox import and deck consumers](docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md), isolated from the open audio PR.
 
 Latest software gate: [completed-output position and EOF](docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md), integrated in the reference target and canonical host simulation. Physical I2S/UAC completion and clock qualification remain open.
 

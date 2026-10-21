@@ -765,7 +765,14 @@ dependencies = [
 name = "desktop-simulator"
 version = "0.1.0"
 dependencies = [
+ "pajoniiir-board-profile",
+ "pajoniiir-controller-core",
  "pajoniiir-core",
+ "pajoniiir-deck",
+ "pajoniiir-hot-cues",
+ "pajoniiir-media-session",
+ "pajoniiir-rekordbox",
+ "pajoniiir-track-analysis",
  "pajoniiir-ui-model",
  "pajoniiir-waveform",
  "slint",
@@ -3103,7 +3110,10 @@ dependencies = [
 name = "pajoniiir-ui-model"
 version = "0.1.0"
 dependencies = [
+ "pajoniiir-controller-core",
  "pajoniiir-core",
+ "pajoniiir-deck",
+ "pajoniiir-hot-cues",
 ]
 
 [[package]]

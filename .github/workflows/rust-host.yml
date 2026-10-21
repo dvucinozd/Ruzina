@@ -43,7 +43,8 @@ jobs:
             xinput \
             libxcursor-dev \
             libxkbcommon-x11-dev \
-            libx11-dev
+            libx11-dev \
+            fonts-dejavu-core
 
       - name: Install pinned Rust toolchain
         run: |
@@ -61,3 +62,15 @@ jobs:
 
       - name: Desktop simulator compile gate
         run: cargo check --locked -p desktop-simulator
+
+      - name: Interactive UI and screenshot goldens
+        run: |
+          cargo run --locked -p desktop-simulator -- --smoke target/ui-smoke
+          python3 tools/check_ui_goldens.py target/ui-smoke
+
+      - name: Retain UI snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slint-ui-snapshots
+          path: firmware-rust/target/ui-smoke/*.ppm

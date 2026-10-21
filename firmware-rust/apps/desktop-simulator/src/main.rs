@@ -1,94 +1,257 @@
-use pajoniiir_core::DeckId;
-use pajoniiir_ui_model::{DeckSnapshot, UiSnapshot};
+mod compositor;
+mod session;
+mod smoke;
+
+use pajoniiir_board_profile::{BoardId, profile};
+use pajoniiir_ui_model::{DeckAction, cue_event};
+use session::{Session, deck};
+use slint::{ComponentHandle, Model, ModelRc, VecModel};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 slint::include_modules!();
 
 fn format_bpm(bpm_milli: u32) -> String {
     format!("{:.2} BPM", bpm_milli as f64 / 1000.0)
 }
-
 fn format_time(position_ms: u64) -> String {
-    let total_seconds = position_ms / 1000;
-    let minutes = total_seconds / 60;
-    let seconds = total_seconds % 60;
-    let millis = position_ms % 1000;
-    format!("{minutes:02}:{seconds:02}.{millis:03}")
+    let seconds = position_ms / 1000;
+    format!(
+        "{:02}:{:02}.{:03}",
+        seconds / 60,
+        seconds % 60,
+        position_ms % 1000
+    )
 }
 
-fn deck_status(deck: DeckSnapshot) -> String {
-    let transport = if deck.playing { "PLAY" } else { "PAUSE" };
-    let sync = if deck.sync { "SYNC ON" } else { "SYNC OFF" };
-    let master_tempo = if deck.master_tempo { "MT ON" } else { "MT OFF" };
-    format!("{transport}   {sync}   {master_tempo}")
-}
-
-fn simulator_snapshot() -> UiSnapshot {
-    UiSnapshot {
-        deck_one: DeckSnapshot {
-            deck: DeckId::One,
-            loaded: true,
-            playing: true,
-            bpm_milli: 128_000,
-            position_ms: 93_427,
-            duration_ms: 367_000,
-            pitch_centi_percent: 0,
-            sync: true,
-            master_tempo: true,
-        },
-        deck_two: DeckSnapshot {
-            deck: DeckId::Two,
-            loaded: true,
-            playing: false,
-            bpm_milli: 124_500,
-            position_ms: 42_015,
-            duration_ms: 301_000,
-            pitch_centi_percent: -125,
-            sync: false,
-            master_tempo: true,
-        },
-        crossfader_milli: 0,
-        master_milli: 900,
+fn refresh(ui: &MainWindow, session: &Session) {
+    let model = ui.get_decks();
+    let rows = model
+        .as_any()
+        .downcast_ref::<VecModel<DeckView>>()
+        .expect("bound deck model");
+    let views: Vec<DeckView> = (0..2)
+        .map(|i| {
+            let p = session.presentation(i);
+            let t = p.transport;
+            let time = if ui.get_remaining() {
+                format!(
+                    "−{}",
+                    format_time(t.duration_ms.saturating_sub(t.position_ms))
+                )
+            } else {
+                format_time(t.position_ms)
+            };
+            let analysis = session.analysis(i);
+            let source = match analysis {
+                Some(a) if !a.detail().is_empty() => "GRID + PREVIEW + DETAIL",
+                Some(_) => "GRID + PREVIEW · NO DETAIL",
+                None if t.loaded => "NO ANALYSIS · BPM FALLBACK",
+                None => "LOAD FROM LIBRARY",
+            };
+            let cues = (0..8)
+                .map(|slot| CueView {
+                    label: format!(
+                        "{}{}",
+                        slot + 1,
+                        if p.cues[slot].is_some() { " ●" } else { "" }
+                    )
+                    .into(),
+                    occupied: p.cues[slot].is_some(),
+                })
+                .collect::<Vec<_>>();
+            let cue_model = rows.row_data(i).unwrap().cues;
+            let cue_rows = cue_model
+                .as_any()
+                .downcast_ref::<VecModel<CueView>>()
+                .expect("bound cue model");
+            for (slot, cue) in cues.into_iter().enumerate() {
+                cue_rows.set_row_data(slot, cue);
+            }
+            DeckView {
+                title: session.title(i).into(),
+                bpm: if t.loaded {
+                    format_bpm(t.bpm_milli)
+                } else {
+                    "— BPM".into()
+                }
+                .into(),
+                time: time.into(),
+                status: format!(
+                    "{}  {:+.2}%",
+                    if t.playing { "PLAY" } else { "PAUSE" },
+                    f64::from(t.pitch_centi_percent) / 100.0
+                )
+                .into(),
+                analysis: source.into(),
+                loaded: t.loaded,
+                playing: t.playing,
+                synced: t.sync,
+                quantize: p.quantize,
+                range: p.tempo_range_percent.to_string().into(),
+                overview: compositor::image(&compositor::compose(p, analysis, false)),
+                detail: compositor::image(&compositor::compose(p, analysis, true)),
+                cues: cue_model,
+                loop_text: p
+                    .loop_region
+                    .map(|(a, b)| {
+                        format!(
+                            "LOOP {}–{}",
+                            format_time(u64::from(a)),
+                            format_time(u64::from(b))
+                        )
+                    })
+                    .unwrap_or("LOOP OFF".into())
+                    .into(),
+            }
+        })
+        .collect();
+    // Keep repeater instances/focus/pressed state stable across clock updates.
+    for (i, view) in views.into_iter().enumerate() {
+        rows.set_row_data(i, view);
     }
+    ui.set_selection(session.selected as i32);
+    ui.set_media_ready(session.connected());
+    ui.set_message(session.message.clone().into());
 }
 
-fn apply_snapshot(ui: &MainWindow, snapshot: UiSnapshot) {
-    ui.set_deck_one_bpm_text(format_bpm(snapshot.deck_one.bpm_milli).into());
-    ui.set_deck_one_time_text(format_time(snapshot.deck_one.position_ms).into());
-    ui.set_deck_one_status_text(deck_status(snapshot.deck_one).into());
-
-    ui.set_deck_two_bpm_text(format_bpm(snapshot.deck_two.bpm_milli).into());
-    ui.set_deck_two_time_text(format_time(snapshot.deck_two.position_ms).into());
-    ui.set_deck_two_status_text(deck_status(snapshot.deck_two).into());
-
-    ui.set_simulator_status_text("HOST / SIMULATOR VERIFIED".into());
+fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
+    ui.set_decks(ModelRc::new(VecModel::from(
+        (0..2)
+            .map(|_| DeckView {
+                cues: ModelRc::new(VecModel::from(vec![CueView::default(); 8])),
+                ..DeckView::default()
+            })
+            .collect::<Vec<_>>(),
+    )));
+    ui.set_tracks(ModelRc::new(VecModel::from(
+        session::TITLES
+            .iter()
+            .map(|s| (*s).into())
+            .collect::<Vec<_>>(),
+    )));
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_deck_action(move |i, code| {
+        if !(0..2).contains(&i) {
+            return;
+        }
+        if let Some(action) = DeckAction::from_code(code) {
+            session
+                .borrow_mut()
+                .control(action.event(deck(i as usize), true));
+            if let Some(ui) = weak.upgrade() {
+                refresh(&ui, &session.borrow());
+            }
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_cue_action(move |i, slot, clear| {
+        if !(0..2).contains(&i) || !(0..8).contains(&slot) {
+            return;
+        }
+        if let Some(event) = cue_event(deck(i as usize), slot as u8, clear, true) {
+            session.borrow_mut().control(event);
+            if let Some(ui) = weak.upgrade() {
+                refresh(&ui, &session.borrow());
+            }
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_select_track(move |selection| {
+        if (0..session::TITLES.len() as i32).contains(&selection) && session.borrow().connected() {
+            session.borrow_mut().selected = selection as usize;
+            if let Some(ui) = weak.upgrade() {
+                refresh(&ui, &session.borrow());
+            }
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_load_track(move |i| {
+        if !(0..2).contains(&i) {
+            return;
+        }
+        session.borrow_mut().load(deck(i as usize));
+        if let Some(ui) = weak.upgrade() {
+            refresh(&ui, &session.borrow());
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_media_action(move || {
+        let connected = session.borrow().connected();
+        if connected {
+            session.borrow_mut().detach();
+        } else {
+            session.borrow_mut().reconnect();
+        }
+        if let Some(ui) = weak.upgrade() {
+            refresh(&ui, &session.borrow());
+        }
+    });
+    let weak = ui.as_weak();
+    ui.on_display_changed(move || {
+        if let Some(ui) = weak.upgrade() {
+            refresh(&ui, &state.borrow());
+        }
+    });
 }
 
-fn main() -> Result<(), slint::PlatformError> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--smoke") {
+        let output = args.get(1).ok_or("--smoke requires an output directory")?;
+        return smoke::run(std::path::Path::new(output));
+    }
+    let board = match args.as_slice() {
+        [] => profile(BoardId::GuitionJc1060P470cIwY),
+        [option, id] if option == "--board" && id == "jc1060" => {
+            profile(BoardId::GuitionJc1060P470cIwY)
+        }
+        [option, id] if option == "--board" && id == "jc8012" => {
+            profile(BoardId::GuitionJc8012P4a1cIwY)
+        }
+        _ => {
+            return Err("Usage: desktop-simulator [--board jc1060|jc8012] | --smoke OUTPUT".into());
+        }
+    };
     let ui = MainWindow::new()?;
-    apply_snapshot(&ui, simulator_snapshot());
-    ui.run()
+    ui.window().set_size(slint::PhysicalSize::new(
+        u32::from(board.display.width),
+        u32::from(board.display.height),
+    ));
+    ui.set_board_label(format!("{} · HOST SIMULATOR", board.model).into());
+    let state = Rc::new(RefCell::new(Session::new()));
+    bind(&ui, state.clone());
+    refresh(&ui, &state.borrow());
+    let timer = slint::Timer::default();
+    let weak = ui.as_weak();
+    let mut last = Instant::now();
+    timer.start(
+        slint::TimerMode::Repeated,
+        Duration::from_millis(50),
+        move || {
+            let now = Instant::now();
+            let elapsed = now
+                .duration_since(last)
+                .as_millis()
+                .min(u128::from(u32::MAX)) as u32;
+            last = now;
+            state.borrow_mut().tick(elapsed);
+            if let Some(ui) = weak.upgrade() {
+                refresh(&ui, &state.borrow());
+            }
+        },
+    );
+    ui.run()?;
+    Ok(())
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn formats_bpm_from_milli_bpm() {
-        assert_eq!(format_bpm(128_250), "128.25 BPM");
-    }
-
-    #[test]
-    fn formats_transport_time() {
-        assert_eq!(format_time(93_427), "01:33.427");
-    }
-
-    #[test]
-    fn simulator_fixture_is_loaded_on_both_decks() {
-        let snapshot = simulator_snapshot();
-        assert!(snapshot.deck_one.loaded);
-        assert!(snapshot.deck_two.loaded);
-        assert_eq!(snapshot.deck_one.deck, DeckId::One);
-        assert_eq!(snapshot.deck_two.deck, DeckId::Two);
-    }
-}
+mod tests;

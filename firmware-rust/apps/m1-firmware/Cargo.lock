@@ -1567,7 +1567,10 @@ dependencies = [
 name = "pajoniiir-ui-model"
 version = "0.1.0"
 dependencies = [
+ "pajoniiir-controller-core",
  "pajoniiir-core",
+ "pajoniiir-deck",
+ "pajoniiir-hot-cues",
 ]
 
 [[package]]
