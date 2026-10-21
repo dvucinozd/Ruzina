@@ -6,6 +6,8 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
+Selective APTA adoption: [result/cache conversion and waveform windows](../docs/M1_RUST_APTA_CORE_GATE_2026-10-21.md) are available in the experimental `pajoniiir-apta-adapter` workspace member. The simulator and firmware dependency graphs exclude this adapter; native analysis provider activation remains pending.
+
 Latest audio work: [shared WAV/MP3/FLAC source decoding](../docs/M1_RUST_CODEC_STREAM_GATE_2026-10-21.md) uses one codec-neutral read/block/control contract behind the Library source owner. Fixed per-deck contexts live in PSRAM; the existing render/FX/PFL and confirmed transport consumers are shared by all formats. Physical output timing and listening remain separate gates.
 
 The [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) is merged through PR #15. The render owner submits the complete controller-only headphone bus.
@@ -14,7 +16,7 @@ The [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_202
 
 Latest reliability work: [composed Library/source/transport/cue-write failure policy](../docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) contains ordinary seek failures to one deck, keeps a faulted persistence owner responsive, fences stale completions and preserves unconfirmed cue banks. Physical driver recovery remains a separate gate.
 
-Integration review: [development stack corrections and validation](../docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md) closes the confirmed shared-cue, EOF-counter and early media cleanup regressions before main consolidation. APTA remains separate.
+Integration review: [development stack corrections and validation](../docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md) closes the confirmed shared-cue, EOF-counter and early media cleanup regressions before main consolidation. APTA worker/service integration remains separate from the portable adapter subset.
 
 Latest service: [composed runtime owner publication and recovery](../docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md). Existing product/controller/media loops have opt-in legacy health wiring and composed host failure tests. Guition peripheral ownership remains inactive; its boot diagnostics still repeat an immutable snapshot, not a heartbeat.
 

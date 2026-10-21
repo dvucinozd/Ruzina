@@ -1,0 +1,13 @@
+    Checking pajoniiir-track-analysis v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-track-analysis)
+    Checking pajoniiir-hot-cues v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-hot-cues)
+    Checking pajoniiir-audio-dsp v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-dsp)
+    Checking pajoniiir-mixer v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-mixer)
+    Checking pajoniiir-deck v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-deck)
+   Compiling desktop-simulator v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/apps/desktop-simulator)
+    Checking pajoniiir-media-catalog v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-catalog)
+    Checking pajoniiir-board-profile v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-board-profile)
+    Checking pajoniiir-service v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-service)
+    Checking pajoniiir-rekordbox v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-rekordbox)
+    Checking pajoniiir-ui-model v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-ui-model)
+    Checking pajoniiir-waveform v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-waveform)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.70s

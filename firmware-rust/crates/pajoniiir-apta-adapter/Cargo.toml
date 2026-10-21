@@ -1,0 +1,19 @@
+[package]
+name = "pajoniiir-apta-adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "25d09de364e9507532c0508c838a8fecf0772d13", default-features = false }
+pajoniiir-track-analysis.workspace = true
+pajoniiir-waveform.workspace = true
+
+[dev-dependencies]
+pajoniiir-controller-core.workspace = true
+pajoniiir-core.workspace = true
+pajoniiir-deck.workspace = true
+
+[features]
+default = []

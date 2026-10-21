@@ -1,0 +1,6 @@
+     Locking 1 package to latest compatible version
+      Adding libapta v0.1.0 (https://github.com/dvucinozd/libapta-audio.git?rev=25d09de364e9507532c0508c838a8fecf0772d13#25d09de3)
+    Checking pajoniiir-track-analysis v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-track-analysis)
+    Checking pajoniiir-waveform v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-waveform)
+    Checking pajoniiir-apta-adapter v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-apta-adapter)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.64s

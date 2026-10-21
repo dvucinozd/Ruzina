@@ -1,0 +1,11 @@
+Tip: Install CodeRabbit skills for your coding agent with `coderabbit skills`.
+{"type":"review_context","reviewType":"uncommitted","currentBranch":"HEAD","baseBranch":"main","baseCommit":"e069888ccce3ef23412741607b54058c73d9e82f","workingDirectory":"/home/daniel/.cache/m1-rust-review/apta-core-review-20261021","expectedDuration":"Reviews usually take 2-6 minutes and can take up to 15. Keep this command running for at least 15 minutes or run it in the background; stopping it early discards the review."}
+{"type":"status","phase":"setup","status":"setting_up","message":"dvucinozd/Pajoniiir-M1 is not connected to a CodeRabbit organization you can access, so this review will use the free CLI allowance.\n\nIf you expected an org plan here, check your signed-in account with coderabbit auth status, or install CodeRabbit for dvucinozd/Pajoniiir-M1 at https://app.coderabbit.ai"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"heartbeat","status":"reviewing"}
+{"type":"complete","status":"review_completed","findings":0,"reviewedFiles":[".github/workflows/rust-host.yml","firmware-rust/Cargo.lock","firmware-rust/Cargo.toml","firmware-rust/crates/pajoniiir-apta-adapter/Cargo.toml","firmware-rust/crates/pajoniiir-apta-adapter/README.md","firmware-rust/crates/pajoniiir-apta-adapter/src/lib.rs","firmware-rust/crates/pajoniiir-apta-adapter/src/window.rs","firmware-rust/crates/pajoniiir-apta-adapter/tests/global.rs","firmware-rust/crates/pajoniiir-apta-adapter/tests/native.rs","firmware-rust/crates/pajoniiir-apta-adapter/tests/window.rs","firmware-rust/tools/check_apta_core_boundary.py"],"outcome":"completed","message":"Review completed"}

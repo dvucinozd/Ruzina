@@ -2196,6 +2196,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "libapta"
+version = "0.1.0"
+source = "git+https://github.com/dvucinozd/libapta-audio.git?rev=25d09de364e9507532c0508c838a8fecf0772d13#25d09de364e9507532c0508c838a8fecf0772d13"
+dependencies = [
+ "libm",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2926,6 +2934,18 @@ checksum = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
 dependencies = [
  "futures-core",
  "pin-project-lite",
+]
+
+[[package]]
+name = "pajoniiir-apta-adapter"
+version = "0.1.0"
+dependencies = [
+ "libapta",
+ "pajoniiir-controller-core",
+ "pajoniiir-core",
+ "pajoniiir-deck",
+ "pajoniiir-track-analysis",
+ "pajoniiir-waveform",
 ]
 
 [[package]]
