@@ -90,7 +90,13 @@ pub(crate) fn publish_media(producer: &mut Producer, value: MediaObservation) {
 /// Consumers see current age even if the observer task has stopped draining.
 #[allow(dead_code)]
 pub(crate) fn snapshot() -> RuntimeView {
-    STATE.lock(|cell| cell.borrow().owners.view(now_ms()))
+    #[allow(unused_mut)]
+    let mut view = STATE.lock(|cell| cell.borrow().owners.view(now_ms()));
+    #[cfg(feature = "apta-usb0-bringup")]
+    {
+        view.analysis = crate::usb0_analysis::diagnostic_snapshot();
+    }
+    view
 }
 #[embassy_executor::task]
 pub(crate) async fn observer_task() {

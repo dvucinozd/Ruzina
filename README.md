@@ -291,3 +291,9 @@ References:
 
 Rust host/simulator success does not close any physical PCB, USB, audio, DSI, PSRAM/DMA, C6 or power qualification gate.
 
+
+
+The [APTA observation, lifecycle stress and Guition first-boot package](docs/M1_RUST_APTA_OBSERVABILITY_FIRST_BOOT_2026-10-21.md)
+adds visible captured analysis diagnostics, reproducible owner stress evidence and
+separate hashed diagnostic images for both boards. Physical qualification and
+Guition peripheral activation remain open.

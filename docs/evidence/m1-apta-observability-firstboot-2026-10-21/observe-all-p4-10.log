@@ -1,0 +1,39 @@
+   Compiling pajoniiir-m1-firmware v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/apps/m1-firmware)
+warning: variant `Control` is never constructed
+  --> src/deck_audio_source.rs:99:5
+   |
+94 | enum DeckAudioSourceCommand {
+   |      ---------------------- variant in this enum
+...
+99 |     Control {
+   |     ^^^^^^^
+   |
+   = note: `DeckAudioSourceCommand` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `seek_audio_source` is never used
+   --> src/deck_audio_source.rs:178:21
+    |
+178 | pub(crate) async fn seek_audio_source(
+    |                     ^^^^^^^^^^^^^^^^^
+
+warning: function `change_audio_source` is never used
+   --> src/deck_audio_source.rs:191:21
+    |
+191 | pub(crate) async fn change_audio_source(
+    |                     ^^^^^^^^^^^^^^^^^^^
+
+warning: function `try_receive_pcm_block` is never used
+   --> src/deck_audio_source.rs:234:15
+    |
+234 | pub(crate) fn try_receive_pcm_block(deck: DeckId) -> Option<PcmStreamBlock> {
+    |               ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `current_stream_generation` is never used
+   --> src/deck_audio_source.rs:238:15
+    |
+238 | pub(crate) fn current_stream_generation(deck: DeckId) -> u32 {
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `pajoniiir-m1-firmware` (bin "pajoniiir-m1-firmware") generated 5 warnings
+    Finished `release` profile [optimized] target(s) in 6.63s

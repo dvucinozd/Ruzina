@@ -39,6 +39,7 @@ pub const TITLES: [&str; 4] = [
 const DURATIONS: [u32; 4] = [10_000, 14_000, 10_000, 10_000];
 
 pub struct Session {
+    pub analysis_observation: pajoniiir_service::analysis::Observation,
     pub decks: DeckProductState,
     pub mixer: MixerState,
     pub selected: usize,
@@ -72,6 +73,7 @@ impl Session {
     }
     pub fn for_board(board: BoardId) -> Self {
         let mut result = Self {
+            analysis_observation: pajoniiir_service::analysis::Observation::DISABLED,
             decks: DeckProductState::new(),
             mixer: MixerState::new(),
             selected: 0,

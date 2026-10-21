@@ -89,3 +89,11 @@ See:
 - `../docs/M1_RUST_PRODUCT_REQUIREMENTS.md`
 - `../docs/M1_RUST_ARCHITECTURE.md`
 - `../docs/adr/`
+
+
+APTA observations, repeated lifecycle checks and Guition first-boot packaging:
+see [the three-part software gate](../docs/M1_RUST_APTA_OBSERVABILITY_FIRST_BOOT_2026-10-21.md).
+The simulator's Health → Analysis tab displays a bounded captured record via
+`--analysis-observation FILE`; it does not select the native worker or connect
+live device telemetry. Default dependency exclusion and Guition hardware gates
+remain unchanged.

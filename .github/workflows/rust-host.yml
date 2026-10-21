@@ -75,6 +75,11 @@ jobs:
           cargo test --locked -p pajoniiir-apta-adapter --all-features --release
           cargo check --locked -p pajoniiir-apta-adapter --lib --features owned-handoff --target riscv32imafc-unknown-none-elf
 
+      - name: Repeated APTA owner lifecycle and Guition package tools
+        run: |
+          python3 -m unittest discover -s tools/tests -v
+          python3 tools/run_apta_stress.py --iterations 25 --output target/apta-stress
+
       - name: Composed runtime owner recovery evidence
         run: |
           mkdir -p target
@@ -97,3 +102,4 @@ jobs:
             firmware-rust/target/ui-smoke/*.txt
             firmware-rust/target/runtime-owners.log
             firmware-rust/target/composed-failures.log
+            firmware-rust/target/apta-stress/**

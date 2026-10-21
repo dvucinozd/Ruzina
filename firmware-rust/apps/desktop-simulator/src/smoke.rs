@@ -85,9 +85,10 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         pointer_smoke(&ui, &state, width as f32);
         mix_fx_smoke::pointer(&ui, &state, width as f32, height as f32);
         health_smoke::recovery(&ui, &state, output, name, width as f32)?;
+        analysis_smoke::run(&ui, &state, output, name, width as f32)?;
     }
     println!(
-        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 38 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 54 software-rendered snapshots: PASS"
     );
     Ok(())
 }

@@ -1,0 +1,158 @@
+{
+  "jc1060-matching": {
+    "software_fixture": true,
+    "expected_exit": 0,
+    "record": {
+      "complete_records": 1,
+      "partial_records": 0,
+      "errors": [],
+      "observation_match": true,
+      "frames": [
+        {
+          "board_profile": "JC1060P470C_I_W_Y",
+          "image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc1060",
+          "chip_revision_detected": "302",
+          "chip_minimum_required": "302",
+          "chip_policy_match": "true",
+          "flash_bytes_documented": "16777216",
+          "psram_bytes_documented": "33554432",
+          "flash_bytes_observed": "NOT_MEASURED",
+          "psram_bytes_observed": "NOT_MEASURED",
+          "readiness": "NOT_QUALIFIED"
+        }
+      ],
+      "rom_signature_seen": false,
+      "reset_reasons": [],
+      "readiness": "NOT_QUALIFIED",
+      "schema": 1,
+      "unit": "SOFTWARE_FIXTURE_jc1060",
+      "scenario": "cold-boot",
+      "package_manifest_sha256": "9260c7f6094c9a746deb01bd2ab142dc40f669729b10e299a824544838f7b335",
+      "expected_elf_sha256": "be17e191890d4de3b0cb3a53781ba8fcfe85719ac48ffc7bbbb8e8822ca11cca",
+      "expected_image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc1060",
+      "raw_log_sha256": "e7253573921e638f1594ef6449ceb758d761b3f153bbfb7da807d50a1afbc2a4",
+      "operator_result": "NOT_RUN",
+      "operator_note": "",
+      "scenario_acceptance": "NOT_QUALIFIED",
+      "capture_error": null
+    }
+  },
+  "jc1060-mismatch": {
+    "software_fixture": true,
+    "expected_exit": 2,
+    "record": {
+      "complete_records": 1,
+      "partial_records": 0,
+      "errors": [
+        "Image identity mismatch"
+      ],
+      "observation_match": false,
+      "frames": [
+        {
+          "board_profile": "JC1060P470C_I_W_Y",
+          "image_id": "wrong-software-fixture-image",
+          "chip_revision_detected": "302",
+          "chip_minimum_required": "302",
+          "chip_policy_match": "true",
+          "flash_bytes_documented": "16777216",
+          "psram_bytes_documented": "33554432",
+          "flash_bytes_observed": "NOT_MEASURED",
+          "psram_bytes_observed": "NOT_MEASURED",
+          "readiness": "NOT_QUALIFIED"
+        }
+      ],
+      "rom_signature_seen": false,
+      "reset_reasons": [],
+      "readiness": "NOT_QUALIFIED",
+      "schema": 1,
+      "unit": "SOFTWARE_FIXTURE_jc1060",
+      "scenario": "cold-boot",
+      "package_manifest_sha256": "9260c7f6094c9a746deb01bd2ab142dc40f669729b10e299a824544838f7b335",
+      "expected_elf_sha256": "be17e191890d4de3b0cb3a53781ba8fcfe85719ac48ffc7bbbb8e8822ca11cca",
+      "expected_image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc1060",
+      "raw_log_sha256": "285bf08603deb29586abbd0f634211b3395ba44dbd648f5d9026a3911af21bb5",
+      "operator_result": "NOT_RUN",
+      "operator_note": "",
+      "scenario_acceptance": "NOT_QUALIFIED",
+      "capture_error": null
+    }
+  },
+  "jc8012-matching": {
+    "software_fixture": true,
+    "expected_exit": 0,
+    "record": {
+      "complete_records": 1,
+      "partial_records": 0,
+      "errors": [],
+      "observation_match": true,
+      "frames": [
+        {
+          "board_profile": "JC8012P4A1C_I_W_Y",
+          "image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc8012",
+          "chip_revision_detected": "302",
+          "chip_minimum_required": "302",
+          "chip_policy_match": "true",
+          "flash_bytes_documented": "16777216",
+          "psram_bytes_documented": "33554432",
+          "flash_bytes_observed": "NOT_MEASURED",
+          "psram_bytes_observed": "NOT_MEASURED",
+          "readiness": "NOT_QUALIFIED"
+        }
+      ],
+      "rom_signature_seen": false,
+      "reset_reasons": [],
+      "readiness": "NOT_QUALIFIED",
+      "schema": 1,
+      "unit": "SOFTWARE_FIXTURE_jc8012",
+      "scenario": "cold-boot",
+      "package_manifest_sha256": "c40f9bfa9ed9fafcd3957f3d7cf519e1d9c1ef332ec45842f4468e0b3937ebe9",
+      "expected_elf_sha256": "5dc6d2bbed52ba6a3d26d781ce137cfa22e719567046e4870042c9cc48b0f517",
+      "expected_image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc8012",
+      "raw_log_sha256": "9c125cc987a78b8eeb2cc9fba12a8d710fcfcc824429d99d1df6ac55d572e40f",
+      "operator_result": "NOT_RUN",
+      "operator_note": "",
+      "scenario_acceptance": "NOT_QUALIFIED",
+      "capture_error": null
+    }
+  },
+  "jc8012-mismatch": {
+    "software_fixture": true,
+    "expected_exit": 2,
+    "record": {
+      "complete_records": 1,
+      "partial_records": 0,
+      "errors": [
+        "Image identity mismatch"
+      ],
+      "observation_match": false,
+      "frames": [
+        {
+          "board_profile": "JC8012P4A1C_I_W_Y",
+          "image_id": "wrong-software-fixture-image",
+          "chip_revision_detected": "302",
+          "chip_minimum_required": "302",
+          "chip_policy_match": "true",
+          "flash_bytes_documented": "16777216",
+          "psram_bytes_documented": "33554432",
+          "flash_bytes_observed": "NOT_MEASURED",
+          "psram_bytes_observed": "NOT_MEASURED",
+          "readiness": "NOT_QUALIFIED"
+        }
+      ],
+      "rom_signature_seen": false,
+      "reset_reasons": [],
+      "readiness": "NOT_QUALIFIED",
+      "schema": 1,
+      "unit": "SOFTWARE_FIXTURE_jc8012",
+      "scenario": "cold-boot",
+      "package_manifest_sha256": "c40f9bfa9ed9fafcd3957f3d7cf519e1d9c1ef332ec45842f4468e0b3937ebe9",
+      "expected_elf_sha256": "5dc6d2bbed52ba6a3d26d781ce137cfa22e719567046e4870042c9cc48b0f517",
+      "expected_image_id": "db99f8b9b246-src-c13136c63bcefb4e-jc8012",
+      "raw_log_sha256": "16bd7bd77b538799a0adcd14f2b5ed10be25be1374e6e92920eded584d6949c2",
+      "operator_result": "NOT_RUN",
+      "operator_note": "",
+      "scenario_acceptance": "NOT_QUALIFIED",
+      "capture_error": null
+    }
+  }
+}

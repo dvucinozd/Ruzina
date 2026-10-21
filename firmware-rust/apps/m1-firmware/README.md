@@ -162,3 +162,11 @@ nothing. These are software limits, without elapsed-time or audio timing claims.
 See the [complete software gate](../../../docs/M1_RUST_APTA_USB0_GATE_2026-10-21.md)
 for ownership, memory and hardware-pending acceptance. This feature does not
 activate Guition peripherals or change MAIN/headphone routing.
+
+
+The optional service now publishes scalar state/reason/deck/load observations
+through `M1_ANALYSIS_OBSERVATION_V1` in the combined runtime-health snapshot.
+Transition timestamps do not renew on reads or imply worker progress/heartbeat.
+Failure categories preserve storage/format/capacity/work-limit distinctions;
+recovery blockage and quarantine remain visible. See
+[the observation/stress/first-boot gate](../../../docs/M1_RUST_APTA_OBSERVABILITY_FIRST_BOOT_2026-10-21.md).
