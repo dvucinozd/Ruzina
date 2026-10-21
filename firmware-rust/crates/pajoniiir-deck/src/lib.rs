@@ -600,6 +600,7 @@ pub struct DeckProductState {
     hot_cue_sources: [Option<HotCueBank>; 2],
     hot_cue_locals: [Option<HotCueBank>; 2],
     beat_fx: BeatFxState,
+    beat_fx_reset_epoch: u32,
 }
 
 impl Default for DeckProductState {
@@ -618,6 +619,7 @@ impl DeckProductState {
             hot_cue_sources: [None, None],
             hot_cue_locals: [None, None],
             beat_fx: BeatFxState::new(),
+            beat_fx_reset_epoch: 1,
         }
     }
 
@@ -631,6 +633,10 @@ impl DeckProductState {
 
     pub const fn beat_fx(&self) -> BeatFxState {
         self.beat_fx
+    }
+
+    pub const fn beat_fx_reset_epoch(&self) -> u32 {
+        self.beat_fx_reset_epoch
     }
 
     pub fn load_hot_cues(
@@ -777,6 +783,7 @@ impl DeckProductState {
         for state in &mut self.decks {
             state.controller_connected = connected;
             if !connected {
+                state.active_pad_fx = None;
                 state.jog_touched = false;
                 state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
                 state.loop_adjust_mode = LoopAdjustMode::None;
@@ -946,6 +953,7 @@ impl DeckProductState {
             }
             SemanticControl::BeatFxClear if event.value == ControlValue::Pressed(true) => {
                 self.beat_fx = BeatFxState::new();
+                self.beat_fx_reset_epoch = self.beat_fx_reset_epoch.wrapping_add(1).max(1);
                 true
             }
             _ => false,
@@ -958,7 +966,7 @@ impl DeckProductState {
         }
     }
 
-    fn beat_fx_effect(&self) -> DeckEffects {
+    pub fn beat_fx_effect(&self) -> DeckEffects {
         DeckEffects::one(DeckEffect::ApplyBeatFx {
             state: self.beat_fx,
             delay_ms: beat_fx_delay_ms(self.beat_fx, &self.decks),
@@ -2080,6 +2088,22 @@ mod tests {
                 .items[0],
             Some(DeckEffect::ApplyBeatFx { .. })
         ));
+    }
+
+    #[test]
+    fn only_pressed_beat_clear_changes_effect_memory_epoch() {
+        let mut state = DeckProductState::new();
+        let initial = state.beat_fx_reset_epoch();
+        state.handle_control(system_pressed(SemanticControl::BeatFxClear, false));
+        state.handle_control(system_pressed(SemanticControl::BeatFxOn, true));
+        state.handle_control(beat_fx_target(BeatFxTarget::ChannelTwo));
+        state.handle_control(beat_fx_depth(100, 127));
+        assert_eq!(state.beat_fx_reset_epoch(), initial);
+        state.handle_control(system_pressed(SemanticControl::BeatFxClear, true));
+        assert_ne!(state.beat_fx_reset_epoch(), initial);
+        state.beat_fx_reset_epoch = u32::MAX;
+        state.handle_control(system_pressed(SemanticControl::BeatFxClear, true));
+        assert_eq!(state.beat_fx_reset_epoch(), 1);
     }
 
     #[test]
@@ -3534,6 +3558,8 @@ mod tests {
         state.decks[0].playing = true;
         state.decks[0].jog_touched = true;
         state.decks[0].loop_adjust_mode = LoopAdjustMode::In;
+        state.handle_control(pad_fx_pad(DeckId::One, PadMode::PadFx1, 2, false, true));
+        state.handle_control(pad_fx_pad(DeckId::Two, PadMode::PadFx2, 3, false, true));
 
         state.set_controller_connected(false);
 
@@ -3545,6 +3571,8 @@ mod tests {
         );
         assert!(!state.deck(DeckId::One).controller_connected);
         assert!(!state.deck(DeckId::Two).controller_connected);
+        assert!(state.deck(DeckId::One).active_pad_fx.is_none());
+        assert!(state.deck(DeckId::Two).active_pad_fx.is_none());
     }
 
     #[test]

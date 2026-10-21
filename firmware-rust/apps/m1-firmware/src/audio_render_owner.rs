@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::cell::RefCell;
 
 use embassy_sync::blocking_mutex::CriticalSectionMutex;
@@ -5,6 +6,7 @@ use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channe
 use embassy_time::{Duration, Timer};
 use pajoniiir_audio_dsp::PcmFrame;
 use pajoniiir_audio_runtime::{
+    fx::{FX_DECK_STORAGE_SAMPLES, FX_TOTAL_STORAGE_SAMPLES, product_fx_controls},
     pcm_stream::PcmStreamBlock,
     playback::PlaybackOutput,
     render::{
@@ -68,6 +70,8 @@ pub(crate) async fn queue_scratch_jog(deck: DeckId, ticks: i16, gesture_epoch: u
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct AudioRenderOwnerStats {
+    pub(crate) fx_ready: bool,
+    pub(crate) fx_storage_failed: bool,
     pub(crate) rendered_blocks: u64,
     pub(crate) rendered_frames: u64,
     pub(crate) underflow_frames: [u64; 2],
@@ -79,6 +83,8 @@ pub(crate) struct AudioRenderOwnerStats {
 impl AudioRenderOwnerStats {
     const fn new() -> Self {
         Self {
+            fx_ready: false,
+            fx_storage_failed: false,
             rendered_blocks: 0,
             rendered_frames: 0,
             underflow_frames: [0, 0],
@@ -96,6 +102,7 @@ pub(crate) fn audio_render_owner_stats() -> AudioRenderOwnerStats {
 pub(crate) fn publish_product_render_control(product: &ProductRuntime) {
     let mixer = product.mixer();
     let gains = mixer.stage_gains();
+    let effects = product_fx_controls(product.deck());
     let mut control = RenderControl::idle();
     control.master_gain = gains.master;
 
@@ -107,6 +114,8 @@ pub(crate) fn publish_product_render_control(product: &ProductRuntime) {
             .and_then(|loaded| loaded.wav_source);
         let stream_generation = active_stream_generation(deck);
         control.decks[index] = RenderDeckControl {
+            source_epoch: product.source_epoch(deck),
+            fx: effects[index],
             playing: deck_state.playing && source.is_some() && stream_generation != 0,
             stream_generation,
             source_sample_rate_hz: source
@@ -136,7 +145,22 @@ fn current_render_control() -> RenderControl {
 
 pub(crate) async fn run_audio_render_owner() -> ! {
     let output = RENDER_OUTPUT.init(RenderOutputBlock::silence());
-    let mut graph = FixedRateRenderGraph::new();
+    // Allocate once from the existing PSRAM heap before rendering. No buffer
+    // growth or whole-delay-line clearing occurs in the render loop.
+    let mut fx_memory = Vec::new();
+    if fx_memory
+        .try_reserve_exact(FX_TOTAL_STORAGE_SAMPLES)
+        .is_err()
+    {
+        fx_memory_failed().await;
+    }
+    fx_memory.resize(FX_TOTAL_STORAGE_SAMPLES, 0.0f32);
+    let (fx_a, fx_b) = fx_memory.split_at_mut(FX_DECK_STORAGE_SAMPLES);
+    let mut graph = match FixedRateRenderGraph::with_fx([fx_a, fx_b]) {
+        Ok(graph) => graph,
+        Err(_) => fx_memory_failed().await,
+    };
+    RENDER_STATS.lock(|cell| cell.borrow_mut().fx_ready = true);
     let mut sink = ReferenceSink::new();
     let mut sources = [
         CanonicalSource::new(HISTORY_A.take()).expect("history A capacity"),
@@ -284,5 +308,13 @@ pub(crate) async fn run_audio_render_owner() -> ! {
         });
 
         Timer::after(Duration::from_micros(RENDER_BLOCK_PERIOD_US)).await;
+    }
+}
+
+async fn fx_memory_failed() -> ! {
+    RENDER_STATS.lock(|cell| cell.borrow_mut().fx_storage_failed = true);
+    // Fail closed: do not advance the reference consumer with missing effects.
+    loop {
+        Timer::after(Duration::from_millis(250)).await;
     }
 }

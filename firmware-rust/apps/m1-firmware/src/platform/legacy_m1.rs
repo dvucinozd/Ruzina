@@ -62,7 +62,10 @@ async fn deck_transport_owner_task() {
     crate::deck_effect_owners::run_transport_owner().await
 }
 
-#[cfg(feature = "usb1-controller-bringup")]
+#[cfg(all(
+    feature = "usb1-controller-bringup",
+    not(feature = "render-graph-bringup")
+))]
 #[embassy_executor::task]
 async fn deck_audio_dsp_owner_task() {
     crate::deck_effect_owners::run_audio_dsp_owner().await
@@ -184,6 +187,7 @@ pub(super) fn start(spawner: Spawner, peripherals: esp_hal::peripherals::Periphe
         spawner.spawn(
             deck_transport_owner_task().expect("deck transport owner task slot must be available"),
         );
+        #[cfg(not(feature = "render-graph-bringup"))]
         spawner.spawn(
             deck_audio_dsp_owner_task().expect("deck audio DSP owner task slot must be available"),
         );

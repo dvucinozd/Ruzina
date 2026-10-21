@@ -713,6 +713,7 @@ pub struct DelayFx<'a> {
     capacity_frames: usize,
     sample_rate: u32,
     write_index: usize,
+    written_frames: usize,
     delay_frames: usize,
     config: DelayConfig,
     allocated: bool,
@@ -733,6 +734,7 @@ impl<'a> DelayFx<'a> {
             capacity_frames,
             sample_rate,
             write_index: 0,
+            written_frames: 0,
             delay_frames: 0,
             config: DelayConfig::default(),
             allocated,
@@ -748,16 +750,12 @@ impl<'a> DelayFx<'a> {
 
     pub fn reset(&mut self) {
         self.write_index = 0;
+        // Invalidate old audio in O(1); reads remain zero until overwritten.
+        self.written_frames = 0;
         self.fb_lp = [0.0; 2];
         self.wet_cur_q15 = 0;
         self.feedback_cur_q15 = 0;
         self.tail_frames_remaining = 0;
-        for sample in &mut self.left[..self.capacity_frames] {
-            *sample = 0.0;
-        }
-        for sample in &mut self.right[..self.capacity_frames] {
-            *sample = 0.0;
-        }
     }
 
     pub fn configure(&mut self, config: DelayConfig) {
@@ -853,8 +851,9 @@ impl<'a> DelayFx<'a> {
             self.write_index + self.capacity_frames - self.delay_frames
         };
 
-        let delayed_l = self.left[read_index];
-        let delayed_r = self.right[read_index];
+        let valid = self.written_frames >= self.delay_frames;
+        let delayed_l = if valid { self.left[read_index] } else { 0.0 };
+        let delayed_r = if valid { self.right[read_index] } else { 0.0 };
 
         let out_l = input.left + q15_mul_float(delayed_l, self.wet_cur_q15);
         let out_r = input.right + q15_mul_float(delayed_r, self.wet_cur_q15);
@@ -870,6 +869,10 @@ impl<'a> DelayFx<'a> {
 
         self.left[self.write_index] = if active { input.left + fb_l } else { fb_l };
         self.right[self.write_index] = if active { input.right + fb_r } else { fb_r };
+        self.written_frames = self
+            .written_frames
+            .saturating_add(1)
+            .min(self.capacity_frames);
 
         self.write_index += 1;
         if self.write_index >= self.capacity_frames {
@@ -946,6 +949,7 @@ pub struct FlangerFx<'a> {
     capacity_frames: usize,
     sample_rate: u32,
     write_index: usize,
+    written_frames: usize,
     config: FlangerConfig,
     allocated: bool,
     lfo_phase_q32: u32,
@@ -967,6 +971,7 @@ impl<'a> FlangerFx<'a> {
             capacity_frames,
             sample_rate,
             write_index: 0,
+            written_frames: 0,
             config: FlangerConfig::default(),
             allocated,
             lfo_phase_q32: 0,
@@ -982,15 +987,11 @@ impl<'a> FlangerFx<'a> {
 
     pub fn reset(&mut self) {
         self.write_index = 0;
+        // Both interpolation taps validate their distance from this reset.
+        self.written_frames = 0;
         self.lfo_phase_q32 = 0;
         self.wet_cur_q15 = 0;
         self.feedback_cur_q15 = 0;
-        for sample in &mut self.left[..self.capacity_frames] {
-            *sample = 0.0;
-        }
-        for sample in &mut self.right[..self.capacity_frames] {
-            *sample = 0.0;
-        }
     }
 
     pub fn configure(&mut self, config: FlangerConfig) {
@@ -1067,8 +1068,20 @@ impl<'a> FlangerFx<'a> {
             idx0 - 1
         };
 
-        let delayed_l = read_delayed(&*self.left, idx0, idx1, frac_q16);
-        let delayed_r = read_delayed(&*self.right, idx0, idx1, frac_q16);
+        let distance0 = if delay_int == 0 {
+            self.capacity_frames
+        } else {
+            delay_int
+        };
+        let valid0 = self.written_frames >= distance0;
+        let valid1 = self.written_frames > delay_int;
+        let read = |buffer: &[f32]| {
+            let a = if valid0 { buffer[idx0] } else { 0.0 };
+            let b = if valid1 { buffer[idx1] } else { 0.0 };
+            a + (b - a) * (frac_q16 as f32 / 65_536.0)
+        };
+        let delayed_l = read(&*self.left);
+        let delayed_r = read(&*self.right);
 
         let wet_gain = self.wet_cur_q15 as f32 / 32_768.0;
         let feedback_gain = self.feedback_cur_q15 as f32 / 32_768.0;
@@ -1078,6 +1091,10 @@ impl<'a> FlangerFx<'a> {
 
         self.left[self.write_index] = input.left + delayed_l * feedback_gain;
         self.right[self.write_index] = input.right + delayed_r * feedback_gain;
+        self.written_frames = self
+            .written_frames
+            .saturating_add(1)
+            .min(self.capacity_frames);
 
         self.write_index += 1;
         if self.write_index >= self.capacity_frames {
@@ -1095,6 +1112,7 @@ impl<'a> FlangerFx<'a> {
     }
 }
 
+#[cfg(test)]
 fn read_delayed(buffer: &[f32], idx0: usize, idx1: usize, frac_q16: u32) -> f32 {
     let fraction = frac_q16 as f32 / 65_536.0;
     buffer[idx0] + (buffer[idx1] - buffer[idx0]) * fraction
@@ -1925,6 +1943,31 @@ mod tests {
     }
 
     #[test]
+    fn flanger_logical_reset_never_reads_unwritten_or_previous_source_samples() {
+        let mut left = [f32::NAN; 292];
+        let mut right = [f32::NAN; 292];
+        let mut fx = FlangerFx::new(&mut left, &mut right, 48_000);
+        fx.configure(FlangerConfig {
+            enabled: true,
+            period_ms: 500,
+            depth_q15: 32_767,
+        });
+        for _ in 0..1_000 {
+            assert_eq!(fx.process_frame(DspFrame::default()), DspFrame::default());
+        }
+        for _ in 0..1_000 {
+            fx.process_frame(DspFrame {
+                left: 12_000.0,
+                right: -6_000.0,
+            });
+        }
+        fx.reset();
+        for _ in 0..2_000 {
+            assert_eq!(fx.process_frame(DspFrame::default()), DspFrame::default());
+        }
+    }
+
+    #[test]
     fn unallocated_flanger_bypasses_input() {
         let mut left = [];
         let mut right = [];
@@ -2162,6 +2205,7 @@ mod tests {
             fx.left[i] = sample;
             fx.right[i] = sample;
         }
+        fx.written_frames = fx.capacity_frames;
 
         let phase = fx.lfo_phase_q32.wrapping_add(fx.lfo_step_q32);
         let tri_q16 = if phase < 0x8000_0000 {
@@ -2219,6 +2263,32 @@ mod tests {
             right: -2_345,
         };
         assert_eq!(fx.process_pcm_frame(input), input);
+    }
+
+    #[test]
+    fn delay_logical_reset_masks_dirty_storage_even_when_delay_length_changes() {
+        let mut left = [f32::NAN; 481];
+        let mut right = [f32::NAN; 481];
+        let mut fx = DelayFx::new(&mut left, &mut right, 48_000);
+        let mut config = delay_config(true, DelayMode::Echo, 1, 32_767, 16_000);
+        fx.configure(config);
+        for _ in 0..1_000 {
+            assert_eq!(fx.process_frame(DspFrame::default()), DspFrame::default());
+        }
+        for _ in 0..1_000 {
+            fx.process_frame(DspFrame {
+                left: 12_000.0,
+                right: -6_000.0,
+            });
+        }
+        fx.reset();
+        for delay_ms in [1, 10, 2, 9] {
+            config.delay_ms = delay_ms;
+            fx.configure(config);
+            for _ in 0..150 {
+                assert_eq!(fx.process_frame(DspFrame::default()), DspFrame::default());
+            }
+        }
     }
 
     #[test]

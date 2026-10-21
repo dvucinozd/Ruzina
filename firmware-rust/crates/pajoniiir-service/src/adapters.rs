@@ -17,7 +17,7 @@ pub fn scheduler(owner: &EventScheduler, stamp: Stamp) -> Publication<SchedulerS
         value: owner.stats(),
     }
 }
-pub fn render(owner: &FixedRateRenderGraph, stamp: Stamp) -> Publication<RenderHealth> {
+pub fn render(owner: &FixedRateRenderGraph<'_>, stamp: Stamp) -> Publication<RenderHealth> {
     Publication {
         stamp,
         value: owner.health(),

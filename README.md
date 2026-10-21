@@ -4,7 +4,7 @@
 
 ## Active direction — 2026-10-20
 
-Latest audio work: [streamed PCM loops and confirmed media position](docs/M1_RUST_PCM_LOOP_GATE_2026-10-21.md) executes WAV loops through the shared producer, canonical source and receipt-confirmed transport. Twelve loop scenarios and a composed product-control scenario cover sample boundaries, long/short loops, edit lifecycle and two decks; physical output qualification remains open.
+Latest audio work: [Beat/Pad FX in the PCM render graph](docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) processes real samples before the PFL tap and faders, with bounded effect memory and source-bound reset/tail handling. The streamed PCM loop package is merged through PR #13. Physical output and listening qualification remain open.
 
 Latest reliability work: [composed Library/source/transport/cue-write failures](docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) adds per-deck seek failure handling, responsive faulted cue storage and stale-source completion rejection, with ten new composed tests. Hardware driver recovery remains pending.
 
@@ -12,7 +12,7 @@ Integration review: [PR #5–#11 source review and regression corrections](docs/
 
 Latest service work: [composed product/controller/media owner health](docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md), with bounded diagnostic handoff, actual effect-queue backpressure/recovery tests and opt-in legacy task wiring. Guition peripheral activation and physical acceptance remain open; all 38 host UI pixel goldens are unchanged.
 
-Latest mixer/FX work: [authoritative mixer/PFL and Beat/Pad FX controls](docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) in both host UI geometries, with momentary release/recovery tests and 24 reviewed pixel goldens. Audible FX execution and physical output remain open.
+Latest mixer/FX UI: [authoritative mixer/PFL and Beat/Pad FX controls](docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) in both host UI geometries, with momentary release/recovery tests and 24 reviewed pixel goldens. PCM FX execution is now connected in the reference target; physical output remains open.
 
 Latest UI work: [interactive deck/Library/cue/session-settings simulator](docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md) uses authoritative deck state, imported waveforms and reviewed screenshots for both Guition geometries. Full UI parity and physical board/audio qualification remain open.
 

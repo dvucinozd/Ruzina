@@ -201,6 +201,10 @@ impl<'a> CanonicalSource<'a> {
         self.generation
     }
 
+    pub const fn faulted(&self) -> bool {
+        self.faulted
+    }
+
     fn scratch_position(&self) -> Option<(u64, f32)> {
         if self.scratch_expired {
             return None;

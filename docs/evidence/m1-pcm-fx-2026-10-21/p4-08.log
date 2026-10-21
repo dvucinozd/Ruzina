@@ -1,0 +1,14 @@
+   Compiling pajoniiir-deck v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-deck)
+   Compiling pajoniiir-audio-runtime v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-runtime)
+   Compiling pajoniiir-ui-model v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-ui-model)
+   Compiling pajoniiir-m1-firmware v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/apps/m1-firmware)
+warning: unused import: `raw::CriticalSectionRawMutex`
+  --> src/usb1_controller.rs:16:58
+   |
+16 | use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `pajoniiir-m1-firmware` (bin "pajoniiir-m1-firmware") generated 1 warning (run `cargo fix --bin "pajoniiir-m1-firmware" -p pajoniiir-m1-firmware` to apply 1 suggestion)
+    Finished `release` profile [optimized] target(s) in 6.00s

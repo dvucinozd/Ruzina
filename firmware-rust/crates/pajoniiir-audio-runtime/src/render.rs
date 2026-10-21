@@ -1,3 +1,4 @@
+use crate::fx::{DeckFx, DeckFxControl, FxBufferError};
 use crate::source::{CanonicalSource, SourceControl, SourceSample};
 use pajoniiir_audio_dsp::{DspFrame, EqState, FilterState, PcmFrame, ResamplerState};
 use pajoniiir_mixer::{LimiterStats, limit_main_sample};
@@ -7,6 +8,8 @@ pub const RENDER_BLOCK_FRAMES: usize = 128;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RenderDeckControl {
+    pub source_epoch: u32,
+    pub fx: DeckFxControl,
     pub playing: bool,
     pub stream_generation: u32,
     pub source_sample_rate_hz: u32,
@@ -27,6 +30,8 @@ pub struct RenderDeckControl {
 impl RenderDeckControl {
     pub const fn idle() -> Self {
         Self {
+            source_epoch: 0,
+            fx: DeckFxControl::bypass(),
             playing: false,
             stream_generation: 0,
             source_sample_rate_hz: RENDER_SAMPLE_RATE_HZ,
@@ -133,6 +138,7 @@ pub struct RenderHealth {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct RenderDeckState {
+    scope: Option<(u32, u32)>,
     resampler: ResamplerState,
     source_starved: bool,
     eq: EqState,
@@ -142,6 +148,7 @@ struct RenderDeckState {
 impl RenderDeckState {
     fn new() -> Self {
         Self {
+            scope: None,
             resampler: ResamplerState::new(),
             source_starved: false,
             eq: EqState::new(RENDER_SAMPLE_RATE_HZ),
@@ -150,6 +157,7 @@ impl RenderDeckState {
     }
 
     fn reset(&mut self) {
+        self.scope = None;
         self.resampler.reset();
         self.source_starved = false;
         self.eq.reset_filters();
@@ -157,22 +165,42 @@ impl RenderDeckState {
     }
 }
 
-pub struct FixedRateRenderGraph {
+pub struct FixedRateRenderGraph<'a> {
     decks: [RenderDeckState; 2],
     health: RenderHealth,
+    fx: Option<[DeckFx<'a>; 2]>,
 }
 
-impl FixedRateRenderGraph {
+impl<'a> FixedRateRenderGraph<'a> {
+    /// Compatibility graph without an FX rack. Use `with_fx` for product FX.
     pub fn new() -> Self {
         Self {
             decks: [RenderDeckState::new(), RenderDeckState::new()],
             health: RenderHealth::default(),
+            fx: None,
         }
+    }
+
+    /// Bind caller-owned effect memory for both decks before rendering starts.
+    pub fn with_fx(storage: [&'a mut [f32]; 2]) -> Result<Self, FxBufferError> {
+        let [a, b] = storage;
+        let mut graph = Self::new();
+        graph.fx = Some([DeckFx::new(a)?, DeckFx::new(b)?]);
+        Ok(graph)
+    }
+
+    pub const fn has_fx_storage(&self) -> bool {
+        self.fx.is_some()
     }
 
     pub fn reset_deck(&mut self, deck: usize) {
         if let Some(state) = self.decks.get_mut(deck) {
             state.reset();
+        }
+        if let Some(fx) = &mut self.fx
+            && let Some(deck) = fx.get_mut(deck)
+        {
+            deck.reset();
         }
     }
 
@@ -231,10 +259,18 @@ impl FixedRateRenderGraph {
     /// deliberately retains its guard for modes that need random access.
     pub fn render_canonical_block(
         &mut self,
-        control: RenderControl,
+        mut control: RenderControl,
         output: &mut RenderOutputBlock,
         sources: &mut [CanonicalSource<'_>; 2],
     ) -> RenderBlockReport {
+        for (i, source) in sources.iter().enumerate() {
+            if control.decks[i].stream_generation == 0
+                || control.decks[i].stream_generation != source.generation()
+                || source.faulted()
+            {
+                control.decks[i].source_epoch = 0; // revoke FX memory and tails too
+            }
+        }
         self.render_with(control, output, |deck, control, _| {
             if control.stream_generation == 0
                 || control.stream_generation != sources[deck].generation()
@@ -270,12 +306,21 @@ impl FixedRateRenderGraph {
         for deck in 0..2 {
             let deck_control = control.decks[deck];
             let state = &mut self.decks[deck];
+            let scope = (deck_control.source_epoch != 0 && deck_control.stream_generation != 0)
+                .then_some((deck_control.source_epoch, deck_control.stream_generation));
+            if self.fx.is_some() && state.scope != scope {
+                state.reset();
+                state.scope = scope;
+            }
             state.eq.set_raw(
                 deck_control.eq_low,
                 deck_control.eq_mid,
                 deck_control.eq_high,
             );
             state.filter.set_raw(deck_control.filter_raw);
+            if let Some(fx) = &mut self.fx {
+                fx[deck].configure(scope, deck_control.fx);
+            }
         }
 
         for frame_index in 0..RENDER_BLOCK_FRAMES {
@@ -292,20 +337,27 @@ impl FixedRateRenderGraph {
                     report.underflow_frames[deck].saturating_add(u32::from(sample.starved));
                 report.deferred_mode_frames[deck] =
                     report.deferred_mode_frames[deck].saturating_add(u32::from(sample.deferred));
-                if (!deck_control.playing && !deck_control.scratch_active)
+                let has_input = !((!deck_control.playing && !deck_control.scratch_active)
                     || sample.starved
                     || sample.deferred
-                    || sample.silent
-                {
+                    || sample.silent);
+                if !has_input && self.fx.is_none() {
                     continue;
                 }
 
-                let mut dsp = DspFrame::from(sample.frame);
+                let mut dsp = if has_input {
+                    DspFrame::from(sample.frame)
+                } else {
+                    DspFrame::default()
+                };
                 let pre_gain = sanitize_gain(deck_control.pre_gain);
                 dsp.left *= pre_gain;
                 dsp.right *= pre_gain;
                 dsp = self.decks[deck].eq.process_frame(dsp);
                 dsp = self.decks[deck].filter.process_frame(true, dsp);
+                if let Some(fx) = &mut self.fx {
+                    dsp = fx[deck].process(dsp);
+                }
 
                 if deck_control.pfl_enabled {
                     output.pfl[deck][frame_index] = PcmFrame::from(dsp);
@@ -348,7 +400,7 @@ impl FixedRateRenderGraph {
     }
 }
 
-impl Default for FixedRateRenderGraph {
+impl Default for FixedRateRenderGraph<'_> {
     fn default() -> Self {
         Self::new()
     }
@@ -446,6 +498,8 @@ mod tests {
 
     fn active_deck() -> RenderDeckControl {
         RenderDeckControl {
+            source_epoch: 0,
+            fx: DeckFxControl::bypass(),
             playing: true,
             stream_generation: 0,
             source_sample_rate_hz: RENDER_SAMPLE_RATE_HZ,

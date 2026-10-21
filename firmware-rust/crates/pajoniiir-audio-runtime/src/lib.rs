@@ -1,6 +1,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod fx;
 pub mod history;
 pub mod pcm_stream;
 pub mod playback;

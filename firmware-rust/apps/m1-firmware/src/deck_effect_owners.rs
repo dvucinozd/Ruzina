@@ -288,7 +288,16 @@ pub(crate) fn dispatch_product_effects(product: &mut ProductRuntime) -> EffectOw
     }
 
     while let Some(effect) = product.next_audio_dsp_effect() {
-        match try_submit(DeckEffectTarget::AudioDsp, effect, &AUDIO_DSP_COMMANDS) {
+        // The render owner applies the latest source-bound product snapshot at
+        // a block boundary. Historical queued edges never re-enable an old pad.
+        #[cfg(feature = "render-graph-bringup")]
+        let submitted = AUDIO_DSP_OWNER_STATE
+            .lock(|cell| cell.borrow_mut().apply(effect))
+            .then_some(())
+            .ok_or(());
+        #[cfg(not(feature = "render-graph-bringup"))]
+        let submitted = try_submit(DeckEffectTarget::AudioDsp, effect, &AUDIO_DSP_COMMANDS);
+        match submitted {
             Ok(()) => {
                 let completed = product.complete_audio_dsp_effect(true);
                 debug_assert!(completed);
