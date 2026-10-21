@@ -9,6 +9,16 @@ fn observed(value: Option<u32>) -> String {
 pub fn refresh(ui: &MainWindow, s: Snapshot) {
     let board = profile(s.identity.board);
     let (label, severity, recovery) = match s.health() {
+        Health::RuntimeStale => (
+            "HOST / RUNTIME DATA STALE",
+            2,
+            "Owner heartbeat missing or clock invalid; last values are historical.",
+        ),
+        Health::RuntimeAwaiting => (
+            "HOST / WAITING FOR RUNTIME",
+            1,
+            "No current publication for this owner generation.",
+        ),
         Health::DemoMediaReady => (
             "HOST / DEMO MEDIA READY",
             0,
@@ -46,7 +56,23 @@ pub fn refresh(ui: &MainWindow, s: Snapshot) {
         AnalysisStatus::Rejected => "REJECTED / BPM FALLBACK",
     };
     let c = s.counters;
-    ui.set_health_runtime(format!("HOST SESSION / OBSERVED EVENTS\nElapsed input clock: {} ms\nMedia: {:?}\nDeck 1 analysis: {}\nDeck 2 analysis: {}\nSemantic events delivered: {}\nMedia connect / remove: {} / {}\nLoads attempt / complete / blocked: {} / {} / {}\nAnalysis published / missing / rejected: {} / {} / {}\nPlayback rejected / track ends: {} / {}\nHistory retained / overwritten: {} / {}\nAudio / USB / display: NO DEVICE ADAPTER", s.elapsed_ms, s.runtime.media, analysis(s.runtime.analysis[0]), analysis(s.runtime.analysis[1]), c.control_events, c.media_connects, c.media_removals, c.load_attempts, c.loads_completed, c.loads_blocked, c.analysis_ready, c.analysis_missing, c.analysis_rejected, c.playback_rejected, c.end_of_track, s.events.len(), s.events.overwritten).into());
+    let publication = s
+        .observation
+        .map(|o| {
+            format!(
+                "Publication: {:?} / {}\nGeneration: {} / sequence: {} / age: {} ms\n",
+                o.freshness,
+                o.stamp.map_or("UNKNOWN", |s| match s.activity {
+                    pajoniiir_service::publication::Activity::Idle => "IDLE",
+                    pajoniiir_service::publication::Activity::Active => "ACTIVE",
+                }),
+                o.generation.map_or("NONE".into(), |v| v.to_string()),
+                o.stamp.map_or("NONE".into(), |s| s.sequence.to_string()),
+                o.age_ms.map_or("UNKNOWN".into(), |v| v.to_string()),
+            )
+        })
+        .unwrap_or("Synchronous snapshot / no heartbeat\n".into());
+    ui.set_health_runtime(format!("HOST SESSION / OBSERVED EVENTS\n{publication}Elapsed input clock: {} ms\nMedia (last sample): {:?}\nDeck 1 analysis: {}\nDeck 2 analysis: {}\nSemantic events delivered: {}\nMedia connect / remove: {} / {}\nLoads attempt / complete / blocked: {} / {} / {}\nAnalysis published / missing / rejected: {} / {} / {}\nPlayback rejected / track ends: {} / {}\nHistory retained / overwritten: {} / {}\nAudio / USB / display: NO DEVICE ADAPTER", s.elapsed_ms, s.runtime.media, analysis(s.runtime.analysis[0]), analysis(s.runtime.analysis[1]), c.control_events, c.media_connects, c.media_removals, c.load_attempts, c.loads_completed, c.loads_blocked, c.analysis_ready, c.analysis_missing, c.analysis_rejected, c.playback_rejected, c.end_of_track, s.events.len(), s.events.overwritten).into());
     let events: Vec<slint::SharedString> = (0..s.events.len())
         .filter_map(|i| s.events.get(i))
         .map(|e| {

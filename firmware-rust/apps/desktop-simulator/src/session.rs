@@ -10,9 +10,13 @@ use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_session::{MediaSession, MediaSourceId};
 use pajoniiir_mixer::MixerState;
 use pajoniiir_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};
+use pajoniiir_service::publication::{Activity, Publication, Slot, Stamp};
 use pajoniiir_service::{
     AnalysisStatus, EventKind, Identity, LoadBlock, MediaStatus, RuntimeStatus, Service, Snapshot,
 };
+
+/// Host owner heartbeat contract, independent of whether a deck is playing.
+pub const RUNTIME_MAX_AGE_MS: u64 = 1000;
 use pajoniiir_track_analysis::{
     TrackAnalysis,
     owned::{AnalysisIdentity, AnalysisPins},
@@ -47,6 +51,9 @@ pub struct Session {
     fraction: [u64; 2],
     service: Service,
     analysis_status: [AnalysisStatus; 2],
+    health_publication: Slot<RuntimeStatus>,
+    health_generation: u64,
+    health_sequence: u64,
 }
 
 pub const fn deck(index: usize) -> DeckId {
@@ -77,6 +84,9 @@ impl Session {
             fraction: [0; 2],
             service: Service::new(Identity::host(board, option_env!("M1_IMAGE_ID"))),
             analysis_status: [AnalysisStatus::Unloaded; 2],
+            health_publication: Slot::new(RUNTIME_MAX_AGE_MS),
+            health_generation: 0,
+            health_sequence: 0,
         };
         result.reconnect();
         result
@@ -89,8 +99,10 @@ impl Session {
         self.media.on_connect(MediaSourceId::new(1).unwrap());
         if !was_connected {
             self.service.record(EventKind::MediaConnected);
+            self.restart_health_owner();
         }
         self.message = "Demo media connected · choose a track".into();
+        self.publish_health();
     }
     pub fn detach(&mut self) {
         let was_connected = self.connected();
@@ -108,8 +120,17 @@ impl Session {
             self.analysis_status[i] = AnalysisStatus::Unloaded;
         }
         self.message = "Media removed · decks stopped · reconnect in Library".into();
+        if was_connected {
+            self.restart_health_owner();
+        }
+        self.publish_health();
     }
     pub fn load(&mut self, target: DeckId) -> bool {
+        let loaded = self.load_inner(target);
+        self.publish_health();
+        loaded
+    }
+    fn load_inner(&mut self, target: DeckId) -> bool {
         self.service.record(EventKind::LoadAttempt(target));
         let i = index(target);
         let Some(lease) = self.media.lease() else {
@@ -242,6 +263,10 @@ impl Session {
         )
     }
     pub fn control(&mut self, event: ControlEvent) {
+        self.control_inner(event);
+        self.publish_health();
+    }
+    fn control_inner(&mut self, event: ControlEvent) {
         self.service.note_control();
         if event.control.domain() == ControlDomain::Mixer {
             self.mixer.handle_control(event);
@@ -352,7 +377,7 @@ impl Session {
     /// Explicit host-only transport clock. Fractional pitch time is retained;
     /// real product timing continues to come from its PCM owner.
     pub fn tick(&mut self, elapsed_ms: u32) {
-        self.service.advance(u64::from(elapsed_ms));
+        self.observe_elapsed(elapsed_ms);
         for i in 0..2 {
             let p = self.presentation(i);
             if !p.transport.playing {
@@ -377,9 +402,51 @@ impl Session {
                 self.decks.set_position_ms(deck(i), next as u32);
             }
         }
+        self.publish_health();
+    }
+    /// Advance only the observer. Replay uses this to model a stopped publisher.
+    /// The interactive timer normally calls tick(), which also runs the owner.
+    pub fn observe_elapsed(&mut self, elapsed_ms: u32) {
+        self.service.advance(u64::from(elapsed_ms));
+    }
+    fn restart_health_owner(&mut self) {
+        self.health_publication.unbind();
+        if let Some(next) = self.health_generation.checked_add(1) {
+            self.health_generation = next;
+            assert!(self.health_publication.bind(next));
+            self.health_sequence = 0;
+        }
+    }
+    fn publish_health(&mut self) {
+        let Some(sequence) = self.health_sequence.checked_add(1) else {
+            return;
+        };
+        let publication = Publication {
+            stamp: Stamp {
+                generation: self.health_generation,
+                sequence,
+                sampled_ms: self.service.elapsed_ms(),
+                activity: if (0..2).any(|i| self.presentation(i).transport.playing) {
+                    Activity::Active
+                } else {
+                    Activity::Idle
+                },
+            },
+            value: self.runtime_status(),
+        };
+        if self
+            .health_publication
+            .accept(publication, self.service.elapsed_ms())
+            .is_ok()
+        {
+            self.health_sequence = sequence;
+        }
     }
     pub fn diagnostics(&self) -> Snapshot {
-        self.service.snapshot(RuntimeStatus {
+        self.service.observed_snapshot(&self.health_publication)
+    }
+    fn runtime_status(&self) -> RuntimeStatus {
+        RuntimeStatus {
             media: if self.connected() {
                 MediaStatus::Connected
             } else {
@@ -392,7 +459,7 @@ impl Session {
                     AnalysisStatus::Unloaded
                 }
             }),
-        })
+        }
     }
 }
 

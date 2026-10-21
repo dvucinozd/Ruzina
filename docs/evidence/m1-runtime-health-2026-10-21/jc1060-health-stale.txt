@@ -1,0 +1,23 @@
+M1_SERVICE_DIAGNOSTIC_V2
+environment=HostSimulation
+board_profile=JC1060P470C_I_W_Y
+image_id=NOT_RECORDED
+minimum_revision_documented=302
+flash_bytes_documented=16777216
+psram_bytes_documented=33554432
+chip_revision_observed=NOT_MEASURED
+flash_bytes_observed=NOT_MEASURED
+psram_bytes_observed=NOT_MEASURED
+reset_code_observed=NOT_MEASURED
+identity_check=NotMeasured
+sample_elapsed_ms=1001
+runtime_publication=Some(Observation { freshness: Stale, generation: Some(1), stamp: Some(Stamp { generation: 1, sequence: 1, sampled_ms: 0, activity: Idle }), age_ms: Some(1001) })
+health_scope=RuntimeStale
+media=Connected
+analysis=[Unloaded, Unloaded]
+counters=Counters { media_connects: 1, media_removals: 0, load_attempts: 0, loads_completed: 0, loads_blocked: 0, analysis_ready: 0, analysis_missing: 0, analysis_rejected: 0, playback_rejected: 0, end_of_track: 0, control_events: 0 }
+events_retained=2
+events_overwritten=0
+event=1 t=0 Boot
+event=2 t=0 MediaConnected
+readiness=NOT_QUALIFIED

@@ -21,5 +21,8 @@ pajoniiir-service.workspace = true
 pajoniiir-track-analysis = { workspace = true, features = ["owned"] }
 slint.workspace = true
 
+[dev-dependencies]
+pajoniiir-service = { workspace = true, features = ["owner-adapters"] }
+
 [build-dependencies]
 slint-build.workspace = true

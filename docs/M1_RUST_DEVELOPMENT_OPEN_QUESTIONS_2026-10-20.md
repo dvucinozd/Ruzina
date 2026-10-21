@@ -2,6 +2,10 @@
 
 Date: 2026-10-20
 
+Latest follow-up: [runtime health publication generations/freshness](M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md)
+adds host heartbeat handling and optional scheduler/render/sink counter adapters.
+Composed device owner integration and physical acceptance remain open.
+
 Review baseline: `094563d489c7c0b9b0710578c3b34c4402420b2b` on `main`, after [PR #4](https://github.com/dvucinozd/Pajoniiir-M1/pull/4). This is a source and integration review, not hardware or operator acceptance. Both boards are still in transit.
 
 ## Integration and evidence

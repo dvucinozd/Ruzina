@@ -62,28 +62,42 @@
         1024,
         600
       ],
-      "rgb_sha256": "f7ef53f8b2de3a573c0f1f27ac38df024b84184754adb367a78d3a3097bc1ccd"
+      "rgb_sha256": "9d4b13a8b4660ef5307fca3f8ce23fdcf7de8d2c3ef17570117cb9b2bcbe5f4a"
+    },
+    "jc1060-health-heartbeat-recovered": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "d44037193229c8dcd99adadd3c8cb6bd8321c87f96a4f754c88e758063a95d56"
     },
     "jc1060-health-initial": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "13f87f21163fac5a7144f618e90b790a465ce04d288e616912e2d8c1e06f05a5"
+      "rgb_sha256": "1eb9907b79624144c08a3d0da55bec34b52554fa397510a3c7be430c8aa548d3"
     },
     "jc1060-health-recovered": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "cfe580ebf4b11983dd6a816aa09f9a927095e8b4dac18174b99ca0881187f40d"
+      "rgb_sha256": "081be8a0127afcc252103b98be9350d7db0da25e5b98a3a71dd6e3e4d1a72942"
     },
     "jc1060-health-removed": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "c7fec43cc48c1e9cf3b1adb0c9dfb61c4f8435221399f1b644b21e945139445e"
+      "rgb_sha256": "43c20d16770b69ed802f99b0a0b8e30c3f36436ae36faca2de807e91ebc732a9"
+    },
+    "jc1060-health-stale": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "6ea0fdcfdfab884fe930bdb1c9d8ff7fe8b068da8e65b5bd47658e54421f64d2"
     },
     "jc1060-library-fallback": {
       "size": [
@@ -181,28 +195,42 @@
         800,
         1280
       ],
-      "rgb_sha256": "0809907f3d102029defcaf3366bf36c2599168f4d9084d28e8534a0d1a78ca88"
+      "rgb_sha256": "049b56389eb0750a693cdceaa702f6f740137b637fa37eeeb475d86faf2a1400"
+    },
+    "jc8012-health-heartbeat-recovered": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "d186127a701c7b3100bee8b09236941c908af3803c6800a69fe3c2d60441a4c5"
     },
     "jc8012-health-initial": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "7a05394168bf77d809f18d20326f1911ceaf9b63ab813e27e397ff7205b862d3"
+      "rgb_sha256": "32b5f4cf1fa7d4555584a7229af13ac2da0c1dc2b27b0b05a6363b76a291c74b"
     },
     "jc8012-health-recovered": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "beaa9f960df8261295c6bb1eb88c86af4b793ed61211a6b3f0e4a04673481483"
+      "rgb_sha256": "b419b07623ec7bdecd4de743963cdfd02e96f9232027b70205a1d6421b2267fd"
     },
     "jc8012-health-removed": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "6705392cffff0a7666b7c5772d3d177f6ef84034423cb877f4bb260a822f0446"
+      "rgb_sha256": "c6b8b51c4d371f266db30777f63b2e09896628b75725682f5127a172e33ca943"
+    },
+    "jc8012-health-stale": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "cef0efad6b2cc5726f3541df3b799de0db5eabdb8ebb1debb852dccd8e646df4"
     },
     "jc8012-library-fallback": {
       "size": [

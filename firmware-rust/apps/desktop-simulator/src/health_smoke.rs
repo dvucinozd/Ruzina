@@ -1,5 +1,6 @@
 use super::smoke::{capture, click, nav};
 use super::*;
+use pajoniiir_service::publication::{Activity, Freshness};
 use pajoniiir_service::{AnalysisStatus, Health};
 use std::path::Path;
 
@@ -17,6 +18,54 @@ pub fn capture_health(
         .map_err(|_| "diagnostic report overflow")?;
     std::fs::write(output.join(format!("{name}.txt")), report.bytes())?;
     capture(ui, output, name)
+}
+
+pub fn freshness(
+    ui: &MainWindow,
+    state: &RefCell<Session>,
+    output: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let idle = state.borrow().diagnostics().observation.unwrap();
+    assert_eq!(idle.freshness, Freshness::Fresh);
+    assert_eq!(idle.stamp.unwrap().activity, Activity::Idle);
+    state
+        .borrow_mut()
+        .observe_elapsed((session::RUNTIME_MAX_AGE_MS + 1) as u32);
+    refresh(ui, &state.borrow());
+    assert_eq!(state.borrow().diagnostics().health(), Health::RuntimeStale);
+    assert_eq!(ui.get_health_severity(), 2);
+    capture_health(ui, state, output, &format!("{name}-health-stale"))?;
+    // Merely rendering/reading never refreshes a stopped publisher.
+    refresh(ui, &state.borrow());
+    assert_eq!(
+        state.borrow().diagnostics().observation.unwrap().stamp,
+        idle.stamp
+    );
+    state.borrow_mut().tick(0);
+    refresh(ui, &state.borrow());
+    assert_eq!(
+        state.borrow().diagnostics().health(),
+        Health::DemoMediaReady
+    );
+    assert_eq!(
+        state
+            .borrow()
+            .diagnostics()
+            .observation
+            .unwrap()
+            .stamp
+            .unwrap()
+            .activity,
+        Activity::Idle
+    );
+    capture_health(
+        ui,
+        state,
+        output,
+        &format!("{name}-health-heartbeat-recovered"),
+    )?;
+    Ok(())
 }
 pub fn recovery(
     ui: &MainWindow,

@@ -6,7 +6,7 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
-Latest service: [shared no_std observations, Health UI and opt-in boot-report adapter](../docs/M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md). Host events are observed; missing device measurements and product readiness remain explicit. The target repeats an immutable boot snapshot, not a heartbeat.
+Latest service: [runtime publication generations/freshness and owner adapters](../docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md). Host Idle and stale publications are distinct; device task integration and product readiness remain open. The target repeats an immutable boot snapshot, not a heartbeat.
 
 Latest mixer/FX: [mixer/PFL, headphone and Beat/Pad FX host controls](../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) use authoritative shared state and 24 reviewed pixel goldens. Actual audible DSP/output and device UI qualification remain open.
 
