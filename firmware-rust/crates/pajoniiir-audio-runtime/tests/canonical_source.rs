@@ -354,6 +354,7 @@ fn live_render_keeps_other_deck_and_pfl_independent_during_starvation_and_mode_c
         RenderControl {
             decks: [deck, deck],
             master_gain: 1.0,
+            ..RenderControl::idle()
         },
         &mut output,
         &mut sources,
@@ -484,6 +485,7 @@ fn uncommitted_stream_and_stale_product_control_cannot_render_new_pcm() {
             RenderControl {
                 decks: [deck, RenderDeckControl::idle()],
                 master_gain: 1.0,
+                ..RenderControl::idle()
             },
             &mut output,
             &mut sources,
@@ -501,6 +503,7 @@ fn uncommitted_stream_and_stale_product_control_cannot_render_new_pcm() {
         RenderControl {
             decks: [deck, RenderDeckControl::idle()],
             master_gain: 1.0,
+            ..RenderControl::idle()
         },
         &mut output,
         &mut sources,

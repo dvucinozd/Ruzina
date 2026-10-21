@@ -315,7 +315,6 @@ fn loop_exit_resize_seek_and_replacement_revoke_old_pcm_and_receipts() {
             playback.render_permit(),
             0,
             &output,
-            &output.pfl[0],
             BlockProgress::default()
         )[0],
         Ok(())
@@ -361,6 +360,7 @@ fn two_looped_decks_publish_wrapped_position_only_after_completed_render() {
     let control = RenderControl {
         decks: [deck; 2],
         master_gain: 1.0,
+        ..RenderControl::idle()
     };
     let mut cursors = [PcmTransportCursor::new(); 2];
     for block_index in 0..80u64 {
@@ -379,13 +379,7 @@ fn two_looped_decks_publish_wrapped_position_only_after_completed_render() {
         };
         let first = block_index * 128;
         assert_eq!(
-            playback.submit_render(
-                playback.render_permit(),
-                first,
-                &block,
-                &block.pfl[0],
-                progress
-            )[0],
+            playback.submit_render(playback.render_permit(), first, &block, progress)[0],
             Ok(())
         );
         if block_index == 0 {

@@ -36,7 +36,7 @@ fn generation_replacement_keeps_other_decks_confirmed_position_and_rejects_bad_m
     assert_eq!(owner.confirmed_progress(1).unwrap().end_frame, 256);
     assert_eq!(owner.pending_progress(1).unwrap().1, 256);
     assert_eq!(
-        owner.submit_render(owner.render_permit(), 128, &render(), &pcm(), both),
+        owner.submit_render(owner.render_permit(), 128, &render(), both),
         [Err(SinkError::Stale); 2]
     );
     assert_eq!(owner.lane(SinkRole::Main).queued_blocks(), 0);
@@ -74,6 +74,7 @@ fn canonical_eof_and_seek_replacement_follow_completed_pcm_not_prefetch() {
             RenderDeckControl::idle(),
         ],
         master_gain: 1.0,
+        ..RenderControl::idle()
     };
     let mut a = [SinkBlock::EMPTY; 2];
     let mut b = [SinkBlock::EMPTY; 1];
@@ -93,7 +94,7 @@ fn canonical_eof_and_seek_replacement_follow_completed_pcm_not_prefetch() {
             source_frames: [report.source_frames_consumed[0] as u16, 0],
         };
         assert_eq!(
-            owner.submit_render(permit, first, &block, &block.pfl[0], progress)[0],
+            owner.submit_render(permit, first, &block, progress)[0],
             Ok(())
         );
     }
@@ -130,7 +131,7 @@ fn canonical_eof_and_seek_replacement_follow_completed_pcm_not_prefetch() {
         source_frames: [report.source_frames_consumed[0] as u16, 0],
     };
     assert_eq!(
-        owner.submit_render(permit, 256, &block, &block.pfl[0], progress)[0],
+        owner.submit_render(permit, 256, &block, progress)[0],
         Ok(())
     );
     assert_eq!(owner.complete(old_eof), Err(SinkError::Stale));
@@ -199,11 +200,12 @@ fn pcm() -> [PcmFrame; 128] {
 fn render() -> RenderOutputBlock {
     RenderOutputBlock {
         main: pcm(),
+        headphones: pcm(),
         ..RenderOutputBlock::silence()
     }
 }
 fn submit(owner: &mut PlaybackOutput<'_>, first: u64, progress: BlockProgress) {
-    let result = owner.submit_render(owner.render_permit(), first, &render(), &pcm(), progress);
+    let result = owner.submit_render(owner.render_permit(), first, &render(), progress);
     assert_eq!(result[0], Ok(()));
 }
 
@@ -315,7 +317,7 @@ fn source_replacement_revokes_both_mix_queues_permits_and_old_pending_eof() {
     assert_eq!(owner.lane(SinkRole::Headphones).queued_blocks(), 0);
     assert_ne!(owner.lane(SinkRole::Headphones).token(), Some(phones));
     assert_eq!(
-        owner.submit_render(permit, 128, &render(), &pcm(), mark(1, 256, true)),
+        owner.submit_render(permit, 128, &render(), mark(1, 256, true)),
         [Err(SinkError::Stale); 2]
     );
     assert_eq!(

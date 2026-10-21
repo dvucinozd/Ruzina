@@ -206,7 +206,7 @@ fn rendered_fault_waits_for_sink_receipt_and_does_not_stop_other_deck() {
     };
     let block = RenderOutputBlock::silence();
     assert_eq!(
-        output.submit_render(output.render_permit(), 0, &block, &block.pfl[0], progress)[0],
+        output.submit_render(output.render_permit(), 0, &block, progress)[0],
         Ok(())
     );
     assert!(output.pending_progress(0).is_none());

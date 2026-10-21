@@ -190,6 +190,8 @@ Owner policy, clarified on 2026-10-20: headphone/CUE/PFL output always uses the 
 
 The [live PCM history and routing gate](M1_RUST_AUDIO_HISTORY_ROUTING_GATE_2026-10-20.md) now connects the existing keylock/scratch primitives to a generation-bound source history in the legacy software-render target. It separates prefetch, source activation, canonical progress and the audible scratch head. Modular MAIN/controller-only headphone selection is host-tested; actual I2S/UAC sinks and audio-clock pacing remain pending.
 
+The [headphone mix gate](M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) composes the controller monitor bus from the mono sum of selected wet PFL taps and the limited stereo master. HeadphoneMix linearly blends CUE to MASTER; MasterCue gates only the master contribution, and HeadphoneLevel scales the complete headphone bus. The MAIN bus and its limiter statistics are independent. Sink delivery uses this composed bus rather than a caller-selected deck tap; physical controller audio remains pending.
+
 ## 8. Controller architecture
 
 ```text

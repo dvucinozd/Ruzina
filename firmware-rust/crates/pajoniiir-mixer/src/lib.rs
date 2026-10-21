@@ -244,6 +244,17 @@ impl MixerState {
             master: fader_gain(self.master_volume) * self.master_trim_gain,
         }
     }
+
+    /// Released monitor semantics: mono sum of selected wet PFL taps blended
+    /// with the limited stereo master. Level applies only to headphones.
+    pub fn headphone_gains(&self) -> HeadphoneGains {
+        let master = fader_gain(self.headphone_mix);
+        HeadphoneGains {
+            cue: 1.0 - master,
+            master: if self.master_cue_enabled { master } else { 0.0 },
+            level: fader_gain(self.headphone_level),
+        }
+    }
 }
 
 impl Default for MixerState {
@@ -257,6 +268,23 @@ pub struct MixerStageGains {
     pub pre: [f32; 2],
     pub post: [f32; 2],
     pub master: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HeadphoneGains {
+    pub cue: f32,
+    pub master: f32,
+    pub level: f32,
+}
+
+impl HeadphoneGains {
+    pub const fn master() -> Self {
+        Self {
+            cue: 0.0,
+            master: 1.0,
+            level: 1.0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]

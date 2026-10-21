@@ -23,6 +23,7 @@ fn config(deck: RenderDeckControl) -> RenderControl {
     RenderControl {
         decks: [deck, RenderDeckControl::idle()],
         master_gain: 1.0,
+        ..RenderControl::idle()
     }
 }
 fn delay(deck: &mut RenderDeckControl, mode: DelayMode, milliseconds: u32) {
@@ -73,6 +74,7 @@ fn disabled_rack_is_bit_identical_to_existing_eq_filter_and_mixer_path() {
     let control = RenderControl {
         decks: [deck; 2],
         master_gain: 0.7,
+        ..RenderControl::idle()
     };
     for n in 0..20 {
         let inputs = [
@@ -210,6 +212,7 @@ fn target_removal_stops_old_deck_effect_and_other_decks_pfl_is_independent() {
         RenderControl {
             decks: [RenderDeckControl::idle(), b_control],
             master_gain: 1.0,
+            ..RenderControl::idle()
         },
     );
     impulse(
@@ -217,12 +220,14 @@ fn target_removal_stops_old_deck_effect_and_other_decks_pfl_is_independent() {
         RenderControl {
             decks: [a_control, b_control],
             master_gain: 1.0,
+            ..RenderControl::idle()
         },
     );
     a_control.fx.beat_selected = false;
     let control = RenderControl {
         decks: [a_control, b_control],
         master_gain: 1.0,
+        ..RenderControl::idle()
     };
     let mut output = RenderOutputBlock::silence();
     let report = graph.render_block(control, &mut output, |i| {
@@ -243,6 +248,7 @@ fn target_removal_stops_old_deck_effect_and_other_decks_pfl_is_independent() {
         RenderControl {
             decks: [RenderDeckControl::idle(), b_control],
             master_gain: 1.0,
+            ..RenderControl::idle()
         },
         [
             PcmFrame::default(),
@@ -447,6 +453,7 @@ fn semantic_product_snapshot_drives_wet_pcm_and_controller_loss_releases_pad() {
         RenderControl {
             decks,
             master_gain: 1.0,
+            ..RenderControl::idle()
         },
         input,
     );
