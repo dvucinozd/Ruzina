@@ -9,6 +9,16 @@ use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_mixer::MixerState;
+use pajoniiir_track_analysis::TrackAnalysis;
+#[cfg(feature = "library-deck-load")]
+use pajoniiir_track_analysis::owned::{AnalysisIdentity, AnalysisPins, AnalysisPublication};
+
+#[cfg(feature = "library-deck-load")]
+#[derive(Debug)]
+pub(crate) struct ProductAnalysisLoad {
+    pub(crate) generation: u32,
+    pub(crate) publication: Option<AnalysisPublication>,
+}
 
 const PRODUCT_LIBRARY_EFFECT_CAPACITY: usize = 8;
 const PRODUCT_TRANSPORT_EFFECT_CAPACITY: usize = 16;
@@ -78,6 +88,8 @@ pub(crate) struct ProductLoadedTrack {
     pub(crate) candidate: CatalogLoadCandidate,
     pub(crate) source_cues_available: bool,
     pub(crate) wav_source: Option<WavPcm16SourceDescriptor>,
+    #[cfg(feature = "library-deck-load")]
+    pub(crate) analysis_identity: Option<AnalysisIdentity>,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -97,6 +109,8 @@ pub(crate) struct ProductRuntime {
     mixer: MixerState,
     library_effects: LibraryEffectQueue<PRODUCT_LIBRARY_EFFECT_CAPACITY>,
     loaded_tracks: [Option<ProductLoadedTrack>; 2],
+    #[cfg(feature = "library-deck-load")]
+    analyses: AnalysisPins,
     deck_effects: DeckEffectBroker<
         PRODUCT_TRANSPORT_EFFECT_CAPACITY,
         PRODUCT_PERSISTENCE_EFFECT_CAPACITY,
@@ -113,6 +127,8 @@ impl ProductRuntime {
             mixer: MixerState::new(),
             library_effects: LibraryEffectQueue::new(),
             loaded_tracks: [None, None],
+            #[cfg(feature = "library-deck-load")]
+            analyses: AnalysisPins::new(),
             deck_effects: DeckEffectBroker::new(),
             leds: ControllerLedFrame::new(),
             stats: ProductRuntimeStats {
@@ -152,9 +168,26 @@ impl ProductRuntime {
         persisted: Option<HotCueBank>,
         source_cues_available: bool,
         wav_source: Option<WavPcm16SourceDescriptor>,
+        #[cfg(feature = "library-deck-load")] analysis: ProductAnalysisLoad,
     ) -> bool {
         if candidate.track.track_id != source.track_id()
             || persisted.is_some_and(|bank| bank.track_id() != candidate.track.track_id)
+        {
+            return false;
+        }
+        #[cfg(feature = "library-deck-load")]
+        let analysis_identity = AnalysisIdentity {
+            track: candidate.track.track_id,
+            lease: candidate.publication.lease,
+            catalog_revision: candidate.publication.revision,
+            load_generation: analysis.generation,
+        };
+        #[cfg(feature = "library-deck-load")]
+        if analysis.generation == 0
+            || analysis
+                .publication
+                .as_ref()
+                .is_some_and(|data| data.identity() != analysis_identity)
         {
             return false;
         }
@@ -172,7 +205,19 @@ impl ProductRuntime {
             candidate,
             source_cues_available,
             wav_source,
+            #[cfg(feature = "library-deck-load")]
+            analysis_identity: analysis.publication.as_ref().map(|_| analysis_identity),
         });
+        #[cfg(feature = "library-deck-load")]
+        {
+            self.analyses.clear(deck_index(deck));
+            if let Some(publication) = analysis.publication {
+                let published =
+                    self.analyses
+                        .publish(deck_index(deck), analysis_identity, publication);
+                debug_assert!(published);
+            }
+        }
         self.refresh_leds();
         true
     }
@@ -182,6 +227,8 @@ impl ProductRuntime {
     }
 
     pub(crate) fn invalidate_deck_source(&mut self, deck: DeckId) {
+        #[cfg(feature = "library-deck-load")]
+        self.analyses.clear(deck_index(deck));
         self.loaded_tracks[deck_index(deck)] = None;
         self.deck.unload_track(deck);
         self.refresh_leds();
@@ -194,6 +241,8 @@ impl ProductRuntime {
             let stale = self.loaded_tracks[index]
                 .is_some_and(|loaded| Some(loaded.candidate.publication.lease) != current);
             if stale {
+                #[cfg(feature = "library-deck-load")]
+                self.analyses.clear(index);
                 self.loaded_tracks[index] = None;
                 self.deck.unload_track(deck);
                 invalidated = invalidated.saturating_add(1);
@@ -287,6 +336,22 @@ impl ProductRuntime {
 
     pub(crate) const fn deck(&self) -> &DeckProductState {
         &self.deck
+    }
+
+    pub(crate) fn analysis_view(&self, deck: DeckId) -> Option<TrackAnalysis<'_>> {
+        #[cfg(feature = "library-deck-load")]
+        {
+            let identity = self.loaded_tracks[deck_index(deck)]?.analysis_identity?;
+            if Some(identity.lease) != crate::usb0_library::current_media_lease() {
+                return None;
+            }
+            self.analyses.view(deck_index(deck), identity)
+        }
+        #[cfg(not(feature = "library-deck-load"))]
+        {
+            let _ = deck;
+            None
+        }
     }
 
     fn refresh_leds(&mut self) {
@@ -465,7 +530,13 @@ impl SessionDeliverySink for ProductRuntime {
             SessionDelivery::Control(event) => match event.control.domain() {
                 ControlDomain::Deck => {
                     let mut staged = self.deck;
-                    let effects = staged.handle_control(event);
+                    let effects = staged.handle_control_with_analysis(
+                        event,
+                        [
+                            self.analysis_view(DeckId::One),
+                            self.analysis_view(DeckId::Two),
+                        ],
+                    );
                     if !self.deck_effects.try_push_all(effects) {
                         self.stats.effect_backpressure =
                             self.stats.effect_backpressure.saturating_add(1);

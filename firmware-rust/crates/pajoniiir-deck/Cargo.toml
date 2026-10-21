@@ -10,3 +10,8 @@ pajoniiir-controller-core.workspace = true
 pajoniiir-core.workspace = true
 pajoniiir-hot-cues.workspace = true
 pajoniiir-track-analysis.workspace = true
+
+[dev-dependencies]
+pajoniiir-rekordbox.workspace = true
+pajoniiir-media-session.workspace = true
+pajoniiir-waveform.workspace = true

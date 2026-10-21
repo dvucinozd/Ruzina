@@ -2981,7 +2981,10 @@ dependencies = [
  "pajoniiir-controller-core",
  "pajoniiir-core",
  "pajoniiir-hot-cues",
+ "pajoniiir-media-session",
+ "pajoniiir-rekordbox",
  "pajoniiir-track-analysis",
+ "pajoniiir-waveform",
 ]
 
 [[package]]
@@ -3081,13 +3084,20 @@ dependencies = [
 name = "pajoniiir-rekordbox"
 version = "0.1.0"
 dependencies = [
+ "pajoniiir-core",
  "pajoniiir-media-catalog",
  "pajoniiir-media-identity",
+ "pajoniiir-media-session",
+ "pajoniiir-track-analysis",
 ]
 
 [[package]]
 name = "pajoniiir-track-analysis"
 version = "0.1.0"
+dependencies = [
+ "pajoniiir-core",
+ "pajoniiir-media-session",
+]
 
 [[package]]
 name = "pajoniiir-ui-model"
@@ -3101,6 +3111,7 @@ name = "pajoniiir-waveform"
 version = "0.1.0"
 dependencies = [
  "embedded-graphics",
+ "pajoniiir-track-analysis",
 ]
 
 [[package]]

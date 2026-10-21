@@ -12,11 +12,10 @@ use pajoniiir_controller_session::DeckId;
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
 use pajoniiir_media_fs::{BoundedPath, EntryKind, FileHandle};
-use pajoniiir_rekordbox::anlz_hot_cues::{
-    ANLZ_PCOB_HEADER_BYTES, ANLZ_PCPT_BYTES, ANLZ_SECTION_HEADER_BYTES, ANLZ_TAG_PCOB,
-    AnlzSectionHeader, RekordboxCueKind, RekordboxHotCueBank, parse_pcob_header, parse_pcpt,
-    parse_section_header,
+use pajoniiir_rekordbox::anlz_analysis::{
+    ANLZ_READ_BYTES, AnalysisFileKind, AnlzImporter, extended_path,
 };
+use pajoniiir_track_analysis::owned::AnalysisIdentity;
 use static_cell::StaticCell;
 
 #[cfg(feature = "wav-audio-source-bringup")]
@@ -26,7 +25,7 @@ use crate::deck_audio_source::{
 
 use crate::{
     deck_effect_owners::{HotCueLoadResult, load_persisted_hot_cues},
-    product_runtime::{LibraryEffect, ProductRuntime},
+    product_runtime::{LibraryEffect, ProductAnalysisLoad, ProductRuntime},
     usb0_library::{
         USB0_LIBRARY_COMMANDS, USB0_LIBRARY_COMPLETIONS, Usb0LibraryCommand, Usb0LibraryCompletion,
         catalog_publication_matches, current_media_lease, wait_for_media_lease_change,
@@ -37,7 +36,7 @@ use crate::{
 };
 
 const LIBRARY_DECK_QUEUE_DEPTH: usize = 1;
-const ANLZ_SCAN_BUFFER_BYTES: usize = 64;
+const ANLZ_SCAN_BUFFER_BYTES: usize = ANLZ_READ_BYTES;
 
 static LIBRARY_DECK_COMMANDS: Channel<
     CriticalSectionRawMutex,
@@ -53,7 +52,7 @@ static LIBRARY_DECK_PROGRESS: Signal<CriticalSectionRawMutex, ()> = Signal::new(
 static LIBRARY_DECK_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 static ANLZ_SCAN_BUFFER: StaticCell<[u8; ANLZ_SCAN_BUFFER_BYTES]> = StaticCell::new();
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 enum LibraryDeckCompletion {
     Applied {
         effect: LibraryEffect,
@@ -67,6 +66,7 @@ enum LibraryDeckCompletion {
         source_cues_available: bool,
         wav_source: Option<WavPcm16SourceDescriptor>,
         wav_generation: u32,
+        analysis: ProductAnalysisLoad,
     },
     Failed {
         effect: LibraryEffect,
@@ -119,6 +119,7 @@ pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeck
                     source_cues_available,
                     wav_source,
                     wav_generation,
+                    analysis,
                     ..
                 } => {
                     let committed = catalog_publication_matches(candidate.publication)
@@ -129,6 +130,7 @@ pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeck
                             persisted,
                             source_cues_available,
                             wav_source,
+                            analysis,
                         );
                     if committed && activate_optional_wav_source(deck, wav_source, wav_generation) {
                         report.completed = report.completed.saturating_add(1);
@@ -205,8 +207,8 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                     if !validate_audio_source(client, candidate).await {
                         LibraryDeckCompletion::Failed { effect }
                     } else {
-                        let (next_buffer, source, source_cues_available) =
-                            load_source_hot_cues(client, candidate, buffer).await;
+                        let (next_buffer, source, source_cues_available, analysis) =
+                            load_source_analysis(client, candidate, buffer, request_id).await;
                         buffer = next_buffer;
 
                         if !catalog_publication_matches(candidate.publication) {
@@ -231,6 +233,7 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                                                 source_cues_available,
                                                 wav_source,
                                                 wav_generation,
+                                                analysis,
                                             }
                                         }
                                         Err(()) => LibraryDeckCompletion::Failed { effect },
@@ -340,138 +343,126 @@ async fn validate_audio_source(
     }
 }
 
-async fn load_source_hot_cues(
+async fn load_source_analysis(
     client: &mut Usb0FilesystemClient,
     candidate: CatalogLoadCandidate,
     buffer: &'static mut [u8],
-) -> (&'static mut [u8], HotCueBank, bool) {
-    let mut source = HotCueBank::empty(candidate.track.track_id);
-    if candidate.track.analysis_path.is_empty() {
-        return (buffer, source.as_source(), false);
+    generation: u32,
+) -> (&'static mut [u8], HotCueBank, bool, ProductAnalysisLoad) {
+    let mut source = HotCueBank::empty(candidate.track.track_id).as_source();
+    let mut buffer = buffer;
+    let mut importer = AnlzImporter::new();
+    let mut publication = None;
+    if let Ok(path) = BoundedPath::new(candidate.track.analysis_path.as_str()) {
+        let (next_buffer, dat) = scan_analysis_file(
+            client,
+            candidate,
+            path,
+            buffer,
+            &mut importer,
+            AnalysisFileKind::Dat,
+        )
+        .await;
+        buffer = next_buffer;
+        if dat == AnalysisScanResult::Complete {
+            let mut ext_storage = [0u8; 256];
+            let mut valid = true;
+            if let Some(path) =
+                extended_path(candidate.track.analysis_path.as_str(), &mut ext_storage)
+                    .and_then(|path| BoundedPath::new(path).ok())
+            {
+                let (next_buffer, ext) = scan_analysis_file(
+                    client,
+                    candidate,
+                    path,
+                    buffer,
+                    &mut importer,
+                    AnalysisFileKind::Ext,
+                )
+                .await;
+                buffer = next_buffer;
+                valid = ext != AnalysisScanResult::Invalid;
+            }
+            if valid && catalog_publication_matches(candidate.publication) {
+                let identity = AnalysisIdentity {
+                    track: candidate.track.track_id,
+                    lease: candidate.publication.lease,
+                    catalog_revision: candidate.publication.revision,
+                    load_generation: generation,
+                };
+                publication = importer.finish(identity, candidate.track.bpm_x100).ok();
+            }
+        }
     }
+    if let Some(data) = publication.as_ref() {
+        for cue in data.view().cues() {
+            match cue.end_ms {
+                Some(end) => {
+                    source.set_loop(cue.slot, cue.start_ms, end);
+                }
+                None => {
+                    source.set_single(cue.slot, cue.start_ms);
+                }
+            }
+        }
+    }
+    let available = publication.is_some();
+    (
+        buffer,
+        source.as_source(),
+        available,
+        ProductAnalysisLoad {
+            generation,
+            publication,
+        },
+    )
+}
 
-    let Ok(path) = BoundedPath::new(candidate.track.analysis_path.as_str()) else {
-        return (buffer, source.as_source(), false);
-    };
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AnalysisScanResult {
+    Missing,
+    Complete,
+    Invalid,
+}
+
+async fn scan_analysis_file(
+    client: &mut Usb0FilesystemClient,
+    candidate: CatalogLoadCandidate,
+    path: BoundedPath,
+    buffer: &'static mut [u8],
+    importer: &mut AnlzImporter,
+    kind: AnalysisFileKind,
+) -> (&'static mut [u8], AnalysisScanResult) {
     let lease = candidate.publication.lease;
     let Some(mut file) = open_file(client, lease, path).await else {
-        return (buffer, source.as_source(), false);
+        return (buffer, AnalysisScanResult::Missing);
     };
-    let file_len = match u32::try_from(file.len()) {
-        Ok(len) if len >= ANLZ_SECTION_HEADER_BYTES as u32 => len,
-        _ => {
-            let _ = close_file(client, lease, file).await;
-            return (buffer, source.as_source(), false);
-        }
-    };
-
+    let mut valid = importer.begin_file(kind, file.len()).is_ok();
     let mut buffer = buffer;
-    let mut cues = RekordboxHotCueBank::new();
-    let mut position = 0u32;
-    let mut valid = true;
-
-    while position + ANLZ_SECTION_HEADER_BYTES as u32 <= file_len {
-        let (next_file, next_buffer, bytes) =
-            read_at(client, lease, file, buffer, u64::from(position)).await;
-        file = next_file;
-        buffer = next_buffer;
-        if bytes < ANLZ_SECTION_HEADER_BYTES {
+    while valid {
+        let Some(plan) = importer.read_plan() else {
+            break;
+        };
+        if !catalog_publication_matches(candidate.publication) {
             valid = false;
             break;
         }
-        let section =
-            match parse_section_header(position, file_len, &buffer[..ANLZ_SECTION_HEADER_BYTES]) {
-                Ok(section) => section,
-                Err(_) => {
-                    valid = false;
-                    break;
-                }
-            };
-
-        if section.tag == ANLZ_TAG_PCOB {
-            let (next_file, next_buffer, bytes) =
-                read_at(client, lease, file, buffer, u64::from(position)).await;
-            file = next_file;
-            buffer = next_buffer;
-            if bytes < ANLZ_PCOB_HEADER_BYTES {
-                valid = false;
-                break;
-            }
-            let plan = match parse_pcob_header(position, section, &buffer[..ANLZ_PCOB_HEADER_BYTES])
-            {
-                Ok(plan) => plan,
-                Err(_) => {
-                    valid = false;
-                    break;
-                }
-            };
-
-            for record in 0..u32::from(plan.declared_count) {
-                let Some(record_position) = plan
-                    .records_position
-                    .checked_add(record * ANLZ_PCPT_BYTES as u32)
-                else {
-                    valid = false;
-                    break;
-                };
-                let (next_file, next_buffer, bytes) =
-                    read_at(client, lease, file, buffer, u64::from(record_position)).await;
-                file = next_file;
-                buffer = next_buffer;
-                if bytes < ANLZ_PCPT_BYTES {
-                    valid = false;
-                    break;
-                }
-                match parse_pcpt(plan.list_type, &buffer[..ANLZ_PCPT_BYTES]) {
-                    Ok(Some(cue)) => {
-                        if cues.insert(cue).is_err() {
-                            valid = false;
-                            break;
-                        }
-                    }
-                    Ok(None) => {}
-                    Err(_) => {
-                        valid = false;
-                        break;
-                    }
-                }
-            }
-            if !valid {
-                break;
-            }
-        }
-        position = section.next_position;
+        let (next_file, next_buffer, bytes) =
+            read_at(client, lease, file, buffer, u64::from(plan.offset)).await;
+        file = next_file;
+        buffer = next_buffer;
+        valid = bytes >= plan.len && importer.ingest(plan.offset, &buffer[..plan.len]).is_ok();
     }
-
-    if position != file_len {
-        valid = false;
-    }
+    valid &= importer.file_complete();
     valid &= close_file(client, lease, file).await;
-
-    if valid {
-        for index in 0..8u8 {
-            if let Some(cue) = cues.slot(index) {
-                let accepted = match cue.kind {
-                    RekordboxCueKind::Single => source.set_single(index, cue.start_ms),
-                    RekordboxCueKind::Loop => source.set_loop(index, cue.start_ms, cue.end_ms),
-                };
-                if !accepted {
-                    valid = false;
-                    break;
-                }
-            }
-        }
-    }
-
-    if valid {
-        (buffer, source.as_source(), true)
-    } else {
-        (
-            buffer,
-            HotCueBank::empty(candidate.track.track_id).as_source(),
-            false,
-        )
-    }
+    (
+        buffer,
+        if valid {
+            AnalysisScanResult::Complete
+        } else {
+            AnalysisScanResult::Invalid
+        },
+    )
 }
 
 async fn open_file(

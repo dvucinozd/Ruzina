@@ -1,0 +1,117 @@
+{
+  "base": "6ea7b977aa2ea0390bcbd578e99118affd78c234",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256_lf": "03a5c9c866e48602f7ba1688d00633f68ac140af32a7f6fe7ba0025a9c8376ee"
+    },
+    {
+      "path": "docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md",
+      "sha256_lf": "7fd49f78071c0eec0d9bf6dea4226056c0db95b3902bce491d941daa48d50a3f"
+    },
+    {
+      "path": "docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md",
+      "sha256_lf": "ff016582c1a897f3525c8da093f466e9c81f1fbcbe5d462b3b05696b4f7a7a01"
+    },
+    {
+      "path": "firmware-rust/Cargo.lock",
+      "sha256_lf": "9f238d01215a206d325ebea65b899e2f100e833369fb01294ed976955cbfc61e"
+    },
+    {
+      "path": "firmware-rust/README.md",
+      "sha256_lf": "05ed6ee98caaca193374703dd60ea556d11d276855354d7d4ef0e7ae201ca8fb"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.lock",
+      "sha256_lf": "37dd5584877d369db38adde58faed7dde6e7e321445a3adefe32968c07c7563b"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.toml",
+      "sha256_lf": "b0a4a974d8261ef7c1ae5df57e312d3aadf533c9ce14a95eb0ccb9c5addc6993"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/README.md",
+      "sha256_lf": "dd1bd8636a8ace89b9c3d520f19f08ee13d40a7c428829b7d6f2a0bf75fdc4e0"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/library_deck_owner.rs",
+      "sha256_lf": "7f1e39ae76786a8de89d9e44dfdc58d289f5e93a8a43f8227a3026ff4c22b8ad"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/product_runtime.rs",
+      "sha256_lf": "d3ea0b1de99d4648051381dbf7b773b6f54ef5ae92c1899bc7d7a159e1868e71"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-deck/Cargo.toml",
+      "sha256_lf": "8f2c6d31c43fecef3129219b62406fe3767dccde502a542bb4a2b2584fec50ef"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-deck/tests/rekordbox_consumers.rs",
+      "sha256_lf": "1fc02e06ebb148d390e0afdc64e8f1d7e464bf0c9c745114ebd77c94f620f76d"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/Cargo.toml",
+      "sha256_lf": "f3b63f85d3e3d907f6d3e894217cd77ca5d37b6e00e5dd610bc30ca31be2612c"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/examples/analysis_inspect.rs",
+      "sha256_lf": "d31fd57957bf52e8551b17487371a5e842db0d25b31ac7d5336c7644cfeb6f19"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/src/anlz_analysis.rs",
+      "sha256_lf": "2fa36e39b24bd48c27c4916840ade5074863584f078a0c33f221cf127f21ced0"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/src/anlz_hot_cues.rs",
+      "sha256_lf": "3d82e15e28ad9b81dc72e6e51591098f3724efba06521710df1fe41a7f0fa861"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/src/lib.rs",
+      "sha256_lf": "0cfa6e135fc10bfc76029390d8707e339475ac25c29fc29d5d169c8b6b1c8723"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/tests/analysis_import.rs",
+      "sha256_lf": "379ddb07f0c500fa2fc95e4a19bfe83f9bae61d5850ed34c60513b81eadc89be"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/tests/fixtures/analysis-fixtures.json",
+      "sha256_lf": "289a9529559ad8ee07c04c15d32ce6404d391a274891509243bcfd46bfffc2ee"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/tests/fixtures/make_analysis_fixture.py",
+      "sha256_lf": "72d3fb0072831f9f0232142afe5168a992b608958b1f18275317057e2ee6df3e"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/tests/fixtures/track-a.DAT",
+      "sha256_raw": "27bbf8b092d621dfa5b9bdbf40261c11b7b898b29a820d31039c3cb240412aa5"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/tests/fixtures/track-a.EXT",
+      "sha256_raw": "2095fe6ab3f6a6342941ac57ec180918fdfcf7b5d0173263fabc7d8fa9c0677d"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-rekordbox/tests/fixtures/track-b.DAT",
+      "sha256_raw": "969d6ac4026491ab25c9d7960641f65a8cc25034b447fb0745db191a4e412b4d"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-track-analysis/Cargo.toml",
+      "sha256_lf": "ec63d9376f88dac8207995534daf5ac1013907222aa9f52ae2aa9ab9a8fc061a"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-track-analysis/src/lib.rs",
+      "sha256_lf": "710991f7557330da7b3649add2d62d3d055a7891f6d7bc1ab4f511389d4ccfbc"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-track-analysis/src/owned.rs",
+      "sha256_lf": "6cf7bb0d1b76159e035a09bb03d88ad0ff7e98b6c4e71932fcaf1869ccb26fd9"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-waveform/Cargo.toml",
+      "sha256_lf": "1d3dbbaed98fe599b1938434309788b47561894079e3a3a07e5f859f474f6af1"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-waveform/src/lib.rs",
+      "sha256_lf": "47026efe6c9c9bee3102a92df9a2e84ac96a7c1d0025bae95323d7db63e9a526"
+    }
+  ]
+}

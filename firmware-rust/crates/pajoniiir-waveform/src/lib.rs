@@ -4,11 +4,7 @@
 /// One pre-reduced waveform column.
 ///
 /// `peak` is normalized to the full u16 range. Color is native RGB565.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct WaveformColumn {
-    pub peak: u16,
-    pub color_rgb565: u16,
-}
+pub use pajoniiir_track_analysis::WaveformColumn;
 
 /// Borrowed waveform view ready for rasterization.
 #[derive(Clone, Copy, Debug)]

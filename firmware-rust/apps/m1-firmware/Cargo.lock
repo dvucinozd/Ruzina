@@ -1454,6 +1454,7 @@ dependencies = [
  "pajoniiir-media-usb-msc",
  "pajoniiir-mixer",
  "pajoniiir-rekordbox",
+ "pajoniiir-track-analysis",
  "pajoniiir-ui-model",
  "pajoniiir-waveform",
  "sdio",
@@ -1551,11 +1552,16 @@ version = "0.1.0"
 dependencies = [
  "pajoniiir-media-catalog",
  "pajoniiir-media-identity",
+ "pajoniiir-track-analysis",
 ]
 
 [[package]]
 name = "pajoniiir-track-analysis"
 version = "0.1.0"
+dependencies = [
+ "pajoniiir-core",
+ "pajoniiir-media-session",
+]
 
 [[package]]
 name = "pajoniiir-ui-model"
@@ -1569,6 +1575,7 @@ name = "pajoniiir-waveform"
 version = "0.1.0"
 dependencies = [
  "embedded-graphics",
+ "pajoniiir-track-analysis",
 ]
 
 [[package]]

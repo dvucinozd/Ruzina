@@ -1,6 +1,24 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "owned")]
+extern crate alloc;
+#[cfg(feature = "owned")]
+pub mod owned;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WaveformColumn {
+    pub peak: u16,
+    pub color_rgb565: u16,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AnalysisCue {
+    pub slot: u8,
+    pub start_ms: u32,
+    pub end_ms: Option<u32>,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Beat {
     pub time_ms: u32,
@@ -21,6 +39,10 @@ pub struct TrackAnalysis<'a> {
     generation: u32,
     bpm_x100: u32,
     beat_grid: Option<BeatGrid<'a>>,
+    preview: &'a [WaveformColumn],
+    detail: &'a [WaveformColumn],
+    cues: &'a [AnalysisCue],
+    detail_rate_hz: u16,
 }
 
 impl<'a> TrackAnalysis<'a> {
@@ -35,6 +57,10 @@ impl<'a> TrackAnalysis<'a> {
             generation,
             bpm_x100,
             beat_grid,
+            preview: &[],
+            detail: &[],
+            cues: &[],
+            detail_rate_hz: 0,
         }
     }
 
@@ -52,6 +78,45 @@ impl<'a> TrackAnalysis<'a> {
 
     pub const fn beat_grid(&self) -> Option<BeatGrid<'a>> {
         self.beat_grid
+    }
+    pub const fn with_visuals(
+        mut self,
+        preview: &'a [WaveformColumn],
+        detail: &'a [WaveformColumn],
+        cues: &'a [AnalysisCue],
+    ) -> Self {
+        self.preview = preview;
+        self.detail = detail;
+        self.cues = cues;
+        self
+    }
+    pub const fn preview(&self) -> &'a [WaveformColumn] {
+        self.preview
+    }
+    pub const fn detail(&self) -> &'a [WaveformColumn] {
+        self.detail
+    }
+    pub const fn cues(&self) -> &'a [AnalysisCue] {
+        self.cues
+    }
+    pub const fn with_detail_rate(mut self, rate_hz: u16) -> Self {
+        self.detail_rate_hz = rate_hz;
+        self
+    }
+    pub const fn detail_rate_hz(&self) -> u16 {
+        self.detail_rate_hz
+    }
+    pub fn detail_window(&self, position_ms: u32, columns: usize) -> &'a [WaveformColumn] {
+        if self.detail_rate_hz == 0 || self.detail.is_empty() {
+            return &[];
+        }
+        let center = ((u64::from(position_ms) * u64::from(self.detail_rate_hz)) / 1_000)
+            .min(self.detail.len() as u64) as usize;
+        let count = columns.min(self.detail.len());
+        let start = center
+            .saturating_sub(count / 2)
+            .min(self.detail.len() - count);
+        &self.detail[start..start + count]
     }
 }
 
