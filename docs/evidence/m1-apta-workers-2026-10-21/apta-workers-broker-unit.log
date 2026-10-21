@@ -1,0 +1,29 @@
+   Compiling pajoniiir-media-fs v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-fs)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.74s
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/host-target/debug/deps/pajoniiir_media_fs-94124026d37f5100)
+
+running 15 tests
+test tests::async_contract_preserves_partial_read_and_seek_rules ... ok
+test analysis::tests::queue_refusal_does_not_consume_the_final_cleanup_ticket ... ok
+test tests::capabilities_keep_write_support_explicit ... ok
+test tests::bounded_path_preserves_utf8_and_enforces_fixed_capacity ... ok
+test tests::checked_seek_rejects_positions_past_eof ... ok
+test tests::async_contract_rejects_stale_generation_and_impossible_counts ... ok
+test tests::default_directory_visit_is_allocation_free_and_compatible ... ok
+test tests::detached_handles_allow_two_decks_to_open_files_concurrently ... ok
+test tests::dir_entry_never_exposes_name_beyond_caller_storage ... ok
+test tests::filesystem_request_sequence_never_emits_zero_after_wrap ... ok
+test tests::filesystem_request_sequences_are_client_and_lease_bound ... ok
+test tests::read_exact_handles_partial_backend_reads ... ok
+test tests::read_exact_rejects_eof_and_impossible_backend_count ... ok
+test tests::stale_generation_is_explicit_on_detached_handles ... ok
+test tests::utf8_name_storage_covers_worst_case_exfat_name_width ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests pajoniiir_media_fs
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

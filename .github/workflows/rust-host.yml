@@ -69,6 +69,12 @@ jobs:
           cargo check --locked -p pajoniiir-apta-adapter --lib --no-default-features --target riscv32imafc-unknown-none-elf
           python3 tools/check_apta_core_boundary.py
 
+      - name: Experimental APTA worker lifecycle and current product handoff
+        run: |
+          cargo clippy --locked -p pajoniiir-apta-adapter --all-features --all-targets -- -D warnings
+          cargo test --locked -p pajoniiir-apta-adapter --all-features --release
+          cargo check --locked -p pajoniiir-apta-adapter --lib --features owned-handoff --target riscv32imafc-unknown-none-elf
+
       - name: Composed runtime owner recovery evidence
         run: |
           mkdir -p target

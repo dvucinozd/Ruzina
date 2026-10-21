@@ -1,0 +1,12 @@
+    Checking pajoniiir-audio-runtime v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-runtime)
+    Checking pajoniiir-media-fs v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-fs)
+    Checking pajoniiir-media-exfat v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-exfat)
+    Checking pajoniiir-service v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-service)
+    Checking pajoniiir-media-fat32 v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-fat32)
+    Checking pajoniiir-apta-adapter v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-apta-adapter)
+    Checking pajoniiir-ui-model v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-ui-model)
+    Checking desktop-simulator v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/apps/desktop-simulator)
+    Checking pajoniiir-deck v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-deck)
+    Checking pajoniiir-media-usb-msc v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-usb-msc)
+    Checking pajoniiir-controller-profile-storage v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-controller-profile-storage)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 13.31s

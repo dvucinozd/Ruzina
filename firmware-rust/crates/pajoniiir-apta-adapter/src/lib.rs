@@ -3,7 +3,21 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "workers")]
+pub mod owner;
+#[cfg(feature = "owned-handoff")]
+pub mod publication;
+#[cfg(feature = "workers")]
+pub mod service;
+#[cfg(feature = "workers")]
+pub mod source;
+#[cfg(feature = "workers")]
+pub mod storage;
+#[cfg(feature = "workers")]
+pub mod streaming;
 pub mod window;
+#[cfg(feature = "workers")]
+pub mod worker;
 
 use libapta::{FeatureState, FractionalFrame, GridRepresentation, NativeResultInput, SourceInfo};
 use pajoniiir_track_analysis::{AnalysisProvider, Beat, BeatGrid, TrackAnalysis};

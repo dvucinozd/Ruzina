@@ -8,6 +8,8 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 Selective APTA adoption: [result/cache conversion and waveform windows](../docs/M1_RUST_APTA_CORE_GATE_2026-10-21.md) are available in the experimental `pajoniiir-apta-adapter` workspace member. The simulator and firmware dependency graphs exclude this adapter; native analysis provider activation remains pending.
 
+The opt-in [worker lifecycle/owned publication package](../docs/M1_RUST_APTA_WORKER_GATE_2026-10-21.md) adds the portable broker/worker/service behind explicit features, automatic retry after bank recycling, retained temporary delivery and current-product handoff tests. No firmware task or endpoint is activated.
+
 Latest audio work: [shared WAV/MP3/FLAC source decoding](../docs/M1_RUST_CODEC_STREAM_GATE_2026-10-21.md) uses one codec-neutral read/block/control contract behind the Library source owner. Fixed per-deck contexts live in PSRAM; the existing render/FX/PFL and confirmed transport consumers are shared by all formats. Physical output timing and listening remain separate gates.
 
 The [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) is merged through PR #15. The render owner submits the complete controller-only headphone bus.

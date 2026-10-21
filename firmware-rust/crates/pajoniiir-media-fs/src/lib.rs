@@ -6,6 +6,9 @@ extern crate std;
 
 use pajoniiir_media_session::MediaLease;
 
+#[cfg(feature = "analysis-client")]
+pub mod analysis;
+
 /// Maximum UTF-8 bytes required to losslessly expose an exFAT filename.
 ///
 /// exFAT allows 255 UTF-16 code units; a valid Unicode scalar may occupy up to
@@ -25,6 +28,8 @@ pub enum FileSystemClientId {
     LibraryLoad,
     DeckA,
     DeckB,
+    #[cfg(feature = "analysis-client")]
+    Analysis,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

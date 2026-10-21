@@ -1,0 +1,357 @@
+{
+  "date": "2026-10-21",
+  "base_commit": "8039edc3577df7d6c31727710a15b2de1111d264",
+  "branch": "ogranak/apta-owner-lifecycle",
+  "source_branch_commit": "fd7ebd592b469b27c9f45337dced2f9b2912966f",
+  "libapta_commit": "25d09de364e9507532c0508c838a8fecf0772d13",
+  "hash_convention": "Text SHA-256 normalizes CRLF to LF",
+  "review": {
+    "issues": 0,
+    "patch_sha256_raw": "1a2cf41e0b8deec9b0024892c8ba6b816e62175c78e5c4898cfbf90deee9ca64",
+    "scope": [
+      ".github/workflows/rust-host.yml",
+      "firmware-rust/Cargo.lock",
+      "firmware-rust/apps/m1-firmware/src/product_runtime.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/Cargo.toml",
+      "firmware-rust/crates/pajoniiir-apta-adapter/README.md",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/lib.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/owner.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/publication.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/service.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/source.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/storage.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/streaming.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/worker.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/broker.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/job.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/owner.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/policy.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/product.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/service.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/source.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/streaming.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/allocation.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/broker.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/mod.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/owner.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/service.rs",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/worker.rs",
+      "firmware-rust/crates/pajoniiir-deck/src/lib.rs",
+      "firmware-rust/crates/pajoniiir-media-fs/Cargo.toml",
+      "firmware-rust/crates/pajoniiir-media-fs/src/analysis.rs",
+      "firmware-rust/crates/pajoniiir-media-fs/src/lib.rs"
+    ],
+    "reviewed_sha256_lf": {
+      ".github/workflows/rust-host.yml": "3ad301db9e4b46292c0ff0f1b15eaf3b5ac0b2d0051493c8cae02230f4839b57",
+      "firmware-rust/Cargo.lock": "ef86fd02e368aebf51ce2887df1878931043747a2f4a905440858b4b98fc270f",
+      "firmware-rust/apps/m1-firmware/src/product_runtime.rs": "e13b02008bdaee6b304d67f8f8ae60e0668f69c60b01849cc65127fd3aa70790",
+      "firmware-rust/crates/pajoniiir-apta-adapter/Cargo.toml": "d6f2f1e832dd17327f1029ace87d0822d13c641f312a80ec385e1cc1f392e84e",
+      "firmware-rust/crates/pajoniiir-apta-adapter/README.md": "492a6d8d168893443cfdc6c0d842af52395883da17c68fe3cbbb72d8545d194d",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/lib.rs": "b5ebfaf111c07e103e1af9b1e33ebab123ce5f45e8394c503d2ae0192dfdd42e",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/owner.rs": "0f9792c3e262d7347c28f0e16f37f28840243fe36b4de2c1e3749a552e373226",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/publication.rs": "0409ad0819e2279f6d342752c71223203a6af4a2888caa1b6bb2e9a6e67f34a3",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/service.rs": "b37998ed36f73e878ba74d8569847be7ec289b70dc241eb5d856f696c7e53b8e",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/source.rs": "4334e66a450a8a5d23c9348b99abe3acdf4470a2a81a78a28227e69b2b34cf7a",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/storage.rs": "cbf0dc8267e2ddc4813ab906ff9ba7a34b543a1c67e29a40625f7f959446a3b7",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/streaming.rs": "44d9cda62c695c4011112e50412d90d6c74ebbfdcea4b9d8e4fbee0e1771ab2c",
+      "firmware-rust/crates/pajoniiir-apta-adapter/src/worker.rs": "4339d9a8628bb1a987272b7f25c30a7176d68d51a4e45949b6146f9b243d72ec",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/broker.rs": "e8868853f0cbfdf6125f0d3e000546fb8fad0ebe4875a904b7b1649bfcdb7be1",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/job.rs": "cbfcaaa9d9487b10ce1841cd27ad980c9b63e075ad595d1f64168c011c851c36",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/owner.rs": "d3a535490803df2d27c0b1788bee950fe6e134c5914cdaf82a7f58ef50511690",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/policy.rs": "dcb69043e3d702f025b3240cbb238e67c717ca57084d148c7896c600ff2cde21",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/product.rs": "1a9d0a2b1bd711eb31dc83433277a1b81f3ef2ec6ddd2f1201184e17b06275e5",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/service.rs": "166c3d33d511cad0a834ce1d722e8207530b274a5234acb04193e5091da23d60",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/source.rs": "83e87f01225f83e7f97b3fb87b486deb9c22fdfbb424b5ccbe828d48f8fbea86",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/streaming.rs": "3303ccf1ac9de0ce6a48c75582ae19ccbc582a1fb68b7aa5bfccea826c5ed371",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/allocation.rs": "3186bb6aeba1b69acf305b50ad4fdde5f64d9381b594ccdfe8b7c6ffc7cd7fad",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/broker.rs": "aafcec0d0a3e1ce089ca03389e2f33eac01ac9696a5100f035a064dd85a6d584",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/mod.rs": "62aaa345080fd4da27936893f566ee952b8725ba6924d25e4f8df57891abc322",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/owner.rs": "f0ef859a8302a5db5fb349ed7dff7e66e3b7ff8f8772b9ddfbaa42d583fd372d",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/service.rs": "a0713895b3cb1c6aaddf90d2e5798b4486ef0174c356a9bddc45caff1df1602b",
+      "firmware-rust/crates/pajoniiir-apta-adapter/tests/worker.rs": "8e094a8c7a7d6e20bbeb81ff26bc1741738e93b3b1e8638099a340f42ea3f9fb",
+      "firmware-rust/crates/pajoniiir-deck/src/lib.rs": "d4d1f6dc1f91bfe20b71949f6207bfd3510b1fd2e3e90ddb78d0290ce3f4e2f9",
+      "firmware-rust/crates/pajoniiir-media-fs/Cargo.toml": "96539f626a17d1f452a3df5792aea92f896bba1adfbb262b9d33cba608123474",
+      "firmware-rust/crates/pajoniiir-media-fs/src/analysis.rs": "9c017e17636d9169ebf1f99d5cf82f9a7e6e67971e067018e8411f06c95da32a",
+      "firmware-rust/crates/pajoniiir-media-fs/src/lib.rs": "27a0f4f71646f29b9aea740c2f281db8827cec4f32dfd4b954955cbdc41efcdd"
+    }
+  },
+  "provenance": {
+    "firmware-rust/crates/pajoniiir-apta-adapter/Cargo.toml": {
+      "source_sha256_lf": "7f3ae65b4f5ffc4256211af20a1fbdf85845acd4c47c825fd309092893166a7f",
+      "selected_sha256_lf": "d6f2f1e832dd17327f1029ace87d0822d13c641f312a80ec385e1cc1f392e84e",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/README.md": {
+      "source_sha256_lf": "3843eeb04d47bff51f46a8eb2327e5bf0270ef44db98beca003cd63700e74514",
+      "selected_sha256_lf": "492a6d8d168893443cfdc6c0d842af52395883da17c68fe3cbbb72d8545d194d",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/lib.rs": {
+      "source_sha256_lf": "672afc491bcdeffb8ca270e655b5bdb17374239ae05105cc050c0f26e276a844",
+      "selected_sha256_lf": "b5ebfaf111c07e103e1af9b1e33ebab123ce5f45e8394c503d2ae0192dfdd42e",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/owner.rs": {
+      "source_sha256_lf": "0f9792c3e262d7347c28f0e16f37f28840243fe36b4de2c1e3749a552e373226",
+      "selected_sha256_lf": "0f9792c3e262d7347c28f0e16f37f28840243fe36b4de2c1e3749a552e373226",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/service.rs": {
+      "source_sha256_lf": "1259aa52139308e1d7e2c8c68537d4a0fdf4d0e7a616924ca1f325a855197814",
+      "selected_sha256_lf": "b37998ed36f73e878ba74d8569847be7ec289b70dc241eb5d856f696c7e53b8e",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/source.rs": {
+      "source_sha256_lf": "4334e66a450a8a5d23c9348b99abe3acdf4470a2a81a78a28227e69b2b34cf7a",
+      "selected_sha256_lf": "4334e66a450a8a5d23c9348b99abe3acdf4470a2a81a78a28227e69b2b34cf7a",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/storage.rs": {
+      "source_sha256_lf": "0040af74c1ac6b3b2b674101422d052ef7854830667ff8bc602a287c79967d9e",
+      "selected_sha256_lf": "cbf0dc8267e2ddc4813ab906ff9ba7a34b543a1c67e29a40625f7f959446a3b7",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/streaming.rs": {
+      "source_sha256_lf": "44d9cda62c695c4011112e50412d90d6c74ebbfdcea4b9d8e4fbee0e1771ab2c",
+      "selected_sha256_lf": "44d9cda62c695c4011112e50412d90d6c74ebbfdcea4b9d8e4fbee0e1771ab2c",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/worker.rs": {
+      "source_sha256_lf": "4339d9a8628bb1a987272b7f25c30a7176d68d51a4e45949b6146f9b243d72ec",
+      "selected_sha256_lf": "4339d9a8628bb1a987272b7f25c30a7176d68d51a4e45949b6146f9b243d72ec",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/broker.rs": {
+      "source_sha256_lf": "e8868853f0cbfdf6125f0d3e000546fb8fad0ebe4875a904b7b1649bfcdb7be1",
+      "selected_sha256_lf": "e8868853f0cbfdf6125f0d3e000546fb8fad0ebe4875a904b7b1649bfcdb7be1",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/job.rs": {
+      "source_sha256_lf": "cbfcaaa9d9487b10ce1841cd27ad980c9b63e075ad595d1f64168c011c851c36",
+      "selected_sha256_lf": "cbfcaaa9d9487b10ce1841cd27ad980c9b63e075ad595d1f64168c011c851c36",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/owner.rs": {
+      "source_sha256_lf": "d3a535490803df2d27c0b1788bee950fe6e134c5914cdaf82a7f58ef50511690",
+      "selected_sha256_lf": "d3a535490803df2d27c0b1788bee950fe6e134c5914cdaf82a7f58ef50511690",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/policy.rs": {
+      "source_sha256_lf": "ad2f80c0b3ecdcd8816184114c0eefb35a7a458578f504ef0b70ab30c77d6c3d",
+      "selected_sha256_lf": "dcb69043e3d702f025b3240cbb238e67c717ca57084d148c7896c600ff2cde21",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/product.rs": {
+      "source_sha256_lf": "039646d4b587179fb1174971084ed513d9747e7a2e5fc8fe105260cc768871f4",
+      "selected_sha256_lf": "1a9d0a2b1bd711eb31dc83433277a1b81f3ef2ec6ddd2f1201184e17b06275e5",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/service.rs": {
+      "source_sha256_lf": "db737668204f515a7303af7eabef106784b2cc6d93b43771f5edace22eda0037",
+      "selected_sha256_lf": "166c3d33d511cad0a834ce1d722e8207530b274a5234acb04193e5091da23d60",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/source.rs": {
+      "source_sha256_lf": "6774a55bb8e3a774f1eaa9ebd768e661d4552e1d68be514ccda5c9cc07bd7316",
+      "selected_sha256_lf": "83e87f01225f83e7f97b3fb87b486deb9c22fdfbb424b5ccbe828d48f8fbea86",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/streaming.rs": {
+      "source_sha256_lf": "3303ccf1ac9de0ce6a48c75582ae19ccbc582a1fb68b7aa5bfccea826c5ed371",
+      "selected_sha256_lf": "3303ccf1ac9de0ce6a48c75582ae19ccbc582a1fb68b7aa5bfccea826c5ed371",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/allocation.rs": {
+      "source_sha256_lf": "3186bb6aeba1b69acf305b50ad4fdde5f64d9381b594ccdfe8b7c6ffc7cd7fad",
+      "selected_sha256_lf": "3186bb6aeba1b69acf305b50ad4fdde5f64d9381b594ccdfe8b7c6ffc7cd7fad",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/broker.rs": {
+      "source_sha256_lf": "aafcec0d0a3e1ce089ca03389e2f33eac01ac9696a5100f035a064dd85a6d584",
+      "selected_sha256_lf": "aafcec0d0a3e1ce089ca03389e2f33eac01ac9696a5100f035a064dd85a6d584",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/mod.rs": {
+      "source_sha256_lf": "06e73818899d2468f0d91d16397f32e488f50583c43b637bd9e43527185499dc",
+      "selected_sha256_lf": "62aaa345080fd4da27936893f566ee952b8725ba6924d25e4f8df57891abc322",
+      "unchanged": false
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/owner.rs": {
+      "source_sha256_lf": "f0ef859a8302a5db5fb349ed7dff7e66e3b7ff8f8772b9ddfbaa42d583fd372d",
+      "selected_sha256_lf": "f0ef859a8302a5db5fb349ed7dff7e66e3b7ff8f8772b9ddfbaa42d583fd372d",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/service.rs": {
+      "source_sha256_lf": "a0713895b3cb1c6aaddf90d2e5798b4486ef0174c356a9bddc45caff1df1602b",
+      "selected_sha256_lf": "a0713895b3cb1c6aaddf90d2e5798b4486ef0174c356a9bddc45caff1df1602b",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/worker.rs": {
+      "source_sha256_lf": "8e094a8c7a7d6e20bbeb81ff26bc1741738e93b3b1e8638099a340f42ea3f9fb",
+      "selected_sha256_lf": "8e094a8c7a7d6e20bbeb81ff26bc1741738e93b3b1e8638099a340f42ea3f9fb",
+      "unchanged": true
+    },
+    "firmware-rust/crates/pajoniiir-media-fs/src/analysis.rs": {
+      "source_sha256_lf": "9c017e17636d9169ebf1f99d5cf82f9a7e6e67971e067018e8411f06c95da32a",
+      "selected_sha256_lf": "9c017e17636d9169ebf1f99d5cf82f9a7e6e67971e067018e8411f06c95da32a",
+      "unchanged": true
+    }
+  },
+  "sources_sha256_lf": {
+    ".github/workflows/rust-host.yml": "3ad301db9e4b46292c0ff0f1b15eaf3b5ac0b2d0051493c8cae02230f4839b57",
+    "README.md": "67d9687c27a7bc8a2781c5f65a27c525ec3629af7a3303f158111b068eae6c3d",
+    "docs/M1_RUST_APTA_WORKER_GATE_2026-10-21.md": "3997950fd2144e4eb50f5f9701c56371f5a9eb66138cf0fd6ba3344fe9009c79",
+    "firmware-rust/Cargo.lock": "ef86fd02e368aebf51ce2887df1878931043747a2f4a905440858b4b98fc270f",
+    "firmware-rust/README.md": "dc0218965cc3502211385c0bd9380992e913190197ab90bf983b2e3ae238f31f",
+    "firmware-rust/apps/m1-firmware/src/product_runtime.rs": "e13b02008bdaee6b304d67f8f8ae60e0668f69c60b01849cc65127fd3aa70790",
+    "firmware-rust/crates/pajoniiir-apta-adapter/Cargo.toml": "d6f2f1e832dd17327f1029ace87d0822d13c641f312a80ec385e1cc1f392e84e",
+    "firmware-rust/crates/pajoniiir-apta-adapter/README.md": "492a6d8d168893443cfdc6c0d842af52395883da17c68fe3cbbb72d8545d194d",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/lib.rs": "b5ebfaf111c07e103e1af9b1e33ebab123ce5f45e8394c503d2ae0192dfdd42e",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/owner.rs": "0f9792c3e262d7347c28f0e16f37f28840243fe36b4de2c1e3749a552e373226",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/publication.rs": "0409ad0819e2279f6d342752c71223203a6af4a2888caa1b6bb2e9a6e67f34a3",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/service.rs": "b37998ed36f73e878ba74d8569847be7ec289b70dc241eb5d856f696c7e53b8e",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/source.rs": "4334e66a450a8a5d23c9348b99abe3acdf4470a2a81a78a28227e69b2b34cf7a",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/storage.rs": "cbf0dc8267e2ddc4813ab906ff9ba7a34b543a1c67e29a40625f7f959446a3b7",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/streaming.rs": "44d9cda62c695c4011112e50412d90d6c74ebbfdcea4b9d8e4fbee0e1771ab2c",
+    "firmware-rust/crates/pajoniiir-apta-adapter/src/worker.rs": "4339d9a8628bb1a987272b7f25c30a7176d68d51a4e45949b6146f9b243d72ec",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/broker.rs": "e8868853f0cbfdf6125f0d3e000546fb8fad0ebe4875a904b7b1649bfcdb7be1",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/job.rs": "cbfcaaa9d9487b10ce1841cd27ad980c9b63e075ad595d1f64168c011c851c36",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/owner.rs": "d3a535490803df2d27c0b1788bee950fe6e134c5914cdaf82a7f58ef50511690",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/policy.rs": "dcb69043e3d702f025b3240cbb238e67c717ca57084d148c7896c600ff2cde21",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/product.rs": "1a9d0a2b1bd711eb31dc83433277a1b81f3ef2ec6ddd2f1201184e17b06275e5",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/service.rs": "166c3d33d511cad0a834ce1d722e8207530b274a5234acb04193e5091da23d60",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/source.rs": "83e87f01225f83e7f97b3fb87b486deb9c22fdfbb424b5ccbe828d48f8fbea86",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/streaming.rs": "3303ccf1ac9de0ce6a48c75582ae19ccbc582a1fb68b7aa5bfccea826c5ed371",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/allocation.rs": "3186bb6aeba1b69acf305b50ad4fdde5f64d9381b594ccdfe8b7c6ffc7cd7fad",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/broker.rs": "aafcec0d0a3e1ce089ca03389e2f33eac01ac9696a5100f035a064dd85a6d584",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/mod.rs": "62aaa345080fd4da27936893f566ee952b8725ba6924d25e4f8df57891abc322",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/owner.rs": "f0ef859a8302a5db5fb349ed7dff7e66e3b7ff8f8772b9ddfbaa42d583fd372d",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/support/service.rs": "a0713895b3cb1c6aaddf90d2e5798b4486ef0174c356a9bddc45caff1df1602b",
+    "firmware-rust/crates/pajoniiir-apta-adapter/tests/worker.rs": "8e094a8c7a7d6e20bbeb81ff26bc1741738e93b3b1e8638099a340f42ea3f9fb",
+    "firmware-rust/crates/pajoniiir-deck/src/lib.rs": "d4d1f6dc1f91bfe20b71949f6207bfd3510b1fd2e3e90ddb78d0290ce3f4e2f9",
+    "firmware-rust/crates/pajoniiir-media-fs/Cargo.toml": "96539f626a17d1f452a3df5792aea92f896bba1adfbb262b9d33cba608123474",
+    "firmware-rust/crates/pajoniiir-media-fs/src/analysis.rs": "9c017e17636d9169ebf1f99d5cf82f9a7e6e67971e067018e8411f06c95da32a",
+    "firmware-rust/crates/pajoniiir-media-fs/src/lib.rs": "27a0f4f71646f29b9aea740c2f281db8827cec4f32dfd4b954955cbdc41efcdd"
+  },
+  "evidence_sha256_lf": {
+    "apta-workers-boards.log": "6ede1c57a7995f4ab347657a666ab31a96627ba422505d5e3dda7742f923bfba",
+    "apta-workers-broker-clippy.log": "32f4c8ab7b1036b460f3ae95e9ec0326548a14c9760ecff09ad56232d1614402",
+    "apta-workers-broker-unit.log": "9953e964126d2120ddbff009054eb3ff9ece5da9bd3238f75c7cbd170c85a375",
+    "apta-workers-clippy.log": "510b789ac1b576258d9df8cd90e465fdf89b1cb74c94d5e2bc8841c75546e214",
+    "apta-workers-coderabbit.jsonl": "7eeeb9b3accdac89c950410faf67c6c17c5208d3e391f94c98c377202c9350b1",
+    "apta-workers-core-riscv.log": "f7e9dc6068001e764942a3bec41edc114617b943184515ff6d61c02c3058540e",
+    "apta-workers-desktop.log": "0051dfd87513b08b3c6e0ed2e83d0f895ebfbdb2ea628bf5e5105ab50a619342",
+    "apta-workers-exclusion.log": "afec0363b5227bd9011d50691a4134c4dc42ba618923da1c625aeca32dc625ee",
+    "apta-workers-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "apta-workers-host-clippy.log": "149682d5f731f8334ce3130456bf291b9b06aadb6d5bcf54a1adb5c5ab89b633",
+    "apta-workers-lifecycle.log": "7546e58f8d749554ef275fd91b785f407d1ef55f37aec79a303a44b9e3efe327",
+    "apta-workers-p4-01.log": "5a446ec47b2dbfa40cc93db7dad63113b049770e140e1adbecd207e32083addd",
+    "apta-workers-p4-02.log": "efa8e6ca9ec99763318c0ca49d80817778d1fee752c7d6acbb05e3342fec7729",
+    "apta-workers-p4-03.log": "a6d53944fdcdbae85d5f0aae68c1409527ed5e621dc31cf8e2d4f5a37ef1ac42",
+    "apta-workers-p4-04.log": "3a7023166b4a9a40d354276f64463e4ba047887b71b02e3ece46983cfb720f62",
+    "apta-workers-p4-05.log": "67117df90f3d5104f59b346ad4956f3b067ab0ba727b19bf6faa9f852a6fe09f",
+    "apta-workers-p4-06.log": "9a08cc9c2970a69011e84976ddc54556cb936896df830d7bfd86ad52ed23e9e2",
+    "apta-workers-p4-07.log": "3a9f8afee136e733c7178b395627bc932ed5e4cf3c2062d238d832a1d596a125",
+    "apta-workers-p4-08.log": "efdfc449298cd4d8ba4c9934af5c91f46e5a99ed8d0153c774cda78db938e62a",
+    "apta-workers-p4-09.log": "0ef05c16584d5a3a807db313ef4971bec004653af49d1243214d7811402ea078",
+    "apta-workers-p4-10.log": "7b55f530bcc27419d508dedcec38d6382cb5acd41b53c85c3fac3bdd7f35e7b0",
+    "apta-workers-p4-11.log": "ba882edd24941ebbec8c1b6100f40a5a77dc54782f83ec3db0617f542ee022e8",
+    "apta-workers-p4-12.log": "cec0b392e39c449101d382184b7ed1bbe55d7048cd46eb20bfc7a1b73412c1a4",
+    "apta-workers-p4-13.log": "167f7c046adf7ebac9903a9be5ff62f00d73bd6cb52b04bc211bdc1885654fad",
+    "apta-workers-p4-14.log": "bb11663fbf126b0568106353a6209fec2a269f5f7f1f0b9c50bcdbae7199c626",
+    "apta-workers-p4-15.log": "b98ac49b7451c9089c7ff3e6395cb8caf885e1cb9fcddae3931065d995ab61fa",
+    "apta-workers-p4-16.log": "64563de0fd9b1575af781ec4bb60643a2d689bbf37ff65be8172b42c779f0a09",
+    "apta-workers-p4-17.log": "6dad9c132599b66f16cb36f04b9bdbbe7adbbb408a81d594c46e01a2a92583cc",
+    "apta-workers-p4-18.log": "77cace6929bd946c96b02afd1f89d59b7e1bb8af3171a366f7582efdf3796df8",
+    "apta-workers-p4-19.log": "db296cb0b88305c6d7d949ca5a7784affb4d523277a6f71aa1333a1c71e1e37f",
+    "apta-workers-p4-20.log": "ae00b3c4e178c7889f561f3a87be40f398f2c3e37be3a1d1d45280b47f61eee7",
+    "apta-workers-p4-21.log": "ed22dd35e520b71f85510fd0841cfbbb85b615b7c49b805710e65b1e9f86d01d",
+    "apta-workers-p4-22.log": "82290249f196f16006f958cac2b16d005ed373bcd61fb39e728b1e046afff191",
+    "apta-workers-p4-23.log": "b512eac6237364562c78885ba96626db9e5539b9ed3fb27b05660bfdc23e8ab4",
+    "apta-workers-p4-24.log": "1f4265e27b5460666b5808de5e9d611447760cbb095357e612c9e059f31af7eb",
+    "apta-workers-p4-25.log": "8dcd9e260f5dd0189e20d85579923998d63d90259741b5cc6aa1148f3439f5a2",
+    "apta-workers-p4-26.log": "e5bb778b2e5c10f1a89ba75f2024922ed4497150b45bdc6fdcb9cee331fbe880",
+    "apta-workers-p4-27.log": "2adb16db99e826e7cfad48fafb330dc475907113ebb823e0a75fc4889fce9c6e",
+    "apta-workers-p4-28.log": "5b178d908998574c799ffe3f2e0745bedff8dcef70cf3d05a3c6e4ce75df388f",
+    "apta-workers-p4-29.log": "067cfc0d91e21636f83cd5c3dde70035f5a0a995a1c1189b7b7160db3510c886",
+    "apta-workers-p4-30.log": "c5d283bd697750ccb519b2ad7c5a972468fe85c2284f79e93b218ab31e14acee",
+    "apta-workers-p4-31.log": "af2f76644451ec24150a77cae83d5d905af3e653694ee805a13e296f88831641",
+    "apta-workers-p4-32.log": "78cb5d382883685b4a0fbe875eb44df98c856e9981430ca65de0588634a4e4fa",
+    "apta-workers-p4-33.log": "6eebcc68e79a7882a31b95065428fa97b9f9ec05e9abc172f05ae7af7fb18241",
+    "apta-workers-p4-summary.log": "da4d06eb5d2587b14e8f36e287e73845c5e11315a0a77a57402140871df02f01",
+    "apta-workers-release.log": "158d79ffd80e91b25314e6a8404243ceaf29f081fa35dc8fe1218a0d6eabf47c",
+    "apta-workers-review-scope.txt": "f5398cb8f5814a244655ea117442171d34f0c28eb7a374c74e1d1689f04b82e3",
+    "apta-workers-riscv.log": "347ff8c1262a8083cb2bf761ec03b75cd54f31c8e08fd1a9cde1cc0e3754314d",
+    "apta-workers-runtime-clippy.log": "56fe7c45b0e1b6c5044ce3a75f1ad0fb29732b4722bd288a3396ed164228b192",
+    "apta-workers-runtime.log": "d575d5bb2be23f5354646fae2ad2a5abd98cd8d535e7b04503eee7ccfded607a",
+    "apta-workers-ui.log": "5e33437c38a7bb51db7cfdbae59e754fcae7487923beb0241870be48588d2233",
+    "apta-workers-workspace.log": "42e83c3e845925985a7308073115df6a663c318793175ab20db9eaaddc309916",
+    "README.md": "a907a51ee4cfcb723c631954ccd29f5eb6de5ecd6403214c8f3e3b701b2dda61"
+  },
+  "checks": {
+    "default_workspace_tests_including_doctests": 667,
+    "opt_in_adapter_release_tests": 56,
+    "opt_in_adapter_release_doctests": 2,
+    "focused_policy_product_service": 12,
+    "runtime_owners_and_composed_failures": 20,
+    "broker_enabled_unit_suite": 15,
+    "unchanged_ui_goldens": 38,
+    "p4_check_link_profiles": 33,
+    "expected_invalid_board_selections": 24,
+    "positive_product_dependency_graphs": 3,
+    "default_and_worker_riscv": "PASS",
+    "hardware": "NOT_RUN",
+    "corpus": "NOT_RUN",
+    "new_sanitizers": "NOT_RUN",
+    "hosted_ci": "NOT_QUALIFIED"
+  },
+  "resource_payload_bytes": {
+    "working_and_two_output_banks": 113772,
+    "broker_io": 4096,
+    "selected_service_total": 117868,
+    "maximum_owned_copy_at_128_beats_400_preview": 3136,
+    "excluded": "owned and pending copies, metadata, allocator overhead, existing audio/FX/display/catalog and stack"
+  },
+  "preservation": {
+    "primary_main_before": "8039edc3577df7d6c31727710a15b2de1111d264",
+    "primary_hardware_hashes_verified": 18,
+    "firmware_manifest_lock_usb_owners": "unchanged",
+    "activation": "OFF; no firmware caller or task wiring",
+    "apta_source_branch_unmerged": true,
+    "prior_local_audit_sha256_lf": {
+      "docs/M1_APTA_BRANCH_REVIEW_2026-10-21.md": "81d018e71bf48caf370d3e715f457f45fe1281f6f9a12161572840a7c6d9e0ce",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-adapter.log": "93efa6ce115075f89cf87a71cdcd84cf099fbfed3de8487cab0b908cc1b35fa0",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-audit-repros.rs": "2bac0de7843fc530d82aa05b4dcff17b163ffda0bc0865798872c62ffeb23dac",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-behavior-repros.log": "3bc656bd9b58cb18a08e33cfdee2f54b7eb75624c5105771ac2e8e58501e492a",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-clippy.log": "844e1c13810bf9cf6f4a46d33be173f35772b6b5aa1b6df1e71a88aed22956f3",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-coderabbit.jsonl": "aae2d969b0404966e26d25ece1842838070a793eb86780f5f6934ef0eb55b745",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-core-split-clippy.log": "a2ba3ce17ed8446683288f652d2c34b4166fb486cfd2066df8ca3d9c121c14c7",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-core-split-effective.patch": "029b316ea5778beecfeee2e5d9a39f2c32d082dc82b601d5044ce30f4f11c1aa",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-core-split-p4.log": "070f926dc5254f71a52ecba41163fce24c6748c6fa7d3a887110f1fffcef69ae",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-core-split-portable.log": "bd9f6bb039b398d19d9816275764327e339c1e0642437364205e6cbc47696db8",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-core-split-tests.log": "4ed8801aad672dcf93dfeb1b37a8c328b498ada65f22343976d38bfbb5c55961",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-p4.log": "0485896deac810f4066b397bd50548c1421604854d16920a09738f7fae5fa921",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-portable-complete-lib.log": "fc4a71e597edb011b58bfa1eb41c1231cff62993bdf41e404e9b05121763b817",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-portable-complete-p4.log": "70768cfb7efd08e0bda8b4a64bac5500650f2183832fbbe694e166c91b012fb5",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-portable-complete-regressions.log": "d7a9027555af61a0df231eb3270e906138e4cdb4a5d9023d55f87574c4c961dc",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-portable-complete-tests-compile.log": "84673f8bf3acd6b38767d54f7bfdc9bfb91a04f521f81132c22e83248fe8c297",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-portable-complete-tests.log": "3d31482cb21f595d1fd3a3847a3879fba484ee5816e9d11e6888296fab2494aa",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-portable.log": "405097a1b4da38aec10b4c663fffbf6936c14ce6805fa367b9136dde84c23793",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-product.log": "1b82b609999d11debe7fae1d351170c77e27b0debfa7fd87df6e891949256ed3",
+      "docs/evidence/m1-apta-audit-2026-10-21/apta-workspace.log": "d184093b51721b9889166509ab638046a8269adf2b4f45c5f495a80df6fa8114",
+      "docs/evidence/m1-apta-audit-2026-10-21/findings.json": "9816011bf678a24812e2acea8b93d244b02ae7c4bf19e4d52a2ebbbbfa4252b0",
+      "docs/evidence/m1-apta-audit-2026-10-21/manifest.json": "cfd1784c340d3ca329dadbd8fe2f732162f3df340046aa93725b7136df930675",
+      "docs/evidence/m1-apta-audit-2026-10-21/merge-tree.txt": "82772bcc8cdb3336511087254e35e83fe3092b923d4bf8c4d4a6eb8ec7b705c1",
+      "docs/evidence/m1-apta-audit-2026-10-21/README.md": "87f10c162032c8fe9a0318542622c16d7f4ecb94f01290c74e44ac2c85de4339",
+      "docs/evidence/m1-apta-audit-2026-10-21/retain-apta-audit.py": "1b506c4f352fe33bdce1531c33dd4730be272a2367d360a6bb17e80dfc1740c6",
+      "docs/evidence/m1-apta-audit-2026-10-21/run-apta-checks.sh": "4f0aced829d83076a273311b140545de0b8d5632a1ee53a2cda961a87b135a8d",
+      "docs/evidence/m1-apta-audit-2026-10-21/run-apta-core-split.sh": "bdf315eda3cb80b7780d84a2c950d4e0578d5925d8e7664c252b1c47f88ed364",
+      "docs/evidence/m1-apta-audit-2026-10-21/run-apta-portable-complete.sh": "1ba56c3b0cc36536b8061272bb98a47f981e5d7019f81e16e1b49e8a4e41a58e",
+      "docs/evidence/m1-apta-audit-2026-10-21/run-apta-portable-p4.sh": "af5b27d1fc952c90e1238ad901250d27de472d58391bd83015f212ad634e910b",
+      "docs/evidence/m1-apta-audit-2026-10-21/run-apta-portable-probe.sh": "c1b034159e2f6a7746f607c5cb88f67cc567dc67049d7fa1068182458bcb2832",
+      "docs/evidence/m1-apta-audit-2026-10-21/run-apta-repros.sh": "59e66da5eef64c81c09572ed0773690f7e4ea86452c0a56ce4fdad30fdf00a63",
+      "docs/evidence/m1-apta-audit-2026-10-21/run-apta-review.sh": "eeeca67e59382d37735b664e0bb77bbc1c6120c14c21d59ef1ca255d4bb21e8a"
+    }
+  }
+}
