@@ -1,4 +1,6 @@
 mod compositor;
+mod health_smoke;
+mod health_ui;
 mod mix_fx_smoke;
 mod mix_fx_ui;
 mod session;
@@ -119,6 +121,7 @@ fn refresh(ui: &MainWindow, session: &Session) {
     ui.set_media_ready(session.connected());
     ui.set_message(session.message.clone().into());
     mix_fx_ui::refresh(ui, session);
+    health_ui::refresh(ui, session.diagnostics());
 }
 
 fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
@@ -209,6 +212,25 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| a == "--diagnostic-report") {
+        let (output, board) = match args.as_slice() {
+            [_, output] => (output, BoardId::GuitionJc1060P470cIwY),
+            [_, output, id] if id == "jc1060" => (output, BoardId::GuitionJc1060P470cIwY),
+            [_, output, id] if id == "jc8012" => (output, BoardId::GuitionJc8012P4a1cIwY),
+            _ => {
+                return Err(
+                    "Usage: --diagnostic-report OUTPUT [jc1060|jc8012] (new host session)".into(),
+                );
+            }
+        };
+        let mut report = pajoniiir_board_profile::diagnostics::ReportBuffer::<4096>::default();
+        Session::for_board(board)
+            .diagnostics()
+            .write_to(&mut report)
+            .map_err(|_| "report buffer exhausted")?;
+        std::fs::write(output, report.bytes())?;
+        return Ok(());
+    }
     if args.first().is_some_and(|a| a == "--smoke") {
         let output = args.get(1).ok_or("--smoke requires an output directory")?;
         return smoke::run(std::path::Path::new(output));
@@ -231,7 +253,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         u32::from(board.display.height),
     ));
     ui.set_board_label(format!("{} · HOST SIMULATOR", board.model).into());
-    let state = Rc::new(RefCell::new(Session::new()));
+    let state = Rc::new(RefCell::new(Session::for_board(board.id)));
     bind(&ui, state.clone());
     refresh(&ui, &state.borrow());
     let timer = slint::Timer::default();

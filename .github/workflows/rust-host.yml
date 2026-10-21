@@ -73,4 +73,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: slint-ui-snapshots
-          path: firmware-rust/target/ui-smoke/*.ppm
+          path: |
+            firmware-rust/target/ui-smoke/*.ppm
+            firmware-rust/target/ui-smoke/*.txt

@@ -55,6 +55,7 @@ p4-psram-storage = ["dep:esp-alloc"]
 
 [dependencies]
 pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
+pajoniiir-service = { path = "../../crates/pajoniiir-service" }
 aligned = { version = "=0.4.3", default-features = false }
 block-device-driver = { version = "=0.2.0", default-features = false }
 embassy-executor = { version = "=0.10.0", default-features = false }

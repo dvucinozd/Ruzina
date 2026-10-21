@@ -1,0 +1,97 @@
+{
+  "base": "eac8481e2a91f7eaf8971c36bfa8188ba42a3f3e",
+  "files": [
+    {
+      "path": ".github/workflows/rust-host.yml",
+      "sha256_lf": "da2c9a6bfcad262e68dd3c59fa08dc345b87c4e1b76ac1521fee788012cfa411"
+    },
+    {
+      "path": "README.md",
+      "sha256_lf": "2156dff424e93f3f6096b3c780e2479c080ef86f44d4783afca636d39fa9d411"
+    },
+    {
+      "path": "docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md",
+      "sha256_lf": "ce067f4a9c22a9b3d51483234fad54f73538f2ef3f433a4acc29981eb62d6b95"
+    },
+    {
+      "path": "docs/M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md",
+      "sha256_lf": "0f9c4770bdde66969c3b7ac964f083f868606ef1b85de1c037ce915f995c2e50"
+    },
+    {
+      "path": "firmware-rust/Cargo.lock",
+      "sha256_lf": "7ee162f787d3ce49d6666818a13a43417af85ca5ea36d779b709336a9249d4ee"
+    },
+    {
+      "path": "firmware-rust/Cargo.toml",
+      "sha256_lf": "db3c7fca75d8006d33ba0c54b876e4c6ae9180fb451722b7e5a1fab6c60eb20a"
+    },
+    {
+      "path": "firmware-rust/README.md",
+      "sha256_lf": "27a112d5d4822bcbc2e969022204e53369b5c3d0a4b9d7a786540d80cfee33e2"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/Cargo.toml",
+      "sha256_lf": "493e3aec35636ada645c6fff0cca84778e3a94ee1396a2ce785696882fbef9bf"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/README.md",
+      "sha256_lf": "525e9cd4ee53a110bab28447a817e52a5223f5a52c722df54cac8db899a93fdf"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/health_smoke.rs",
+      "sha256_lf": "fbef1b735533659a31653eaa0542bdc56b21312a836d95b6486163e9e7941e83"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/health_ui.rs",
+      "sha256_lf": "2ad02ffb008aa86097506b10003d2400becda6355861137092bfe3d09de2ff01"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/main.rs",
+      "sha256_lf": "1d1ca2023463f8f338a0b393393fd086f94d764b4027392accd8daefda34dd6c"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/session.rs",
+      "sha256_lf": "f8751951edd0ccfecc0cd26a975979de054e657a10475dc3eca3868d53a0c40b"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/smoke.rs",
+      "sha256_lf": "60e06f0ee9f39d765ef497121458d8cc927ea34b07f8fdb4cfd00f8f1f9ae1c3"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/tests.rs",
+      "sha256_lf": "0c8591ebd6af7714631fbdd192da1341bda11f3d3be7239d1ffac3d43a6ce469"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/tests/ui-goldens.json",
+      "sha256_lf": "9567cdd4278af10be1e3a1b9b11e37c08cd7ab489e202db97070c570c31d6f65"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/ui/main.slint",
+      "sha256_lf": "a5989bcf8dd388798f75b3c9f489c4801342fbce9b50ba1c722174df86ff2c25"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.lock",
+      "sha256_lf": "bd1e33847d0a5288e5a090ac4246b6712b0648f4ad4f048b875fcedb86b6a74a"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.toml",
+      "sha256_lf": "729bc24c81f935de4fea9ca882fc588e8c7c1eb9b7a335329c594fdd8a4d39b1"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/README.md",
+      "sha256_lf": "68fdb5a15be6810c4c807462e84b402ebc424f32a709c81e452a439394c16885"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/platform/diagnostics.rs",
+      "sha256_lf": "7780323f95ed6bf9e567de8c97f47e67ad7dfba76c8db628ac630d547ec6ec9a"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/Cargo.toml",
+      "sha256_lf": "45c09e86232360cd36d6896b105e1ff4a08efe0ac65d7aee7ba1d6d98ac3183d"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/src/lib.rs",
+      "sha256_lf": "b72a14da2fb97869583e8f6fd7862388f1a7d449ab48440f08b86965636c9303"
+    }
+  ]
+}
