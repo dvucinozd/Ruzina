@@ -497,3 +497,127 @@ fn loading_same_track_keeps_latest_accepted_bank_before_and_after_write_completi
     assert_eq!(rig.product.deck().local_hot_cues(DeckId::One), Some(latest));
     assert_eq!(rig.product.deck().local_hot_cues(DeckId::Two), Some(latest));
 }
+
+#[test]
+fn confirmed_wrapped_position_drives_real_product_loop_controls_and_clear() {
+    use pajoniiir_audio_runtime::{
+        wav::{WavPcm16Format, WavPcm16SourceDescriptor},
+        wav_stream::{WavStreamChange, WavStreamDecoder},
+    };
+    let mut rig = Rig::new();
+    rig.play(DeckId::One);
+    rig.play(DeckId::Two);
+    for (frame, ms) in [(48000, 1000), (24000, 500)] {
+        let mark = PcmStreamProgress {
+            generation: 10,
+            end_frame: frame,
+            sample_rate_hz: 48000,
+            eof: false,
+            faulted: false,
+        };
+        let completion = rig
+            .transport
+            .consume_render_progress(DeckId::One, mark, 128, 10)
+            .unwrap();
+        assert!(rig.product.apply_transport_completion(completion, 10));
+        assert_eq!(rig.product.deck().deck(DeckId::One).position_ms, ms);
+        assert!(rig.product.deck().deck(DeckId::One).playing);
+    }
+    rig.event(
+        DeckId::One,
+        SemanticControl::LoopIn,
+        ControlValue::Pressed(true),
+    );
+    let mark = PcmStreamProgress {
+        generation: 10,
+        end_frame: 36000,
+        sample_rate_hz: 48000,
+        eof: false,
+        faulted: false,
+    };
+    let completion = rig
+        .transport
+        .consume_render_progress(DeckId::One, mark, 128, 10)
+        .unwrap();
+    assert!(rig.product.apply_transport_completion(completion, 10));
+    rig.event(
+        DeckId::One,
+        SemanticControl::LoopOut,
+        ControlValue::Pressed(true),
+    );
+    let command = rig.next_command();
+    assert_eq!(
+        command.effect,
+        DeckEffect::SetLoop {
+            deck: DeckId::One,
+            start_ms: 500,
+            end_ms: 750
+        }
+    );
+    let descriptor = WavPcm16SourceDescriptor::new(
+        WavPcm16Format {
+            channels: 2,
+            sample_rate_hz: 48000,
+            byte_rate: 192000,
+            block_align: 4,
+        },
+        44,
+        480000 * 4,
+    )
+    .unwrap();
+    let stream = WavStreamDecoder::new(descriptor, 10, 0, None).unwrap();
+    let mut looped = stream
+        .changed(
+            11,
+            WavStreamChange::Loop {
+                position_frame: rig.transport.decks[0].pcm_cursor.position_frame(),
+                region_ms: Some((500, 750)),
+            },
+        )
+        .unwrap();
+    assert_eq!(looped.media_frame(), 24000);
+    assert!(
+        rig.transport
+            .bind_source_control(command, 11, looped.media_frame(), 48000)
+    );
+    let block = looped.decode(&[1u8; 512]).unwrap();
+    let completion = rig
+        .transport
+        .consume_pcm_block(DeckId::One, &block)
+        .unwrap();
+    assert!(rig.product.apply_transport_completion(completion, 11));
+    assert_eq!(rig.product.deck().deck(DeckId::One).position_ms, 502);
+    assert!(rig.product.deck().deck(DeckId::Two).playing);
+    rig.event(
+        DeckId::One,
+        SemanticControl::ReloopExit,
+        ControlValue::Pressed(true),
+    );
+    let clear = rig.next_command();
+    assert_eq!(clear.effect, DeckEffect::ClearLoop { deck: DeckId::One });
+    let linear = looped
+        .changed(
+            12,
+            WavStreamChange::Loop {
+                position_frame: rig.transport.decks[0].pcm_cursor.position_frame(),
+                region_ms: None,
+            },
+        )
+        .unwrap();
+    assert!(linear.timeline().loop_region().is_none());
+    assert!(
+        rig.transport
+            .bind_source_control(clear, 12, linear.media_frame(), 48000)
+    );
+    assert!(rig.transport.decks[0].loop_region.is_none());
+    assert!(
+        rig.product
+            .deck()
+            .deck(DeckId::One)
+            .loop_state
+            .active
+            .is_none()
+    );
+    assert!(!rig.product.apply_transport_completion(completion, 12));
+    assert!(rig.product.deck().deck(DeckId::One).playing);
+}

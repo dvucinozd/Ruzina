@@ -277,7 +277,7 @@ impl WavPcm16Decoder {
             produced += 1;
         }
 
-        if produced < output.len() && consumed < allowed {
+        if consumed < allowed && allowed - consumed < frame_bytes {
             let tail = allowed - consumed;
             debug_assert!(tail < frame_bytes);
             self.carry[..tail].copy_from_slice(&input[consumed..allowed]);

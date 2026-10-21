@@ -6,6 +6,8 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
+Latest audio work: [streamed PCM loop execution](../docs/M1_RUST_PCM_LOOP_GATE_2026-10-21.md) repeats WAV regions without a steady-wrap generation reset, maps confirmed media position through pitch/Master Tempo/scratch/Censor, and wires SetLoop/ClearLoop into both PCM target variants. Physical rewind/output timing and listening remain separate gates.
+
 Latest reliability work: [composed Library/source/transport/cue-write failure policy](../docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) contains ordinary seek failures to one deck, keeps a faulted persistence owner responsive, fences stale completions and preserves unconfirmed cue banks. Physical driver recovery remains a separate gate.
 
 Integration review: [development stack corrections and validation](../docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md) closes the confirmed shared-cue, EOF-counter and early media cleanup regressions before main consolidation. APTA remains separate.
@@ -56,6 +58,7 @@ From this directory:
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
+cargo test --locked -p pajoniiir-audio-runtime --test loop_playback
 cargo test --locked -p pajoniiir-service --features runtime-owners --test composed_failures
 cargo run --locked -p desktop-simulator -- --board jc1060
 cargo run --locked -p desktop-simulator -- --board jc8012

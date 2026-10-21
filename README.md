@@ -4,6 +4,8 @@
 
 ## Active direction — 2026-10-20
 
+Latest audio work: [streamed PCM loops and confirmed media position](docs/M1_RUST_PCM_LOOP_GATE_2026-10-21.md) executes WAV loops through the shared producer, canonical source and receipt-confirmed transport. Twelve loop scenarios and a composed product-control scenario cover sample boundaries, long/short loops, edit lifecycle and two decks; physical output qualification remains open.
+
 Latest reliability work: [composed Library/source/transport/cue-write failures](docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) adds per-deck seek failure handling, responsive faulted cue storage and stale-source completion rejection, with ten new composed tests. Hardware driver recovery remains pending.
 
 Integration review: [PR #5–#11 source review and regression corrections](docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md), with 591 host tests, 33 P4 checks/links and unchanged UI goldens. Shared cues, EOF counting and pre-Ready media recovery are corrected; physical Guition acceptance remains open.
