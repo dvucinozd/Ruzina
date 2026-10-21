@@ -5,6 +5,15 @@
 #[cfg(feature = "p4-psram-storage")]
 extern crate alloc;
 
+#[cfg(feature = "apta-usb0-bringup")]
+mod analysis_io;
+#[cfg(feature = "apta-usb0-bringup")]
+mod analysis_product;
+#[cfg(feature = "apta-usb0-bringup")]
+mod transport_activity;
+#[cfg(feature = "apta-usb0-bringup")]
+mod usb0_analysis;
+
 use embassy_executor::Spawner;
 use esp_hal::clock::CpuClock;
 
@@ -16,8 +25,6 @@ mod controller_profiles;
 mod deck_audio_source;
 #[allow(dead_code)]
 mod deck_effect_owners;
-#[allow(dead_code)]
-mod transport_owner_state;
 #[cfg(feature = "hotcue-flash-storage")]
 mod hotcue_access;
 #[cfg(feature = "hotcue-flash-storage")]
@@ -28,6 +35,8 @@ mod library_deck_owner;
 mod product_runtime;
 #[allow(dead_code)]
 mod sdmmc_profile;
+#[allow(dead_code)]
+mod transport_owner_state;
 #[allow(dead_code)]
 mod usb0_library;
 #[allow(dead_code)]

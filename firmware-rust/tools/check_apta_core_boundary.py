@@ -1,4 +1,4 @@
-"""Verify that the experimental adapter has no product dependency path.
+"""Verify that the experimental adapter has no default product dependency path.
 
 Run from any directory using the workspace's pinned Rust/Cargo toolchain.
 Cargo tree resolves normal/build dependencies for the actual product target;
@@ -38,6 +38,7 @@ def main() -> None:
             ],
         ),
     ]
+    profiles.append(("firmware explicit USB0 analysis", ["--manifest-path",str(root / "apps/m1-firmware/Cargo.toml"),"--target","riscv32imafc-unknown-none-elf","--features","board-legacy-m1,apta-usb0-bringup"]))
     for name, arguments in profiles:
         command = [
             "cargo",
@@ -56,6 +57,11 @@ def main() -> None:
             raise SystemExit(f"{name}: cargo tree failed:\n{result.stderr}")
         packages = {line.split()[0] for line in result.stdout.splitlines() if line.strip()}
         present = forbidden & packages
+        if name == "firmware explicit USB0 analysis":
+            if present != forbidden:
+                raise SystemExit(f"{name}: explicit provider missing: {forbidden - present}")
+            print(f"{name}: opt-in dependency presence PASS")
+            continue
         if present:
             raise SystemExit(f"{name}: experimental provider dependency: {sorted(present)}")
         print(f"{name}: APTA dependency exclusion PASS")

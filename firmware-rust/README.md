@@ -6,9 +6,9 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
-Selective APTA adoption: [result/cache conversion and waveform windows](../docs/M1_RUST_APTA_CORE_GATE_2026-10-21.md) are available in the experimental `pajoniiir-apta-adapter` workspace member. The simulator and firmware dependency graphs exclude this adapter; native analysis provider activation remains pending.
+Selective APTA adoption: [result/cache conversion and waveform windows](../docs/M1_RUST_APTA_CORE_GATE_2026-10-21.md) are available in the experimental `pajoniiir-apta-adapter` workspace member. The simulator and default firmware dependency graphs exclude this adapter; activation requires an explicit bring-up feature.
 
-The opt-in [worker lifecycle/owned publication package](../docs/M1_RUST_APTA_WORKER_GATE_2026-10-21.md) adds the portable broker/worker/service behind explicit features, automatic retry after bank recycling, retained temporary delivery and current-product handoff tests. No firmware task or endpoint is activated.
+The opt-in [worker lifecycle/owned publication package](../docs/M1_RUST_APTA_WORKER_GATE_2026-10-21.md) adds the portable broker/worker/service behind explicit features, automatic retry after bank recycling, retained temporary delivery and current-product handoff tests. The subsequent [USB0 service gate](../docs/M1_RUST_APTA_USB0_GATE_2026-10-21.md) adds legacy-only `apta-usb0-bringup`; it stays OFF in all defaults and on Guition.
 
 Latest audio work: [shared WAV/MP3/FLAC source decoding](../docs/M1_RUST_CODEC_STREAM_GATE_2026-10-21.md) uses one codec-neutral read/block/control contract behind the Library source owner. Fixed per-deck contexts live in PSRAM; the existing render/FX/PFL and confirmed transport consumers are shared by all formats. Physical output timing and listening remain separate gates.
 
@@ -18,7 +18,7 @@ The [controller headphone CUE/master mix](../docs/M1_RUST_HEADPHONE_MIX_GATE_202
 
 Latest reliability work: [composed Library/source/transport/cue-write failure policy](../docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) contains ordinary seek failures to one deck, keeps a faulted persistence owner responsive, fences stale completions and preserves unconfirmed cue banks. Physical driver recovery remains a separate gate.
 
-Integration review: [development stack corrections and validation](../docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md) closes the confirmed shared-cue, EOF-counter and early media cleanup regressions before main consolidation. APTA worker/service integration remains separate from the portable adapter subset.
+Integration review: [development stack corrections and validation](../docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md) closes the confirmed shared-cue, EOF-counter and early media cleanup regressions before main consolidation. APTA worker/service integration remains an explicit opt-in boundary separate from normal product profiles.
 
 Latest service: [composed runtime owner publication and recovery](../docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md). Existing product/controller/media loops have opt-in legacy health wiring and composed host failure tests. Guition peripheral ownership remains inactive; its boot diagnostics still repeat an immutable snapshot, not a heartbeat.
 

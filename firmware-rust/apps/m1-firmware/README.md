@@ -145,3 +145,20 @@ USB1 controller bring-up implies `hotcue-flash-storage`, so a controller Hot Cue
 change is dequeued only after the persistence owner reports a successful durable
 journal operation. Target load/merge on track load remains part of the subsequent
 Library/deck-load ownership gate.
+
+
+## Optional USB0 native analysis
+
+`board-legacy-m1,apta-usb0-bringup` explicitly selects the persistent APTA service,
+Library/USB0/USB1/render owners and existing PSRAM allocator. Defaults and Guition
+profiles keep it OFF. It analyzes one missing-ANLZ WAV load at a time while both
+decks and actual transport are idle. Playback cancels active work; already
+completed delivery is retained until idle and revalidated before publication.
+Foreground filesystem requests have priority; new analysis reads are limited to
+512 bytes and refused while the policy is paused. Close/recovery still drain.
+The conservative profile bounds 256 MiB and 10 minutes, with arrays sized for
+28.8 million source frames, 4096 beats and 440 native overview columns; unsupported/capacity failures publish
+nothing. These are software limits, without elapsed-time or audio timing claims.
+See the [complete software gate](../../../docs/M1_RUST_APTA_USB0_GATE_2026-10-21.md)
+for ownership, memory and hardware-pending acceptance. This feature does not
+activate Guition peripherals or change MAIN/headphone routing.

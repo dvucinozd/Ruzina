@@ -41,6 +41,9 @@ impl<'a> PendingDelivery<'a> {
             publication: None,
         })
     }
+    pub fn target(&self) -> Option<DeckId> {
+        self.retained.as_ref().map(Retained::target)
+    }
     pub fn identity(&self) -> Option<AnalysisIdentity> {
         self.retained.as_ref()?.publication_identity()
     }

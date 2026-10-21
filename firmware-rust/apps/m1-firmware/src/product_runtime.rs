@@ -104,6 +104,8 @@ pub(crate) struct ProductLoadedTrack {
 use pajoniiir_service::handoff::{ProductCounters as ProductRuntimeStats, ProductObservation};
 
 pub(crate) struct ProductRuntime {
+    #[cfg(feature = "apta-usb0-bringup")]
+    pub(crate) analysis_driver: crate::analysis_product::Driver<'static>,
     deck: DeckProductState,
     mixer: MixerState,
     library_effects: LibraryEffectQueue<PRODUCT_LIBRARY_EFFECT_CAPACITY>,
@@ -124,6 +126,8 @@ pub(crate) struct ProductRuntime {
 impl ProductRuntime {
     pub(crate) const fn new() -> Self {
         Self {
+            #[cfg(feature = "apta-usb0-bringup")]
+            analysis_driver: crate::analysis_product::Driver::new(),
             deck: DeckProductState::new(),
             mixer: MixerState::new(),
             library_effects: LibraryEffectQueue::new(),
@@ -261,7 +265,7 @@ impl ProductRuntime {
     }
 
     /// Background copies use the current load identity and existing owned pins.
-    /// No caller is wired in firmware yet. `transport_idle` must include actual
+    /// The explicit USB0 bring-up caller supplies `transport_idle`, including actual
     /// downstream queues/in-flight work, not just accepted product commands.
     #[cfg(feature = "library-deck-load")]
     #[allow(clippy::result_large_err)]

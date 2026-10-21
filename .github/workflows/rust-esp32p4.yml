@@ -180,3 +180,12 @@ jobs:
 
       - name: Runtime health full render ownership link gate
         run: cargo +1.95.0 build --locked --release --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health
+
+      - name: Opt-in USB0 analysis supervisor cross compile
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,apta-usb0-bringup
+
+      - name: Opt-in USB0 analysis supervisor release link
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,apta-usb0-bringup
+
+      - name: Opt-in USB0 analysis with full runtime ownership release link
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,apta-usb0-bringup,sdmmc-profile-storage-bringup,runtime-health
