@@ -96,6 +96,7 @@ enum DeckAudioSourceCommand {
     Seek {
         request_id: u32,
         position_ms: u32,
+        expected_generation: u32,
     },
     Release,
 }
@@ -177,10 +178,15 @@ pub(crate) async fn seek_wav_source(
     request_id: u32,
     position_ms: u32,
 ) -> Result<WavSeekResult, ()> {
+    let expected_generation = active_stream_generation(deck);
+    if expected_generation == 0 {
+        return Err(());
+    }
     command_channel(deck)
         .send(DeckAudioSourceCommand::Seek {
             request_id,
             position_ms,
+            expected_generation,
         })
         .await;
 
@@ -314,7 +320,16 @@ async fn run_owner(
                 DeckAudioSourceCommand::Seek {
                     request_id,
                     position_ms,
+                    expected_generation,
                 } => {
+                    // A Library Prepare may have overtaken this queued seek.
+                    // Never revoke or seek a replacement source on its behalf.
+                    if !stream_generation_atomic(deck).accepts_progress(expected_generation) {
+                        control_completion_channel(deck)
+                            .send(DeckAudioSourceControlCompletion::Failed { request_id })
+                            .await;
+                        continue;
+                    }
                     pending_block = None;
                     drain_pcm_blocks(deck);
 
@@ -338,7 +353,14 @@ async fn run_owner(
                                     Ok(result)
                                 }
                                 Err(()) => {
-                                    prepared = Some(source);
+                                    // The generation is already revoked. Release
+                                    // only this deck's handle and let it reload.
+                                    let _ = close_file(
+                                        &mut client,
+                                        source.candidate.publication.lease,
+                                        source.file,
+                                    )
+                                    .await;
                                     Err(())
                                 }
                             }

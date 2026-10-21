@@ -318,6 +318,22 @@ pub enum DeckEffect {
 }
 
 impl DeckEffect {
+    /// Source-scoped commands expire on load/unload. Durable cue snapshots and
+    /// global Beat FX outlive a source and must not be discarded with it.
+    pub const fn source_deck(self) -> Option<DeckId> {
+        match self {
+            Self::PlaybackRequest { deck, .. }
+            | Self::Pause { deck }
+            | Self::Seek { deck, .. }
+            | Self::SetPitchCentipercent { deck, .. }
+            | Self::ScratchJog { deck, .. }
+            | Self::SetLoop { deck, .. }
+            | Self::ClearLoop { deck }
+            | Self::ApplyPadFx { deck, .. } => Some(deck),
+            Self::PersistHotCues { .. } | Self::ApplyBeatFx { .. } => None,
+        }
+    }
+
     pub const fn target(self) -> DeckEffectTarget {
         match self {
             Self::PlaybackRequest { .. }
@@ -424,6 +440,19 @@ impl<const N: usize> DeckEffectQueue<N> {
         }
     }
 
+    fn discard_source(&mut self, deck: DeckId) {
+        // Rotate the original bounded queue once, preserving survivor order.
+        let count = self.count;
+        for _ in 0..count {
+            let effect = self.front().expect("counted queue item");
+            self.complete_front(true);
+            if effect.source_deck() != Some(deck) {
+                let accepted = self.try_push_all(DeckEffects::one(effect));
+                debug_assert!(accepted);
+            }
+        }
+    }
+
     /// Completes the currently visible effect only after the downstream owner
     /// reports whether it accepted the request.
     ///
@@ -455,6 +484,11 @@ impl<const T: usize, const P: usize, const A: usize> Default for DeckEffectBroke
 }
 
 impl<const T: usize, const P: usize, const A: usize> DeckEffectBroker<T, P, A> {
+    pub fn discard_source_effects(&mut self, deck: DeckId) {
+        self.transport.discard_source(deck);
+        self.audio_dsp.discard_source(deck);
+    }
+
     pub const fn new() -> Self {
         Self {
             transport: DeckEffectQueue::new(),
@@ -528,6 +562,20 @@ impl<const T: usize, const P: usize, const A: usize> DeckEffectBroker<T, P, A> {
 
     pub fn persistence_front(&self) -> Option<DeckEffect> {
         self.persistence.front()
+    }
+
+    /// Latest accepted local bank, including a write still owned downstream.
+    pub fn pending_hot_cues(&self, track: MediaTrackId) -> Option<HotCueBank> {
+        let mut latest = None;
+        for offset in 0..self.persistence.count {
+            if let Some(DeckEffect::PersistHotCues { bank, .. }) =
+                self.persistence.items[(self.persistence.head + offset) % P]
+                && bank.track_id() == track
+            {
+                latest = Some(bank);
+            }
+        }
+        latest
     }
 
     pub fn complete_persistence(&mut self, succeeded: bool) -> bool {

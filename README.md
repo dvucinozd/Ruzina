@@ -4,6 +4,8 @@
 
 ## Active direction — 2026-10-20
 
+Latest reliability work: [composed Library/source/transport/cue-write failures](docs/M1_RUST_COMPOSED_FAILURE_GATE_2026-10-21.md) adds per-deck seek failure handling, responsive faulted cue storage and stale-source completion rejection, with ten new composed tests. Hardware driver recovery remains pending.
+
 Integration review: [PR #5–#11 source review and regression corrections](docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md), with 591 host tests, 33 P4 checks/links and unchanged UI goldens. Shared cues, EOF counting and pre-Ready media recovery are corrected; physical Guition acceptance remains open.
 
 Latest service work: [composed product/controller/media owner health](docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md), with bounded diagnostic handoff, actual effect-queue backpressure/recovery tests and opt-in legacy task wiring. Guition peripheral activation and physical acceptance remain open; all 38 host UI pixel goldens are unchanged.

@@ -4,6 +4,9 @@
 #[allow(dead_code, unexpected_cfgs)]
 #[path = "../../../apps/m1-firmware/src/product_runtime.rs"]
 mod product_runtime;
+#[allow(dead_code)]
+#[path = "../../../apps/m1-firmware/src/transport_owner_state.rs"]
+mod transport_owner_state;
 
 use pajoniiir_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
 use pajoniiir_controller_session::{ControllerSession, IngestOutcome, SessionDispatchOutcome};

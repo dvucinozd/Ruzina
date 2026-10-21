@@ -1,3 +1,4 @@
+use crate::transport_owner_state::{TransportCompletion, TransportOutcome};
 use pajoniiir_audio_runtime::wav::WavPcm16SourceDescriptor;
 #[cfg(feature = "library-deck-load")]
 use pajoniiir_controller_core::{ControlValue, SemanticControl};
@@ -100,6 +101,8 @@ pub(crate) struct ProductRuntime {
     mixer: MixerState,
     library_effects: LibraryEffectQueue<PRODUCT_LIBRARY_EFFECT_CAPACITY>,
     loaded_tracks: [Option<ProductLoadedTrack>; 2],
+    source_epochs: [u32; 2],
+    persistence_faulted: bool,
     #[cfg(feature = "library-deck-load")]
     analyses: AnalysisPins,
     deck_effects: DeckEffectBroker<
@@ -118,6 +121,8 @@ impl ProductRuntime {
             mixer: MixerState::new(),
             library_effects: LibraryEffectQueue::new(),
             loaded_tracks: [None, None],
+            source_epochs: [1; 2],
+            persistence_faulted: false,
             #[cfg(feature = "library-deck-load")]
             analyses: AnalysisPins::new(),
             deck_effects: DeckEffectBroker::new(),
@@ -151,6 +156,21 @@ impl ProductRuntime {
         self.stats.library_failures = self.stats.library_failures.saturating_add(1);
     }
 
+    pub(crate) fn fail_library_load(&mut self, source_revoked: Option<DeckId>) {
+        if let Some(deck) = source_revoked {
+            self.invalidate_deck_source(deck);
+        }
+        self.note_library_failure();
+    }
+
+    pub(crate) fn note_persistence_fault(&mut self) {
+        self.persistence_faulted = true;
+    }
+
+    pub(crate) const fn persistence_faulted(&self) -> bool {
+        self.persistence_faulted
+    }
+
     pub(crate) fn commit_library_load(
         &mut self,
         deck: DeckId,
@@ -166,6 +186,21 @@ impl ProductRuntime {
         {
             return false;
         }
+        // A persisted read may have completed before a newly accepted edit was
+        // flushed. Retain the live local bank even if that write just completed.
+        let mut persisted = persisted;
+        for other in [DeckId::One, DeckId::Two] {
+            if self.loaded_track(other).is_some_and(|loaded| {
+                loaded.candidate.track.track_id == candidate.track.track_id
+                    && loaded.candidate.publication.lease == candidate.publication.lease
+            }) {
+                persisted = self.deck.local_hot_cues(other).or(persisted);
+            }
+        }
+        let persisted = self
+            .deck_effects
+            .pending_hot_cues(candidate.track.track_id)
+            .or(persisted);
         #[cfg(feature = "library-deck-load")]
         let analysis_identity = AnalysisIdentity {
             track: candidate.track.track_id,
@@ -199,6 +234,7 @@ impl ProductRuntime {
             #[cfg(feature = "library-deck-load")]
             analysis_identity: analysis.publication.as_ref().map(|_| analysis_identity),
         });
+        self.advance_source_epoch(deck);
         #[cfg(feature = "library-deck-load")]
         {
             self.analyses.clear(deck_index(deck));
@@ -217,7 +253,51 @@ impl ProductRuntime {
         self.loaded_tracks[deck_index(deck)]
     }
 
+    pub(crate) const fn source_epoch(&self, deck: DeckId) -> u32 {
+        self.source_epochs[deck_index(deck)]
+    }
+
+    fn advance_source_epoch(&mut self, deck: DeckId) {
+        let epoch = &mut self.source_epochs[deck_index(deck)];
+        *epoch = epoch.wrapping_add(1).max(1);
+        self.deck_effects.discard_source_effects(deck);
+    }
+
+    /// Apply only results from the current load and, for PCM, current stream.
+    /// `stream_generation` is sampled by the dispatcher from the source owner.
+    pub(crate) fn apply_transport_completion(
+        &mut self,
+        completion: TransportCompletion,
+        stream_generation: u32,
+    ) -> bool {
+        let deck = completion.outcome.deck();
+        if self.source_epoch(deck) != completion.source_epoch {
+            return false;
+        }
+        match completion.outcome {
+            TransportOutcome::Playback {
+                request_id,
+                succeeded,
+                ..
+            } => self.resolve_playback_request(deck, request_id, succeeded),
+            TransportOutcome::StreamEnded {
+                generation,
+                position_ms,
+                ..
+            } if generation != 0 && generation == stream_generation => {
+                self.finish_stream_playback(deck, position_ms);
+                true
+            }
+            TransportOutcome::SourceFailed { .. } if stream_generation == 0 => {
+                self.invalidate_deck_source(deck);
+                true
+            }
+            _ => false,
+        }
+    }
+
     pub(crate) fn invalidate_deck_source(&mut self, deck: DeckId) {
+        self.advance_source_epoch(deck);
         #[cfg(feature = "library-deck-load")]
         self.analyses.clear(deck_index(deck));
         self.loaded_tracks[deck_index(deck)] = None;
@@ -232,6 +312,7 @@ impl ProductRuntime {
             let stale = self.loaded_tracks[index]
                 .is_some_and(|loaded| Some(loaded.candidate.publication.lease) != current);
             if stale {
+                self.advance_source_epoch(deck);
                 #[cfg(feature = "library-deck-load")]
                 self.analyses.clear(index);
                 self.loaded_tracks[index] = None;
@@ -546,6 +627,17 @@ impl SessionDeliverySink for ProductRuntime {
                             self.analysis_view(DeckId::Two),
                         ],
                     );
+                    if self.persistence_faulted
+                        && effects.items.iter().flatten().any(|effect| {
+                            effect.target() == pajoniiir_deck::DeckEffectTarget::Persistence
+                        })
+                    {
+                        // Consume the rejected edit without changing its bank/LED
+                        // or holding the controller FIFO ahead of other decks.
+                        self.stats.deferred_controls =
+                            self.stats.deferred_controls.saturating_add(1);
+                        return true;
+                    }
                     if !self.deck_effects.try_push_all(effects) {
                         self.stats.effect_backpressure =
                             self.stats.effect_backpressure.saturating_add(1);

@@ -1,0 +1,18 @@
+   Compiling pajoniiir-service v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-service)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.84s
+     Running tests/composed_failures.rs (/home/daniel/.cache/m1-rust-review/host-target/debug/deps/composed_failures-5417b0ac5831b4ba)
+
+running 10 tests
+test failed_preflight_keeps_old_track_but_failed_prepare_retires_only_revoked_source ... ok
+test failed_seek_unloads_only_its_deck_and_can_reload_without_resetting_other_deck ... ok
+test late_terminal_progress_after_seek_is_rejected_even_with_same_load_epoch ... ok
+test media_detach_cancels_all_affected_sources_but_retains_unconfirmed_cue_write ... ok
+test loading_same_track_keeps_latest_accepted_bank_before_and_after_write_completion ... ok
+test rendered_fault_waits_for_sink_receipt_and_does_not_stop_other_deck ... ok
+test unavailable_or_corrupt_cue_store_returns_failure_instead_of_an_empty_bank ... ok
+test source_invalidation_releases_full_transport_queue_and_preserves_other_deck_order ... ok
+test source_read_fault_stops_only_its_deck_and_old_eof_cannot_stop_replacement ... ok
+test write_failure_answers_queued_library_reads_and_rejects_edits_without_holding_controller ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

@@ -70,6 +70,7 @@ enum LibraryDeckCompletion {
     },
     Failed {
         effect: LibraryEffect,
+        source_revoked: Option<DeckId>,
     },
 }
 
@@ -101,7 +102,7 @@ pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeck
         let effect = match completion {
             LibraryDeckCompletion::Applied { effect }
             | LibraryDeckCompletion::LoadReady { effect, .. }
-            | LibraryDeckCompletion::Failed { effect } => effect,
+            | LibraryDeckCompletion::Failed { effect, .. } => effect,
         };
 
         if expected != Some(effect) {
@@ -145,8 +146,8 @@ pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeck
                         report.failed = report.failed.saturating_add(1);
                     }
                 }
-                LibraryDeckCompletion::Failed { .. } => {
-                    product.note_library_failure();
+                LibraryDeckCompletion::Failed { source_revoked, .. } => {
+                    product.fail_library_load(source_revoked);
                     report.failed = report.failed.saturating_add(1);
                 }
             }
@@ -201,18 +202,27 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                 candidate,
             } if completed == request_id && effect == (LibraryEffect::Load { deck }) => {
                 if !catalog_publication_matches(candidate.publication) {
-                    LibraryDeckCompletion::Failed { effect }
+                    LibraryDeckCompletion::Failed {
+                        effect,
+                        source_revoked: None,
+                    }
                 } else {
                     let client = &mut library_load;
                     if !validate_audio_source(client, candidate).await {
-                        LibraryDeckCompletion::Failed { effect }
+                        LibraryDeckCompletion::Failed {
+                            effect,
+                            source_revoked: None,
+                        }
                     } else {
                         let (next_buffer, source, source_cues_available, analysis) =
                             load_source_analysis(client, candidate, buffer, request_id).await;
                         buffer = next_buffer;
 
                         if !catalog_publication_matches(candidate.publication) {
-                            LibraryDeckCompletion::Failed { effect }
+                            LibraryDeckCompletion::Failed {
+                                effect,
+                                source_revoked: None,
+                            }
                         } else {
                             match load_persisted_hot_cues(request_id, candidate.track.track_id)
                                 .await
@@ -236,11 +246,17 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                                                 analysis,
                                             }
                                         }
-                                        Err(()) => LibraryDeckCompletion::Failed { effect },
+                                        Err(()) => LibraryDeckCompletion::Failed {
+                                            effect,
+                                            source_revoked: Some(deck),
+                                        },
                                     }
                                 }
                                 HotCueLoadResult::Ready(_) | HotCueLoadResult::Failed => {
-                                    LibraryDeckCompletion::Failed { effect }
+                                    LibraryDeckCompletion::Failed {
+                                        effect,
+                                        source_revoked: None,
+                                    }
                                 }
                             }
                         }
@@ -250,7 +266,10 @@ pub(crate) async fn run_library_deck_owner() -> ! {
             Usb0LibraryCompletion::Failed {
                 request_id: completed,
                 ..
-            } if completed == request_id => LibraryDeckCompletion::Failed { effect },
+            } if completed == request_id => LibraryDeckCompletion::Failed {
+                effect,
+                source_revoked: None,
+            },
             Usb0LibraryCompletion::Applied { .. }
             | Usb0LibraryCompletion::LoadResolved { .. }
             | Usb0LibraryCompletion::Failed { .. } => esp_hal::system::software_reset(),

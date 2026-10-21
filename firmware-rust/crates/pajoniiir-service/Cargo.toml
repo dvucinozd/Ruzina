@@ -30,3 +30,7 @@ pajoniiir-track-analysis.workspace = true
 [[test]]
 name = "runtime_owners"
 required-features = ["runtime-owners"]
+
+[[test]]
+name = "composed_failures"
+required-features = ["runtime-owners"]
