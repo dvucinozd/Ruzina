@@ -10,6 +10,13 @@ build = "build.rs"
 pajoniiir-core.workspace = true
 pajoniiir-ui-model.workspace = true
 pajoniiir-waveform.workspace = true
+pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
+pajoniiir-controller-core.workspace = true
+pajoniiir-deck.workspace = true
+pajoniiir-hot-cues.workspace = true
+pajoniiir-media-session.workspace = true
+pajoniiir-rekordbox.workspace = true
+pajoniiir-track-analysis = { workspace = true, features = ["owned"] }
 slint.workspace = true
 
 [build-dependencies]

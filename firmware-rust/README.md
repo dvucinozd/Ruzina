@@ -6,6 +6,8 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
+Latest UI: [interactive decks, Library, Hot Cues and session Settings](../docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md), with the shared waveform rasterizer and reviewed headless goldens for both documented board sizes. See [simulator controls and scope](apps/desktop-simulator/README.md).
+
 Latest analysis work: [generation-bound Rekordbox DAT/EXT publication](../docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md) supplies Sync, Beat Jump, quantized loops and neutral waveform/cue views. Host inspection: `cargo run --locked -p pajoniiir-rekordbox --example analysis_inspect -- FILE.DAT FILE.EXT`.
 
 Latest: [completed-output transport progress](../docs/M1_RUST_PLAYBACK_PROGRESS_GATE_2026-10-21.md) connects canonical PCM through delayed output confirmations to position/EOF. The reference target uses the same completion bookkeeping; its timer and physical driver gaps remain explicit.
@@ -46,10 +48,13 @@ From this directory:
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo run -p desktop-simulator
+cargo run --locked -p desktop-simulator -- --board jc1060
+cargo run --locked -p desktop-simulator -- --board jc8012
+cargo run --locked -p desktop-simulator -- --smoke target/ui-smoke
+python3 tools/check_ui_goldens.py target/ui-smoke
 ```
 
-The simulator window is fixed at the product's initial 800x480 UI size.
+The simulator selects documented 1024×600 or 800×1280 geometry; decks stack in portrait. It uses synthetic demo media and a host transport clock, with no physical audio or peripherals.
 
 ## Verification rule
 
