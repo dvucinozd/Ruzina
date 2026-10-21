@@ -100,3 +100,56 @@ fn invalid_action_and_cue_codes_are_rejected() {
     assert!(cue_event(DeckId::One, 8, false, true).is_none());
     assert_eq!(format_time(93_427), "01:33.427");
 }
+
+#[test]
+fn mixer_controls_work_unloaded_and_survive_media_removal_as_configuration() {
+    use pajoniiir_ui_model::{MixerParameter, MixerToggle, present_mixer};
+    let mut s = Session::new();
+    s.control(MixerParameter::Crossfader.event(None, 0).unwrap());
+    s.control(
+        MixerParameter::ChannelVolume
+            .event(Some(DeckId::Two), 0)
+            .unwrap(),
+    );
+    s.control(MixerToggle::Pfl.event(Some(DeckId::Two), true).unwrap());
+    s.control(MixerParameter::HeadphoneMix.event(None, 0).unwrap());
+    s.control(MixerParameter::HeadphoneLevel.event(None, 4096).unwrap());
+    let before = present_mixer(&s.mixer);
+    s.detach();
+    assert_eq!(present_mixer(&s.mixer), before);
+    assert!(before.channels[1].pfl_enabled);
+    assert_eq!(before.channels[1].channel_volume, 0);
+    assert_eq!(before.master_volume, 16383);
+    assert!(!s.presentation(0).transport.loaded);
+}
+
+#[test]
+fn fx_uses_global_state_and_pad_cancellation_cannot_stop_another_deck() {
+    use pajoniiir_ui_model::{BeatFxAction, fx_depth_event, fx_target_event, pad_fx_event};
+    let mut s = loaded();
+    s.load(DeckId::Two);
+    s.control(BeatFxAction::Next.event(true));
+    s.control(fx_target_event(1).unwrap());
+    s.control(fx_depth_event(96).unwrap());
+    s.control(BeatFxAction::Toggle.event(true));
+    assert!(s.decks.beat_fx().enabled);
+    assert_eq!(s.decks.beat_fx().depth, 96);
+    assert_eq!(
+        s.decks.beat_fx().target,
+        pajoniiir_controller_core::BeatFxTarget::ChannelTwo
+    );
+    s.control(pad_fx_event(DeckId::One, 0, 2, true).unwrap());
+    s.control(pad_fx_event(DeckId::Two, 1, 4, true).unwrap());
+    s.select_pad_bank(DeckId::One, 1);
+    assert!(s.decks.deck(DeckId::One).active_pad_fx.is_none());
+    assert!(s.decks.deck(DeckId::Two).active_pad_fx.is_some());
+    s.cancel_pads();
+    assert!(s.decks.deck(DeckId::Two).active_pad_fx.is_none());
+    assert!(s.decks.beat_fx().enabled);
+    s.control(pad_fx_event(DeckId::One, 0, 1, true).unwrap());
+    s.detach();
+    assert!(s.decks.deck(DeckId::One).active_pad_fx.is_none());
+    assert_eq!(s.decks.beat_fx(), pajoniiir_deck::BeatFxState::new());
+    s.control(pad_fx_event(DeckId::One, 0, 1, true).unwrap());
+    assert!(s.decks.deck(DeckId::One).active_pad_fx.is_none());
+}

@@ -1,0 +1,6 @@
+Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete: PASS at width 1024
+Mixer PFL/slider external update/Home/End/drag+refresh; Beat FX effect/target/depth/toggle; Pad FX bank/cancel/hold/release/focus loss/detach: PASS at 1024x600
+Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete: PASS at width 800
+Mixer PFL/slider external update/Home/End/drag+refresh; Beat FX effect/target/depth/toggle; Pad FX bank/cancel/hold/release/focus loss/detach: PASS at 800x1280
+Slint deck/mixer/FX callback + pointer/keyboard smoke in both geometries; 24 software-rendered snapshots: PASS
+Reviewed Slint screenshot goldens: 24 passed

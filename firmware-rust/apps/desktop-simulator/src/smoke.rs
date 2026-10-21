@@ -35,6 +35,7 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         ui.invoke_select_track(1);
         ui.invoke_load_track(1);
         ui.invoke_deck_action(0, 0);
+        mix_fx_smoke::scenes(&ui, &state, output, name)?;
         state.borrow_mut().tick(1770);
         refresh(&ui, &state.borrow());
         assert!(state.borrow().presentation(0).transport.playing);
@@ -63,17 +64,21 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         ui.invoke_media_action();
         assert!(!state.borrow().presentation(0).transport.loaded);
         capture(&ui, output, &format!("{name}-removed"))?;
+        ui.set_page(5);
+        capture(&ui, output, &format!("{name}-fx-removed"))?;
+        ui.set_page(1);
         ui.invoke_media_action();
         ui.set_remaining(false);
         pointer_smoke(&ui, &state, width as f32);
+        mix_fx_smoke::pointer(&ui, &state, width as f32, height as f32);
     }
     println!(
-        "Slint callback + pointer/keyboard smoke in both geometries; 14 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX callback + pointer/keyboard smoke in both geometries; 24 software-rendered snapshots: PASS"
     );
     Ok(())
 }
 
-fn click(ui: &MainWindow, x: f32, y: f32) {
+pub(super) fn click(ui: &MainWindow, x: f32, y: f32) {
     use slint::platform::{PointerEventButton, WindowEvent};
     let position = slint::LogicalPosition::new(x, y);
     // Headless replay has no native event loop to lay out newly created pages.
@@ -95,14 +100,14 @@ fn pointer_smoke(ui: &MainWindow, state: &Rc<RefCell<Session>>, width: f32) {
     use slint::platform::{PointerEventButton, WindowEvent};
     // Actual hit testing, rather than invoking generated callbacks directly.
     ui.set_page(0);
-    click(ui, width * 0.37, 80.0);
+    nav(ui, width, 1);
     assert_eq!(ui.get_page(), 1);
     assert!(ui.get_media_ready());
     click(ui, width / 2.0, 238.0);
     assert_eq!(state.borrow().selected, 0);
     click(ui, width / 6.0, 478.0);
     assert!(state.borrow().presentation(0).transport.loaded);
-    click(ui, width * 0.12, 80.0);
+    nav(ui, width, 0);
     assert_eq!(ui.get_page(), 0);
     click(ui, 70.0, 356.0);
     assert!(state.borrow().presentation(0).transport.playing);
@@ -148,7 +153,7 @@ fn pointer_smoke(ui: &MainWindow, state: &Rc<RefCell<Session>>, width: f32) {
         text: slint::platform::Key::Return.into(),
     });
     assert_eq!(state.borrow().presentation(0).transport.position_ms, 0);
-    click(ui, width * 0.61, 80.0);
+    nav(ui, width, 2);
     assert_eq!(ui.get_page(), 2);
     click(ui, 50.0, 342.0);
     assert_eq!(state.borrow().presentation(0).transport.position_ms, 1000);
@@ -168,7 +173,19 @@ fn pointer_smoke(ui: &MainWindow, state: &Rc<RefCell<Session>>, width: f32) {
     );
 }
 
-fn capture(ui: &MainWindow, output: &Path, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn nav(ui: &MainWindow, width: f32, page: usize) {
+    click(
+        ui,
+        16.0 + (page as f32 + 0.5) * (width - 72.0) / 6.0 + page as f32 * 8.0,
+        80.0,
+    );
+}
+
+pub(super) fn capture(
+    ui: &MainWindow,
+    output: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     slint::platform::update_timers_and_animations();
     let snapshot = ui.window().take_snapshot()?;
     let mut file = std::io::BufWriter::new(fs::File::create(output.join(format!("{name}.ppm")))?);

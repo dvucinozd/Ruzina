@@ -1,4 +1,6 @@
 mod compositor;
+mod mix_fx_smoke;
+mod mix_fx_ui;
 mod session;
 mod smoke;
 
@@ -116,9 +118,11 @@ fn refresh(ui: &MainWindow, session: &Session) {
     ui.set_selection(session.selected as i32);
     ui.set_media_ready(session.connected());
     ui.set_message(session.message.clone().into());
+    mix_fx_ui::refresh(ui, session);
 }
 
 fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
+    mix_fx_ui::bind(ui, state.clone());
     ui.set_decks(ModelRc::new(VecModel::from(
         (0..2)
             .map(|_| DeckView {

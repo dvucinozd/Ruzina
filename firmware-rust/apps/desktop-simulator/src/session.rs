@@ -1,16 +1,21 @@
 //! Host owner: real deck semantics and importer, simulated transport/media.
 //! This does not pump audio, access USB, or persist settings/cues to disk.
-use pajoniiir_controller_core::{ControlEvent, DeckId};
+use pajoniiir_controller_core::{
+    ControlDomain, ControlEvent, ControlValue, DeckId, SemanticControl,
+};
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_deck::{DeckEffect, DeckProductState};
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_session::{MediaSession, MediaSourceId};
+use pajoniiir_mixer::MixerState;
 use pajoniiir_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};
 use pajoniiir_track_analysis::{
     TrackAnalysis,
     owned::{AnalysisIdentity, AnalysisPins},
 };
-use pajoniiir_ui_model::{DeckPresentation, present_deck};
+use pajoniiir_ui_model::{
+    BeatFxAction, DeckPresentation, pad_bank_event, pad_fx_event, present_deck,
+};
 
 const DAT_A: &[u8] =
     include_bytes!("../../../crates/pajoniiir-rekordbox/tests/fixtures/track-a.DAT");
@@ -27,6 +32,7 @@ const DURATIONS: [u32; 4] = [10_000, 14_000, 10_000, 10_000];
 
 pub struct Session {
     pub decks: DeckProductState,
+    pub mixer: MixerState,
     pub selected: usize,
     pub message: String,
     media: MediaSession,
@@ -51,6 +57,7 @@ impl Session {
     pub fn new() -> Self {
         let mut result = Self {
             decks: DeckProductState::new(),
+            mixer: MixerState::new(),
             selected: 0,
             message: "Choose a demo track in Library".into(),
             media: MediaSession::new(),
@@ -71,6 +78,8 @@ impl Session {
         self.message = "Demo media connected · choose a track".into();
     }
     pub fn detach(&mut self) {
+        self.cancel_pads();
+        self.control(BeatFxAction::Clear.event(true));
         self.media.on_disconnect(None);
         for i in 0..2 {
             self.decks.unload_track(deck(i));
@@ -183,10 +192,36 @@ impl Session {
         )
     }
     pub fn control(&mut self, event: ControlEvent) {
-        let Some(target) = event.deck else {
+        if event.control.domain() == ControlDomain::Mixer {
+            self.mixer.handle_control(event);
             return;
-        };
-        if self.loaded[index(target)].is_none() {
+        }
+        let global_fx = matches!(
+            event.control,
+            SemanticControl::BeatFxSelectNext
+                | SemanticControl::BeatFxSelectPrev
+                | SemanticControl::BeatFxBeatDec
+                | SemanticControl::BeatFxBeatInc
+                | SemanticControl::BeatFxTarget
+                | SemanticControl::BeatFxDepth
+                | SemanticControl::BeatFxOn
+                | SemanticControl::BeatFxClear
+        );
+        if !global_fx && event.deck.is_none() {
+            return;
+        }
+        if !global_fx
+            && event
+                .deck
+                .is_some_and(|target| self.loaded[index(target)].is_none())
+        {
+            // A release queued before detach must not replace the recovery
+            // status or recreate state after the deck was invalidated.
+            if matches!(event.value, ControlValue::Pressed(false))
+                || matches!(event.value, ControlValue::PadAction(action) if !action.pressed)
+            {
+                return;
+            }
             self.message = "Load a track before using deck controls".into();
             return;
         }
@@ -229,6 +264,31 @@ impl Session {
                 }
                 _ => {} // Deck state already records pause/pitch/loop; no audio DSP in host.
             }
+        }
+    }
+    pub fn cancel_pads(&mut self) {
+        for i in 0..2 {
+            if let Some(active) = self.decks.deck(deck(i)).active_pad_fx {
+                let bank = if active.bank == pajoniiir_deck::PadFxBank::One {
+                    0
+                } else {
+                    1
+                };
+                self.control(pad_fx_event(deck(i), bank, i32::from(active.pad), false).unwrap());
+            }
+        }
+    }
+    pub fn select_pad_bank(&mut self, target: DeckId, bank: i32) {
+        if let Some(event) = pad_bank_event(target, bank) {
+            if let Some(active) = self.decks.deck(target).active_pad_fx {
+                let old_bank = if active.bank == pajoniiir_deck::PadFxBank::One {
+                    0
+                } else {
+                    1
+                };
+                self.control(pad_fx_event(target, old_bank, i32::from(active.pad), false).unwrap());
+            }
+            self.control(event);
         }
     }
     /// Explicit host-only transport clock. Fractional pitch time is retained;

@@ -33,6 +33,17 @@ composes imported columns with beat ticks, playhead, effective cue markers and
 active loop endpoints before conversion to a Slint image. UI views do not parse
 ANLZ or create a Slint item per waveform column.
 
+**Mixer** exposes both channels' Trim/EQ/Filter/level/PFL and global crossfader,
+master, headphones, Master Cue, Smart CFX and Smart Fader. Sliders support drag,
+Home/End and arrow keys; a later shared-state publication updates the same
+focused slider. Percent readouts are normalized control positions, not dB.
+
+**FX** exposes Beat FX effect/beat/target/depth/On/Clear and two eight-pad banks
+per deck. Hold a pad with pointer or Space/Return; release, pointer exit/cancel,
+focus loss or page departure stops it. A bank change releases that deck's pad.
+Media removal clears pads and Beat FX; mixer configuration remains unchanged.
+These controls update semantic state, with no processed audio or fake meters.
+
 ## Headless regression
 
 ```sh
@@ -43,13 +54,13 @@ python3 tools/check_ui_goldens.py target/ui-smoke
 The actual compiled Slint view runs on its software renderer, without X11 or a
 physical display. Callback replay plus pointer hit testing/keyboard input cover
 both geometries, including a refresh during held Play and cue-delete clicks.
-Fourteen PPM screenshots are compared with reviewed raw RGB SHA-256 goldens in
+Twenty-four PPM screenshots are compared with reviewed raw RGB SHA-256 goldens in
 `tests/ui-goldens.json`. These pixel baselines require Linux x86_64, Slint 1.18.1,
-DejaVu Sans and scale 1. Font/raster environment changes require visual review,
+the pinned Fluent style, DejaVu Sans and scale 1. Font/raster environment changes require visual review,
 not automatic baseline replacement. Reviewed PNGs and logs are retained in the
-[UI gate](../../../docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md).
+[mixer/FX UI gate](../../../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md).
 
-This package covers the interactive deck/Library/cue/session-settings slice.
-Full M2.2 UI parity, mixer/FX/diagnostics/performance screens, arbitrary external
-media browsing, real PCM timing/audio, durable settings/cues and Guition
+This package covers interactive decks, Library, cues, mixer/PFL/FX and session settings.
+Full M2.2 UI parity, diagnostics/performance screens, arbitrary external
+media browsing, real PCM timing/audio and audible FX execution, durable settings/cues and Guition
 display/touch rotation/resource qualification remain separate work.

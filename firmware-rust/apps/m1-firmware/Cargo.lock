@@ -1571,6 +1571,7 @@ dependencies = [
  "pajoniiir-core",
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
+ "pajoniiir-mixer",
 ]
 
 [[package]]

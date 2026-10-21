@@ -6,6 +6,8 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
+Latest mixer/FX: [mixer/PFL, headphone and Beat/Pad FX host controls](../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) use authoritative shared state and 24 reviewed pixel goldens. Actual audible DSP/output and device UI qualification remain open.
+
 Latest UI: [interactive decks, Library, Hot Cues and session Settings](../docs/M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md), with the shared waveform rasterizer and reviewed headless goldens for both documented board sizes. See [simulator controls and scope](apps/desktop-simulator/README.md).
 
 Latest analysis work: [generation-bound Rekordbox DAT/EXT publication](../docs/M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.md) supplies Sync, Beat Jump, quantized loops and neutral waveform/cue views. Host inspection: `cargo run --locked -p pajoniiir-rekordbox --example analysis_inspect -- FILE.DAT FILE.EXT`.

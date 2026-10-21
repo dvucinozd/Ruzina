@@ -1,6 +1,9 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+mod mix_fx;
+pub use mix_fx::*;
+
 use pajoniiir_controller_core::{
     ControlEvent, ControlValue, DeckExtAction, DeckExtActionValue, PadAction, PadMode,
     SemanticControl,

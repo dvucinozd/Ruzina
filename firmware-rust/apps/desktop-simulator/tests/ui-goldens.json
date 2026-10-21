@@ -1,103 +1,173 @@
 {
-  "renderer": "Slint 1.18.1 software / Linux x86_64 / DejaVu Sans / scale 1",
+  "renderer": "Slint 1.18.1 software / Fluent / Linux x86_64 / DejaVu Sans / scale 1",
   "snapshots": {
     "jc1060-cues": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "5324a90b6d00412d16d9ad36c62d4d44dde1a5b8e101916cb65b3fc9b5b425fd"
+      "rgb_sha256": "e71e437d088c2ccc4cca280a955ddfc595784d5fd961f486081268decc06940c"
     },
     "jc1060-deck-fallback": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "280ef064fc03bcadcc3d416eaaa594f05cbbbf78f29e1d9711ffac190eaec5e7"
+      "rgb_sha256": "89b6111de7817354587084f787b506c93789374a627efcf7a692b621684bd33a"
     },
     "jc1060-decks": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "7206a3a8d307b90cf0f2623071bdcedb52d193c69dcb8b30761e6c9f28f0915a"
+      "rgb_sha256": "ff44a6b202cc503d312390f281ab753261111803bb1f346efaa15f18103519c2"
     },
     "jc1060-empty": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "08272762718721ccc5105ea7604185a88d68e87f29b725dd66d9c3a4eb6b3a0c"
+      "rgb_sha256": "8014be4c758cf2b1802091cb06c2d813ba1d4e35dcdde86189a09f1c54b64f60"
+    },
+    "jc1060-fx-active": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "8dec673b4823e9cde124bf41f78fd1f1d99f717427b3247243403417c3c58770"
+    },
+    "jc1060-fx-default": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "8b9cc1c9808c71217900d953fb67a9734e87e02b2fae73ef0ca5b562f775d9e6"
+    },
+    "jc1060-fx-removed": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "ff90f91dca506fa586271b86c6c37cfd53533a66d8623501bccbd21f8e459b8f"
     },
     "jc1060-library-fallback": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "04f21005e6774f3a1a0093441f039502525e61d6228611c3e09d0127d99a4e0d"
+      "rgb_sha256": "35727ee62912e1b452dc4843721e8801dd3d374a4c235e5727fb4496e309cc12"
+    },
+    "jc1060-mixer-active": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "8a94b46ac2c0d46ea1b674691a3f9a4880902d378a0323917f9883ffd47b5c18"
+    },
+    "jc1060-mixer-default": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "f373d5e7dda542f31030edf3bb35f6036706dc8f52f307e475beb0631e227013"
     },
     "jc1060-removed": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "87501bea0a87dcfbdf091c94816a14bb8b9124d5ede026651e86530acf31e95b"
+      "rgb_sha256": "8334010e657bcc98b3d376782468904adbc1741810e74e7883f2e6de690fcaa4"
     },
     "jc1060-settings": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "e20337e7b66cad3325e2a8b5aa5c88771c94fec6865a2af8b9f1c91702d199fd"
+      "rgb_sha256": "7ecd785656fd1fe85a88266658afa9e1db64daa20df1d78663678b026c0bc7a7"
     },
     "jc8012-cues": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "007884e99e18cbcb13afaf89b3373ebb74100ef39ef46b45baea148850df10ca"
+      "rgb_sha256": "bb10abe373088db8447cf793744e8f0c13d9902c7dc72358b3f680d12604f9f1"
     },
     "jc8012-deck-fallback": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "81c79a506d5e65e423bf25d0bfd332a1b97495aff258f84ff558b8dff9595e09"
+      "rgb_sha256": "e963e7bbeb0a190e2ed16c05aebaeb889bd916dcb02bbb9478c84f934f03ea5e"
     },
     "jc8012-decks": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "106221cdd6db584ba8070458503fe082e5c0b5efef0411de28cdd6ffe5e576ba"
+      "rgb_sha256": "df499e131c09cd245a18cd69e8703c6b0277770369ba7bcd6e5dc0f238b456f5"
     },
     "jc8012-empty": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "cd889b465becd2689f88534fea1cbb8dc81593296defd9c54355833f9f5a53df"
+      "rgb_sha256": "e771b808c4be71bcaf04fc47ec61a2139d67ad4d7f432a194f2048b05fe031f7"
+    },
+    "jc8012-fx-active": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "79fd8ba6afdf4b03af902493c13876e1e070aea25712fa429b9829ce2d2b0413"
+    },
+    "jc8012-fx-default": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "a3fb5f756be1e17ca686c0225e4e494217962eacb2318db1200849ea035a452b"
+    },
+    "jc8012-fx-removed": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "2d894e114db43a80412a601546262fa07fdeeedd35ad8ece0aa92c85dbeea10b"
     },
     "jc8012-library-fallback": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "99130f89aea90f632f2128f128392cc0a967ad092412b60828fb32f5bdb16806"
+      "rgb_sha256": "9d9727319f7edd0bbeba206659069eccdae0f7ab91d95dbcfdb6481314e866e0"
+    },
+    "jc8012-mixer-active": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "a3b04f3be1fbd37265bdde3d91b35e0e3628cf1452a3f675ede84303e2f69821"
+    },
+    "jc8012-mixer-default": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "7dd7d0a0dbfd5a570ba8a10dac3a74938eadf3c886a09d2926f2cc57e00d95e5"
     },
     "jc8012-removed": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "ebbc4977edb80d45ad1c9b07539cedf97efd1b75e2f6450bcfa76ad24102ee03"
+      "rgb_sha256": "66bafb8723f1dfb2dc9b821767d5016e5ed6e74b4313522ae6c73adfb3c5597f"
     },
     "jc8012-settings": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "a75dfc82bf965497344bbe825591e4d6a7f2f7a5b78e1ef76a06e5d58f8e44f0"
+      "rgb_sha256": "2e499fc067b8a5c5d9a5d20e12f9e8d6df4ef2253bf106950f8e1231d7607c22"
     }
   }
 }
