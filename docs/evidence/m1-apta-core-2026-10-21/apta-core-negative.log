@@ -1,0 +1,2 @@
+desktop simulator: APTA dependency exclusion PASS
+firmware default: experimental provider dependency: ['libapta', 'pajoniiir-apta-adapter']

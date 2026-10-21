@@ -63,6 +63,12 @@ jobs:
       - name: Desktop simulator compile gate
         run: cargo check --locked -p desktop-simulator
 
+      - name: Experimental APTA core portability and product exclusion
+        run: |
+          rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
+          cargo check --locked -p pajoniiir-apta-adapter --lib --no-default-features --target riscv32imafc-unknown-none-elf
+          python3 tools/check_apta_core_boundary.py
+
       - name: Composed runtime owner recovery evidence
         run: |
           mkdir -p target
