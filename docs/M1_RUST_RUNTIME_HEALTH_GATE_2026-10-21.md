@@ -1,5 +1,8 @@
 # M1 runtime publication freshness and owner observations
 
+Follow-up: [composed runtime owner integration and recovery](M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md).
+The available-adapter scope below records this earlier source revision.
+
 Date: 2026-10-21. Branch: `ogranak/runtime-health-freshness`, based on
 `4252d6d48eaaec33eb5b0f03403591cb579387d5` (`ogranak/service-health-ui`).
 This is a dependent software package. The earlier stack and APTA are not merged.

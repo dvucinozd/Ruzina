@@ -63,6 +63,11 @@ jobs:
       - name: Desktop simulator compile gate
         run: cargo check --locked -p desktop-simulator
 
+      - name: Composed runtime owner recovery evidence
+        run: |
+          mkdir -p target
+          cargo test --locked -p pajoniiir-service --features runtime-owners --test runtime_owners -- --nocapture --test-threads=1 > target/runtime-owners.log 2>&1
+
       - name: Interactive UI and screenshot goldens
         run: |
           cargo run --locked -p desktop-simulator -- --smoke target/ui-smoke
@@ -76,3 +81,4 @@ jobs:
           path: |
             firmware-rust/target/ui-smoke/*.ppm
             firmware-rust/target/ui-smoke/*.txt
+            firmware-rust/target/runtime-owners.log

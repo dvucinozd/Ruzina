@@ -102,6 +102,58 @@ fn invalid_action_and_cue_codes_are_rejected() {
 }
 
 #[test]
+fn review_same_track_cue_edits_share_tombstones_without_disturbing_playback() {
+    let mut s = loaded();
+    assert!(s.load(DeckId::Two));
+    s.control(DeckAction::Play.event(DeckId::Two, true));
+    s.tick(1500);
+    let position = s.presentation(1).transport.position_ms;
+    s.control(cue_event(DeckId::One, 0, true, true).unwrap());
+    assert!(s.presentation(1).cues[0].is_none());
+    assert!(s.presentation(1).transport.playing);
+    assert_eq!(s.presentation(1).transport.position_ms, position);
+    s.control(cue_event(DeckId::Two, 2, false, true).unwrap());
+    assert!(s.presentation(0).cues[2].is_some());
+    assert!(s.presentation(0).cues[0].is_none());
+    assert!(s.load(DeckId::One));
+    assert!(s.presentation(0).cues[0].is_none());
+    assert!(s.presentation(0).cues[2].is_some());
+    s.control(DeckAction::Play.event(DeckId::Two, true));
+    assert!(s.load(DeckId::Two));
+    assert!(s.presentation(1).cues[0].is_none());
+    assert!(s.presentation(1).cues[2].is_some());
+    s.selected = 1;
+    assert!(s.load(DeckId::Two));
+    let other = s.presentation(1).cues;
+    s.control(cue_event(DeckId::One, 3, false, true).unwrap());
+    assert_eq!(s.presentation(1).cues, other);
+}
+
+#[test]
+fn review_track_end_is_counted_only_when_entering_eof() {
+    let mut s = Session::new();
+    s.selected = 2; // BPM fallback permits seeks beyond the known duration.
+    assert!(s.load(DeckId::One));
+    press(&mut s, DeckAction::Play);
+    s.tick(20_000);
+    for _ in 0..40 {
+        press(&mut s, DeckAction::JumpForward);
+    }
+    assert_eq!(s.diagnostics().counters.end_of_track, 1);
+    assert_eq!(s.diagnostics().events.len(), 5); // boot, connect, load attempt, loaded, one end
+    press(&mut s, DeckAction::JumpBack);
+    assert!(s.presentation(0).transport.position_ms < s.presentation(0).transport.duration_ms);
+    press(&mut s, DeckAction::JumpForward);
+    assert_eq!(s.diagnostics().counters.end_of_track, 2);
+    press(&mut s, DeckAction::Play);
+    assert_eq!(s.diagnostics().counters.end_of_track, 2);
+    press(&mut s, DeckAction::Cue);
+    press(&mut s, DeckAction::Play);
+    s.tick(20_000);
+    assert_eq!(s.diagnostics().counters.end_of_track, 3);
+}
+
+#[test]
 fn mixer_controls_work_unloaded_and_survive_media_removal_as_configuration() {
     use pajoniiir_ui_model::{MixerParameter, MixerToggle, present_mixer};
     let mut s = Session::new();

@@ -3108,7 +3108,14 @@ dependencies = [
  "pajoniiir-board-profile",
  "pajoniiir-control-scheduler",
  "pajoniiir-controller-core",
+ "pajoniiir-controller-session",
  "pajoniiir-core",
+ "pajoniiir-deck",
+ "pajoniiir-hot-cues",
+ "pajoniiir-media-catalog",
+ "pajoniiir-media-session",
+ "pajoniiir-mixer",
+ "pajoniiir-track-analysis",
 ]
 
 [[package]]

@@ -1,0 +1,478 @@
+[
+  {
+    "baseRefName": "main",
+    "headRefName": "ogranak/audio-history-routing",
+    "headRefOid": "6ea7b977aa2ea0390bcbd578e99118affd78c234",
+    "mergeable": "MERGEABLE",
+    "number": 5,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-20T22:12:54Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39506431046/job/118916398346",
+        "name": "p4",
+        "startedAt": "2026-10-20T22:12:52Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust ESP32-P4 compile gate",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-20T22:12:54Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39506431063/job/118916398670",
+        "name": "host",
+        "startedAt": "2026-10-20T22:12:52Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust host foundation",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      }
+    ],
+    "title": "Add live PCM history, completed-output transport and Guition diagnostics",
+    "review_comments": []
+  },
+  {
+    "baseRefName": "ogranak/audio-history-routing",
+    "headRefName": "ogranak/rekordbox-analysis",
+    "headRefOid": "963e730f614f948830f77ee6c93801e34f6105c7",
+    "mergeable": "MERGEABLE",
+    "number": 6,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-20T22:42:04Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39509996682/job/118928357969",
+        "name": "p4",
+        "startedAt": "2026-10-20T22:42:02Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust ESP32-P4 compile gate",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-20T22:42:04Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39509996616/job/118928357537",
+        "name": "host",
+        "startedAt": "2026-10-20T22:42:02Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust host foundation",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      }
+    ],
+    "title": "Import pinned Rekordbox analysis for deck and waveform consumers",
+    "review_comments": []
+  },
+  {
+    "baseRefName": "ogranak/rekordbox-analysis",
+    "headRefName": "ogranak/interactive-deck-ui",
+    "headRefOid": "df1524b9a98ba52a740577f718017626619732da",
+    "mergeable": "MERGEABLE",
+    "number": 7,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T07:44:01Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39564055564/job/119101952765",
+        "name": "p4",
+        "startedAt": "2026-10-21T07:43:59Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust ESP32-P4 compile gate",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T07:44:01Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39564055497/job/119101952603",
+        "name": "host",
+        "startedAt": "2026-10-21T07:43:59Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust host foundation",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      }
+    ],
+    "title": "Add interactive deck UI and imported waveform compositor",
+    "review_comments": [
+      {
+        "url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4334268150",
+        "pull_request_review_id": 5596475639,
+        "id": 4334268150,
+        "node_id": "PRRC_kwDOUME9Kc8AAAABAleu9g",
+        "diff_hunk": "@@ -0,0 +1,276 @@\n+//! Host owner: real deck semantics and importer, simulated transport/media.\n+//! This does not pump audio, access USB, or persist settings/cues to disk.\n+use pajoniiir_controller_core::{ControlEvent, DeckId};\n+use pajoniiir_core::MediaTrackId;\n+use pajoniiir_deck::{DeckEffect, DeckProductState};\n+use pajoniiir_hot_cues::HotCueBank;\n+use pajoniiir_media_session::{MediaSession, MediaSourceId};\n+use pajoniiir_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};\n+use pajoniiir_track_analysis::{\n+    TrackAnalysis,\n+    owned::{AnalysisIdentity, AnalysisPins},\n+};\n+use pajoniiir_ui_model::{DeckPresentation, present_deck};\n+\n+const DAT_A: &[u8] =\n+    include_bytes!(\"../../../crates/pajoniiir-rekordbox/tests/fixtures/track-a.DAT\");\n+const DAT_B: &[u8] =\n+    include_bytes!(\"../../../crates/pajoniiir-rekordbox/tests/fixtures/track-b.DAT\");\n+const EXT: &[u8] = include_bytes!(\"../../../crates/pajoniiir-rekordbox/tests/fixtures/track-a.EXT\");\n+pub const TITLES: [&str; 4] = [\n+    \"01 / Grid study \u00b7 120 BPM\",\n+    \"02 / Offset beats \u00b7 128 BPM\",\n+    \"03 / No analysis \u00b7 120 BPM\",\n+    \"04 / Damaged analysis \u00b7 recovery\",\n+];\n+const DURATIONS: [u32; 4] = [10_000, 14_000, 10_000, 10_000];\n+\n+pub struct Session {\n+    pub decks: DeckProductState,\n+    pub selected: usize,\n+    pub message: String,\n+    media: MediaSession,\n+    pins: AnalysisPins,\n+    loaded: [Option<(usize, AnalysisIdentity)>; 2],\n+    local: [Option<HotCueBank>; 4],\n+    generation: u32,\n+    fraction: [u64; 2],\n+}\n+\n+pub const fn deck(index: usize) -> DeckId {\n+    if index == 0 { DeckId::One } else { DeckId::Two }\n+}\n+pub const fn index(deck: DeckId) -> usize {\n+    match deck {\n+        DeckId::One => 0,\n+        DeckId::Two => 1,\n+    }\n+}\n+\n+impl Session {\n+    pub fn new() -> Self {\n+        let mut result = Self {\n+            decks: DeckProductState::new(),\n+            selected: 0,\n+            message: \"Choose a demo track in Library\".into(),\n+            media: MediaSession::new(),\n+            pins: AnalysisPins::new(),\n+            loaded: [None, None],\n+            local: [None; 4],\n+            generation: 0,\n+            fraction: [0; 2],\n+        };\n+        result.reconnect();\n+        result\n+    }\n+    pub fn connected(&self) -> bool {\n+        self.media.lease().is_some()\n+    }\n+    pub fn reconnect(&mut self) {\n+        self.media.on_connect(MediaSourceId::new(1).unwrap());\n+        self.message = \"Demo media connected \u00b7 choose a track\".into();\n+    }\n+    pub fn detach(&mut self) {\n+        self.media.on_disconnect(None);\n+        for i in 0..2 {\n+            self.decks.unload_track(deck(i));\n+            self.pins.clear(i);\n+            self.loaded[i] = None;\n+            self.fraction[i] = 0;\n+        }\n+        self.message = \"Media removed \u00b7 decks stopped \u00b7 reconnect in Library\".into();\n+    }\n+    pub fn load(&mut self, target: DeckId) -> bool {\n+        let i = index(target);\n+        let Some(lease) = self.media.lease() else {\n+            self.message = \"Load unavailable \u00b7 reconnect media\".into();\n+            return false;\n+        };\n+        if self.decks.deck(target).playing {\n+            self.message = \"Load locked \u00b7 pause the destination deck\".into();\n+            return false;\n+        }\n+        let selection = self.selected;\n+        if selection >= TITLES.len() {\n+            return false;\n+        }\n+        self.generation = self.generation.wrapping_add(1).max(1);\n+        let id = AnalysisIdentity {\n+            track: MediaTrackId([selection as u8 + 1; 16]),\n+            lease,\n+            catalog_revision: 1,\n+            load_generation: self.generation,\n+        };\n+        let mut importer = AnlzImporter::new();\n+        let data = match selection {\n+            0 => Some(DAT_A),\n+            1 => Some(DAT_B),\n+            3 => Some(&b\"damaged\"[..]),\n+            _ => None,\n+        };\n+        let publication = data.and_then(|data| {\n+            feed(&mut importer, AnalysisFileKind::Dat, data).ok()?;\n+            if selection == 0 {\n+                feed(&mut importer, AnalysisFileKind::Ext, EXT).ok()?;\n+            }\n+            importer\n+                .finish(id, if selection == 1 { 12800 } else { 12000 })\n+                .ok()\n+        });\n+        let mut source = HotCueBank::empty(id.track);\n+        if let Some(analysis) = publication.as_ref().map(|p| p.view()) {\n+            for cue in analysis.cues() {\n+                if let Some(end) = cue.end_ms {\n+                    source.set_loop(cue.slot, cue.start_ms, end);\n+                } else {\n+                    source.set_single(cue.slot, cue.start_ms);\n+                }\n+            }\n+        }\n+        if !self.decks.commit_track_load(\n+            target,\n+            id.track,\n+            if selection == 1 { 12800 } else { 12000 },\n+            source.as_source(),\n+            self.local[selection],\n+        ) {\n+            return false;\n+        }\n+        self.pins.clear(i);\n+        let available = publication.is_some();\n+        if let Some(publication) = publication {\n+            assert!(self.pins.publish(i, id, publication));\n+        }\n+        self.loaded[i] = Some((selection, id));\n+        self.fraction[i] = 0;\n+        self.message = if available {\n+            format!(\"Deck {} loaded \u00b7 Rekordbox grid ready\", i + 1)\n+        } else {\n+            format!(\n+                \"Deck {} loaded \u00b7 {} \u00b7 BPM fallback\",\n+                i + 1,\n+                if selection == 3 {\n+                    \"analysis rejected\"\n+                } else {\n+                    \"no analysis\"\n+                }\n+            )\n+        };\n+        true\n+    }\n+    pub fn analysis(&self, i: usize) -> Option<TrackAnalysis<'_>> {\n+        let (_, id) = self.loaded.get(i).copied().flatten()?;\n+        if !self.media.validate(id.lease) {\n+            return None;\n+        }\n+        self.pins.view(i, id)\n+    }\n+    pub fn title(&self, i: usize) -> &str {\n+        self.loaded[i]\n+            .map(|(selection, _)| TITLES[selection])\n+            .unwrap_or(\"No track loaded\")\n+    }\n+    pub fn presentation(&self, i: usize) -> DeckPresentation {\n+        let duration = self.loaded[i]\n+            .map(|(selection, _)| DURATIONS[selection])\n+            .unwrap_or(0);\n+        present_deck(\n+            deck(i),\n+            self.decks.deck(deck(i)),\n+            self.loaded[i].is_some(),\n+            duration,\n+            self.decks.hot_cues(deck(i)),\n+        )\n+    }\n+    pub fn control(&mut self, event: ControlEvent) {\n+        let Some(target) = event.deck else {\n+            return;\n+        };\n+        if self.loaded[index(target)].is_none() {\n+            self.message = \"Load a track before using deck controls\".into();\n+            return;\n+        }\n+        let views = core::array::from_fn(|i| {\n+            self.loaded[i]\n+                .filter(|(_, id)| self.media.validate(id.lease))\n+                .and_then(|(_, id)| self.pins.view(i, id))\n+        });\n+        let effects = self.decks.handle_control_with_analysis(event, views);\n+        for effect in effects.items.into_iter().flatten() {\n+            match effect {\n+                DeckEffect::PlaybackRequest {\n+                    deck,\n+                    playing,\n+                    request_id,\n+                } => {\n+                    let p = self.presentation(index(deck));\n+                    let can_play = !playing || p.transport.position_ms < p.transport.duration_ms;\n+                    self.decks\n+                        .resolve_playback_request(deck, request_id, can_play);\n+                    if !can_play {\n+                        self.message = \"End of track \u00b7 press CUE to return\".into();\n+                    }\n+                }\n+                DeckEffect::Seek { deck, position_ms } => {\n+                    let i = index(deck);\n+                    let duration = self.presentation(i).transport.duration_ms as u32;\n+                    let position = position_ms.min(duration);\n+                    self.decks.set_position_ms(deck, position);\n+                    self.fraction[i] = 0;\n+                    if position == duration {\n+                        self.decks.finish_playback(deck, position);\n+                    }\n+                }\n+                DeckEffect::PersistHotCues { deck, bank } => {\n+                    if let Some((selection, _)) = self.loaded[index(deck)] {\n+                        self.local[selection] = Some(bank);",
+        "path": "firmware-rust/apps/desktop-simulator/src/session.rs",
+        "commit_id": "df1524b9a98ba52a740577f718017626619732da",
+        "original_commit_id": "df1524b9a98ba52a740577f718017626619732da",
+        "user": {
+          "login": "chatgpt-codex-connector[bot]",
+          "id": 199175422,
+          "node_id": "BOT_kgDOC98s_g",
+          "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+          "gravatar_id": "",
+          "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+          "html_url": "https://github.com/apps/chatgpt-codex-connector",
+          "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+          "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+          "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+          "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+          "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+          "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+          "type": "Bot",
+          "user_view_type": "public",
+          "site_admin": false
+        },
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve cue edits across decks sharing the same track**\n\nWhen the same track is loaded on both decks, each deck holds a separate snapshot of its local cue bank, but this assignment replaces the shared session bank wholesale. For example, load track 1 on both decks, delete cue 1 on deck 1, then store cue 3 on deck 2: deck 2's stale bank overwrites deck 1's deletion, so reloading the track resurrects cue 1. Synchronize local banks for decks sharing a track, or merge individual slot edits into the latest session bank, so editing another deck does not silently discard retained cues or tombstones.\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+        "created_at": "2026-10-21T07:46:02Z",
+        "updated_at": "2026-10-21T07:46:02Z",
+        "html_url": "https://github.com/dvucinozd/Pajoniiir-M1/pull/7#discussion_r4334268150",
+        "pull_request_url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/7",
+        "_links": {
+          "self": {
+            "href": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4334268150"
+          },
+          "html": {
+            "href": "https://github.com/dvucinozd/Pajoniiir-M1/pull/7#discussion_r4334268150"
+          },
+          "pull_request": {
+            "href": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/7"
+          }
+        },
+        "reactions": {
+          "url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4334268150/reactions",
+          "total_count": 0,
+          "+1": 0,
+          "-1": 0,
+          "laugh": 0,
+          "hooray": 0,
+          "confused": 0,
+          "heart": 0,
+          "rocket": 0,
+          "eyes": 0
+        },
+        "start_line": 224,
+        "original_start_line": 224,
+        "start_side": "RIGHT",
+        "line": 226,
+        "original_line": 226,
+        "side": "RIGHT",
+        "author_association": "NONE",
+        "original_position": 226,
+        "position": 226,
+        "subject_type": "line"
+      }
+    ]
+  },
+  {
+    "baseRefName": "ogranak/interactive-deck-ui",
+    "headRefName": "ogranak/mixer-pfl-fx-ui",
+    "headRefOid": "eac8481e2a91f7eaf8971c36bfa8188ba42a3f3e",
+    "mergeable": "MERGEABLE",
+    "number": 8,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T10:20:44Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39583898144/job/119167923608",
+        "name": "p4",
+        "startedAt": "2026-10-21T10:20:42Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust ESP32-P4 compile gate",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T10:20:44Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39583898142/job/119167923941",
+        "name": "host",
+        "startedAt": "2026-10-21T10:20:42Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust host foundation",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      }
+    ],
+    "title": "Expose authoritative mixer PFL and FX controls in the UI",
+    "review_comments": []
+  },
+  {
+    "baseRefName": "ogranak/mixer-pfl-fx-ui",
+    "headRefName": "ogranak/service-health-ui",
+    "headRefOid": "4252d6d48eaaec33eb5b0f03403591cb579387d5",
+    "mergeable": "MERGEABLE",
+    "number": 9,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T10:49:20Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39587375940/job/119179528171",
+        "name": "p4",
+        "startedAt": "2026-10-21T10:49:18Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust ESP32-P4 compile gate",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T10:49:20Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39587375809/job/119179527709",
+        "name": "host",
+        "startedAt": "2026-10-21T10:49:18Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust host foundation",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      }
+    ],
+    "title": "Add bounded service health observations and diagnostics UI",
+    "review_comments": [
+      {
+        "url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4335903701",
+        "pull_request_review_id": 5598552392,
+        "id": 4335903701,
+        "node_id": "PRRC_kwDOUME9Kc8AAAABAnCj1Q",
+        "diff_hunk": "@@ -254,6 +311,7 @@ impl Session {\n                     self.fraction[i] = 0;\n                     if position == duration {\n                         self.decks.finish_playback(deck, position);\n+                        self.service.record(EventKind::EndOfTrack(deck));",
+        "path": "firmware-rust/apps/desktop-simulator/src/session.rs",
+        "commit_id": "4252d6d48eaaec33eb5b0f03403591cb579387d5",
+        "original_commit_id": "4252d6d48eaaec33eb5b0f03403591cb579387d5",
+        "user": {
+          "login": "chatgpt-codex-connector[bot]",
+          "id": 199175422,
+          "node_id": "BOT_kgDOC98s_g",
+          "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+          "gravatar_id": "",
+          "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+          "html_url": "https://github.com/apps/chatgpt-codex-connector",
+          "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+          "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+          "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+          "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+          "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+          "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+          "type": "Bot",
+          "user_view_type": "public",
+          "site_admin": false
+        },
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Record track end only when entering the end-of-track state**\n\nAfter a deck reaches EOF, every additional press of `JUMP +` generates another seek whose position is clamped to the duration, so this branch records another `EndOfTrack` even though the deck remains stopped at the same endpoint. Repeated presses inflate the track-end counter and can fill the bounded history with duplicate events, evicting actual load or fault observations. Distinguish a transition to EOF from a seek that leaves the deck at EOF before recording the event.\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+        "created_at": "2026-10-21T10:50:50Z",
+        "updated_at": "2026-10-21T10:50:50Z",
+        "html_url": "https://github.com/dvucinozd/Pajoniiir-M1/pull/9#discussion_r4335903701",
+        "pull_request_url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/9",
+        "_links": {
+          "self": {
+            "href": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4335903701"
+          },
+          "html": {
+            "href": "https://github.com/dvucinozd/Pajoniiir-M1/pull/9#discussion_r4335903701"
+          },
+          "pull_request": {
+            "href": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/9"
+          }
+        },
+        "reactions": {
+          "url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4335903701/reactions",
+          "total_count": 0,
+          "+1": 0,
+          "-1": 0,
+          "laugh": 0,
+          "hooray": 0,
+          "confused": 0,
+          "heart": 0,
+          "rocket": 0,
+          "eyes": 0
+        },
+        "start_line": 312,
+        "original_start_line": 312,
+        "start_side": "RIGHT",
+        "line": 314,
+        "original_line": 314,
+        "side": "RIGHT",
+        "author_association": "NONE",
+        "original_position": 164,
+        "position": 164,
+        "subject_type": "line"
+      }
+    ]
+  },
+  {
+    "baseRefName": "ogranak/service-health-ui",
+    "headRefName": "ogranak/runtime-health-freshness",
+    "headRefOid": "f1786a96fcbee17a3f0a25c142deff9f17582010",
+    "mergeable": "MERGEABLE",
+    "number": 10,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T11:05:51Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39589402888/job/119186277751",
+        "name": "p4",
+        "startedAt": "2026-10-21T11:05:49Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust ESP32-P4 compile gate",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T11:05:51Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39589402760/job/119186276955",
+        "name": "host",
+        "startedAt": "2026-10-21T11:05:48Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust host foundation",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      }
+    ],
+    "title": "Expire stale runtime health publications and capture owner counters",
+    "review_comments": []
+  },
+  {
+    "baseRefName": "ogranak/runtime-health-freshness",
+    "headRefName": "ogranak/runtime-owner-health",
+    "headRefOid": "e1891a93e332d7d0b9e5d9d5eb7346c8a622ea60",
+    "mergeable": "MERGEABLE",
+    "number": 11,
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T12:32:04Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39600357483/job/119222993432",
+        "name": "p4",
+        "startedAt": "2026-10-21T12:32:01Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust ESP32-P4 compile gate",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-21T12:32:04Z",
+        "conclusion": "FAILURE",
+        "detailsUrl": "https://github.com/dvucinozd/Pajoniiir-M1/actions/runs/39600357327/job/119222993944",
+        "name": "host",
+        "startedAt": "2026-10-21T12:32:01Z",
+        "status": "COMPLETED",
+        "workflowName": "Rust host foundation",
+        "failure_messages": [
+          "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings"
+        ]
+      }
+    ],
+    "title": "Connect runtime owner health with bounded handoff and recovery tests",
+    "review_comments": [
+      {
+        "url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4336817314",
+        "pull_request_review_id": 5599696154,
+        "id": 4336817314,
+        "node_id": "PRRC_kwDOUME9Kc8AAAABAn6Uog",
+        "diff_hunk": "@@ -742,14 +798,22 @@ pub(crate) fn completion_is_current(completion: &Usb0MscCompletion) -> bool {\n     with_lifecycle(|lifecycle| completion.is_current(lifecycle.session()))\n }\n \n-fn shared_on_enumerated(\n-    info: &EnumerationInfo,\n-) -> Result<Usb0MscBinding, Usb0MscLifecycleError> {\n-    with_lifecycle_mut(|lifecycle| lifecycle.on_enumerated(info))\n+fn shared_on_enumerated(info: &EnumerationInfo) -> Result<Usb0MscBinding, Usb0MscLifecycleError> {\n+    let result = with_lifecycle_mut(|lifecycle| lifecycle.on_enumerated(info));\n+    #[cfg(feature = \"runtime-health\")]\n+    if let Ok(binding) = result {\n+        crate::runtime_health::invalidate_media(binding, false);\n+    }\n+    result\n }\n \n fn shared_on_detached(binding: Usb0MscBinding) -> DisconnectResult {\n-    with_lifecycle_mut(|lifecycle| lifecycle.on_handler_disconnected(binding))\n+    let result = with_lifecycle_mut(|lifecycle| lifecycle.on_handler_disconnected(binding));\n+    #[cfg(feature = \"runtime-health\")]\n+    if result == DisconnectResult::Accepted {\n+        crate::runtime_health::invalidate_media(binding, true);",
+        "path": "firmware-rust/apps/m1-firmware/src/usb0_msc.rs",
+        "commit_id": "e1891a93e332d7d0b9e5d9d5eb7346c8a622ea60",
+        "original_commit_id": "e1891a93e332d7d0b9e5d9d5eb7346c8a622ea60",
+        "user": {
+          "login": "chatgpt-codex-connector[bot]",
+          "id": 199175422,
+          "node_id": "BOT_kgDOC98s_g",
+          "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+          "gravatar_id": "",
+          "url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D",
+          "html_url": "https://github.com/apps/chatgpt-codex-connector",
+          "followers_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/followers",
+          "following_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/following{/other_user}",
+          "gists_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/gists{/gist_id}",
+          "starred_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/starred{/owner}{/repo}",
+          "subscriptions_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/subscriptions",
+          "organizations_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/orgs",
+          "repos_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/repos",
+          "events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/events{/privacy}",
+          "received_events_url": "https://api.github.com/users/chatgpt-codex-connector%5Bbot%5D/received_events",
+          "type": "Bot",
+          "user_view_type": "public",
+          "site_admin": false
+        },
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Deliver a worker event for pre-Ready media failures**\n\nWith `runtime-health` enabled, failures in `MscDevice::new`, `device.lun(0)`, or `probe_capacity` call `shared_on_detached` and immediately continue without sending a `Usb0MscOwnerEvent::Detached`. This invalidation therefore leaves the new producer pending forever: `MediaHealthReporter` can claim it only when processing a matching Detached event, and its existing producer is now superseded. The media worker continues running, but the snapshot remains `Awaiting` indefinitely, with no accepted heartbeat or disconnected/failure observation until another successful attachment. Deliver the matching lifecycle event on these early cleanup paths so the worker can resume publication.\n\nUseful? React with \ud83d\udc4d\u00a0/ \ud83d\udc4e.\n\n<!-- codex-code-review-finding:v1 -->",
+        "created_at": "2026-10-21T12:33:30Z",
+        "updated_at": "2026-10-21T12:33:30Z",
+        "html_url": "https://github.com/dvucinozd/Pajoniiir-M1/pull/11#discussion_r4336817314",
+        "pull_request_url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/11",
+        "_links": {
+          "self": {
+            "href": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4336817314"
+          },
+          "html": {
+            "href": "https://github.com/dvucinozd/Pajoniiir-M1/pull/11#discussion_r4336817314"
+          },
+          "pull_request": {
+            "href": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/11"
+          }
+        },
+        "reactions": {
+          "url": "https://api.github.com/repos/dvucinozd/Pajoniiir-M1/pulls/comments/4336817314/reactions",
+          "total_count": 0,
+          "+1": 0,
+          "-1": 0,
+          "laugh": 0,
+          "hooray": 0,
+          "confused": 0,
+          "heart": 0,
+          "rocket": 0,
+          "eyes": 0
+        },
+        "start_line": 812,
+        "original_start_line": 812,
+        "start_side": "RIGHT",
+        "line": 814,
+        "original_line": 814,
+        "side": "RIGHT",
+        "author_association": "NONE",
+        "original_position": 161,
+        "position": 161,
+        "subject_type": "line"
+      }
+    ]
+  }
+]

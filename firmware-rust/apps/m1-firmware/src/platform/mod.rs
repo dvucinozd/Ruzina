@@ -2,6 +2,14 @@
 use embassy_executor::Spawner;
 use esp_hal::peripherals::Peripherals;
 
+#[cfg(all(feature = "runtime-health", not(feature = "board-legacy-m1")))]
+compile_error!("runtime-health requires board-legacy-m1; Guition runtime owners are not wired");
+#[cfg(all(
+    feature = "runtime-health",
+    not(any(feature = "usb0-hardware-bringup", feature = "usb1-controller-bringup"))
+))]
+compile_error!("runtime-health requires an explicitly enabled USB owner");
+
 #[cfg(any(
     all(feature = "board-legacy-m1", feature = "board-jc1060"),
     all(feature = "board-legacy-m1", feature = "board-jc8012"),

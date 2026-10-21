@@ -168,3 +168,15 @@ jobs:
 
       - name: Reject ambiguous boards and legacy features on Guition
         run: python ../../tools/check_board_selection.py
+
+      - name: Runtime health USB0 owner cross compile
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb0-hardware-bringup,runtime-health
+
+      - name: Runtime health USB1 and product owners cross compile
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,usb1-controller-bringup,runtime-health
+
+      - name: Runtime health full render ownership cross compile
+        run: cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health
+
+      - name: Runtime health full render ownership link gate
+        run: cargo +1.95.0 build --locked --release --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup,runtime-health

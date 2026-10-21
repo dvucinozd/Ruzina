@@ -1,0 +1,105 @@
+{
+  "base": "f1786a96fcbee17a3f0a25c142deff9f17582010",
+  "files": [
+    {
+      "path": ".github/workflows/rust-esp32p4.yml",
+      "sha256_lf": "c6d998920594182ff8d35828dd596a624d08d10092f4d0e53aa900eec37dd1bd"
+    },
+    {
+      "path": ".github/workflows/rust-host.yml",
+      "sha256_lf": "c927919de5d2b0ad3119c4c3d58a33ffef49e6cb79b94d7800b78e30f7200922"
+    },
+    {
+      "path": "README.md",
+      "sha256_lf": "fffdff6cae0b5ff96f6709dac38406f3fd3d2effc4eee611577cab4dc9c932c3"
+    },
+    {
+      "path": "docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md",
+      "sha256_lf": "d0db5906952c7a9198dd6ca7dd0562e1b46b9b29fe394fd4546a702900429984"
+    },
+    {
+      "path": "docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md",
+      "sha256_lf": "34169f34ba220b6a6e7812bd49f92e2899efe9c6d929b5d2ea19d26aebaf3f6c"
+    },
+    {
+      "path": "docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md",
+      "sha256_lf": "b1ac2013e5fe8202c0f26fb230b31d68873531edd694a76fe483d9cd8399c84d"
+    },
+    {
+      "path": "firmware-rust/Cargo.lock",
+      "sha256_lf": "e19c03bbd4cf93262b531ff36e959437eb8735ebefb58ba72bdcd35674865aff"
+    },
+    {
+      "path": "firmware-rust/README.md",
+      "sha256_lf": "7663ab6c25c323220a23885e49c361ff1b4a77830d40621c411d43976ea31dae"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/Cargo.toml",
+      "sha256_lf": "50cc8249014b0d33dde84cd6c4e0a4f8ee52ca58c89464f0595ddb52a375e6a8"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.lock",
+      "sha256_lf": "ec9a76f91e496a162d8fcceeb2dd18b737f7a914144da703a102d44431d4860d"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/Cargo.toml",
+      "sha256_lf": "f51e405e6fad1b27e5b490439a619a0a9dcc47a11c5fe12bd84a184678d7ef60"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/README.md",
+      "sha256_lf": "6f3d48f8cbf440ea61cd3bf4d90283590c5e632a86d7372bac3a664892c1ebbf"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/main.rs",
+      "sha256_lf": "3c55b404f2971c3cd8a2c79e4dea1c034409d40e380d883524ac6b3775d0b5e1"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/platform/legacy_m1.rs",
+      "sha256_lf": "4863d32ac6cc46abc138dc6c8a298d4f09132b3e2f46696a06721928c73a8e0e"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/platform/mod.rs",
+      "sha256_lf": "96e16cc4bf7e8081c3efcca143221f7afce560fc167ce5389408bbcd4f557935"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/product_runtime.rs",
+      "sha256_lf": "c9370b3c46fb66f4b5df108c5b603edeec8b30f1f77d114d4a3c3e92ad22bab9"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/runtime_health.rs",
+      "sha256_lf": "f889cf3d28aa0bdf93dc5690ca444758b579fab78be545a7a17be1e00b3b1483"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/usb0_msc.rs",
+      "sha256_lf": "a7bf6a7eaed419a7de963b40779a1f7512d147870c76a0880c67ac8e5447eeac"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/usb1_controller.rs",
+      "sha256_lf": "6fdf0cb6056a2b174f0784bec891e60f0193d040efec041011d09dd860d3e93f"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/Cargo.toml",
+      "sha256_lf": "f36a4ada07901b18309e9b90b86af675b94b1cc3df74610da4066be2b5f16d5f"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/src/handoff.rs",
+      "sha256_lf": "c83dd34b753cf0c827fc6528c766ed7f5f53caf539b34b62c4485da0bec1ebf9"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/src/lib.rs",
+      "sha256_lf": "350749889f5980a62c6fbdc66355803b4904f1993e88b2ede6f6a73fd661924e"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/src/owners.rs",
+      "sha256_lf": "dfc10a24aa1682086e11d24ce0dd6fd4a2a8e317f3af74137914e69c39310141"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/tests/runtime_owners.rs",
+      "sha256_lf": "b962133d2de7a5dc72ff7b50ebf9ca32985f0519917fab5ef93642997d746d9e"
+    },
+    {
+      "path": "firmware-rust/tools/check_board_selection.py",
+      "sha256_lf": "6bc089a9e4c57705132224fd3f415849b24d3b64a4106b57065322fe73229b1b"
+    }
+  ]
+}

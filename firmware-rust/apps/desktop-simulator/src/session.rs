@@ -306,6 +306,11 @@ impl Session {
             }
             return;
         }
+        // Core control handling may already move the deck before returning Seek.
+        let was_at_end: [bool; 2] = core::array::from_fn(|i| {
+            let t = self.presentation(i).transport;
+            t.loaded && t.position_ms >= t.duration_ms
+        });
         let views = core::array::from_fn(|i| {
             self.loaded[i]
                 .filter(|(_, id)| self.media.validate(id.lease))
@@ -336,12 +341,23 @@ impl Session {
                     self.fraction[i] = 0;
                     if position == duration {
                         self.decks.finish_playback(deck, position);
-                        self.service.record(EventKind::EndOfTrack(deck));
+                        if !was_at_end[i] {
+                            self.service.record(EventKind::EndOfTrack(deck));
+                        }
                     }
                 }
                 DeckEffect::PersistHotCues { deck, bank } => {
                     if let Some((selection, _)) = self.loaded[index(deck)] {
                         self.local[selection] = Some(bank);
+                        for i in 0..2 {
+                            if self.loaded[i].is_some_and(|(other, id)| {
+                                other == selection
+                                    && id.track == bank.track_id()
+                                    && self.media.validate(id.lease)
+                            }) {
+                                self.decks.update_local_hot_cues(self::deck(i), bank);
+                            }
+                        }
                     }
                     self.message = "Local cue edit retained for this session".into();
                 }

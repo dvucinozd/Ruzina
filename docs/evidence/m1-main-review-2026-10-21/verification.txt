@@ -1,0 +1,10 @@
+591 host tests PASS; workspace fmt/clippy and desktop compile PASS
+9 composed owner integration tests PASS
+33 P4 check/link configurations PASS; 24 expected rejections PASS
+38 unchanged reviewed UI goldens PASS
+Two regressions fail on original session source as expected; corrected tests PASS
+Historical source audit: 9 manifests, 191 file hashes PASS
+503 host and 207 target external lock records unchanged from original main
+18 primary KiCad modification hashes preserved; no incoming hardware changes
+All 14 original PR jobs verified not started due billing/spending limits
+Main merge must preserve each selected head tree; APTA excluded
