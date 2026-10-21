@@ -17,6 +17,7 @@ pajoniiir-hot-cues.workspace = true
 pajoniiir-mixer.workspace = true
 pajoniiir-media-session.workspace = true
 pajoniiir-rekordbox.workspace = true
+pajoniiir-service.workspace = true
 pajoniiir-track-analysis = { workspace = true, features = ["owned"] }
 slint.workspace = true
 

@@ -153,3 +153,46 @@ fn fx_uses_global_state_and_pad_cancellation_cannot_stop_another_deck() {
     s.control(pad_fx_event(DeckId::One, 0, 1, true).unwrap());
     assert!(s.decks.deck(DeckId::One).active_pad_fx.is_none());
 }
+
+#[test]
+fn service_counts_real_load_outcomes_and_recovers_without_erasing_history() {
+    use pajoniiir_service::{AnalysisStatus, Health};
+    let mut s = loaded();
+    press(&mut s, DeckAction::Play);
+    assert!(!s.load(DeckId::One));
+    assert_eq!(s.diagnostics().counters.loads_blocked, 1);
+    assert_eq!(s.diagnostics().runtime.analysis[0], AnalysisStatus::Ready);
+    press(&mut s, DeckAction::Play);
+    s.selected = 3;
+    assert!(s.load(DeckId::One));
+    assert_eq!(s.diagnostics().health(), Health::AnalysisFallback);
+    assert_eq!(s.diagnostics().counters.analysis_rejected, 1);
+    s.detach();
+    assert_eq!(s.diagnostics().health(), Health::MediaUnavailable);
+    assert!(!s.load(DeckId::One));
+    s.reconnect();
+    s.reconnect();
+    let d = s.diagnostics();
+    assert_eq!(d.health(), Health::DemoMediaReady);
+    assert_eq!(d.counters.media_connects, 2);
+    assert_eq!(d.counters.analysis_rejected, 1);
+    assert_eq!(d.counters.load_attempts, 4);
+    assert!(d.events.len() > 5);
+    assert_eq!(d.runtime.analysis, [AnalysisStatus::Unloaded; 2]);
+    assert!(d.identity.chip_revision.is_none());
+}
+
+#[test]
+fn service_clock_advances_while_paused_but_eof_is_recorded_once() {
+    let mut s = loaded();
+    s.tick(100);
+    assert_eq!(s.diagnostics().elapsed_ms, 100);
+    assert_eq!(s.presentation(0).transport.position_ms, 0);
+    press(&mut s, DeckAction::Play);
+    s.tick(20_000);
+    s.tick(20_000);
+    assert_eq!(s.diagnostics().counters.end_of_track, 1);
+    press(&mut s, DeckAction::Play);
+    assert_eq!(s.diagnostics().counters.playback_rejected, 1);
+    assert_eq!(s.diagnostics().elapsed_ms, 40_100);
+}

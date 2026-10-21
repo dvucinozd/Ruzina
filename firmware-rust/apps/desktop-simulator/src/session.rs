@@ -1,5 +1,6 @@
 //! Host owner: real deck semantics and importer, simulated transport/media.
 //! This does not pump audio, access USB, or persist settings/cues to disk.
+use pajoniiir_board_profile::BoardId;
 use pajoniiir_controller_core::{
     ControlDomain, ControlEvent, ControlValue, DeckId, SemanticControl,
 };
@@ -9,6 +10,9 @@ use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_session::{MediaSession, MediaSourceId};
 use pajoniiir_mixer::MixerState;
 use pajoniiir_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};
+use pajoniiir_service::{
+    AnalysisStatus, EventKind, Identity, LoadBlock, MediaStatus, RuntimeStatus, Service, Snapshot,
+};
 use pajoniiir_track_analysis::{
     TrackAnalysis,
     owned::{AnalysisIdentity, AnalysisPins},
@@ -41,6 +45,8 @@ pub struct Session {
     local: [Option<HotCueBank>; 4],
     generation: u32,
     fraction: [u64; 2],
+    service: Service,
+    analysis_status: [AnalysisStatus; 2],
 }
 
 pub const fn deck(index: usize) -> DeckId {
@@ -55,6 +61,9 @@ pub const fn index(deck: DeckId) -> usize {
 
 impl Session {
     pub fn new() -> Self {
+        Self::for_board(BoardId::GuitionJc1060P470cIwY)
+    }
+    pub fn for_board(board: BoardId) -> Self {
         let mut result = Self {
             decks: DeckProductState::new(),
             mixer: MixerState::new(),
@@ -66,6 +75,8 @@ impl Session {
             local: [None; 4],
             generation: 0,
             fraction: [0; 2],
+            service: Service::new(Identity::host(board, option_env!("M1_IMAGE_ID"))),
+            analysis_status: [AnalysisStatus::Unloaded; 2],
         };
         result.reconnect();
         result
@@ -74,33 +85,56 @@ impl Session {
         self.media.lease().is_some()
     }
     pub fn reconnect(&mut self) {
+        let was_connected = self.connected();
         self.media.on_connect(MediaSourceId::new(1).unwrap());
+        if !was_connected {
+            self.service.record(EventKind::MediaConnected);
+        }
         self.message = "Demo media connected · choose a track".into();
     }
     pub fn detach(&mut self) {
+        let was_connected = self.connected();
         self.cancel_pads();
         self.control(BeatFxAction::Clear.event(true));
         self.media.on_disconnect(None);
+        if was_connected {
+            self.service.record(EventKind::MediaRemoved);
+        }
         for i in 0..2 {
             self.decks.unload_track(deck(i));
             self.pins.clear(i);
             self.loaded[i] = None;
             self.fraction[i] = 0;
+            self.analysis_status[i] = AnalysisStatus::Unloaded;
         }
         self.message = "Media removed · decks stopped · reconnect in Library".into();
     }
     pub fn load(&mut self, target: DeckId) -> bool {
+        self.service.record(EventKind::LoadAttempt(target));
         let i = index(target);
         let Some(lease) = self.media.lease() else {
+            self.service.record(EventKind::LoadBlocked {
+                deck: target,
+                reason: LoadBlock::NoMedia,
+            });
             self.message = "Load unavailable · reconnect media".into();
             return false;
         };
         if self.decks.deck(target).playing {
+            self.service.record(EventKind::LoadBlocked {
+                deck: target,
+                reason: LoadBlock::Playing,
+            });
             self.message = "Load locked · pause the destination deck".into();
             return false;
         }
         let selection = self.selected;
         if selection >= TITLES.len() {
+            self.service.record(EventKind::LoadBlocked {
+                deck: target,
+                reason: LoadBlock::InvalidSelection,
+            });
+            self.message = "Load rejected · invalid demo selection".into();
             return false;
         }
         self.generation = self.generation.wrapping_add(1).max(1);
@@ -143,6 +177,11 @@ impl Session {
             source.as_source(),
             self.local[selection],
         ) {
+            self.service.record(EventKind::LoadBlocked {
+                deck: target,
+                reason: LoadBlock::TrackIdentity,
+            });
+            self.message = "Load rejected · track identity mismatch".into();
             return false;
         }
         self.pins.clear(i);
@@ -151,6 +190,17 @@ impl Session {
             assert!(self.pins.publish(i, id, publication));
         }
         self.loaded[i] = Some((selection, id));
+        self.analysis_status[i] = if available {
+            AnalysisStatus::Ready
+        } else if selection == 2 {
+            AnalysisStatus::Missing
+        } else {
+            AnalysisStatus::Rejected
+        };
+        self.service.record(EventKind::Loaded {
+            deck: target,
+            analysis: self.analysis_status[i],
+        });
         self.fraction[i] = 0;
         self.message = if available {
             format!("Deck {} loaded · Rekordbox grid ready", i + 1)
@@ -192,6 +242,7 @@ impl Session {
         )
     }
     pub fn control(&mut self, event: ControlEvent) {
+        self.service.note_control();
         if event.control.domain() == ControlDomain::Mixer {
             self.mixer.handle_control(event);
             return;
@@ -223,6 +274,11 @@ impl Session {
                 return;
             }
             self.message = "Load a track before using deck controls".into();
+            if event.control == SemanticControl::Play && event.value == ControlValue::Pressed(true)
+            {
+                self.service
+                    .record(EventKind::PlaybackRejected(event.deck.unwrap()));
+            }
             return;
         }
         let views = core::array::from_fn(|i| {
@@ -243,6 +299,7 @@ impl Session {
                     self.decks
                         .resolve_playback_request(deck, request_id, can_play);
                     if !can_play {
+                        self.service.record(EventKind::PlaybackRejected(deck));
                         self.message = "End of track · press CUE to return".into();
                     }
                 }
@@ -254,6 +311,7 @@ impl Session {
                     self.fraction[i] = 0;
                     if position == duration {
                         self.decks.finish_playback(deck, position);
+                        self.service.record(EventKind::EndOfTrack(deck));
                     }
                 }
                 DeckEffect::PersistHotCues { deck, bank } => {
@@ -294,6 +352,7 @@ impl Session {
     /// Explicit host-only transport clock. Fractional pitch time is retained;
     /// real product timing continues to come from its PCM owner.
     pub fn tick(&mut self, elapsed_ms: u32) {
+        self.service.advance(u64::from(elapsed_ms));
         for i in 0..2 {
             let p = self.presentation(i);
             if !p.transport.playing {
@@ -313,10 +372,27 @@ impl Session {
             if next >= p.transport.duration_ms {
                 self.decks
                     .finish_playback(deck(i), p.transport.duration_ms as u32);
+                self.service.record(EventKind::EndOfTrack(deck(i)));
             } else {
                 self.decks.set_position_ms(deck(i), next as u32);
             }
         }
+    }
+    pub fn diagnostics(&self) -> Snapshot {
+        self.service.snapshot(RuntimeStatus {
+            media: if self.connected() {
+                MediaStatus::Connected
+            } else {
+                MediaStatus::Absent
+            },
+            analysis: core::array::from_fn(|i| {
+                if self.loaded[i].is_some() {
+                    self.analysis_status[i]
+                } else {
+                    AnalysisStatus::Unloaded
+                }
+            }),
+        })
     }
 }
 

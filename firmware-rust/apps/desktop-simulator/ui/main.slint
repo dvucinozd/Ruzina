@@ -221,6 +221,14 @@ export component MainWindow inherits Window {
     in property <MixerView> mixer;
     in property <FxView> fx;
     in property <[PadFxView]> pads;
+    in property <string> health-status;
+    in property <int> health-severity;
+    in property <string> health-recovery;
+    in property <string> health-identity;
+    in property <string> health-runtime;
+    in property <[string]> health-history;
+    in property <string> health-history-label;
+    in-out property <bool> health-events: false;
     in property <[string]> tracks;
     in property <int> selection;
     in property <bool> media-ready;
@@ -257,6 +265,7 @@ export component MainWindow inherits Window {
             NavAction { text: "SETTINGS"; active: root.page == 3; clicked => { root.page = 3; } }
             NavAction { text: "MIXER"; active: root.page == 4; clicked => { root.page = 4; } }
             NavAction { text: "FX"; active: root.page == 5; clicked => { root.page = 5; } }
+            NavAction { text: "HEALTH"; active: root.page == 6; clicked => { root.page = 6; } }
         }
         if root.page == 0 || root.page == 2: Rectangle {
             vertical-stretch: 1;
@@ -371,6 +380,43 @@ export component MainWindow inherits Window {
                 data: data; number: i + 1;
                 bank(b) => { root.pad-bank(i, b); }
                 pad(bank, pad, pressed) => { root.pad-fx(i, bank, pad, pressed); }
+            }
+        }
+        if root.page == 6: Rectangle {
+            background: #131d29; border-radius: 8px;
+            VerticalLayout { padding: 12px; spacing: 8px;
+                HorizontalLayout { height: 40px; spacing: 8px;
+                    Action { text: "SUMMARY"; active: !root.health-events; clicked => { root.health-events = false; } }
+                    Action { text: "EVENTS"; active: root.health-events; clicked => { root.health-events = true; } }
+                    Action { text: "OPEN LIBRARY"; clicked => { root.page = 1; } }
+                }
+                Text { height: 24px; text: root.health-status; color: root.health-severity == 0 ? #8ed9bb : root.health-severity == 1 ? #ffce85 : #ff9c99; font-size: 19px; font-weight: 700; }
+                Text { height: 20px; text: root.health-recovery; color: #aebed1; font-size: 13px; overflow: elide; }
+                if !root.health-events: Rectangle {
+                    for section[i] in [root.health-identity, root.health-runtime]: Rectangle {
+                        x: root.portrait ? 0px : i * (parent.width + 12px) / 2;
+                        y: root.portrait ? i * (parent.height + 12px) / 2 : 0px;
+                        width: root.portrait ? parent.width : (parent.width - 12px) / 2;
+                        height: root.portrait ? (parent.height - 12px) / 2 : parent.height;
+                        background: #0b111a; border-radius: 5px;
+                        Text { x: 12px; y: 10px; width: parent.width - 24px; height: parent.height - 20px; text: section; color: #bed0e3; font-size: 13px; vertical-alignment: top; overflow: elide; }
+                    }
+                }
+                if root.health-events: Rectangle {
+                    min-height: 0px; preferred-height: 0px; vertical-stretch: 1;
+                    VerticalLayout { spacing: 6px;
+                        Text { height: 20px; text: root.health-history-label; color: #8eb9ca; font-size: 13px; }
+                        Rectangle { clip: true; min-height: 0px; preferred-height: 0px; vertical-stretch: 1;
+                            Flickable {
+                                width: parent.width; height: parent.height;
+                                content-width: self.width;
+                                content-height: root.health-history.length * 27px;
+                                for event[i] in root.health-history: Text { x: 8px; y: i * 27px; width: parent.width - 16px; height: 25px; text: event; color: #bed0e3; font-size: 12px; overflow: elide; }
+                            }
+                        }
+                    }
+                }
+                Text { height: 18px; text: "Host observations · device audio / memory / CPU load: not measured"; color: #8195ab; font-size: 12px; }
             }
         }
         Text { height: 22px; text: root.message; color: #8ed9bb; font-size: 13px; overflow: elide; vertical-alignment: center; }

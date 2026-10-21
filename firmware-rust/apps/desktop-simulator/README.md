@@ -44,6 +44,22 @@ focus loss or page departure stops it. A bank change releases that deck's pad.
 Media removal clears pads and Beat FX; mixer configuration remains unchanged.
 These controls update semantic state, with no processed audio or fake meters.
 
+**Health** shows the documented board candidate separately from observations,
+current media/analysis health, recovery guidance, counters and the last 16 actual
+session events. Events scroll when needed. Reconnect clears the current absent-
+media fault without erasing warning history. Hardware identity, memory and CPU
+measurements remain unknown in this host harness. Product readiness is not
+inferred. Counters describe this demo session, not audio/USB driver loss.
+
+Export a fresh, separate host-process report without opening a window:
+
+```sh
+cargo run --locked -p desktop-simulator -- --diagnostic-report target/service.txt jc8012
+```
+
+This command does not query an already-running UI or a physical board. `--smoke`
+also exports the reports from its current Health scene states.
+
 ## Headless regression
 
 ```sh
@@ -54,13 +70,13 @@ python3 tools/check_ui_goldens.py target/ui-smoke
 The actual compiled Slint view runs on its software renderer, without X11 or a
 physical display. Callback replay plus pointer hit testing/keyboard input cover
 both geometries, including a refresh during held Play and cue-delete clicks.
-Twenty-four PPM screenshots are compared with reviewed raw RGB SHA-256 goldens in
+Thirty-four PPM screenshots are compared with reviewed raw RGB SHA-256 goldens in
 `tests/ui-goldens.json`. These pixel baselines require Linux x86_64, Slint 1.18.1,
 the pinned Fluent style, DejaVu Sans and scale 1. Font/raster environment changes require visual review,
 not automatic baseline replacement. Reviewed PNGs and logs are retained in the
-[mixer/FX UI gate](../../../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md).
+[service/Health gate](../../../docs/M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md).
 
 This package covers interactive decks, Library, cues, mixer/PFL/FX and session settings.
-Full M2.2 UI parity, diagnostics/performance screens, arbitrary external
+Full M2.2 UI parity, runtime diagnostics/performance owner adapters, arbitrary external
 media browsing, real PCM timing/audio and audible FX execution, durable settings/cues and Guition
 display/touch rotation/resource qualification remain separate work.

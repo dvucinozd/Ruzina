@@ -7,11 +7,12 @@ use pajoniiir_board_profile::{
     BoardProfile,
     diagnostics::{BootReport, ReportBuffer},
 };
+use pajoniiir_service::{Environment, Identity, RuntimeStatus, Service};
 
 #[embassy_executor::task]
 pub(super) async fn report_task(usb: USB_DEVICE<'static>, profile: &'static BoardProfile) {
     let mut serial = UsbSerialJtag::new(usb);
-    let mut buffer = ReportBuffer::<768>::default();
+    let mut buffer = ReportBuffer::<2048>::default();
     let report = BootReport {
         profile,
         chip_revision: esp_hal::efuse::chip_revision().combined(),
@@ -23,6 +24,25 @@ pub(super) async fn report_task(usb: USB_DEVICE<'static>, profile: &'static Boar
         || writeln!(buffer, "reset_reason={:?}", esp_hal::system::reset_reason()).is_err()
     {
         // No truncated success record can escape as a valid boot report.
+        return;
+    }
+    // One immutable boot sample, repeatedly emitted below. Repeated emission is
+    // not a heartbeat and must not refresh this observation timestamp.
+    let mut service = Service::new(Identity {
+        environment: Environment::DeviceBootSnapshot,
+        board: profile.id,
+        image_id: option_env!("M1_IMAGE_ID"),
+        chip_revision: Some(report.chip_revision),
+        flash_bytes: report.observed_flash_bytes,
+        psram_bytes: report.observed_psram_bytes,
+        reset_code: esp_hal::system::reset_reason().map(|reason| reason as u32),
+    });
+    service.advance(embassy_time::Instant::now().as_millis());
+    if service
+        .snapshot(RuntimeStatus::BOOT_ONLY)
+        .write_to(&mut buffer)
+        .is_err()
+    {
         return;
     }
     let mut offset = 0;

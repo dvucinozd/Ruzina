@@ -773,6 +773,7 @@ dependencies = [
  "pajoniiir-media-session",
  "pajoniiir-mixer",
  "pajoniiir-rekordbox",
+ "pajoniiir-service",
  "pajoniiir-track-analysis",
  "pajoniiir-ui-model",
  "pajoniiir-waveform",
@@ -3097,6 +3098,14 @@ dependencies = [
  "pajoniiir-media-identity",
  "pajoniiir-media-session",
  "pajoniiir-track-analysis",
+]
+
+[[package]]
+name = "pajoniiir-service"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-board-profile",
+ "pajoniiir-core",
 ]
 
 [[package]]

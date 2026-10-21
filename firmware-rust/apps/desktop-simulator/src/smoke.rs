@@ -24,12 +24,20 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
     refresh(&ui, &state.borrow());
     ui.show()?;
     for (name, width, height) in [("jc1060", 1024, 600), ("jc8012", 800, 1280)] {
-        *state.borrow_mut() = Session::new();
+        *state.borrow_mut() = Session::for_board(if name == "jc1060" {
+            BoardId::GuitionJc1060P470cIwY
+        } else {
+            BoardId::GuitionJc8012P4a1cIwY
+        });
         refresh(&ui, &state.borrow());
         window.set_size(slint::PhysicalSize::new(width, height));
         ui.set_board_label(format!("{name} · HOST SIMULATOR").into());
         ui.set_page(0);
         capture(&ui, output, &format!("{name}-empty"))?;
+        ui.set_health_events(false);
+        ui.set_page(6);
+        health_smoke::capture_health(&ui, &state, output, &format!("{name}-health-initial"))?;
+        ui.set_page(0);
         ui.invoke_select_track(0);
         ui.invoke_load_track(0);
         ui.invoke_select_track(1);
@@ -71,9 +79,10 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         ui.set_remaining(false);
         pointer_smoke(&ui, &state, width as f32);
         mix_fx_smoke::pointer(&ui, &state, width as f32, height as f32);
+        health_smoke::recovery(&ui, &state, output, name, width as f32)?;
     }
     println!(
-        "Slint deck/mixer/FX callback + pointer/keyboard smoke in both geometries; 24 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 34 software-rendered snapshots: PASS"
     );
     Ok(())
 }
@@ -176,7 +185,7 @@ fn pointer_smoke(ui: &MainWindow, state: &Rc<RefCell<Session>>, width: f32) {
 pub(super) fn nav(ui: &MainWindow, width: f32, page: usize) {
     click(
         ui,
-        16.0 + (page as f32 + 0.5) * (width - 72.0) / 6.0 + page as f32 * 8.0,
+        16.0 + (page as f32 + 0.5) * (width - 80.0) / 7.0 + page as f32 * 8.0,
         80.0,
     );
 }

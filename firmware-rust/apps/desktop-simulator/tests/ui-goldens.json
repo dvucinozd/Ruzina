@@ -6,168 +6,238 @@
         1024,
         600
       ],
-      "rgb_sha256": "e71e437d088c2ccc4cca280a955ddfc595784d5fd961f486081268decc06940c"
+      "rgb_sha256": "75f13ae32d9de05063815c64f5eb9932845c3687d4bb4844fd1193979031ad30"
     },
     "jc1060-deck-fallback": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "89b6111de7817354587084f787b506c93789374a627efcf7a692b621684bd33a"
+      "rgb_sha256": "eb206c9781e86e893bb38a36d28c4c4e0b0bcc6ec35f76663686b754d5297853"
     },
     "jc1060-decks": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "ff44a6b202cc503d312390f281ab753261111803bb1f346efaa15f18103519c2"
+      "rgb_sha256": "59211e8673915949bd6c3319e2d95565f0bccefc4f9b47c48d9dcfc33bab501f"
     },
     "jc1060-empty": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "8014be4c758cf2b1802091cb06c2d813ba1d4e35dcdde86189a09f1c54b64f60"
+      "rgb_sha256": "898ab52d53b01409224130c6682add28fb5fa81feb83573d28e0a3f8bb2f4064"
     },
     "jc1060-fx-active": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "8dec673b4823e9cde124bf41f78fd1f1d99f717427b3247243403417c3c58770"
+      "rgb_sha256": "8e2d5d3d8d0e9e619377ecb8c02ce51e3f99bda152ea629d7c55e55158c23e51"
     },
     "jc1060-fx-default": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "8b9cc1c9808c71217900d953fb67a9734e87e02b2fae73ef0ca5b562f775d9e6"
+      "rgb_sha256": "212099aca0dfd5ceab10af4ebdbf03259c292b09502806037aada650bbb88d60"
     },
     "jc1060-fx-removed": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "ff90f91dca506fa586271b86c6c37cfd53533a66d8623501bccbd21f8e459b8f"
+      "rgb_sha256": "938cbdb7997d1c103a3784dd0f0c24d84a9cd1273d8ccada6167aba0dd767f6b"
+    },
+    "jc1060-health-events": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "3271ba286b077e48e44e1c2601c60126febc27116dcbf8207f523826449698f9"
+    },
+    "jc1060-health-fallback": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "f7ef53f8b2de3a573c0f1f27ac38df024b84184754adb367a78d3a3097bc1ccd"
+    },
+    "jc1060-health-initial": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "13f87f21163fac5a7144f618e90b790a465ce04d288e616912e2d8c1e06f05a5"
+    },
+    "jc1060-health-recovered": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "cfe580ebf4b11983dd6a816aa09f9a927095e8b4dac18174b99ca0881187f40d"
+    },
+    "jc1060-health-removed": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "c7fec43cc48c1e9cf3b1adb0c9dfb61c4f8435221399f1b644b21e945139445e"
     },
     "jc1060-library-fallback": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "35727ee62912e1b452dc4843721e8801dd3d374a4c235e5727fb4496e309cc12"
+      "rgb_sha256": "497d60c68629ec152f5f01a747585afaab5c815291eefccd65e49f80f3c210c0"
     },
     "jc1060-mixer-active": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "8a94b46ac2c0d46ea1b674691a3f9a4880902d378a0323917f9883ffd47b5c18"
+      "rgb_sha256": "e6aab165f74e4cb548ae73240636730aa9590c7f9615c3bb6fc767c77ba77773"
     },
     "jc1060-mixer-default": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "f373d5e7dda542f31030edf3bb35f6036706dc8f52f307e475beb0631e227013"
+      "rgb_sha256": "f57533dcd334065ce33e02aa73cfebd5a7a4c81d05d5edb2100d360a416aa1a7"
     },
     "jc1060-removed": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "8334010e657bcc98b3d376782468904adbc1741810e74e7883f2e6de690fcaa4"
+      "rgb_sha256": "2cc700642a55b33e00845feb4bb61b1cac7f6908b293001984d7e0b5a125f236"
     },
     "jc1060-settings": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "7ecd785656fd1fe85a88266658afa9e1db64daa20df1d78663678b026c0bc7a7"
+      "rgb_sha256": "14c1a323146d2433bacf7ed9636dad215f711890ee2b11b75d63cd4e384da03f"
     },
     "jc8012-cues": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "bb10abe373088db8447cf793744e8f0c13d9902c7dc72358b3f680d12604f9f1"
+      "rgb_sha256": "d1cc85c589fe3fc082cf664b39a39910c293895caa3a34a75524dbafa06a396b"
     },
     "jc8012-deck-fallback": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "e963e7bbeb0a190e2ed16c05aebaeb889bd916dcb02bbb9478c84f934f03ea5e"
+      "rgb_sha256": "5ff3148cc155465d8aba8958f774ddd5839730f9985e16d23633394b6b63019d"
     },
     "jc8012-decks": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "df499e131c09cd245a18cd69e8703c6b0277770369ba7bcd6e5dc0f238b456f5"
+      "rgb_sha256": "9100f585d2234091b2e432371d18a4db95f935406eb3b6c53ebc8fa6803bd44f"
     },
     "jc8012-empty": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "e771b808c4be71bcaf04fc47ec61a2139d67ad4d7f432a194f2048b05fe031f7"
+      "rgb_sha256": "aba97ea3c9a26924ac1a282cfc87bddbd905c9a6690101b8ae5aa1741db73d3c"
     },
     "jc8012-fx-active": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "79fd8ba6afdf4b03af902493c13876e1e070aea25712fa429b9829ce2d2b0413"
+      "rgb_sha256": "5b7453d63e550063858a9387e3cbe44089bf542a03788081cea0d95934b8dda5"
     },
     "jc8012-fx-default": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "a3fb5f756be1e17ca686c0225e4e494217962eacb2318db1200849ea035a452b"
+      "rgb_sha256": "f3d7c9be8566d9f1e8aa4373a66aca1ef5e40614922364ba029f0a830ca88d8f"
     },
     "jc8012-fx-removed": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "2d894e114db43a80412a601546262fa07fdeeedd35ad8ece0aa92c85dbeea10b"
+      "rgb_sha256": "153c740d255fff589168aaa7f250ef61650db4c6713d3a295e93a491feca1b58"
+    },
+    "jc8012-health-events": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "ff66375f5e2001e18c9ccbd4e049ae82ef8333cca2f64517d66c6d43ec78cb59"
+    },
+    "jc8012-health-fallback": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "0809907f3d102029defcaf3366bf36c2599168f4d9084d28e8534a0d1a78ca88"
+    },
+    "jc8012-health-initial": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "7a05394168bf77d809f18d20326f1911ceaf9b63ab813e27e397ff7205b862d3"
+    },
+    "jc8012-health-recovered": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "beaa9f960df8261295c6bb1eb88c86af4b793ed61211a6b3f0e4a04673481483"
+    },
+    "jc8012-health-removed": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "6705392cffff0a7666b7c5772d3d177f6ef84034423cb877f4bb260a822f0446"
     },
     "jc8012-library-fallback": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "9d9727319f7edd0bbeba206659069eccdae0f7ab91d95dbcfdb6481314e866e0"
+      "rgb_sha256": "baa16d9df57be963c4d7e236a2a6f7e5b95609c865d6e7334bf488dc6e533010"
     },
     "jc8012-mixer-active": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "a3b04f3be1fbd37265bdde3d91b35e0e3628cf1452a3f675ede84303e2f69821"
+      "rgb_sha256": "c9c8d1da964f4854f980f91d4f3eda7dbe58b38222cec4252247d3063912cda5"
     },
     "jc8012-mixer-default": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "7dd7d0a0dbfd5a570ba8a10dac3a74938eadf3c886a09d2926f2cc57e00d95e5"
+      "rgb_sha256": "0e0994efa3c8877bad697e2e86737308df4c6e722620c4f92dc27f1e2d94ccfd"
     },
     "jc8012-removed": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "66bafb8723f1dfb2dc9b821767d5016e5ed6e74b4313522ae6c73adfb3c5597f"
+      "rgb_sha256": "f46dd0fbef5a8f9362d9059b0bab53f141624ea16c30405beb9aecfa028ac1fb"
     },
     "jc8012-settings": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "2e499fc067b8a5c5d9a5d20e12f9e8d6df4ef2253bf106950f8e1231d7607c22"
+      "rgb_sha256": "df18af9979a2a1b9e92346e4732c5ec7b34a63bf0e200f27b143796459d07ae5"
     }
   }
 }

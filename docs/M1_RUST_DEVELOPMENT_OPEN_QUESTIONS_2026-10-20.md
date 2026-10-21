@@ -52,7 +52,9 @@ The [pinned Rekordbox analysis gate](M1_RUST_REKORDBOX_ANALYSIS_GATE_2026-10-21.
 
 The [interactive UI follow-up](M1_RUST_INTERACTIVE_UI_GATE_2026-10-21.md) replaces S6's static host screen with real deck actions/state, demo Library, effective Hot Cues, session Settings and RGB565 waveform composition. Its original gate has two board-size replays and 14 reviewed pixel goldens.
 
-The [mixer/PFL and FX follow-up](M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) adds authoritative mixer/headphone/Beat FX state and momentary Pad FX controls, expanding replay to 24 pixel goldens. Full UI parity still needs diagnostics/performance views, arbitrary media/catalog and runtime adapters, durable settings, audible FX execution and physical Guition display/touch/resource acceptance. The historical review table below remains the original baseline.
+The [mixer/PFL and FX follow-up](M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) adds authoritative mixer/headphone/Beat FX state and momentary Pad FX controls, expanding its original replay to 24 pixel goldens.
+
+The [service/health follow-up](M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md) adds bounded shared observations, actual host counters/recovery, a diagnostics screen and an opt-in boot report adapter, with 34 reviewed pixel goldens. Full UI/S11 parity still needs runtime owner statistics and freshness/liveness, performance views, arbitrary media/catalog adapters, durable settings, audible FX execution and physical Guition display/touch/resource acceptance. The historical review table below remains the original baseline.
 
 "Now" means substantial work can run without boards. "After Dn" means a dependency or interface decision is needed, not that all source work must wait for hardware.
 
