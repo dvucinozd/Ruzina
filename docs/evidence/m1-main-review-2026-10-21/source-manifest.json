@@ -1,0 +1,49 @@
+{
+  "base": "e1891a93e332d7d0b9e5d9d5eb7346c8a622ea60",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256_lf": "81b6dc8b04b2c03eaa980ff30cf1115ce015f4bca5612aab96381461a17f3347"
+    },
+    {
+      "path": "docs/M1_RUST_DEVELOPMENT_OPEN_QUESTIONS_2026-10-20.md",
+      "sha256_lf": "6cdd2befcfe80c71b6697dd88ca112c1d79bb17d5662455932481ea258f299eb"
+    },
+    {
+      "path": "docs/M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md",
+      "sha256_lf": "55a75a198de44c90d02407aacd4bee8d27f16c0afca4fbec160b401c5e79a453"
+    },
+    {
+      "path": "docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md",
+      "sha256_lf": "ed0e46eeb68bece86a340af5c289251328125263e82241c85dc8cd60f631b90f"
+    },
+    {
+      "path": "firmware-rust/README.md",
+      "sha256_lf": "f4d081eb60194fd6a6268edd2c40127b5677b56b28b78d37c601a87f68d679a3"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/session.rs",
+      "sha256_lf": "042903cacb4f91d22343fdb8c7e1dbe11320586875ad8b3111c60524621af948"
+    },
+    {
+      "path": "firmware-rust/apps/desktop-simulator/src/tests.rs",
+      "sha256_lf": "a1e56209644dd0fc2d75b492aecf6351c86775e10950b9d64550431706f5ea35"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/product_runtime.rs",
+      "sha256_lf": "1119d8b6d6862cfe0bec2ad142efc49ca6494aa9a881304a5ee8dfb461036d1d"
+    },
+    {
+      "path": "firmware-rust/apps/m1-firmware/src/usb0_msc.rs",
+      "sha256_lf": "c010666da5d985926459d22bcf32e6e7bab30e77d410b935f2df908ea4808b68"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-deck/src/lib.rs",
+      "sha256_lf": "abc0becef27780deda0c08abe713783047f22664a62f0d26082e0e76bff16c50"
+    },
+    {
+      "path": "firmware-rust/crates/pajoniiir-service/tests/runtime_owners.rs",
+      "sha256_lf": "742d5279c6fcd2e18b95352e1c887a6408b7a0ecdf1af6528196c4c7514c624f"
+    }
+  ]
+}

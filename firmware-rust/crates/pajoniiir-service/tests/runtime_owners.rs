@@ -467,3 +467,114 @@ fn controller_disconnect_reconnect_rejects_old_generation_without_erasing_errors
         1
     );
 }
+
+#[test]
+fn setup_failure_before_ready_can_claim_a_terminal_producer_and_keep_publishing() {
+    let mut h = Harness::new();
+    h.media.on_connect(MediaSourceId::new(1).unwrap());
+    let lease = h.media.lease().unwrap();
+    let handle = MediaHandle::new(1).unwrap();
+    assert!(h.media.bind_handle(lease, handle));
+    h.owners.media.invalidate(lease, handle, false);
+    // No Ready reached the worker: class/LUN/capacity preparation failed first.
+    assert_eq!(
+        h.media.on_disconnect(Some(handle)),
+        DisconnectResult::Accepted
+    );
+    h.owners.media.invalidate(lease, handle, true);
+    assert!(h.owners.media.claim(lease, handle, false).is_none());
+    let mut terminal = h.owners.media.claim(lease, handle, true).unwrap();
+    for now in [10, 5010, 10010] {
+        let sample = terminal
+            .sample(
+                now,
+                MediaObservation::capture(&h.media, MediaPhase::Failed, 1),
+            )
+            .unwrap();
+        h.owners.media.channel.try_send(sample).unwrap();
+        let view = h.owners.observe(now);
+        assert_eq!(view.media.condition, Condition::Failed);
+        assert_eq!(view.media.observation.age_ms, Some(0));
+        assert_eq!(view.media.value.unwrap().failures, 1);
+    }
+    h.media.on_connect(MediaSourceId::new(1).unwrap());
+    let lease = h.media.lease().unwrap();
+    let handle = MediaHandle::new(2).unwrap();
+    assert!(h.media.bind_handle(lease, handle));
+    h.owners.media.invalidate(lease, handle, false);
+    let mut recovered = h.owners.media.claim(lease, handle, false).unwrap();
+    assert!(h.media.commit_mounted(lease));
+    let sample = recovered
+        .sample(
+            10011,
+            MediaObservation::capture(&h.media, MediaPhase::Mounted, 1),
+        )
+        .unwrap();
+    h.owners.media.channel.try_send(sample).unwrap();
+    assert_eq!(h.owners.observe(10011).media.condition, Condition::Idle);
+}
+
+#[test]
+fn actual_product_keeps_shared_track_cue_edits_current_across_decks() {
+    use pajoniiir_controller_core::{PadAction, PadMode};
+    use pajoniiir_core::MediaTrackId;
+    use pajoniiir_hot_cues::HotCueBank;
+    use pajoniiir_media_catalog::{
+        CatalogLoadCandidate, CatalogPublicationId, CatalogText, CatalogTrack,
+    };
+    let mut h = Harness::new();
+    h.connect_controller();
+    h.media.on_connect(MediaSourceId::new(1).unwrap());
+    let track = MediaTrackId([7; 16]);
+    let candidate = CatalogLoadCandidate {
+        publication: CatalogPublicationId {
+            lease: h.media.lease().unwrap(),
+            revision: 1,
+        },
+        index: 0,
+        track: CatalogTrack {
+            track_id: track,
+            source_track_id: 7,
+            bpm_x100: 12000,
+            duration_ms: 10000,
+            title: CatalogText::EMPTY,
+            artist: CatalogText::EMPTY,
+            album: CatalogText::EMPTY,
+            key: CatalogText::EMPTY,
+            audio_path: CatalogText::EMPTY,
+            analysis_path: CatalogText::EMPTY,
+        },
+    };
+    let mut source = HotCueBank::empty(track);
+    source.set_single(0, 1000);
+    source.set_loop(1, 2000, 4000);
+    for deck in [DeckId::One, DeckId::Two] {
+        assert!(
+            h.product
+                .commit_library_load(deck, candidate, source, None, true, None)
+        );
+    }
+    for (deck, pad, clear) in [(DeckId::One, 0, true), (DeckId::Two, 2, false)] {
+        let event = ControlEvent {
+            deck: Some(deck),
+            control: SemanticControl::PadAction,
+            value: ControlValue::PadAction(PadAction {
+                pad,
+                mode: PadMode::HotCue,
+                shifted: clear,
+                pressed: true,
+            }),
+        };
+        assert_eq!(h.controller.schedule_event(event), IngestOutcome::Scheduled);
+        assert!(matches!(
+            h.controller.dispatch_next(None, &mut h.product),
+            SessionDispatchOutcome::Accepted(_)
+        ));
+    }
+    for deck in [DeckId::One, DeckId::Two] {
+        let cues = h.product.deck().hot_cues(deck).unwrap();
+        assert!(cues.slot(0).is_none());
+        assert_eq!(cues.slot(1), source.slot(1));
+        assert!(cues.slot(2).is_some());
+    }
+}

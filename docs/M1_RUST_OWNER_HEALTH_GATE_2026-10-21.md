@@ -1,5 +1,9 @@
 # Composed runtime owner health and recovery
 
+Follow-up: [main integration review and corrections](M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md)
+adds the missing terminal worker events for pre-Ready setup failure and shared-track
+cue regression coverage. Results below retain the original `e1891a9` package scope.
+
 Date: 2026-10-21. Branch: `ogranak/runtime-owner-health`, based on
 `f1786a96fcbee17a3f0a25c142deff9f17582010` (`ogranak/runtime-health-freshness`).
 This follows the [publication foundation](M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md).

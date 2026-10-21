@@ -2,6 +2,9 @@
 
 Date: 2026-10-20
 
+Latest integration review: [PR #5–#11 consolidation and corrected regressions](M1_RUST_MAIN_REVIEW_GATE_2026-10-21.md).
+This preserves the separate APTA branch and all physical acceptance boundaries.
+
 Current follow-up: [composed product/controller/media health](M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md)
 wires opt-in existing legacy owner loops and tests bounded handoff/backpressure,
 reconnect and old-generation rejection. Guition peripheral activation and physical

@@ -699,6 +699,17 @@ impl DeckProductState {
         self.hot_cue_locals[deck_index(deck)]
     }
 
+    /// Refresh a shared track's local edits without replacing source cues or
+    /// transport state. A bank from another loaded track must not be adopted.
+    pub fn update_local_hot_cues(&mut self, deck: DeckId, bank: HotCueBank) -> bool {
+        let index = deck_index(deck);
+        if self.hot_cue_sources[index].is_none_or(|source| source.track_id() != bank.track_id()) {
+            return false;
+        }
+        self.hot_cue_locals[index] = Some(bank);
+        true
+    }
+
     pub fn set_base_bpm_x100(&mut self, deck: DeckId, bpm_x100: u32) {
         self.decks[deck_index(deck)].base_bpm_x100 = if bpm_x100 == 0 { 12_000 } else { bpm_x100 };
     }
@@ -3611,5 +3622,31 @@ mod tests {
         assert!(broker.complete_audio_dsp(true));
         assert_eq!(broker.audio_dsp_front(), None);
         assert_eq!(broker.transport_front(), Some(transport));
+    }
+
+    #[test]
+    fn local_cue_refresh_validates_track_and_preserves_source_and_transport() {
+        let mut product = DeckProductState::new();
+        let track = MediaTrackId([7; 16]);
+        let mut source = HotCueBank::empty(track);
+        source.set_single(0, 1000);
+        source.set_loop(1, 2000, 4000);
+        assert!(!product.update_local_hot_cues(DeckId::One, source));
+        assert!(product.commit_track_load(DeckId::One, track, 12000, source, None));
+        product.set_position_ms(DeckId::One, 1500);
+        let before = *product.deck(DeckId::One);
+        let mut local = HotCueBank::empty(track);
+        local.clear(0);
+        local.set_single(2, 1500);
+        assert!(
+            !product.update_local_hot_cues(DeckId::One, HotCueBank::empty(MediaTrackId([8; 16])))
+        );
+        assert!(product.hot_cues(DeckId::One).unwrap().slot(0).is_some());
+        assert!(product.update_local_hot_cues(DeckId::One, local));
+        let cues = product.hot_cues(DeckId::One).unwrap();
+        assert!(cues.slot(0).is_none());
+        assert_eq!(cues.slot(1), source.slot(1));
+        assert_eq!(cues.slot(2), local.slot(2));
+        assert_eq!(*product.deck(DeckId::One), before);
     }
 }

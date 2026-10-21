@@ -509,6 +509,7 @@ pub(crate) enum Usb0MscDetachReason {
     Disconnected,
     Overcurrent,
     Replaced,
+    SetupFailed,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -642,8 +643,13 @@ impl MediaHealthReporter {
                 Usb0MscMediaState::Discovering { binding } => {
                     self.producer = crate::runtime_health::claim_media(binding, false)
                 }
-                Usb0MscMediaState::Detached { binding, .. } => {
-                    self.producer = crate::runtime_health::claim_media(binding, true)
+                Usb0MscMediaState::Detached {
+                    binding, reason, ..
+                } => {
+                    self.producer = crate::runtime_health::claim_media(binding, true);
+                    if reason == Usb0MscDetachReason::SetupFailed {
+                        self.failures = self.failures.saturating_add(1);
+                    }
                 }
                 Usb0MscMediaState::Failed { .. } => self.failures = self.failures.saturating_add(1),
                 _ => {}
@@ -654,17 +660,31 @@ impl MediaHealthReporter {
     #[cfg(feature = "runtime-health")]
     fn publish(&mut self) {
         use pajoniiir_service::owners::{MediaObservation, MediaPhase};
-        let (phase, binding) = match media_state() {
-            Usb0MscMediaState::Idle => (MediaPhase::Idle, None),
-            Usb0MscMediaState::Discovering { binding } => (MediaPhase::Discovering, Some(binding)),
-            Usb0MscMediaState::Mounted { binding, .. } => (MediaPhase::Mounted, Some(binding)),
-            Usb0MscMediaState::Failed { binding, .. } => (MediaPhase::Failed, Some(binding)),
-            Usb0MscMediaState::Detached { binding, .. } => (MediaPhase::Detached, Some(binding)),
+        let (phase, binding, detached) = match media_state() {
+            Usb0MscMediaState::Idle => (MediaPhase::Idle, None, false),
+            Usb0MscMediaState::Discovering { binding } => {
+                (MediaPhase::Discovering, Some(binding), false)
+            }
+            Usb0MscMediaState::Mounted { binding, .. } => {
+                (MediaPhase::Mounted, Some(binding), false)
+            }
+            Usb0MscMediaState::Failed { binding, .. } => (MediaPhase::Failed, Some(binding), false),
+            Usb0MscMediaState::Detached {
+                binding, reason, ..
+            } => (
+                if reason == Usb0MscDetachReason::SetupFailed {
+                    MediaPhase::Failed
+                } else {
+                    MediaPhase::Detached
+                },
+                Some(binding),
+                true,
+            ),
         };
         let observation = with_lifecycle(|lifecycle| {
             let session = lifecycle.session();
             let phase = if binding.is_some_and(|b| {
-                if phase == MediaPhase::Detached {
+                if detached {
                     session.lease().is_some()
                 } else {
                     session.lease() != Some(b.lease) || session.handle() != Some(b.handle)
@@ -816,6 +836,19 @@ fn shared_on_detached(binding: Usb0MscBinding) -> DisconnectResult {
     result
 }
 
+/// Setup may fail before Ready was sent. Always pair health invalidation with
+/// a matching terminal worker event so its new producer can be claimed.
+async fn notify_setup_failed(binding: Usb0MscBinding) {
+    let result = shared_on_detached(binding);
+    USB0_MSC_OWNER_EVENTS
+        .send(Usb0MscOwnerEvent::Detached {
+            binding,
+            reason: Usb0MscDetachReason::SetupFailed,
+            result,
+        })
+        .await;
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Usb0MscProbe {
     pub(crate) device_address: u8,
@@ -944,8 +977,8 @@ pub(crate) async fn run_root_msc_owner(usb_hs: esp_hal::peripherals::USB_HS<'sta
         let device = match MscDevice::new(&bus, &info, &config[..config_len]).await {
             Ok(device) => device,
             Err(_) => {
-                let _ = shared_on_detached(binding);
                 bus.free_address(info.device_address);
+                notify_setup_failed(binding).await;
                 continue;
             }
         };
@@ -953,19 +986,19 @@ pub(crate) async fn run_root_msc_owner(usb_hs: esp_hal::peripherals::USB_HS<'sta
         let mut lun = match device.lun(0) {
             Ok(lun) => lun,
             Err(_) => {
-                let _ = shared_on_detached(binding);
                 drop(device);
                 bus.free_address(info.device_address);
+                notify_setup_failed(binding).await;
                 continue;
             }
         };
         let capacity = match probe_capacity(&mut lun).await {
             Ok(capacity) => capacity,
             Err(_) => {
-                let _ = shared_on_detached(binding);
                 drop(lun);
                 drop(device);
                 bus.free_address(info.device_address);
+                notify_setup_failed(binding).await;
                 continue;
             }
         };

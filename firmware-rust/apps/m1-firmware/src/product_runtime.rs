@@ -551,6 +551,27 @@ impl SessionDeliverySink for ProductRuntime {
                             self.stats.effect_backpressure.saturating_add(1);
                         return false;
                     }
+                    // Accepted local edits belong to the track, not one deck's
+                    // old snapshot. Keep the other deck current before its next
+                    // edit, while preserving source and transport state.
+                    for effect in effects.items.into_iter().flatten() {
+                        if let DeckEffect::PersistHotCues { deck, bank } = effect
+                            && let Some(origin) = self.loaded_tracks[deck_index(deck)]
+                        {
+                            for i in 0..2 {
+                                if self.loaded_tracks[i].is_some_and(|other| {
+                                    other.candidate.track.track_id == bank.track_id()
+                                        && other.candidate.publication.lease
+                                            == origin.candidate.publication.lease
+                                }) {
+                                    staged.update_local_hot_cues(
+                                        if i == 0 { DeckId::One } else { DeckId::Two },
+                                        bank,
+                                    );
+                                }
+                            }
+                        }
+                    }
                     self.deck = staged;
                     self.refresh_leds();
                     self.stats.accepted_deck_controls =
