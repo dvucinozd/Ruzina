@@ -5,7 +5,7 @@
 
 ## Context
 
-M1 is a new ESP32-P4 product and is not constrained to preserve the ESP-IDF/FreeRTOS application architecture used by released M2.2. The [2026-10-20 platform decision](../M1_GUITION_PLATFORM_DECISION_2026-10-20.md) replaces custom-PCB development with Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y development boards. The native Rust runtime decision is unchanged; exact-board BSPs and physical acceptance are separate work.
+M1 is a new ESP32-P4 product and is not constrained to preserve the ESP-IDF/FreeRTOS application architecture used by released M2.2. The selected boards are Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y. The native Rust runtime decision is unchanged; exact-board BSPs and physical acceptance are separate work.
 
 Current esp-hal 1.2.0 supports ESP32-P4 revision >= v3.x and provides the required low-level direction, although several P4 peripherals needed by M1 are still unstable APIs.
 

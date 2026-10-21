@@ -1,9 +1,0 @@
-*-bak
-*-backups
-*-cache*
-_autosave*
-#auto_saved_files#
-*.lck
-*.kicad_prl
-*.kicad_sch-bak
-*.kicad_pcb-bak

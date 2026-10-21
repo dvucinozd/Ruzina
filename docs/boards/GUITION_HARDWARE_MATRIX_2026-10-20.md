@@ -43,12 +43,12 @@ The recorded local hashes can be replayed from the repository root with `python 
 | Shared I2C | SDA7 / SCL8 | SDA7 / SCL8 | V3 headers and schematic codec/touch nets |
 | Touch reset / interrupt | Schematic shows 22/21; V3 example sets NC/NC | 22/21 in 800x1280 branch | Conflict retained for 1060; do not drive the pins by inference |
 | SDMMC | Slot0, D0..3=39..42, CLK43, CMD44 | Same | V3 headers and TF schematic |
-| SD power / detect | P4 internal LDO4; no established GPIO card-detect | Same | V3 `ldo_chan_id=4`, schematic `ESP_LDO_VO4`; do not reuse M1 GPIO45 power or GPIO46 detect |
+| SD power / detect | P4 internal LDO4; no established GPIO card-detect | Same | V3 `ldo_chan_id=4`, schematic `ESP_LDO_VO4`; requires a Guition LDO4 power policy and explicit media presence/removal observation |
 | Wireless | ESP32-C6 companion in Guition core/module | ESP32-C6; schematic SDIO2 on P4 GPIO14..19 and reset/control connections | Unit/module revision and companion firmware remain open; no Wi-Fi policy or companion image imported |
 | Native USB | Separate FS and HS Type-C data connectors | Separate FS and HS Type-C data connectors | SCH; JC8012 also has CH340C USB/UART service connector |
-| USB host power | Shared `USB5V_IN`, Type-C CC pulldowns; no independent M1-style VBUS switch/fault channels established | Same | Host adapters, supply/backfeed policy and current limits are unqualified |
+| USB host power | Shared `USB5V_IN`, Type-C CC pulldowns; independent host VBUS switching/fault channels are not established | Same | Host adapters, supply/backfeed policy and current limits are unqualified |
 | FS GPIO binding | Unresolved for exact v3.2 module/board | Unresolved for exact v3.2 board | Old raw schematic labels 24/25 and copied BSP USB macros 19/20 must not be translated into a working v3.2 HAL binding by assumption |
-| Audio codec | ES8311, differential mono speaker path | ES8311, differential mono speaker path | SCH and vendor mono I2S configuration; not a stereo PCM5102A MAIN replacement |
+| Audio codec | ES8311, differential mono speaker path | ES8311, differential mono speaker path | SCH and vendor mono I2S configuration; not a stereo MAIN or independent headphone path |
 | Audio I2S | MCLK13, BCLK12, LRCK10, DOUT9, DIN48; PA enable11 | MCLK13, BCLK12, LRCK10, DOUT9, DIN11; PA enable20 | V3 BSPs; physical sample-rate/clock/mute tests remain pending |
 | Stereo MAIN / headphone | No qualified onboard stereo MAIN or independent headphone path | Same | MAIN prefers a ready external stereo DAC, then compatible controller MAIN audio. Headphones always use controller UAC; hardware wiring, detection and channel mappings remain unqualified. See [routing policy](../M1_RUST_PRODUCT_REQUIREMENTS.md#8-controller-only-headphone-policy). |
 | Other hardware | Ethernet PHY/RJ45, RS485/UART, camera, RTC and battery circuitry shown | Camera, RTC, battery circuitry and expansion FPCs shown | Keep inactive until needed and individually mapped; schematic presence is not unit acceptance |
@@ -65,36 +65,40 @@ GSL3680 firmware is not bundled. The current published [Guition touch NOTICE](ht
 
 ## Rust BSP structure
 
-`pajoniiir-board-profile` is a `no_std`, HAL-independent crate with separate `jc1060` and `jc8012` modules. It records documented capacities, display/controller identity, candidate GPIOs, LDO requirements and unresolved USB/panel state. `check_unit` rejects old silicon and memory variants; success only compares detected identity and does not qualify or activate peripherals.
+`pajoniiir-board-profile` is no_std and HAL-independent. It records each model's
+documented memory, geometry, controllers, candidate GPIOs/LDOs and unresolved USB/
+panel state. `check_unit` compares detected identity; it does not qualify wiring.
+Panel/touch source fingerprints are recorded in
+[guition-display-sources-2026-10-21.json](guition-display-sources-2026-10-21.json).
 
-The embedded target has three mutually exclusive selectors:
+The embedded target defaults to an idle scheduler. `board-jc1060` and
+`board-jc8012` are mutually exclusive. Their basic diagnostics owns only the
+explicit service transport. `guition-flash-probe` adds bounded read-only RDID;
+`guition-psram-test` is release-only and uses an exclusive 64 KiB CPU-cached span
+at 80 MHz without registering an allocator. Neither probe is enabled by default.
 
-- `board-jc1060`: JC1060 identity and scheduler-only BSP skeleton.
-- `board-jc8012`: JC8012 identity and scheduler-only BSP skeleton.
-- `board-legacy-m1`: historical custom-board tasks and wiring isolated in `src/platform/legacy_m1.rs`.
+`integration-check` compiles reusable owner modules without acquiring their
+resources or spawning product tasks. It cannot accompany a Guition selector.
+USB instances, SD power/presence and flash layouts must be explicitly supplied by
+a qualified BSP. No programming layout, storage address, card-detect input or
+host-power switch is assumed.
 
-The default remains `default = []`: generic P4 idle/scheduler target, with no board selected. Legacy USB/SD/flash/PSRAM features now require explicit `board-legacy-m1`. They cannot be combined with a Guition selector. No Guition GPIO is converted into a HAL peripheral handle in this preparation. No Guition flash layout is selected, and the existing `espflash.toml`/Hot Cue partitions remain legacy-only assets, not Guition flashing instructions.
-
-Compile examples, from `firmware-rust/apps/m1-firmware`:
-
-```sh
-cargo +1.95.0 build --locked --release --features board-jc1060
-cargo +1.95.0 build --locked --release --features board-jc8012
-cargo +1.95.0 check --locked --features board-legacy-m1,render-graph-bringup,sdmmc-profile-storage-bringup
-python ../../tools/check_board_selection.py
-```
-
-CI retains all existing legacy feature configurations under explicit board selection, adds independent Guition compile/link gates, and rejects ambiguous selectors plus every direct legacy hardware feature without a legacy board. Dependency locks change only to register the new local board-profile crate; external dependency versions and silicon policy are unchanged.
+Panel/backlight/touch ports and their initialization/cleanup contracts are
+prepared but inactive. Actual DSI/GPIO/I2C implementations, framebuffer ownership,
+cache/DMA behavior and unit-specific calibration remain pending. No panel table
+or GSL3680 payload is bundled or selected for the arriving units.
 
 ## First work after arrival
 
-The [memory/display preparation](../M1_RUST_GUITION_MEMORY_DISPLAY_PREP_2026-10-21.md)
-adds opt-in read-only flash RDID, release-only 80 MHz/64 KiB PSRAM scratch images
-and HAL-independent panel/touch adapter contracts. These are separate from idle/
-basic-diagnostic profiles. Source fingerprints identify candidate panel arrays;
-no table/payload is imported and no Guition display/touch port is activated.
-Observed-capacity, clock, cache/DMA and peripheral acceptance remain pending.
+Use the [first-boot procedure](GUITION_FIRST_BOOT_2026-10-20.md). Record exact
+unit/panel/PCB identity, eFuse revision, flash identity and actual memory mode/size.
+Capture factory logs and a verified backup, establish ROM recovery and choose a
+board-specific programming procedure before any firmware replacement.
 
-The opt-in Rust `board-diagnostics` feature and [first-boot procedure](GUITION_FIRST_BOOT_2026-10-20.md) prepare native USB Serial/JTAG reporting. Connector reachability, actual flash/PSRAM observations and all peripheral acceptance remain pending; ordinary board selectors still start only the scheduler.
+Qualify boot/service and memory first, then display/backlight/touch, SD, USB and
+audio. Resolve FS package mapping and shared power/backfeed behavior before
+attaching powered host peripherals. The onboard mono speaker path is separate
+from the required stereo MAIN and controller-only headphones.
 
-Record photos/PCB and panel markings, detected chip revision, flash identity/capacity/mode, PSRAM size and the factory firmware identity before choosing a hardware profile. Resolve the USB-FS package/pad mapping and host-power wiring before connecting a controller or memory stick as a host. Then implement one peripheral adapter at a time: memory, DSI/backlight/touch, SD, USB and an agreed audio-output path. Acceptance is per exact board and flashed image. APTA remains deferred.
+Every result belongs to one board/unit and exact image. See
+[development status](../DEVELOPMENT.md) and [validation](../VALIDATION.md).

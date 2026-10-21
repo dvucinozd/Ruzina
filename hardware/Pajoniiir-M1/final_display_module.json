@@ -1,8 +1,0 @@
-{
-  "schema_version": 1,
-  "status": "SUPERSEDED_NAME__DO_NOT_USE_AS_ACTIVE_AUTHORITY",
-  "updated": "2026-09-06",
-  "superseded_by": "display_compatibility_dsi506.json",
-  "mainboard_authority": "board_first_mechanical_contract.json",
-  "reason": "Pajoniiir-M1 is a standalone mainboard and does not have one mechanically authoritative final display."
-}

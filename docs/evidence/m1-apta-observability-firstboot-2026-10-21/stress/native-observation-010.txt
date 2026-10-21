@@ -1,8 +1,0 @@
-M1_ANALYSIS_OBSERVATION_V1
-state=PUBLISHED
-reason=NONE
-deck=1
-load_generation=65
-serial=1
-changed_ms=0
-readiness=NOT_QUALIFIED

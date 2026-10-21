@@ -74,7 +74,7 @@ Thirty-eight PPM screenshots are compared with reviewed raw RGB SHA-256 goldens 
 `tests/ui-goldens.json`. These pixel baselines require Linux x86_64, Slint 1.18.1,
 the pinned Fluent style, DejaVu Sans and scale 1. Font/raster environment changes require visual review,
 not automatic baseline replacement. Reviewed PNGs and logs are retained in the
-[runtime freshness gate](../../../docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md).
+[runtime freshness gate](../../../docs/DEVELOPMENT.md).
 
 The host session publishes a heartbeat after owner work, including while Idle.
 Health shows generation, sequence and sample age; age above 1000 ms is Stale.

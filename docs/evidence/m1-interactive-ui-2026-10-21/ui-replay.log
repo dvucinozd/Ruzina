@@ -1,4 +1,0 @@
-Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete: PASS at width 1024
-Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete: PASS at width 800
-Slint callback + pointer/keyboard smoke in both geometries; 14 software-rendered snapshots: PASS
-Reviewed Slint screenshot goldens: 14 passed

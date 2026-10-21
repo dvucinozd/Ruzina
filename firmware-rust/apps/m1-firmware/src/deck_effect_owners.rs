@@ -412,8 +412,11 @@ fn try_submit<const N: usize>(
 }
 
 #[cfg(feature = "hotcue-flash-storage")]
-pub(crate) async fn run_persistence_owner(flash: esp_hal::peripherals::FLASH<'static>) -> ! {
-    let store = EspHotCueFlash::open(flash)
+pub(crate) async fn run_persistence_owner(
+    flash: esp_hal::peripherals::FLASH<'static>,
+    layout: pajoniiir_hot_cues::journal::JournalFlashLayout,
+) -> ! {
+    let store = EspHotCueFlash::open(flash, layout)
         .ok()
         .map(|flash| RecordBackedHotCueStore::new(HotCueJournalBackend::new(flash)));
     let mut access = HotCueAccess::new(store);

@@ -1,8 +1,0 @@
-firmware-rust/Cargo.lock: complete external records unchanged (503); only local graph changed
-firmware-rust/apps/m1-firmware/Cargo.lock: complete external records unchanged (207); only local graph changed
-Primary KiCad snapshot: 18 pre-existing modified files unchanged
-Host tests: 571 passed
-P4 workflow: partition validation and 29 check/link configurations passed
-Board guards: 20 expected rejections passed
-Slint deck/mixer/FX/health navigation, recovery and event scrolling: both geometries passed
-34 reviewed RGB screenshot hashes: independently replayed and matched

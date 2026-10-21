@@ -7,14 +7,14 @@ on:
     branches: [main]
     paths:
       - "firmware-rust/**"
-      - "docs/M1_RUST_*.md"
-      - "docs/adr/**"
+      - "docs/**"
+      - "README.md"
       - ".github/workflows/rust-host.yml"
   pull_request:
     paths:
       - "firmware-rust/**"
-      - "docs/M1_RUST_*.md"
-      - "docs/adr/**"
+      - "docs/**"
+      - "README.md"
       - ".github/workflows/rust-host.yml"
   workflow_dispatch:
 
@@ -45,6 +45,9 @@ jobs:
             libxkbcommon-x11-dev \
             libx11-dev \
             fonts-dejavu-core
+
+      - name: Check repository documentation links
+        run: python3 tools/check_docs.py
 
       - name: Install pinned Rust toolchain
         run: |

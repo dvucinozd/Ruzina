@@ -8,8 +8,9 @@ allocator-free core adapter over pinned Rust `libapta`
 
 The default crate is a workspace member for explicit tests and portability checks, outside
 `default-members`. The desktop simulator and default firmware do not depend on it. Explicit firmware
-`apta-usb0-bringup` selects it only with `board-legacy-m1`; see the
-[USB0 service gate](../../../docs/M1_RUST_APTA_USB0_GATE_2026-10-21.md).
+`apta-usb0-bringup` compiles it only with `integration-check`; no resource or
+task startup is provided by that feature. See the
+[USB0 service gate](../../../docs/DEVELOPMENT.md).
 `check_apta_core_boundary.py` checks exclusion in desktop, default firmware and full audio
 owner dependency graphs, plus positive presence for the explicit opt-in profile. Production provider selection and Rekordbox ANLZ remain
 under their existing owners. Headphones remain controller-only.

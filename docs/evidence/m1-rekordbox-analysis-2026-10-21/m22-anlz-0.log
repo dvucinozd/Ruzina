@@ -1,8 +1,0 @@
-[I][anlz] PPTH: "/Contents/UnknownArtist/UnknownAlbum/sweep.wav"
-[I][anlz] PVBR: 400 seek entries. First 10: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-[I][anlz] PQTZ: 257 beats, BPM=103 (raw=10258)
-[I][anlz] PWAV: 400/400 bytes
-[I][anlz] PCOB: 0 cue/loop entries
-[I][anlz] DAT transaction published: bpm=103 beats=257 cues=0
-[I][anlz] PWV3: 22500 bytes high-res waveform
-{"beats":257,"preview":400,"detail":22500,"cues":0,"bpm_x100":10258,"beat_hash":"d17f0ac8a00c554d","preview_hash":"83552354aef6367e","detail_hash":"1c63d0d997c2c903"}

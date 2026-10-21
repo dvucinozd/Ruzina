@@ -7,24 +7,24 @@ publish = false
 
 [features]
 default = []
-# Explicit board identity. Guition selectors currently run only the idle core.
-board-legacy-m1 = []
+# Compile owner modules without acquiring board resources or spawning them.
+integration-check = []
+# Explicit Guition board identity; idle unless diagnostic probes are selected.
 board-jc1060 = []
 board-jc8012 = []
 # Opt-in USB Serial/JTAG first-boot report; no storage or audio activation.
 board-diagnostics = []
-# Separate Guition-only diagnostic images. Neither selects legacy storage owners.
+# Separate Guition-only diagnostic images. Neither selects product storage owners.
 guition-flash-probe = ["board-diagnostics", "dep:critical-section"]
 guition-psram-test = ["board-diagnostics"]
-# Diagnostic-only bounded publication from existing legacy owner loops.
+# Diagnostic-only bounded publication from product owner modules.
 # Does not enable any USB owner or select Guition pins.
 runtime-health = ["pajoniiir-service/runtime-owners"]
 # Compile-verified target wiring only. Do not enable in normal firmware until
-# USB0 VBUS/power switching, PHY and hot-plug are EVT-verified.
+# USB0 VBUS/power switching, PHY and hot-plug are physically verified.
 usb0-hardware-bringup = []
 # Compile-verified USB1 Full-Speed controller ownership/enumeration boundary.
-# GPIO27 is DP and GPIO26 is DM on the ESP32-P4 M1 routing. This does not
-# claim physical MIDI/UAC/VBUS qualification.
+# The BSP must provide a qualified USB instance. No port/pin map is selected.
 usb1-controller-bringup = ["hotcue-flash-storage"]
 # Compile-verified internal-flash Hot Cue journal. This feature is implied by
 # USB1 product control because a controller must not acknowledge Hot Cue changes
@@ -39,7 +39,7 @@ library-deck-load = [
     "usb1-controller-bringup",
     "p4-psram-storage",
 ]
-# Historical feature name: enables WAV PCM16, MP3 and native FLAC source owners.
+# Enables WAV PCM16, MP3 and native FLAC source owners.
 # Bounded shared decoders retain per-deck file handles and fixed PCM queues.
 # Physical filesystem/PSRAM/output timing remains a bring-up gate.
 wav-audio-source-bringup = ["library-deck-load"]
@@ -49,13 +49,13 @@ wav-audio-source-bringup = ["library-deck-load"]
 pcm-transport-bringup = ["wav-audio-source-bringup"]
 # Fixed-rate software render graph ownership boundary. The render owner becomes
 # the only steady-state PCM consumer and returns compact progress to transport.
-# Output is still a reference/null sink; PCM5102A/I2S remains a later hardware gate.
+# Output is still a reference/null sink; physical I2S/UAC remains a later hardware gate.
 render-graph-bringup = ["pcm-transport-bringup"]
-# Explicit legacy reference integration; Guition selectors remain guarded.
+# Compile-only optional analysis integration; Guition selectors remain guarded.
 # Analysis yields storage to foreground and is cancelled while playback is active.
 apta-usb0-bringup = ["render-graph-bringup", "dep:pajoniiir-apta-adapter", "dep:libapta"]
 # Compile-verified M1 microSD SDMMC0 ownership and card-init boundary. Runtime
-# card/FAT/profile success still requires EVT hardware qualification.
+# card/FAT/profile success still requires physical qualification.
 sdmmc-profile-storage-bringup = []
 # Compile-verified PSRAM allocator boundary for large retained library/UI storage.
 # This does not claim DMA/cache coherency or hardware qualification.
