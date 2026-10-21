@@ -1,0 +1,4 @@
+desktop simulator: APTA dependency exclusion PASS
+firmware default: APTA dependency exclusion PASS
+firmware full audio owners: APTA dependency exclusion PASS
+firmware explicit USB0 analysis: opt-in dependency presence PASS

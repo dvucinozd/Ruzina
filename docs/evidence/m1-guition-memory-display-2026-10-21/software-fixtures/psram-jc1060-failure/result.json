@@ -1,0 +1,64 @@
+{
+  "complete_records": 1,
+  "partial_records": 0,
+  "errors": [
+    "PSRAM scratch did not pass"
+  ],
+  "observation_match": false,
+  "memory_diagnostic": {
+    "complete_records": 1,
+    "partial_records": 0,
+    "errors": [
+      "PSRAM scratch did not pass"
+    ],
+    "frames": [
+      {
+        "board_profile": "JC1060P470C_I_W_Y",
+        "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-psram",
+        "flash_probe": "NOT_REQUESTED",
+        "flash_rdid_raw": "NOT_MEASURED",
+        "flash_bytes_rdid": "NOT_MEASURED",
+        "psram_probe": "CPU_SCRATCH_FAILED",
+        "psram_bytes_mapped": "33554432",
+        "psram_scratch_bytes": "65536",
+        "psram_clock_mhz": "80",
+        "psram_failure_word": "42",
+        "psram_expected": "aaaaaaba",
+        "psram_actual": "00000000",
+        "test_scope": "CPU_CACHED_SCRATCH_ONLY",
+        "readiness": "NOT_QUALIFIED"
+      }
+    ],
+    "observation_match": false
+  },
+  "frames": [
+    {
+      "board_profile": "JC1060P470C_I_W_Y",
+      "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-psram",
+      "chip_revision_detected": "302",
+      "chip_minimum_required": "302",
+      "chip_policy_match": "true",
+      "flash_bytes_documented": "16777216",
+      "psram_bytes_documented": "33554432",
+      "flash_bytes_observed": "NOT_MEASURED",
+      "psram_bytes_observed": "33554432",
+      "readiness": "NOT_QUALIFIED"
+    }
+  ],
+  "rom_signature_seen": false,
+  "reset_reasons": [
+    "Some(SoftwareCpu)"
+  ],
+  "readiness": "NOT_QUALIFIED",
+  "schema": 1,
+  "unit": "SOFTWARE_FIXTURE-jc1060-psram",
+  "scenario": "cold-boot",
+  "package_manifest_sha256": "a80c1a37e2a46c8ab942b7d08d7b32d161cbf50a236f96eff357f52dacaf8c38",
+  "expected_elf_sha256": "35553a9a1e12a034fdde39a9b1d28551d6314944b9e8ed2af591b300bc70a69b",
+  "expected_image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-psram",
+  "raw_log_sha256": "71e277c6e40d00ca10744d362c66739c696e7659347ab92c830db7c843e9287f",
+  "operator_result": "NOT_RUN",
+  "operator_note": "",
+  "scenario_acceptance": "NOT_QUALIFIED",
+  "capture_error": null
+}

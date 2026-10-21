@@ -3,6 +3,7 @@
 use core::fmt::Write;
 use embassy_time::{Duration, Timer};
 use esp_hal::{peripherals::USB_DEVICE, usb::usb_serial_jtag::UsbSerialJtag};
+use pajoniiir_board_profile::memory::MemoryReport;
 use pajoniiir_board_profile::{
     BoardProfile,
     diagnostics::{BootReport, ReportBuffer},
@@ -10,15 +11,19 @@ use pajoniiir_board_profile::{
 use pajoniiir_service::{Environment, Identity, RuntimeStatus, Service};
 
 #[embassy_executor::task]
-pub(super) async fn report_task(usb: USB_DEVICE<'static>, profile: &'static BoardProfile) {
+pub(super) async fn report_task(
+    usb: USB_DEVICE<'static>,
+    profile: &'static BoardProfile,
+    memory: MemoryReport,
+) {
     let mut serial = UsbSerialJtag::new(usb);
     let mut buffer = ReportBuffer::<2048>::default();
     let report = BootReport {
         profile,
         chip_revision: esp_hal::efuse::chip_revision().combined(),
         image_id: option_env!("M1_IMAGE_ID").unwrap_or("UNSPECIFIED"),
-        observed_flash_bytes: None,
-        observed_psram_bytes: None,
+        observed_flash_bytes: memory.flash.bytes(),
+        observed_psram_bytes: memory.psram.bytes(),
     };
     if report.write_to(&mut buffer).is_err()
         || writeln!(buffer, "reset_reason={:?}", esp_hal::system::reset_reason()).is_err()
@@ -41,6 +46,12 @@ pub(super) async fn report_task(usb: USB_DEVICE<'static>, profile: &'static Boar
     if service
         .snapshot(RuntimeStatus::BOOT_ONLY)
         .write_to(&mut buffer)
+        .is_err()
+    {
+        return;
+    }
+    if memory
+        .write_to(&mut buffer, profile.model, report.image_id)
         .is_err()
     {
         return;

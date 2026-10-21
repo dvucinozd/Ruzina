@@ -13,6 +13,9 @@ board-jc1060 = []
 board-jc8012 = []
 # Opt-in USB Serial/JTAG first-boot report; no storage or audio activation.
 board-diagnostics = []
+# Separate Guition-only diagnostic images. Neither selects legacy storage owners.
+guition-flash-probe = ["board-diagnostics", "dep:critical-section"]
+guition-psram-test = ["board-diagnostics"]
 # Diagnostic-only bounded publication from existing legacy owner loops.
 # Does not enable any USB owner or select Guition pins.
 runtime-health = ["pajoniiir-service/runtime-owners"]
@@ -59,6 +62,7 @@ sdmmc-profile-storage-bringup = []
 p4-psram-storage = ["dep:esp-alloc", "dep:allocator-api2"]
 
 [dependencies]
+critical-section = { version = "=1.2.0", optional = true }
 libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "25d09de364e9507532c0508c838a8fecf0772d13", default-features = false, optional = true }
 pajoniiir-apta-adapter = { path = "../../crates/pajoniiir-apta-adapter", features = ["owned-handoff"], optional = true }
 allocator-api2 = { version = "=0.3.1", default-features = false, features = ["alloc"], optional = true }

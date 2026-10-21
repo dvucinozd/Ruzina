@@ -166,6 +166,42 @@ jobs:
           M1_IMAGE_ID: ${{ github.sha }}
         run: cargo +1.95.0 build --locked --release --features board-jc8012,board-diagnostics
 
+      - name: JC1060 flash probe release check
+        run: cargo +1.95.0 check --locked --release --features board-jc1060,guition-flash-probe
+
+      - name: JC1060 flash probe release link
+        run: cargo +1.95.0 build --locked --release --features board-jc1060,guition-flash-probe
+
+      - name: JC1060 PSRAM scratch release check
+        run: cargo +1.95.0 check --locked --release --features board-jc1060,guition-psram-test
+
+      - name: JC1060 PSRAM scratch release link
+        run: cargo +1.95.0 build --locked --release --features board-jc1060,guition-psram-test
+
+      - name: JC1060 combined memory probe release check
+        run: cargo +1.95.0 check --locked --release --features board-jc1060,guition-flash-probe,guition-psram-test
+
+      - name: JC1060 combined memory probe release link
+        run: cargo +1.95.0 build --locked --release --features board-jc1060,guition-flash-probe,guition-psram-test
+
+      - name: JC8012 flash probe release check
+        run: cargo +1.95.0 check --locked --release --features board-jc8012,guition-flash-probe
+
+      - name: JC8012 flash probe release link
+        run: cargo +1.95.0 build --locked --release --features board-jc8012,guition-flash-probe
+
+      - name: JC8012 PSRAM scratch release check
+        run: cargo +1.95.0 check --locked --release --features board-jc8012,guition-psram-test
+
+      - name: JC8012 PSRAM scratch release link
+        run: cargo +1.95.0 build --locked --release --features board-jc8012,guition-psram-test
+
+      - name: JC8012 combined memory probe release check
+        run: cargo +1.95.0 check --locked --release --features board-jc8012,guition-flash-probe,guition-psram-test
+
+      - name: JC8012 combined memory probe release link
+        run: cargo +1.95.0 build --locked --release --features board-jc8012,guition-flash-probe,guition-psram-test
+
       - name: Reject ambiguous boards and legacy features on Guition
         run: python ../../tools/check_board_selection.py
 
@@ -199,3 +235,16 @@ jobs:
         with:
           name: guition-firstboot-diagnostics
           path: ${{ runner.temp }}/guition-firstboot/
+
+      - name: Package opt-in Guition memory diagnostics without flashing
+        run: |
+          for probe in flash psram memory; do
+            python ../../tools/guition_first_boot.py build --probe "$probe" --output "${{ runner.temp }}/guition-memory-$probe" --target-dir ../../target
+          done
+
+      - name: Retain Guition memory diagnostic packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guition-memory-diagnostics
+          path: ${{ runner.temp }}/guition-memory-*/

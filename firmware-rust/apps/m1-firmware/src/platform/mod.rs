@@ -30,6 +30,21 @@ compile_error!("board-diagnostics requires a Guition board selector");
 mod diagnostics;
 
 #[cfg(all(
+    any(feature = "guition-flash-probe", feature = "guition-psram-test"),
+    not(any(feature = "board-jc1060", feature = "board-jc8012"))
+))]
+compile_error!("Guition memory probes require a Guition board selector");
+
+#[cfg(all(feature = "guition-psram-test", debug_assertions))]
+compile_error!("guition-psram-test requires a release build");
+
+#[cfg(all(
+    any(feature = "guition-flash-probe", feature = "guition-psram-test"),
+    any(feature = "board-jc1060", feature = "board-jc8012")
+))]
+mod memory;
+
+#[cfg(all(
     not(feature = "board-legacy-m1"),
     any(
         feature = "usb0-hardware-bringup",
@@ -83,11 +98,22 @@ fn start_guition(
     peripherals: Peripherals,
     profile: &'static pajoniiir_board_profile::BoardProfile,
 ) {
+    #[cfg(feature = "board-diagnostics")]
+    let memory_report = pajoniiir_board_profile::memory::MemoryReport {
+        #[cfg(feature = "guition-flash-probe")]
+        flash: memory::flash_probe(peripherals.FLASH),
+        #[cfg(not(feature = "guition-flash-probe"))]
+        flash: pajoniiir_board_profile::memory::FlashProbe::NotRequested,
+        #[cfg(feature = "guition-psram-test")]
+        psram: memory::psram_test(peripherals.PSRAM, profile.psram_bytes),
+        #[cfg(not(feature = "guition-psram-test"))]
+        psram: pajoniiir_board_profile::memory::PsramProbe::NotRequested,
+    };
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
     #[cfg(feature = "board-diagnostics")]
     spawner.spawn(
-        diagnostics::report_task(peripherals.USB_DEVICE, profile)
+        diagnostics::report_task(peripherals.USB_DEVICE, profile, memory_report)
             .expect("boot diagnostic task slot"),
     );
     #[cfg(not(feature = "board-diagnostics"))]

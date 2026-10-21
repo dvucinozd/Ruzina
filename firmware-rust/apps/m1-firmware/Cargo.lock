@@ -1481,6 +1481,7 @@ dependencies = [
  "aligned",
  "allocator-api2",
  "block-device-driver",
+ "critical-section",
  "embassy-executor",
  "embassy-futures",
  "embassy-sync 0.8.0",

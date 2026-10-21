@@ -27,7 +27,51 @@ def record(**changes):
     return ("M1_BOOT_DIAGNOSTIC_V1\n" + "".join(f"{key}={value}\n" for key, value in values.items())).encode()
 
 
+def memory_record(probe="memory", **changes):
+    flash = probe in ("flash", "memory")
+    psram = probe in ("psram", "memory")
+    values = {"board_profile": boot.MODELS["jc1060"], "image_id": "exact-source-image",
+              "flash_probe": "ID_DECODED" if flash else "NOT_REQUESTED",
+              "flash_rdid_raw": "1840ef" if flash else "NOT_MEASURED",
+              "flash_bytes_rdid": "16777216" if flash else "NOT_MEASURED",
+              "psram_probe": "CPU_SCRATCH_PASSED" if psram else "NOT_REQUESTED",
+              "psram_bytes_mapped": "33554432" if psram else "NOT_MEASURED",
+              "psram_scratch_bytes": "65536" if psram else "0", "psram_clock_mhz": "80" if psram else "0",
+              "psram_failure_word": "NONE", "psram_expected": "NONE", "psram_actual": "NONE",
+              "test_scope": "CPU_CACHED_SCRATCH_ONLY", "readiness": "NOT_QUALIFIED"}
+    values.update(changes)
+    return ("M1_MEMORY_DIAGNOSTIC_V1\n" + "".join(f"{key}={value}\n" for key, value in values.items())).encode()
+
+
 class FirstBootTests(unittest.TestCase):
+    def test_probe_variants_require_real_consistent_memory_records_without_promoting_acceptance(self):
+        for probe in boot.PROBES:
+            value = {**manifest(), "diagnostic_probe": probe, "memory_diagnostic_schema": 1}
+            boot_record = record(flash_bytes_observed="16777216" if probe in ("flash", "memory") else "NOT_MEASURED",
+                                 psram_bytes_observed="33554432" if probe in ("psram", "memory") else "NOT_MEASURED")
+            parsed = boot.parse_log(boot_record + memory_record(probe), value)
+            self.assertTrue(parsed["observation_match"], parsed)
+            self.assertEqual(parsed["readiness"], "NOT_QUALIFIED")
+            self.assertFalse(boot.parse_log(boot_record, value)["observation_match"])
+            self.assertFalse(boot.parse_log(boot_record + memory_record(probe, image_id="wrong"), value)["observation_match"])
+        self.assertFalse(boot.parse_log(record() + memory_record(), value)["observation_match"])
+
+    def test_probe_timeouts_corruption_partial_and_mismatched_measurements_are_retained_as_failure(self):
+        value = {**manifest(), "diagnostic_probe": "memory", "memory_diagnostic_schema": 1}
+        raw_boot = record(flash_bytes_observed="16777216", psram_bytes_observed="33554432")
+        for change in [{"flash_probe":"TIMEOUT"}, {"flash_rdid_raw":"1740ef"}, {"flash_rdid_raw":"000000"},
+                       {"flash_bytes_rdid":"8388608"}, {"psram_probe":"CPU_SCRATCH_FAILED"},
+                       {"psram_scratch_bytes":"33554432"}, {"psram_clock_mhz":"250"},
+                       {"psram_failure_word":"12"}, {"readiness":"PASS"}]:
+            with self.subTest(change=change):
+                self.assertFalse(boot.parse_log(raw_boot + memory_record(**change), value)["observation_match"])
+        for frame in [memory_record().replace(b"image_id=", b"image_id=duplicate\nimage_id="),
+                      memory_record().replace(b"readiness=", b"unknown=x\nreadiness="), memory_record()[:100]]:
+            self.assertFalse(boot.parse_log(raw_boot + frame, value)["observation_match"])
+        parsed = boot.parse_log(raw_boot + memory_record() + b"M1_MEMORY_DIAGNOSTIC_V1\nimage_id=partial", value)
+        self.assertTrue(parsed["observation_match"])
+        self.assertEqual(parsed["memory_diagnostic"]["partial_records"], 1)
+
     def test_capture_rejects_bad_arguments_before_constructing_or_opening_serial(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
@@ -122,19 +166,21 @@ class FirstBootTests(unittest.TestCase):
             self.assertFalse(args.output.exists())
 
     def test_build_isolates_board_images_hashes_and_rejects_source_mutation(self):
-        for mutate in (False, True):
-            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as tmp:
+        for probe, mutate in [(probe, False) for probe in boot.PROBES] + [("memory", True)]:
+            with self.subTest(probe=probe, mutate=mutate), tempfile.TemporaryDirectory() as tmp:
                 folder = Path(tmp)
                 (folder / "firmware-rust").mkdir()
                 source = folder / "firmware-rust/source.rs"
                 source.write_text("pinned source")
                 args = types.SimpleNamespace(output=folder / "package", target_dir=folder / "target",
-                                             git="git", cargo="cargo", rustc="rustc")
+                                             git="git", cargo="cargo", rustc="rustc", probe=probe)
                 def fake_git(_args, *command):
                     return {"ls-files": b"firmware-rust/source.rs\0", "rev-parse": b"a" * 40,
                             "status": b" M firmware-rust/source.rs"}[command[0]]
                 def compile_image(command, **kwargs):
                     self.assertNotIn("flash", command)
+                    features = command[command.index("--features") + 1]
+                    self.assertEqual([name for name in features.split(",") if name.startswith("guition-")], list(boot.PROBES[probe]))
                     image = args.target_dir / boot.TARGET / "release/pajoniiir-m1-firmware"
                     image.parent.mkdir(parents=True, exist_ok=True)
                     image.write_bytes(b"ELF" + kwargs["env"]["M1_IMAGE_ID"].encode())
@@ -155,6 +201,8 @@ class FirstBootTests(unittest.TestCase):
                         self.assertNotEqual(first["elf"]["sha256"], second["elf"]["sha256"])
                         self.assertNotEqual(first["image_id"], second["image_id"])
                         self.assertEqual(first["readiness"], "NOT_QUALIFIED")
+                        self.assertEqual(first["diagnostic_probe"], probe)
+                        self.assertTrue(first["image_id"].endswith("-" + probe))
                         with self.assertRaises(ValueError):
                             boot.build(args)
 

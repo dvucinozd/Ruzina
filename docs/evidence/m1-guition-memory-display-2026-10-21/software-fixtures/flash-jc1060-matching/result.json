@@ -1,0 +1,60 @@
+{
+  "complete_records": 1,
+  "partial_records": 0,
+  "errors": [],
+  "observation_match": true,
+  "memory_diagnostic": {
+    "complete_records": 1,
+    "partial_records": 0,
+    "errors": [],
+    "frames": [
+      {
+        "board_profile": "JC1060P470C_I_W_Y",
+        "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-flash",
+        "flash_probe": "ID_DECODED",
+        "flash_rdid_raw": "1840ef",
+        "flash_bytes_rdid": "16777216",
+        "psram_probe": "NOT_REQUESTED",
+        "psram_bytes_mapped": "NOT_MEASURED",
+        "psram_scratch_bytes": "0",
+        "psram_clock_mhz": "0",
+        "psram_failure_word": "NONE",
+        "psram_expected": "NONE",
+        "psram_actual": "NONE",
+        "test_scope": "CPU_CACHED_SCRATCH_ONLY",
+        "readiness": "NOT_QUALIFIED"
+      }
+    ],
+    "observation_match": true
+  },
+  "frames": [
+    {
+      "board_profile": "JC1060P470C_I_W_Y",
+      "image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-flash",
+      "chip_revision_detected": "302",
+      "chip_minimum_required": "302",
+      "chip_policy_match": "true",
+      "flash_bytes_documented": "16777216",
+      "psram_bytes_documented": "33554432",
+      "flash_bytes_observed": "16777216",
+      "psram_bytes_observed": "NOT_MEASURED",
+      "readiness": "NOT_QUALIFIED"
+    }
+  ],
+  "rom_signature_seen": false,
+  "reset_reasons": [
+    "Some(SoftwareCpu)"
+  ],
+  "readiness": "NOT_QUALIFIED",
+  "schema": 1,
+  "unit": "SOFTWARE_FIXTURE-jc1060-flash",
+  "scenario": "cold-boot",
+  "package_manifest_sha256": "be77cd10ff208aba662d93678af1a7f810bb3506744f60b2df807faefb2cdd18",
+  "expected_elf_sha256": "9e070f98a976e301a2dc8223a9087153ca3f99bae5e7e9152d8a51cbc8c5b417",
+  "expected_image_id": "8bc11e3d06a6-src-6c048e6200441927-jc1060-flash",
+  "raw_log_sha256": "6f7edec6e6fbb7cbaee0b1920906ba38664efea27d10e8251776e5bb1a5f2b68",
+  "operator_result": "NOT_RUN",
+  "operator_note": "",
+  "scenario_acceptance": "NOT_QUALIFIED",
+  "capture_error": null
+}

@@ -97,3 +97,7 @@ The simulator's Health → Analysis tab displays a bounded captured record via
 `--analysis-observation FILE`; it does not select the native worker or connect
 live device telemetry. Default dependency exclusion and Guition hardware gates
 remain unchanged.
+
+Separate Guition flash RDID and release-only PSRAM scratch configurations, and
+inactive panel/touch adapter preparation, are described in the
+[memory/display gate](../docs/M1_RUST_GUITION_MEMORY_DISPLAY_PREP_2026-10-21.md).

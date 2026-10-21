@@ -25,6 +25,13 @@ for board in [None, "board-jc1060", "board-jc8012"]:
 cases.append((["board-legacy-m1", "runtime-health"],
               "runtime-health requires an explicitly enabled USB owner"))
 
+for probe in ["guition-flash-probe", "guition-psram-test"]:
+    for board in [None, "board-legacy-m1"]:
+        cases.append(([value for value in [board, probe] if value],
+                      "Guition memory probes require a Guition board selector"))
+for board in ["board-jc1060", "board-jc8012"]:
+    cases.append(([board, "guition-psram-test"], "guition-psram-test requires a release build"))
+
 for features, diagnostic in cases:
     result = subprocess.run(
         ["cargo", "+1.95.0", "check", "--locked", "--features", ",".join(features)],
