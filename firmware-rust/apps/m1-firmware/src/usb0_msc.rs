@@ -14,9 +14,8 @@ use embassy_usb_host::{
 };
 use pajoniiir_media_block::{BlockGeometry, TransferError};
 use pajoniiir_media_exfat::{
-    ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncDirectoryHandle,
-    ExFatAsyncFileHandle, ExFatAsyncFsError, ExFatAsyncMountError, ExFatAsyncVolume,
-    parse_exfat_boot_sector,
+    ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncDirectoryHandle, ExFatAsyncFileHandle,
+    ExFatAsyncFsError, ExFatAsyncMountError, ExFatAsyncVolume, parse_exfat_boot_sector,
 };
 use pajoniiir_media_fat32::{
     Fat32AsyncDirectoryHandle, Fat32AsyncFileHandle, Fat32AsyncFileSystem, Fat32AsyncFsError,
@@ -28,11 +27,11 @@ use pajoniiir_media_fs::{
     FileSystemClientId, FileSystemKind, FileSystemRequestSequencer, FileSystemRequestTicket,
     LeaseBound,
 };
-use pajoniiir_media_io::{
-    AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
-};
 use pajoniiir_media_identity::{
     VolumeIdentity, derive_exfat_volume_identity, derive_fat32_volume_identity,
+};
+use pajoniiir_media_io::{
+    AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
 };
 use pajoniiir_media_partition::{VolumeKind, classify_boot_sector};
 use pajoniiir_media_session::{DisconnectResult, MediaHandle, MediaLease, MediaSession};
@@ -575,10 +574,7 @@ impl Usb0MscLifecycle {
 
     /// Process HandlerEvent::HandlerDisconnected for the handler that owns
     /// this binding. Old bindings fail closed after a newer enumeration.
-    pub(crate) fn on_handler_disconnected(
-        &mut self,
-        binding: Usb0MscBinding,
-    ) -> DisconnectResult {
+    pub(crate) fn on_handler_disconnected(&mut self, binding: Usb0MscBinding) -> DisconnectResult {
         self.bridge.on_disconnect(binding.handle)
     }
 
@@ -621,6 +617,71 @@ pub(crate) fn media_state() -> Usb0MscMediaState {
     USB0_MSC_MEDIA_STATE.lock(|cell| *cell.borrow())
 }
 
+/// Lives only in the media worker. A root lifecycle event invalidates its old
+/// producer immediately; only a matching Ready/Detached event supplies a new one.
+struct MediaHealthReporter {
+    #[cfg(feature = "runtime-health")]
+    producer: Option<pajoniiir_service::handoff::Producer>,
+    #[cfg(feature = "runtime-health")]
+    failures: u32,
+}
+impl MediaHealthReporter {
+    fn new() -> Self {
+        Self {
+            #[cfg(feature = "runtime-health")]
+            producer: crate::runtime_health::initial_media(),
+            #[cfg(feature = "runtime-health")]
+            failures: 0,
+        }
+    }
+    fn set_state(&mut self, state: Usb0MscMediaState) {
+        set_media_state(state);
+        #[cfg(feature = "runtime-health")]
+        {
+            match state {
+                Usb0MscMediaState::Discovering { binding } => {
+                    self.producer = crate::runtime_health::claim_media(binding, false)
+                }
+                Usb0MscMediaState::Detached { binding, .. } => {
+                    self.producer = crate::runtime_health::claim_media(binding, true)
+                }
+                Usb0MscMediaState::Failed { .. } => self.failures = self.failures.saturating_add(1),
+                _ => {}
+            }
+            self.publish();
+        }
+    }
+    #[cfg(feature = "runtime-health")]
+    fn publish(&mut self) {
+        use pajoniiir_service::owners::{MediaObservation, MediaPhase};
+        let (phase, binding) = match media_state() {
+            Usb0MscMediaState::Idle => (MediaPhase::Idle, None),
+            Usb0MscMediaState::Discovering { binding } => (MediaPhase::Discovering, Some(binding)),
+            Usb0MscMediaState::Mounted { binding, .. } => (MediaPhase::Mounted, Some(binding)),
+            Usb0MscMediaState::Failed { binding, .. } => (MediaPhase::Failed, Some(binding)),
+            Usb0MscMediaState::Detached { binding, .. } => (MediaPhase::Detached, Some(binding)),
+        };
+        let observation = with_lifecycle(|lifecycle| {
+            let session = lifecycle.session();
+            let phase = if binding.is_some_and(|b| {
+                if phase == MediaPhase::Detached {
+                    session.lease().is_some()
+                } else {
+                    session.lease() != Some(b.lease) || session.handle() != Some(b.handle)
+                }
+            }) {
+                MediaPhase::Superseded
+            } else {
+                phase
+            };
+            MediaObservation::capture(session, phase, self.failures)
+        });
+        if let Some(producer) = &mut self.producer {
+            crate::runtime_health::publish_media(producer, observation);
+        }
+    }
+}
+
 fn set_filesystem_state(state: Usb0MscFilesystemState) {
     USB0_MSC_FILESYSTEM_STATE.lock(|cell| {
         *cell.borrow_mut() = state;
@@ -643,12 +704,9 @@ fn issue_bound_request(
     kind: UsbMscRequestKind,
 ) -> Result<UsbMscRequestTicket, UsbMscSessionError> {
     with_lifecycle_mut(|lifecycle| {
-        lifecycle.bridge_mut().issue_for(
-            attempt.lease,
-            attempt.handle,
-            attempt.lun,
-            kind,
-        )
+        lifecycle
+            .bridge_mut()
+            .issue_for(attempt.lease, attempt.handle, attempt.lun, kind)
     })
 }
 
@@ -731,9 +789,7 @@ pub(crate) fn prepare_write_request(
     }
 }
 
-pub(crate) fn prepare_flush_request(
-    lun: u8,
-) -> Result<Usb0MscRequest, UsbMscSessionError> {
+pub(crate) fn prepare_flush_request(lun: u8) -> Result<Usb0MscRequest, UsbMscSessionError> {
     issue_current_request(lun, UsbMscRequestKind::Flush)
         .map(|ticket| Usb0MscRequest::Flush { ticket })
 }
@@ -742,14 +798,22 @@ pub(crate) fn completion_is_current(completion: &Usb0MscCompletion) -> bool {
     with_lifecycle(|lifecycle| completion.is_current(lifecycle.session()))
 }
 
-fn shared_on_enumerated(
-    info: &EnumerationInfo,
-) -> Result<Usb0MscBinding, Usb0MscLifecycleError> {
-    with_lifecycle_mut(|lifecycle| lifecycle.on_enumerated(info))
+fn shared_on_enumerated(info: &EnumerationInfo) -> Result<Usb0MscBinding, Usb0MscLifecycleError> {
+    let result = with_lifecycle_mut(|lifecycle| lifecycle.on_enumerated(info));
+    #[cfg(feature = "runtime-health")]
+    if let Ok(binding) = result {
+        crate::runtime_health::invalidate_media(binding, false);
+    }
+    result
 }
 
 fn shared_on_detached(binding: Usb0MscBinding) -> DisconnectResult {
-    with_lifecycle_mut(|lifecycle| lifecycle.on_handler_disconnected(binding))
+    let result = with_lifecycle_mut(|lifecycle| lifecycle.on_handler_disconnected(binding));
+    #[cfg(feature = "runtime-health")]
+    if result == DisconnectResult::Accepted {
+        crate::runtime_health::invalidate_media(binding, true);
+    }
+    result
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -808,9 +872,7 @@ pub(crate) async fn probe_root_msc_once(
 
     let speed = controller.wait_for_connection().await;
     let mut config = [0u8; USB0_ENUM_CONFIG_BYTES];
-    let (info, config_len) = bus
-        .enumerate(BusRoute::Direct(speed), &mut config)
-        .await?;
+    let (info, config_len) = bus.enumerate(BusRoute::Direct(speed), &mut config).await?;
 
     let binding = match lifecycle.on_enumerated(&info) {
         Ok(binding) => binding,
@@ -847,9 +909,7 @@ pub(crate) async fn probe_root_msc_once(
 /// MediaSession state is shared only through short critical sections and is
 /// never locked across an await. Queued requests retain ownership of their
 /// buffers even if a detach wins the USB command/device-event race.
-pub(crate) async fn run_root_msc_owner(
-    usb_hs: esp_hal::peripherals::USB_HS<'static>,
-) -> ! {
+pub(crate) async fn run_root_msc_owner(usb_hs: esp_hal::peripherals::USB_HS<'static>) -> ! {
     let usb = esp_hal::usb::otg::Usb::new_hs(usb_hs);
     let driver = esp_hal::usb::otg::embassy_usb_host::Driver::new(usb);
     let (mut controller, bus) = embassy_usb_host::bus(driver, &USB0_BUS_STATE);
@@ -868,10 +928,7 @@ pub(crate) async fn run_root_msc_owner(
         };
 
         let mut config = [0u8; USB0_ENUM_CONFIG_BYTES];
-        let (info, config_len) = match bus
-            .enumerate(BusRoute::Direct(speed), &mut config)
-            .await
-        {
+        let (info, config_len) = match bus.enumerate(BusRoute::Direct(speed), &mut config).await {
             Ok(enumerated) => enumerated,
             Err(_) => continue,
         };
@@ -1053,9 +1110,9 @@ pub(crate) enum Usb0MscRequest {
 impl Usb0MscRequest {
     pub(crate) const fn ticket(&self) -> UsbMscRequestTicket {
         match self {
-            Self::Read { ticket, .. }
-            | Self::Write { ticket, .. }
-            | Self::Flush { ticket } => *ticket,
+            Self::Read { ticket, .. } | Self::Write { ticket, .. } | Self::Flush { ticket } => {
+                *ticket
+            }
         }
     }
 }
@@ -1113,10 +1170,7 @@ impl Usb0MscClient {
         self.pending.is_some()
     }
 
-    pub(crate) async fn submit(
-        &mut self,
-        request: Usb0MscRequest,
-    ) -> Usb0MscSubmitResult {
+    pub(crate) async fn submit(&mut self, request: Usb0MscRequest) -> Usb0MscSubmitResult {
         if self.pending.is_some() {
             return Usb0MscSubmitResult::PendingCompletion(request);
         }
@@ -1134,9 +1188,7 @@ impl Usb0MscClient {
             .expect("pending ticket is set before awaiting completion")
     }
 
-    pub(crate) async fn receive_pending_completion(
-        &mut self,
-    ) -> Option<Usb0MscSubmitResult> {
+    pub(crate) async fn receive_pending_completion(&mut self) -> Option<Usb0MscSubmitResult> {
         let expected = self.pending?;
         let completion = USB0_MSC_COMPLETIONS.receive().await;
 
@@ -1307,8 +1359,7 @@ impl OwnedWritableBlockDevice for Usb0MscAsyncBlockDevice {
     }
 
     async fn flush_owned(&mut self) -> Result<(), Self::Error> {
-        let request =
-            prepare_bound_flush_request(self.attempt).map_err(Usb0MscIoError::Session)?;
+        let request = prepare_bound_flush_request(self.attempt).map_err(Usb0MscIoError::Session)?;
 
         match self.client.submit(request).await {
             Usb0MscSubmitResult::Completed(Usb0MscCompletion::Flush { ticket, status }) => {
@@ -1546,11 +1597,7 @@ pub(crate) fn commit_current_mount(
     selection: UsbMscMountSelection,
 ) -> Result<UsbMscMountedMedia, UsbMscMountError> {
     with_lifecycle_mut(|lifecycle| {
-        coordinator.commit(
-            lifecycle.bridge_mut().session_mut(),
-            attempt,
-            selection,
-        )
+        coordinator.commit(lifecycle.bridge_mut().session_mut(), attempt, selection)
     })
 }
 
@@ -1578,10 +1625,7 @@ impl Usb0MscScratchPool {
         }
     }
 
-    fn take(
-        &mut self,
-        block_size: u32,
-    ) -> Result<&'static mut [u8], Usb0MscMediaWorkerError> {
+    fn take(&mut self, block_size: u32) -> Result<&'static mut [u8], Usb0MscMediaWorkerError> {
         let slot = match block_size {
             512 => &mut self.sector_512,
             1_024 => &mut self.sector_1024,
@@ -1593,10 +1637,7 @@ impl Usb0MscScratchPool {
             .ok_or(Usb0MscMediaWorkerError::ScratchUnavailable(block_size))
     }
 
-    fn restore(
-        &mut self,
-        scratch: &'static mut [u8],
-    ) -> Result<(), Usb0MscMediaWorkerError> {
+    fn restore(&mut self, scratch: &'static mut [u8]) -> Result<(), Usb0MscMediaWorkerError> {
         let block_size = scratch.len() as u32;
         let slot = match block_size {
             512 => &mut self.sector_512,
@@ -1630,10 +1671,7 @@ impl Usb0FilesystemScratchPool {
         }
     }
 
-    fn take(
-        &mut self,
-        block_size: u32,
-    ) -> Result<&'static mut [u8], Usb0MscFilesystemProbeError> {
+    fn take(&mut self, block_size: u32) -> Result<&'static mut [u8], Usb0MscFilesystemProbeError> {
         let slot = match block_size {
             512 => &mut self.sector_512,
             1_024 => &mut self.sector_1024,
@@ -1645,10 +1683,7 @@ impl Usb0FilesystemScratchPool {
             .ok_or(Usb0MscFilesystemProbeError::ScratchUnavailable(block_size))
     }
 
-    fn restore(
-        &mut self,
-        scratch: &'static mut [u8],
-    ) -> Result<(), Usb0MscFilesystemProbeError> {
+    fn restore(&mut self, scratch: &'static mut [u8]) -> Result<(), Usb0MscFilesystemProbeError> {
         let block_size = scratch.len() as u32;
         let slot = match block_size {
             512 => &mut self.sector_512,
@@ -1665,11 +1700,8 @@ impl Usb0FilesystemScratchPool {
     }
 }
 
-
-type Usb0Fat32FileSystem =
-    Fat32AsyncFileSystem<AsyncPartitionDevice<Usb0MscAsyncBlockDevice>>;
-type Usb0ExFatVolume =
-    ExFatAsyncVolume<AsyncPartitionDevice<Usb0MscAsyncBlockDevice>>;
+type Usb0Fat32FileSystem = Fat32AsyncFileSystem<AsyncPartitionDevice<Usb0MscAsyncBlockDevice>>;
+type Usb0ExFatVolume = ExFatAsyncVolume<AsyncPartitionDevice<Usb0MscAsyncBlockDevice>>;
 
 fn filesystem_completion_channel(
     client: FileSystemClientId,
@@ -1913,9 +1945,7 @@ async fn process_filesystem_request(
             name_storage,
         } => {
             let result = match active_filesystem_for_request(active, ticket) {
-                Ok(filesystem) => filesystem
-                    .next_entry(&mut directory, name_storage)
-                    .await,
+                Ok(filesystem) => filesystem.next_entry(&mut directory, name_storage).await,
                 Err(error) => Err(error),
             };
             Usb0FsCompletion::NextEntry {
@@ -1966,10 +1996,7 @@ fn map_partition_probe_error(
 async fn probe_mounted_filesystem(
     media: UsbMscMountedMedia,
     scratch_pool: &mut Usb0FilesystemScratchPool,
-) -> Result<
-    (Usb0MscFilesystemProbe, Usb0ActiveFileSystem),
-    Usb0MscFilesystemProbeError,
-> {
+) -> Result<(Usb0MscFilesystemProbe, Usb0ActiveFileSystem), Usb0MscFilesystemProbeError> {
     let block_size = media.attempt.geometry.block_size;
     let scratch = scratch_pool.take(block_size)?;
     let raw = Usb0MscAsyncBlockDevice::new(media);
@@ -2174,33 +2201,44 @@ pub(crate) async fn run_usb0_filesystem_worker() -> ! {
 pub(crate) async fn run_usb0_media_worker() -> ! {
     let mut coordinator = UsbMscMountCoordinator::new();
     let mut scratch_pool = Usb0MscScratchPool::new();
+    let mut health = MediaHealthReporter::new();
 
     loop {
-        match USB0_MSC_OWNER_EVENTS.receive().await {
+        #[cfg(feature = "runtime-health")]
+        health.publish();
+        #[cfg(feature = "runtime-health")]
+        let event = match embassy_futures::select::select(
+            USB0_MSC_OWNER_EVENTS.receive(),
+            embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+        )
+        .await
+        {
+            embassy_futures::select::Either::First(event) => event,
+            embassy_futures::select::Either::Second(()) => continue,
+        };
+        #[cfg(not(feature = "runtime-health"))]
+        let event = USB0_MSC_OWNER_EVENTS.receive().await;
+        match event {
             Usb0MscOwnerEvent::Ready { binding, probe } => {
-                set_media_state(Usb0MscMediaState::Discovering { binding });
+                health.set_state(Usb0MscMediaState::Discovering { binding });
 
-                let attempt = match begin_current_mount(
-                    &mut coordinator,
-                    binding,
-                    0,
-                    probe.capacity,
-                ) {
-                    Ok(attempt) => attempt,
-                    Err(error) => {
-                        set_media_state(Usb0MscMediaState::Failed {
-                            binding,
-                            error: Usb0MscMediaWorkerError::Mount(error),
-                        });
-                        continue;
-                    }
-                };
+                let attempt =
+                    match begin_current_mount(&mut coordinator, binding, 0, probe.capacity) {
+                        Ok(attempt) => attempt,
+                        Err(error) => {
+                            health.set_state(Usb0MscMediaState::Failed {
+                                binding,
+                                error: Usb0MscMediaWorkerError::Mount(error),
+                            });
+                            continue;
+                        }
+                    };
 
                 let scratch = match scratch_pool.take(attempt.geometry.block_size) {
                     Ok(scratch) => scratch,
                     Err(error) => {
                         let _ = coordinator.abort(attempt);
-                        set_media_state(Usb0MscMediaState::Failed { binding, error });
+                        health.set_state(Usb0MscMediaState::Failed { binding, error });
                         continue;
                     }
                 };
@@ -2212,7 +2250,7 @@ pub(crate) async fn run_usb0_media_worker() -> ! {
                             esp_hal::system::software_reset();
                         }
                         let _ = coordinator.abort(attempt);
-                        set_media_state(Usb0MscMediaState::Failed {
+                        health.set_state(Usb0MscMediaState::Failed {
                             binding,
                             error: Usb0MscMediaWorkerError::Discovery(error),
                         });
@@ -2229,28 +2267,26 @@ pub(crate) async fn run_usb0_media_worker() -> ! {
                 }
 
                 match selection {
-                    Ok(selection) => match commit_current_mount(
-                        &mut coordinator,
-                        attempt,
-                        selection,
-                    ) {
-                        Ok(media) => {
-                            set_media_state(Usb0MscMediaState::Mounted { binding, media });
-                            USB0_MSC_FILESYSTEM_EVENTS
-                                .send(Usb0MscFilesystemEvent::Mounted { binding, media })
-                                .await;
+                    Ok(selection) => {
+                        match commit_current_mount(&mut coordinator, attempt, selection) {
+                            Ok(media) => {
+                                health.set_state(Usb0MscMediaState::Mounted { binding, media });
+                                USB0_MSC_FILESYSTEM_EVENTS
+                                    .send(Usb0MscFilesystemEvent::Mounted { binding, media })
+                                    .await;
+                            }
+                            Err(error) => {
+                                let _ = coordinator.abort(attempt);
+                                health.set_state(Usb0MscMediaState::Failed {
+                                    binding,
+                                    error: Usb0MscMediaWorkerError::Mount(error),
+                                });
+                            }
                         }
-                        Err(error) => {
-                            let _ = coordinator.abort(attempt);
-                            set_media_state(Usb0MscMediaState::Failed {
-                                binding,
-                                error: Usb0MscMediaWorkerError::Mount(error),
-                            });
-                        }
-                    },
+                    }
                     Err(error) => {
                         let _ = coordinator.abort(attempt);
-                        set_media_state(Usb0MscMediaState::Failed {
+                        health.set_state(Usb0MscMediaState::Failed {
                             binding,
                             error: Usb0MscMediaWorkerError::Discovery(error),
                         });
@@ -2266,7 +2302,7 @@ pub(crate) async fn run_usb0_media_worker() -> ! {
                 USB0_MSC_FILESYSTEM_EVENTS
                     .send(Usb0MscFilesystemEvent::Detached { binding })
                     .await;
-                set_media_state(Usb0MscMediaState::Detached {
+                health.set_state(Usb0MscMediaState::Detached {
                     binding,
                     reason,
                     result,
@@ -2279,17 +2315,17 @@ pub(crate) async fn run_usb0_media_worker() -> ! {
 impl Usb0MscCompletion {
     pub(crate) const fn ticket(&self) -> UsbMscRequestTicket {
         match self {
-            Self::Read { ticket, .. }
-            | Self::Write { ticket, .. }
-            | Self::Flush { ticket, .. } => *ticket,
+            Self::Read { ticket, .. } | Self::Write { ticket, .. } | Self::Flush { ticket, .. } => {
+                *ticket
+            }
         }
     }
 
     pub(crate) const fn status(&self) -> Usb0MscCompletionStatus {
         match self {
-            Self::Read { status, .. }
-            | Self::Write { status, .. }
-            | Self::Flush { status, .. } => *status,
+            Self::Read { status, .. } | Self::Write { status, .. } | Self::Flush { status, .. } => {
+                *status
+            }
         }
     }
 
@@ -2344,9 +2380,7 @@ where
     lun.write_blocks(lba, input).await
 }
 
-pub(crate) async fn flush<'dev, 'd, A>(
-    lun: &mut MscLun<'dev, 'd, A>,
-) -> Result<(), MscError>
+pub(crate) async fn flush<'dev, 'd, A>(lun: &mut MscLun<'dev, 'd, A>) -> Result<(), MscError>
 where
     A: UsbHostAllocator<'d>,
 {
@@ -2459,9 +2493,7 @@ where
     let Some(capacity) = lun.cached_capacity() else {
         return false;
     };
-    (capacity.block_size as usize)
-        .checked_mul(block_count as usize)
-        == Some(buffer_len)
+    (capacity.block_size as usize).checked_mul(block_count as usize) == Some(buffer_len)
 }
 
 fn complete_with_status(

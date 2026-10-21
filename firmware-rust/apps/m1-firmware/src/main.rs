@@ -32,6 +32,8 @@ mod usb0_msc;
 mod usb1_controller;
 
 mod platform;
+#[cfg(feature = "runtime-health")]
+mod runtime_health;
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {

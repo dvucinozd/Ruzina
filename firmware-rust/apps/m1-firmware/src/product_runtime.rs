@@ -1,4 +1,5 @@
 use pajoniiir_audio_runtime::wav::WavPcm16SourceDescriptor;
+#[cfg(feature = "library-deck-load")]
 use pajoniiir_controller_core::{ControlValue, SemanticControl};
 use pajoniiir_controller_session::{
     BeatFxTarget, ConnectionState, ControlDomain, ControllerLedFrame, DeckId, LedState, LedUpdate,
@@ -92,17 +93,7 @@ pub(crate) struct ProductLoadedTrack {
     pub(crate) analysis_identity: Option<AnalysisIdentity>,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) struct ProductRuntimeStats {
-    pub(crate) accepted_connections: u32,
-    pub(crate) accepted_deck_controls: u32,
-    pub(crate) accepted_mixer_controls: u32,
-    pub(crate) accepted_library_controls: u32,
-    pub(crate) library_load_locked: u32,
-    pub(crate) library_failures: u32,
-    pub(crate) effect_backpressure: u32,
-    pub(crate) deferred_controls: u32,
-}
+use pajoniiir_service::handoff::{ProductCounters as ProductRuntimeStats, ProductObservation};
 
 pub(crate) struct ProductRuntime {
     deck: DeckProductState,
@@ -328,6 +319,24 @@ impl ProductRuntime {
 
     pub(crate) const fn stats(&self) -> ProductRuntimeStats {
         self.stats
+    }
+
+    pub(crate) fn health_observation(&self, backpressured: bool) -> ProductObservation {
+        ProductObservation {
+            counters: self.stats(),
+            queues: [
+                self.pending_library_effects(),
+                self.pending_transport_effects(),
+                self.pending_persistence_effects(),
+                self.pending_audio_dsp_effects(),
+            ]
+            .map(|v| v.min(u16::MAX as usize) as u16),
+            playing: [
+                self.deck.deck(DeckId::One).playing,
+                self.deck.deck(DeckId::Two).playing,
+            ],
+            backpressured,
+        }
     }
 
     pub(crate) const fn mixer(&self) -> &MixerState {

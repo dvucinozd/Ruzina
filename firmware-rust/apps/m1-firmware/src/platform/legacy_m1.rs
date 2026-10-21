@@ -119,6 +119,9 @@ pub(super) fn start(spawner: Spawner, peripherals: esp_hal::peripherals::Periphe
     let timg0 = TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);
 
+    #[cfg(feature = "runtime-health")]
+    spawner.spawn(crate::runtime_health::observer_task().expect("runtime health task slot"));
+
     // Compile-time anchors: the production target must keep the host-tested
     // product crates no_std-compatible on the real ESP32-P4 architecture.
     let _ = core::mem::size_of::<pajoniiir_controller_session::ControllerSession>();

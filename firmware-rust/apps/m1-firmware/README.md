@@ -2,7 +2,15 @@
 
 Native ESP32-P4 Pajoniiir-M1 firmware integration target.
 
-The [service/health gate](../../../docs/M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md) adds a shared no_std observation record to the existing opt-in `board-diagnostics` task. It preserves the legacy boot report, uses observed eFuse/reset data, leaves memory unmeasured and repeatedly emits one immutable boot snapshot. Repetition is not a heartbeat; defaults and Guition peripheral ownership are unchanged. The [freshness follow-up](../../../docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md) versions the shared section to V2; boot observations stay static and the optional runtime counter adapters are not enabled on the device.
+The [owner integration gate](../../../docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md)
+adds OFF-by-default `runtime-health` to the existing legacy product/controller/media
+loops. It requires `board-legacy-m1` and an explicitly enabled USB owner. A bounded
+observer collects publications; `runtime_health::snapshot()` exposes current ages
+for a future device consumer. There is no new live serial endpoint or Guition
+peripheral activation. Host tests compose the actual default ProductRuntime source
+with real controller/media sessions and exercise backpressure, restart and loss.
+
+The [service/health gate](../../../docs/M1_RUST_SERVICE_HEALTH_GATE_2026-10-21.md) adds a shared no_std observation record to the existing opt-in `board-diagnostics` task. It preserves the legacy boot report, uses observed eFuse/reset data, leaves memory unmeasured and repeatedly emits one immutable boot snapshot. Repetition is not a heartbeat; defaults and Guition peripheral ownership are unchanged. The [freshness follow-up](../../../docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md) versions the shared section to V2; boot observations stay static and runtime owner collection is not enabled by Guition board diagnostics.
 
 Active development boards are Guition **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y** with owner-reported v3.2 silicon. Source-audited profiles and scheduler-only BSP skeletons are implemented; peripheral drivers and hardware qualification are pending. The feature descriptions below record the historical custom-M1 wiring and memory assumptions, including USB FS GPIO27/26, microSD GPIO39..46, 16 MiB flash and the Hot Cue partition. Reconcile those assumptions against each exact board before implementing Guition hardware features. See the [hardware matrix](../../../docs/boards/GUITION_HARDWARE_MATRIX_2026-10-20.md) and [platform decision](../../../docs/M1_GUITION_PLATFORM_DECISION_2026-10-20.md).
 

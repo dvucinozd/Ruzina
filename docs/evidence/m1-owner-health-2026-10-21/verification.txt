@@ -1,0 +1,9 @@
+firmware-rust/Cargo.lock: complete external records unchanged (503)
+firmware-rust/apps/m1-firmware/Cargo.lock: complete external records unchanged (207)
+Primary KiCad snapshot: 18 pre-existing modified files unchanged
+Host: 586 passed; fmt/clippy and desktop compile passed
+Composed default ProductRuntime + ControllerSession + MediaSession: 7 integration tests passed
+10 host-only owner reports retained; all end NOT_QUALIFIED
+P4: partition validator and 33 check/link configurations passed
+Board guards: 24 expected rejections passed
+Slint replay: 38 existing reviewed pixel hashes matched; no baseline changes

@@ -6,7 +6,7 @@ The released Pajoniiir M2.2 product is the functional golden reference. Active h
 
 ## Current phase
 
-Latest service: [runtime publication generations/freshness and owner adapters](../docs/M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md). Host Idle and stale publications are distinct; device task integration and product readiness remain open. The target repeats an immutable boot snapshot, not a heartbeat.
+Latest service: [composed runtime owner publication and recovery](../docs/M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md). Existing product/controller/media loops have opt-in legacy health wiring and composed host failure tests. Guition peripheral ownership remains inactive; its boot diagnostics still repeat an immutable snapshot, not a heartbeat.
 
 Latest mixer/FX: [mixer/PFL, headphone and Beat/Pad FX host controls](../docs/M1_RUST_MIXER_FX_UI_GATE_2026-10-21.md) use authoritative shared state and 24 reviewed pixel goldens. Actual audible DSP/output and device UI qualification remain open.
 

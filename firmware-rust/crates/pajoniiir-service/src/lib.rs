@@ -9,6 +9,9 @@ use pajoniiir_core::DeckId;
 
 #[cfg(feature = "owner-adapters")]
 pub mod adapters;
+pub mod handoff;
+#[cfg(feature = "runtime-owners")]
+pub mod owners;
 pub mod publication;
 use publication::{Freshness, Observation, Slot};
 

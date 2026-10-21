@@ -8,23 +8,17 @@ use crate::controller_profiles::{
     on_controller_disconnect, process_active_midi_transfer, request_profile_activation,
     wait_for_profile_activation_change, wait_for_profile_catalog_change,
 };
-use crate::deck_effect_owners::{
-    dispatch_product_effects, wait_for_effect_owner_progress,
-};
+use crate::deck_effect_owners::{dispatch_product_effects, wait_for_effect_owner_progress};
 #[cfg(feature = "library-deck-load")]
-use crate::library_deck_owner::{
-    dispatch_library_deck, wait_for_library_deck_progress,
-};
+use crate::library_deck_owner::{dispatch_library_deck, wait_for_library_deck_progress};
 use crate::product_runtime::ProductRuntime;
 use embassy_futures::select::{Either, select};
+use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
 use embassy_usb_driver::{
     Direction as UsbDirection, EndpointAddress, EndpointInfo, EndpointType,
-    host::{
-        DeviceEvent, PipeError, UsbHostAllocator, UsbHostController, UsbPipe, pipe,
-    },
+    host::{DeviceEvent, PipeError, UsbHostAllocator, UsbHostController, UsbPipe, pipe},
 };
 use embassy_usb_host::{BusController, BusRoute, BusState, handler::EnumerationInfo};
-use embassy_sync::blocking_mutex::{CriticalSectionMutex, raw::CriticalSectionRawMutex};
 use pajoniiir_controller_profile_storage::ProfileActivationState;
 use pajoniiir_controller_session::{ControllerSession, UsbMidiBatchReport};
 use pajoniiir_controller_usb::{
@@ -79,13 +73,26 @@ pub(crate) enum Usb1ControllerState {
 }
 
 fn set_state(state: Usb1ControllerState) {
-    USB1_CONTROLLER_STATE.lock(|cell| *cell.borrow_mut() = state);
+    let terminal_changed = USB1_CONTROLLER_STATE.lock(|cell| {
+        let mut previous = cell.borrow_mut();
+        let changed = *previous != state
+            && matches!(
+                state,
+                Usb1ControllerState::Detached | Usb1ControllerState::Failed(_)
+            );
+        *previous = state;
+        changed
+    });
+    let _ = terminal_changed;
+    #[cfg(feature = "runtime-health")]
+    if terminal_changed {
+        crate::runtime_health::restart_control();
+    }
 }
 
 pub(crate) fn controller_state() -> Usb1ControllerState {
     USB1_CONTROLLER_STATE.lock(|cell| *cell.borrow())
 }
-
 
 #[derive(Debug)]
 pub(crate) enum Usb1MidiTransportError {
@@ -137,10 +144,7 @@ where
         }
 
         let input_info = EndpointInfo {
-            addr: EndpointAddress::from_parts(
-                usize::from(input.address & 0x0f),
-                UsbDirection::In,
-            ),
+            addr: EndpointAddress::from_parts(usize::from(input.address & 0x0f), UsbDirection::In),
             ep_type: EndpointType::Bulk,
             max_packet_size: input.max_packet_size,
             interval_ms: 0,
@@ -203,10 +207,7 @@ where
             .as_mut()
             .ok_or(Usb1MidiTransportError::OutputUnavailable)?;
         let packet = event.as_usb_packet();
-        output
-            .request_out(&packet, false)
-            .await
-            .map_err(Into::into)
+        output.request_out(&packet, false).await.map_err(Into::into)
     }
 }
 
@@ -237,12 +238,28 @@ pub(crate) async fn run_root_controller_owner(
     let mut controller_epoch = 0u32;
     let mut session = ControllerSession::new();
     let mut product = ProductRuntime::new();
+    #[cfg(feature = "runtime-health")]
+    crate::runtime_health::restart_control();
 
     loop {
         let speed = match pending_speed.take() {
             Some(speed) => speed,
             None => loop {
-                match controller.wait_for_device_event().await {
+                #[cfg(feature = "runtime-health")]
+                crate::runtime_health::publish_control(&product, &session, false);
+                #[cfg(feature = "runtime-health")]
+                let event = match select(
+                    controller.wait_for_device_event(),
+                    embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+                )
+                .await
+                {
+                    Either::First(event) => event,
+                    Either::Second(()) => continue,
+                };
+                #[cfg(not(feature = "runtime-health"))]
+                let event = controller.wait_for_device_event().await;
+                match event {
                     DeviceEvent::Connected(speed) => break speed,
                     DeviceEvent::Overcurrent => {
                         set_state(Usb1ControllerState::Failed(
@@ -274,15 +291,16 @@ pub(crate) async fn run_root_controller_owner(
                     Usb1ControllerFailure::MalformedConfiguration,
                 ));
                 bus.free_address(info.device_address);
-                pending_speed = wait_for_device_change(&mut controller).await;
+                pending_speed = wait_for_device_change(&mut controller, &session, &product).await;
                 continue;
             }
         };
 
-        let mut midi_transport =
-            Usb1MidiTransport::new(&bus, &config[..config_len], &info).ok();
+        let mut midi_transport = Usb1MidiTransport::new(&bus, &config[..config_len], &info).ok();
         let midi_transport_ready = midi_transport.is_some();
-        let led_transport_ready = midi_transport.as_ref().is_some_and(|transport| transport.has_output());
+        let led_transport_ready = midi_transport
+            .as_ref()
+            .is_some_and(|transport| transport.has_output());
         controller_epoch = controller_epoch.wrapping_add(1);
         if controller_epoch == 0 {
             controller_epoch = 1;
@@ -311,6 +329,8 @@ pub(crate) async fn run_root_controller_owner(
             led_updates_sent: 0,
         };
         refresh_profile_probe(&mut probe, true);
+        #[cfg(feature = "runtime-health")]
+        crate::runtime_health::restart_control();
         session.set_connected(true);
         session.reset_profile_state();
         drain_product_dispatch(&mut probe, &mut session, &mut product).await;
@@ -331,12 +351,30 @@ pub(crate) async fn run_root_controller_owner(
 
 async fn wait_for_device_change<'d, C>(
     controller: &mut BusController<'d, C>,
+    session: &ControllerSession,
+    product: &ProductRuntime,
 ) -> Option<embassy_usb_driver::Speed>
 where
     C: UsbHostController<'d>,
 {
+    #[cfg(not(feature = "runtime-health"))]
+    let _ = (session, product);
     loop {
-        match controller.wait_for_device_event().await {
+        #[cfg(feature = "runtime-health")]
+        crate::runtime_health::publish_control(product, session, false);
+        #[cfg(feature = "runtime-health")]
+        let event = match select(
+            controller.wait_for_device_event(),
+            embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+        )
+        .await
+        {
+            Either::First(event) => event,
+            Either::Second(()) => continue,
+        };
+        #[cfg(not(feature = "runtime-health"))]
+        let event = controller.wait_for_device_event().await;
+        match event {
             DeviceEvent::Disconnected => {
                 set_state(Usb1ControllerState::Detached);
                 return None;
@@ -411,6 +449,8 @@ where
     let mut midi_buffer = [0u8; USB1_MIDI_FS_MAX_PACKET_BYTES as usize];
 
     loop {
+        #[cfg(feature = "runtime-health")]
+        crate::runtime_health::publish_control(product, session, probe.product_backpressured);
         if probe.profile_activation_state == ProfileActivationState::Active
             && product.has_dirty_leds()
             && let Some(transport) = midi_transport.as_mut()
@@ -465,6 +505,18 @@ where
             wait_for_profile_activation_change(),
         );
         let runtime_change = select(profile_change, wait_for_product_owner_progress());
+        #[cfg(feature = "runtime-health")]
+        let runtime_change = async {
+            match select(
+                runtime_change,
+                embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+            )
+            .await
+            {
+                Either::First(change) => change,
+                Either::Second(()) => Either::Second(()),
+            }
+        };
 
         if probe.profile_activation_state == ProfileActivationState::Active
             && !probe.product_backpressured
@@ -653,11 +705,7 @@ async fn drain_product_dispatch(
         let library_after = dispatch_library_runtime(product);
 
         if report.backpressured {
-            if library_before
-                || before.made_progress()
-                || after.made_progress()
-                || library_after
-            {
+            if library_before || before.made_progress() || after.made_progress() || library_after {
                 continue;
             }
             probe.product_backpressured = true;
@@ -680,13 +728,14 @@ async fn drain_product_dispatch(
 
     let _ = dispatch_product_effects(product);
     let _ = dispatch_library_runtime(product);
-    probe.product_pending_deck_effects =
-        product.pending_deck_effects().min(u8::MAX as usize) as u8;
+    probe.product_pending_deck_effects = product.pending_deck_effects().min(u8::MAX as usize) as u8;
     probe.product_pending_library_effects =
         product.pending_library_effects().min(u8::MAX as usize) as u8;
 
     #[cfg(feature = "render-graph-bringup")]
     publish_product_render_control(product);
+    #[cfg(feature = "runtime-health")]
+    crate::runtime_health::publish_control(product, session, probe.product_backpressured);
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

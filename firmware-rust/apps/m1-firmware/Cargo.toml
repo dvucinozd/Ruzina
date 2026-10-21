@@ -13,6 +13,9 @@ board-jc1060 = []
 board-jc8012 = []
 # Opt-in USB Serial/JTAG first-boot report; no storage or audio activation.
 board-diagnostics = []
+# Diagnostic-only bounded publication from existing legacy owner loops.
+# Does not enable any USB owner or select Guition pins.
+runtime-health = ["pajoniiir-service/runtime-owners"]
 # Compile-verified target wiring only. Do not enable in normal firmware until
 # USB0 VBUS/power switching, PHY and hot-plug are EVT-verified.
 usb0-hardware-bringup = []

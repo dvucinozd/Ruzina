@@ -1,0 +1,6 @@
+M1_OWNER_HEALTH_V1
+observer_elapsed_ms=12
+product=OwnerView { observation: Observation { freshness: Awaiting, generation: Some(1), stamp: None, age_ms: None }, condition: Awaiting, value: None, new_errors: 0, handoff: HandoffStats { accepted: 0, queue_full: 0, rejected: 0, discarded_on_restart: 0 } }
+controller=OwnerView { observation: Observation { freshness: Awaiting, generation: Some(1), stamp: None, age_ms: None }, condition: Awaiting, value: None, new_errors: 0, handoff: HandoffStats { accepted: 0, queue_full: 0, rejected: 0, discarded_on_restart: 0 } }
+media=OwnerView { observation: Observation { freshness: Fresh, generation: Some(4), stamp: Some(Stamp { generation: 4, sequence: 1, sampled_ms: 12, activity: Idle }), age_ms: Some(0) }, condition: Idle, value: Some(MediaObservation { lease: Some(MediaLease { generation: MediaGeneration(3), source: MediaSourceId(1) }), handle: Some(MediaHandle(2)), mounted: true, phase: Mounted, failures: 0 }), new_errors: 0, handoff: HandoffStats { accepted: 2, queue_full: 0, rejected: 2, discarded_on_restart: 1 } }
+readiness=NOT_QUALIFIED

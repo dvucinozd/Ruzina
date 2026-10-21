@@ -2,6 +2,11 @@
 
 Date: 2026-10-20
 
+Current follow-up: [composed product/controller/media health](M1_RUST_OWNER_HEALTH_GATE_2026-10-21.md)
+wires opt-in existing legacy owner loops and tests bounded handoff/backpressure,
+reconnect and old-generation rejection. Guition peripheral activation and physical
+acceptance remain separate gates.
+
 Latest follow-up: [runtime health publication generations/freshness](M1_RUST_RUNTIME_HEALTH_GATE_2026-10-21.md)
 adds host heartbeat handling and optional scheduler/render/sink counter adapters.
 Composed device owner integration and physical acceptance remain open.
