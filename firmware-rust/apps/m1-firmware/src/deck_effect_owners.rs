@@ -8,7 +8,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 ))]
 use crate::deck_audio_source::try_receive_pcm_block;
 #[cfg(feature = "pcm-transport-bringup")]
-use crate::deck_audio_source::{change_wav_source, seek_wav_source};
+use crate::deck_audio_source::{change_audio_source, seek_audio_source};
 #[cfg(feature = "hotcue-flash-storage")]
 use crate::hotcue_access::HotCueAccess;
 #[cfg(feature = "hotcue-flash-storage")]
@@ -31,10 +31,10 @@ use embassy_sync::{
     not(feature = "render-graph-bringup")
 ))]
 use embassy_time::{Duration, Timer};
+#[cfg(feature = "pcm-transport-bringup")]
+use pajoniiir_audio_runtime::decode::StreamChange;
 #[cfg(feature = "render-graph-bringup")]
 use pajoniiir_audio_runtime::pcm_stream::PcmStreamProgress;
-#[cfg(feature = "pcm-transport-bringup")]
-use pajoniiir_audio_runtime::wav_stream::WavStreamChange;
 use pajoniiir_audio_runtime::{AudioEffectCommand, map_deck_effect};
 use pajoniiir_controller_session::DeckId;
 #[cfg(feature = "hotcue-flash-storage")]
@@ -476,7 +476,7 @@ async fn execute_source_command(command: TransportCommand, request_id: &mut u32)
     let deck = command.deck();
     let result = match command.effect {
         DeckEffect::Seek { position_ms, .. } => {
-            seek_wav_source(deck, *request_id, position_ms).await
+            seek_audio_source(deck, *request_id, position_ms).await
         }
         DeckEffect::SetLoop {
             start_ms, end_ms, ..
@@ -486,10 +486,10 @@ async fn execute_source_command(command: TransportCommand, request_id: &mut u32)
                     .pcm_cursor
                     .position_frame()
             });
-            change_wav_source(
+            change_audio_source(
                 deck,
                 *request_id,
-                WavStreamChange::Loop {
+                StreamChange::Loop {
                     position_frame,
                     region_ms: Some((start_ms, end_ms)),
                 },
@@ -502,10 +502,10 @@ async fn execute_source_command(command: TransportCommand, request_id: &mut u32)
                     .pcm_cursor
                     .position_frame()
             });
-            change_wav_source(
+            change_audio_source(
                 deck,
                 *request_id,
-                WavStreamChange::Loop {
+                StreamChange::Loop {
                     position_frame,
                     region_ms: None,
                 },

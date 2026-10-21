@@ -4,7 +4,9 @@
 
 ## Active direction — 2026-10-20
 
-Latest audio work: [controller headphone CUE/master mix](docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) combines both wet PFL taps, stereo master, monitor mix and headphone level in the PCM graph, with controller-only delivery and 11 new scenarios. Physical output and listening qualification remain open.
+Latest audio work: [shared WAV/MP3/FLAC source decoding](docs/M1_RUST_CODEC_STREAM_GATE_2026-10-21.md) connects bounded per-deck decoders to Library, canonical PCM, loops, FX and receipt-confirmed transport. Twenty new scenarios cover independent PCM references, exact seek/loop samples, malformed input and mixed-rate two-deck rendering. Physical output and listening qualification remain open.
+
+The [controller headphone CUE/master mix](docs/M1_RUST_HEADPHONE_MIX_GATE_2026-10-21.md) is merged through PR #15. Both wet PFL taps, stereo master, monitor mix and level feed the controller-only headphone bus.
 
 The [Beat/Pad FX PCM package](docs/M1_RUST_PCM_FX_GATE_2026-10-21.md) is merged through PR #14, following streaming PCM loops in PR #13. Source-bound effect memory and reset/tail handling remain active in the reference target.
 

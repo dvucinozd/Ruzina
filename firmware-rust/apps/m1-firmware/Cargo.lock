@@ -1264,6 +1264,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3c8dda44ff03a2f238717214da50f65d5a53b45cd213a7370424ffdb6fae815"
 
 [[package]]
+name = "nanoaudio-core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22ff788a8aae291c8eba3697cacac1666b86cdb702bd342b41b4c5d58baeffb5"
+
+[[package]]
+name = "nanoaudio-flac"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea8197dcb88a39a49d4bdf666dcaaf26177cd1e8c50186dbcd1e6bf5d919e0c8"
+dependencies = [
+ "nanoaudio-core",
+ "wide",
+]
+
+[[package]]
+name = "nanoaudio-mp3"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214"
+dependencies = [
+ "nanoaudio-core",
+ "nanomp3-core",
+]
+
+[[package]]
+name = "nanomp3-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c"
+
+[[package]]
 name = "nb"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1331,6 +1363,9 @@ name = "pajoniiir-audio-runtime"
 version = "0.1.0"
 dependencies = [
  "libm",
+ "nanoaudio-core",
+ "nanoaudio-flac",
+ "nanoaudio-mp3",
  "pajoniiir-audio-dsp",
  "pajoniiir-audio-keylock",
  "pajoniiir-audio-scratch",
@@ -1420,6 +1455,7 @@ name = "pajoniiir-m1-firmware"
 version = "0.1.0"
 dependencies = [
  "aligned",
+ "allocator-api2",
  "block-device-driver",
  "embassy-executor",
  "embassy-futures",
@@ -1756,6 +1792,15 @@ name = "ryu"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+
+[[package]]
+name = "safe_arch"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42c6efa15875e6ecb39ca61fb0b0c1a40b84fac5a5ffe71eef7d1000c8eb3f5f"
+dependencies = [
+ "bytemuck",
+]
 
 [[package]]
 name = "scoped-tls"
@@ -2159,6 +2204,16 @@ name = "void"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
+
+[[package]]
+name = "wide"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d920ac99c3c8edce110cb8d07dbb324d6d026011dce85b1e9355b70f0adacc4f"
+dependencies = [
+ "bytemuck",
+ "safe_arch",
+]
 
 [[package]]
 name = "winapi-util"

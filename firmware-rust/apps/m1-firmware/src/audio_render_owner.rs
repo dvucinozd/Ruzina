@@ -112,7 +112,7 @@ pub(crate) fn publish_product_render_control(product: &ProductRuntime) {
         let mixer_deck = mixer.deck(deck);
         let source = product
             .loaded_track(deck)
-            .and_then(|loaded| loaded.wav_source);
+            .and_then(|loaded| loaded.audio_source);
         let stream_generation = active_stream_generation(deck);
         control.decks[index] = RenderDeckControl {
             source_epoch: product.source_epoch(deck),
@@ -120,7 +120,7 @@ pub(crate) fn publish_product_render_control(product: &ProductRuntime) {
             playing: deck_state.playing && source.is_some() && stream_generation != 0,
             stream_generation,
             source_sample_rate_hz: source
-                .map(|descriptor| descriptor.format.sample_rate_hz)
+                .map(|descriptor| descriptor.sample_rate_hz())
                 .unwrap_or(RENDER_SAMPLE_RATE_HZ),
             pitch_centipercent: deck_state.pitch_centipercent,
             master_tempo: deck_state.master_tempo,

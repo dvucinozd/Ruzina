@@ -36,10 +36,9 @@ library-deck-load = [
     "usb1-controller-bringup",
     "p4-psram-storage",
 ]
-# Compile-verified first real deck source path. It keeps DeckA/DeckB broker
-# lanes open for persistent WAV file handles and proves RIFF/PCM16 parsing plus
-# a decoded PCM probe on the P4 target. It is intentionally bring-up only until
-# MP3/FLAC and the continuous transport/sink path are integrated.
+# Historical feature name: enables WAV PCM16, MP3 and native FLAC source owners.
+# Bounded shared decoders retain per-deck file handles and fixed PCM queues.
+# Physical filesystem/PSRAM/output timing remains a bring-up gate.
 wav-audio-source-bringup = ["library-deck-load"]
 # Continuous bounded source-to-transport path. Source owners prefetch decoded
 # PCM into fixed-capacity per-deck queues; the transport owner consumes only
@@ -54,9 +53,10 @@ render-graph-bringup = ["pcm-transport-bringup"]
 sdmmc-profile-storage-bringup = []
 # Compile-verified PSRAM allocator boundary for large retained library/UI storage.
 # This does not claim DMA/cache coherency or hardware qualification.
-p4-psram-storage = ["dep:esp-alloc"]
+p4-psram-storage = ["dep:esp-alloc", "dep:allocator-api2"]
 
 [dependencies]
+allocator-api2 = { version = "=0.3.1", default-features = false, features = ["alloc"], optional = true }
 pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
 pajoniiir-service = { path = "../../crates/pajoniiir-service" }
 aligned = { version = "=0.4.3", default-features = false }

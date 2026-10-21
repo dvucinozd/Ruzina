@@ -7,7 +7,7 @@ use embassy_sync::{
     signal::Signal,
 };
 use embassy_time::{Duration, Timer};
-use pajoniiir_audio_runtime::wav::WavPcm16SourceDescriptor;
+use pajoniiir_audio_runtime::decode::SourceDescriptor;
 use pajoniiir_controller_session::DeckId;
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
@@ -20,7 +20,7 @@ use static_cell::StaticCell;
 
 #[cfg(feature = "wav-audio-source-bringup")]
 use crate::deck_audio_source::{
-    activate_prepared_source, prepare_wav_source, request_source_release,
+    activate_prepared_source, prepare_audio_source, request_source_release,
 };
 
 use crate::{
@@ -64,8 +64,8 @@ enum LibraryDeckCompletion {
         source: HotCueBank,
         persisted: Option<HotCueBank>,
         source_cues_available: bool,
-        wav_source: Option<WavPcm16SourceDescriptor>,
-        wav_generation: u32,
+        audio_source: Option<SourceDescriptor>,
+        audio_generation: u32,
         analysis: ProductAnalysisLoad,
     },
     Failed {
@@ -118,8 +118,8 @@ pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeck
                     source,
                     persisted,
                     source_cues_available,
-                    wav_source,
-                    wav_generation,
+                    audio_source,
+                    audio_generation,
                     analysis,
                     ..
                 } => {
@@ -130,16 +130,18 @@ pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeck
                             source,
                             persisted,
                             source_cues_available,
-                            wav_source,
+                            audio_source,
                             analysis,
                         );
-                    if committed && activate_optional_wav_source(deck, wav_source, wav_generation) {
+                    if committed
+                        && activate_optional_audio_source(deck, audio_source, audio_generation)
+                    {
                         report.completed = report.completed.saturating_add(1);
                     } else {
                         if committed {
                             product.invalidate_deck_source(deck);
                         }
-                        if !release_prepared_wav_source(deck, wav_source) {
+                        if !release_prepared_audio_source(deck, audio_source) {
                             esp_hal::system::software_reset();
                         }
                         product.note_library_failure();
@@ -230,10 +232,10 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                                 HotCueLoadResult::Ready(persisted)
                                     if catalog_publication_matches(candidate.publication) =>
                                 {
-                                    match prepare_optional_wav_source(deck, request_id, candidate)
+                                    match prepare_optional_audio_source(deck, request_id, candidate)
                                         .await
                                     {
-                                        Ok((wav_source, wav_generation)) => {
+                                        Ok((audio_source, audio_generation)) => {
                                             LibraryDeckCompletion::LoadReady {
                                                 effect,
                                                 deck,
@@ -241,8 +243,8 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                                                 source,
                                                 persisted,
                                                 source_cues_available,
-                                                wav_source,
-                                                wav_generation,
+                                                audio_source,
+                                                audio_generation,
                                                 analysis,
                                             }
                                         }
@@ -280,14 +282,14 @@ pub(crate) async fn run_library_deck_owner() -> ! {
     }
 }
 
-async fn prepare_optional_wav_source(
+async fn prepare_optional_audio_source(
     deck: DeckId,
     request_id: u32,
     candidate: CatalogLoadCandidate,
-) -> Result<(Option<WavPcm16SourceDescriptor>, u32), ()> {
+) -> Result<(Option<SourceDescriptor>, u32), ()> {
     #[cfg(feature = "wav-audio-source-bringup")]
     {
-        prepare_wav_source(deck, request_id, candidate)
+        prepare_audio_source(deck, request_id, candidate)
             .await
             .map(|prepared| (Some(prepared.descriptor), prepared.generation))
     }
@@ -299,9 +301,9 @@ async fn prepare_optional_wav_source(
     }
 }
 
-fn activate_optional_wav_source(
+fn activate_optional_audio_source(
     deck: DeckId,
-    source: Option<WavPcm16SourceDescriptor>,
+    source: Option<SourceDescriptor>,
     generation: u32,
 ) -> bool {
     #[cfg(feature = "wav-audio-source-bringup")]
@@ -315,15 +317,15 @@ fn activate_optional_wav_source(
     }
 }
 
-fn release_prepared_wav_source(deck: DeckId, wav_source: Option<WavPcm16SourceDescriptor>) -> bool {
+fn release_prepared_audio_source(deck: DeckId, audio_source: Option<SourceDescriptor>) -> bool {
     #[cfg(feature = "wav-audio-source-bringup")]
     {
-        wav_source.is_none() || request_source_release(deck)
+        audio_source.is_none() || request_source_release(deck)
     }
 
     #[cfg(not(feature = "wav-audio-source-bringup"))]
     {
-        let _ = (deck, wav_source);
+        let _ = (deck, audio_source);
         true
     }
 }

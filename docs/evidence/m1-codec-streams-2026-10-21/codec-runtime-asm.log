@@ -1,0 +1,17 @@
+   Compiling pajoniiir-core v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-core)
+   Compiling libm v0.2.16
+   Compiling nanoaudio-core v0.1.1
+   Compiling pajoniiir-track-analysis v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-track-analysis)
+   Compiling nanomp3-core v0.2.0
+   Compiling pajoniiir-controller-core v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-controller-core)
+   Compiling pajoniiir-media-identity v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-media-identity)
+   Compiling nanoaudio-flac v0.1.2
+   Compiling pajoniiir-hot-cues v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-hot-cues)
+   Compiling pajoniiir-deck v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-deck)
+   Compiling nanoaudio-mp3 v0.1.1
+   Compiling pajoniiir-audio-dsp v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-dsp)
+   Compiling pajoniiir-mixer v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-mixer)
+   Compiling pajoniiir-audio-scratch v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-scratch)
+   Compiling pajoniiir-audio-keylock v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-keylock)
+   Compiling pajoniiir-audio-runtime v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/pajoniiir-audio-runtime)
+    Finished `release` profile [optimized] target(s) in 5.21s
