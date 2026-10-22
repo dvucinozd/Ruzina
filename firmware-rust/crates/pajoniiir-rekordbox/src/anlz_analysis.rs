@@ -6,7 +6,8 @@ use crate::anlz_hot_cues::{
     parse_pcpt, parse_section_header,
 };
 use pajoniiir_track_analysis::{
-    AnalysisCue, AnalysisMemoryCue, AnalysisProvider, Beat, WaveformColumn,
+    AnalysisCue, AnalysisMemoryCue, AnalysisProvider, Beat, ColorPreviewEntry,
+    MAX_COLOR_PREVIEW_COLUMNS, WaveformColumn,
     owned::{
         AnalysisBuilder, AnalysisDataError, AnalysisIdentity, AnalysisPublication,
         MAX_ANALYSIS_BEATS, MAX_DETAIL_COLUMNS,
@@ -19,6 +20,8 @@ pub const ANLZ_MAX_SECTIONS: u16 = 256;
 const PQTZ: u32 = u32::from_be_bytes(*b"PQTZ");
 const PWAV: u32 = u32::from_be_bytes(*b"PWAV");
 const PWV3: u32 = u32::from_be_bytes(*b"PWV3");
+const PWV4: u32 = u32::from_be_bytes(*b"PWV4");
+const PWV4_ENTRY_BYTES: u32 = 6;
 const PCOB: u32 = u32::from_be_bytes(*b"PCOB");
 const PMAI: u32 = u32::from_be_bytes(*b"PMAI");
 
@@ -59,6 +62,10 @@ enum Payload {
     Preview,
     Detail,
     Cues(u32),
+    /// Retained PWV4 columns end at `end`; the rest of the section is skipped.
+    ColorPreview {
+        end: u32,
+    },
 }
 #[derive(Clone, Copy)]
 enum Stage {
@@ -90,6 +97,8 @@ pub struct AnlzImporter {
     seen_detail: bool,
     seen_cues: bool,
     seen_memory: bool,
+    seen_color_preview: bool,
+    color_preview_rejected: bool,
 }
 impl AnlzImporter {
     pub const fn new() -> Self {
@@ -108,7 +117,14 @@ impl AnlzImporter {
             seen_detail: false,
             seen_cues: false,
             seen_memory: false,
+            seen_color_preview: false,
+            color_preview_rejected: false,
         }
+    }
+    /// A PWV4 section was present but malformed or repeated and was skipped;
+    /// PWAV/PWV3 stay authoritative (M2.5 "PWV4 ignored").
+    pub const fn color_preview_rejected(&self) -> bool {
+        self.color_preview_rejected
     }
     pub fn begin_file(&mut self, kind: AnalysisFileKind, len: u64) -> Result<(), ImportError> {
         if !matches!(self.stage, Stage::Idle | Stage::Done)
@@ -148,10 +164,14 @@ impl AnlzImporter {
                 let unit = match kind {
                     Payload::Beats => 8,
                     Payload::Cues(_) => 56,
+                    Payload::ColorPreview { .. } => PWV4_ENTRY_BYTES as usize,
                     _ => 1,
                 };
-                let len = (section.next_position - offset)
-                    .min((ANLZ_READ_BYTES / unit * unit) as u32) as usize;
+                let end = match kind {
+                    Payload::ColorPreview { end } => end,
+                    _ => section.next_position,
+                };
+                let len = (end - offset).min((ANLZ_READ_BYTES / unit * unit) as u32) as usize;
                 Some(AnalysisRead { offset, len })
             }
             _ => None,
@@ -196,9 +216,13 @@ impl AnlzImporter {
                 let known = match self.kind {
                     AnalysisFileKind::Dat => matches!(section.tag, PQTZ | PWAV | PCOB),
                     // EXT may carry hot cues D-H and memory cues (M2.5 082d2c0a).
-                    AnalysisFileKind::Ext => matches!(section.tag, PWV3 | PCOB),
+                    AnalysisFileKind::Ext => matches!(section.tag, PWV3 | PWV4 | PCOB),
                 };
-                if known {
+                if section.tag == PWV4 && (section.header_size < 24 || self.seen_color_preview) {
+                    // Optional color data never fails the PWV3/cue import.
+                    self.color_preview_rejected = true;
+                    self.next_section(section.next_position)?;
+                } else if known {
                     let minimum = if section.tag == PWAV { 20 } else { 24 };
                     if section.header_size < minimum || section.segment_size < minimum {
                         return Err(ImportError::Bounds);
@@ -250,6 +274,26 @@ impl AnlzImporter {
                         self.data.reserve_waveform(true, count as usize)?;
                         self.data.set_detail_rate(150);
                         Payload::Detail
+                    }
+                    PWV4 => {
+                        self.seen_color_preview = true;
+                        let entry_size = be32(bytes, 12);
+                        let count = be32(bytes, 16);
+                        if entry_size != PWV4_ENTRY_BYTES
+                            || count == 0
+                            || u64::from(payload_len) < u64::from(count) * 6
+                        {
+                            self.color_preview_rejected = true;
+                            return self.next_section(section.next_position);
+                        }
+                        let retained = count.min(MAX_COLOR_PREVIEW_COLUMNS as u32);
+                        self.data.reserve_color_preview(
+                            retained as usize,
+                            count > MAX_COLOR_PREVIEW_COLUMNS as u32,
+                        )?;
+                        Payload::ColorPreview {
+                            end: section.position + section.header_size + retained * 6,
+                        }
                     }
                     PCOB => {
                         let plan = parse_pcob_header(section.position, section, bytes)?;
@@ -305,6 +349,12 @@ impl AnlzImporter {
                             )?;
                         }
                     }
+                    Payload::ColorPreview { .. } => {
+                        for entry in bytes.chunks_exact(PWV4_ENTRY_BYTES as usize) {
+                            let entry = entry.try_into().expect("six-byte chunk");
+                            self.data.push_color_preview(ColorPreviewEntry(entry))?;
+                        }
+                    }
                     Payload::Cues(0) => {
                         for record in bytes.chunks_exact(56) {
                             let cue = parse_memory_pcpt(record)?;
@@ -336,8 +386,12 @@ impl AnlzImporter {
                     }
                 }
                 let end = offset + bytes.len() as u32;
-                if end == section.next_position {
-                    self.next_section(end)?;
+                let payload_end = match kind {
+                    Payload::ColorPreview { end } => end,
+                    _ => section.next_position,
+                };
+                if end == payload_end {
+                    self.next_section(section.next_position)?;
                 } else {
                     self.stage = Stage::Body {
                         section,

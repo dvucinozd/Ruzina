@@ -62,21 +62,21 @@
         1024,
         600
       ],
-      "rgb_sha256": "75f13ae32d9de05063815c64f5eb9932845c3687d4bb4844fd1193979031ad30"
+      "rgb_sha256": "b31b25b7fb94f0fd24c115cf21bf824b6bc437befa18127a6ef0795ee6782d70"
     },
     "jc1060-deck-fallback": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "eb206c9781e86e893bb38a36d28c4c4e0b0bcc6ec35f76663686b754d5297853"
+      "rgb_sha256": "2809fc06afb17aee709c63349fd9c8f7691564f2e8ab6b51eb4c73ef6c41444a"
     },
     "jc1060-decks": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "59211e8673915949bd6c3319e2d95565f0bccefc4f9b47c48d9dcfc33bab501f"
+      "rgb_sha256": "432944f6954194b723da13fa561abc7e5cd89deded51423544bd77c1e58f81da"
     },
     "jc1060-empty": {
       "size": [
@@ -251,21 +251,21 @@
         800,
         1280
       ],
-      "rgb_sha256": "d1cc85c589fe3fc082cf664b39a39910c293895caa3a34a75524dbafa06a396b"
+      "rgb_sha256": "87e0f88c522ecec0b287930ab9882abbfb4c0489ebc8e1eca234622437e6f414"
     },
     "jc8012-deck-fallback": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "5ff3148cc155465d8aba8958f774ddd5839730f9985e16d23633394b6b63019d"
+      "rgb_sha256": "48d586172586137e270451abde2cb34dc49b9e45ceaec06b6f302577554c4ba0"
     },
     "jc8012-decks": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "9100f585d2234091b2e432371d18a4db95f935406eb3b6c53ebc8fa6803bd44f"
+      "rgb_sha256": "a755487b2a9dac744a5b22ebefb8dd1e01b2ddb2d70da3ed2c5408de31bab806"
     },
     "jc8012-empty": {
       "size": [

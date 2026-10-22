@@ -83,6 +83,7 @@ impl Rig {
                 key: CatalogText::EMPTY,
                 audio_path: CatalogText::EMPTY,
                 analysis_path: CatalogText::EMPTY,
+                artwork_path: CatalogText::EMPTY,
             },
         }
     }

@@ -1,12 +1,18 @@
-use pajoniiir_track_analysis::TrackAnalysis;
+use pajoniiir_track_analysis::{
+    TrackAnalysis, WaveformColumn, color_preview_column, color_preview_peak,
+};
 use pajoniiir_ui_model::DeckPresentation;
 use pajoniiir_waveform::{Rgb565Surface, WaveformView};
 
 pub const WIDTH: usize = 700;
 pub const HEIGHT: usize = 90;
 
+const MEMORY_CUE_RGB565: u16 = 0xf800;
+
 /// Compose existing neutral RGB565 raster output. Preview and detail share
 /// explicit time bounds so playhead, beat ticks and effective cues stay aligned.
+/// The preview uses optional PWV4 colors when imported (PWAV otherwise), and
+/// imported memory points/loops are marked at the bottom, apart from hot cues.
 pub fn compose(p: DeckPresentation, analysis: Option<TrackAnalysis<'_>>, detail: bool) -> Vec<u16> {
     let mut pixels = vec![0x0842; WIDTH * HEIGHT];
     let Some(analysis) = analysis else {
@@ -14,6 +20,7 @@ pub fn compose(p: DeckPresentation, analysis: Option<TrackAnalysis<'_>>, detail:
     };
     let duration = p.transport.duration_ms as u32;
     let position = p.transport.position_ms as u32;
+    let color: Vec<WaveformColumn>;
     let (columns, start, end) = if detail {
         let rate = u64::from(analysis.detail_rate_hz());
         if rate == 0 || analysis.detail().is_empty() {
@@ -30,8 +37,16 @@ pub fn compose(p: DeckPresentation, analysis: Option<TrackAnalysis<'_>>, detail:
             (first as u64 * 1000 / rate) as u32,
             ((first + count) as u64 * 1000 / rate) as u32,
         )
-    } else {
+    } else if analysis.color_preview().is_empty() {
         (analysis.preview(), 0, duration)
+    } else {
+        let entries = analysis.color_preview();
+        let peak = color_preview_peak(entries);
+        color = (0..WIDTH)
+            .filter_map(|x| color_preview_column(entries, x, WIDTH))
+            .map(|column| column.waveform(peak))
+            .collect();
+        (&color[..], 0, duration)
     };
     let mut surface = Rgb565Surface::new(&mut pixels, WIDTH, HEIGHT).unwrap();
     surface.draw_centered_waveform(0, 8, WIDTH, HEIGHT - 16, WaveformView { columns });
@@ -55,6 +70,14 @@ pub fn compose(p: DeckPresentation, analysis: Option<TrackAnalysis<'_>>, detail:
             if let Some(x) = x(time) {
                 surface.draw_playhead(x, 8, HEIGHT - 16, 0x07e0);
             }
+        }
+    }
+    for cue in analysis.memory_cues() {
+        if let Some(x) = x(cue.start_ms) {
+            surface.draw_playhead(x, HEIGHT - 12, 12, MEMORY_CUE_RGB565);
+        }
+        if let Some(x) = cue.end_ms.and_then(x) {
+            surface.draw_playhead(x, HEIGHT - 6, 6, MEMORY_CUE_RGB565);
         }
     }
     for cue in p.cues.into_iter().flatten() {

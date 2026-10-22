@@ -220,6 +220,69 @@ fn ext_source_cues_enrich_dat_idempotently_and_reject_conflicts() {
     );
 }
 
+// RP-07 / M2.5 rekordbox_anlz.c: optional six-byte PWV4 color columns.
+fn pwv4(entry_size: u32, count: u32, entries: &[[u8; 6]], trailing: usize) -> Vec<u8> {
+    let mut header = entry_size.to_be_bytes().to_vec();
+    header.extend_from_slice(&count.to_be_bytes());
+    header.extend_from_slice(&0u32.to_be_bytes());
+    let mut body = entries.concat();
+    body.extend(core::iter::repeat_n(0xee, trailing));
+    tag(b"PWV4", &header, &body)
+}
+fn import_ext_flagged(ext: &[u8]) -> (AnalysisPublication, bool) {
+    let mut importer = AnlzImporter::new();
+    feed(&mut importer, AnalysisFileKind::Dat, DAT).unwrap();
+    feed(&mut importer, AnalysisFileKind::Ext, ext).unwrap();
+    let rejected = importer.color_preview_rejected();
+    (importer.finish(identity(1), 12_000).unwrap(), rejected)
+}
+
+#[test]
+fn optional_pwv4_imports_bounded_columns_and_degrades_without_failing_ext() {
+    use pajoniiir_track_analysis::{ColorPreviewEntry, MAX_COLOR_PREVIEW_COLUMNS};
+    let columns = [
+        [10, 0, 0, 1, 2, 3],
+        [20, 0, 0, 4, 5, 6],
+        [30, 0, 0, 7, 8, 9],
+    ];
+    let (data, rejected) = import_ext_flagged(&container(&[pwv4(6, 3, &columns, 5)]));
+    let view = data.view();
+    assert!(!rejected);
+    assert_eq!(view.color_preview().len(), 3);
+    assert_eq!(
+        view.color_preview()[2],
+        ColorPreviewEntry([30, 0, 0, 7, 8, 9])
+    );
+    assert!(!view.color_preview_truncated());
+    assert_eq!(view.preview().len(), 400);
+
+    let long = vec![[1, 0, 0, 1, 1, 1]; MAX_COLOR_PREVIEW_COLUMNS + 1];
+    let (data, _) = import_ext_flagged(&container(&[pwv4(6, long.len() as u32, &long, 0)]));
+    assert_eq!(data.view().color_preview().len(), MAX_COLOR_PREVIEW_COLUMNS);
+    assert!(data.view().color_preview_truncated());
+
+    // Wrong entry size, short payload, short header or a repeat are skipped;
+    // the hot cues after them still import.
+    let cue = hot_list(&[hot_pcpt(4, 1, 8_000, 0)]);
+    for bad in [
+        pwv4(5, 3, &columns, 0),
+        pwv4(6, 4, &columns, 0),
+        pwv4(6, 0, &[], 0),
+        tag(b"PWV4", &6u32.to_be_bytes(), &[0; 12]),
+    ] {
+        let (data, rejected) = import_ext_flagged(&container(&[bad, cue.clone()]));
+        assert!(rejected);
+        assert!(data.view().color_preview().is_empty());
+        assert_eq!(data.view().cues().len(), 3);
+    }
+    let (data, rejected) = import_ext_flagged(&container(&[
+        pwv4(6, 3, &columns, 0),
+        pwv4(6, 1, &columns[..1], 0),
+    ]));
+    assert!(rejected);
+    assert_eq!(data.view().color_preview().len(), 3);
+}
+
 #[test]
 fn malformed_or_duplicate_memory_lists_reject_the_dat_transaction() {
     let bad_loop = container(&[memory_list(&[memory_pcpt(2, 5_000, 5_000)])]);

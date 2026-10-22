@@ -22,6 +22,8 @@ pub const PDB_TABLE_ALBUMS: u32 = 0x03;
 pub const PDB_TABLE_KEYS: u32 = 0x05;
 pub const PDB_TABLE_PLAYLIST_TREE: u32 = 0x07;
 pub const PDB_TABLE_PLAYLIST_ENTRIES: u32 = 0x08;
+/// crate-digger page type 13; rows start with a u32 id like keys (type 5).
+pub const PDB_TABLE_ARTWORK: u32 = 0x0d;
 
 const PDB_HEADER_MIN: usize = 28;
 const PDB_TABLE_DIRECTORY_OFFSET: usize = 0x1c;
@@ -30,6 +32,7 @@ const PDB_PAGE_NROWS_OFFSET: usize = 0x18;
 const PDB_PAGE_NEXT_OFFSET: usize = 0x0c;
 
 const TRACK_ROW_SUBTYPE: u16 = 0x0024;
+const TRACK_OFF_ARTWORK_ID: usize = 0x1c;
 const TRACK_OFF_KEY_ID: usize = 0x20;
 const TRACK_OFF_TEMPO: usize = 0x38;
 const TRACK_OFF_ALBUM_ID: usize = 0x40;
@@ -66,6 +69,9 @@ const NAME_ROW_FAR_FLAG: u16 = 0x04;
 const KEY_ROW_ID_OFFSET: usize = 0;
 const KEY_ROW_TEXT_OFFSET: u16 = 8;
 const KEY_ROW_MIN_BYTES: usize = 9;
+const ARTWORK_ROW_ID_OFFSET: usize = 0;
+const ARTWORK_ROW_TEXT_OFFSET: u16 = 4;
+const ARTWORK_ROW_MIN_BYTES: usize = 5;
 // Playlist tree and entry rows (M2.5 `rekordbox_pdb.c`, crate-digger).
 const PLAYLIST_TREE_PARENT_OFFSET: usize = 0;
 const PLAYLIST_TREE_SORT_OFFSET: usize = 8;
@@ -815,6 +821,8 @@ pub enum PdbNameRowLayout {
     Artist,
     Album,
     Key,
+    /// Artwork table: id @0, inline cover path @4 (M2.5 `artwork_cb`).
+    Artwork,
 }
 
 impl PdbNameRowLayout {
@@ -825,6 +833,7 @@ impl PdbNameRowLayout {
             Self::Artist => ARTIST_ROW_NAME_REF + 1,
             Self::Album => ALBUM_ROW_NAME_REF + 1,
             Self::Key => KEY_ROW_MIN_BYTES,
+            Self::Artwork => ARTWORK_ROW_MIN_BYTES,
         }
     }
 
@@ -836,7 +845,7 @@ impl PdbNameRowLayout {
                 ARTIST_ROW_NAME_REF,
             )),
             Self::Album => Some((ALBUM_ROW_SUBTYPE, ALBUM_ROW_ID_OFFSET, ALBUM_ROW_NAME_REF)),
-            Self::Key => None,
+            Self::Key | Self::Artwork => None,
         }
     }
 }
@@ -859,10 +868,14 @@ pub fn parse_pdb_name_row_header(
     }
 
     let Some((subtype, id_offset, name_ref)) = layout.row_shape() else {
-        let id = read_le32(row_prefix, KEY_ROW_ID_OFFSET).ok_or(PdbError::NameRowOutOfRange)?;
+        let (id_offset, text_relative_offset) = match layout {
+            PdbNameRowLayout::Artwork => (ARTWORK_ROW_ID_OFFSET, ARTWORK_ROW_TEXT_OFFSET),
+            _ => (KEY_ROW_ID_OFFSET, KEY_ROW_TEXT_OFFSET),
+        };
+        let id = read_le32(row_prefix, id_offset).ok_or(PdbError::NameRowOutOfRange)?;
         return Ok((id != 0).then_some(PdbNameRowHeader {
             id,
-            text_relative_offset: KEY_ROW_TEXT_OFFSET,
+            text_relative_offset,
         }));
     };
 
@@ -1075,6 +1088,8 @@ pub struct PdbTrackRowHeader {
     pub artist_id: u32,
     pub album_id: u32,
     pub key_id: u32,
+    /// Zero when the track has no cover.
+    pub artwork_id: u32,
     pub strings: PdbTrackStringOffsets,
 }
 
@@ -1108,6 +1123,8 @@ pub fn parse_pdb_track_row_header(
             .ok_or(PdbError::TrackRowOutOfRange)?,
         album_id: read_le32(row_prefix, TRACK_OFF_ALBUM_ID).ok_or(PdbError::TrackRowOutOfRange)?,
         key_id: read_le32(row_prefix, TRACK_OFF_KEY_ID).ok_or(PdbError::TrackRowOutOfRange)?,
+        artwork_id: read_le32(row_prefix, TRACK_OFF_ARTWORK_ID)
+            .ok_or(PdbError::TrackRowOutOfRange)?,
         strings: PdbTrackStringOffsets {
             title: string_offset(STR_IDX_TITLE)?,
             filename: string_offset(STR_IDX_FILENAME)?,
@@ -1149,6 +1166,7 @@ pub struct PdbTrackRow {
     pub artist_id: u32,
     pub album_id: u32,
     pub key_id: u32,
+    pub artwork_id: u32,
     pub title: PdbText<PDB_TITLE_MAX>,
     pub file_path: PdbText<PDB_PATH_MAX>,
     pub anlz_path: PdbText<PDB_PATH_MAX>,
@@ -1174,6 +1192,7 @@ impl PdbTrackRow {
             artist_id: header.artist_id,
             album_id: header.album_id,
             key_id: header.key_id,
+            artwork_id: header.artwork_id,
             title,
             file_path,
             anlz_path,
@@ -1193,6 +1212,19 @@ pub struct PdbResolvedNames<'a> {
     pub artist: Option<&'a PdbText<PDB_NAME_MAX>>,
     pub album: Option<&'a PdbText<PDB_NAME_MAX>>,
     pub key: Option<&'a PdbText<PDB_NAME_MAX>>,
+    /// Cover path from the artwork table; optional.
+    pub artwork: Option<&'a PdbText<PDB_NAME_MAX>>,
+}
+
+impl<'a> PdbResolvedNames<'a> {
+    pub fn with_artwork<W: PdbNameLookup + ?Sized>(
+        mut self,
+        track: &PdbTrackRow,
+        artworks: &'a W,
+    ) -> Self {
+        self.artwork = artworks.lookup(track.artwork_id);
+        self
+    }
 }
 
 pub fn resolve_pdb_track_names<'a, A, B, K>(
@@ -1210,6 +1242,7 @@ where
         artist: artists.lookup(track.artist_id),
         album: albums.lookup(track.album_id),
         key: keys.lookup(track.key_id),
+        artwork: None,
     }
 }
 
@@ -1259,6 +1292,14 @@ pub fn catalog_track_from_pdb(
         key: optional_catalog_text(PdbCatalogField::Key, names.key)?,
         audio_path: catalog_text(PdbCatalogField::AudioPath, &track.file_path)?,
         analysis_path: catalog_text(PdbCatalogField::AnalysisPath, &track.anlz_path)?,
+        // An unusable cover reference degrades to the fallback, never fails
+        // the track (M2.5 drops such artwork rows).
+        artwork_path: names
+            .artwork
+            .filter(|path| !path.was_truncated())
+            .and_then(PdbText::as_str)
+            .and_then(|path| CatalogText::try_from_str(path).ok())
+            .unwrap_or(CatalogText::EMPTY),
     })
 }
 
@@ -1799,6 +1840,7 @@ mod tests {
             artist_id: 3,
             album_id: 4,
             key_id: 5,
+            artwork_id: 0,
             strings: PdbTrackStringOffsets {
                 title: 0,
                 filename: 0,
@@ -1850,6 +1892,7 @@ mod tests {
             artist_id: 7,
             album_id: 8,
             key_id: 9,
+            artwork_id: 0,
             strings: PdbTrackStringOffsets {
                 title: 0,
                 filename: 0,
@@ -1924,6 +1967,7 @@ mod tests {
                 artist_id: 0,
                 album_id: 0,
                 key_id: 1,
+                artwork_id: 0,
                 strings: PdbTrackStringOffsets {
                     title: 0,
                     filename: 0,
@@ -1941,6 +1985,7 @@ mod tests {
             artist: None,
             album: None,
             key: Some(&key),
+            artwork: None,
         };
 
         assert_eq!(
@@ -2003,6 +2048,7 @@ mod tests {
                 artist_id: 12,
                 album_id: 11,
                 key_id: 7,
+                artwork_id: 0,
                 strings: PdbTrackStringOffsets {
                     title: 0x90,
                     filename: 0xa0,
@@ -2160,9 +2206,64 @@ mod tests {
             artist: None,
             album: None,
             key: None,
+            artwork: None,
         };
         let catalog = catalog_track_from_pdb(VolumeIdentity([0x17; 32]), &track, names).unwrap();
         assert_eq!(catalog.title.as_str(), "Slot 17 title");
+        assert!(catalog.artwork_path.is_empty());
+    }
+
+    #[test]
+    fn artwork_reference_resolves_through_the_artwork_table_or_degrades() {
+        let row = PDB_PAGE_HEAP_OFFSET;
+        let mut page = raw_track_page(&[(20, 0xc0)]);
+        put_short_devicesql(&mut page, row + 0xc0, b"/Contents/a.mp3");
+        put_le32(&mut page, row + 0x1c, 7);
+        let track = parse_pdb_track_row(&page, 512, 0).unwrap().unwrap();
+        assert_eq!(track.artwork_id, 7);
+
+        let mut art = [0u8; 40];
+        put_le32(&mut art, 0, 7);
+        put_short_devicesql(&mut art, 4, b"/PIONEER/Artwork/00001/a7.jpg");
+        let header = parse_pdb_name_row_header(&art, PdbNameRowLayout::Artwork)
+            .unwrap()
+            .unwrap();
+        assert_eq!((header.id, header.text_relative_offset), (7, 4));
+        let path = PdbText::from_devicesql_field(&art[4..]).unwrap();
+        let mut artworks = PdbNameMap::<4>::new();
+        artworks
+            .push(PdbNameEntry::from_header_and_field(header, path).unwrap())
+            .unwrap();
+        let none = PdbNameMap::<1>::new();
+
+        let names =
+            resolve_pdb_track_names(&track, &none, &none, &none).with_artwork(&track, &artworks);
+        let catalog = catalog_track_from_pdb(VolumeIdentity([1; 32]), &track, names).unwrap();
+        assert_eq!(
+            catalog.artwork_path.as_str(),
+            "/PIONEER/Artwork/00001/a7.jpg"
+        );
+
+        // A missing table row or a truncated path leaves the cover empty.
+        let names =
+            resolve_pdb_track_names(&track, &none, &none, &none).with_artwork(&track, &none);
+        let catalog = catalog_track_from_pdb(VolumeIdentity([1; 32]), &track, names).unwrap();
+        assert!(catalog.artwork_path.is_empty());
+        let long = [b'a'; 120];
+        let mut field = [0u8; 128];
+        field[0] = 0x40;
+        put_le16(&mut field, 1, (4 + long.len()) as u16);
+        field[4..4 + long.len()].copy_from_slice(&long);
+        let truncated = PdbText::<PDB_NAME_MAX>::from_devicesql_field(&field).unwrap();
+        assert!(truncated.was_truncated());
+        let names = PdbResolvedNames {
+            artist: None,
+            album: None,
+            key: None,
+            artwork: Some(&truncated),
+        };
+        let catalog = catalog_track_from_pdb(VolumeIdentity([1; 32]), &track, names).unwrap();
+        assert!(catalog.artwork_path.is_empty());
     }
 
     #[test]

@@ -29,6 +29,79 @@ pub struct AnalysisMemoryCue {
 
 pub const MAX_MEMORY_CUES: usize = 16;
 
+/// One Rekordbox PWV4 color-preview column (EXT only): byte 0 is the height,
+/// bytes 3..6 the bass/mid/treble mix (M2.5 `rekordbox_anlz.c`).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ColorPreviewEntry(pub [u8; 6]);
+
+/// M2.5 keeps the first 1200 columns (7200 bytes) and flags the rest.
+pub const MAX_COLOR_PREVIEW_COLUMNS: usize = 1_200;
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ColorPreviewColumn {
+    pub height: u8,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+impl ColorPreviewColumn {
+    /// Neutral raster column: height scaled against the track `peak`, band
+    /// mix as RGB565.
+    pub fn waveform(self, peak: u8) -> WaveformColumn {
+        let rgb565 =
+            (u16::from(self.r) >> 3) << 11 | (u16::from(self.g) >> 2) << 5 | u16::from(self.b) >> 3;
+        WaveformColumn {
+            peak: if peak == 0 {
+                0
+            } else {
+                (u32::from(self.height.min(peak)) * 65_535 / u32::from(peak)) as u16
+            },
+            color_rgb565: rgb565,
+        }
+    }
+}
+
+/// Loudest PWV4 height, the normalization reference for display.
+pub fn color_preview_peak(entries: &[ColorPreviewEntry]) -> u8 {
+    entries
+        .iter()
+        .map(|ColorPreviewEntry(entry)| entry[0])
+        .max()
+        .unwrap_or(0)
+}
+
+/// Resamples PWV4 to `cols` display columns: the loudest height of the span
+/// and its band mix normalized to the strongest band.
+pub fn color_preview_column(
+    entries: &[ColorPreviewEntry],
+    col: usize,
+    cols: usize,
+) -> Option<ColorPreviewColumn> {
+    let n = entries.len();
+    if n == 0 || cols == 0 || col >= cols {
+        return None;
+    }
+    let from = (col as u64 * n as u64 / cols as u64) as usize;
+    let to = (((col as u64 + 1) * n as u64 / cols as u64) as usize).max(from + 1);
+    let mut height = 0u8;
+    let mut sum = [0u32; 3];
+    for ColorPreviewEntry(entry) in &entries[from..to.min(n)] {
+        height = height.max(entry[0]);
+        for band in 0..3 {
+            sum[band] += u32::from(entry[3 + band]);
+        }
+    }
+    let top = sum[0].max(sum[1]).max(sum[2]);
+    let scale = |value: u32| (value * 255).checked_div(top).unwrap_or(0) as u8;
+    Some(ColorPreviewColumn {
+        height,
+        r: scale(sum[0]),
+        g: scale(sum[1]),
+        b: scale(sum[2]),
+    })
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Beat {
     pub time_ms: u32,
@@ -55,6 +128,8 @@ pub struct TrackAnalysis<'a> {
     memory_cues: &'a [AnalysisMemoryCue],
     memory_cues_truncated: bool,
     detail_rate_hz: u16,
+    color_preview: &'a [ColorPreviewEntry],
+    color_preview_truncated: bool,
 }
 
 impl<'a> TrackAnalysis<'a> {
@@ -75,6 +150,8 @@ impl<'a> TrackAnalysis<'a> {
             memory_cues: &[],
             memory_cues_truncated: false,
             detail_rate_hz: 0,
+            color_preview: &[],
+            color_preview_truncated: false,
         }
     }
 
@@ -136,6 +213,23 @@ impl<'a> TrackAnalysis<'a> {
     }
     pub const fn detail_rate_hz(&self) -> u16 {
         self.detail_rate_hz
+    }
+    pub const fn with_color_preview(
+        mut self,
+        entries: &'a [ColorPreviewEntry],
+        truncated: bool,
+    ) -> Self {
+        self.color_preview = entries;
+        self.color_preview_truncated = truncated;
+        self
+    }
+    /// Optional PWV4 columns; empty when absent or rejected, in which case
+    /// presentation falls back to the PWAV preview.
+    pub const fn color_preview(&self) -> &'a [ColorPreviewEntry] {
+        self.color_preview
+    }
+    pub const fn color_preview_truncated(&self) -> bool {
+        self.color_preview_truncated
     }
     pub fn detail_window(&self, position_ms: u32, columns: usize) -> &'a [WaveformColumn] {
         if self.detail_rate_hz == 0 || self.detail.is_empty() {
@@ -345,6 +439,45 @@ mod tests {
         assert_eq!(analysis.generation(), 7);
         assert_eq!(analysis.bpm_x100(), 12_000);
         assert_eq!(analysis.beat_grid().unwrap().beats(), &beats);
+    }
+
+    #[test]
+    fn color_preview_resamples_loudest_height_and_normalized_band_mix() {
+        let entries = [
+            ColorPreviewEntry([10, 0, 0, 100, 50, 0]),
+            ColorPreviewEntry([40, 0, 0, 100, 50, 0]),
+            ColorPreviewEntry([5, 0, 0, 0, 0, 200]),
+            ColorPreviewEntry([0, 0, 0, 0, 0, 0]),
+        ];
+        assert_eq!(
+            color_preview_column(&entries, 0, 2),
+            Some(ColorPreviewColumn {
+                height: 40,
+                r: 255,
+                g: 127,
+                b: 0,
+            })
+        );
+        assert_eq!(
+            color_preview_column(&entries, 1, 2),
+            Some(ColorPreviewColumn {
+                height: 5,
+                r: 0,
+                g: 0,
+                b: 255,
+            })
+        );
+        // Upsampling repeats a column; silence stays black.
+        assert_eq!(color_preview_column(&entries, 7, 8).unwrap().height, 0);
+        assert_eq!(color_preview_column(&entries, 7, 8).unwrap().r, 0);
+        assert_eq!(color_preview_column(&entries, 2, 2), None);
+        assert_eq!(color_preview_column(&[], 0, 1), None);
+
+        assert_eq!(color_preview_peak(&entries), 40);
+        let column = color_preview_column(&entries, 0, 2).unwrap().waveform(40);
+        assert_eq!(column.peak, u16::MAX);
+        assert_eq!(column.color_rgb565, (31 << 11) | (31 << 5));
+        assert_eq!(ColorPreviewColumn::default().waveform(0).peak, 0);
     }
 
     #[test]

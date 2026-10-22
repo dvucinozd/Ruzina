@@ -23,15 +23,15 @@ use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
     PDB_MAX_NAMES, PDB_NAME_MAX, PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_PLAYLIST_ENTRY_ROW_BYTES,
-    PDB_PLAYLIST_TREE_ROW_HEADER_BYTES, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS,
-    PDB_TABLE_PLAYLIST_ENTRIES, PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS, PDB_TITLE_MAX,
-    PDB_TRACK_ROW_HEADER_BYTES, PdbCatalogError, PdbError, PdbHeader, PdbNameEntry, PdbNameLookup,
-    PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbPlaylistEntryRow, PdbPlaylistTreeRow,
-    PdbTableDirectory, PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb,
-    parse_devicesql_field_header, parse_pdb_header, parse_pdb_name_row_header,
-    parse_pdb_page_header, parse_pdb_playlist_entry_row, parse_pdb_playlist_tree_row,
-    parse_pdb_table_directory, parse_pdb_track_row_header, pdb_track_string_page_offset,
-    recover_pdb_title, resolve_pdb_track_names,
+    PDB_PLAYLIST_TREE_ROW_HEADER_BYTES, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_ARTWORK,
+    PDB_TABLE_KEYS, PDB_TABLE_PLAYLIST_ENTRIES, PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS,
+    PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES, PdbCatalogError, PdbError, PdbHeader, PdbNameEntry,
+    PdbNameLookup, PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbPlaylistEntryRow,
+    PdbPlaylistTreeRow, PdbTableDirectory, PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH,
+    catalog_track_from_pdb, parse_devicesql_field_header, parse_pdb_header,
+    parse_pdb_name_row_header, parse_pdb_page_header, parse_pdb_playlist_entry_row,
+    parse_pdb_playlist_tree_row, parse_pdb_table_directory, parse_pdb_track_row_header,
+    pdb_track_string_page_offset, recover_pdb_title, resolve_pdb_track_names,
 };
 use static_cell::StaticCell;
 
@@ -155,6 +155,10 @@ fn publish_browser(browser: &LibraryBrowser) {
 #[cfg(feature = "p4-psram-storage")]
 struct Usb0LibraryNameMap {
     entries: Vec<PdbNameEntry>,
+    capacity: usize,
+    /// Optional tables (artwork) keep the first row of a repeated id
+    /// instead of failing the import, as M2.5 drops such rows.
+    optional: bool,
 }
 
 #[cfg(not(feature = "p4-psram-storage"))]
@@ -174,16 +178,21 @@ impl PdbNameLookup for Usb0LibraryNameMap {
 }
 
 impl Usb0LibraryNameMap {
-    fn try_new() -> Result<Self, ()> {
+    fn try_new(capacity: usize, optional: bool) -> Result<Self, ()> {
         #[cfg(feature = "p4-psram-storage")]
         {
             let mut entries = Vec::new();
-            entries.try_reserve_exact(PDB_MAX_NAMES).map_err(|_| ())?;
-            Ok(Self { entries })
+            entries.try_reserve_exact(capacity).map_err(|_| ())?;
+            Ok(Self {
+                entries,
+                capacity,
+                optional,
+            })
         }
 
         #[cfg(not(feature = "p4-psram-storage"))]
         {
+            let _ = (capacity, optional);
             Ok(Self)
         }
     }
@@ -197,9 +206,12 @@ impl Usb0LibraryNameMap {
         #[cfg(feature = "p4-psram-storage")]
         {
             if self.entries.iter().any(|existing| existing.id == entry.id) {
+                if self.optional {
+                    return Ok(());
+                }
                 return Err(Usb0LibraryError::DuplicateNameId(entry.id));
             }
-            if self.entries.len() < PDB_MAX_NAMES {
+            if self.entries.len() < self.capacity {
                 // Capacity is reserved once at worker startup, so this push cannot
                 // grow the heap while a PDB page is being processed.
                 self.entries.push(entry);
@@ -217,14 +229,17 @@ struct Usb0LibraryNameStage {
     artists: Usb0LibraryNameMap,
     albums: Usb0LibraryNameMap,
     keys: Usb0LibraryNameMap,
+    /// Cover paths; at most one per catalog track (RP-07).
+    artworks: Usb0LibraryNameMap,
 }
 
 impl Usb0LibraryNameStage {
     fn try_new() -> Result<Self, ()> {
         Ok(Self {
-            artists: Usb0LibraryNameMap::try_new()?,
-            albums: Usb0LibraryNameMap::try_new()?,
-            keys: Usb0LibraryNameMap::try_new()?,
+            artists: Usb0LibraryNameMap::try_new(PDB_MAX_NAMES, false)?,
+            albums: Usb0LibraryNameMap::try_new(PDB_MAX_NAMES, false)?,
+            keys: Usb0LibraryNameMap::try_new(PDB_MAX_NAMES, false)?,
+            artworks: Usb0LibraryNameMap::try_new(MEDIA_CATALOG_MAX_TRACKS, true)?,
         })
     }
 
@@ -232,6 +247,7 @@ impl Usb0LibraryNameStage {
         self.artists.clear();
         self.albums.clear();
         self.keys.clear();
+        self.artworks.clear();
     }
 }
 
@@ -532,7 +548,8 @@ impl Usb0LibraryCatalogStage {
         #[cfg(feature = "p4-psram-storage")]
         {
             let resolved =
-                resolve_pdb_track_names(track, &names.artists, &names.albums, &names.keys);
+                resolve_pdb_track_names(track, &names.artists, &names.albums, &names.keys)
+                    .with_artwork(track, &names.artworks);
             let catalog_track = catalog_track_from_pdb(volume_identity, track, resolved)
                 .map_err(Usb0LibraryError::CatalogDecode)?;
             let builder = self
@@ -721,10 +738,13 @@ pub(crate) struct Usb0LibraryPdbProbe {
     pub(crate) keys_first_page: Option<u32>,
     pub(crate) playlist_tree_first_page: Option<u32>,
     pub(crate) playlist_entries_first_page: Option<u32>,
+    pub(crate) artwork_first_page: Option<u32>,
     pub(crate) tracks_layout: Option<Usb0LibraryTableProbe>,
     pub(crate) artists_layout: Option<Usb0LibraryNameTableProbe>,
     pub(crate) albums_layout: Option<Usb0LibraryNameTableProbe>,
     pub(crate) keys_layout: Option<Usb0LibraryNameTableProbe>,
+    /// None when absent; a malformed artwork table is dropped, not fatal.
+    pub(crate) artwork_layout: Option<Usb0LibraryNameTableProbe>,
     /// Published hierarchy counts; invalid rows never fail the track catalog.
     pub(crate) playlists: Option<PlaylistImportStats>,
 }
@@ -1155,10 +1175,12 @@ fn parse_first_page(
         keys_first_page: first_page(&tables, PDB_TABLE_KEYS),
         playlist_tree_first_page: first_page(&tables, PDB_TABLE_PLAYLIST_TREE),
         playlist_entries_first_page: first_page(&tables, PDB_TABLE_PLAYLIST_ENTRIES),
+        artwork_first_page: first_page(&tables, PDB_TABLE_ARTWORK),
         tracks_layout: None,
         artists_layout: None,
         albums_layout: None,
         keys_layout: None,
+        artwork_layout: None,
         playlists: None,
     })
 }
@@ -1941,6 +1963,29 @@ async fn scan_probe_tables(
     .await;
     probe.keys_layout = match keys {
         Ok(keys) => keys,
+        Err(error) => return (file, buffer, Err(error)),
+    };
+
+    let (file, buffer, artworks) = scan_optional_name_table(
+        client,
+        lease,
+        file,
+        buffer,
+        probe.header,
+        probe.artwork_first_page,
+        PdbNameRowLayout::Artwork,
+        &mut staging.artworks,
+    )
+    .await;
+    probe.artwork_layout = match artworks {
+        Ok(artworks) => artworks,
+        // Covers are optional: a malformed table leaves every track on the
+        // fallback; storage errors still abort.
+        Err(Usb0LibraryError::Pdb(_) | Usb0LibraryError::PageOutOfRange(_))
+        | Err(Usb0LibraryError::PageChainLoop) => {
+            staging.artworks.clear();
+            None
+        }
         Err(error) => return (file, buffer, Err(error)),
     };
 
