@@ -364,7 +364,8 @@ impl Session {
                         .resolve_playback_request(deck, request_id, can_play);
                     if !can_play {
                         self.service.record(EventKind::PlaybackRejected(deck));
-                        self.message = "End of track · press CUE to return".into();
+                        // CDJ CUE at the end would set a new cue there.
+                        self.message = "End of track · jump back or recall a hot cue".into();
                     }
                 }
                 DeckEffect::Seek { deck, position_ms } => {

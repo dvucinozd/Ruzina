@@ -160,6 +160,21 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
     });
     let weak = ui.as_weak();
     let session = state.clone();
+    ui.on_deck_hold(move |i, code, pressed| {
+        if !(0..2).contains(&i) {
+            return;
+        }
+        if let Some(action) = DeckAction::from_code(code) {
+            session
+                .borrow_mut()
+                .control(action.event(deck(i as usize), pressed));
+            if let Some(ui) = weak.upgrade() {
+                refresh(&ui, &session.borrow());
+            }
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
     ui.on_cue_action(move |i, slot, clear| {
         if !(0..2).contains(&i) || !(0..8).contains(&slot) {
             return;

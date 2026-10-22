@@ -32,6 +32,9 @@ pub enum DeckExtAction {
     LoopAdjustOut,
     Quantize,
     SyncOff,
+    /// Idempotent per-deck jog mode selection (M2.5 B13a/B18); release is ignored.
+    JogVinyl,
+    JogCdj,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

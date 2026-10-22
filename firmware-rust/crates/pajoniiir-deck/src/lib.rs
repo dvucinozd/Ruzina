@@ -203,6 +203,16 @@ impl ShiftedLoopRoll {
     }
 }
 
+/// Per-deck jog semantics (M2.5 B13a). VINYL is the startup default: platter
+/// touch owns scratch. CDJ ignores platter-top touch, so jog deltas never
+/// engage scratch. Track load keeps the choice; reboot returns to VINYL.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum JogMode {
+    #[default]
+    Vinyl,
+    Cdj,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DeckState {
     pub playing: bool,
@@ -224,16 +234,29 @@ pub struct DeckState {
     pub controller_connected: bool,
     pub shift_held: bool,
     pub jog_touched: bool,
+    pub jog_mode: JogMode,
     pub scratch_epoch: u32,
     pub base_bpm_x100: u32,
     playback_generation: u32,
     pending_playback: Option<PendingPlayback>,
+    cue_held: bool,
+    cue_preview: bool,
 }
 
 impl DeckState {
     /// A pending playback request pins the selected analysis even before playing.
     pub const fn can_replace_analysis(&self) -> bool {
         !self.playing && self.pending_playback.is_none()
+    }
+
+    /// CUE is physically/touch held; duplicate presses are ignored until release.
+    pub const fn cue_held(&self) -> bool {
+        self.cue_held
+    }
+
+    /// Playback started by holding CUE at the cue point; release returns there.
+    pub const fn cue_previewing(&self) -> bool {
+        self.cue_preview
     }
 
     pub const fn new() -> Self {
@@ -257,10 +280,13 @@ impl DeckState {
             controller_connected: false,
             shift_held: false,
             jog_touched: false,
+            jog_mode: JogMode::Vinyl,
             scratch_epoch: 0,
             base_bpm_x100: 12_000,
             playback_generation: 0,
             pending_playback: None,
+            cue_held: false,
+            cue_preview: false,
         }
     }
 }
@@ -527,11 +553,20 @@ impl<const T: usize, const P: usize, const A: usize> DeckEffectBroker<T, P, A> {
     }
 
     pub fn try_push_all(&mut self, effects: DeckEffects) -> bool {
+        self.try_push_groups(&[effects])
+    }
+
+    /// All-or-nothing publication of several effect groups, such as the
+    /// per-deck releases produced by one controller disconnect.
+    pub fn try_push_groups(&mut self, groups: &[DeckEffects]) -> bool {
         let mut transport = 0usize;
         let mut persistence = 0usize;
         let mut audio_dsp = 0usize;
 
-        for effect in effects.items.into_iter().flatten() {
+        for effect in groups
+            .iter()
+            .flat_map(|group| group.items.into_iter().flatten())
+        {
             match effect.target() {
                 DeckEffectTarget::Transport => transport += 1,
                 DeckEffectTarget::Persistence => persistence += 1,
@@ -546,7 +581,10 @@ impl<const T: usize, const P: usize, const A: usize> DeckEffectBroker<T, P, A> {
             return false;
         }
 
-        for effect in effects.items.into_iter().flatten() {
+        for effect in groups
+            .iter()
+            .flat_map(|group| group.items.into_iter().flatten())
+        {
             let accepted = match effect.target() {
                 DeckEffectTarget::Transport => {
                     self.transport.try_push_all(DeckEffects::one(effect))
@@ -747,6 +785,9 @@ impl DeckProductState {
         state.base_bpm_x100 = if bpm_x100 == 0 { 12_000 } else { bpm_x100 };
         state.playback_generation = state.playback_generation.wrapping_add(1);
         state.pending_playback = None;
+        // Track reset clears CUE preview ownership; jog mode is a deck setting.
+        state.cue_held = false;
+        state.cue_preview = false;
 
         if self.sync_master == Some(deck) {
             self.sync_master = None;
@@ -774,6 +815,9 @@ impl DeckProductState {
         state.base_bpm_x100 = 12_000;
         state.playback_generation = state.playback_generation.wrapping_add(1);
         state.pending_playback = None;
+        // Track reset clears CUE preview ownership; jog mode is a deck setting.
+        state.cue_held = false;
+        state.cue_preview = false;
 
         if self.sync_master == Some(deck) {
             self.sync_master = None;
@@ -822,18 +866,26 @@ impl DeckProductState {
         state.playing = false;
         state.position_ms = position_ms;
         state.pending_playback = None;
+        state.cue_preview = false;
     }
 
-    pub fn set_controller_connected(&mut self, connected: bool) {
-        for state in &mut self.decks {
+    /// Disconnect releases every controller-owned hold. An active CUE preview
+    /// stops and returns to its cue, exactly like a CUE release; the caller
+    /// must publish the returned effects or keep the previous state.
+    pub fn set_controller_connected(&mut self, connected: bool) -> [DeckEffects; 2] {
+        let mut effects = [DeckEffects::NONE; 2];
+        for (index, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
+            let state = &mut self.decks[index];
             state.controller_connected = connected;
             if !connected {
                 state.active_pad_fx = None;
                 state.jog_touched = false;
                 state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
                 state.loop_adjust_mode = LoopAdjustMode::None;
+                effects[index] = self.release_cue(deck);
             }
         }
+        effects
     }
 
     pub fn handle_control(&mut self, event: ControlEvent) -> DeckEffects {
@@ -855,7 +907,7 @@ impl DeckProductState {
 
         match event.control {
             SemanticControl::Play => self.handle_play(deck, event.value),
-            SemanticControl::Cue => self.handle_cue(deck, event.value),
+            SemanticControl::Cue => self.handle_cue(deck, event.value, analysis),
             SemanticControl::ToStart => self.handle_to_start(deck, event.value),
             SemanticControl::Tempo => self.handle_tempo(deck, event.value),
             SemanticControl::TempoRange => self.handle_tempo_range(deck, event.value),
@@ -901,11 +953,11 @@ impl DeckProductState {
             }
             SemanticControl::JogTouch => {
                 if let ControlValue::Pressed(pressed) = event.value {
-                    let state = &mut self.decks[deck_index(deck)];
-                    if state.jog_touched != pressed {
-                        state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
+                    // CDJ ignores platter-top touch; a release is always
+                    // accepted so no earlier touch can stay latched.
+                    if !(pressed && self.decks[deck_index(deck)].jog_mode == JogMode::Cdj) {
+                        self.set_jog_touched(deck, pressed);
                     }
-                    state.jog_touched = pressed;
                 }
                 DeckEffects::NONE
             }
@@ -1036,6 +1088,9 @@ impl DeckProductState {
         state.pending_playback = None;
         if succeeded {
             state.playing = pending.playing;
+        } else if pending.playing {
+            // A preview whose PLAY was refused never started.
+            state.cue_preview = false;
         }
         true
     }
@@ -1046,13 +1101,23 @@ impl DeckProductState {
         }
 
         let state = &mut self.decks[deck_index(deck)];
-        state.playback_generation = state.playback_generation.wrapping_add(1);
-        let request_id = state.playback_generation;
+        if state.cue_preview {
+            // PLAY while CUE is held commits the preview to normal playback, so
+            // the later CUE release no longer stops it (M2.5 B12).
+            state.cue_preview = false;
+            return DeckEffects::NONE;
+        }
         let desired_now = state
             .pending_playback
             .map(|pending| pending.playing)
             .unwrap_or(state.playing);
-        let playing = !desired_now;
+        self.request_playback(deck, !desired_now)
+    }
+
+    fn request_playback(&mut self, deck: DeckId, playing: bool) -> DeckEffects {
+        let state = &mut self.decks[deck_index(deck)];
+        state.playback_generation = state.playback_generation.wrapping_add(1);
+        let request_id = state.playback_generation;
         state.pending_playback = Some(PendingPlayback {
             request_id,
             playing,
@@ -1065,14 +1130,74 @@ impl DeckProductState {
         })
     }
 
-    fn handle_cue(&mut self, deck: DeckId, value: ControlValue) -> DeckEffects {
-        if value != ControlValue::Pressed(true) {
+    /// CDJ CUE (M2.5 B12), shared by touch and MIDI press/release:
+    /// - playing (or PLAY pending): return to the cue and pause;
+    /// - stopped away from the cue: set the current/quantized cue;
+    /// - stopped at the cue: preview while held; release returns to the cue;
+    /// - repeated presses and unmatched releases never retrigger transport.
+    fn handle_cue(
+        &mut self,
+        deck: DeckId,
+        value: ControlValue,
+        analysis: [Option<TrackAnalysis<'_>>; 2],
+    ) -> DeckEffects {
+        let ControlValue::Pressed(pressed) = value else {
             return DeckEffects::NONE;
+        };
+        if !pressed {
+            return self.release_cue(deck);
         }
 
+        let quantized = self.quantized_position_ms(deck, analysis);
+        let state = &mut self.decks[deck_index(deck)];
+        if state.cue_held {
+            return DeckEffects::NONE;
+        }
+        state.cue_held = true;
+
+        let playing = state
+            .pending_playback
+            .map(|pending| pending.playing)
+            .unwrap_or(state.playing);
+        if playing {
+            return self.return_to_cue(deck);
+        }
+        if state.position_ms != state.cue_point_ms {
+            state.cue_point_ms = quantized;
+            if state.position_ms == quantized {
+                return DeckEffects::NONE;
+            }
+            state.position_ms = quantized;
+            return DeckEffects::one(DeckEffect::Seek {
+                deck,
+                position_ms: quantized,
+            });
+        }
+
+        state.cue_preview = true;
+        self.request_playback(deck, true)
+    }
+
+    fn release_cue(&mut self, deck: DeckId) -> DeckEffects {
+        let state = &mut self.decks[deck_index(deck)];
+        if !state.cue_held {
+            return DeckEffects::NONE;
+        }
+        state.cue_held = false;
+        if !state.cue_preview {
+            return DeckEffects::NONE;
+        }
+        state.cue_preview = false;
+        self.return_to_cue(deck)
+    }
+
+    /// Pause at the stored cue. Clearing the pending request makes a late
+    /// acknowledgement of the preview's PLAY stale.
+    fn return_to_cue(&mut self, deck: DeckId) -> DeckEffects {
         let state = &mut self.decks[deck_index(deck)];
         state.pending_playback = None;
         state.playing = false;
+        state.cue_preview = false;
         state.position_ms = state.cue_point_ms;
 
         DeckEffects::two(
@@ -1084,6 +1209,14 @@ impl DeckProductState {
         )
     }
 
+    fn set_jog_touched(&mut self, deck: DeckId, touched: bool) {
+        let state = &mut self.decks[deck_index(deck)];
+        if state.jog_touched != touched {
+            state.scratch_epoch = state.scratch_epoch.wrapping_add(1).max(1);
+        }
+        state.jog_touched = touched;
+    }
+
     fn handle_to_start(&mut self, deck: DeckId, value: ControlValue) -> DeckEffects {
         if value != ControlValue::Pressed(true) {
             return DeckEffects::NONE;
@@ -1092,6 +1225,7 @@ impl DeckProductState {
         let state = &mut self.decks[deck_index(deck)];
         state.pending_playback = None;
         state.playing = false;
+        state.cue_preview = false;
         state.position_ms = 0;
         state.cue_point_ms = 0;
 
@@ -1742,6 +1876,18 @@ impl DeckProductState {
             }
             DeckExtAction::LoopAdjustOut if action.pressed => {
                 self.set_loop_adjust_mode(deck, LoopAdjustMode::Out);
+            }
+            DeckExtAction::JogVinyl | DeckExtAction::JogCdj if action.pressed => {
+                let mode = if action.action == DeckExtAction::JogCdj {
+                    JogMode::Cdj
+                } else {
+                    JogMode::Vinyl
+                };
+                if self.decks[deck_index(deck)].jog_mode != mode {
+                    // Release the old scratch owner before changing touch semantics.
+                    self.set_jog_touched(deck, false);
+                    self.decks[deck_index(deck)].jog_mode = mode;
+                }
             }
             DeckExtAction::Censor => {
                 // Censor remains an audio-runtime slice.
@@ -3861,5 +4007,206 @@ mod tests {
         assert_eq!(state.load_admission(DeckId::Two), Err(LoadRefusal::Playing));
         assert!(state.resolve_playback_request(DeckId::Two, 7, true));
         assert_eq!(state.load_admission(DeckId::Two), Ok(LoadAllowed::Stopped));
+    }
+
+    // RP-03: M2.5 B12 CDJ CUE press/release and B13a VINYL/CDJ jog modes.
+    fn cue(state: &mut DeckProductState, deck: DeckId, down: bool) -> DeckEffects {
+        state.handle_control(pressed(deck, SemanticControl::Cue, down))
+    }
+
+    fn return_effects(deck: DeckId, position_ms: u32) -> DeckEffects {
+        DeckEffects::two(
+            DeckEffect::Pause { deck },
+            DeckEffect::Seek { deck, position_ms },
+        )
+    }
+
+    #[test]
+    fn paused_cue_sets_the_point_then_previews_only_while_held() {
+        let mut state = DeckProductState::new();
+        state.set_position_ms(DeckId::One, 5_000);
+
+        assert_eq!(cue(&mut state, DeckId::One, true), DeckEffects::NONE);
+        assert_eq!(state.deck(DeckId::One).cue_point_ms, 5_000);
+        assert!(state.deck(DeckId::One).cue_held());
+        assert!(!state.deck(DeckId::One).cue_previewing());
+        assert_eq!(cue(&mut state, DeckId::One, false), DeckEffects::NONE);
+
+        let (deck, playing, request_id) = playback_request(cue(&mut state, DeckId::One, true));
+        assert_eq!((deck, playing), (DeckId::One, true));
+        assert!(state.deck(DeckId::One).cue_previewing());
+        assert_eq!(cue(&mut state, DeckId::One, true), DeckEffects::NONE);
+        assert!(state.resolve_playback_request(DeckId::One, request_id, true));
+        assert!(state.deck(DeckId::One).playing);
+        state.set_position_ms(DeckId::One, 6_200);
+
+        assert_eq!(
+            cue(&mut state, DeckId::One, false),
+            return_effects(DeckId::One, 5_000)
+        );
+        let deck = state.deck(DeckId::One);
+        assert!(!deck.playing && !deck.cue_held() && !deck.cue_previewing());
+        assert_eq!(deck.position_ms, 5_000);
+        assert_eq!(cue(&mut state, DeckId::One, false), DeckEffects::NONE);
+    }
+
+    #[test]
+    fn quantized_cue_snaps_to_the_nearest_beat_and_seeks_there() {
+        let beats = [
+            Beat {
+                time_ms: 1_000,
+                phase: 0,
+                bpm_x100: 12_000,
+            },
+            Beat {
+                time_ms: 1_500,
+                phase: 1,
+                bpm_x100: 12_000,
+            },
+        ];
+        let analysis = beat_jump_analysis(&beats, 12_000);
+        let mut state = DeckProductState::new();
+        state.handle_control(ext(DeckId::One, DeckExtAction::Quantize, true));
+        state.set_position_ms(DeckId::One, 1_430);
+        let effects = state.handle_control_with_analysis(
+            pressed(DeckId::One, SemanticControl::Cue, true),
+            [Some(analysis), None],
+        );
+        assert_eq!(
+            effects,
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 1_500,
+            })
+        );
+        assert_eq!(state.deck(DeckId::One).cue_point_ms, 1_500);
+        assert_eq!(state.deck(DeckId::One).position_ms, 1_500);
+    }
+
+    #[test]
+    fn play_during_preview_commits_and_cue_while_playing_returns() {
+        let mut state = DeckProductState::new();
+        let (_, _, preview) = playback_request(cue(&mut state, DeckId::Two, true));
+        assert_eq!(
+            state.handle_control(pressed(DeckId::Two, SemanticControl::Play, true)),
+            DeckEffects::NONE
+        );
+        assert!(!state.deck(DeckId::Two).cue_previewing());
+        assert!(state.resolve_playback_request(DeckId::Two, preview, true));
+        assert_eq!(cue(&mut state, DeckId::Two, false), DeckEffects::NONE);
+        assert!(state.deck(DeckId::Two).playing);
+        assert!(!state.deck(DeckId::One).cue_held());
+
+        state.set_position_ms(DeckId::Two, 9_000);
+        assert_eq!(
+            cue(&mut state, DeckId::Two, true),
+            return_effects(DeckId::Two, 0)
+        );
+        assert!(!state.deck(DeckId::Two).playing);
+        assert!(!state.deck(DeckId::Two).cue_previewing());
+        assert_eq!(cue(&mut state, DeckId::Two, false), DeckEffects::NONE);
+    }
+
+    #[test]
+    fn preview_acknowledgements_after_release_or_failure_cannot_restart_it() {
+        let mut state = DeckProductState::new();
+        let (_, _, preview) = playback_request(cue(&mut state, DeckId::One, true));
+        assert_eq!(
+            cue(&mut state, DeckId::One, false),
+            return_effects(DeckId::One, 0)
+        );
+        assert!(!state.resolve_playback_request(DeckId::One, preview, true));
+        assert!(!state.deck(DeckId::One).playing);
+
+        let (_, _, refused) = playback_request(cue(&mut state, DeckId::One, true));
+        assert!(state.resolve_playback_request(DeckId::One, refused, false));
+        assert!(!state.deck(DeckId::One).cue_previewing());
+        assert!(state.deck(DeckId::One).cue_held());
+        assert_eq!(cue(&mut state, DeckId::One, false), DeckEffects::NONE);
+    }
+
+    #[test]
+    fn disconnect_releases_only_an_active_preview_and_track_reset_clears_cue_ownership() {
+        let mut state = DeckProductState::new();
+        let (_, _, preview) = playback_request(cue(&mut state, DeckId::One, true));
+        assert!(state.resolve_playback_request(DeckId::One, preview, true));
+        let (_, _, play) = playback_request(state.handle_control(pressed(
+            DeckId::Two,
+            SemanticControl::Play,
+            true,
+        )));
+        assert!(state.resolve_playback_request(DeckId::Two, play, true));
+
+        let effects = state.set_controller_connected(false);
+        assert_eq!(effects, [return_effects(DeckId::One, 0), DeckEffects::NONE]);
+        assert!(!state.deck(DeckId::One).playing);
+        assert!(!state.deck(DeckId::One).cue_held());
+        assert!(state.deck(DeckId::Two).playing);
+
+        // A pending preview PLAY refuses loads (RP-04); a plain held CUE does not.
+        let track = media_id(0x71);
+        assert_eq!(cue(&mut state, DeckId::One, true).len(), 1);
+        assert_eq!(
+            state.load_admission(DeckId::One),
+            Err(LoadRefusal::PlayPending)
+        );
+        cue(&mut state, DeckId::One, false);
+        state.set_position_ms(DeckId::One, 3_000);
+        assert_eq!(cue(&mut state, DeckId::One, true), DeckEffects::NONE);
+        assert!(state.deck(DeckId::One).cue_held());
+        assert!(
+            state
+                .commit_track_load(DeckId::One, track, 12_000, HotCueBank::empty(track), None)
+                .is_ok()
+        );
+        assert!(!state.deck(DeckId::One).cue_held());
+        assert!(!state.deck(DeckId::One).cue_previewing());
+    }
+
+    #[test]
+    fn jog_modes_are_idempotent_per_deck_and_cdj_never_engages_scratch() {
+        let mut state = DeckProductState::new();
+        assert_eq!(state.deck(DeckId::One).jog_mode, JogMode::Vinyl);
+        state.handle_control(pressed(DeckId::One, SemanticControl::JogTouch, true));
+        let epoch = state.deck(DeckId::One).scratch_epoch;
+        assert!(state.deck(DeckId::One).jog_touched);
+
+        // Switching to CDJ releases the active scratch before changing semantics.
+        state.handle_control(ext(DeckId::One, DeckExtAction::JogCdj, true));
+        let deck = *state.deck(DeckId::One);
+        assert_eq!(deck.jog_mode, JogMode::Cdj);
+        assert!(!deck.jog_touched);
+        assert_ne!(deck.scratch_epoch, epoch);
+        let epoch = deck.scratch_epoch;
+        state.handle_control(ext(DeckId::One, DeckExtAction::JogCdj, true));
+        state.handle_control(ext(DeckId::One, DeckExtAction::JogVinyl, false));
+        assert_eq!(state.deck(DeckId::One).jog_mode, JogMode::Cdj);
+        assert_eq!(state.deck(DeckId::One).scratch_epoch, epoch);
+
+        state.handle_control(pressed(DeckId::One, SemanticControl::JogTouch, true));
+        assert!(!state.deck(DeckId::One).jog_touched);
+        assert_eq!(
+            state.handle_control(relative(DeckId::One, SemanticControl::JogScratch, 12)),
+            DeckEffects::NONE
+        );
+        assert_eq!(state.load_admission(DeckId::One), Ok(LoadAllowed::Stopped));
+        assert_eq!(state.deck(DeckId::Two).jog_mode, JogMode::Vinyl);
+
+        let track = media_id(0x72);
+        assert!(
+            state
+                .commit_track_load(DeckId::One, track, 12_000, HotCueBank::empty(track), None)
+                .is_ok()
+        );
+        assert_eq!(state.deck(DeckId::One).jog_mode, JogMode::Cdj);
+
+        state.handle_control(ext(DeckId::One, DeckExtAction::JogVinyl, true));
+        state.handle_control(pressed(DeckId::One, SemanticControl::JogTouch, true));
+        assert!(matches!(
+            state
+                .handle_control(relative(DeckId::One, SemanticControl::JogScratch, 12))
+                .items[0],
+            Some(DeckEffect::ScratchJog { ticks: 12, .. })
+        ));
     }
 }
