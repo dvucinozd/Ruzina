@@ -223,6 +223,45 @@ pub fn parse_pcpt(
     }))
 }
 
+/// One PCOB list-0 (memory) record: a point or a loop, never a hot-cue slot.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RekordboxMemoryCue {
+    pub kind: RekordboxCueKind,
+    pub start_ms: u32,
+    pub end_ms: u32,
+}
+
+/// Validate a memory-list PCPT. Memory entries carry hot-cue number 0; a
+/// nonzero number, an unknown kind or a loop ending at/before its start is
+/// malformed and must reject the whole DAT transaction.
+pub fn parse_memory_pcpt(bytes: &[u8]) -> Result<RekordboxMemoryCue, AnlzHotCueError> {
+    if bytes.len() < ANLZ_PCPT_BYTES
+        || &bytes[0..4] != b"PCPT"
+        || !(28..=ANLZ_PCPT_BYTES as u32).contains(&be32(&bytes[4..8]))
+        || be32(&bytes[8..12]) != ANLZ_PCPT_BYTES as u32
+        || be32(&bytes[12..16]) != 0
+    {
+        return Err(AnlzHotCueError::InvalidPcpt);
+    }
+    let kind = match bytes[28] {
+        1 => RekordboxCueKind::Single,
+        2 => RekordboxCueKind::Loop,
+        _ => return Err(AnlzHotCueError::InvalidPcpt),
+    };
+    let start_ms = be32(&bytes[32..36]);
+    let raw_end_ms = be32(&bytes[36..40]);
+    let end_ms = match kind {
+        RekordboxCueKind::Single => 0,
+        RekordboxCueKind::Loop if raw_end_ms > start_ms => raw_end_ms,
+        RekordboxCueKind::Loop => return Err(AnlzHotCueError::InvalidLoop),
+    };
+    Ok(RekordboxMemoryCue {
+        kind,
+        start_ms,
+        end_ms,
+    })
+}
+
 pub fn parse_hot_cues(data: &[u8]) -> Result<RekordboxHotCueBank, AnlzHotCueError> {
     let file_len = u32::try_from(data.len()).map_err(|_| AnlzHotCueError::SectionOutOfRange)?;
     if file_len < ANLZ_SECTION_HEADER_BYTES as u32 {
@@ -350,6 +389,34 @@ mod tests {
         let data = pcob(0, &[pcpt(0, 1, 500, 0)]);
         let bank = parse_hot_cues(&data).unwrap();
         assert_eq!(bank.exists_mask(), 0);
+    }
+
+    #[test]
+    fn memory_records_are_points_or_loops_with_hot_cue_number_zero() {
+        assert_eq!(
+            parse_memory_pcpt(&pcpt(0, 1, 500, 0)),
+            Ok(RekordboxMemoryCue {
+                kind: RekordboxCueKind::Single,
+                start_ms: 500,
+                end_ms: 0,
+            })
+        );
+        assert_eq!(
+            parse_memory_pcpt(&pcpt(0, 2, 500, 900)).unwrap().end_ms,
+            900
+        );
+        assert_eq!(
+            parse_memory_pcpt(&pcpt(1, 1, 500, 0)),
+            Err(AnlzHotCueError::InvalidPcpt)
+        );
+        assert_eq!(
+            parse_memory_pcpt(&pcpt(0, 3, 500, 0)),
+            Err(AnlzHotCueError::InvalidPcpt)
+        );
+        assert_eq!(
+            parse_memory_pcpt(&pcpt(0, 2, 900, 900)),
+            Err(AnlzHotCueError::InvalidLoop)
+        );
     }
 
     #[test]

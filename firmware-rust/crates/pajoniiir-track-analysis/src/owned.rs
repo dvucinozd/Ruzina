@@ -1,5 +1,8 @@
 //! Bounded owned data, built outside render/control and immutable after publish.
-use crate::{AnalysisCue, AnalysisProvider, Beat, BeatGrid, TrackAnalysis, WaveformColumn};
+use crate::{
+    AnalysisCue, AnalysisMemoryCue, AnalysisProvider, Beat, BeatGrid, MAX_MEMORY_CUES,
+    TrackAnalysis, WaveformColumn,
+};
 use alloc::vec::Vec;
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_media_session::MediaLease;
@@ -32,6 +35,8 @@ pub struct AnalysisBuilder {
     preview: Vec<WaveformColumn>,
     detail: Vec<WaveformColumn>,
     cues: Vec<AnalysisCue>,
+    memory_cues: Vec<AnalysisMemoryCue>,
+    memory_cues_truncated: bool,
     detail_rate_hz: u16,
 }
 impl AnalysisBuilder {
@@ -41,6 +46,8 @@ impl AnalysisBuilder {
             preview: Vec::new(),
             detail: Vec::new(),
             cues: Vec::new(),
+            memory_cues: Vec::new(),
+            memory_cues_truncated: false,
             detail_rate_hz: 0,
         }
     }
@@ -104,6 +111,18 @@ impl AnalysisBuilder {
         }
         push_bounded(&mut self.cues, cue, 8)
     }
+    /// Keeps export order; entries beyond [`MAX_MEMORY_CUES`] set an explicit
+    /// truncation flag instead of failing the import. A malformed loop fails.
+    pub fn push_memory_cue(&mut self, cue: AnalysisMemoryCue) -> Result<(), AnalysisDataError> {
+        if cue.end_ms.is_some_and(|end| end <= cue.start_ms) {
+            return Err(AnalysisDataError::InvalidCue);
+        }
+        if self.memory_cues.len() >= MAX_MEMORY_CUES {
+            self.memory_cues_truncated = true;
+            return Ok(());
+        }
+        push_bounded(&mut self.memory_cues, cue, MAX_MEMORY_CUES)
+    }
     pub fn finish(
         self,
         identity: AnalysisIdentity,
@@ -164,6 +183,7 @@ impl AnalysisPublication {
             (!self.data.beats.is_empty()).then(|| BeatGrid::new(&self.data.beats)),
         )
         .with_visuals(&self.data.preview, &self.data.detail, &self.data.cues)
+        .with_memory_cues(&self.data.memory_cues, self.data.memory_cues_truncated)
         .with_detail_rate(self.data.detail_rate_hz)
     }
 }

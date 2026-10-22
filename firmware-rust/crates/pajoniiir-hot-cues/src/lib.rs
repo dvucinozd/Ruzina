@@ -634,6 +634,24 @@ mod tests {
     }
 
     #[test]
+    fn restored_bank_record_round_trips_without_overrides_and_shadows_older_edits() {
+        // RP-05 source restore persists an override-free bank. It must decode
+        // as "no local overrides" so reboot shows the imported source again.
+        let id = derived_id(0x22, "Music/restore.flac");
+        let mut source = HotCueBank::empty(id);
+        assert!(source.set_single(0, 1_000));
+        let source = source.as_source();
+        let restored = HotCueBank::empty(id);
+        let decoded = decode_record_v4(id, &encode_record_v4(&restored)).unwrap();
+        assert_eq!(decoded, restored);
+        assert_eq!(decoded.override_mask(), 0);
+        assert_eq!(
+            HotCueBank::merged(source, decoded).unwrap().slot(0),
+            Some(HotCueSlot::single(1_000))
+        );
+    }
+
+    #[test]
     fn v4_record_rejects_wrong_track_crc_masks_and_invalid_slot() {
         let id = derived_id(0x31, "Music/a.wav");
         let other = derived_id(0x31, "Music/b.wav");

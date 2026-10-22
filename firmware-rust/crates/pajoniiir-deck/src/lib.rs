@@ -9,7 +9,7 @@ use pajoniiir_controller_core::{
     BeatFxTarget, ControlEvent, ControlValue, DeckExtAction, DeckId, PadMode, SemanticControl,
 };
 use pajoniiir_core::MediaTrackId;
-use pajoniiir_hot_cues::HotCueBank;
+use pajoniiir_hot_cues::{HotCueBank, HotCueKind, HotCueSlot};
 use pajoniiir_track_analysis::{
     TrackAnalysis, beat_jump_target_ms, beat_loop_duration_ms, phase_align_target_ms,
 };
@@ -1615,11 +1615,7 @@ impl DeckProductState {
         }
 
         if let Some(cue) = effective.slot(pad) {
-            self.decks[index].position_ms = cue.pos_ms;
-            return DeckEffects::one(DeckEffect::Seek {
-                deck,
-                position_ms: cue.pos_ms,
-            });
+            return self.recall_hot_cue(deck, cue);
         }
 
         let position_ms = self.decks[index].position_ms;
@@ -1628,6 +1624,62 @@ impl DeckProductState {
         }
         self.hot_cue_locals[index] = Some(local);
         DeckEffects::one(DeckEffect::PersistHotCues { deck, bank: local })
+    }
+
+    /// Explicit restore (M2.5 B9): replace the local bank with one that has no
+    /// overrides, so every imported cue, including deleted ones, is effective
+    /// again. Only this action drops local edits; it is persisted like any
+    /// other edit, and a deck with nothing to restore publishes nothing.
+    fn restore_source_cues(&mut self, deck: DeckId) -> DeckEffects {
+        let index = deck_index(deck);
+        let (Some(source), Some(local)) = (self.hot_cue_sources[index], self.hot_cue_locals[index])
+        else {
+            return DeckEffects::NONE;
+        };
+        if local.override_mask() == 0 {
+            return DeckEffects::NONE;
+        }
+        let restored = HotCueBank::empty(source.track_id());
+        self.hot_cue_locals[index] = Some(restored);
+        DeckEffects::one(DeckEffect::PersistHotCues {
+            deck,
+            bank: restored,
+        })
+    }
+
+    /// M2.5 B11: a loop cue recalls its start and activates its stored end as
+    /// one atomic Seek + SetLoop publication; a single cue exits an active loop.
+    /// Play/pause state is preserved and loop-adjust ownership is cleared.
+    fn recall_hot_cue(&mut self, deck: DeckId, cue: HotCueSlot) -> DeckEffects {
+        let state = &mut self.decks[deck_index(deck)];
+        state.position_ms = cue.pos_ms;
+        state.loop_adjust_mode = LoopAdjustMode::None;
+        state.loop_state.pending_in_ms = None;
+        let seek = DeckEffect::Seek {
+            deck,
+            position_ms: cue.pos_ms,
+        };
+
+        if cue.kind == HotCueKind::Loop
+            && let Some(region) = LoopRegion::new(cue.pos_ms, cue.end_ms)
+        {
+            state.loop_state.active = Some(region);
+            state.loop_state.last = Some(region);
+            return DeckEffects::two(
+                seek,
+                DeckEffect::SetLoop {
+                    deck,
+                    start_ms: region.start_ms,
+                    end_ms: region.end_ms,
+                },
+            );
+        }
+
+        if let Some(active) = state.loop_state.active.take() {
+            state.loop_state.last = Some(active);
+            return DeckEffects::two(seek, DeckEffect::ClearLoop { deck });
+        }
+        DeckEffects::one(seek)
     }
 
     fn handle_beat_loop_pad_action(
@@ -1876,6 +1928,9 @@ impl DeckProductState {
             }
             DeckExtAction::LoopAdjustOut if action.pressed => {
                 self.set_loop_adjust_mode(deck, LoopAdjustMode::Out);
+            }
+            DeckExtAction::RestoreSourceCues if action.pressed => {
+                return self.restore_source_cues(deck);
             }
             DeckExtAction::JogVinyl | DeckExtAction::JogCdj if action.pressed => {
                 let mode = if action.action == DeckExtAction::JogCdj {
@@ -4161,6 +4216,182 @@ mod tests {
         );
         assert!(!state.deck(DeckId::One).cue_held());
         assert!(!state.deck(DeckId::One).cue_previewing());
+    }
+
+    // RP-05: M2.5 B9/B11 recall and explicit source restore.
+    fn hot_cue(deck: DeckId, pad: u8, shifted: bool) -> ControlEvent {
+        ControlEvent {
+            deck: Some(deck),
+            control: SemanticControl::PadAction,
+            value: ControlValue::PadAction(PadAction {
+                pad,
+                mode: PadMode::HotCue,
+                shifted,
+                pressed: true,
+            }),
+        }
+    }
+
+    fn loaded_with_source(deck: DeckId, track: MediaTrackId) -> DeckProductState {
+        let mut source = HotCueBank::empty(track);
+        assert!(source.set_single(0, 1_000));
+        assert!(source.set_loop(1, 2_000, 4_000));
+        let mut state = DeckProductState::new();
+        assert!(
+            state
+                .commit_track_load(deck, track, 12_000, source.as_source(), None)
+                .is_ok()
+        );
+        state
+    }
+
+    #[test]
+    fn loop_cue_recall_publishes_seek_and_loop_atomically_and_keeps_transport() {
+        let mut state = loaded_with_source(DeckId::Two, media_id(0x81));
+        state.handle_control(ext(DeckId::Two, DeckExtAction::LoopAdjustIn, true));
+        let (_, _, play) = playback_request(state.handle_control(pressed(
+            DeckId::Two,
+            SemanticControl::Play,
+            true,
+        )));
+        assert!(state.resolve_playback_request(DeckId::Two, play, true));
+
+        assert_eq!(
+            state.handle_control(hot_cue(DeckId::Two, 1, false)),
+            DeckEffects::two(
+                DeckEffect::Seek {
+                    deck: DeckId::Two,
+                    position_ms: 2_000,
+                },
+                DeckEffect::SetLoop {
+                    deck: DeckId::Two,
+                    start_ms: 2_000,
+                    end_ms: 4_000,
+                },
+            )
+        );
+        let deck = *state.deck(DeckId::Two);
+        assert!(deck.playing);
+        assert_eq!(deck.loop_state.active, Some(loop_region(2_000, 4_000)));
+        assert_eq!(deck.loop_adjust_mode, LoopAdjustMode::None);
+        assert_eq!(state.deck(DeckId::One).loop_state.active, None);
+
+        // A single cue exits the active loop but remembers it for RELOOP.
+        assert_eq!(
+            state.handle_control(hot_cue(DeckId::Two, 0, false)),
+            DeckEffects::two(
+                DeckEffect::Seek {
+                    deck: DeckId::Two,
+                    position_ms: 1_000,
+                },
+                DeckEffect::ClearLoop { deck: DeckId::Two },
+            )
+        );
+        let deck = *state.deck(DeckId::Two);
+        assert!(deck.playing);
+        assert_eq!(deck.loop_state.active, None);
+        assert_eq!(deck.loop_state.last, Some(loop_region(2_000, 4_000)));
+        assert_eq!(
+            state.handle_control(hot_cue(DeckId::Two, 0, false)),
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::Two,
+                position_ms: 1_000,
+            })
+        );
+    }
+
+    #[test]
+    fn explicit_restore_drops_local_edits_and_tombstones_but_nothing_implicit_does() {
+        let track = media_id(0x82);
+        let mut state = loaded_with_source(DeckId::One, track);
+
+        // Delete imported slot 0 and overwrite imported slot 1 locally.
+        let Some(DeckEffect::PersistHotCues { bank: deleted, .. }) =
+            state.handle_control(hot_cue(DeckId::One, 0, true)).items[0]
+        else {
+            panic!("shifted pad must persist a tombstone");
+        };
+        assert!(state.hot_cues(DeckId::One).unwrap().slot(0).is_none());
+        let mut edited = deleted;
+        assert!(edited.set_single(1, 9_000));
+        assert!(state.update_local_hot_cues(DeckId::One, edited));
+        assert_eq!(
+            state.hot_cues(DeckId::One).unwrap().slot(1),
+            Some(HotCueSlot::single(9_000))
+        );
+
+        // Reload with the persisted local bank keeps the edits (no overwrite).
+        let mut source = HotCueBank::empty(track);
+        assert!(source.set_single(0, 1_000));
+        assert!(source.set_loop(1, 2_000, 4_000));
+        assert!(
+            state
+                .commit_track_load(DeckId::One, track, 12_000, source.as_source(), Some(edited))
+                .is_ok()
+        );
+        assert!(state.hot_cues(DeckId::One).unwrap().slot(0).is_none());
+        assert_eq!(
+            state.handle_control(ext(DeckId::One, DeckExtAction::RestoreSourceCues, false)),
+            DeckEffects::NONE
+        );
+
+        let restored = HotCueBank::empty(track);
+        assert_eq!(
+            state.handle_control(ext(DeckId::One, DeckExtAction::RestoreSourceCues, true)),
+            DeckEffects::one(DeckEffect::PersistHotCues {
+                deck: DeckId::One,
+                bank: restored,
+            })
+        );
+        let effective = state.hot_cues(DeckId::One).unwrap();
+        assert_eq!(effective.slot(0), Some(HotCueSlot::single(1_000)));
+        assert_eq!(effective.slot(1), HotCueSlot::loop_region(2_000, 4_000));
+        assert_eq!(
+            state.handle_control(hot_cue(DeckId::One, 0, false)),
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 1_000,
+            })
+        );
+        // Nothing left to restore, and an unloaded deck has no bank to touch.
+        assert_eq!(
+            state.handle_control(ext(DeckId::One, DeckExtAction::RestoreSourceCues, true)),
+            DeckEffects::NONE
+        );
+        assert_eq!(
+            state.handle_control(ext(DeckId::Two, DeckExtAction::RestoreSourceCues, true)),
+            DeckEffects::NONE
+        );
+
+        // A restored (empty) persisted bank reloads as the source bank, and a
+        // different track's local bank is never adopted.
+        assert!(
+            state
+                .commit_track_load(
+                    DeckId::One,
+                    track,
+                    12_000,
+                    source.as_source(),
+                    Some(restored)
+                )
+                .is_ok()
+        );
+        assert_eq!(
+            state.hot_cues(DeckId::One).unwrap().slot(0),
+            Some(HotCueSlot::single(1_000))
+        );
+        let other = media_id(0x83);
+        assert_eq!(
+            state.commit_track_load(
+                DeckId::One,
+                other,
+                12_000,
+                HotCueBank::empty(other),
+                Some(edited)
+            ),
+            Err(LoadRefusal::TrackIdentity)
+        );
+        assert!(!state.update_local_hot_cues(DeckId::One, HotCueBank::empty(other)));
     }
 
     #[test]

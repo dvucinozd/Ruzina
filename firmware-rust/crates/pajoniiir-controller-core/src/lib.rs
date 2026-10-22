@@ -32,6 +32,9 @@ pub enum DeckExtAction {
     LoopAdjustOut,
     Quantize,
     SyncOff,
+    /// Explicit restore of the loaded track's imported hot cues (M2.5 B9):
+    /// drops every local override and tombstone; release is ignored.
+    RestoreSourceCues,
     /// Idempotent per-deck jog mode selection (M2.5 B13a/B18); release is ignored.
     JogVinyl,
     JogCdj,

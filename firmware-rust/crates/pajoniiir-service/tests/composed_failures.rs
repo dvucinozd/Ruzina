@@ -744,6 +744,91 @@ fn cue_press_withdraws_an_admitted_load_and_cdj_touch_does_not() {
     assert!(rig.gates[1].finish(permit));
 }
 
+// RP-05: loop-cue recall and explicit source restore through the product owner.
+fn load_with_source(rig: &mut Rig, deck: DeckId, track: u8, source: HotCueBank) {
+    let candidate = rig.candidate(track);
+    assert!(
+        rig.product
+            .commit_library_load(deck, candidate, source.as_source(), None, true, None)
+    );
+    rig.sync();
+}
+
+#[test]
+fn loop_hot_cue_recall_reaches_transport_as_one_seek_then_loop() {
+    let mut rig = Rig::new();
+    let mut source = HotCueBank::empty(MediaTrackId([4; 16]));
+    assert!(source.set_loop(2, 1_000, 3_000));
+    load_with_source(&mut rig, DeckId::One, 4, source);
+    rig.cue(DeckId::One, 2);
+    assert_eq!(
+        rig.next_command().effect,
+        DeckEffect::Seek {
+            deck: DeckId::One,
+            position_ms: 1_000
+        }
+    );
+    assert_eq!(
+        rig.next_command().effect,
+        DeckEffect::SetLoop {
+            deck: DeckId::One,
+            start_ms: 1_000,
+            end_ms: 3_000
+        }
+    );
+    assert!(rig.product.next_transport_effect().is_none());
+}
+
+#[test]
+fn source_restore_persists_once_and_refreshes_both_decks_on_that_track() {
+    use pajoniiir_controller_core::{DeckExtAction, DeckExtActionValue};
+    let mut rig = Rig::new();
+    let track = MediaTrackId([5; 16]);
+    let mut source = HotCueBank::empty(track);
+    assert!(source.set_single(0, 1_500));
+    load_with_source(&mut rig, DeckId::One, 5, source);
+    load_with_source(&mut rig, DeckId::Two, 5, source);
+
+    rig.event(
+        DeckId::One,
+        SemanticControl::PadAction,
+        ControlValue::PadAction(PadAction {
+            pad: 0,
+            mode: PadMode::HotCue,
+            shifted: true,
+            pressed: true,
+        }),
+    );
+    assert!(rig.product.complete_persistence_effect(true));
+    for deck in [DeckId::One, DeckId::Two] {
+        assert!(rig.product.deck().hot_cues(deck).unwrap().slot(0).is_none());
+    }
+
+    rig.event(
+        DeckId::One,
+        SemanticControl::DeckExtAction,
+        ControlValue::DeckExtAction(DeckExtActionValue {
+            action: DeckExtAction::RestoreSourceCues,
+            pressed: true,
+        }),
+    );
+    assert_eq!(
+        rig.product.next_persistence_effect(),
+        Some(DeckEffect::PersistHotCues {
+            deck: DeckId::One,
+            bank: HotCueBank::empty(track)
+        })
+    );
+    assert!(rig.product.complete_persistence_effect(true));
+    assert!(rig.product.next_persistence_effect().is_none());
+    for deck in [DeckId::One, DeckId::Two] {
+        assert_eq!(
+            rig.product.deck().hot_cues(deck).unwrap().slot(0),
+            source.slot(0)
+        );
+    }
+}
+
 #[test]
 fn final_commit_rechecks_admission_and_preserves_a_playing_deck() {
     let mut rig = Rig::new();

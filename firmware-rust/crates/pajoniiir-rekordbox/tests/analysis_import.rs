@@ -2,9 +2,10 @@
 use pajoniiir_rekordbox::anlz_analysis::{
     AnalysisFileKind, AnlzImporter, ImportError, extended_path,
 };
+use pajoniiir_rekordbox::anlz_hot_cues::AnlzHotCueError;
 use pajoniiir_track_analysis::{
-    AnalysisProvider,
-    owned::{AnalysisDataError, AnalysisIdentity, AnalysisPins},
+    AnalysisMemoryCue, AnalysisProvider,
+    owned::{AnalysisDataError, AnalysisIdentity, AnalysisPins, AnalysisPublication},
 };
 
 const DAT: &[u8] = include_bytes!("fixtures/track-a.DAT");
@@ -71,6 +72,114 @@ fn imports_grid_preview_detail_and_hot_cues_as_neutral_immutable_data() {
     assert_eq!(view.cues().len(), 2);
     assert_eq!(view.cues()[0].start_ms, 1000);
     assert_eq!(view.cues()[1].end_ms, Some(4000));
+    // The fixture's PCOB list 0 holds one memory point, separate from slots.
+    assert_eq!(
+        view.memory_cues(),
+        &[AnalysisMemoryCue {
+            start_ms: 750,
+            end_ms: None
+        }]
+    );
+    assert!(!view.memory_cues_truncated());
+}
+
+// RP-05 / M2.5 B7: memory list import. Records follow Deep Symmetry's PCPT
+// layout; the container and PCOB headers mirror make_analysis_fixture.py.
+fn tag(name: &[u8; 4], header: &[u8], body: &[u8]) -> Vec<u8> {
+    let size = 12 + header.len() as u32;
+    let mut out = name.to_vec();
+    out.extend_from_slice(&size.to_be_bytes());
+    out.extend_from_slice(&(size + body.len() as u32).to_be_bytes());
+    out.extend_from_slice(header);
+    out.extend_from_slice(body);
+    out
+}
+fn container(tags: &[Vec<u8>]) -> Vec<u8> {
+    let body: Vec<u8> = tags.concat();
+    let mut out = b"PMAI".to_vec();
+    out.extend_from_slice(&28u32.to_be_bytes());
+    out.extend_from_slice(&(28 + body.len() as u32).to_be_bytes());
+    out.extend_from_slice(&[0; 16]);
+    out.extend_from_slice(&body);
+    out
+}
+fn memory_pcpt(kind: u8, start: u32, end: u32) -> Vec<u8> {
+    let mut record = vec![0u8; 56];
+    record[..4].copy_from_slice(b"PCPT");
+    record[4..8].copy_from_slice(&28u32.to_be_bytes());
+    record[8..12].copy_from_slice(&56u32.to_be_bytes());
+    record[28] = kind;
+    record[32..36].copy_from_slice(&start.to_be_bytes());
+    record[36..40].copy_from_slice(&end.to_be_bytes());
+    record
+}
+fn memory_list(records: &[Vec<u8>]) -> Vec<u8> {
+    let mut header = 0u32.to_be_bytes().to_vec();
+    header.extend_from_slice(&0u16.to_be_bytes());
+    header.extend_from_slice(&(records.len() as u16).to_be_bytes());
+    header.extend_from_slice(&1u32.to_be_bytes());
+    tag(b"PCOB", &header, &records.concat())
+}
+fn import_dat(bytes: &[u8]) -> Result<AnalysisPublication, ImportError> {
+    let mut importer = AnlzImporter::new();
+    feed(&mut importer, AnalysisFileKind::Dat, bytes)?;
+    importer.finish(identity(1), 12_000)
+}
+
+#[test]
+fn memory_cues_keep_export_order_points_and_loops_and_truncate_after_sixteen() {
+    let mut records = vec![
+        memory_pcpt(2, 4_000, 6_000),
+        memory_pcpt(1, 4_000, 0),
+        memory_pcpt(1, 1_000, 0),
+    ];
+    for index in 0..14 {
+        records.push(memory_pcpt(1, 10_000 + index * 100, 0));
+    }
+    assert_eq!(records.len(), 17);
+    let data = import_dat(&container(&[memory_list(&records)])).unwrap();
+    let view = data.view();
+    assert_eq!(view.memory_cues().len(), 16);
+    assert!(view.memory_cues_truncated());
+    assert_eq!(
+        &view.memory_cues()[..3],
+        &[
+            AnalysisMemoryCue {
+                start_ms: 4_000,
+                end_ms: Some(6_000)
+            },
+            AnalysisMemoryCue {
+                start_ms: 4_000,
+                end_ms: None
+            },
+            AnalysisMemoryCue {
+                start_ms: 1_000,
+                end_ms: None
+            },
+        ]
+    );
+    assert_eq!(view.memory_cues()[15].start_ms, 11_200);
+    assert!(view.cues().is_empty());
+}
+
+#[test]
+fn malformed_or_duplicate_memory_lists_reject_the_dat_transaction() {
+    let bad_loop = container(&[memory_list(&[memory_pcpt(2, 5_000, 5_000)])]);
+    assert_eq!(
+        import_dat(&bad_loop).err(),
+        Some(ImportError::Cue(AnlzHotCueError::InvalidLoop))
+    );
+    let mut slotted = memory_pcpt(1, 5_000, 0);
+    slotted[12..16].copy_from_slice(&2u32.to_be_bytes());
+    assert_eq!(
+        import_dat(&container(&[memory_list(&[slotted])])).err(),
+        Some(ImportError::Cue(AnlzHotCueError::InvalidPcpt))
+    );
+    let list = memory_list(&[memory_pcpt(1, 1_000, 0)]);
+    assert_eq!(
+        import_dat(&container(&[list.clone(), list])).err(),
+        Some(ImportError::Duplicate)
+    );
 }
 #[test]
 fn missing_optional_ext_preserves_valid_preview_and_grid() {

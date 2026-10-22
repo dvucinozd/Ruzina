@@ -1,9 +1,10 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-22. Next action: **RP-05 memory/loop cues and source restore**.
+Updated: 2026-10-22. Next action: **RP-15/18 failure cases, then RP-06/07/08**.
 Host-implemented stack: RP-01/02 (PR #23, `ogranak/m25-rust-parity-plan`),
-RP-04 load admission (PR #24, `ogranak/m25-rp04-load-admission`) and RP-03
-CUE hold/VINYL-CDJ (`ogranak/m25-rp03-cue-jog`), each stacked on the previous.
+RP-04 load admission (PR #24, `ogranak/m25-rp04-load-admission`), RP-03 CUE
+hold/VINYL-CDJ (PR #25, `ogranak/m25-rp03-cue-jog`) and RP-05 memory/loop cues
+and source restore (`ogranak/m25-rp05-cues`), each stacked on the previous.
 See the parity plan rows for evidence and open items (upload path, Web Remote
 admission/tap semantics, tempo nudge/paused scrub, physical controller/import/
 listening acceptance). The sections below still describe the original baseline.
