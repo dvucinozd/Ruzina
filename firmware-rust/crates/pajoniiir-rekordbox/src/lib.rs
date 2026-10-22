@@ -38,8 +38,10 @@ const TRACK_OFF_STR_OFFS: usize = 0x5e;
 const TRACK_STR_COUNT: usize = 21;
 const TRACK_ROW_MIN_SIZE: usize = TRACK_OFF_STR_OFFS + TRACK_STR_COUNT * 2;
 
+// Track string slots follow Deep Symmetry's export.pdb layout and stable M2.5
+// `rekordbox_pdb.c` (20f1c3f0): 17 is the title, 18 is an unrelated slot.
 const STR_IDX_ANLZ_PATH: usize = 14;
-const STR_IDX_TITLE: usize = 18;
+const STR_IDX_TITLE: usize = 17;
 const STR_IDX_FILENAME: usize = 19;
 const STR_IDX_FILE_PATH: usize = 20;
 
@@ -1055,7 +1057,7 @@ impl PdbTrackRow {
         file_path: PdbText<PDB_PATH_MAX>,
         anlz_path: PdbText<PDB_PATH_MAX>,
     ) -> Self {
-        if title.is_empty() {
+        if title.is_empty() || title.as_str().is_none() {
             title.copy_from(&filename);
         }
 
@@ -1072,6 +1074,13 @@ impl PdbTrackRow {
             anlz_path,
         }
     }
+}
+
+/// Title policy shared by the page and streamed readers (M2.5 parity): a
+/// title whose offset or DeviceSQL encoding is malformed is treated as missing,
+/// so the row falls back to its filename. Path and name fields stay strict.
+pub fn recover_pdb_title<const N: usize>(decoded: Result<PdbText<N>, PdbError>) -> PdbText<N> {
+    decoded.unwrap_or_else(|_| PdbText::new())
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1195,7 +1204,8 @@ pub fn parse_pdb_track_row(
     let mut file_path = PdbText::new();
     let mut anlz_path = PdbText::new();
 
-    decode_track_string(page, size, row, STR_IDX_TITLE, &mut title)?;
+    let decoded_title = decode_track_string(page, size, row, STR_IDX_TITLE, &mut title);
+    let title = recover_pdb_title(decoded_title.map(|()| title));
     decode_track_string(page, size, row, STR_IDX_FILENAME, &mut filename)?;
     decode_track_string(page, size, row, STR_IDX_FILE_PATH, &mut file_path)?;
     decode_track_string(page, size, row, STR_IDX_ANLZ_PATH, &mut anlz_path)?;
@@ -1880,5 +1890,138 @@ mod tests {
 
         let track = parse_pdb_track_row(&page, 512, 0).unwrap().unwrap();
         assert_eq!(track.title.as_str(), Some("fallback.mp3"));
+    }
+
+    // RP-01 fixtures. Slot positions are written from the documented track row
+    // layout (string offsets at 0x5e, title 17, filename 19, path 20), not from
+    // the parser's STR_IDX_* constants, so a wrong constant cannot hide here.
+    const RAW_TRACK_SUBTYPE: u16 = 0x0024;
+    const RAW_STRING_SLOTS: usize = 0x5e;
+
+    fn raw_track_page(strings: &[(usize, u16)]) -> [u8; 512] {
+        let mut page = [0u8; 512];
+        let row = PDB_PAGE_HEAP_OFFSET;
+        put_le16(&mut page, row, RAW_TRACK_SUBTYPE);
+        for &(slot, offset) in strings {
+            put_le16(&mut page, row + RAW_STRING_SLOTS + slot * 2, offset);
+        }
+        page
+    }
+
+    fn put_utf16le_devicesql(data: &mut [u8], offset: usize, units: &[u16]) {
+        data[offset] = 0x90;
+        put_le16(data, offset + 1, (4 + units.len() * 2) as u16);
+        for (index, unit) in units.iter().copied().enumerate() {
+            put_le16(data, offset + 4 + index * 2, unit);
+        }
+    }
+
+    #[test]
+    fn title_comes_from_slot_17_not_adjacent_slots() {
+        let row = PDB_PAGE_HEAP_OFFSET;
+        let mut page = raw_track_page(&[(17, 0x90), (18, 0xa0), (19, 0xb0), (20, 0xc0)]);
+        put_short_devicesql(&mut page, row + 0x90, b"Slot 17 title");
+        put_short_devicesql(&mut page, row + 0xa0, b"Slot 18 other");
+        put_short_devicesql(&mut page, row + 0xb0, b"slot19.mp3");
+        put_short_devicesql(&mut page, row + 0xc0, b"/Contents/a.mp3");
+
+        let header = parse_pdb_track_row_header(&page[row..]).unwrap().unwrap();
+        assert_eq!(header.strings.title, 0x90);
+        assert_eq!(header.strings.filename, 0xb0);
+        assert_eq!(header.strings.file_path, 0xc0);
+
+        let track = parse_pdb_track_row(&page, 512, 0).unwrap().unwrap();
+        assert_eq!(track.title.as_str(), Some("Slot 17 title"));
+        assert_eq!(track.file_path.as_str(), Some("/Contents/a.mp3"));
+
+        let names = PdbResolvedNames {
+            artist: None,
+            album: None,
+            key: None,
+        };
+        let catalog = catalog_track_from_pdb(VolumeIdentity([0x17; 32]), &track, names).unwrap();
+        assert_eq!(catalog.title.as_str(), "Slot 17 title");
+    }
+
+    #[test]
+    fn missing_or_empty_slot_17_falls_back_to_filename_not_slot_18() {
+        let row = PDB_PAGE_HEAP_OFFSET;
+        let mut absent = raw_track_page(&[(18, 0xa0), (19, 0xb0)]);
+        put_short_devicesql(&mut absent, row + 0xa0, b"Slot 18 other");
+        put_short_devicesql(&mut absent, row + 0xb0, b"slot19.mp3");
+        let track = parse_pdb_track_row(&absent, 512, 0).unwrap().unwrap();
+        assert_eq!(track.title.as_str(), Some("slot19.mp3"));
+
+        let mut empty = absent;
+        put_le16(&mut empty, row + RAW_STRING_SLOTS + 17 * 2, 0x90);
+        empty[row + 0x90] = 0x03;
+        let track = parse_pdb_track_row(&empty, 512, 0).unwrap().unwrap();
+        assert_eq!(track.title.as_str(), Some("slot19.mp3"));
+
+        let mut neither = raw_track_page(&[(18, 0xa0)]);
+        put_short_devicesql(&mut neither, row + 0xa0, b"Slot 18 other");
+        let track = parse_pdb_track_row(&neither, 512, 0).unwrap().unwrap();
+        assert!(track.title.is_empty());
+    }
+
+    #[test]
+    fn utf16_title_in_slot_17_decodes_with_surrogate_pairs() {
+        let row = PDB_PAGE_HEAP_OFFSET;
+        let mut page = raw_track_page(&[(17, 0x90), (18, 0xd0), (19, 0xe0)]);
+        // "Ünï — 周防 𝄞" as explicit UTF-16 code units.
+        put_utf16le_devicesql(
+            &mut page,
+            row + 0x90,
+            &[
+                0x00dc, 0x006e, 0x00ef, 0x0020, 0x2014, 0x0020, 0x5468, 0x9632, 0x0020, 0xd834,
+                0xdd1e,
+            ],
+        );
+        put_short_devicesql(&mut page, row + 0xd0, b"Slot 18 other");
+        put_short_devicesql(&mut page, row + 0xe0, b"slot19.mp3");
+
+        let track = parse_pdb_track_row(&page, 512, 0).unwrap().unwrap();
+        assert_eq!(track.title.as_str(), Some("Ünï — 周防 𝄞"));
+        assert!(!track.title.was_truncated());
+    }
+
+    // M2.5 parity: a malformed title is treated as missing and the row shows
+    // its filename. Only the title is lenient; a malformed path still fails.
+    #[test]
+    fn malformed_slot_17_title_falls_back_to_filename() {
+        let row = PDB_PAGE_HEAP_OFFSET;
+        let mut lone_surrogate = raw_track_page(&[(17, 0x90), (19, 0xb0), (20, 0xc0)]);
+        put_utf16le_devicesql(&mut lone_surrogate, row + 0x90, &[0x0041, 0xdc00]);
+        put_short_devicesql(&mut lone_surrogate, row + 0xb0, b"slot19.mp3");
+        put_short_devicesql(&mut lone_surrogate, row + 0xc0, b"/Contents/a.mp3");
+        let track = parse_pdb_track_row(&lone_surrogate, 512, 0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(track.title.as_str(), Some("slot19.mp3"));
+        assert_eq!(track.file_path.as_str(), Some("/Contents/a.mp3"));
+
+        let mut outside_page = raw_track_page(&[(17, 0x1e0), (19, 0xb0)]);
+        put_short_devicesql(&mut outside_page, row + 0xb0, b"slot19.mp3");
+        let track = parse_pdb_track_row(&outside_page, 512, 0).unwrap().unwrap();
+        assert_eq!(track.title.as_str(), Some("slot19.mp3"));
+        assert_eq!(
+            recover_pdb_title::<PDB_TITLE_MAX>(Err(PdbError::TrackStringOffsetOutOfRange)),
+            PdbText::new()
+        );
+
+        // Short ASCII with non-UTF-8 bytes decodes but cannot be shown as text.
+        let mut not_utf8 = raw_track_page(&[(17, 0x90), (19, 0xb0)]);
+        put_short_devicesql(&mut not_utf8, row + 0x90, &[0x54, 0xff, 0xfe]);
+        put_short_devicesql(&mut not_utf8, row + 0xb0, b"slot19.mp3");
+        let track = parse_pdb_track_row(&not_utf8, 512, 0).unwrap().unwrap();
+        assert_eq!(track.title.as_str(), Some("slot19.mp3"));
+
+        let mut bad_path = raw_track_page(&[(17, 0x90), (20, 0xc0)]);
+        put_short_devicesql(&mut bad_path, row + 0x90, b"Title");
+        put_utf16le_devicesql(&mut bad_path, row + 0xc0, &[0x002f, 0xdc00]);
+        assert_eq!(
+            parse_pdb_track_row(&bad_path, 512, 0),
+            Err(PdbError::DeviceSqlInvalidUtf16)
+        );
     }
 }

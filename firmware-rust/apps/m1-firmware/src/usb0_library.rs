@@ -23,7 +23,7 @@ use pajoniiir_rekordbox::{
     PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb,
     parse_devicesql_field_header, parse_pdb_header, parse_pdb_name_row_header,
     parse_pdb_page_header, parse_pdb_table_directory, parse_pdb_track_row_header,
-    pdb_track_string_page_offset, resolve_pdb_track_names,
+    pdb_track_string_page_offset, recover_pdb_title, resolve_pdb_track_names,
 };
 use static_cell::StaticCell;
 
@@ -1116,8 +1116,11 @@ async fn scan_table_layout(
                         .await;
                         file = next_file;
                         buffer = next_buffer;
+                        // Malformed title encoding falls back to the filename
+                        // (M2.5 parity); storage I/O failures still abort.
                         let title = match title {
                             Ok(title) => title,
+                            Err(Usb0LibraryError::Pdb(error)) => recover_pdb_title(Err(error)),
                             Err(error) => return (file, buffer, Err(error)),
                         };
 
