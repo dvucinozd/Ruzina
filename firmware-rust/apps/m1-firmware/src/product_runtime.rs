@@ -39,9 +39,34 @@ const PRODUCT_AUDIO_DSP_EFFECT_CAPACITY: usize = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum LibraryEffect {
-    Browse { delta: i16, multiplier: u16 },
+    Browse {
+        delta: i16,
+        multiplier: u16,
+    },
     OpenLibrary,
-    Load { deck: DeckId, permit: LoadPermit },
+    /// PLAYLISTS/BACK: track list -> playlist tree -> parent level (RP-06).
+    Back,
+    /// LOAD on a folder/playlist row opens it without load admission.
+    Open,
+    Load {
+        deck: DeckId,
+        permit: LoadPermit,
+    },
+}
+
+/// Mirror of the Library worker's cursor: while it rests on a folder or
+/// playlist row, LOAD opens that row (M2.5) instead of claiming a deck, so a
+/// playing deck's LOAD LOCK does not block browsing. A stale mirror is safe:
+/// the worker resolves the actual row, and an `Open` never loads a track.
+static LIBRARY_CURSOR_ON_NODE: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
+pub(crate) fn set_library_cursor_on_node(on_node: bool) {
+    LIBRARY_CURSOR_ON_NODE.store(on_node, core::sync::atomic::Ordering::Release);
+}
+
+fn library_cursor_on_node() -> bool {
+    LIBRARY_CURSOR_ON_NODE.load(core::sync::atomic::Ordering::Acquire)
 }
 
 /// RP-04 single-flight load gates shared by the product control owner and the
@@ -845,10 +870,12 @@ impl SessionDeliverySink for ProductRuntime {
                                     multiplier: 10,
                                 })
                             }
-                            (
-                                SemanticControl::BrowsePress | SemanticControl::ShiftBrowsePress,
-                                ControlValue::Pressed(true),
-                            ) => Some(LibraryEffect::OpenLibrary),
+                            (SemanticControl::BrowsePress, ControlValue::Pressed(true)) => {
+                                Some(LibraryEffect::OpenLibrary)
+                            }
+                            (SemanticControl::ShiftBrowsePress, ControlValue::Pressed(true)) => {
+                                Some(LibraryEffect::Back)
+                            }
                             (
                                 SemanticControl::Load | SemanticControl::ShiftLoad,
                                 ControlValue::Pressed(true),
@@ -858,20 +885,26 @@ impl SessionDeliverySink for ProductRuntime {
                                         self.stats.accepted_library_controls.saturating_add(1);
                                     return true;
                                 };
-                                // One admission path for controller, touch and
-                                // future Web loads: verdict plus single-flight permit.
-                                match self
-                                    .deck
-                                    .load_admission(deck)
-                                    .and_then(|_| self.load_gate(deck).reserve())
-                                {
-                                    Ok(permit) => Some(LibraryEffect::Load { deck, permit }),
-                                    Err(_) => {
-                                        self.stats.library_load_locked =
-                                            self.stats.library_load_locked.saturating_add(1);
-                                        self.stats.accepted_library_controls =
-                                            self.stats.accepted_library_controls.saturating_add(1);
-                                        return true;
+                                if library_cursor_on_node() {
+                                    Some(LibraryEffect::Open)
+                                } else {
+                                    // One admission path for controller, touch and
+                                    // future Web loads: verdict plus single-flight permit.
+                                    match self
+                                        .deck
+                                        .load_admission(deck)
+                                        .and_then(|_| self.load_gate(deck).reserve())
+                                    {
+                                        Ok(permit) => Some(LibraryEffect::Load { deck, permit }),
+                                        Err(_) => {
+                                            self.stats.library_load_locked =
+                                                self.stats.library_load_locked.saturating_add(1);
+                                            self.stats.accepted_library_controls = self
+                                                .stats
+                                                .accepted_library_controls
+                                                .saturating_add(1);
+                                            return true;
+                                        }
                                     }
                                 }
                             }

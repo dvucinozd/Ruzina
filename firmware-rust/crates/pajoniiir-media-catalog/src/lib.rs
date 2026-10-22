@@ -6,6 +6,8 @@ use core::str;
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_media_session::MediaLease;
 
+pub mod playlists;
+
 pub const MEDIA_CATALOG_MAX_TRACKS: usize = 1_024;
 pub const CATALOG_TITLE_MAX: usize = 128;
 pub const CATALOG_ARTIST_MAX: usize = 96;

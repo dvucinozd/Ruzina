@@ -20,6 +20,8 @@ pub const PDB_TABLE_TRACKS: u32 = 0x00;
 pub const PDB_TABLE_ARTISTS: u32 = 0x02;
 pub const PDB_TABLE_ALBUMS: u32 = 0x03;
 pub const PDB_TABLE_KEYS: u32 = 0x05;
+pub const PDB_TABLE_PLAYLIST_TREE: u32 = 0x07;
+pub const PDB_TABLE_PLAYLIST_ENTRIES: u32 = 0x08;
 
 const PDB_HEADER_MIN: usize = 28;
 const PDB_TABLE_DIRECTORY_OFFSET: usize = 0x1c;
@@ -64,6 +66,18 @@ const NAME_ROW_FAR_FLAG: u16 = 0x04;
 const KEY_ROW_ID_OFFSET: usize = 0;
 const KEY_ROW_TEXT_OFFSET: u16 = 8;
 const KEY_ROW_MIN_BYTES: usize = 9;
+// Playlist tree and entry rows (M2.5 `rekordbox_pdb.c`, crate-digger).
+const PLAYLIST_TREE_PARENT_OFFSET: usize = 0;
+const PLAYLIST_TREE_SORT_OFFSET: usize = 8;
+const PLAYLIST_TREE_ID_OFFSET: usize = 12;
+const PLAYLIST_TREE_FOLDER_OFFSET: usize = 16;
+const PLAYLIST_TREE_NAME_OFFSET: u16 = 20;
+/// Fixed tree-row bytes before the inline DeviceSQL name.
+pub const PDB_PLAYLIST_TREE_ROW_HEADER_BYTES: usize = PLAYLIST_TREE_NAME_OFFSET as usize;
+const PLAYLIST_ENTRY_INDEX_OFFSET: usize = 0;
+const PLAYLIST_ENTRY_TRACK_OFFSET: usize = 4;
+const PLAYLIST_ENTRY_LIST_OFFSET: usize = 8;
+pub const PDB_PLAYLIST_ENTRY_ROW_BYTES: usize = 12;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PdbError {
@@ -84,6 +98,7 @@ pub enum PdbError {
     TrackRowOutOfRange,
     TrackStringOffsetOutOfRange,
     NameRowOutOfRange,
+    PlaylistRowOutOfRange,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -876,6 +891,61 @@ pub fn parse_pdb_name_row_header(
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbPlaylistTreeRow {
+    pub id: u32,
+    /// Zero is the root.
+    pub parent_id: u32,
+    pub sort_order: u32,
+    pub is_folder: bool,
+    /// Name position for [`PdbText::from_devicesql_field`] reads.
+    pub name: PdbNameRowHeader,
+}
+
+/// Playlist tree node header; the name follows inline at row offset 20.
+/// A zero id is skipped (counted invalid by the caller), never published.
+pub fn parse_pdb_playlist_tree_row(
+    row_prefix: &[u8],
+) -> Result<Option<PdbPlaylistTreeRow>, PdbError> {
+    let read = |offset| read_le32(row_prefix, offset).ok_or(PdbError::PlaylistRowOutOfRange);
+    if row_prefix.len() <= PDB_PLAYLIST_TREE_ROW_HEADER_BYTES {
+        return Err(PdbError::PlaylistRowOutOfRange);
+    }
+    let id = read(PLAYLIST_TREE_ID_OFFSET)?;
+    if id == 0 {
+        return Ok(None);
+    }
+    Ok(Some(PdbPlaylistTreeRow {
+        id,
+        parent_id: read(PLAYLIST_TREE_PARENT_OFFSET)?,
+        sort_order: read(PLAYLIST_TREE_SORT_OFFSET)?,
+        is_folder: read(PLAYLIST_TREE_FOLDER_OFFSET)? != 0,
+        name: PdbNameRowHeader {
+            id,
+            text_relative_offset: PLAYLIST_TREE_NAME_OFFSET,
+        },
+    }))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PdbPlaylistEntryRow {
+    /// Position inside the playlist; duplicates of one track are distinct rows.
+    pub entry_index: u32,
+    pub track_id: u32,
+    pub playlist_id: u32,
+}
+
+/// Rows without a track or playlist id are skipped (counted invalid).
+pub fn parse_pdb_playlist_entry_row(row: &[u8]) -> Result<Option<PdbPlaylistEntryRow>, PdbError> {
+    let read = |offset| read_le32(row, offset).ok_or(PdbError::PlaylistRowOutOfRange);
+    let entry = PdbPlaylistEntryRow {
+        entry_index: read(PLAYLIST_ENTRY_INDEX_OFFSET)?,
+        track_id: read(PLAYLIST_ENTRY_TRACK_OFFSET)?,
+        playlist_id: read(PLAYLIST_ENTRY_LIST_OFFSET)?,
+    };
+    Ok((entry.track_id != 0 && entry.playlist_id != 0).then_some(entry))
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PdbNameEntry {
     pub id: u32,
     pub name: PdbText<PDB_NAME_MAX>,
@@ -1632,6 +1702,59 @@ mod tests {
         assert_eq!(
             parse_pdb_name_row_header(&key, PdbNameRowLayout::Key).unwrap(),
             None
+        );
+    }
+
+    #[test]
+    fn parses_playlist_tree_and_entry_rows() {
+        let mut node = [0u8; 32];
+        put_le32(&mut node, 0, 4);
+        put_le32(&mut node, 8, 2);
+        put_le32(&mut node, 12, 9);
+        put_le32(&mut node, 16, 1);
+        put_short_devicesql(&mut node, 20, b"House");
+        let row = parse_pdb_playlist_tree_row(&node).unwrap().unwrap();
+        assert_eq!(
+            (row.id, row.parent_id, row.sort_order, row.is_folder),
+            (9, 4, 2, true)
+        );
+        let name = PdbText::<PDB_NAME_MAX>::from_devicesql_field(
+            &node[usize::from(row.name.text_relative_offset)..],
+        )
+        .unwrap();
+        assert_eq!(name.as_str(), Some("House"));
+
+        put_le32(&mut node, 16, 0);
+        assert!(
+            !parse_pdb_playlist_tree_row(&node)
+                .unwrap()
+                .unwrap()
+                .is_folder
+        );
+        put_le32(&mut node, 12, 0);
+        assert_eq!(parse_pdb_playlist_tree_row(&node).unwrap(), None);
+        assert_eq!(
+            parse_pdb_playlist_tree_row(&node[..20]),
+            Err(PdbError::PlaylistRowOutOfRange)
+        );
+
+        let mut entry = [0u8; PDB_PLAYLIST_ENTRY_ROW_BYTES];
+        put_le32(&mut entry, 0, 3);
+        put_le32(&mut entry, 4, 42);
+        put_le32(&mut entry, 8, 9);
+        assert_eq!(
+            parse_pdb_playlist_entry_row(&entry).unwrap(),
+            Some(PdbPlaylistEntryRow {
+                entry_index: 3,
+                track_id: 42,
+                playlist_id: 9,
+            })
+        );
+        put_le32(&mut entry, 4, 0);
+        assert_eq!(parse_pdb_playlist_entry_row(&entry).unwrap(), None);
+        assert_eq!(
+            parse_pdb_playlist_entry_row(&entry[..11]),
+            Err(PdbError::PlaylistRowOutOfRange)
         );
     }
 
