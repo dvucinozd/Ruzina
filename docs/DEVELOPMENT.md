@@ -5,8 +5,8 @@ scope; compilation, host behavior and physical acceptance remain distinct.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
-verification boundaries. Start with RP-01/02; this is a plan, not implemented
-M2.5 feature parity.
+verification boundaries. RP-01/02 are host-implemented; continue with
+RP-03/04/05. This is not complete M2.5 feature parity.
 
 ## Implemented software
 
@@ -34,8 +34,10 @@ functional reference; later shared-P4 beta/master fixes are evaluated separately
 The [pinned parity audit](M2_5_PARITY_PLAN.md) records implementation evidence,
 RP-01..20 tasks, requirement mappings and acceptance for each batch:
 
-1. **RP-01/02:** PDB title index correction, independent import fixtures and
-   end-to-end S3CP v2/v3/v4 compatibility, including bounded output initialization.
+1. **RP-01/02 (host-implemented):** PDB title index correction, independent
+   import fixtures and end-to-end S3CP v2/v3/v4 compatibility, including bounded
+   output initialization and the M2.5 Smart CFX/FILTER_ALWAYS channel-filter
+   gate. Firmware wiring is compile-only; an upload path remains open.
 2. **RP-03/04/05/15/18:** CUE hold-preview/PLAY commit, explicit VINYL/CDJ,
    shared load admission, loop/memory/source cue behavior and reconnect fencing.
 3. **RP-06/07/08:** ordered playlist hierarchy, artwork/PWV4 and cold MP3

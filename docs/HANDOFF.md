@@ -1,8 +1,10 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-22. Next action: **implement parser/profile batch RP-01/02**.
-The user requested repository documentation, commit and push for continuation
-by another agent. No firmware implementation is included in this handoff.
+Updated: 2026-10-22. Next action: **transport/cue batch RP-03/04/05**.
+RP-01/02 are host-implemented on this branch (see the parity plan rows for
+evidence and open items: future upload path, physical controller/import
+and filter listening acceptance). The sections below still describe the
+original handoff baseline.
 
 ## Read first and locate the checkout
 

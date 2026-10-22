@@ -95,6 +95,37 @@ fn disabled_rack_is_bit_identical_to_existing_eq_filter_and_mixer_path() {
 }
 
 #[test]
+fn disabled_channel_filter_gate_renders_like_a_centered_filter() {
+    let mut gated = active();
+    gated.filter_raw = 2000;
+    gated.filter_enabled = false;
+    let centered = active();
+    let mut open = gated;
+    open.filter_enabled = true;
+
+    let mut gated_graph = FixedRateRenderGraph::new();
+    let mut centered_graph = FixedRateRenderGraph::new();
+    let mut open_graph = FixedRateRenderGraph::new();
+    let mut differs = false;
+    for n in 0..20 {
+        let inputs = [
+            PcmFrame {
+                left: if n % 2 == 0 { 12000 } else { -12000 },
+                right: 9000 - n * 31,
+            },
+            PcmFrame::default(),
+        ];
+        let gated_block = render(&mut gated_graph, config(gated), inputs);
+        assert_eq!(
+            gated_block,
+            render(&mut centered_graph, config(centered), inputs)
+        );
+        differs |= gated_block != render(&mut open_graph, config(open), inputs);
+    }
+    assert!(differs, "an enabled low-pass filter must change the output");
+}
+
+#[test]
 fn delay_is_audible_at_exact_output_time_and_pfl_precedes_fader_and_master() {
     let [mut a, mut b] = memory();
     let mut graph = FixedRateRenderGraph::with_fx([&mut a, &mut b]).unwrap();

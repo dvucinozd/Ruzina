@@ -472,7 +472,7 @@ mod tests {
     use super::*;
     use pajoniiir_controller_core::SemanticControl;
     use pajoniiir_controller_profile::{
-        HEADER_SIZE, INPUT_ENTRY_SIZE, INPUT_FLAG_REPLAY, S3CP_MAGIC, S3CP_VERSION, crc32,
+        HEADER_SIZE, INPUT_ENTRY_SIZE, INPUT_FLAG_REPLAY, S3CP_MAGIC, S3CP_VERSION_LEGACY, crc32,
     };
 
     fn pressed(deck: DeckId, control: SemanticControl, down: bool) -> ControlEvent {
@@ -502,7 +502,7 @@ mod tests {
     fn replay_profile_bytes() -> [u8; HEADER_SIZE + INPUT_ENTRY_SIZE] {
         let mut bytes = [0u8; HEADER_SIZE + INPUT_ENTRY_SIZE];
         bytes[0..4].copy_from_slice(S3CP_MAGIC);
-        bytes[4..6].copy_from_slice(&S3CP_VERSION.to_le_bytes());
+        bytes[4..6].copy_from_slice(&S3CP_VERSION_LEGACY.to_le_bytes());
         bytes[6..8].copy_from_slice(&(HEADER_SIZE as u16).to_le_bytes());
         let profile_size = bytes.len() as u32;
         bytes[8..12].copy_from_slice(&profile_size.to_le_bytes());

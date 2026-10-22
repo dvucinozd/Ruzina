@@ -1,0 +1,25 @@
+{
+  "schema": "p4-controller-profile-v1",
+  "name": "RP-02 synthetic S3CP v4 extensions",
+  "vendor": "Pajoniiir test fixture",
+  "vid": "0x1209",
+  "pid": "0x0004",
+  "decks": 2,
+  "capabilities": {
+    "led_feedback": true,
+    "channel_filter_requires_smart_cfx": false
+  },
+  "init_sysex": ["0xF0", "0x00", "0x20", "0x7F", "0x03", "0x01", "0xF7"],
+  "inputs": [
+    { "type": "note_select", "event": "system.beat_fx_target", "status": "0x94", "data1": "0x10", "value": 0 },
+    { "type": "note_select", "event": "system.beat_fx_target", "status": "0x94", "data1": "0x11", "value": 1 },
+    { "type": "note_select", "event": "system.beat_fx_target", "status": "0x94", "data1": "0x12", "value": 2 },
+    { "type": "cc7_to14", "event": "mixer.ch2_filter", "status": "0xB1", "data1": "0x17", "replay": true },
+    { "type": "cc7_abs", "event": "system.beat_fx_depth", "status": "0xB4", "data1": "0x02", "replay": true }
+  ],
+  "outputs": [
+    { "kind": "note", "led": "play", "status": "0x90", "deck": 0, "data1": "0x0B", "value_scale": 64 },
+    { "kind": "cc_value", "led": "vu_meter", "status": "0xB0", "deck": 0, "data1": "0x02", "value_scale": 254 },
+    { "kind": "note", "led": "cue", "status": "0x90", "deck": 0, "data1": "0x0C" }
+  ]
+}

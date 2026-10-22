@@ -75,6 +75,7 @@ pub struct MixerState {
     master_cue_enabled: bool,
     smart_cfx_enabled: bool,
     smart_fader_enabled: bool,
+    channel_filter_always: bool,
 }
 
 impl MixerState {
@@ -89,6 +90,7 @@ impl MixerState {
             master_cue_enabled: true,
             smart_cfx_enabled: false,
             smart_fader_enabled: false,
+            channel_filter_always: false,
         }
     }
 
@@ -126,6 +128,24 @@ impl MixerState {
 
     pub const fn smart_fader_enabled(&self) -> bool {
         self.smart_fader_enabled
+    }
+
+    pub const fn channel_filter_always(&self) -> bool {
+        self.channel_filter_always
+    }
+
+    /// Controller-profile capability (S3CP v4 FILTER_ALWAYS). The owner sets it
+    /// only while such a profile is active and clears it on disconnect, missing
+    /// or older profiles, which keeps the M2.5 FLX4 policy.
+    pub fn set_channel_filter_always(&mut self, always: bool) {
+        self.channel_filter_always = always;
+    }
+
+    /// M2.5 policy: the channel filter is audible only while Smart CFX is on,
+    /// unless the active profile declares FILTER_ALWAYS. The Smart CFX response
+    /// curve still follows Smart CFX alone.
+    pub const fn channel_filter_enabled(&self) -> bool {
+        self.smart_cfx_enabled || self.channel_filter_always
     }
 
     pub fn effective_filter_raw(&self, deck: DeckId) -> u16 {
@@ -537,6 +557,34 @@ mod tests {
         assert!(effective < MIXER_CONTROL_CENTER);
         assert!(effective > raw);
         assert_eq!(state.deck(DeckId::One).filter, raw);
+    }
+
+    #[test]
+    fn channel_filter_follows_smart_cfx_unless_profile_declares_filter_always() {
+        let mut state = MixerState::new();
+        assert!(!state.channel_filter_enabled());
+
+        state.handle_control(pressed(None, SemanticControl::SmartCfx, true));
+        assert!(state.channel_filter_enabled());
+        state.handle_control(pressed(None, SemanticControl::SmartCfx, true));
+        assert!(!state.channel_filter_enabled());
+
+        state.handle_control(absolute(
+            Some(DeckId::Two),
+            SemanticControl::Filter,
+            MIXER_CONTROL_CENTER - 512,
+            MIXER_CONTROL_MAX,
+        ));
+        state.set_channel_filter_always(true);
+        assert!(state.channel_filter_enabled());
+        // FILTER_ALWAYS bypasses the gate but does not select the Smart CFX curve.
+        assert_eq!(
+            state.effective_filter_raw(DeckId::Two),
+            state.deck(DeckId::Two).filter
+        );
+
+        state.set_channel_filter_always(false);
+        assert!(!state.channel_filter_enabled());
     }
 
     #[test]
