@@ -78,6 +78,24 @@ impl EventScheduler {
         *self = Self::new();
     }
 
+    /// Retires every unaccepted discrete and continuous event, keeping the
+    /// loss/coalescing history. Returns how many events were retired.
+    pub fn clear_pending(&mut self) -> u32 {
+        let mut retired = self.fifo_count as u32;
+        self.fifo = [None; DISCRETE_FIFO_CAPACITY];
+        self.fifo_head = 0;
+        self.fifo_tail = 0;
+        self.fifo_count = 0;
+        for slot in &mut self.continuous {
+            if slot.dirty && slot.event.is_some() {
+                retired += 1;
+            }
+            *slot = ContinuousSlot::EMPTY;
+        }
+        self.continuous_cursor = 0;
+        retired
+    }
+
     pub fn enqueue_discrete(&mut self, event: ControlEvent) -> bool {
         if self.fifo_count >= DISCRETE_FIFO_CAPACITY {
             self.stats.fifo_full = self.stats.fifo_full.saturating_add(1);
@@ -776,5 +794,25 @@ mod tests {
         let dirty = held.next_dirty(&mut cursor).unwrap();
         assert_eq!(dirty.sequence, 44);
         assert_eq!(dirty.event.value, ControlValue::Pressed(false));
+    }
+
+    #[test]
+    fn clear_pending_retires_queued_work_but_keeps_loss_history() {
+        let mut scheduler = EventScheduler::new();
+        let play = pressed(DeckId::One, SemanticControl::Play, true);
+        for _ in 0..DISCRETE_FIFO_CAPACITY {
+            assert!(scheduler.enqueue_discrete(play));
+        }
+        assert!(!scheduler.enqueue_discrete(play));
+        let bend = relative(DeckId::One, SemanticControl::JogBend, 4);
+        assert!(scheduler.publish_continuous(bend, ContinuousMode::AccumulateDelta));
+
+        assert_eq!(scheduler.clear_pending(), DISCRETE_FIFO_CAPACITY as u32 + 1);
+        assert_eq!(scheduler.dequeue_discrete(), None);
+        assert_eq!(scheduler.take_continuous(), None);
+        assert_eq!(scheduler.stats().fifo_full, 1);
+
+        assert!(scheduler.enqueue_discrete(play));
+        assert_eq!(scheduler.dequeue_discrete(), Some(play));
     }
 }

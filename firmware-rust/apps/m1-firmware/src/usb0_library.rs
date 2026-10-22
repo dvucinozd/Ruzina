@@ -8,29 +8,29 @@ use embassy_sync::{
     channel::Channel,
     signal::Signal,
 };
-use pajoniiir_media_fs::{BoundedPath, FileHandle};
 use pajoniiir_media_catalog::{
     CatalogBank, CatalogBankBuilder, CatalogBankPublisher, CatalogBuildError, CatalogLoadCandidate,
     CatalogPublicationId, CatalogSelection, CatalogTrack, MEDIA_CATALOG_MAX_TRACKS,
 };
+use pajoniiir_media_fs::{BoundedPath, FileHandle};
 use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
     PDB_MAX_NAMES, PDB_NAME_MAX, PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_TABLE_ALBUMS,
-    PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS, PDB_TITLE_MAX,
-    PDB_TRACK_ROW_HEADER_BYTES, PdbCatalogError, PdbError, PdbHeader, PdbNameEntry,
-    PdbNameLookup, PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbTableDirectory,
-    PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb,
-    parse_devicesql_field_header, parse_pdb_header, parse_pdb_name_row_header,
-    parse_pdb_page_header, parse_pdb_table_directory, parse_pdb_track_row_header,
-    pdb_track_string_page_offset, recover_pdb_title, resolve_pdb_track_names,
+    PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS, PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES,
+    PdbCatalogError, PdbError, PdbHeader, PdbNameEntry, PdbNameLookup, PdbNameRowHeader,
+    PdbNameRowLayout, PdbPageSlotWalker, PdbTableDirectory, PdbText, PdbTrackRow,
+    REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb, parse_devicesql_field_header,
+    parse_pdb_header, parse_pdb_name_row_header, parse_pdb_page_header, parse_pdb_table_directory,
+    parse_pdb_track_row_header, pdb_track_string_page_offset, recover_pdb_title,
+    resolve_pdb_track_names,
 };
 use static_cell::StaticCell;
 
 use crate::product_runtime::LibraryEffect;
 use crate::usb0_msc::{
-    USB0_LIBRARY_EVENTS, Usb0FsCompletion, Usb0FsFileHandle, Usb0FsOperationError, Usb0FsRequest,
-    Usb0FsSubmitResult, Usb0FilesystemClient, Usb0LibraryEvent, Usb0MscBinding,
+    USB0_LIBRARY_EVENTS, Usb0FilesystemClient, Usb0FsCompletion, Usb0FsFileHandle,
+    Usb0FsOperationError, Usb0FsRequest, Usb0FsSubmitResult, Usb0LibraryEvent, Usb0MscBinding,
 };
 
 const USB0_LIBRARY_PDB_IO_BYTES: usize = 8_192;
@@ -382,12 +382,8 @@ impl Usb0LibraryCatalogStage {
     ) -> Result<(), Usb0LibraryError> {
         #[cfg(feature = "p4-psram-storage")]
         {
-            let resolved = resolve_pdb_track_names(
-                track,
-                &names.artists,
-                &names.albums,
-                &names.keys,
-            );
+            let resolved =
+                resolve_pdb_track_names(track, &names.artists, &names.albums, &names.keys);
             let catalog_track = catalog_track_from_pdb(volume_identity, track, resolved)
                 .map_err(Usb0LibraryError::CatalogDecode)?;
             let builder = self
@@ -576,9 +572,7 @@ fn map_filesystem_error(error: Usb0FsOperationError) -> Usb0LibraryError {
         Usb0FsOperationError::AnalysisPaused => Usb0LibraryError::FilesystemAnalysisPaused,
         Usb0FsOperationError::NoMedia => Usb0LibraryError::FilesystemNoMedia,
         Usb0FsOperationError::StaleLease => Usb0LibraryError::FilesystemStaleLease,
-        Usb0FsOperationError::HandleKindMismatch => {
-            Usb0LibraryError::FilesystemHandleKindMismatch
-        }
+        Usb0FsOperationError::HandleKindMismatch => Usb0LibraryError::FilesystemHandleKindMismatch,
         Usb0FsOperationError::Fat32(_) => Usb0LibraryError::FilesystemFat32,
         Usb0FsOperationError::ExFat(_) => Usb0LibraryError::FilesystemExFat,
     }
@@ -596,15 +590,19 @@ async fn open_export_pdb(
         BoundedPath::new(REKORDBOX_EXPORT_PDB_PATH).map_err(|_| Usb0LibraryError::PathTooLong)?;
     let ticket = client.issue_ticket(lease);
 
-    match client.submit(Usb0FsRequest::OpenRead { ticket, path }).await {
+    match client
+        .submit(Usb0FsRequest::OpenRead { ticket, path })
+        .await
+    {
         Usb0FsSubmitResult::Completed(Usb0FsCompletion::OpenRead { result, .. }) => {
             result.map_err(map_filesystem_error)
         }
         Usb0FsSubmitResult::QueueFull(_) => Err(Usb0LibraryError::BrokerBusy),
         Usb0FsSubmitResult::PendingCompletion(_) => Err(Usb0LibraryError::BrokerPending),
         Usb0FsSubmitResult::WrongClient(_) => Err(Usb0LibraryError::BrokerWrongClient),
-        Usb0FsSubmitResult::Completed(_)
-        | Usb0FsSubmitResult::UnexpectedCompletion { .. } => broker_invariant_reset(),
+        Usb0FsSubmitResult::Completed(_) | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+            broker_invariant_reset()
+        }
     }
 }
 
@@ -646,15 +644,15 @@ async fn seek_file(
         })
         .await
     {
-        Usb0FsSubmitResult::Completed(Usb0FsCompletion::Seek {
-            file, result, ..
-        }) => match result {
-            Ok(()) => SeekResult::Complete { file },
-            Err(error) => SeekResult::Failed {
-                file,
-                error: map_filesystem_error(error),
-            },
-        },
+        Usb0FsSubmitResult::Completed(Usb0FsCompletion::Seek { file, result, .. }) => {
+            match result {
+                Ok(()) => SeekResult::Complete { file },
+                Err(error) => SeekResult::Failed {
+                    file,
+                    error: map_filesystem_error(error),
+                },
+            }
+        }
         Usb0FsSubmitResult::QueueFull(Usb0FsRequest::Seek { file, .. }) => SeekResult::Failed {
             file,
             error: Usb0LibraryError::BrokerBusy,
@@ -772,7 +770,8 @@ async fn read_track_text<const N: usize>(
     &'static mut [u8],
     Result<PdbText<N>, Usb0LibraryError>,
 ) {
-    let page_relative = match pdb_track_string_page_offset(heap_offset, relative_offset, page_size) {
+    let page_relative = match pdb_track_string_page_offset(heap_offset, relative_offset, page_size)
+    {
         Ok(Some(offset)) => offset,
         Ok(None) => return (file, buffer, Ok(PdbText::new())),
         Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
@@ -826,8 +825,7 @@ async fn read_track_text<const N: usize>(
         );
     }
 
-    let text = PdbText::from_devicesql_field(&buffer[..field_len])
-        .map_err(Usb0LibraryError::Pdb);
+    let text = PdbText::from_devicesql_field(&buffer[..field_len]).map_err(Usb0LibraryError::Pdb);
     (file, buffer, text)
 }
 
@@ -908,8 +906,7 @@ async fn read_name_text(
         );
     }
 
-    let text =
-        PdbText::from_devicesql_field(&buffer[..field_len]).map_err(Usb0LibraryError::Pdb);
+    let text = PdbText::from_devicesql_field(&buffer[..field_len]).map_err(Usb0LibraryError::Pdb);
     (file, buffer, text)
 }
 
@@ -929,8 +926,9 @@ async fn close_file(
         Usb0FsSubmitResult::QueueFull(_) => Err(Usb0LibraryError::BrokerBusy),
         Usb0FsSubmitResult::PendingCompletion(_) => Err(Usb0LibraryError::BrokerPending),
         Usb0FsSubmitResult::WrongClient(_) => Err(Usb0LibraryError::BrokerWrongClient),
-        Usb0FsSubmitResult::Completed(_)
-        | Usb0FsSubmitResult::UnexpectedCompletion { .. } => broker_invariant_reset(),
+        Usb0FsSubmitResult::Completed(_) | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+            broker_invariant_reset()
+        }
     }
 }
 
@@ -994,11 +992,7 @@ async fn scan_table_layout(
 
     loop {
         if page >= header.total_pages {
-            return (
-                file,
-                buffer,
-                Err(Usb0LibraryError::PageOutOfRange(page)),
-            );
+            return (file, buffer, Err(Usb0LibraryError::PageOutOfRange(page)));
         }
         if pages >= header.total_pages {
             return (file, buffer, Err(Usb0LibraryError::PageChainLoop));
@@ -1054,18 +1048,17 @@ async fn scan_table_layout(
             };
 
             for heap_offset in row_offsets.offsets().iter().copied() {
-                let page_relative = match (PDB_PAGE_HEAP_OFFSET as u32)
-                    .checked_add(u32::from(heap_offset))
-                {
-                    Some(offset) => offset,
-                    None => {
-                        return (
-                            file,
-                            buffer,
-                            Err(Usb0LibraryError::Pdb(PdbError::TrackRowOutOfRange)),
-                        );
-                    }
-                };
+                let page_relative =
+                    match (PDB_PAGE_HEAP_OFFSET as u32).checked_add(u32::from(heap_offset)) {
+                        Some(offset) => offset,
+                        None => {
+                            return (
+                                file,
+                                buffer,
+                                Err(Usb0LibraryError::Pdb(PdbError::TrackRowOutOfRange)),
+                            );
+                        }
+                    };
                 let row_end = match page_relative.checked_add(PDB_TRACK_ROW_HEADER_BYTES as u32) {
                     Some(end) => end,
                     None => {
@@ -1195,19 +1188,11 @@ async fn scan_table_layout(
                         let audio_path = match track.file_path.as_str() {
                             Some(path) => path,
                             None => {
-                                return (
-                                    file,
-                                    buffer,
-                                    Err(Usb0LibraryError::InvalidTrackPathUtf8),
-                                );
+                                return (file, buffer, Err(Usb0LibraryError::InvalidTrackPathUtf8));
                             }
                         };
                         if let Err(error) = derive_track_id(volume_identity, audio_path) {
-                            return (
-                                file,
-                                buffer,
-                                Err(Usb0LibraryError::Identity(error)),
-                            );
+                            return (file, buffer, Err(Usb0LibraryError::Identity(error)));
                         }
                         if let Err(error) = catalog.retain_track(volume_identity, &track, names) {
                             return (file, buffer, Err(error));
@@ -1216,11 +1201,7 @@ async fn scan_table_layout(
                         track_rows = match track_rows.checked_add(1) {
                             Some(total) => total,
                             None => {
-                                return (
-                                    file,
-                                    buffer,
-                                    Err(Usb0LibraryError::RowCountOverflow),
-                                );
+                                return (file, buffer, Err(Usb0LibraryError::RowCountOverflow));
                             }
                         };
                     }
@@ -1294,11 +1275,7 @@ async fn scan_name_table_layout(
 
     loop {
         if page >= header.total_pages {
-            return (
-                file,
-                buffer,
-                Err(Usb0LibraryError::PageOutOfRange(page)),
-            );
+            return (file, buffer, Err(Usb0LibraryError::PageOutOfRange(page)));
         }
         if pages >= header.total_pages {
             return (file, buffer, Err(Usb0LibraryError::PageChainLoop));
@@ -1354,18 +1331,17 @@ async fn scan_name_table_layout(
             };
 
             for heap_offset in row_offsets.offsets().iter().copied() {
-                let page_relative = match (PDB_PAGE_HEAP_OFFSET as u32)
-                    .checked_add(u32::from(heap_offset))
-                {
-                    Some(offset) => offset,
-                    None => {
-                        return (
-                            file,
-                            buffer,
-                            Err(Usb0LibraryError::Pdb(PdbError::NameRowOutOfRange)),
-                        );
-                    }
-                };
+                let page_relative =
+                    match (PDB_PAGE_HEAP_OFFSET as u32).checked_add(u32::from(heap_offset)) {
+                        Some(offset) => offset,
+                        None => {
+                            return (
+                                file,
+                                buffer,
+                                Err(Usb0LibraryError::Pdb(PdbError::NameRowOutOfRange)),
+                            );
+                        }
+                    };
                 let row_end = match page_relative.checked_add(layout.minimum_bytes() as u32) {
                     Some(end) => end,
                     None => {
@@ -1532,7 +1508,7 @@ async fn scan_probe_tables(
         buffer,
         probe.header,
         probe.artists_first_page,
-        PdbNameRowLayout::ArtistOrAlbum,
+        PdbNameRowLayout::Artist,
         &mut staging.artists,
     )
     .await;
@@ -1548,7 +1524,7 @@ async fn scan_probe_tables(
         buffer,
         probe.header,
         probe.albums_first_page,
-        PdbNameRowLayout::ArtistOrAlbum,
+        PdbNameRowLayout::Album,
         &mut staging.albums,
     )
     .await;
@@ -1716,12 +1692,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
     let mut selection = CatalogSelection::new();
 
     loop {
-        match select(
-            USB0_LIBRARY_EVENTS.wait(),
-            USB0_LIBRARY_COMMANDS.receive(),
-        )
-        .await
-        {
+        match select(USB0_LIBRARY_EVENTS.wait(), USB0_LIBRARY_COMMANDS.receive()).await {
             Either::First(Usb0LibraryEvent::Ready {
                 binding,
                 kind: _,
@@ -1877,7 +1848,8 @@ mod tests {
             put_le32(&mut page, offset + 12, first_page);
         }
 
-        let probe = parse_first_page(lease(), volume_identity(), 512 * 6, &page, page.len()).unwrap();
+        let probe =
+            parse_first_page(lease(), volume_identity(), 512 * 6, &page, page.len()).unwrap();
         assert_eq!(probe.header.page_size, 512);
         assert_eq!(probe.tracks_first_page, 1);
         assert_eq!(probe.artists_first_page, Some(2));
@@ -1895,14 +1867,14 @@ mod tests {
         put_le32(&mut prefix, 0x24, 1);
         put_le32(&mut prefix, 0x28, 1);
 
-        let probe =
-            parse_first_page(
+        let probe = parse_first_page(
             lease(),
             volume_identity(),
             65_536 * 2,
             &prefix,
             prefix.len(),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(probe.header.page_size, 65_536);
         assert_eq!(probe.tracks_first_page, 1);

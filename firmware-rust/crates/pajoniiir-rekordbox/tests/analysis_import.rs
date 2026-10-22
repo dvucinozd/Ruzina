@@ -162,6 +162,64 @@ fn memory_cues_keep_export_order_points_and_loops_and_truncate_after_sixteen() {
     assert!(view.cues().is_empty());
 }
 
+fn hot_pcpt(number: u32, kind: u8, start: u32, end: u32) -> Vec<u8> {
+    let mut record = memory_pcpt(kind, start, end);
+    record[12..16].copy_from_slice(&number.to_be_bytes());
+    record
+}
+fn hot_list(records: &[Vec<u8>]) -> Vec<u8> {
+    let mut header = 1u32.to_be_bytes().to_vec();
+    header.extend_from_slice(&0u16.to_be_bytes());
+    header.extend_from_slice(&(records.len() as u16).to_be_bytes());
+    header.extend_from_slice(&1u32.to_be_bytes());
+    tag(b"PCOB", &header, &records.concat())
+}
+fn import_dat_ext(ext: &[u8]) -> Result<AnalysisPublication, ImportError> {
+    let mut importer = AnlzImporter::new();
+    feed(&mut importer, AnalysisFileKind::Dat, DAT)?;
+    feed(&mut importer, AnalysisFileKind::Ext, ext)?;
+    importer.finish(identity(1), 12_000)
+}
+
+// RP-18 / M2.5 082d2c0a: EXT can carry hot cues D-H and memory cues.
+#[test]
+fn ext_source_cues_enrich_dat_idempotently_and_reject_conflicts() {
+    let ext = container(&[
+        memory_list(&[memory_pcpt(1, 750, 0), memory_pcpt(2, 5_000, 6_000)]),
+        hot_list(&[hot_pcpt(1, 1, 1_000, 0), hot_pcpt(4, 1, 8_000, 0)]),
+    ]);
+    let data = import_dat_ext(&ext).unwrap();
+    let view = data.view();
+    assert_eq!(view.cues().len(), 3);
+    assert_eq!(view.cues()[0].start_ms, 1_000);
+    assert_eq!(view.cues()[2].slot, 3);
+    assert_eq!(view.cues()[2].start_ms, 8_000);
+    assert_eq!(
+        view.memory_cues(),
+        &[
+            AnalysisMemoryCue {
+                start_ms: 750,
+                end_ms: None
+            },
+            AnalysisMemoryCue {
+                start_ms: 5_000,
+                end_ms: Some(6_000)
+            },
+        ]
+    );
+
+    let conflict = container(&[hot_list(&[hot_pcpt(1, 1, 1_500, 0)])]);
+    assert_eq!(
+        import_dat_ext(&conflict).err(),
+        Some(ImportError::Data(AnalysisDataError::ConflictingCue))
+    );
+    let loop_conflict = container(&[hot_list(&[hot_pcpt(2, 2, 2_000, 5_000)])]);
+    assert_eq!(
+        import_dat_ext(&loop_conflict).err(),
+        Some(ImportError::Data(AnalysisDataError::ConflictingCue))
+    );
+}
+
 #[test]
 fn malformed_or_duplicate_memory_lists_reject_the_dat_transaction() {
     let bad_loop = container(&[memory_list(&[memory_pcpt(2, 5_000, 5_000)])]);

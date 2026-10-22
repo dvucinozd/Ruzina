@@ -51,9 +51,16 @@ pub const PDB_PATH_MAX: usize = 256;
 pub const PDB_MAX_NAMES: usize = 512;
 pub const PDB_TRACK_ROW_HEADER_BYTES: usize = TRACK_ROW_MIN_SIZE;
 
-const NAME_ROW_ID_OFFSET: usize = 4;
-const NAME_ROW_TEXT_OFFSET: u16 = 10;
-const NAME_ROW_MIN_BYTES: usize = 14;
+// Artist/album rows (Deep Symmetry export.pdb layout, M2.5 082d2c0a): subtype
+// u16 (0x60/0x80 near, |0x04 far), then the row id and, at `*_NAME_REF`, a u8
+// near offset or (far subtype) a u16 offset at `*_NAME_REF + 1`.
+const ARTIST_ROW_SUBTYPE: u16 = 0x60;
+const ARTIST_ROW_ID_OFFSET: usize = 4;
+const ARTIST_ROW_NAME_REF: usize = 9;
+const ALBUM_ROW_SUBTYPE: u16 = 0x80;
+const ALBUM_ROW_ID_OFFSET: usize = 12;
+const ALBUM_ROW_NAME_REF: usize = 21;
+const NAME_ROW_FAR_FLAG: u16 = 0x04;
 const KEY_ROW_ID_OFFSET: usize = 0;
 const KEY_ROW_TEXT_OFFSET: u16 = 8;
 const KEY_ROW_MIN_BYTES: usize = 9;
@@ -548,7 +555,8 @@ pub fn parse_devicesql_field_header(
         .get(offset)
         .ok_or(PdbError::DeviceSqlOffsetOutOfRange)?;
 
-    if flag == 0 || flag == 0x40 {
+    // 0x00 is empty; 0x40 is long ASCII (M2.5 082d2c0a), not empty.
+    if flag == 0 {
         return Ok(DeviceSqlFieldHeader {
             flag,
             total_len: 1,
@@ -600,7 +608,8 @@ pub fn decode_devicesql(
         .get(offset)
         .ok_or(PdbError::DeviceSqlOffsetOutOfRange)?;
 
-    if flag == 0 || flag == 0x40 {
+    // 0x00 is empty; 0x40 is long ASCII (M2.5 082d2c0a), not empty.
+    if flag == 0 {
         return Ok(DeviceSqlDecode {
             consumed: 1,
             written: 0,
@@ -788,29 +797,31 @@ impl<const N: usize> Default for PdbText<N> {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PdbNameRowLayout {
-    ArtistOrAlbum,
+    Artist,
+    Album,
     Key,
 }
 
 impl PdbNameRowLayout {
+    /// Bytes needed to read a row's id and near name reference. A far row
+    /// additionally needs two bytes after the reference.
     pub const fn minimum_bytes(self) -> usize {
         match self {
-            Self::ArtistOrAlbum => NAME_ROW_MIN_BYTES,
+            Self::Artist => ARTIST_ROW_NAME_REF + 1,
+            Self::Album => ALBUM_ROW_NAME_REF + 1,
             Self::Key => KEY_ROW_MIN_BYTES,
         }
     }
 
-    pub const fn id_offset(self) -> usize {
+    const fn row_shape(self) -> Option<(u16, usize, usize)> {
         match self {
-            Self::ArtistOrAlbum => NAME_ROW_ID_OFFSET,
-            Self::Key => KEY_ROW_ID_OFFSET,
-        }
-    }
-
-    pub const fn text_relative_offset(self) -> u16 {
-        match self {
-            Self::ArtistOrAlbum => NAME_ROW_TEXT_OFFSET,
-            Self::Key => KEY_ROW_TEXT_OFFSET,
+            Self::Artist => Some((
+                ARTIST_ROW_SUBTYPE,
+                ARTIST_ROW_ID_OFFSET,
+                ARTIST_ROW_NAME_REF,
+            )),
+            Self::Album => Some((ALBUM_ROW_SUBTYPE, ALBUM_ROW_ID_OFFSET, ALBUM_ROW_NAME_REF)),
+            Self::Key => None,
         }
     }
 }
@@ -821,6 +832,9 @@ pub struct PdbNameRowHeader {
     pub text_relative_offset: u16,
 }
 
+/// Artist/album rows read their own subtype and near/far name reference;
+/// rows of another subtype, without an id, or whose reference points back
+/// into the row header are skipped, never decoded at a guessed offset.
 pub fn parse_pdb_name_row_header(
     row_prefix: &[u8],
     layout: PdbNameRowLayout,
@@ -829,14 +843,35 @@ pub fn parse_pdb_name_row_header(
         return Err(PdbError::NameRowOutOfRange);
     }
 
-    let id = read_le32(row_prefix, layout.id_offset()).ok_or(PdbError::NameRowOutOfRange)?;
+    let Some((subtype, id_offset, name_ref)) = layout.row_shape() else {
+        let id = read_le32(row_prefix, KEY_ROW_ID_OFFSET).ok_or(PdbError::NameRowOutOfRange)?;
+        return Ok((id != 0).then_some(PdbNameRowHeader {
+            id,
+            text_relative_offset: KEY_ROW_TEXT_OFFSET,
+        }));
+    };
+
+    let row_subtype = read_le16(row_prefix, 0).ok_or(PdbError::NameRowOutOfRange)?;
+    if row_subtype & !NAME_ROW_FAR_FLAG != subtype {
+        return Ok(None);
+    }
+    let id = read_le32(row_prefix, id_offset).ok_or(PdbError::NameRowOutOfRange)?;
     if id == 0 {
+        return Ok(None);
+    }
+    let (text_relative_offset, header_len) = if row_subtype & NAME_ROW_FAR_FLAG != 0 {
+        let far = read_le16(row_prefix, name_ref + 1).ok_or(PdbError::NameRowOutOfRange)?;
+        (far, name_ref + 3)
+    } else {
+        (u16::from(row_prefix[name_ref]), name_ref + 1)
+    };
+    if usize::from(text_relative_offset) < header_len {
         return Ok(None);
     }
 
     Ok(Some(PdbNameRowHeader {
         id,
-        text_relative_offset: layout.text_relative_offset(),
+        text_relative_offset,
     }))
 }
 
@@ -1276,7 +1311,10 @@ fn read_le32(data: &[u8], offset: usize) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use super::*;
+    use std::string::String;
 
     fn put_le16(data: &mut [u8], offset: usize, value: u16) {
         data[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
@@ -1495,26 +1533,87 @@ mod tests {
         }
     }
 
-    #[test]
-    fn parses_artist_album_and_key_name_row_layouts() {
-        let mut artist = [0u8; 32];
-        put_le32(&mut artist, NAME_ROW_ID_OFFSET, 42);
-        put_short_devicesql(
-            &mut artist,
-            usize::from(NAME_ROW_TEXT_OFFSET),
-            b"Artist Name",
-        );
-        let artist_header = parse_pdb_name_row_header(&artist, PdbNameRowLayout::ArtistOrAlbum)
-            .unwrap()
-            .unwrap();
-        assert_eq!(artist_header.id, 42);
-        assert_eq!(artist_header.text_relative_offset, NAME_ROW_TEXT_OFFSET);
-        let artist_name = PdbText::<PDB_NAME_MAX>::from_devicesql_field(
-            &artist[usize::from(artist_header.text_relative_offset)..],
+    // RP-18 / M2.5 082d2c0a: real artist/album row layouts. Offsets are the
+    // literal Deep Symmetry positions used by the donor fixture, not constants.
+    fn name_row(album: bool, far: bool, offset: u16) -> [u8; 64] {
+        let mut row = [0u8; 64];
+        let (subtype, id_at, reference) = if album { (0x80, 12, 21) } else { (0x60, 4, 9) };
+        put_le16(&mut row, 0, subtype | if far { 4 } else { 0 });
+        put_le32(&mut row, id_at, if album { 3 } else { 2 });
+        if far {
+            put_le16(&mut row, reference + 1, offset);
+        } else {
+            row[reference] = offset as u8;
+        }
+        row
+    }
+
+    fn decoded_name(row: &[u8], layout: PdbNameRowLayout) -> Option<(u32, Option<String>)> {
+        let header = parse_pdb_name_row_header(row, layout).unwrap()?;
+        let text = PdbText::<PDB_NAME_MAX>::from_devicesql_field(
+            &row[usize::from(header.text_relative_offset)..],
         )
         .unwrap();
-        assert_eq!(artist_name.as_str(), Some("Artist Name"));
+        Some((header.id, text.as_str().map(String::from)))
+    }
 
+    #[test]
+    fn artist_and_album_rows_use_their_own_ids_and_near_or_far_name_offsets() {
+        for album in [false, true] {
+            let near_at = if album { 22 } else { 10 };
+            let mut near = name_row(album, false, near_at);
+            put_short_devicesql(&mut near, usize::from(near_at), b"Name");
+            let mut far = name_row(album, true, 40);
+            // Long UTF-16LE "Jć" / "Ać" behind the far reference.
+            far[40] = 0x90;
+            put_le16(&mut far, 41, 8);
+            put_le16(
+                &mut far,
+                44,
+                if album {
+                    u16::from(b'A')
+                } else {
+                    u16::from(b'J')
+                },
+            );
+            put_le16(&mut far, 46, 0x0107);
+            let mut long_ascii = name_row(album, false, near_at);
+            long_ascii[usize::from(near_at)] = 0x40;
+            put_le16(&mut long_ascii, usize::from(near_at) + 1, 9);
+            long_ascii[usize::from(near_at) + 4..usize::from(near_at) + 9]
+                .copy_from_slice(b"ASCII");
+
+            let layout = if album {
+                PdbNameRowLayout::Album
+            } else {
+                PdbNameRowLayout::Artist
+            };
+            let id = if album { 3 } else { 2 };
+            let accented = if album { "Ać" } else { "Jć" };
+            assert_eq!(decoded_name(&near, layout), Some((id, Some("Name".into()))));
+            assert_eq!(
+                decoded_name(&far, layout),
+                Some((id, Some(accented.into())))
+            );
+            assert_eq!(
+                decoded_name(&long_ascii, layout),
+                Some((id, Some("ASCII".into())))
+            );
+
+            // A reference into the row header or a foreign subtype is skipped.
+            let into_header = name_row(album, false, near_at - 2);
+            assert_eq!(parse_pdb_name_row_header(&into_header, layout), Ok(None));
+            let mut foreign = near;
+            put_le16(&mut foreign, 0, 0x24);
+            assert_eq!(parse_pdb_name_row_header(&foreign, layout), Ok(None));
+        }
+        // The previous shared layout read an album's id from offset 4.
+        let album = name_row(true, false, 22);
+        assert_eq!(read_le32(&album, 4), Some(0));
+    }
+
+    #[test]
+    fn parses_key_name_row_layout() {
         let mut key = [0u8; 16];
         put_le32(&mut key, KEY_ROW_ID_OFFSET, 7);
         put_short_devicesql(&mut key, usize::from(KEY_ROW_TEXT_OFFSET), b"8A");
@@ -1540,7 +1639,7 @@ mod tests {
     fn bounded_name_map_rejects_duplicates_and_capacity_overflow() {
         let header = PdbNameRowHeader {
             id: 1,
-            text_relative_offset: NAME_ROW_TEXT_OFFSET,
+            text_relative_offset: 10,
         };
         let mut raw = [0u8; 16];
         put_short_devicesql(&mut raw, 0, b"One");
@@ -1557,7 +1656,7 @@ mod tests {
 
         let header_two = PdbNameRowHeader {
             id: 2,
-            text_relative_offset: NAME_ROW_TEXT_OFFSET,
+            text_relative_offset: 10,
         };
         let two = PdbNameEntry::from_header_and_field(
             header_two,
@@ -1613,7 +1712,7 @@ mod tests {
             PdbNameEntry::from_header_and_field(
                 PdbNameRowHeader {
                     id,
-                    text_relative_offset: NAME_ROW_TEXT_OFFSET,
+                    text_relative_offset: 10,
                 },
                 field(value),
             )

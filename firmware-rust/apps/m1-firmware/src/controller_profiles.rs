@@ -157,7 +157,9 @@ pub(crate) fn bind_controller_descriptor(
 ) -> ProfileCatalogMatch {
     PROFILE_CATALOG.lock(|cell| {
         let mut catalog = cell.borrow_mut();
-        let _ = catalog.registry.on_descriptor(vid, pid, capabilities, epoch);
+        let _ = catalog
+            .registry
+            .on_descriptor(vid, pid, capabilities, epoch);
         catalog.match_profile(vid, pid)
     })
 }
@@ -350,7 +352,10 @@ pub(crate) async fn active_channel_filter_always(controller_epoch: u32) -> bool 
     let current = PROFILE_CATALOG.lock(|cell| {
         let catalog = cell.borrow();
         catalog.registry.activation_state() == ProfileActivationState::Active
-            && catalog.registry.connected().map(|controller| controller.epoch)
+            && catalog
+                .registry
+                .connected()
+                .map(|controller| controller.epoch)
                 == Some(controller_epoch)
             && active.controller_epoch == controller_epoch
             && active.index == catalog.registry.active_index()
@@ -371,7 +376,10 @@ pub(crate) async fn process_active_midi_transfer(
         (
             catalog.registry.activation_state(),
             catalog.registry.active_index(),
-            catalog.registry.connected().map(|controller| controller.epoch),
+            catalog
+                .registry
+                .connected()
+                .map(|controller| controller.epoch),
         )
     });
 
@@ -392,7 +400,6 @@ pub(crate) async fn process_active_midi_transfer(
         .map_err(ActiveProfileMidiError::Batch)
 }
 
-
 pub(crate) async fn map_active_led_update(
     controller_epoch: u32,
     update: LedUpdate,
@@ -403,7 +410,10 @@ pub(crate) async fn map_active_led_update(
         (
             catalog.registry.activation_state(),
             catalog.registry.active_index(),
-            catalog.registry.connected().map(|controller| controller.epoch),
+            catalog
+                .registry
+                .connected()
+                .map(|controller| controller.epoch),
         )
     });
 
@@ -449,7 +459,10 @@ where
     let active_is_current = PROFILE_CATALOG.lock(|cell| {
         let catalog = cell.borrow();
         catalog.registry.activation_state() == ProfileActivationState::Active
-            && catalog.registry.connected().map(|controller| controller.epoch)
+            && catalog
+                .registry
+                .connected()
+                .map(|controller| controller.epoch)
                 == Some(controller_epoch)
             && active.controller_epoch == controller_epoch
             && active.index == catalog.registry.active_index()

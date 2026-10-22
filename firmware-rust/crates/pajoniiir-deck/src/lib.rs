@@ -649,6 +649,7 @@ pub struct DeckProductState {
     beat_fx: BeatFxState,
     beat_fx_reset_epoch: u32,
     load_lock: bool,
+    decoded_durations_ms: [Option<u32>; 2],
 }
 
 impl Default for DeckProductState {
@@ -669,7 +670,27 @@ impl DeckProductState {
             beat_fx: BeatFxState::new(),
             beat_fx_reset_epoch: 1,
             load_lock: true,
+            decoded_durations_ms: [None; 2],
         }
+    }
+
+    /// Length measured by the audio source for the loaded track, not catalog
+    /// or analysis length. Unknown until the owner publishes it; cleared on load.
+    pub fn set_decoded_duration_ms(&mut self, deck: DeckId, duration_ms: Option<u32>) {
+        self.decoded_durations_ms[deck_index(deck)] = duration_ms;
+    }
+
+    pub fn decoded_duration_ms(&self, deck: DeckId) -> Option<u32> {
+        self.decoded_durations_ms[deck_index(deck)]
+    }
+
+    /// M2.5 c0ee8152 `audio_loop_range_valid`: the exclusive end may equal the
+    /// decoded end; while the length is unknown, ordered ranges are accepted.
+    /// Refused loops leave deck state untouched, so UI and audio agree.
+    fn loop_admitted(&self, deck: DeckId, region: LoopRegion) -> bool {
+        region.end_ms > region.start_ms
+            && self.decoded_durations_ms[deck_index(deck)]
+                .is_none_or(|duration| region.end_ms <= duration)
     }
 
     /// LOAD LOCK defaults on after every construction; a future Settings page
@@ -788,6 +809,7 @@ impl DeckProductState {
         // Track reset clears CUE preview ownership; jog mode is a deck setting.
         state.cue_held = false;
         state.cue_preview = false;
+        self.decoded_durations_ms[index] = None;
 
         if self.sync_master == Some(deck) {
             self.sync_master = None;
@@ -818,6 +840,7 @@ impl DeckProductState {
         // Track reset clears CUE preview ownership; jog mode is a deck setting.
         state.cue_held = false;
         state.cue_preview = false;
+        self.decoded_durations_ms[index] = None;
 
         if self.sync_master == Some(deck) {
             self.sync_master = None;
@@ -1377,6 +1400,10 @@ impl DeckProductState {
         let Some(region) = LoopRegion::new(start_ms, position_ms) else {
             return DeckEffects::NONE;
         };
+        if !self.loop_admitted(deck, region) {
+            // M2.5 keeps the pending IN when a LOOP OUT is refused.
+            return DeckEffects::NONE;
+        }
 
         self.decks[index].loop_state.pending_in_ms = None;
         self.decks[index].loop_state.active = Some(region);
@@ -1404,7 +1431,10 @@ impl DeckProductState {
         let Some(last) = state.loop_state.last else {
             return DeckEffects::NONE;
         };
-        state.loop_state.active = Some(last);
+        if !self.loop_admitted(deck, last) {
+            return DeckEffects::NONE;
+        }
+        self.decks[deck_index(deck)].loop_state.active = Some(last);
 
         DeckEffects::one(DeckEffect::SetLoop {
             deck,
@@ -1430,6 +1460,9 @@ impl DeckProductState {
         let Some(next) = resize_loop_region(active, double) else {
             return DeckEffects::NONE;
         };
+        if !self.loop_admitted(deck, next) {
+            return DeckEffects::NONE;
+        }
 
         self.decks[index].loop_state.active = Some(next);
         self.decks[index].loop_state.last = Some(next);
@@ -1461,6 +1494,9 @@ impl DeckProductState {
             let Some(next) = resize_loop_region(region, double) else {
                 break;
             };
+            if !self.loop_admitted(deck, next) {
+                break;
+            }
             region = next;
             changed = true;
         }
@@ -1651,6 +1687,10 @@ impl DeckProductState {
     /// one atomic Seek + SetLoop publication; a single cue exits an active loop.
     /// Play/pause state is preserved and loop-adjust ownership is cleared.
     fn recall_hot_cue(&mut self, deck: DeckId, cue: HotCueSlot) -> DeckEffects {
+        // A loop cue whose end lies beyond the decoded track recalls like a
+        // single cue: its start is reachable, its loop is not admitted.
+        let loop_region = LoopRegion::new(cue.pos_ms, cue.end_ms)
+            .filter(|region| cue.kind == HotCueKind::Loop && self.loop_admitted(deck, *region));
         let state = &mut self.decks[deck_index(deck)];
         state.position_ms = cue.pos_ms;
         state.loop_adjust_mode = LoopAdjustMode::None;
@@ -1660,9 +1700,7 @@ impl DeckProductState {
             position_ms: cue.pos_ms,
         };
 
-        if cue.kind == HotCueKind::Loop
-            && let Some(region) = LoopRegion::new(cue.pos_ms, cue.end_ms)
-        {
+        if let Some(region) = loop_region {
             state.loop_state.active = Some(region);
             state.loop_state.last = Some(region);
             return DeckEffects::two(
@@ -1713,6 +1751,9 @@ impl DeckProductState {
         let Some(region) = LoopRegion::new(state.position_ms, end_ms) else {
             return DeckEffects::NONE;
         };
+        if !self.loop_admitted(deck, region) {
+            return DeckEffects::NONE;
+        }
 
         self.decks[index].loop_state.active = Some(region);
         self.decks[index].loop_state.last = Some(region);
@@ -1863,9 +1904,12 @@ impl DeckProductState {
                 LoopRegion::new(target as u32, active.end_ms)
             }
             LoopAdjustMode::Out => {
-                let target = (active.end_ms as i64 + movement_ms)
-                    .clamp(active.start_ms as i64 + 1, u32::MAX as i64);
+                // Never move LOOP OUT past the decoded end of the track.
+                let floor = active.start_ms as i64 + 1;
+                let limit = i64::from(self.decoded_durations_ms[index].unwrap_or(u32::MAX));
+                let target = (active.end_ms as i64 + movement_ms).clamp(floor, limit.max(floor));
                 LoopRegion::new(active.start_ms, target as u32)
+                    .filter(|region| self.loop_admitted(deck, *region))
             }
             LoopAdjustMode::None => None,
         };
@@ -4392,6 +4436,81 @@ mod tests {
             Err(LoadRefusal::TrackIdentity)
         );
         assert!(!state.update_local_hot_cues(DeckId::One, HotCueBank::empty(other)));
+    }
+
+    // RP-18 / M2.5 c0ee8152: loop-range admission against the decoded length.
+    #[test]
+    fn loops_beyond_the_decoded_end_are_refused_without_changing_deck_state() {
+        let mut state = loaded_with_source(DeckId::One, media_id(0x91));
+        assert_eq!(state.decoded_duration_ms(DeckId::One), None);
+        state.set_decoded_duration_ms(DeckId::One, Some(5_000));
+
+        // LOOP OUT past the end keeps the pending IN (M2.5) and publishes nothing.
+        state.set_position_ms(DeckId::One, 4_000);
+        state.handle_control(pressed(DeckId::One, SemanticControl::LoopIn, true));
+        state.set_position_ms(DeckId::One, 5_200);
+        let before = *state.deck(DeckId::One);
+        assert_eq!(
+            state.handle_control(pressed(DeckId::One, SemanticControl::LoopOut, true)),
+            DeckEffects::NONE
+        );
+        assert_eq!(*state.deck(DeckId::One), before);
+        assert_eq!(before.loop_state.pending_in_ms, Some(4_000));
+
+        // An end exactly at the decoded end is admitted.
+        state.set_position_ms(DeckId::One, 5_000);
+        assert_eq!(
+            state.handle_control(pressed(DeckId::One, SemanticControl::LoopOut, true)),
+            DeckEffects::one(DeckEffect::SetLoop {
+                deck: DeckId::One,
+                start_ms: 4_000,
+                end_ms: 5_000,
+            })
+        );
+
+        // Doubling past the end is refused; adjusting OUT clamps to the end.
+        let before = *state.deck(DeckId::One);
+        assert_eq!(
+            state.handle_control(pressed(DeckId::One, SemanticControl::LoopDouble, true)),
+            DeckEffects::NONE
+        );
+        assert_eq!(*state.deck(DeckId::One), before);
+        state.handle_control(ext(DeckId::One, DeckExtAction::LoopAdjustOut, true));
+        assert_eq!(
+            state.handle_control(relative(DeckId::One, SemanticControl::JogBend, 800)),
+            DeckEffects::one(DeckEffect::SetLoop {
+                deck: DeckId::One,
+                start_ms: 4_000,
+                end_ms: 5_000,
+            })
+        );
+
+        // A loop cue past the end recalls like a single cue and exits the loop.
+        let track = media_id(0x92);
+        let mut source = HotCueBank::empty(track);
+        assert!(source.set_loop(0, 4_500, 6_000));
+        assert!(
+            state
+                .commit_track_load(DeckId::One, track, 12_000, source.as_source(), None)
+                .is_ok()
+        );
+        assert_eq!(state.decoded_duration_ms(DeckId::One), None);
+        state.set_decoded_duration_ms(DeckId::One, Some(5_000));
+        assert_eq!(
+            state.handle_control(hot_cue(DeckId::One, 0, false)),
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 4_500,
+            })
+        );
+        assert_eq!(state.deck(DeckId::One).loop_state.active, None);
+
+        // Unknown length keeps the historical ordered-range behavior.
+        state.set_decoded_duration_ms(DeckId::One, None);
+        assert!(matches!(
+            state.handle_control(hot_cue(DeckId::One, 0, false)).items[1],
+            Some(DeckEffect::SetLoop { end_ms: 6_000, .. })
+        ));
     }
 
     #[test]

@@ -4,10 +4,10 @@ use core::cell::RefCell;
 use crate::audio_render_owner::publish_product_render_control;
 use crate::controller_profiles::{
     ActiveProfileLedError, ActiveProfileMidiError, active_channel_filter_always,
-    bind_controller_descriptor,
-    dispatch_session_deliveries, finish_profile_initialization, map_active_led_update,
-    match_scanned_profile, on_controller_disconnect, pending_profile_initialization,
-    process_active_midi_transfer, profile_initialization_is_current, request_profile_activation,
+    bind_controller_descriptor, dispatch_session_deliveries, finish_profile_initialization,
+    map_active_led_update, match_scanned_profile, on_controller_disconnect,
+    pending_profile_initialization, process_active_midi_transfer,
+    profile_initialization_is_current, request_profile_activation,
     wait_for_profile_activation_change, wait_for_profile_catalog_change,
 };
 use crate::deck_effect_owners::{dispatch_product_effects, wait_for_effect_owner_progress};
@@ -788,9 +788,7 @@ async fn drain_product_dispatch(
     product: &mut ProductRuntime,
 ) {
     // Mirror the profile capability before any control or render publication.
-    product.set_channel_filter_always(
-        active_channel_filter_always(probe.controller_epoch).await,
-    );
+    product.set_channel_filter_always(active_channel_filter_always(probe.controller_epoch).await);
     loop {
         let library_before = dispatch_library_runtime(product);
         let before = dispatch_product_effects(product);
