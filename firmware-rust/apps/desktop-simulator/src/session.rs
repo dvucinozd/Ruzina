@@ -5,9 +5,9 @@ use pajoniiir_controller_core::{
     ControlDomain, ControlEvent, ControlValue, DeckId, SemanticControl,
 };
 use pajoniiir_core::MediaTrackId;
-use pajoniiir_deck::{DeckEffect, DeckProductState};
+use pajoniiir_deck::{DeckEffect, DeckLoadGate, DeckProductState, LoadPermit, LoadRefusal};
 use pajoniiir_hot_cues::HotCueBank;
-use pajoniiir_media_session::{MediaSession, MediaSourceId};
+use pajoniiir_media_session::{MediaLease, MediaSession, MediaSourceId};
 use pajoniiir_mixer::MixerState;
 use pajoniiir_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};
 use pajoniiir_service::publication::{Activity, Publication, Slot, Stamp};
@@ -47,6 +47,7 @@ pub struct Session {
     media: MediaSession,
     pins: AnalysisPins,
     loaded: [Option<(usize, AnalysisIdentity)>; 2],
+    load_gates: [DeckLoadGate; 2],
     local: [Option<HotCueBank>; 4],
     generation: u32,
     fraction: [u64; 2],
@@ -59,6 +60,16 @@ pub struct Session {
 
 pub const fn deck(index: usize) -> DeckId {
     if index == 0 { DeckId::One } else { DeckId::Two }
+}
+const fn load_block(refusal: LoadRefusal) -> LoadBlock {
+    match refusal {
+        LoadRefusal::Playing => LoadBlock::Playing,
+        LoadRefusal::PlayPending => LoadBlock::PlayPending,
+        LoadRefusal::Scratching => LoadBlock::Scratching,
+        LoadRefusal::LoadInFlight => LoadBlock::LoadInFlight,
+        LoadRefusal::Superseded => LoadBlock::Superseded,
+        LoadRefusal::TrackIdentity => LoadBlock::TrackIdentity,
+    }
 }
 pub const fn index(deck: DeckId) -> usize {
     match deck {
@@ -81,6 +92,7 @@ impl Session {
             media: MediaSession::new(),
             pins: AnalysisPins::new(),
             loaded: [None, None],
+            load_gates: [DeckLoadGate::new(), DeckLoadGate::new()],
             local: [None; 4],
             generation: 0,
             fraction: [0; 2],
@@ -143,14 +155,36 @@ impl Session {
             self.message = "Load unavailable · reconnect media".into();
             return false;
         };
-        if self.decks.deck(target).playing {
-            self.service.record(EventKind::LoadBlocked {
-                deck: target,
-                reason: LoadBlock::Playing,
-            });
-            self.message = "Load locked · pause the destination deck".into();
-            return false;
-        }
+        // Same admission path as firmware: verdict, single-flight permit,
+        // final check before replacement and again inside the commit.
+        let permit = match self
+            .decks
+            .load_admission(target)
+            .and_then(|_| self.load_gates[i].reserve())
+        {
+            Ok(permit) => permit,
+            Err(refusal) => return self.refuse_load(target, refusal),
+        };
+        let loaded = self.load_admitted(target, lease, permit);
+        self.load_gates[i].finish(permit);
+        loaded
+    }
+    fn refuse_load(&mut self, target: DeckId, refusal: LoadRefusal) -> bool {
+        let reason = load_block(refusal);
+        self.service.record(EventKind::LoadBlocked {
+            deck: target,
+            reason,
+        });
+        self.message = match reason {
+            LoadBlock::TrackIdentity => "Load rejected · track identity mismatch".into(),
+            LoadBlock::LoadInFlight => "Load busy · previous load still running".into(),
+            LoadBlock::Scratching => "Load locked · release the jog".into(),
+            _ => "Load locked · pause the destination deck".into(),
+        };
+        false
+    }
+    fn load_admitted(&mut self, target: DeckId, lease: MediaLease, permit: LoadPermit) -> bool {
+        let i = index(target);
         let selection = self.selected;
         if selection >= TITLES.len() {
             self.service.record(EventKind::LoadBlocked {
@@ -193,19 +227,17 @@ impl Session {
                 }
             }
         }
-        if !self.decks.commit_track_load(
+        if let Err(refusal) = self.load_gates[i].begin_replacement(permit) {
+            return self.refuse_load(target, refusal);
+        }
+        if let Err(refusal) = self.decks.commit_track_load(
             target,
             id.track,
             if selection == 1 { 12800 } else { 12000 },
             source.as_source(),
             self.local[selection],
         ) {
-            self.service.record(EventKind::LoadBlocked {
-                deck: target,
-                reason: LoadBlock::TrackIdentity,
-            });
-            self.message = "Load rejected · track identity mismatch".into();
-            return false;
+            return self.refuse_load(target, refusal);
         }
         self.pins.clear(i);
         let available = publication.is_some();

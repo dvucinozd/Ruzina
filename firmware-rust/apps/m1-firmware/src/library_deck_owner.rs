@@ -25,7 +25,7 @@ use crate::deck_audio_source::{
 
 use crate::{
     deck_effect_owners::{HotCueLoadResult, load_persisted_hot_cues},
-    product_runtime::{LibraryEffect, ProductAnalysisLoad, ProductRuntime},
+    product_runtime::{LibraryEffect, ProductAnalysisLoad, ProductRuntime, load_gate},
     usb0_library::{
         USB0_LIBRARY_COMMANDS, USB0_LIBRARY_COMPLETIONS, Usb0LibraryCommand, Usb0LibraryCompletion,
         catalog_publication_matches, current_media_lease, wait_for_media_lease_change,
@@ -71,6 +71,8 @@ enum LibraryDeckCompletion {
     Failed {
         effect: LibraryEffect,
         source_revoked: Option<DeckId>,
+        /// PLAY/scratch withdrew the permit before the old session was released.
+        superseded: bool,
     },
 }
 
@@ -148,10 +150,19 @@ pub(crate) fn dispatch_library_deck(product: &mut ProductRuntime) -> LibraryDeck
                         report.failed = report.failed.saturating_add(1);
                     }
                 }
-                LibraryDeckCompletion::Failed { source_revoked, .. } => {
-                    product.fail_library_load(source_revoked);
+                LibraryDeckCompletion::Failed {
+                    source_revoked,
+                    superseded,
+                    ..
+                } => {
+                    product.fail_library_load(source_revoked, superseded);
                     report.failed = report.failed.saturating_add(1);
                 }
+            }
+            // Commit, activation or failure has resolved this load; transport
+            // claims on the deck are accepted again.
+            if let LibraryEffect::Load { deck, permit } = effect {
+                load_gate(deck).finish(permit);
             }
             let completed = product.complete_library_effect();
             debug_assert!(completed);
@@ -202,29 +213,33 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                 request_id: completed,
                 deck,
                 candidate,
-            } if completed == request_id && effect == (LibraryEffect::Load { deck }) => {
+            } if completed == request_id
+                && matches!(
+                    effect,
+                    LibraryEffect::Load { deck: requested, .. } if requested == deck
+                ) =>
+            {
+                let LibraryEffect::Load { permit, .. } = effect else {
+                    esp_hal::system::software_reset()
+                };
+                let failed = LibraryDeckCompletion::Failed {
+                    effect,
+                    source_revoked: None,
+                    superseded: false,
+                };
                 if !catalog_publication_matches(candidate.publication) {
-                    LibraryDeckCompletion::Failed {
-                        effect,
-                        source_revoked: None,
-                    }
+                    failed
                 } else {
                     let client = &mut library_load;
                     if !validate_audio_source(client, candidate).await {
-                        LibraryDeckCompletion::Failed {
-                            effect,
-                            source_revoked: None,
-                        }
+                        failed
                     } else {
                         let (next_buffer, source, source_cues_available, analysis) =
                             load_source_analysis(client, candidate, buffer, request_id).await;
                         buffer = next_buffer;
 
                         if !catalog_publication_matches(candidate.publication) {
-                            LibraryDeckCompletion::Failed {
-                                effect,
-                                source_revoked: None,
-                            }
+                            failed
                         } else {
                             match load_persisted_hot_cues(request_id, candidate.track.track_id)
                                 .await
@@ -232,34 +247,43 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                                 HotCueLoadResult::Ready(persisted)
                                     if catalog_publication_matches(candidate.publication) =>
                                 {
-                                    match prepare_optional_audio_source(deck, request_id, candidate)
-                                        .await
-                                    {
-                                        Ok((audio_source, audio_generation)) => {
-                                            LibraryDeckCompletion::LoadReady {
-                                                effect,
-                                                deck,
-                                                candidate,
-                                                source,
-                                                persisted,
-                                                source_cues_available,
-                                                audio_source,
-                                                audio_generation,
-                                                analysis,
-                                            }
-                                        }
-                                        Err(()) => LibraryDeckCompletion::Failed {
+                                    // Final admission: Prepare releases the deck's
+                                    // old session, so PLAY/scratch since the
+                                    // control-time verdict must win here.
+                                    if load_gate(deck).begin_replacement(permit).is_err() {
+                                        LibraryDeckCompletion::Failed {
                                             effect,
-                                            source_revoked: Some(deck),
-                                        },
+                                            source_revoked: None,
+                                            superseded: true,
+                                        }
+                                    } else {
+                                        match prepare_optional_audio_source(
+                                            deck, request_id, candidate,
+                                        )
+                                        .await
+                                        {
+                                            Ok((audio_source, audio_generation)) => {
+                                                LibraryDeckCompletion::LoadReady {
+                                                    effect,
+                                                    deck,
+                                                    candidate,
+                                                    source,
+                                                    persisted,
+                                                    source_cues_available,
+                                                    audio_source,
+                                                    audio_generation,
+                                                    analysis,
+                                                }
+                                            }
+                                            Err(()) => LibraryDeckCompletion::Failed {
+                                                effect,
+                                                source_revoked: Some(deck),
+                                                superseded: false,
+                                            },
+                                        }
                                     }
                                 }
-                                HotCueLoadResult::Ready(_) | HotCueLoadResult::Failed => {
-                                    LibraryDeckCompletion::Failed {
-                                        effect,
-                                        source_revoked: None,
-                                    }
-                                }
+                                HotCueLoadResult::Ready(_) | HotCueLoadResult::Failed => failed,
                             }
                         }
                     }
@@ -271,6 +295,7 @@ pub(crate) async fn run_library_deck_owner() -> ! {
             } if completed == request_id => LibraryDeckCompletion::Failed {
                 effect,
                 source_revoked: None,
+                superseded: false,
             },
             Usb0LibraryCompletion::Applied { .. }
             | Usb0LibraryCompletion::LoadResolved { .. }

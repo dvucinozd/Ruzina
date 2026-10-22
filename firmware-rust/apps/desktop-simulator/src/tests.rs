@@ -225,6 +225,38 @@ fn fx_uses_global_state_and_pad_cancellation_cannot_stop_another_deck() {
 }
 
 #[test]
+fn load_lock_refusals_preserve_the_loaded_track_and_report_the_reason() {
+    use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
+    let jog = |down| ControlEvent {
+        deck: Some(DeckId::One),
+        control: SemanticControl::JogTouch,
+        value: ControlValue::Pressed(down),
+    };
+    let mut s = loaded();
+    let title = s.title(0).to_string();
+    s.selected = 1;
+
+    s.control(jog(true));
+    assert!(!s.load(DeckId::One));
+    assert!(s.message.contains("jog"), "{}", s.message);
+    assert_eq!(s.title(0), title);
+    assert!(s.analysis(0).is_some());
+
+    s.control(jog(false));
+    press(&mut s, DeckAction::Play);
+    assert!(!s.load(DeckId::One));
+    assert!(s.message.contains("pause"), "{}", s.message);
+    assert_eq!(s.title(0), title);
+    assert_eq!(s.diagnostics().counters.loads_blocked, 2);
+
+    // The other deck is independent, and pausing reopens the destination.
+    assert!(s.load(DeckId::Two));
+    press(&mut s, DeckAction::Play);
+    assert!(s.load(DeckId::One));
+    assert_ne!(s.title(0), title);
+}
+
+#[test]
 fn service_counts_real_load_outcomes_and_recovers_without_erasing_history() {
     use pajoniiir_service::{AnalysisStatus, Health};
     let mut s = loaded();

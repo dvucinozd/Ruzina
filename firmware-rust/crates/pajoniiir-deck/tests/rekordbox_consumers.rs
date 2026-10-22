@@ -177,7 +177,10 @@ fn imported_cues_preserve_local_hot_cue_overrides_and_tombstones() {
     local.set_single(0, 1777);
     local.clear(1);
     let mut deck = DeckProductState::new();
-    assert!(deck.commit_track_load(DeckId::One, id, 12000, source.as_source(), Some(local)));
+    assert!(
+        deck.commit_track_load(DeckId::One, id, 12000, source.as_source(), Some(local))
+            .is_ok()
+    );
     let merged = deck.hot_cues(DeckId::One).unwrap();
     assert_eq!(merged.slot(0).unwrap().pos_ms, 1777);
     assert!(merged.slot(1).is_none());
