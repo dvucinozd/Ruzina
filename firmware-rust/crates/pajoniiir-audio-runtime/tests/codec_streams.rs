@@ -94,6 +94,28 @@ impl<'a> Driver<'a> {
         }
         panic!("missing EOF");
     }
+    /// Runs the background MP3 frame walk for at most `limit` reads.
+    fn scan(&mut self, limit: usize) -> usize {
+        let mut reads = 0;
+        while reads < limit {
+            let Some((offset, len)) = self.stream.index_read(&mut self.storage, 512) else {
+                break;
+            };
+            let at = offset as usize;
+            assert!(
+                self.stream
+                    .provide_index(&mut self.storage, offset, &self.file[at..at + len])
+            );
+            reads += 1;
+        }
+        reads
+    }
+    /// File reads until the first block after a change.
+    fn first_block_reads(&mut self) -> (usize, PcmStreamBlock) {
+        let before = self.reads;
+        let block = self.block();
+        (self.reads - before, block)
+    }
     fn change(&mut self, generation: u32, change: StreamChange) {
         assert!(self.stream.change(
             &mut self.storage,
@@ -727,6 +749,118 @@ fn recent_mp3_seek_restores_checkpoint_samples_and_bounds_file_reads() {
     d.change(2, StreamChange::SeekMilliseconds(7500));
     assert_eq!(d.all(), baseline[360000..]);
     assert!(d.reads - reads < 50, "warm seek replayed the entire track");
+}
+
+// RP-08: cold seeks resume at walked frame offsets through the codec's own
+// reservoir preroll and stay sample-identical to a linear decode.
+const LONG_VBR: &[u8] = include_bytes!("fixtures/codecs/long-vbr.mp3");
+const LONG_VBR_UNTAGGED: &[u8] = include_bytes!("fixtures/codecs/long-vbr-untagged.mp3");
+const LONG_CBR: &[u8] = include_bytes!("fixtures/codecs/long.mp3");
+
+fn cold_seek(file: &[u8], scan: bool, ms: u32, baseline: &[PcmFrame]) -> usize {
+    let mut d = Driver::new(file, AudioCodec::Mp3);
+    d.block();
+    if scan {
+        assert!(d.scan(usize::MAX) > 0);
+        assert!(d.storage.mp3_index().complete());
+    }
+    d.change(2, StreamChange::SeekMilliseconds(ms));
+    let rate = d.stream.descriptor().unwrap().sample_rate_hz();
+    let offset = (u64::from(ms) * u64::from(rate) / 1000) as usize;
+    let (reads, first) = d.first_block_reads();
+    assert!(!first.faulted);
+    let mut decoded = first.frames().to_vec();
+    decoded.extend(d.all());
+    assert_eq!(decoded, baseline[offset..], "ms={ms} scan={scan}");
+    reads
+}
+
+#[test]
+fn cold_mp3_seeks_use_the_frame_index_and_stay_sample_exact() {
+    use pajoniiir_audio_runtime::mp3_index::Mp3TagKind;
+    for (file, kind) in [
+        (LONG_VBR, Mp3TagKind::Variable),
+        (LONG_CBR, Mp3TagKind::Constant),
+    ] {
+        let mut probe = Driver::new(file, AudioCodec::Mp3);
+        let baseline = probe.all();
+        probe.scan(usize::MAX);
+        let index = probe.storage.mp3_index();
+        assert_eq!(index.kind(), kind);
+        assert_eq!(index.variable_bitrate(), kind == Mp3TagKind::Variable);
+        for ms in [7900, 6000, 4999, 3100, 777, 30] {
+            let indexed = cold_seek(file, true, ms, &baseline);
+            assert!(
+                indexed < 24,
+                "{kind:?} ms={ms}: {indexed} reads before audio"
+            );
+            if ms >= 3100 {
+                let linear = cold_seek(file, false, ms, &baseline);
+                assert!(
+                    linear > 3 * indexed,
+                    "{kind:?} ms={ms}: {linear} vs {indexed}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration() {
+    use pajoniiir_audio_runtime::{decode::SourceDuration, mp3_index::Mp3TagKind};
+    let mut d = Driver::new(LONG_VBR_UNTAGGED, AudioCodec::Mp3);
+    let baseline = d.all();
+    assert_eq!(d.stream.duration(&d.storage), SourceDuration::Unknown);
+    d.scan(usize::MAX);
+    let index = d.storage.mp3_index();
+    assert_eq!(index.kind(), Mp3TagKind::Plain);
+    assert!(index.variable_bitrate() && index.complete());
+    assert_eq!(
+        d.stream.duration(&d.storage),
+        SourceDuration::Scanned(baseline.len() as u64)
+    );
+    // The codec's byte arithmetic would misplace an untagged VBR seek, so it
+    // is never used; the result is the linear-exact fallback.
+    cold_seek(LONG_VBR_UNTAGGED, true, 6500, &baseline);
+
+    // Untagged CBR resumes through the index and scans an exact length.
+    let file = include_bytes!("fixtures/codecs/untagged.mp3");
+    let mut d = Driver::new(file, AudioCodec::Mp3);
+    let baseline = d.all();
+    d.scan(usize::MAX);
+    assert_eq!(
+        d.stream.duration(&d.storage),
+        SourceDuration::Scanned(baseline.len() as u64)
+    );
+    cold_seek(file, true, 150, &baseline);
+
+    let mut tagged = Driver::new(LONG_VBR, AudioCodec::Mp3);
+    tagged.block();
+    tagged.scan(usize::MAX);
+    let SourceDuration::Exact(frames) = tagged.stream.duration(&tagged.storage) else {
+        panic!("Xing frame count is exact");
+    };
+    assert_eq!(
+        frames,
+        Driver::new(LONG_VBR, AudioCodec::Mp3).all().len() as u64
+    );
+}
+
+#[test]
+fn partial_index_serves_covered_targets_and_falls_back_beyond_it() {
+    let baseline = Driver::new(LONG_VBR, AudioCodec::Mp3).all();
+    let rate = 44_100;
+    for (ms, partial_reads) in [(1500, 60), (7000, 60), (7000, 0)] {
+        let mut d = Driver::new(LONG_VBR, AudioCodec::Mp3);
+        d.block();
+        d.scan(partial_reads);
+        assert!(!d.storage.mp3_index().complete());
+        d.change(2, StreamChange::SeekMilliseconds(ms));
+        let (_, first) = d.first_block_reads();
+        let mut decoded = first.frames().to_vec();
+        decoded.extend(d.all());
+        assert_eq!(decoded, baseline[ms as usize * rate / 1000..], "ms={ms}");
+    }
 }
 
 fn views(slots: &mut [Box<Mp3CheckpointStorage>; 3]) -> [&mut Mp3CheckpointStorage; 3] {

@@ -4,6 +4,7 @@
 pub mod decode;
 pub mod fx;
 pub mod history;
+pub mod mp3_index;
 pub mod pcm_stream;
 pub mod playback;
 pub mod render;

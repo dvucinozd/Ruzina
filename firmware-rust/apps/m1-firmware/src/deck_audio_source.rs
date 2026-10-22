@@ -474,7 +474,18 @@ async fn run_owner(
                 Ok(()) => {}
                 Err(TrySendError::Full(block)) => {
                     pending_block = Some(block);
-                    Timer::after(Duration::from_millis(1)).await;
+                    let scanned = match prepared.as_mut() {
+                        Some(source) => {
+                            let (next_buffer, scanned) =
+                                scan_frame_index(&mut client, source, buffer, &mut storage).await;
+                            buffer = next_buffer;
+                            scanned
+                        }
+                        None => false,
+                    };
+                    if !scanned {
+                        Timer::after(Duration::from_millis(1)).await;
+                    }
                 }
             }
             continue;
@@ -819,6 +830,35 @@ async fn prime(
             DecodeAction::Block(block) => return (buffer, file, Some(block)),
         }
     }
+}
+
+/// One bounded read of the background MP3 frame walk, taken only while the
+/// PCM queue is full so it never delays a block (RP-08). Returns false when
+/// the source has nothing left to walk. A failed read is retried later.
+async fn scan_frame_index(
+    client: &mut Usb0FilesystemClient,
+    source: &mut PreparedAudioSource,
+    buffer: &'static mut [u8],
+    storage: &mut DecoderStorage,
+) -> (&'static mut [u8], bool) {
+    let Some((offset, maximum)) = source.stream.index_read(storage, buffer.len()) else {
+        return (buffer, false);
+    };
+    let (file, buffer, bytes) = read_at(
+        client,
+        source.candidate.publication.lease,
+        source.file,
+        buffer,
+        offset,
+    )
+    .await;
+    source.file = file;
+    if bytes != 0 {
+        let _ = source
+            .stream
+            .provide_index(storage, offset, &buffer[..bytes.min(maximum)]);
+    }
+    (buffer, true)
 }
 
 async fn produce_pcm_block(

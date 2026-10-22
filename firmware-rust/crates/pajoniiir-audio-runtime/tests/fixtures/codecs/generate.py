@@ -73,3 +73,28 @@ with wave.open(str(ROOT / "long-input.wav"), "wb") as out:
     out.writeframes(data)
 ffmpeg("-i", "long-input.wav", "-c:a", "libmp3lame", "-b:a", "128k", "long.mp3")
 (ROOT / "long-input.wav").unlink()  # generated intermediate only
+
+
+def long_vbr():
+    """RP-08: eight seconds whose tone and noise sections force VBR frame sizes."""
+    seed = 12345
+    with wave.open(str(ROOT / "long-vbr-input.wav"), "wb") as out:
+        out.setnchannels(2)
+        out.setsampwidth(2)
+        out.setframerate(44100)
+        data = bytearray()
+        for i in range(8 * 44100):
+            noisy = (i // 22050) % 3 == 1
+            for c in range(2):
+                seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF
+                noise = (seed >> 8) % 12000 - 6000 if noisy else 0
+                value = int(7000 * math.sin(i * (0.011 + c * 0.013))) + noise
+                data.extend(value.to_bytes(2, "little", signed=True))
+        out.writeframes(data)
+    ffmpeg("-i", "long-vbr-input.wav", "-c:a", "libmp3lame", "-q:a", "5", "long-vbr.mp3")
+    ffmpeg("-i", "long-vbr-input.wav", "-c:a", "libmp3lame", "-q:a", "5", "-write_xing", "0",
+           "long-vbr-untagged.mp3")
+    (ROOT / "long-vbr-input.wav").unlink()  # generated intermediate only
+
+
+long_vbr()

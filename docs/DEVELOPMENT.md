@@ -5,9 +5,10 @@ scope; compilation, host behavior and physical acceptance remain distinct.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
-verification boundaries. RP-01..06 and RP-15/18 are host-implemented and RP-07
-partly (PWV4, memory-cue markers, artwork references/owner; no JPEG decoder or
-cover display yet); continue with RP-08. This is not complete M2.5 parity.
+verification boundaries. RP-01..06, RP-08 and RP-15/18 are host-implemented and
+RP-07 partly (PWV4, memory-cue markers, artwork references/owner; no JPEG decoder
+or cover display yet); continue with the RP-07 decoder/cover display, then
+RP-11/12/13. This is not complete M2.5 parity.
 
 ## Implemented software
 
@@ -49,8 +50,9 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
 3. **RP-06/07/08:** ordered playlist hierarchy (RP-06 host-implemented; no
    Slint hierarchy view yet), artwork/PWV4 (RP-07 partly: PWV4 and memory-cue
    markers shown, artwork references and bounded owner; decoder/cover display
-   open) and cold MP3 seek/duration budgets, preserving existing sample-exact
-   decoder behavior.
+   open) and cold MP3 seek/duration (RP-08 host-implemented: bounded frame
+   index, exact indexed cold seeks, scanned untagged duration), preserving
+   existing sample-exact decoder behavior.
 4. **RP-11/12/13:** durable settings, C6/Web contracts and signed OTA/readiness
    state machines with host fault injection before physical activation.
 5. **RP-09/10/14/16/17:** UAC descriptors/packets/clocks, board-owned USB roles,
