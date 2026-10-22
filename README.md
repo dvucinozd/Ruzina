@@ -88,6 +88,7 @@ or flash command is selected.
 
 ## Documentation
 
+- [Start here: agent handoff and exact continuation branch](docs/HANDOFF.md)
 - [Development status and next steps](docs/DEVELOPMENT.md)
 - [M2.5 parity audit, priorities and acceptance](docs/M2_5_PARITY_PLAN.md)
 - [Architecture](docs/M1_RUST_ARCHITECTURE.md)

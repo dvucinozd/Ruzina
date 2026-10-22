@@ -3,6 +3,11 @@
 Updated: 2026-10-22. This page describes the current Guition Rust development
 scope; compilation, host behavior and physical acceptance remain distinct.
 
+For continuation by another agent, read the [handoff](HANDOFF.md) first. It
+records the exact branch/worktree, source pins, next batches, constraints and
+verification boundaries. Start with RP-01/02; this is a plan, not implemented
+M2.5 feature parity.
+
 ## Implemented software
 
 The shared crates and simulator cover semantic two-deck control, data-driven
