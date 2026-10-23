@@ -6,7 +6,7 @@ export struct MixerView { crossfader: int, master: int, headphone-mix: int, head
 export struct FxView { effect: string, beat: string, target: int, depth: int, enabled: bool }
 export struct PadFxView { bank: int, active-bank: int, active-pad: int, loaded: bool }
 export struct DeckView {
-    title: string, bpm: string, time: string, status: string, analysis: string,
+    title: string, artwork: image, bpm: string, time: string, status: string, analysis: string,
     loaded: bool, playing: bool, synced: bool, quantize: bool, range: string,
     overview: image, detail: image, cues: [CueView], loop-text: string,
 }
@@ -103,7 +103,15 @@ component DeckPanel inherits Rectangle {
             Text { text: "DECK " + root.number; color: root.number == 1 ? #74d5ff : #ffbc8a; font-size: 18px; font-weight: 700; }
             Text { text: root.data.bpm; color: #eef5fb; horizontal-alignment: right; font-size: 21px; font-weight: 700; }
         }
-        Text { height: 18px; text: root.data.title; color: #aebed1; font-size: 14px; overflow: elide; }
+        HorizontalLayout {
+            height: 34px; spacing: 8px;
+            // Cover or the attributed Pajoniiir logo; empty decks show none.
+            if root.data.loaded: Image {
+                width: 34px; height: 34px; source: root.data.artwork; image-fit: fill;
+                accessible-role: image; accessible-label: "Track artwork";
+            }
+            Text { text: root.data.title; color: #aebed1; font-size: 14px; overflow: elide; vertical-alignment: center; }
+        }
         Image { height: 36px; source: root.data.overview; image-fit: fill; }
         if !root.cue-page: Image { height: 54px; source: root.data.detail; image-fit: fill; }
         HorizontalLayout {

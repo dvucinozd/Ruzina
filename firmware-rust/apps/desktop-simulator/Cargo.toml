@@ -14,6 +14,7 @@ pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
 pajoniiir-controller-core.workspace = true
 pajoniiir-deck.workspace = true
 pajoniiir-hot-cues.workspace = true
+pajoniiir-media-catalog.workspace = true
 pajoniiir-mixer.workspace = true
 pajoniiir-media-session.workspace = true
 pajoniiir-rekordbox.workspace = true

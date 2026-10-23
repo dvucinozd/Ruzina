@@ -7,6 +7,8 @@ use pajoniiir_core::MediaTrackId;
 use pajoniiir_media_session::MediaLease;
 
 pub mod artwork;
+pub mod default_artwork;
+pub mod jpeg;
 pub mod playlists;
 
 pub const MEDIA_CATALOG_MAX_TRACKS: usize = 1_024;

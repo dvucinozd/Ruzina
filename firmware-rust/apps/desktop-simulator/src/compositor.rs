@@ -97,7 +97,11 @@ pub fn compose(p: DeckPresentation, analysis: Option<TrackAnalysis<'_>>, detail:
 }
 
 pub fn image(pixels: &[u16]) -> slint::Image {
-    let mut buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::new(WIDTH as u32, HEIGHT as u32);
+    rgb565_image(pixels, WIDTH as u32, HEIGHT as u32)
+}
+
+pub fn rgb565_image(pixels: &[u16], width: u32, height: u32) -> slint::Image {
+    let mut buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::new(width, height);
     for (pixel, rgb) in pixels.iter().zip(buffer.make_mut_slice()) {
         rgb.r = (((pixel >> 11) & 31) * 255 / 31) as u8;
         rgb.g = (((pixel >> 5) & 63) * 255 / 63) as u8;

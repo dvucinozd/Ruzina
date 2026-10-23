@@ -130,6 +130,34 @@ fn overview_cue_and_playhead_are_aligned_to_track_time() {
 }
 
 #[test]
+fn deck_artwork_shows_the_decoded_cover_or_logo_and_never_an_old_cover() {
+    use pajoniiir_media_catalog::artwork::{ArtworkFallback, ArtworkView};
+    let mut s = loaded();
+    let ArtworkView::Cover { pixels, .. } = s.artwork(0) else {
+        panic!("track 01 carries a baseline cover");
+    };
+    assert!(pixels.iter().any(|pixel| *pixel != pixels[0]));
+    assert_eq!(s.artwork(1), ArtworkView::Empty);
+
+    s.selected = 3;
+    assert!(s.load(DeckId::Two));
+    assert_eq!(
+        s.artwork(1),
+        ArtworkView::Fallback(ArtworkFallback::NotBaseline)
+    );
+    // Replacing deck 1's track drops its cover before anything else shows.
+    s.selected = 2;
+    assert!(s.load(DeckId::One));
+    assert_eq!(
+        s.artwork(0),
+        ArtworkView::Fallback(ArtworkFallback::NoArtwork)
+    );
+    s.detach();
+    assert_eq!(s.artwork(0), ArtworkView::Empty);
+    assert_eq!(s.artwork(1), ArtworkView::Empty);
+}
+
+#[test]
 fn memory_cues_are_marked_apart_from_hot_cues_and_pwv4_colors_the_preview() {
     use pajoniiir_track_analysis::{AnalysisProvider, ColorPreviewEntry, TrackAnalysis};
     let s = loaded();

@@ -7,6 +7,10 @@ use pajoniiir_controller_core::{
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_deck::{DeckEffect, DeckLoadGate, DeckProductState, LoadPermit, LoadRefusal};
 use pajoniiir_hot_cues::HotCueBank;
+use pajoniiir_media_catalog::{
+    artwork::{ArtworkDecks, ArtworkIdentity, ArtworkView},
+    jpeg::BaselineJpegDecoder,
+};
 use pajoniiir_media_session::{MediaLease, MediaSession, MediaSourceId};
 use pajoniiir_mixer::MixerState;
 use pajoniiir_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};
@@ -37,6 +41,20 @@ pub const TITLES: [&str; 4] = [
     "04 / Damaged analysis · recovery",
 ];
 const DURATIONS: [u32; 4] = [10_000, 14_000, 10_000, 10_000];
+/// Demo covers as the export would reference them: a baseline cover, two
+/// tracks without one, and a progressive file the bounded decoder refuses.
+const COVERS: [Option<&[u8]>; 4] = [
+    Some(include_bytes!(concat!(
+        "../../../crates/pajoniiir-media-catalog/tests/fixtures/artwork/",
+        "cover-420.jpg"
+    ))),
+    None,
+    None,
+    Some(include_bytes!(concat!(
+        "../../../crates/pajoniiir-media-catalog/tests/fixtures/artwork/",
+        "cover-progressive.jpg"
+    ))),
+];
 
 pub struct Session {
     pub analysis_observation: pajoniiir_service::analysis::Observation,
@@ -56,6 +74,8 @@ pub struct Session {
     health_publication: Slot<RuntimeStatus>,
     health_generation: u64,
     health_sequence: u64,
+    artwork: ArtworkDecks,
+    jpeg: Box<BaselineJpegDecoder>,
 }
 
 pub const fn deck(index: usize) -> DeckId {
@@ -69,6 +89,13 @@ const fn load_block(refusal: LoadRefusal) -> LoadBlock {
         LoadRefusal::LoadInFlight => LoadBlock::LoadInFlight,
         LoadRefusal::Superseded => LoadBlock::Superseded,
         LoadRefusal::TrackIdentity => LoadBlock::TrackIdentity,
+    }
+}
+const fn artwork_identity(id: AnalysisIdentity) -> ArtworkIdentity {
+    ArtworkIdentity {
+        track: id.track,
+        lease: id.lease,
+        load_generation: id.load_generation,
     }
 }
 pub const fn index(deck: DeckId) -> usize {
@@ -101,6 +128,8 @@ impl Session {
             health_publication: Slot::new(RUNTIME_MAX_AGE_MS),
             health_generation: 0,
             health_sequence: 0,
+            artwork: ArtworkDecks::new(),
+            jpeg: Box::new(BaselineJpegDecoder::new()),
         };
         result.reconnect();
         result
@@ -129,6 +158,7 @@ impl Session {
         for i in 0..2 {
             self.decks.unload_track(deck(i));
             self.pins.clear(i);
+            self.artwork.clear(i);
             self.loaded[i] = None;
             self.fraction[i] = 0;
             self.analysis_status[i] = AnalysisStatus::Unloaded;
@@ -245,6 +275,15 @@ impl Session {
             assert!(self.pins.publish(i, id, publication));
         }
         self.loaded[i] = Some((selection, id));
+        // The committed load drops the previous cover at once; the demo
+        // "read" completes immediately through the bounded decoder.
+        let cover = COVERS[selection];
+        if let Some(ticket) = self.artwork.begin(i, artwork_identity(id), cover.is_some()) {
+            let bytes = cover.unwrap_or_default();
+            if self.artwork.admit_file(ticket, bytes.len() as u64) {
+                self.artwork.complete(ticket, bytes, self.jpeg.as_mut());
+            }
+        }
         // The host source length plays the role of the decoded duration.
         self.decks
             .set_decoded_duration_ms(target, Some(DURATIONS[selection]));
@@ -281,6 +320,15 @@ impl Session {
             return None;
         }
         self.pins.view(i, id)
+    }
+    /// The cover of exactly the loaded track; Empty for an unloaded deck.
+    pub fn artwork(&self, i: usize) -> ArtworkView<'_> {
+        match self.loaded.get(i).copied().flatten() {
+            Some((_, id)) if self.media.validate(id.lease) => {
+                self.artwork.view(i, artwork_identity(id))
+            }
+            _ => ArtworkView::Empty,
+        }
     }
     pub fn title(&self, i: usize) -> &str {
         self.loaded[i]

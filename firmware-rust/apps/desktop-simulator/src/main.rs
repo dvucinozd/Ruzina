@@ -9,6 +9,10 @@ mod session;
 mod smoke;
 
 use pajoniiir_board_profile::{BoardId, profile};
+use pajoniiir_media_catalog::{
+    artwork::{ARTWORK_DECK_EDGE, ArtworkView},
+    default_artwork::DEFAULT_ARTWORK_DECK,
+};
 use pajoniiir_ui_model::{DeckAction, cue_event};
 use session::{Session, deck};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
@@ -31,6 +35,18 @@ fn format_time(position_ms: u64) -> String {
         seconds % 60,
         position_ms % 1000
     )
+}
+
+/// The loaded track's cover, or the attributed logo while it is missing,
+/// loading or refused; nothing for an empty deck (RP-07, M2.5).
+fn artwork_image(view: ArtworkView<'_>) -> slint::Image {
+    let pixels: &[u16] = match view {
+        ArtworkView::Empty => return slint::Image::default(),
+        ArtworkView::Cover { pixels, .. } => pixels,
+        ArtworkView::Loading | ArtworkView::Fallback(_) => &DEFAULT_ARTWORK_DECK,
+    };
+    let edge = u32::from(ARTWORK_DECK_EDGE);
+    compositor::rgb565_image(pixels, edge, edge)
 }
 
 fn refresh(ui: &MainWindow, session: &Session) {
@@ -79,6 +95,7 @@ fn refresh(ui: &MainWindow, session: &Session) {
             }
             DeckView {
                 title: session.title(i).into(),
+                artwork: artwork_image(session.artwork(i)),
                 bpm: if t.loaded {
                     format_bpm(t.bpm_milli)
                 } else {
