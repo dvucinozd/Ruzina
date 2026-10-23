@@ -5,6 +5,8 @@ export struct MixerChannelView { volume: int, trim: int, high: int, mid: int, lo
 export struct MixerView { crossfader: int, master: int, headphone-mix: int, headphone-level: int, master-cue: bool, smart-cfx: bool, smart-fader: bool }
 export struct FxView { effect: string, beat: string, target: int, depth: int, enabled: bool }
 export struct PadFxView { bank: int, active-bank: int, active-pad: int, loaded: bool }
+// kind: 0 track, 1 folder, 2 playlist (RP-06).
+export struct LibraryRowView { label: string, kind: int }
 export struct DeckView {
     title: string, artwork: image, bpm: string, time: string, status: string, analysis: string,
     loaded: bool, playing: bool, synced: bool, quantize: bool, range: string,
@@ -246,7 +248,10 @@ export component MainWindow inherits Window {
     in property <int> analysis-severity;
     in property <string> analysis-recovery;
     private property <int> shown-health-severity: root.health-analysis ? root.analysis-severity : root.health-severity;
-    in property <[string]> tracks;
+    in property <[LibraryRowView]> library-rows;
+    in property <string> library-path;
+    in property <bool> library-top: true;
+    callback library-back;
     in property <int> selection;
     in property <bool> media-ready;
     in property <string> message;
@@ -306,12 +311,13 @@ export component MainWindow inherits Window {
         if root.page == 1: Rectangle {
             background: #131d29; border-radius: 8px;
             VerticalLayout { padding: 22px; spacing: 12px;
-                Text { text: "DEMO LIBRARY"; color: #eef5fb; font-size: 23px; font-weight: 700; height: 32px; }
-                Text { text: root.media-ready ? "Select a track, then choose its destination." : "Media removed. Reconnect to load tracks."; color: #a1b4c9; height: 24px; }
-                for title[i] in root.tracks: Action { height: 48px; text: title; active: root.selection == i; enabled: root.media-ready; clicked => { root.select-track(i); } }
+                Text { text: root.library-path; color: #eef5fb; font-size: 23px; font-weight: 700; height: 32px; overflow: elide; }
+                Text { text: !root.media-ready ? "Media removed. Reconnect to load tracks." : root.library-top ? "Select a track, then choose its destination." : "LOAD opens a folder or playlist; on a track it loads the deck."; color: #a1b4c9; height: 24px; }
+                for row[i] in root.library-rows: Action { height: 48px; text: row.label; active: root.selection == i; enabled: root.media-ready; clicked => { root.select-track(i); } }
                 HorizontalLayout { height: 44px; spacing: 12px;
                     Action { text: "LOAD DECK 1"; enabled: root.media-ready; clicked => { root.load-track(0); } }
                     Action { text: "LOAD DECK 2"; enabled: root.media-ready; clicked => { root.load-track(1); } }
+                    Action { text: root.library-top ? "PLAYLISTS" : "BACK"; enabled: root.media-ready; clicked => { root.library-back(); } }
                     Action { text: root.media-ready ? "REMOVE MEDIA" : "RECONNECT"; clicked => { root.media-action(); } }
                 }
                 Rectangle { vertical-stretch: 1; background: transparent; }

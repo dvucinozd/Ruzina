@@ -6,8 +6,13 @@ use ruzina_core::MediaTrackId;
 use ruzina_deck::{DeckEffect, DeckLoadGate, DeckProductState, LoadPermit, LoadRefusal};
 use ruzina_hot_cues::HotCueBank;
 use ruzina_media_catalog::{
+    CatalogBuilder, CatalogSnapshot, CatalogText, CatalogTrack,
     artwork::{ArtworkDecks, ArtworkIdentity, ArtworkView},
     jpeg::BaselineJpegDecoder,
+    playlists::{
+        InlinePlaylistStore, LibraryActivation, LibraryBrowser, LibraryLevel, LibraryRow,
+        PlaylistBuilder, PlaylistIndex,
+    },
 };
 use ruzina_media_session::{MediaLease, MediaSession, MediaSourceId};
 use ruzina_mixer::MixerState;
@@ -73,6 +78,19 @@ pub struct Session {
     jpeg: Box<BaselineJpegDecoder>,
     idle: IdleScreen,
     idle_clock_ms: u32,
+    catalog: Option<CatalogSnapshot<4>>,
+    playlists: Option<DemoPlaylists>,
+    library: LibraryBrowser,
+}
+
+type DemoPlaylists = PlaylistIndex<InlinePlaylistStore<8, 16>>;
+
+/// What a Library row is, for presentation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RowKind {
+    Track,
+    Folder,
+    Playlist,
 }
 
 pub const fn deck(index: usize) -> DeckId {
@@ -129,6 +147,9 @@ impl Session {
             jpeg: Box::new(BaselineJpegDecoder::new()),
             idle: IdleScreen::new(IDLE_DEFAULT_TIMEOUT_MS, 0),
             idle_clock_ms: 0,
+            catalog: None,
+            playlists: None,
+            library: LibraryBrowser::new(),
         };
         result.reconnect();
         result
@@ -143,6 +164,7 @@ impl Session {
             self.service.record(EventKind::MediaConnected);
             self.restart_health_owner();
         }
+        self.publish_library();
         self.message = "Demo media connected · choose a track".into();
         self.publish_health();
     }
@@ -151,6 +173,9 @@ impl Session {
         self.cancel_pads();
         self.control(BeatFxAction::Clear.event(true));
         self.media.on_disconnect(None);
+        self.catalog = None;
+        self.playlists = None;
+        self.library.clear();
         if was_connected {
             self.service.record(EventKind::MediaRemoved);
         }
@@ -525,6 +550,161 @@ impl Session {
     }
     pub const fn screensaver(&self) -> bool {
         self.idle.shown()
+    }
+
+    /// Demo export for the connected media: the four demo tracks plus a
+    /// small playlist tree, browsed with the product `LibraryBrowser`.
+    fn publish_library(&mut self) {
+        let Some(lease) = self.media.lease() else {
+            return;
+        };
+        let mut builder = CatalogBuilder::<4>::new(lease);
+        for (i, title) in TITLES.iter().enumerate() {
+            builder
+                .push(CatalogTrack {
+                    track_id: MediaTrackId([i as u8 + 1; 16]),
+                    source_track_id: i as u32 + 1,
+                    duration_ms: DURATIONS[i],
+                    title: CatalogText::try_from_str(title).expect("demo title fits"),
+                    ..CatalogTrack::EMPTY
+                })
+                .expect("demo catalog capacity");
+        }
+        let catalog = builder.finish(1);
+        let mut tree = PlaylistBuilder::new(InlinePlaylistStore::<8, 16>::new());
+        for (id, parent, sort, folder, name) in [
+            (1, 0, 1, true, "Sets"),
+            (2, 1, 1, false, "Warm-up"),
+            (3, 1, 2, false, "Peak time"),
+            (4, 0, 2, false, "Recovery checks"),
+        ] {
+            tree.push_node(id, parent, sort, folder, name);
+        }
+        for (playlist, entry, track) in [
+            (2, 0, 2),
+            (2, 1, 1),
+            (3, 0, 1),
+            (3, 1, 2),
+            (4, 0, 3),
+            (4, 1, 4),
+        ] {
+            tree.push_entry(playlist, entry, track);
+        }
+        let playlists = tree.finish(&catalog);
+        self.library.publish(&catalog, Some(&playlists));
+        // A reconnect keeps the track-list selection, as before.
+        self.library.select(self.selected as u16);
+        self.catalog = Some(catalog);
+        self.playlists = Some(playlists);
+    }
+
+    /// Rows of the current Library level. Without media the demo titles stay
+    /// listed (disabled), as before.
+    pub fn library_rows(&self) -> Vec<(String, RowKind)> {
+        let Some(catalog) = &self.catalog else {
+            return TITLES
+                .iter()
+                .map(|t| ((*t).into(), RowKind::Track))
+                .collect();
+        };
+        (0..self.library.count())
+            .filter_map(|i| {
+                Some(
+                    match self.library.row_at(i, catalog, self.playlists.as_ref())? {
+                        LibraryRow::Track(candidate) => {
+                            (TITLES[usize::from(candidate.index)].into(), RowKind::Track)
+                        }
+                        LibraryRow::Node(node) if node.is_folder => {
+                            (format!("FOLDER · {}", node.name.as_str()), RowKind::Folder)
+                        }
+                        LibraryRow::Node(node) => {
+                            let tracks = self
+                                .playlists
+                                .as_ref()
+                                .map_or(0, |p| p.tracks(node.id).len());
+                            (
+                                format!("PLAYLIST · {} ({tracks})", node.name.as_str()),
+                                RowKind::Playlist,
+                            )
+                        }
+                    },
+                )
+            })
+            .collect()
+    }
+
+    /// "DEMO LIBRARY" for the track list, otherwise the playlist path.
+    pub fn library_path(&self) -> String {
+        let level = self.library.level();
+        let Some(playlists) = &self.playlists else {
+            return "DEMO LIBRARY".into();
+        };
+        let mut id = match level {
+            LibraryLevel::AllTracks => return "DEMO LIBRARY".into(),
+            LibraryLevel::Folder(id) | LibraryLevel::Playlist(id) => id,
+        };
+        let mut names = Vec::new();
+        while let Some(node) = playlists.node(id) {
+            names.push(node.name.as_str().to_owned());
+            id = node.parent_id;
+        }
+        names.push("PLAYLISTS".into());
+        names.reverse();
+        names.join(" / ")
+    }
+
+    pub fn library_level(&self) -> LibraryLevel {
+        self.library.level()
+    }
+
+    pub fn library_selected(&self) -> Option<usize> {
+        self.library.selected_index().map(usize::from)
+    }
+
+    pub fn library_select(&mut self, row: usize) {
+        self.note_activity();
+        if let Ok(row) = u16::try_from(row)
+            && self.library.select(row)
+            && self.library.level() == LibraryLevel::AllTracks
+        {
+            self.selected = usize::from(row);
+        }
+    }
+
+    /// PLAYLISTS / BACK (M2.5).
+    pub fn library_back(&mut self) -> bool {
+        self.note_activity();
+        match &self.catalog {
+            Some(catalog) => self.library.back(catalog, self.playlists.as_ref()),
+            None => false,
+        }
+    }
+
+    /// LOAD on the selected row: a folder or playlist opens without load
+    /// admission; a track enters the normal load path.
+    pub fn library_load(&mut self, target: DeckId) -> bool {
+        self.note_activity();
+        let Some(catalog) = &self.catalog else {
+            return self.load(target);
+        };
+        match self.library.activate(catalog, self.playlists.as_ref()) {
+            LibraryActivation::Opened => {
+                self.message = format!("Opened {}", self.library_path());
+                false
+            }
+            LibraryActivation::Load(candidate) => {
+                self.selected = usize::from(candidate.index);
+                self.load(target)
+            }
+            LibraryActivation::Empty => {
+                self.message = "Nothing to load here".into();
+                false
+            }
+            LibraryActivation::Stale => {
+                self.message = "Library changed · choose again".into();
+                false
+            }
+        }
     }
     fn update_idle(&mut self) {
         let playing = (0..2).any(|i| self.presentation(i).transport.playing);

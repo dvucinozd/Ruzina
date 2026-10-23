@@ -12,6 +12,7 @@ use ruzina_board_profile::{BoardId, profile};
 use ruzina_media_catalog::{
     artwork::{ARTWORK_DECK_EDGE, ArtworkView},
     default_artwork::DEFAULT_ARTWORK_DECK,
+    playlists::LibraryLevel,
 };
 use ruzina_ui_model::{DeckAction, cue_event};
 use session::{Session, deck};
@@ -136,13 +137,52 @@ fn refresh(ui: &MainWindow, session: &Session) {
     for (i, view) in views.into_iter().enumerate() {
         rows.set_row_data(i, view);
     }
-    ui.set_selection(session.selected as i32);
+    library_refresh(ui, session);
     ui.set_media_ready(session.connected());
     ui.set_message(session.message.clone().into());
     ui.set_screensaver(session.screensaver());
     mix_fx_ui::refresh(ui, session);
     health_ui::refresh(ui, session.diagnostics());
     analysis_ui::refresh(ui, session.analysis_observation);
+}
+
+/// The current Library level: rows, path and selection (RP-06).
+fn library_refresh(ui: &MainWindow, session: &Session) {
+    let rows: Vec<LibraryRowView> = session
+        .library_rows()
+        .into_iter()
+        .map(|(label, kind)| LibraryRowView {
+            label: label.into(),
+            kind: match kind {
+                session::RowKind::Track => 0,
+                session::RowKind::Folder => 1,
+                session::RowKind::Playlist => 2,
+            },
+        })
+        .collect();
+    let model = ui.get_library_rows();
+    let model = model
+        .as_any()
+        .downcast_ref::<VecModel<LibraryRowView>>()
+        .expect("bound library model");
+    // Keep row instances (and their focus) while the level is unchanged.
+    if model.row_count() == rows.len() {
+        for (i, row) in rows.into_iter().enumerate() {
+            if model.row_data(i).as_ref() != Some(&row) {
+                model.set_row_data(i, row);
+            }
+        }
+    } else {
+        model.set_vec(rows);
+    }
+    let top = session.library_level() == LibraryLevel::AllTracks;
+    ui.set_library_top(top);
+    ui.set_library_path(session.library_path().into());
+    ui.set_selection(if top || !session.connected() {
+        session.selected as i32
+    } else {
+        session.library_selected().map_or(-1, |i| i as i32)
+    });
 }
 
 fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
@@ -155,12 +195,7 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
             })
             .collect::<Vec<_>>(),
     )));
-    ui.set_tracks(ModelRc::new(VecModel::from(
-        session::TITLES
-            .iter()
-            .map(|s| (*s).into())
-            .collect::<Vec<_>>(),
-    )));
+    ui.set_library_rows(ModelRc::new(VecModel::<LibraryRowView>::default()));
     let weak = ui.as_weak();
     let session = state.clone();
     ui.on_deck_action(move |i, code| {
@@ -208,8 +243,8 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
     let session = state.clone();
     ui.on_select_track(move |selection| {
         session.borrow_mut().note_activity();
-        if (0..session::TITLES.len() as i32).contains(&selection) && session.borrow().connected() {
-            session.borrow_mut().selected = selection as usize;
+        if selection >= 0 && session.borrow().connected() {
+            session.borrow_mut().library_select(selection as usize);
             if let Some(ui) = weak.upgrade() {
                 refresh(&ui, &session.borrow());
             }
@@ -221,7 +256,15 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
         if !(0..2).contains(&i) {
             return;
         }
-        session.borrow_mut().load(deck(i as usize));
+        session.borrow_mut().library_load(deck(i as usize));
+        if let Some(ui) = weak.upgrade() {
+            refresh(&ui, &session.borrow());
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_library_back(move || {
+        session.borrow_mut().library_back();
         if let Some(ui) = weak.upgrade() {
             refresh(&ui, &session.borrow());
         }

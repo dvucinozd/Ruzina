@@ -430,3 +430,25 @@ fn runtime_heartbeat_is_independent_of_playback_and_refresh_reads() {
     );
     assert_eq!(s.diagnostics().counters.media_removals, 1);
 }
+
+#[test]
+fn playlist_levels_never_survive_a_media_reconnect() {
+    let mut s = Session::new();
+    assert!(s.library_back());
+    s.library_select(0);
+    assert!(!s.library_load(DeckId::One), "a folder opens");
+    s.library_select(1);
+    assert!(!s.library_load(DeckId::One), "a playlist opens");
+    assert_eq!(s.library_path(), "PLAYLISTS / Sets / Peak time");
+    s.detach();
+    assert_eq!(s.library_rows().len(), session::TITLES.len());
+    s.reconnect();
+    assert_eq!(
+        s.library_path(),
+        "DEMO LIBRARY",
+        "a new publication starts at the track list"
+    );
+    s.library_select(2);
+    assert!(s.library_load(DeckId::Two));
+    assert_eq!(s.title(1), session::TITLES[2]);
+}
