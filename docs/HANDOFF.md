@@ -1,8 +1,9 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-23. Next action: **remaining host work (UAC 48 to 44.1 kHz
-resampler, Slint playlist view, upload path, tempo nudge/paused scrub); target
-adapters and RP-09/10/14 budgets wait for board qualification**.
+Updated: 2026-10-23. Next action: **remaining host work (Slint playlist view,
+upload path, tempo nudge/paused scrub); target adapters and RP-09/10/14 budgets
+wait for board qualification; the Ruzina rename follows the merged stack (see
+below)**.
 Host-implemented stack: RP-01/02 (PR #23, `ogranak/m25-rust-parity-plan`),
 RP-04 load admission (PR #24, `ogranak/m25-rp04-load-admission`), RP-03 CUE
 hold/VINYL-CDJ (PR #25, `ogranak/m25-rp03-cue-jog`), RP-05 memory/loop cues
@@ -16,8 +17,9 @@ RP-07 part 2: baseline JPEG decoder and cover/logo display (PR #31,
 `ogranak/m25-rp07-cover-decoder`), RP-11 durable settings (PR #32,
 `ogranak/m25-rp11-settings`), RP-12 Web/C6 contracts (PR #33,
 `ogranak/m25-rp12-web-contracts`), RP-13 signed OTA/readiness contracts
-(PR #34, `ogranak/m25-rp13-ota`) and the RP-09/10/14/16/17 host contracts
-(`ogranak/m25-rp09-17-audio-platform`), each stacked on the previous. See the parity
+(PR #34, `ogranak/m25-rp13-ota`), the RP-09/10/14/16/17 host contracts
+(PR #35, `ogranak/m25-rp09-17-audio-platform`) and the UAC 48 to 44.1 kHz
+converter (`ogranak/m25-uac-resampler`), each stacked on the previous. See the parity
 plan rows for evidence and open items (upload path, Web Remote admission/tap
 semantics, tempo nudge/paused scrub, Slint playlist view, physical controller/
 import/listening acceptance). The sections below still describe the original
@@ -115,6 +117,50 @@ tests and the relevant shared/Slint/target checks before merge. The handoff push
 does not merge this branch or authorize a firmware release. The audit defines
 acceptance criteria; RP-01..20 remain open until their behavior is implemented
 and verified. No test result should be inferred from a requirement table.
+
+## Planned rename: Pajoniiir -> Ruzina
+
+The Rust product is to be renamed **Ruzina** (crates `ruzina-*`, identifiers
+`ruzina_*`). **Pajoniiir** stays the name of the C donor
+(`dvucinozd/Pajoniiir`, M2.5) wherever the text means the donor. Do it as one
+dedicated PR after the stacked RP PRs (#23 onward) are merged to `main`:
+renaming paths on top of the open stack would conflict with every branch.
+
+Scope on 2026-10-23: 1434 case-insensitive occurrences in 202 of 317 tracked
+files and 238 tracked paths. That covers the crates and their directories,
+`Cargo.toml`/`Cargo.lock`, the firmware binary `pajoniiir-m1-firmware` (also
+named by `tools/guition_first_boot.py` and its tests), CI workflows, tools,
+docs, and the simulator's `PAJONIIIR` window title and header (the 54 UI
+goldens change and need review).
+
+Keep unchanged, because they mean the donor: donor repository URLs and
+commits, M2.5 names and quotes, `.ddjota`, `ota_manifest`/NVS references, the
+attributed M2.5 logo source and fixture provenance notes.
+
+Decide explicitly, because these values are persisted, signed or on the wire:
+
+- Media identity domains `pajoniiir.volume.fat32.v1`,
+  `pajoniiir.volume.exfat.v1` and `pajoniiir.hotcue.v2`. Changing them changes
+  every stored volume and Hot Cue identity, so keep them as frozen constants
+  or add a versioned migration.
+- The Web hostname `pajoniiir.local` (RP-12) and the `/PAJONIIIR` sidecar
+  directory (M1R-P1-003), which donor media may already contain.
+- The OTA project name in signed headers (board-specific). The test bundles
+  use `pajoniiir-m1-test` and must be regenerated with `generate.py`.
+- The GitHub repository name `Pajoniiir-M1`.
+
+Branding is replaced, not kept: the default cover logo (the attributed M2.5
+artwork in `pajoniiir-media-catalog/assets`, its generated
+`default_artwork.rs` and the simulator goldens that show it) becomes a
+supplied Ruzina asset with its own provenance note. The screensaver also uses
+Ruzina branding. M2.5 has one (`dj_ui.c`, `splash_screen.h`), but Rust has
+none yet, so it is ported with the new branding rather than with the donor
+artwork. Both need the Ruzina artwork from the owner.
+
+Verification: a case-insensitive search must show only allow-listed donor or
+frozen hits. Then regenerate the lockfile, run the full host CI with
+`--locked`, the UI goldens, the runtime owners, the 25 P4 feature checks,
+firmware fmt and the docs link check.
 
 ## Policies that must survive continuation
 

@@ -260,3 +260,126 @@ fn unsupported_audio_keeps_midi_and_offers_no_stream() {
         assert!(midi.is_bidirectional());
     }
 }
+
+#[test]
+fn a_44_1_khz_only_controller_streams_through_the_converter() {
+    use pajoniiir_uac::resample::Resampler;
+    // FLX4-like: 4 ch, 16-bit, 44.1 kHz only.
+    let formats = parse_playback_formats(&config(&alternate(16, 2, 44_100, 0x09, 360))).unwrap();
+    let selected = select(&formats, UsbSpeed::Full).unwrap();
+    assert_eq!(selected.rate, 44_100);
+    let map = ChannelMap::new(
+        4,
+        Some(Pair { left: 0, right: 1 }),
+        Some(Pair { left: 2, right: 3 }),
+    )
+    .unwrap();
+
+    let mut router = OutputRouter::default();
+    let mut available = routes(1);
+    for stream in [
+        available.controller_main.as_mut().unwrap(),
+        available.controller_headphones.as_mut().unwrap(),
+    ] {
+        stream.sample_rate_hz = 44_100;
+        stream.sample_bits = 16;
+    }
+    let transition = router.update(available).unwrap();
+    assert!(router.commit_prepared(transition));
+    let mut main_storage = [SinkBlock::EMPTY; 4];
+    let mut phones_storage = [SinkBlock::EMPTY; 4];
+    let mut delivery = OutputDelivery::new(&mut main_storage, &mut phones_storage).unwrap();
+    delivery.sync_routes(&router, 0).unwrap();
+    let main_token = delivery.main.token().unwrap();
+    let phones_token = delivery.headphones.token().unwrap();
+    delivery.main.set_mute(main_token, false, 0).unwrap();
+    delivery
+        .headphones
+        .set_mute(phones_token, false, 0)
+        .unwrap();
+
+    let main_level = PcmFrame {
+        left: 6_000,
+        right: -6_000,
+    };
+    let phones_level = PcmFrame {
+        left: 24_000,
+        right: -24_000,
+    };
+    let mut resampler = Resampler::<4>::new(48_000, selected.rate).unwrap();
+    let mut cadence = Cadence::new(selected.rate);
+    let (mut produced, mut clock, mut wire_frames) = (0u64, 0u64, 0usize);
+    for _ in 0..1_000 {
+        while produced < clock + 256 {
+            delivery
+                .main
+                .submit(main_token, produced, &[main_level; RENDER_BLOCK_FRAMES])
+                .unwrap();
+            delivery
+                .headphones
+                .submit(phones_token, produced, &[phones_level; RENDER_BLOCK_FRAMES])
+                .unwrap();
+            produced += RENDER_BLOCK_FRAMES as u64;
+        }
+        let frames = cadence.next_frames();
+        let needed = resampler.input_needed(frames);
+        let mut main = [PcmFrame::default(); RENDER_BLOCK_FRAMES];
+        let mut phones = [PcmFrame::default(); RENDER_BLOCK_FRAMES];
+        let main_receipt = delivery
+            .main
+            .issue(main_token, clock, needed, &mut main)
+            .unwrap();
+        let phones_receipt = delivery
+            .headphones
+            .issue(phones_token, clock, needed, &mut phones)
+            .unwrap();
+        clock += needed as u64;
+        let joined: Vec<[i16; 4]> = (0..needed)
+            .map(|i| [main[i].left, main[i].right, phones[i].left, phones[i].right])
+            .collect();
+        let mut converted = [[0i16; 4]; 48];
+        let n = resampler.process(&joined, &mut converted).unwrap();
+        assert_eq!(n, frames);
+        let split = |pick: usize| -> Vec<PcmFrame> {
+            converted[..n]
+                .iter()
+                .map(|f| PcmFrame {
+                    left: f[pick],
+                    right: f[pick + 1],
+                })
+                .collect()
+        };
+        let mut packet = vec![0; selected.format.packet_bytes(selected.rate)];
+        let written = pack(
+            &mut packet,
+            SampleFormat::Pcm16,
+            &map,
+            Some(&split(0)),
+            Some(&split(2)),
+            n,
+        )
+        .unwrap();
+        for frame in packet[..written].chunks(8) {
+            let s = |c: usize| i16::from_le_bytes([frame[c * 2], frame[c * 2 + 1]]);
+            assert_eq!(
+                [s(0), s(1), s(2), s(3)],
+                [6_000, -6_000, 24_000, -24_000],
+                "unity through the converter"
+            );
+        }
+        wire_frames += n;
+        delivery.main.complete(main_receipt).unwrap();
+        delivery.headphones.complete(phones_receipt).unwrap();
+    }
+    assert_eq!(wire_frames, 44_100, "one second on the wire");
+    assert!(
+        (clock as i64 - 48_000).abs() <= 1,
+        "one second of render frames consumed: {clock}"
+    );
+    assert_eq!(
+        delivery.main.stats().completed_frames,
+        clock,
+        "receipts count render frames"
+    );
+    assert_eq!(delivery.main.stats().underrun_frames, 0);
+}

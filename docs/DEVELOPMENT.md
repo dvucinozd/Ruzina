@@ -68,8 +68,8 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
 5. **RP-09/10/14/16/17:** UAC descriptors/packets/clocks, board-owned USB roles,
    MAIN switching, headphone gain ownership and bounded cache/diagnostic behavior
    (host contracts in `pajoniiir-uac`, `main_change`, board `usb` roles and
-   service `resources`, plus the MT starvation regression; physical streams,
-   resampling to 44.1 kHz and board budgets remain open).
+   service `resources`, plus the MT starvation regression and the exact-phase
+   48 to 44.1 kHz converter; physical streams and board budgets remain open).
 
 The first four batches and host portions of the fifth can proceed before board
 arrival. Current host coverage does not close these newly identified gaps.
@@ -111,6 +111,11 @@ workflows, signed A/B OTA/rollback/readiness, C6 transport/networking and Web
 Remote are unfinished; their RP-11/12/13 rules exist only as host contracts. Physical audio sinks and controller-specific headphone channel maps
 are not implemented/qualified. Musical analysis accuracy, device performance,
 sanitizer/fuzz campaigns and long-duration physical soak are separate gates.
+
+The Rust product will be renamed from Pajoniiir to **Ruzina** once the stacked
+RP PRs are merged; Pajoniiir remains the C donor's name. The
+[handoff](HANDOFF.md) records the scope and the persisted names that need an
+explicit decision.
 
 The only deployed-board targets are the two Guition models. `integration-check`
 exists solely to type-check reusable owner combinations; it acquires no board
