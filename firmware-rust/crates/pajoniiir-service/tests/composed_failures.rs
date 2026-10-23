@@ -666,6 +666,84 @@ fn transport_claims_are_refused_while_a_load_replaces_the_deck() {
     rig.play(DeckId::One);
 }
 
+// RP-03: CDJ CUE preview through the actual firmware product and transport owners.
+#[test]
+fn controller_disconnect_stops_cue_preview_through_the_transport_owner() {
+    let mut rig = Rig::new();
+    rig.event(
+        DeckId::One,
+        SemanticControl::Cue,
+        ControlValue::Pressed(true),
+    );
+    let command = rig.next_command();
+    assert!(matches!(
+        command.effect,
+        DeckEffect::PlaybackRequest {
+            deck: DeckId::One,
+            playing: true,
+            ..
+        }
+    ));
+    let completion = rig.transport.apply(command).unwrap();
+    assert!(rig.product.apply_transport_completion(completion, 0));
+    assert!(rig.product.deck().deck(DeckId::One).cue_previewing());
+    rig.play(DeckId::Two);
+
+    assert!(
+        rig.product
+            .try_accept(SessionDelivery::Connection(ConnectionState::Disconnected))
+    );
+    assert_eq!(
+        rig.next_command().effect,
+        DeckEffect::Pause { deck: DeckId::One }
+    );
+    assert_eq!(
+        rig.next_command().effect,
+        DeckEffect::Seek {
+            deck: DeckId::One,
+            position_ms: 0
+        }
+    );
+    assert!(rig.product.next_transport_effect().is_none());
+    assert!(!rig.product.deck().deck(DeckId::One).playing);
+    assert!(!rig.product.deck().deck(DeckId::One).cue_held());
+    assert!(rig.product.deck().deck(DeckId::Two).playing);
+}
+
+#[test]
+fn cue_press_withdraws_an_admitted_load_and_cdj_touch_does_not() {
+    use pajoniiir_controller_core::{DeckExtAction, DeckExtActionValue};
+    let mut rig = Rig::new();
+    let permit = rig.gates[0].reserve().unwrap();
+    rig.event(
+        DeckId::One,
+        SemanticControl::Cue,
+        ControlValue::Pressed(true),
+    );
+    assert_eq!(
+        rig.gates[0].begin_replacement(permit),
+        Err(LoadRefusal::Superseded)
+    );
+
+    rig.event(
+        DeckId::Two,
+        SemanticControl::DeckExtAction,
+        ControlValue::DeckExtAction(DeckExtActionValue {
+            action: DeckExtAction::JogCdj,
+            pressed: true,
+        }),
+    );
+    let permit = rig.gates[1].reserve().unwrap();
+    rig.event(
+        DeckId::Two,
+        SemanticControl::JogTouch,
+        ControlValue::Pressed(true),
+    );
+    assert!(!rig.product.deck().deck(DeckId::Two).jog_touched);
+    assert_eq!(rig.gates[1].begin_replacement(permit), Ok(()));
+    assert!(rig.gates[1].finish(permit));
+}
+
 #[test]
 fn final_commit_rechecks_admission_and_preserves_a_playing_deck() {
     let mut rig = Rig::new();

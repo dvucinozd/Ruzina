@@ -161,13 +161,37 @@ fn pointer_smoke(ui: &MainWindow, state: &Rc<RefCell<Session>>, width: f32) {
     ui.window().dispatch_event(WindowEvent::KeyReleased {
         text: slint::platform::Key::Tab.into(),
     });
+    // Keyboard CUE on a paused deck away from its cue sets the (quantized) cue
+    // there (CDJ); holding CUE again previews, and releasing returns to it.
+    assert_ne!(state.borrow().presentation(0).transport.position_ms, 0);
     ui.window().dispatch_event(WindowEvent::KeyPressed {
         text: slint::platform::Key::Return.into(),
     });
     ui.window().dispatch_event(WindowEvent::KeyReleased {
         text: slint::platform::Key::Return.into(),
     });
-    assert_eq!(state.borrow().presentation(0).transport.position_ms, 0);
+    let cue_point = u64::from(
+        state
+            .borrow()
+            .decks
+            .deck(crate::session::deck(0))
+            .cue_point_ms,
+    );
+    assert_ne!(cue_point, 0);
+    assert_eq!(
+        state.borrow().presentation(0).transport.position_ms,
+        cue_point
+    );
+    ui.window()
+        .dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+    assert!(state.borrow().presentation(0).transport.playing);
+    ui.window()
+        .dispatch_event(WindowEvent::KeyReleased { text: " ".into() });
+    assert!(!state.borrow().presentation(0).transport.playing);
+    assert_eq!(
+        state.borrow().presentation(0).transport.position_ms,
+        cue_point
+    );
     nav(ui, width, 2);
     assert_eq!(ui.get_page(), 2);
     click(ui, 50.0, 342.0);

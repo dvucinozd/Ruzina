@@ -237,6 +237,9 @@ fn deck_ext_action(
         4 => DeckExtAction::LoopAdjustOut,
         5 => DeckExtAction::Quantize,
         6 => DeckExtAction::SyncOff,
+        // 7 is M2.5 `restore_source_cues` (RP-05) and stays unsupported here.
+        8 => DeckExtAction::JogVinyl,
+        9 => DeckExtAction::JogCdj,
         _ => return Err(SemanticAdapterError::ValueOutOfRange),
     };
 
@@ -313,6 +316,33 @@ mod tests {
                     pressed: true,
                 }),
             }
+        );
+    }
+
+    #[test]
+    fn decodes_m25_jog_mode_actions_on_both_edges_and_rejects_restore() {
+        // M2.5 compile_profile.py EXT_ACTIONS: jog_vinyl = 8, jog_cdj = 9.
+        for (raw, action) in [(8, DeckExtAction::JogVinyl), (9, DeckExtAction::JogCdj)] {
+            for pressed in [false, true] {
+                let event = adapt_profile_event(ProfileEvent {
+                    semantic_type: TYPE_BUTTON,
+                    semantic_id: NS_DECK1 + 28,
+                    value: raw | if pressed { 0x80 } else { 0 },
+                })
+                .unwrap();
+                assert_eq!(
+                    event.value,
+                    ControlValue::DeckExtAction(DeckExtActionValue { action, pressed })
+                );
+            }
+        }
+        assert_eq!(
+            adapt_profile_event(ProfileEvent {
+                semantic_type: TYPE_BUTTON,
+                semantic_id: NS_DECK1 + 28,
+                value: 0x80 | 7,
+            }),
+            Err(SemanticAdapterError::ValueOutOfRange)
         );
     }
 

@@ -7,7 +7,7 @@ use pajoniiir_controller_session::{
     PadMode, SemanticLedId, SessionDelivery, SessionDeliverySink,
 };
 use pajoniiir_deck::{
-    DeckClaim, DeckEffect, DeckEffectBroker, DeckLoadGate, DeckProductState, LoadPermit,
+    DeckClaim, DeckEffect, DeckEffectBroker, DeckLoadGate, DeckProductState, JogMode, LoadPermit,
     LoopAdjustMode, PadFxBank,
 };
 use pajoniiir_hot_cues::HotCueBank;
@@ -53,12 +53,21 @@ pub(crate) fn load_gate(deck: DeckId) -> &'static DeckLoadGate {
     &LOAD_GATES[deck_index(deck)]
 }
 
-/// Controls that take a deck's audio ownership and therefore race a load.
-fn claims_transport(event: pajoniiir_controller_core::ControlEvent) -> Option<DeckId> {
+/// Controls that can take a deck's audio ownership and therefore race a load:
+/// PLAY, CUE (hold-preview) and VINYL platter touch (scratch). CDJ ignores
+/// platter-top touch, so it never claims the deck.
+fn claims_transport(
+    event: pajoniiir_controller_core::ControlEvent,
+    deck_state: &DeckProductState,
+) -> Option<DeckId> {
     use pajoniiir_controller_core::{ControlValue, SemanticControl};
+    let deck = event.deck?;
     match (event.control, event.value) {
-        (SemanticControl::Play | SemanticControl::JogTouch, ControlValue::Pressed(true)) => {
-            event.deck
+        (SemanticControl::Play | SemanticControl::Cue, ControlValue::Pressed(true)) => Some(deck),
+        (SemanticControl::JogTouch, ControlValue::Pressed(true))
+            if deck_state.deck(deck).jog_mode == JogMode::Vinyl =>
+        {
+            Some(deck)
         }
         _ => None,
     }
@@ -714,8 +723,16 @@ impl SessionDeliverySink for ProductRuntime {
     fn try_accept(&mut self, delivery: SessionDelivery) -> bool {
         match delivery {
             SessionDelivery::Connection(state) => {
-                self.deck
-                    .set_controller_connected(state == ConnectionState::Connected);
+                // Disconnect releases an active CUE preview (pause + return to
+                // cue). Publish those effects atomically or retry the delivery.
+                let mut staged = self.deck;
+                let releases = staged.set_controller_connected(state == ConnectionState::Connected);
+                if !self.deck_effects.try_push_groups(&releases) {
+                    self.stats.effect_backpressure =
+                        self.stats.effect_backpressure.saturating_add(1);
+                    return false;
+                }
+                self.deck = staged;
                 self.refresh_leds();
                 if state == ConnectionState::Connected {
                     self.mark_led_resync();
@@ -728,7 +745,7 @@ impl SessionDeliverySink for ProductRuntime {
                     // With LOAD LOCK on, PLAY/jog withdraw a reserved load (the old
                     // session survives) and are refused while replacement runs.
                     if self.deck.load_lock()
-                        && let Some(deck) = claims_transport(event)
+                        && let Some(deck) = claims_transport(event, &self.deck)
                     {
                         match self.load_gate(deck).claim_for_transport() {
                             DeckClaim::Replacing => {

@@ -37,11 +37,60 @@ component Action inherits Rectangle {
     }
 }
 
+component HoldAction inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    in property <bool> enabled: true;
+    in property <int> token;
+    private property <bool> engaged;
+    private property <int> captured-token;
+    callback held(int, bool);
+    height: 42px;
+    background: !enabled ? #161e28 : active ? #175d64 : touch.has-hover ? #304054 : #243244;
+    border-radius: 5px; border-width: 1px;
+    border-color: focus.has-focus ? #dce8f3 : active ? #58d9bd : #3b4a5b;
+    accessible-role: button; accessible-label: text; accessible-enabled: enabled;
+    forward-focus: focus;
+    public function set-held(pressed: bool) {
+        if (pressed && (!root.enabled || root.engaged)) { return; }
+        if (root.engaged != pressed) {
+            if (pressed) { root.captured-token = root.token; }
+            root.engaged = pressed;
+            root.held(root.captured-token, pressed);
+        }
+    }
+    changed enabled => { if (!self.enabled) { self.set-held(false); } }
+    Text { text: root.text; color: root.enabled ? #eef5fb : #586676; horizontal-alignment: center; vertical-alignment: center; font-size: 14px; }
+    touch := TouchArea {
+        enabled: root.enabled;
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.cancel) { root.set-held(false); }
+            else if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) { focus.focus(); root.set-held(true); }
+                else if (event.kind == PointerEventKind.up) { root.set-held(false); }
+            }
+        }
+    }
+    focus := FocusScope {
+        enabled: root.enabled; focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") { root.set-held(true); return accept; }
+            return reject;
+        }
+        key-released(event) => {
+            if (event.text == " " || event.text == "\n") { root.set-held(false); return accept; }
+            return reject;
+        }
+        focus-lost(reason) => { root.set-held(false); }
+    }
+}
+
 component DeckPanel inherits Rectangle {
     in property <DeckView> data;
     in property <int> number;
     in property <bool> cue-page;
     callback action(int);
+    callback hold(int, bool);
     callback cue(int, bool);
     background: #131d29;
     border-radius: 8px;
@@ -65,7 +114,9 @@ component DeckPanel inherits Rectangle {
         Text { height: 16px; text: root.data.analysis + "  /  " + root.data.loop-text; color: #7fa4bb; font-size: 12px; overflow: elide; }
         HorizontalLayout { spacing: 7px;
             Action { text: root.data.playing ? "PAUSE" : "PLAY"; active: root.data.playing; enabled: root.data.loaded; clicked => { root.action(0); } }
-            Action { text: "CUE"; enabled: root.data.loaded; clicked => { root.action(1); } }
+            // CDJ CUE needs press, release and press-lost (pointer cancel,
+            // focus loss or disabling), not a click.
+            HoldAction { text: "CUE"; height: 40px; enabled: root.data.loaded; held(_, pressed) => { root.hold(1, pressed); } }
             Action { text: "SYNC"; active: root.data.synced; enabled: root.data.loaded; clicked => { root.action(2); } }
             Action { text: "Q"; active: root.data.quantize; enabled: root.data.loaded; clicked => { root.action(8); } }
         }
@@ -136,54 +187,6 @@ component MixerChannel inherits Rectangle {
     }
 }
 
-component HoldAction inherits Rectangle {
-    in property <string> text;
-    in property <bool> active;
-    in property <bool> enabled: true;
-    in property <int> token;
-    private property <bool> engaged;
-    private property <int> captured-token;
-    callback held(int, bool);
-    height: 42px;
-    background: !enabled ? #161e28 : active ? #175d64 : touch.has-hover ? #304054 : #243244;
-    border-radius: 5px; border-width: 1px;
-    border-color: focus.has-focus ? #dce8f3 : active ? #58d9bd : #3b4a5b;
-    accessible-role: button; accessible-label: text; accessible-enabled: enabled;
-    forward-focus: focus;
-    public function set-held(pressed: bool) {
-        if (pressed && (!root.enabled || root.engaged)) { return; }
-        if (root.engaged != pressed) {
-            if (pressed) { root.captured-token = root.token; }
-            root.engaged = pressed;
-            root.held(root.captured-token, pressed);
-        }
-    }
-    changed enabled => { if (!self.enabled) { self.set-held(false); } }
-    Text { text: root.text; color: root.enabled ? #eef5fb : #586676; horizontal-alignment: center; vertical-alignment: center; font-size: 14px; }
-    touch := TouchArea {
-        enabled: root.enabled;
-        pointer-event(event) => {
-            if (event.kind == PointerEventKind.cancel) { root.set-held(false); }
-            else if (event.button == PointerEventButton.left) {
-                if (event.kind == PointerEventKind.down) { focus.focus(); root.set-held(true); }
-                else if (event.kind == PointerEventKind.up) { root.set-held(false); }
-            }
-        }
-    }
-    focus := FocusScope {
-        enabled: root.enabled; focus-on-click: false;
-        key-pressed(event) => {
-            if (event.text == " " || event.text == "\n") { root.set-held(true); return accept; }
-            return reject;
-        }
-        key-released(event) => {
-            if (event.text == " " || event.text == "\n") { root.set-held(false); return accept; }
-            return reject;
-        }
-        focus-lost(reason) => { root.set-held(false); }
-    }
-}
-
 component PadStrip inherits Rectangle {
     in property <PadFxView> data;
     in property <int> number;
@@ -243,6 +246,7 @@ export component MainWindow inherits Window {
     in-out property <bool> remaining: false;
     out property <bool> portrait: self.height > self.width;
     callback deck-action(int, int);
+    callback deck-hold(int, int, bool);
     callback cue-action(int, int, bool);
     callback select-track(int);
     callback load-track(int);
@@ -282,6 +286,7 @@ export component MainWindow inherits Window {
                 height: root.portrait ? (parent.height - 12px) / 2 : parent.height;
                 data: data; number: i + 1; cue-page: root.page == 2;
                 action(code) => { root.deck-action(i, code); }
+                hold(code, pressed) => { root.deck-hold(i, code, pressed); }
                 cue(slot, clear) => { root.cue-action(i, slot, clear); }
             }
         }

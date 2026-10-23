@@ -118,7 +118,7 @@
         1024,
         600
       ],
-      "rgb_sha256": "e484fc8b466c94160cfb8ae280c8f686fcbdf1e13a037149096681fc60af1ea6"
+      "rgb_sha256": "ef6dd998a0c52cd37d4f6f21b82df566fb1a0c89726f184e459e31094a770421"
     },
     "jc1060-health-heartbeat-recovered": {
       "size": [
@@ -139,14 +139,14 @@
         1024,
         600
       ],
-      "rgb_sha256": "2ac4dd1562ebf0a5406a533deb35f8abf1ce5e803ff16d719ab2ba4606d4f33f"
+      "rgb_sha256": "89af8c9a5719ffbeb4f58c8f75ef10d21f3ad1865bb769ddca2baaac1740da2f"
     },
     "jc1060-health-removed": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "526a9b4faa9d72b49a8aa99422462e87ba79c8c54f7b2245cf6e949e55855d11"
+      "rgb_sha256": "ecefa9ebfeb6f876eb5f93bb1abbb0c58aeac5ee01123093ef1672bddfe7cc34"
     },
     "jc1060-health-stale": {
       "size": [
@@ -307,7 +307,7 @@
         800,
         1280
       ],
-      "rgb_sha256": "a57768295dced42fe91450c228a7758ce7b8b754d197d20fda090a69faa5eaf1"
+      "rgb_sha256": "9e04262ab929020ca4c1b21e15396c36584e3c3ce0e374dfd2af7196fa4defa0"
     },
     "jc8012-health-heartbeat-recovered": {
       "size": [
@@ -328,14 +328,14 @@
         800,
         1280
       ],
-      "rgb_sha256": "98e97e68cb12a23e41109c254491ce35bd4213a7301b0d3f6cf35dcce5858853"
+      "rgb_sha256": "96f30d15d3ae6f1d50baefee4ed45d90233d787c14959c74ca352aebb3b6756c"
     },
     "jc8012-health-removed": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "bd1d60daca7d21009b0000fa4246dc5b165f83605892ba537c9d90984d65e490"
+      "rgb_sha256": "39e8bba9e8acc16fca7d609f9dcae447e315815aa080a2b4dbf588444531dac9"
     },
     "jc8012-health-stale": {
       "size": [

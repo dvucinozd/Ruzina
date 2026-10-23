@@ -23,9 +23,45 @@ fn transport_uses_confirmed_state_and_load_lock_then_stops_at_end() {
     assert!(!s.presentation(0).transport.playing);
     press(&mut s, DeckAction::Play);
     assert!(!s.presentation(0).transport.playing);
-    press(&mut s, DeckAction::Cue);
+    press(&mut s, DeckAction::JumpBack);
     press(&mut s, DeckAction::Play);
     assert!(s.presentation(0).transport.playing);
+}
+
+fn cue(s: &mut Session, down: bool) {
+    s.control(DeckAction::Cue.event(DeckId::One, down));
+}
+
+#[test]
+fn touch_cue_sets_previews_while_held_and_play_commits_the_preview() {
+    let mut s = loaded();
+    s.decks.set_position_ms(DeckId::One, 2_000);
+    cue(&mut s, true);
+    cue(&mut s, false);
+    assert_eq!(s.decks.deck(DeckId::One).cue_point_ms, 2_000);
+
+    // Held at the cue: the preview plays and release returns to the cue.
+    cue(&mut s, true);
+    assert!(s.presentation(0).transport.playing);
+    s.tick(700);
+    assert_eq!(s.presentation(0).transport.position_ms, 2_700);
+    cue(&mut s, false);
+    assert!(!s.presentation(0).transport.playing);
+    assert_eq!(s.presentation(0).transport.position_ms, 2_000);
+
+    // PLAY during the preview commits playback; release no longer stops it.
+    cue(&mut s, true);
+    press(&mut s, DeckAction::Play);
+    cue(&mut s, false);
+    s.tick(500);
+    assert!(s.presentation(0).transport.playing);
+    assert_eq!(s.presentation(0).transport.position_ms, 2_500);
+
+    // CUE while playing returns to the cue and pauses.
+    cue(&mut s, true);
+    cue(&mut s, false);
+    assert!(!s.presentation(0).transport.playing);
+    assert_eq!(s.presentation(0).transport.position_ms, 2_000);
 }
 
 #[test]
@@ -165,7 +201,7 @@ fn review_track_end_is_counted_only_when_entering_eof() {
     assert_eq!(s.diagnostics().counters.end_of_track, 2);
     press(&mut s, DeckAction::Play);
     assert_eq!(s.diagnostics().counters.end_of_track, 2);
-    press(&mut s, DeckAction::Cue);
+    press(&mut s, DeckAction::JumpBack);
     press(&mut s, DeckAction::Play);
     s.tick(20_000);
     assert_eq!(s.diagnostics().counters.end_of_track, 3);
