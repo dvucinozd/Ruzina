@@ -19,6 +19,16 @@ pub struct AnalysisCue {
     pub end_ms: Option<u32>,
 }
 
+/// Imported memory point or loop (Rekordbox PCOB list 0), kept separate from
+/// the eight performance hot-cue slots and in export order (M2.5 B7).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AnalysisMemoryCue {
+    pub start_ms: u32,
+    pub end_ms: Option<u32>,
+}
+
+pub const MAX_MEMORY_CUES: usize = 16;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Beat {
     pub time_ms: u32,
@@ -42,6 +52,8 @@ pub struct TrackAnalysis<'a> {
     preview: &'a [WaveformColumn],
     detail: &'a [WaveformColumn],
     cues: &'a [AnalysisCue],
+    memory_cues: &'a [AnalysisMemoryCue],
+    memory_cues_truncated: bool,
     detail_rate_hz: u16,
 }
 
@@ -60,6 +72,8 @@ impl<'a> TrackAnalysis<'a> {
             preview: &[],
             detail: &[],
             cues: &[],
+            memory_cues: &[],
+            memory_cues_truncated: false,
             detail_rate_hz: 0,
         }
     }
@@ -98,6 +112,23 @@ impl<'a> TrackAnalysis<'a> {
     }
     pub const fn cues(&self) -> &'a [AnalysisCue] {
         self.cues
+    }
+    pub const fn with_memory_cues(
+        mut self,
+        cues: &'a [AnalysisMemoryCue],
+        truncated: bool,
+    ) -> Self {
+        self.memory_cues = cues;
+        self.memory_cues_truncated = truncated;
+        self
+    }
+    /// At most [`MAX_MEMORY_CUES`] entries in export order.
+    pub const fn memory_cues(&self) -> &'a [AnalysisMemoryCue] {
+        self.memory_cues
+    }
+    /// The export listed more memory cues than were retained.
+    pub const fn memory_cues_truncated(&self) -> bool {
+        self.memory_cues_truncated
     }
     pub const fn with_detail_rate(mut self, rate_hz: u16) -> Self {
         self.detail_rate_hz = rate_hz;

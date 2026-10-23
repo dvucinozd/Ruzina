@@ -5,8 +5,8 @@ scope; compilation, host behavior and physical acceptance remain distinct.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
-verification boundaries. RP-01/02/03/04 are host-implemented; continue with
-RP-05. This is not complete M2.5 feature parity.
+verification boundaries. RP-01..05 are host-implemented; continue with
+RP-15/18 failure cases, then RP-06/07/08. This is not complete M2.5 parity.
 
 ## Implemented software
 
@@ -42,7 +42,8 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    (RP-03 host-implemented; tempo nudge/paused scrub still absent), shared load
    admission (RP-04 host-implemented: default-on LOAD LOCK verdict, single-flight
    permits and PLAY-vs-LOAD fencing before audio replacement), loop/memory/source
-   cue behavior and reconnect fencing.
+   cue behavior (RP-05 host-implemented; memory-cue view/recall pending RP-07)
+   and reconnect fencing.
 3. **RP-06/07/08:** ordered playlist hierarchy, artwork/PWV4 and cold MP3
    seek/duration budgets, preserving existing sample-exact decoder behavior.
 4. **RP-11/12/13:** durable settings, C6/Web contracts and signed OTA/readiness

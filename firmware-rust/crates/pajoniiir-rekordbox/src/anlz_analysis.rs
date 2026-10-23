@@ -2,11 +2,11 @@
 //! https://djl-analysis.deepsymmetry.org/rekordbox-export-analysis/anlz.html
 //! Reads are <=512 bytes, allocations and total file/record counts are capped.
 use crate::anlz_hot_cues::{
-    AnlzHotCueError, AnlzSectionHeader, RekordboxCueKind, parse_pcob_header, parse_pcpt,
-    parse_section_header,
+    AnlzHotCueError, AnlzSectionHeader, RekordboxCueKind, parse_memory_pcpt, parse_pcob_header,
+    parse_pcpt, parse_section_header,
 };
 use pajoniiir_track_analysis::{
-    AnalysisCue, AnalysisProvider, Beat, WaveformColumn,
+    AnalysisCue, AnalysisMemoryCue, AnalysisProvider, Beat, WaveformColumn,
     owned::{
         AnalysisBuilder, AnalysisDataError, AnalysisIdentity, AnalysisPublication,
         MAX_ANALYSIS_BEATS, MAX_DETAIL_COLUMNS,
@@ -89,6 +89,7 @@ pub struct AnlzImporter {
     seen_preview: bool,
     seen_detail: bool,
     seen_cues: bool,
+    seen_memory: bool,
 }
 impl AnlzImporter {
     pub const fn new() -> Self {
@@ -106,6 +107,7 @@ impl AnlzImporter {
             seen_preview: false,
             seen_detail: false,
             seen_cues: false,
+            seen_memory: false,
         }
     }
     pub fn begin_file(&mut self, kind: AnalysisFileKind, len: u64) -> Result<(), ImportError> {
@@ -247,11 +249,16 @@ impl AnlzImporter {
                     }
                     PCOB => {
                         let plan = parse_pcob_header(section.position, section, bytes)?;
-                        if plan.list_type == 1 {
-                            if self.seen_cues {
+                        let seen = match plan.list_type {
+                            0 => Some(&mut self.seen_memory),
+                            1 => Some(&mut self.seen_cues),
+                            _ => None,
+                        };
+                        if let Some(seen) = seen {
+                            if *seen {
                                 return Err(ImportError::Duplicate);
                             }
-                            self.seen_cues = true;
+                            *seen = true;
                         }
                         Payload::Cues(plan.list_type)
                     }
@@ -292,6 +299,15 @@ impl AnlzImporter {
                                 matches!(kind, Payload::Detail),
                                 mono_column(*byte),
                             )?;
+                        }
+                    }
+                    Payload::Cues(0) => {
+                        for record in bytes.chunks_exact(56) {
+                            let cue = parse_memory_pcpt(record)?;
+                            self.data.push_memory_cue(AnalysisMemoryCue {
+                                start_ms: cue.start_ms,
+                                end_ms: (cue.kind == RekordboxCueKind::Loop).then_some(cue.end_ms),
+                            })?;
                         }
                     }
                     Payload::Cues(list) => {
