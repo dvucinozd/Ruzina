@@ -1,6 +1,10 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+mod load_admission;
+
+pub use load_admission::{DeckClaim, DeckLoadGate, LoadAllowed, LoadPermit, LoadRefusal};
+
 use pajoniiir_controller_core::{
     BeatFxTarget, ControlEvent, ControlValue, DeckExtAction, DeckId, PadMode, SemanticControl,
 };
@@ -606,6 +610,7 @@ pub struct DeckProductState {
     hot_cue_locals: [Option<HotCueBank>; 2],
     beat_fx: BeatFxState,
     beat_fx_reset_epoch: u32,
+    load_lock: bool,
 }
 
 impl Default for DeckProductState {
@@ -625,6 +630,38 @@ impl DeckProductState {
             hot_cue_locals: [None, None],
             beat_fx: BeatFxState::new(),
             beat_fx_reset_epoch: 1,
+            load_lock: true,
+        }
+    }
+
+    /// LOAD LOCK defaults on after every construction; a future Settings page
+    /// may switch it off explicitly. It is not persisted yet.
+    pub const fn load_lock(&self) -> bool {
+        self.load_lock
+    }
+
+    pub fn set_load_lock(&mut self, on: bool) {
+        self.load_lock = on;
+    }
+
+    /// The one load-admission verdict for every entry point, based on the
+    /// destination deck's confirmed and pending transport state.
+    pub fn load_admission(&self, deck: DeckId) -> Result<LoadAllowed, LoadRefusal> {
+        if !self.load_lock {
+            return Ok(LoadAllowed::LockOff);
+        }
+        let state = &self.decks[deck_index(deck)];
+        if state.playing {
+            Err(LoadRefusal::Playing)
+        } else if state
+            .pending_playback
+            .is_some_and(|pending| pending.playing)
+        {
+            Err(LoadRefusal::PlayPending)
+        } else if state.jog_touched {
+            Err(LoadRefusal::Scratching)
+        } else {
+            Ok(LoadAllowed::Stopped)
         }
     }
 
@@ -674,6 +711,8 @@ impl DeckProductState {
         true
     }
 
+    /// Final publication of a loaded track. Admission is rechecked here, so a
+    /// refused commit leaves the previous deck state and cue banks untouched.
     pub fn commit_track_load(
         &mut self,
         deck: DeckId,
@@ -681,12 +720,13 @@ impl DeckProductState {
         bpm_x100: u32,
         source: HotCueBank,
         persisted: Option<HotCueBank>,
-    ) -> bool {
+    ) -> Result<LoadAllowed, LoadRefusal> {
         if source.track_id() != track_id
             || persisted.is_some_and(|bank| bank.track_id() != track_id)
         {
-            return false;
+            return Err(LoadRefusal::TrackIdentity);
         }
+        let allowed = self.load_admission(deck)?;
 
         let local = persisted.unwrap_or_else(|| HotCueBank::empty(track_id));
         let index = deck_index(deck);
@@ -714,7 +754,7 @@ impl DeckProductState {
         self.shifted_loop_roll[index] = ShiftedLoopRoll::new();
         self.hot_cue_sources[index] = Some(source.as_source());
         self.hot_cue_locals[index] = Some(local);
-        true
+        Ok(allowed)
     }
 
     pub fn unload_track(&mut self, deck: DeckId) {
@@ -2996,7 +3036,11 @@ mod tests {
 
         let mut first_source = HotCueBank::empty(first);
         assert!(first_source.set_single(0, 1_000));
-        assert!(state.commit_track_load(DeckId::One, first, 12_800, first_source, None));
+        assert!(
+            state
+                .commit_track_load(DeckId::One, first, 12_800, first_source, None)
+                .is_ok()
+        );
         state.set_position_ms(DeckId::One, 12_345);
 
         let mut second_source = HotCueBank::empty(second);
@@ -3005,13 +3049,16 @@ mod tests {
         assert!(second_local.clear(1));
         assert!(second_local.set_single(3, 4_000));
 
-        assert!(state.commit_track_load(
-            DeckId::One,
-            second,
-            13_400,
-            second_source,
-            Some(second_local),
-        ));
+        assert_eq!(
+            state.commit_track_load(
+                DeckId::One,
+                second,
+                13_400,
+                second_source,
+                Some(second_local),
+            ),
+            Ok(LoadAllowed::Stopped)
+        );
 
         let deck = state.deck(DeckId::One);
         assert!(!deck.playing);
@@ -3032,20 +3079,27 @@ mod tests {
 
         let mut source = HotCueBank::empty(first);
         assert!(source.set_single(0, 1_500));
-        assert!(state.commit_track_load(DeckId::Two, first, 12_000, source, None));
+        assert!(
+            state
+                .commit_track_load(DeckId::Two, first, 12_000, source, None)
+                .is_ok()
+        );
         state.set_position_ms(DeckId::Two, 7_000);
         let before = *state.deck(DeckId::Two);
         let before_cues = state.hot_cues(DeckId::Two);
 
         let second_source = HotCueBank::empty(second);
         let wrong_local = HotCueBank::empty(wrong);
-        assert!(!state.commit_track_load(
-            DeckId::Two,
-            second,
-            14_000,
-            second_source,
-            Some(wrong_local),
-        ));
+        assert_eq!(
+            state.commit_track_load(
+                DeckId::Two,
+                second,
+                14_000,
+                second_source,
+                Some(wrong_local),
+            ),
+            Err(LoadRefusal::TrackIdentity)
+        );
 
         assert_eq!(*state.deck(DeckId::Two), before);
         assert_eq!(state.hot_cues(DeckId::Two), before_cues);
@@ -3057,7 +3111,11 @@ mod tests {
         let mut source = HotCueBank::empty(track);
         assert!(source.set_single(0, 1_000));
         let mut state = DeckProductState::new();
-        assert!(state.commit_track_load(DeckId::One, track, 12_800, source, None));
+        assert!(
+            state
+                .commit_track_load(DeckId::One, track, 12_800, source, None)
+                .is_ok()
+        );
 
         state.decks[0].pitch_centipercent = 275;
         state.decks[0].tempo_range_percent = 16;
@@ -3713,7 +3771,11 @@ mod tests {
         source.set_single(0, 1000);
         source.set_loop(1, 2000, 4000);
         assert!(!product.update_local_hot_cues(DeckId::One, source));
-        assert!(product.commit_track_load(DeckId::One, track, 12000, source, None));
+        assert!(
+            product
+                .commit_track_load(DeckId::One, track, 12000, source, None)
+                .is_ok()
+        );
         product.set_position_ms(DeckId::One, 1500);
         let before = *product.deck(DeckId::One);
         let mut local = HotCueBank::empty(track);
@@ -3729,5 +3791,75 @@ mod tests {
         assert_eq!(cues.slot(1), source.slot(1));
         assert_eq!(cues.slot(2), local.slot(2));
         assert_eq!(*product.deck(DeckId::One), before);
+    }
+
+    // RP-04: M2.5 B6 verdicts (`deck_load_lock_check`) plus the Rust-specific
+    // pending-PLAY and scratch ownership states; refusals never mutate.
+    #[test]
+    fn load_admission_follows_actual_and_pending_transport_state() {
+        let track = media_id(0x61);
+        let next = media_id(0x62);
+        let mut state = DeckProductState::new();
+        assert!(state.load_lock());
+        assert_eq!(state.load_admission(DeckId::One), Ok(LoadAllowed::Stopped));
+        assert!(
+            state
+                .commit_track_load(DeckId::One, track, 12_000, HotCueBank::empty(track), None)
+                .is_ok()
+        );
+
+        let effects = state.handle_control(ControlEvent {
+            deck: Some(DeckId::One),
+            control: SemanticControl::Play,
+            value: ControlValue::Pressed(true),
+        });
+        let Some(DeckEffect::PlaybackRequest { request_id, .. }) = effects.items[0] else {
+            panic!("PLAY must request playback");
+        };
+        assert_eq!(
+            state.load_admission(DeckId::One),
+            Err(LoadRefusal::PlayPending)
+        );
+        assert_eq!(state.load_admission(DeckId::Two), Ok(LoadAllowed::Stopped));
+
+        assert!(state.resolve_playback_request(DeckId::One, request_id, true));
+        assert_eq!(state.load_admission(DeckId::One), Err(LoadRefusal::Playing));
+        let before = *state.deck(DeckId::One);
+        let before_cues = state.hot_cues(DeckId::One);
+        assert_eq!(
+            state.commit_track_load(DeckId::One, next, 13_000, HotCueBank::empty(next), None),
+            Err(LoadRefusal::Playing)
+        );
+        assert_eq!(*state.deck(DeckId::One), before);
+        assert_eq!(state.hot_cues(DeckId::One), before_cues);
+
+        state.set_load_lock(false);
+        assert_eq!(state.load_admission(DeckId::One), Ok(LoadAllowed::LockOff));
+        assert_eq!(
+            state.commit_track_load(DeckId::One, next, 13_000, HotCueBank::empty(next), None),
+            Ok(LoadAllowed::LockOff)
+        );
+        assert!(!state.deck(DeckId::One).playing);
+    }
+
+    #[test]
+    fn scratch_ownership_and_pending_pause_are_distinct_verdicts() {
+        let mut state = DeckProductState::new();
+        state.decks[1].jog_touched = true;
+        assert_eq!(
+            state.load_admission(DeckId::Two),
+            Err(LoadRefusal::Scratching)
+        );
+        state.decks[1].jog_touched = false;
+
+        // A pending pause still plays until the transport confirms it.
+        state.decks[1].playing = true;
+        state.decks[1].pending_playback = Some(PendingPlayback {
+            request_id: 7,
+            playing: false,
+        });
+        assert_eq!(state.load_admission(DeckId::Two), Err(LoadRefusal::Playing));
+        assert!(state.resolve_playback_request(DeckId::Two, 7, true));
+        assert_eq!(state.load_admission(DeckId::Two), Ok(LoadAllowed::Stopped));
     }
 }

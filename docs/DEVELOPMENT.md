@@ -5,8 +5,8 @@ scope; compilation, host behavior and physical acceptance remain distinct.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
-verification boundaries. RP-01/02 are host-implemented; continue with
-RP-03/04/05. This is not complete M2.5 feature parity.
+verification boundaries. RP-01/02/04 are host-implemented; continue with
+RP-03 and RP-05. This is not complete M2.5 feature parity.
 
 ## Implemented software
 
@@ -39,7 +39,9 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    output initialization and the M2.5 Smart CFX/FILTER_ALWAYS channel-filter
    gate. Firmware wiring is compile-only; an upload path remains open.
 2. **RP-03/04/05/15/18:** CUE hold-preview/PLAY commit, explicit VINYL/CDJ,
-   shared load admission, loop/memory/source cue behavior and reconnect fencing.
+   shared load admission (RP-04 host-implemented: default-on LOAD LOCK verdict,
+   single-flight permits and PLAY-vs-LOAD fencing before audio replacement),
+   loop/memory/source cue behavior and reconnect fencing.
 3. **RP-06/07/08:** ordered playlist hierarchy, artwork/PWV4 and cold MP3
    seek/duration budgets, preserving existing sample-exact decoder behavior.
 4. **RP-11/12/13:** durable settings, C6/Web contracts and signed OTA/readiness

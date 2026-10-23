@@ -6,7 +6,10 @@ use pajoniiir_controller_session::{
     BeatFxTarget, ConnectionState, ControlDomain, ControllerLedFrame, DeckId, LedState, LedUpdate,
     PadMode, SemanticLedId, SessionDelivery, SessionDeliverySink,
 };
-use pajoniiir_deck::{DeckEffect, DeckEffectBroker, DeckProductState, LoopAdjustMode, PadFxBank};
+use pajoniiir_deck::{
+    DeckClaim, DeckEffect, DeckEffectBroker, DeckLoadGate, DeckProductState, LoadPermit,
+    LoopAdjustMode, PadFxBank,
+};
 use pajoniiir_hot_cues::HotCueBank;
 use pajoniiir_media_catalog::CatalogLoadCandidate;
 use pajoniiir_media_session::MediaLease;
@@ -38,7 +41,27 @@ const PRODUCT_AUDIO_DSP_EFFECT_CAPACITY: usize = 16;
 pub(crate) enum LibraryEffect {
     Browse { delta: i16, multiplier: u16 },
     OpenLibrary,
-    Load { deck: DeckId },
+    Load { deck: DeckId, permit: LoadPermit },
+}
+
+/// RP-04 single-flight load gates shared by the product control owner and the
+/// asynchronous Library deck worker (see `pajoniiir_deck::DeckLoadGate`).
+static LOAD_GATES: [DeckLoadGate; 2] = [DeckLoadGate::new(), DeckLoadGate::new()];
+
+/// Worker-side access to the gates that `ProductRuntime::new` binds.
+pub(crate) fn load_gate(deck: DeckId) -> &'static DeckLoadGate {
+    &LOAD_GATES[deck_index(deck)]
+}
+
+/// Controls that take a deck's audio ownership and therefore race a load.
+fn claims_transport(event: pajoniiir_controller_core::ControlEvent) -> Option<DeckId> {
+    use pajoniiir_controller_core::{ControlValue, SemanticControl};
+    match (event.control, event.value) {
+        (SemanticControl::Play | SemanticControl::JogTouch, ControlValue::Pressed(true)) => {
+            event.deck
+        }
+        _ => None,
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -121,11 +144,18 @@ pub(crate) struct ProductRuntime {
     >,
     leds: ControllerLedFrame,
     stats: ProductRuntimeStats,
+    load_gates: &'static [DeckLoadGate; 2],
 }
 
 impl ProductRuntime {
     pub(crate) const fn new() -> Self {
+        Self::with_load_gates(&LOAD_GATES)
+    }
+
+    /// Host fault-injection rigs bind private gates; firmware uses `new`.
+    pub(crate) const fn with_load_gates(load_gates: &'static [DeckLoadGate; 2]) -> Self {
         Self {
+            load_gates,
             #[cfg(feature = "apta-usb0-bringup")]
             analysis_driver: crate::analysis_product::Driver::new(),
             deck: DeckProductState::new(),
@@ -144,6 +174,8 @@ impl ProductRuntime {
                 accepted_mixer_controls: 0,
                 accepted_library_controls: 0,
                 library_load_locked: 0,
+                library_load_superseded: 0,
+                transport_refused_loading: 0,
                 library_failures: 0,
                 effect_backpressure: 0,
                 deferred_controls: 0,
@@ -167,9 +199,13 @@ impl ProductRuntime {
         self.stats.library_failures = self.stats.library_failures.saturating_add(1);
     }
 
-    pub(crate) fn fail_library_load(&mut self, source_revoked: Option<DeckId>) {
+    pub(crate) fn fail_library_load(&mut self, source_revoked: Option<DeckId>, superseded: bool) {
         if let Some(deck) = source_revoked {
             self.invalidate_deck_source(deck);
+        }
+        if superseded {
+            self.stats.library_load_superseded =
+                self.stats.library_load_superseded.saturating_add(1);
         }
         self.note_library_failure();
     }
@@ -228,13 +264,18 @@ impl ProductRuntime {
         {
             return false;
         }
-        if !self.deck.commit_track_load(
-            deck,
-            candidate.track.track_id,
-            candidate.track.bpm_x100,
-            source,
-            persisted,
-        ) {
+        // Final publication check; the shared commit rechecks load admission.
+        if self
+            .deck
+            .commit_track_load(
+                deck,
+                candidate.track.track_id,
+                candidate.track.bpm_x100,
+                source,
+                persisted,
+            )
+            .is_err()
+        {
             return false;
         }
 
@@ -480,6 +521,10 @@ impl ProductRuntime {
         &self.mixer
     }
 
+    fn load_gate(&self, deck: DeckId) -> &'static DeckLoadGate {
+        &self.load_gates[deck_index(deck)]
+    }
+
     /// The controller owner mirrors the active profile's FILTER_ALWAYS here.
     pub(crate) fn set_channel_filter_always(&mut self, always: bool) {
         self.mixer.set_channel_filter_always(always);
@@ -680,6 +725,20 @@ impl SessionDeliverySink for ProductRuntime {
             }
             SessionDelivery::Control(event) => match event.control.domain() {
                 ControlDomain::Deck => {
+                    // With LOAD LOCK on, PLAY/jog withdraw a reserved load (the old
+                    // session survives) and are refused while replacement runs.
+                    if self.deck.load_lock()
+                        && let Some(deck) = claims_transport(event)
+                    {
+                        match self.load_gate(deck).claim_for_transport() {
+                            DeckClaim::Replacing => {
+                                self.stats.transport_refused_loading =
+                                    self.stats.transport_refused_loading.saturating_add(1);
+                                return true;
+                            }
+                            DeckClaim::CancelledLoad | DeckClaim::Free => {}
+                        }
+                    }
                     let mut staged = self.deck;
                     let effects = staged.handle_control_with_analysis(
                         event,
@@ -773,14 +832,22 @@ impl SessionDeliverySink for ProductRuntime {
                                         self.stats.accepted_library_controls.saturating_add(1);
                                     return true;
                                 };
-                                if self.deck.deck(deck).playing {
-                                    self.stats.library_load_locked =
-                                        self.stats.library_load_locked.saturating_add(1);
-                                    self.stats.accepted_library_controls =
-                                        self.stats.accepted_library_controls.saturating_add(1);
-                                    return true;
+                                // One admission path for controller, touch and
+                                // future Web loads: verdict plus single-flight permit.
+                                match self
+                                    .deck
+                                    .load_admission(deck)
+                                    .and_then(|_| self.load_gate(deck).reserve())
+                                {
+                                    Ok(permit) => Some(LibraryEffect::Load { deck, permit }),
+                                    Err(_) => {
+                                        self.stats.library_load_locked =
+                                            self.stats.library_load_locked.saturating_add(1);
+                                        self.stats.accepted_library_controls =
+                                            self.stats.accepted_library_controls.saturating_add(1);
+                                        return true;
+                                    }
                                 }
-                                Some(LibraryEffect::Load { deck })
                             }
                             _ => None,
                         };
@@ -788,6 +855,9 @@ impl SessionDeliverySink for ProductRuntime {
                         if let Some(effect) = effect
                             && !self.library_effects.try_push(effect)
                         {
+                            if let LibraryEffect::Load { deck, permit } = effect {
+                                self.load_gate(deck).finish(permit);
+                            }
                             self.stats.effect_backpressure =
                                 self.stats.effect_backpressure.saturating_add(1);
                             return false;

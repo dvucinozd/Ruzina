@@ -22,7 +22,7 @@ use pajoniiir_controller_session::{
     SessionDeliverySink, SessionDispatchOutcome,
 };
 use pajoniiir_core::MediaTrackId;
-use pajoniiir_deck::DeckEffect;
+use pajoniiir_deck::{DeckEffect, DeckLoadGate, LoadRefusal};
 use pajoniiir_hot_cues::{HotCueBank, HotCueStore};
 use pajoniiir_media_catalog::{
     CatalogLoadCandidate, CatalogPublicationId, CatalogText, CatalogTrack,
@@ -37,11 +37,16 @@ struct Rig {
     transport: TransportOwnerState,
     controller: ControllerSession,
     media: MediaSession,
+    gates: &'static [DeckLoadGate; 2],
 }
 impl Rig {
     fn new() -> Self {
+        // Tests run in parallel; each rig owns its gates like one firmware image.
+        let gates: &'static [DeckLoadGate; 2] =
+            Box::leak(Box::new([DeckLoadGate::new(), DeckLoadGate::new()]));
         let mut rig = Self {
-            product: ProductRuntime::new(),
+            gates,
+            product: ProductRuntime::with_load_gates(gates),
             transport: TransportOwnerState::new(),
             controller: ControllerSession::new(),
             media: MediaSession::new(),
@@ -262,9 +267,9 @@ fn failed_preflight_keeps_old_track_but_failed_prepare_retires_only_revoked_sour
     let mut rig = Rig::new();
     rig.play(DeckId::Two);
     let original = rig.product.loaded_track(DeckId::One);
-    rig.product.fail_library_load(None); // stat/analysis/cue read before replacement
+    rig.product.fail_library_load(None, false); // stat/analysis/cue read before replacement
     assert_eq!(rig.product.loaded_track(DeckId::One), original);
-    rig.product.fail_library_load(Some(DeckId::One)); // Prepare has revoked old PCM
+    rig.product.fail_library_load(Some(DeckId::One), false); // Prepare has revoked old PCM
     assert!(rig.product.loaded_track(DeckId::One).is_none());
     assert!(rig.product.deck().deck(DeckId::Two).playing);
     assert_eq!(rig.product.stats().library_failures, 2);
@@ -619,5 +624,62 @@ fn confirmed_wrapped_position_drives_real_product_loop_controls_and_clear() {
             .is_none()
     );
     assert!(!rig.product.apply_transport_completion(completion, 12));
+    assert!(rig.product.deck().deck(DeckId::One).playing);
+}
+
+// RP-04 with the actual firmware product owner. The Library worker's
+// begin_replacement/finish calls are driven explicitly at its two boundaries:
+// immediately before Prepare releases the old session, and after commit.
+#[test]
+fn play_during_admitted_load_withdraws_it_and_keeps_the_old_session() {
+    let mut rig = Rig::new();
+    let original = rig.product.loaded_track(DeckId::One);
+    let permit = rig.gates[0].reserve().unwrap();
+    rig.play(DeckId::One);
+
+    assert_eq!(
+        rig.gates[0].begin_replacement(permit),
+        Err(LoadRefusal::Superseded)
+    );
+    rig.product.fail_library_load(None, true);
+    assert!(!rig.gates[0].finish(permit));
+    assert_eq!(rig.product.loaded_track(DeckId::One), original);
+    assert!(rig.product.deck().deck(DeckId::One).playing);
+    assert_eq!(rig.product.stats().library_load_superseded, 1);
+}
+
+#[test]
+fn transport_claims_are_refused_while_a_load_replaces_the_deck() {
+    let mut rig = Rig::new();
+    let permit = rig.gates[0].reserve().unwrap();
+    rig.gates[0].begin_replacement(permit).unwrap();
+    for control in [SemanticControl::Play, SemanticControl::JogTouch] {
+        rig.event(DeckId::One, control, ControlValue::Pressed(true));
+    }
+    assert!(rig.product.next_transport_effect().is_none());
+    assert!(!rig.product.deck().deck(DeckId::One).jog_touched);
+    assert_eq!(rig.product.stats().transport_refused_loading, 2);
+    rig.play(DeckId::Two);
+
+    rig.load(DeckId::One, 3, None);
+    assert!(rig.gates[0].finish(permit));
+    rig.play(DeckId::One);
+}
+
+#[test]
+fn final_commit_rechecks_admission_and_preserves_a_playing_deck() {
+    let mut rig = Rig::new();
+    rig.play(DeckId::One);
+    let original = rig.product.loaded_track(DeckId::One);
+    let candidate = rig.candidate(3);
+    assert!(!rig.product.commit_library_load(
+        DeckId::One,
+        candidate,
+        HotCueBank::empty(candidate.track.track_id),
+        None,
+        false,
+        None
+    ));
+    assert_eq!(rig.product.loaded_track(DeckId::One), original);
     assert!(rig.product.deck().deck(DeckId::One).playing);
 }

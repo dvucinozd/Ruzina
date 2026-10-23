@@ -218,6 +218,10 @@ pub struct ProductCounters {
     pub accepted_mixer_controls: u32,
     pub accepted_library_controls: u32,
     pub library_load_locked: u32,
+    /// Admitted loads withdrawn by PLAY/scratch before audio replacement.
+    pub library_load_superseded: u32,
+    /// PLAY/jog presses refused while a load replaced the deck's audio session.
+    pub transport_refused_loading: u32,
     pub library_failures: u32,
     pub effect_backpressure: u32,
     pub deferred_controls: u32,

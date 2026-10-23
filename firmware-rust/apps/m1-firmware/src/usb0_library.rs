@@ -1680,7 +1680,7 @@ fn handle_library_command(
             Usb0LibraryCompletion::Applied { request_id }
         }
         LibraryEffect::OpenLibrary => Usb0LibraryCompletion::Applied { request_id },
-        LibraryEffect::Load { deck } => {
+        LibraryEffect::Load { deck, .. } => {
             let Some(catalog) = catalog else {
                 return Usb0LibraryCompletion::Failed {
                     request_id,

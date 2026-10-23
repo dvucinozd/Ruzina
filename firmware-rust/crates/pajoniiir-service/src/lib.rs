@@ -115,6 +115,14 @@ pub enum Health {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LoadBlock {
     Playing,
+    /// A PLAY request awaits transport confirmation (load lock on).
+    PlayPending,
+    /// The jog holds the destination deck for scratch audio (load lock on).
+    Scratching,
+    /// Another accepted load still owns the deck's single-flight permit.
+    LoadInFlight,
+    /// PLAY or scratch claimed the deck after admission, before replacement.
+    Superseded,
     NoMedia,
     InvalidSelection,
     TrackIdentity,
