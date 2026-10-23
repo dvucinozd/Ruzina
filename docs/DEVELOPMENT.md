@@ -8,8 +8,10 @@ records the exact branch/worktree, source pins, next batches, constraints and
 verification boundaries. RP-01..08, RP-11 and RP-15/18 are host-implemented
 (RP-07 cover display in the simulator only; RP-11 settings without a target
 flash owner); RP-12 and RP-13 have host contracts with fake transports and
-slots (no HTTP server, C6 driver, TLS or target flash adapter). Continue with
-the RP-09/10/14/16/17 host work. This is not complete M2.5 parity.
+slots (no HTTP server, C6 driver, TLS or target flash adapter), and the host
+parts of RP-09/10/14/16/17 exist (UAC, USB roles, MAIN change, headphone
+packing, MT regression; no USB adapter or board budgets). The remaining work
+is board qualification and adapters. This is not complete M2.5 parity.
 
 ## Implemented software
 
@@ -64,7 +66,10 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    candidate confirm/rollback) with host fault injection before physical
    activation.
 5. **RP-09/10/14/16/17:** UAC descriptors/packets/clocks, board-owned USB roles,
-   MAIN switching, headphone gain ownership and bounded cache/diagnostic behavior.
+   MAIN switching, headphone gain ownership and bounded cache/diagnostic behavior
+   (host contracts in `pajoniiir-uac`, `main_change`, board `usb` roles and
+   service `resources`, plus the MT starvation regression; physical streams,
+   resampling to 44.1 kHz and board budgets remain open).
 
 The first four batches and host portions of the fifth can proceed before board
 arrival. Current host coverage does not close these newly identified gaps.

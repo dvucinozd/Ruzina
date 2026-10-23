@@ -14,6 +14,7 @@ pub mod handoff;
 #[cfg(feature = "runtime-owners")]
 pub mod owners;
 pub mod publication;
+pub mod resources;
 use publication::{Freshness, Observation, Slot};
 
 pub const EVENT_CAPACITY: usize = 16;

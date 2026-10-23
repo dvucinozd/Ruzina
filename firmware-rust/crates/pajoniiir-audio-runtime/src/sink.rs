@@ -271,6 +271,10 @@ impl<'a> SinkLane<'a> {
     pub const fn queued_blocks(&self) -> usize {
         self.count
     }
+    /// Issued buffers whose completion has not returned.
+    pub const fn in_flight(&self) -> usize {
+        self.in_flight
+    }
     pub const fn stats(&self) -> SinkStats {
         self.stats
     }

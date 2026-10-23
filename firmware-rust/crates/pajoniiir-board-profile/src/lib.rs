@@ -7,6 +7,7 @@ pub mod display;
 pub mod jc1060;
 pub mod jc8012;
 pub mod memory;
+pub mod usb;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BoardId {

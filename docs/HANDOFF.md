@@ -1,7 +1,8 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-23. Next action: **RP-09/10/14/16/17 host work; target
-adapters for RP-11/12/13 wait for board qualification**.
+Updated: 2026-10-23. Next action: **remaining host work (UAC 48 to 44.1 kHz
+resampler, Slint playlist view, upload path, tempo nudge/paused scrub); target
+adapters and RP-09/10/14 budgets wait for board qualification**.
 Host-implemented stack: RP-01/02 (PR #23, `ogranak/m25-rust-parity-plan`),
 RP-04 load admission (PR #24, `ogranak/m25-rp04-load-admission`), RP-03 CUE
 hold/VINYL-CDJ (PR #25, `ogranak/m25-rp03-cue-jog`), RP-05 memory/loop cues
@@ -14,8 +15,9 @@ RP-08 MP3 frame index/cold seeks/duration (PR #30, `ogranak/m25-rp08-mp3-seek`),
 RP-07 part 2: baseline JPEG decoder and cover/logo display (PR #31,
 `ogranak/m25-rp07-cover-decoder`), RP-11 durable settings (PR #32,
 `ogranak/m25-rp11-settings`), RP-12 Web/C6 contracts (PR #33,
-`ogranak/m25-rp12-web-contracts`) and RP-13 signed OTA/readiness contracts
-(`ogranak/m25-rp13-ota`), each stacked on the previous. See the parity
+`ogranak/m25-rp12-web-contracts`), RP-13 signed OTA/readiness contracts
+(PR #34, `ogranak/m25-rp13-ota`) and the RP-09/10/14/16/17 host contracts
+(`ogranak/m25-rp09-17-audio-platform`), each stacked on the previous. See the parity
 plan rows for evidence and open items (upload path, Web Remote admission/tap
 semantics, tempo nudge/paused scrub, Slint playlist view, physical controller/
 import/listening acceptance). The sections below still describe the original
