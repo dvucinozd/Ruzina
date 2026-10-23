@@ -33,6 +33,7 @@ members = [
     "crates/pajoniiir-track-analysis",
     "crates/pajoniiir-ui-model",
     "crates/pajoniiir-waveform",
+    "crates/pajoniiir-web",
 ]
 default-members = [
     "apps/desktop-simulator",
@@ -66,6 +67,7 @@ default-members = [
     "crates/pajoniiir-track-analysis",
     "crates/pajoniiir-ui-model",
     "crates/pajoniiir-waveform",
+    "crates/pajoniiir-web",
 ]
 resolver = "2"
 
@@ -113,3 +115,4 @@ pajoniiir-settings = { path = "crates/pajoniiir-settings" }
 pajoniiir-track-analysis = { path = "crates/pajoniiir-track-analysis" }
 pajoniiir-ui-model = { path = "crates/pajoniiir-ui-model" }
 pajoniiir-waveform = { path = "crates/pajoniiir-waveform" }
+pajoniiir-web = { path = "crates/pajoniiir-web" }
