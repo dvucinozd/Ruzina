@@ -90,6 +90,8 @@ pub struct SessionStats {
     pub snapshot_events: u32,
     pub held_reconciliations: u32,
     pub downstream_retries: u32,
+    /// Unaccepted work of a connection that ended before delivery.
+    pub retired_on_disconnect: u32,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -111,6 +113,8 @@ pub struct ControllerSession {
     snapshot_cursor: usize,
     retry: Option<ControlEvent>,
     in_flight: Option<InFlight>,
+    /// Connection generation the in-flight item was taken under.
+    in_flight_generation: u32,
     sequence: u8,
     stats: SessionStats,
 }
@@ -133,6 +137,7 @@ impl ControllerSession {
             snapshot_cursor: 0,
             retry: None,
             in_flight: None,
+            in_flight_generation: 0,
             sequence: 0,
             stats: SessionStats {
                 midi_messages: 0,
@@ -142,6 +147,7 @@ impl ControllerSession {
                 snapshot_events: 0,
                 held_reconciliations: 0,
                 downstream_retries: 0,
+                retired_on_disconnect: 0,
             },
         }
     }
@@ -152,13 +158,23 @@ impl ControllerSession {
         self.snapshot_cursor = 0;
     }
 
+    /// Disconnect retires the old connection's unaccepted PLAY/LOAD/jog work,
+    /// its retry and its partial snapshot (M2.5 c7d2e9cd); only the held
+    /// releases and the disconnect notification survive. The generation bump
+    /// fences an item still in flight from the old connection.
     pub fn set_connected(&mut self, connected: bool) {
         let sequence = self.take_sequence();
         self.connection
             .set_connected(connected, &mut self.held, sequence);
         if !connected {
-            self.snapshot_count = 0;
-            self.snapshot_cursor = 0;
+            let mut retired = self.scheduler.clear_pending();
+            if self.retry.take().is_some() {
+                retired += 1;
+            }
+            retired += (self.snapshot_count - self.snapshot_cursor) as u32;
+            self.clear_snapshot();
+            self.stats.retired_on_disconnect =
+                self.stats.retired_on_disconnect.saturating_add(retired);
         }
     }
 
@@ -287,6 +303,7 @@ impl ControllerSession {
         if self.in_flight.is_some() {
             return None;
         }
+        self.in_flight_generation = self.connection.generation();
 
         if let Some(delivery) = self.connection.pending_delivery() {
             self.in_flight = Some(InFlight::Connection(delivery));
@@ -352,6 +369,23 @@ impl ControllerSession {
         let Some(in_flight) = self.in_flight.take() else {
             return;
         };
+        // Connection and held deliveries reconcile by their own generation and
+        // level; old-connection control work must not recreate a retry or move
+        // a snapshot cursor that now belongs to the new connection.
+        let stale = self.in_flight_generation != self.connection.generation();
+        if stale
+            && matches!(
+                in_flight,
+                InFlight::Retry | InFlight::Snapshot | InFlight::Buffered(_)
+            )
+        {
+            // Retry and snapshot items were already counted by the disconnect.
+            if !succeeded && matches!(in_flight, InFlight::Buffered(_)) {
+                self.stats.retired_on_disconnect =
+                    self.stats.retired_on_disconnect.saturating_add(1);
+            }
+            return;
+        }
 
         match in_flight {
             InFlight::Connection(delivery) => {
@@ -610,6 +644,146 @@ mod tests {
             Some(SessionDelivery::Connection(ConnectionState::Connected))
         );
         session.complete_delivery(true);
+    }
+
+    fn connect_and_ack(session: &mut ControllerSession, profile: Option<&Profile<'_>>) {
+        session.set_connected(true);
+        assert_eq!(
+            session.next_delivery(profile),
+            Some(SessionDelivery::Connection(ConnectionState::Connected))
+        );
+        session.complete_delivery(true);
+    }
+
+    fn disconnect_and_ack(session: &mut ControllerSession, profile: Option<&Profile<'_>>) {
+        session.set_connected(false);
+        assert_eq!(
+            session.next_delivery(profile),
+            Some(SessionDelivery::Connection(ConnectionState::Disconnected))
+        );
+        session.complete_delivery(true);
+    }
+
+    #[test]
+    fn detach_retires_controller_a_work_before_controller_b_attaches() {
+        let mut session = ControllerSession::new();
+        connect_and_ack(&mut session, None);
+
+        let touch = pressed(DeckId::One, SemanticControl::JogTouch, true);
+        let play = pressed(DeckId::One, SemanticControl::Play, true);
+        let load = pressed(DeckId::Two, SemanticControl::Load, true);
+        session.schedule_event(touch);
+        session.schedule_event(play);
+        session.schedule_event(load);
+        session.schedule_event(relative(DeckId::One, SemanticControl::JogBend, 7));
+
+        assert_eq!(
+            session.next_delivery(None),
+            Some(SessionDelivery::Control(touch))
+        );
+        session.complete_delivery(true);
+        assert_eq!(
+            session.next_delivery(None),
+            Some(SessionDelivery::Control(play))
+        );
+        session.complete_delivery(false);
+
+        // A detaches with a failed PLAY retry, a queued LOAD and a jog delta.
+        disconnect_and_ack(&mut session, None);
+        let released = pressed(DeckId::One, SemanticControl::JogTouch, false);
+        assert_eq!(
+            session.next_delivery(None),
+            Some(SessionDelivery::Control(released))
+        );
+        session.complete_delivery(true);
+        assert_eq!(session.next_delivery(None), None);
+        assert_eq!(session.stats().retired_on_disconnect, 3);
+
+        // B starts clean: only the reconciled release level is resent.
+        connect_and_ack(&mut session, None);
+        assert_eq!(
+            session.next_delivery(None),
+            Some(SessionDelivery::Control(released))
+        );
+        session.complete_delivery(true);
+        assert_eq!(session.next_delivery(None), None);
+
+        let cue = pressed(DeckId::Two, SemanticControl::Cue, true);
+        session.schedule_event(cue);
+        assert_eq!(
+            session.next_delivery(None),
+            Some(SessionDelivery::Control(cue))
+        );
+        session.complete_delivery(true);
+        assert_eq!(session.next_delivery(None), None);
+    }
+
+    #[test]
+    fn old_connection_completion_cannot_recreate_retry_or_advance_snapshot() {
+        let bytes = replay_profile_bytes();
+        let profile = Profile::parse(&bytes).unwrap();
+        let mut session = ControllerSession::new();
+        connect_and_ack(&mut session, Some(&profile));
+
+        let play = pressed(DeckId::One, SemanticControl::Play, true);
+        session.schedule_event(play);
+        assert_eq!(
+            session.next_delivery(Some(&profile)),
+            Some(SessionDelivery::Control(play))
+        );
+        // Detach and reattach while PLAY is still in flight, then it fails.
+        session.set_connected(false);
+        session.set_connected(true);
+        session.complete_delivery(false);
+        assert_eq!(session.stats().downstream_retries, 0);
+        assert_eq!(session.stats().retired_on_disconnect, 1);
+        assert_eq!(
+            session.next_delivery(Some(&profile)),
+            Some(SessionDelivery::Connection(ConnectionState::Disconnected))
+        );
+        session.complete_delivery(true);
+        assert_eq!(
+            session.next_delivery(Some(&profile)),
+            Some(SessionDelivery::Connection(ConnectionState::Connected))
+        );
+        session.complete_delivery(true);
+        assert_eq!(session.next_delivery(Some(&profile)), None);
+
+        // Cache a level, then reconnect so it is replayed as a snapshot.
+        session.process_midi(&profile, 0xb0, 0x10, 64).unwrap();
+        let level = absolute(SemanticControl::Crossfader, 64, 0x3fff);
+        assert_eq!(
+            session.next_delivery(Some(&profile)),
+            Some(SessionDelivery::Control(level))
+        );
+        session.complete_delivery(true);
+        disconnect_and_ack(&mut session, Some(&profile));
+        connect_and_ack(&mut session, Some(&profile));
+        assert_eq!(
+            session.next_delivery(Some(&profile)),
+            Some(SessionDelivery::Control(level))
+        );
+
+        // The partial snapshot is retired; its late success moves nothing.
+        session.set_connected(false);
+        session.complete_delivery(true);
+        assert_eq!(session.stats().retired_on_disconnect, 2);
+        assert_eq!(
+            session.next_delivery(Some(&profile)),
+            Some(SessionDelivery::Connection(ConnectionState::Disconnected))
+        );
+        session.complete_delivery(true);
+        assert_eq!(session.next_delivery(Some(&profile)), None);
+
+        session.set_connected(true);
+        session.reset_profile_state();
+        assert_eq!(
+            session.next_delivery(Some(&profile)),
+            Some(SessionDelivery::Connection(ConnectionState::Connected))
+        );
+        session.complete_delivery(true);
+        // B's profile state was reset, so A's cached level is not replayed.
+        assert_eq!(session.next_delivery(Some(&profile)), None);
     }
 
     #[test]

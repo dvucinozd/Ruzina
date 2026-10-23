@@ -122,6 +122,9 @@ impl AnlzImporter {
         self.kind = kind;
         self.file_len = len as u32;
         self.sections = 0;
+        // One cue list of each type per file; DAT/EXT overlap is merged.
+        self.seen_cues = false;
+        self.seen_memory = false;
         self.stage = Stage::Root;
         match kind {
             AnalysisFileKind::Dat => self.dat_started = true,
@@ -192,7 +195,8 @@ impl AnlzImporter {
                 }
                 let known = match self.kind {
                     AnalysisFileKind::Dat => matches!(section.tag, PQTZ | PWAV | PCOB),
-                    AnalysisFileKind::Ext => section.tag == PWV3,
+                    // EXT may carry hot cues D-H and memory cues (M2.5 082d2c0a).
+                    AnalysisFileKind::Ext => matches!(section.tag, PWV3 | PCOB),
                 };
                 if known {
                     let minimum = if section.tag == PWAV { 20 } else { 24 };
@@ -304,21 +308,29 @@ impl AnlzImporter {
                     Payload::Cues(0) => {
                         for record in bytes.chunks_exact(56) {
                             let cue = parse_memory_pcpt(record)?;
-                            self.data.push_memory_cue(AnalysisMemoryCue {
+                            let cue = AnalysisMemoryCue {
                                 start_ms: cue.start_ms,
                                 end_ms: (cue.kind == RekordboxCueKind::Loop).then_some(cue.end_ms),
-                            })?;
+                            };
+                            match self.kind {
+                                AnalysisFileKind::Dat => self.data.push_memory_cue(cue)?,
+                                AnalysisFileKind::Ext => self.data.merge_memory_cue(cue)?,
+                            }
                         }
                     }
                     Payload::Cues(list) => {
                         for record in bytes.chunks_exact(56) {
                             if let Some(cue) = parse_pcpt(list, record)? {
-                                self.data.push_cue(AnalysisCue {
+                                let cue = AnalysisCue {
                                     slot: cue.index,
                                     start_ms: cue.start_ms,
                                     end_ms: (cue.kind == RekordboxCueKind::Loop)
                                         .then_some(cue.end_ms),
-                                })?;
+                                };
+                                match self.kind {
+                                    AnalysisFileKind::Dat => self.data.push_cue(cue)?,
+                                    AnalysisFileKind::Ext => self.data.merge_source_cue(cue)?,
+                                }
                             }
                         }
                     }

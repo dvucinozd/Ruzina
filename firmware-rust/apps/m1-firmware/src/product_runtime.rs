@@ -48,6 +48,12 @@ pub(crate) enum LibraryEffect {
 /// asynchronous Library deck worker (see `pajoniiir_deck::DeckLoadGate`).
 static LOAD_GATES: [DeckLoadGate; 2] = [DeckLoadGate::new(), DeckLoadGate::new()];
 
+fn decoded_duration_ms(source: SourceDescriptor) -> Option<u32> {
+    let rate = u64::from(source.sample_rate_hz());
+    let frames = source.frames()?;
+    (rate != 0).then(|| u32::try_from(frames.saturating_mul(1_000) / rate).unwrap_or(u32::MAX))
+}
+
 /// Worker-side access to the gates that `ProductRuntime::new` binds.
 pub(crate) fn load_gate(deck: DeckId) -> &'static DeckLoadGate {
     &LOAD_GATES[deck_index(deck)]
@@ -287,6 +293,9 @@ impl ProductRuntime {
         {
             return false;
         }
+        // Loop admission uses the source's decoded length, never catalog length.
+        self.deck
+            .set_decoded_duration_ms(deck, audio_source.and_then(decoded_duration_ms));
 
         self.loaded_tracks[deck_index(deck)] = Some(ProductLoadedTrack {
             candidate,

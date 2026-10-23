@@ -26,6 +26,8 @@ pub enum AnalysisDataError {
     InvalidBeat,
     InvalidCue,
     DuplicateCue,
+    /// EXT names a hot-cue slot that DAT already holds with different bounds.
+    ConflictingCue,
     InvalidIdentity,
 }
 
@@ -122,6 +124,24 @@ impl AnalysisBuilder {
             return Ok(());
         }
         push_bounded(&mut self.memory_cues, cue, MAX_MEMORY_CUES)
+    }
+    /// EXT enrichment (M2.5 082d2c0a): EXT may carry hot cues D-H that DAT
+    /// lacks. Repeating an identical DAT slot is a no-op; a different cue in an
+    /// occupied slot is a conflict that rejects the import.
+    pub fn merge_source_cue(&mut self, cue: AnalysisCue) -> Result<(), AnalysisDataError> {
+        match self.cues.iter().find(|old| old.slot == cue.slot) {
+            Some(old) if *old == cue => Ok(()),
+            Some(_) => Err(AnalysisDataError::ConflictingCue),
+            None => self.push_cue(cue),
+        }
+    }
+    /// EXT memory cues already present from DAT are skipped; new ones append
+    /// in export order under the same bound and truncation flag.
+    pub fn merge_memory_cue(&mut self, cue: AnalysisMemoryCue) -> Result<(), AnalysisDataError> {
+        if self.memory_cues.contains(&cue) {
+            return Ok(());
+        }
+        self.push_memory_cue(cue)
     }
     pub fn finish(
         self,

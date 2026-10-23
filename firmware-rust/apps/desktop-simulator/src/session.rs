@@ -245,6 +245,9 @@ impl Session {
             assert!(self.pins.publish(i, id, publication));
         }
         self.loaded[i] = Some((selection, id));
+        // The host source length plays the role of the decoded duration.
+        self.decks
+            .set_decoded_duration_ms(target, Some(DURATIONS[selection]));
         self.analysis_status[i] = if available {
             AnalysisStatus::Ready
         } else if selection == 2 {
