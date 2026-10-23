@@ -770,6 +770,7 @@ dependencies = [
  "pajoniiir-core",
  "pajoniiir-deck",
  "pajoniiir-hot-cues",
+ "pajoniiir-media-catalog",
  "pajoniiir-media-session",
  "pajoniiir-mixer",
  "pajoniiir-rekordbox",

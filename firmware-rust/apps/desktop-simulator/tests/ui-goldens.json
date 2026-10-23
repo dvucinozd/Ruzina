@@ -62,28 +62,28 @@
         1024,
         600
       ],
-      "rgb_sha256": "b31b25b7fb94f0fd24c115cf21bf824b6bc437befa18127a6ef0795ee6782d70"
+      "rgb_sha256": "0aaa44bc0f30e104b910044a8d7fc41378f8d558317fcbd2df3cf376360e98a0"
     },
     "jc1060-deck-fallback": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "2809fc06afb17aee709c63349fd9c8f7691564f2e8ab6b51eb4c73ef6c41444a"
+      "rgb_sha256": "d37315291b6614b1578c9991982960a04bef1f085f8d6926a1aee9d14c3bbde6"
     },
     "jc1060-decks": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "432944f6954194b723da13fa561abc7e5cd89deded51423544bd77c1e58f81da"
+      "rgb_sha256": "1d284da9696e7ea150e30983f98617aa1f9650fa03723eb609bd2a521e2e6787"
     },
     "jc1060-empty": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "898ab52d53b01409224130c6682add28fb5fa81feb83573d28e0a3f8bb2f4064"
+      "rgb_sha256": "94ca470575f6367af3d6544a7b0a56deccf73bcd20e185d522a8752f776cd233"
     },
     "jc1060-fx-active": {
       "size": [
@@ -251,28 +251,28 @@
         800,
         1280
       ],
-      "rgb_sha256": "87e0f88c522ecec0b287930ab9882abbfb4c0489ebc8e1eca234622437e6f414"
+      "rgb_sha256": "4c1a24952dfe5d4e863cd6bb809c1e2f944a69e727b0847d9ea88ce79502c0ea"
     },
     "jc8012-deck-fallback": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "48d586172586137e270451abde2cb34dc49b9e45ceaec06b6f302577554c4ba0"
+      "rgb_sha256": "51a03e80b5e244f59c8577df63703405029617a07c9a1fe94ca705ceca3ddf25"
     },
     "jc8012-decks": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "a755487b2a9dac744a5b22ebefb8dd1e01b2ddb2d70da3ed2c5408de31bab806"
+      "rgb_sha256": "e789b1442f9180edea856064cdd82b37df75ce02cde3e5b85a7892372c22247a"
     },
     "jc8012-empty": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "aba97ea3c9a26924ac1a282cfc87bddbd905c9a6690101b8ae5aa1741db73d3c"
+      "rgb_sha256": "114671f3306aacaa6eead28a48d6169645ddd84f7b7f2523203e6ff67c1b39b4"
     },
     "jc8012-fx-active": {
       "size": [
