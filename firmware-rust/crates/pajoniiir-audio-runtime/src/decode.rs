@@ -3,6 +3,7 @@
 //! Pair one active source with one exclusive codec context, checkpoint bank and
 //! encoded window; the filesystem owner provisions and reuses these resources.
 use crate::{
+    mp3_index::{Mp3SeekIndex, Mp3TagKind},
     pcm_stream::{PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock, frame_from_ms},
     timeline::{FrameLoop, PcmTimeline},
     wav::WavPcm16SourceDescriptor,
@@ -19,6 +20,9 @@ pub const CODEC_PCM_SAMPLES: usize = 2304;
 pub const FLAC_MAX_BLOCK_FRAMES: usize = 9216;
 pub const MP3_CHECKPOINTS: usize = 3; // loop origin + two recent exact seek points
 const MP3_CHECKPOINT_INPUT: usize = 8192;
+/// Prefer an indexed resume over a checkpoint further back than one index
+/// stride plus a typical reservoir preroll.
+const MP3_INDEX_SEEK_SLACK_FRAMES: u64 = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StreamChange {
@@ -73,11 +77,24 @@ impl From<WavPcm16SourceDescriptor> for SourceDescriptor {
 
 /// Large decoder state must be placed by the caller (BSS or a provisioned heap),
 /// never constructed on an embedded task stack. `new` is const for that purpose.
+/// Where a source's length comes from (RP-08): codec metadata, a complete
+/// MP3 frame walk, or nothing yet. Catalog length and analysis span are
+/// never substituted for either.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SourceDuration {
+    /// WAV size, FLAC STREAMINFO or an MP3 Xing/Info/VBRI frame count.
+    Exact(u64),
+    /// Untagged MP3 whose every frame header was walked.
+    Scanned(u64),
+    Unknown,
+}
+
 #[derive(Clone)]
 pub struct DecoderStorage {
     mp3: Mp3Decoder<i16>,
     flac: FlacDecoder<i16, FLAC_MAX_BLOCK_FRAMES, 2>,
     pcm: [i16; CODEC_PCM_SAMPLES],
+    mp3_index: Mp3SeekIndex,
 }
 #[derive(Clone)]
 pub struct Mp3CheckpointStorage {
@@ -101,7 +118,12 @@ impl DecoderStorage {
             mp3: Mp3Decoder::new(),
             flac: FlacDecoder::new(),
             pcm: [0; CODEC_PCM_SAMPLES],
+            mp3_index: Mp3SeekIndex::new(),
         }
+    }
+    /// The frame walk of the current MP3 source.
+    pub const fn mp3_index(&self) -> &Mp3SeekIndex {
+        &self.mp3_index
     }
     fn reset(&mut self, codec: AudioCodec) {
         match codec {
@@ -179,6 +201,11 @@ pub struct SourceDecoder {
     mp3_tag_checked: bool,
     trailing_checked: bool,
     checkpoints: [Option<Mp3Checkpoint>; MP3_CHECKPOINTS],
+    /// File offset of the first byte fed to the MP3 decoder (after ID3v2).
+    audio_start: u64,
+    /// Output frames the MP3 decoder trims at the start (gapless lead),
+    /// learned once from its own seek arithmetic.
+    mp3_lead: Option<u64>,
 }
 impl SourceDecoder {
     pub fn compressed(
@@ -191,6 +218,7 @@ impl SourceDecoder {
             return None;
         }
         storage.reset(codec);
+        storage.mp3_index.reset();
         if codec == AudioCodec::Flac {
             storage.flac.set_stream_length(file_bytes);
         }
@@ -221,6 +249,8 @@ impl SourceDecoder {
             mp3_tag_checked: false,
             trailing_checked: false,
             checkpoints: [None; MP3_CHECKPOINTS],
+            audio_start: 0,
+            mp3_lead: None,
         }
     }
     pub fn wav(
@@ -242,6 +272,40 @@ impl SourceDecoder {
     }
     pub const fn generation(&self) -> u32 {
         self.generation
+    }
+    /// Next read of the background MP3 frame walk, once the stream format
+    /// and audio start are known. It is independent of `step`'s request:
+    /// owners interleave it only while their PCM queue is full.
+    pub fn index_read(
+        &mut self,
+        storage: &mut DecoderStorage,
+        maximum: usize,
+    ) -> Option<(u64, usize)> {
+        if self.codec != AudioCodec::Mp3 || self.descriptor.is_none() || !self.mp3_tag_checked {
+            return None;
+        }
+        if !storage.mp3_index.started() {
+            storage.mp3_index.begin(self.audio_start, self.file_bytes);
+        }
+        storage.mp3_index.next_read(maximum)
+    }
+    /// Bytes for the last `index_read`; false for an unexpected range.
+    pub fn provide_index(
+        &mut self,
+        storage: &mut DecoderStorage,
+        offset: u64,
+        bytes: &[u8],
+    ) -> bool {
+        self.codec == AudioCodec::Mp3 && storage.mp3_index.provide(offset, bytes)
+    }
+    pub fn duration(&self, storage: &DecoderStorage) -> SourceDuration {
+        match self.descriptor.and_then(SourceDescriptor::frames) {
+            Some(frames) => SourceDuration::Exact(frames),
+            None => match storage.mp3_index.scanned_pcm_frames() {
+                Some(frames) if self.codec == AudioCodec::Mp3 => SourceDuration::Scanned(frames),
+                _ => SourceDuration::Unknown,
+            },
+        }
     }
     pub fn media_frame(&self) -> u64 {
         self.wav
@@ -367,15 +431,28 @@ impl SourceDecoder {
     ) -> bool {
         // FLAC headers carry exact sample numbers and the decoder refines its
         // search with bounded SeekTo requests. MP3 restores a complete decoder,
-        // reservoir, PCM and input checkpoint, never an approximate VBR offset.
+        // reservoir, PCM and input checkpoint, never an approximate VBR offset;
+        // a target far from every checkpoint resumes at an exact indexed frame
+        // through the codec's reservoir preroll instead (RP-08).
+        let checkpoint = self
+            .checkpoints
+            .iter()
+            .enumerate()
+            .filter_map(|(i, c)| c.map(|c| (i, c)))
+            .filter(|(_, c)| c.frame <= self.media_frame)
+            .max_by_key(|(_, c)| c.frame);
+        if self.codec == AudioCodec::Mp3 {
+            let index = &storage.mp3_index;
+            let reach = (u64::from(index.stride()) + MP3_INDEX_SEEK_SLACK_FRAMES)
+                * index.samples_per_frame().unwrap_or(1152);
+            if checkpoint.is_none_or(|(_, c)| self.media_frame - c.frame > reach)
+                && self.indexed_mp3_seek(storage)
+            {
+                return true;
+            }
+        }
         if self.codec == AudioCodec::Mp3
-            && let Some((slot, mark)) = self
-                .checkpoints
-                .iter()
-                .enumerate()
-                .filter_map(|(i, c)| c.map(|c| (i, c)))
-                .filter(|(_, c)| c.frame <= self.media_frame)
-                .max_by_key(|(_, c)| c.frame)
+            && let Some((slot, mark)) = checkpoint
         {
             storage.restore_mp3(checkpoints[slot], &mut encoded[..mark.input_len]);
             self.offset = mark.offset;
@@ -407,6 +484,97 @@ impl SourceDecoder {
         self.pcm_len = 0;
         self.pcm_position = 0;
         self.mp3_tag_checked = false;
+        self.trailing_checked = false;
+        true
+    }
+    /// Resumes the MP3 decoder near `media_frame` from an exact frame offset.
+    ///
+    /// Constant streams (a complete walk saw one bitrate) use the codec's own
+    /// byte arithmetic, which is exact there. Xing/VBRI streams would land
+    /// where the table of contents points, about 1 % off, so the codec is
+    /// asked to resume at an indexed frame instead and fed from that frame's
+    /// walked offset; the codec still drops its own reservoir preroll, and
+    /// `step` skips the few output frames up to the target. Any inconsistency
+    /// returns false and the caller restores a checkpoint or restarts.
+    fn indexed_mp3_seek(&mut self, storage: &mut DecoderStorage) -> bool {
+        let target = self.media_frame;
+        let index = &storage.mp3_index;
+        let (Some(samples), Some(first)) = (index.samples_per_frame(), index.first_offset()) else {
+            return false;
+        };
+        if target == 0
+            || first < self.audio_start
+            || self
+                .descriptor
+                .and_then(SourceDescriptor::frames)
+                .is_some_and(|frames| target >= frames)
+        {
+            return false;
+        }
+        let first = first - self.audio_start;
+        let (offset, resume) = match (index.kind(), index.variable_bitrate()) {
+            (Mp3TagKind::Plain | Mp3TagKind::Constant, false) if index.complete() => {
+                let Ok(request) = storage.mp3.seek(target) else {
+                    return false;
+                };
+                (self.audio_start + request.byte_offset, target)
+            }
+            (Mp3TagKind::Variable, _) => {
+                let lead = match self.mp3_lead {
+                    Some(lead) => lead,
+                    None => {
+                        // Resuming at 0 starts at the first frame and skips
+                        // exactly the trimmed lead, when the lead is shorter
+                        // than the codec's preroll.
+                        let Ok(zero) = storage.mp3.seek(0) else {
+                            return false;
+                        };
+                        if zero.byte_offset != first {
+                            return false;
+                        }
+                        self.mp3_lead = Some(u64::from(zero.skip_frames));
+                        u64::from(zero.skip_frames)
+                    }
+                };
+                let Ok(request) = storage.mp3.seek(target) else {
+                    return false;
+                };
+                let position = target + lead;
+                let skip = u64::from(request.skip_frames);
+                let within = position % samples;
+                if request.skip_frames == u32::MAX
+                    || skip < within
+                    || skip > position
+                    || !(position - skip).is_multiple_of(samples)
+                {
+                    return false;
+                }
+                let preroll = skip - within;
+                let start = (position - skip) / samples;
+                if start == 0 && request.byte_offset == first {
+                    (self.audio_start + first, target)
+                } else {
+                    let Some((frame, offset)) = index.at_or_before(start) else {
+                        return false;
+                    };
+                    let Some(resume) = (frame * samples + preroll).checked_sub(lead) else {
+                        return false;
+                    };
+                    match storage.mp3.seek(resume) {
+                        Ok(again) if u64::from(again.skip_frames) == preroll => (offset, resume),
+                        _ => return false,
+                    }
+                }
+            }
+            _ => return false,
+        };
+        self.offset = offset;
+        self.decoded_frame = resume;
+        self.input_len = 0;
+        self.requested = 0;
+        self.pcm_len = 0;
+        self.pcm_position = 0;
+        self.mp3_tag_checked = true;
         self.trailing_checked = false;
         true
     }
@@ -611,6 +779,7 @@ impl SourceDecoder {
                 }
                 return DecodeAction::Pending;
             }
+            self.audio_start = self.offset - self.input_len as u64;
             self.mp3_tag_checked = true;
         }
         if self.codec == AudioCodec::Mp3 && self.offset == self.file_bytes && !self.trailing_checked

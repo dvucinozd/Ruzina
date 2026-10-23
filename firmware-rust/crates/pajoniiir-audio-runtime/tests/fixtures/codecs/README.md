@@ -7,7 +7,11 @@ Encoder versions can change compressed bytes and decoded golden PCM, so changing
 the fixtures requires deliberate review.
 
 WAV sources contain 12,000 frames. MP3 fixtures cover 48 kHz CBR stereo, 44.1 kHz
-VBR stereo, 22.05 kHz mono, and CBR without Xing length/gapless metadata. An eight-second CBR stream exercises late loop checkpoints and recent seek restoration. Native
+VBR stereo, 22.05 kHz mono, and CBR without Xing length/gapless metadata. An eight-second CBR stream exercises late loop checkpoints and recent seek restoration. Two eight-second
+44.1 kHz VBR streams (`long-vbr*.mp3`, alternating tone and seeded noise so frame
+sizes vary, with and without the Xing/LAME frame, both behind FFmpeg's ID3v2 tag)
+exercise RP-08 indexed cold seeks and scanned duration. They were added by
+`long_vbr()` alone, so the older fixtures kept their bytes. Native
 FLAC covers 16-bit stereo/mono, 24-bit 96 kHz stereo (9,216-frame blocks), and a
 hand-built 32-bit VERBATIM stereo frame with valid header/frame CRCs.
 
