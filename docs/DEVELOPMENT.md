@@ -1,14 +1,15 @@
 # Development status and next steps
 
-Updated: 2026-10-22. This page describes the current Guition Rust development
+Updated: 2026-10-23. This page describes the current Guition Rust development
 scope; compilation, host behavior and physical acceptance remain distinct.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
 verification boundaries. RP-01..08, RP-11 and RP-15/18 are host-implemented
 (RP-07 cover display in the simulator only; RP-11 settings without a target
-flash owner) and RP-12 has host contracts with a fake transport (no HTTP server
-or C6 driver); continue with RP-13. This is not complete M2.5 parity.
+flash owner); RP-12 and RP-13 have host contracts with fake transports and
+slots (no HTTP server, C6 driver, TLS or target flash adapter). Continue with
+the RP-09/10/14/16/17 host work. This is not complete M2.5 parity.
 
 ## Implemented software
 
@@ -58,7 +59,10 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    `pajoniiir-settings`: versioned A/B records, durable-before-publish owner,
    explicit M2.5 import), C6/Web contracts (RP-12 host contracts in
    `pajoniiir-web` with a fake transport) and signed OTA/readiness state
-   machines with host fault injection before physical activation.
+   machines (RP-13 host contracts in `pajoniiir-ota`: signed `.ddjota`,
+   strict channel document, verify-before-erase/switch install, pending
+   candidate confirm/rollback) with host fault injection before physical
+   activation.
 5. **RP-09/10/14/16/17:** UAC descriptors/packets/clocks, board-owned USB roles,
    MAIN switching, headphone gain ownership and bounded cache/diagnostic behavior.
 
@@ -97,9 +101,9 @@ policy remain explicit board questions. See the [matrix](boards/GUITION_HARDWARE
 
 ## Further software and release work
 
-General settings persistence/migration, transactional writable media workflows,
-signed A/B OTA/rollback/readiness, C6 transport/networking and Web Remote are
-unfinished. Physical audio sinks and controller-specific headphone channel maps
+Target adapters for settings persistence, transactional writable media
+workflows, signed A/B OTA/rollback/readiness, C6 transport/networking and Web
+Remote are unfinished; their RP-11/12/13 rules exist only as host contracts. Physical audio sinks and controller-specific headphone channel maps
 are not implemented/qualified. Musical analysis accuracy, device performance,
 sanitizer/fuzz campaigns and long-duration physical soak are separate gates.
 
