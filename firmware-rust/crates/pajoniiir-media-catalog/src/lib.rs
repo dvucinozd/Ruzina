@@ -6,6 +6,7 @@ use core::str;
 use pajoniiir_core::MediaTrackId;
 use pajoniiir_media_session::MediaLease;
 
+pub mod artwork;
 pub mod playlists;
 
 pub const MEDIA_CATALOG_MAX_TRACKS: usize = 1_024;
@@ -14,6 +15,8 @@ pub const CATALOG_ARTIST_MAX: usize = 96;
 pub const CATALOG_ALBUM_MAX: usize = 96;
 pub const CATALOG_KEY_MAX: usize = 16;
 pub const CATALOG_PATH_MAX: usize = 256;
+/// M2.5 `PDB_ARTWORK_PATH_MAX`; Rekordbox covers are `/PIONEER/Artwork/...`.
+pub const CATALOG_ARTWORK_PATH_MAX: usize = 96;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CatalogTextError {
@@ -84,10 +87,13 @@ pub struct CatalogTrack {
     pub key: CatalogText<CATALOG_KEY_MAX>,
     pub audio_path: CatalogText<CATALOG_PATH_MAX>,
     pub analysis_path: CatalogText<CATALOG_PATH_MAX>,
+    /// Empty when the export has no cover or its reference is unusable; the
+    /// deck then shows the attributed fallback, never another track's cover.
+    pub artwork_path: CatalogText<CATALOG_ARTWORK_PATH_MAX>,
 }
 
 impl CatalogTrack {
-    const EMPTY: Self = Self {
+    pub const EMPTY: Self = Self {
         track_id: MediaTrackId([0; 16]),
         source_track_id: 0,
         bpm_x100: 0,
@@ -98,6 +104,7 @@ impl CatalogTrack {
         key: CatalogText::EMPTY,
         audio_path: CatalogText::EMPTY,
         analysis_path: CatalogText::EMPTY,
+        artwork_path: CatalogText::EMPTY,
     };
 }
 
@@ -655,6 +662,7 @@ mod tests {
             key: text("8A"),
             audio_path: text("/Contents/test.wav"),
             analysis_path: text("/PIONEER/USBANLZ/P001/00000042/ANLZ0000.DAT"),
+            artwork_path: CatalogText::EMPTY,
         }
     }
 

@@ -1,7 +1,7 @@
 //! Bounded owned data, built outside render/control and immutable after publish.
 use crate::{
-    AnalysisCue, AnalysisMemoryCue, AnalysisProvider, Beat, BeatGrid, MAX_MEMORY_CUES,
-    TrackAnalysis, WaveformColumn,
+    AnalysisCue, AnalysisMemoryCue, AnalysisProvider, Beat, BeatGrid, ColorPreviewEntry,
+    MAX_COLOR_PREVIEW_COLUMNS, MAX_MEMORY_CUES, TrackAnalysis, WaveformColumn,
 };
 use alloc::vec::Vec;
 use pajoniiir_core::MediaTrackId;
@@ -40,6 +40,8 @@ pub struct AnalysisBuilder {
     memory_cues: Vec<AnalysisMemoryCue>,
     memory_cues_truncated: bool,
     detail_rate_hz: u16,
+    color_preview: Vec<ColorPreviewEntry>,
+    color_preview_truncated: bool,
 }
 impl AnalysisBuilder {
     pub const fn new() -> Self {
@@ -51,7 +53,31 @@ impl AnalysisBuilder {
             memory_cues: Vec::new(),
             memory_cues_truncated: false,
             detail_rate_hz: 0,
+            color_preview: Vec::new(),
+            color_preview_truncated: false,
         }
+    }
+    /// Reserves the retained PWV4 columns; `truncated` records that the
+    /// export carried more than [`MAX_COLOR_PREVIEW_COLUMNS`].
+    pub fn reserve_color_preview(
+        &mut self,
+        count: usize,
+        truncated: bool,
+    ) -> Result<(), AnalysisDataError> {
+        if count > MAX_COLOR_PREVIEW_COLUMNS || !self.color_preview.is_empty() {
+            return Err(AnalysisDataError::Capacity);
+        }
+        self.color_preview
+            .try_reserve_exact(count)
+            .map_err(|_| AnalysisDataError::Allocation)?;
+        self.color_preview_truncated = truncated;
+        Ok(())
+    }
+    pub fn push_color_preview(
+        &mut self,
+        entry: ColorPreviewEntry,
+    ) -> Result<(), AnalysisDataError> {
+        push_bounded(&mut self.color_preview, entry, MAX_COLOR_PREVIEW_COLUMNS)
     }
     pub fn reserve_beats(&mut self, count: usize) -> Result<(), AnalysisDataError> {
         if count > MAX_ANALYSIS_BEATS || !self.beats.is_empty() {
@@ -205,6 +231,7 @@ impl AnalysisPublication {
         .with_visuals(&self.data.preview, &self.data.detail, &self.data.cues)
         .with_memory_cues(&self.data.memory_cues, self.data.memory_cues_truncated)
         .with_detail_rate(self.data.detail_rate_hz)
+        .with_color_preview(&self.data.color_preview, self.data.color_preview_truncated)
     }
 }
 

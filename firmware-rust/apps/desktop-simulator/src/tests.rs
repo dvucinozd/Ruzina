@@ -130,6 +130,28 @@ fn overview_cue_and_playhead_are_aligned_to_track_time() {
 }
 
 #[test]
+fn memory_cues_are_marked_apart_from_hot_cues_and_pwv4_colors_the_preview() {
+    use pajoniiir_track_analysis::{AnalysisProvider, ColorPreviewEntry, TrackAnalysis};
+    let s = loaded();
+    // Track A's fixture carries one memory point at 750 ms (of 10 s).
+    let pixels = compositor::compose(s.presentation(0), s.analysis(0), false);
+    let memory_x = 750 * (compositor::WIDTH - 1) / 10_000;
+    let bottom = (compositor::HEIGHT - 1) * compositor::WIDTH;
+    assert_eq!(pixels[bottom + memory_x], 0xf800);
+    assert_ne!(pixels[memory_x], 0xf800);
+    let hot_x = 1000 * (compositor::WIDTH - 1) / 10_000;
+    assert_ne!(pixels[bottom + hot_x], 0xf800);
+
+    // Without PWV4 the PWAV preview stays; with it the bands set the color.
+    let pure_bass = [ColorPreviewEntry([31, 0, 0, 200, 0, 0]); 4];
+    let colored = TrackAnalysis::new(AnalysisProvider::RekordboxImport, 1, 12_000, None)
+        .with_color_preview(&pure_bass, false);
+    let pixels = compositor::compose(s.presentation(0), Some(colored), false);
+    let center = (8 + (compositor::HEIGHT - 16) / 2) * compositor::WIDTH;
+    assert_eq!(pixels[center + 300], 0xf800);
+}
+
+#[test]
 fn imported_pqtz_bar_one_renders_as_the_tall_downbeat_tick() {
     // track-a.DAT stores PQTZ bar positions 1,2,3,4,1,... at 1000 + n*500 ms.
     // Cues cover 1000/2000 ms, so in this window only the 3000 ms bar-one beat

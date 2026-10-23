@@ -546,6 +546,7 @@ fn actual_product_keeps_shared_track_cue_edits_current_across_decks() {
             key: CatalogText::EMPTY,
             audio_path: CatalogText::EMPTY,
             analysis_path: CatalogText::EMPTY,
+            artwork_path: CatalogText::EMPTY,
         },
     };
     let mut source = HotCueBank::empty(track);

@@ -53,6 +53,7 @@ pub fn catalog(m: &MediaSession) -> CatalogSnapshot<1> {
         key: CatalogText::EMPTY,
         audio_path: CatalogText::try_from_str("/TRACK.WAV").unwrap(),
         analysis_path: CatalogText::EMPTY,
+        artwork_path: CatalogText::EMPTY,
     })
     .unwrap();
     c.finish(1)
