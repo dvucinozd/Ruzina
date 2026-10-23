@@ -7,6 +7,8 @@ publish.workspace = true
 
 [dependencies]
 ruzina-controller-core.workspace = true
+ruzina-controller-profile.workspace = true
+ruzina-controller-profile-storage.workspace = true
 ruzina-core.workspace = true
 ruzina-media-catalog.workspace = true
 

@@ -44,7 +44,8 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
 1. **RP-01/02 (host-implemented):** PDB title index correction, independent
    import fixtures and end-to-end S3CP v2/v3/v4 compatibility, including bounded
    output initialization and the M2.5 Smart CFX/FILTER_ALWAYS channel-filter
-   gate. Firmware wiring is compile-only; an upload path remains open.
+   gate. Firmware wiring is compile-only. The upload transaction and its Web admission
+   are host-implemented; no HTTP server calls them yet.
 2. **RP-03/04/05/15/18:** CUE hold-preview/PLAY commit and explicit VINYL/CDJ
    (RP-03 host-implemented; tempo nudge/paused scrub still absent), shared load
    admission (RP-04 host-implemented: default-on LOAD LOCK verdict, single-flight

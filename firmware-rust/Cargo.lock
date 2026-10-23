@@ -3940,6 +3940,8 @@ name = "ruzina-web"
 version = "0.1.0"
 dependencies = [
  "ruzina-controller-core",
+ "ruzina-controller-profile",
+ "ruzina-controller-profile-storage",
  "ruzina-core",
  "ruzina-media-catalog",
  "ruzina-media-session",
