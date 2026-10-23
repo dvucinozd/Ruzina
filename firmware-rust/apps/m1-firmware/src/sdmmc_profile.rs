@@ -3,17 +3,17 @@ use block_device_driver::BlockDevice as BlockDeviceDriver;
 use embassy_futures::select::{Either, select};
 use embassy_time::{Delay, Timer};
 use esp_hal::sdmmc::Slot;
-use pajoniiir_controller_profile_storage::{ProfileRegistry, ProfileScanBuffers};
-use pajoniiir_media_block::{BlockGeometry, BlockRange, TransferError};
-use pajoniiir_media_fat32::{
+use ruzina_controller_profile_storage::{ProfileRegistry, ProfileScanBuffers};
+use ruzina_media_block::{BlockGeometry, BlockRange, TransferError};
+use ruzina_media_fat32::{
     Fat32AsyncFileSystem, Fat32BootInfo, parse_fat32_boot_sector, parse_fat32_fs_info,
 };
-use pajoniiir_media_io::{AsyncPartitionDevice, OwnedBlockDevice};
-use pajoniiir_media_partition::{
+use ruzina_media_io::{AsyncPartitionDevice, OwnedBlockDevice};
+use ruzina_media_partition::{
     GptEntryStream, PartitionLayout, PartitionScanResult, VolumeKind, parse_gpt_header,
     scan_mbr_or_superfloppy,
 };
-use pajoniiir_media_session::{ConnectResult, MediaSession, MediaSourceId};
+use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
 use sdio::{Addressable, BlockDevice, MmcError, sd::Card};
 use static_cell::StaticCell;
 

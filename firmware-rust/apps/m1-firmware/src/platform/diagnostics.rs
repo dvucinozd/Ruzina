@@ -3,12 +3,12 @@
 use core::fmt::Write;
 use embassy_time::{Duration, Timer};
 use esp_hal::{peripherals::USB_DEVICE, usb::usb_serial_jtag::UsbSerialJtag};
-use pajoniiir_board_profile::memory::MemoryReport;
-use pajoniiir_board_profile::{
+use ruzina_board_profile::memory::MemoryReport;
+use ruzina_board_profile::{
     BoardProfile,
     diagnostics::{BootReport, ReportBuffer},
 };
-use pajoniiir_service::{Environment, Identity, RuntimeStatus, Service};
+use ruzina_service::{Environment, Identity, RuntimeStatus, Service};
 
 #[embassy_executor::task]
 pub(super) async fn report_task(

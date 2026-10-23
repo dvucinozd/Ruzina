@@ -827,19 +827,19 @@ dependencies = [
 name = "desktop-simulator"
 version = "0.1.0"
 dependencies = [
- "pajoniiir-board-profile",
- "pajoniiir-controller-core",
- "pajoniiir-core",
- "pajoniiir-deck",
- "pajoniiir-hot-cues",
- "pajoniiir-media-catalog",
- "pajoniiir-media-session",
- "pajoniiir-mixer",
- "pajoniiir-rekordbox",
- "pajoniiir-service",
- "pajoniiir-track-analysis",
- "pajoniiir-ui-model",
- "pajoniiir-waveform",
+ "ruzina-board-profile",
+ "ruzina-controller-core",
+ "ruzina-core",
+ "ruzina-deck",
+ "ruzina-hot-cues",
+ "ruzina-media-catalog",
+ "ruzina-media-session",
+ "ruzina-mixer",
+ "ruzina-rekordbox",
+ "ruzina-service",
+ "ruzina-track-analysis",
+ "ruzina-ui-model",
+ "ruzina-waveform",
  "slint",
  "slint-build",
 ]
@@ -3102,315 +3102,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pajoniiir-apta-adapter"
-version = "0.1.0"
-dependencies = [
- "embassy-futures",
- "libapta",
- "pajoniiir-audio-runtime",
- "pajoniiir-controller-core",
- "pajoniiir-controller-session",
- "pajoniiir-core",
- "pajoniiir-deck",
- "pajoniiir-hot-cues",
- "pajoniiir-media-block",
- "pajoniiir-media-catalog",
- "pajoniiir-media-exfat",
- "pajoniiir-media-fat32",
- "pajoniiir-media-fs",
- "pajoniiir-media-identity",
- "pajoniiir-media-io",
- "pajoniiir-media-session",
- "pajoniiir-mixer",
- "pajoniiir-service",
- "pajoniiir-track-analysis",
- "pajoniiir-waveform",
-]
-
-[[package]]
-name = "pajoniiir-audio-dsp"
-version = "0.1.0"
-dependencies = [
- "libm",
-]
-
-[[package]]
-name = "pajoniiir-audio-keylock"
-version = "0.1.0"
-dependencies = [
- "libm",
- "pajoniiir-audio-dsp",
-]
-
-[[package]]
-name = "pajoniiir-audio-runtime"
-version = "0.1.0"
-dependencies = [
- "libm",
- "nanoaudio-core",
- "nanoaudio-flac",
- "nanoaudio-mp3",
- "pajoniiir-audio-dsp",
- "pajoniiir-audio-keylock",
- "pajoniiir-audio-scratch",
- "pajoniiir-controller-core",
- "pajoniiir-deck",
- "pajoniiir-mixer",
-]
-
-[[package]]
-name = "pajoniiir-audio-scratch"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-audio-dsp",
-]
-
-[[package]]
-name = "pajoniiir-board-profile"
-version = "0.1.0"
-
-[[package]]
-name = "pajoniiir-control-scheduler"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-controller-core",
-]
-
-[[package]]
-name = "pajoniiir-controller-core"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-core",
-]
-
-[[package]]
-name = "pajoniiir-controller-profile"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-controller-core",
-]
-
-[[package]]
-name = "pajoniiir-controller-profile-storage"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-controller-profile",
- "pajoniiir-media-fs",
- "pajoniiir-media-session",
-]
-
-[[package]]
-name = "pajoniiir-controller-session"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-control-scheduler",
- "pajoniiir-controller-core",
- "pajoniiir-controller-profile",
- "pajoniiir-controller-usb",
-]
-
-[[package]]
-name = "pajoniiir-controller-usb"
-version = "0.1.0"
-
-[[package]]
-name = "pajoniiir-core"
-version = "0.1.0"
-
-[[package]]
-name = "pajoniiir-deck"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-controller-core",
- "pajoniiir-core",
- "pajoniiir-hot-cues",
- "pajoniiir-media-session",
- "pajoniiir-rekordbox",
- "pajoniiir-track-analysis",
- "pajoniiir-waveform",
-]
-
-[[package]]
-name = "pajoniiir-hot-cues"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-core",
- "pajoniiir-media-identity",
-]
-
-[[package]]
-name = "pajoniiir-media-block"
-version = "0.1.0"
-
-[[package]]
-name = "pajoniiir-media-catalog"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-core",
- "pajoniiir-media-session",
-]
-
-[[package]]
-name = "pajoniiir-media-exfat"
-version = "0.1.0"
-dependencies = [
- "exfat-embedded",
- "pajoniiir-media-block",
- "pajoniiir-media-fs",
- "pajoniiir-media-io",
- "pajoniiir-media-session",
-]
-
-[[package]]
-name = "pajoniiir-media-fat32"
-version = "0.1.0"
-dependencies = [
- "embedded-sdmmc",
- "pajoniiir-media-block",
- "pajoniiir-media-fs",
- "pajoniiir-media-io",
- "pajoniiir-media-partition",
- "pajoniiir-media-session",
-]
-
-[[package]]
-name = "pajoniiir-media-fs"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-media-session",
-]
-
-[[package]]
-name = "pajoniiir-media-identity"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-core",
-]
-
-[[package]]
-name = "pajoniiir-media-io"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-media-block",
-]
-
-[[package]]
-name = "pajoniiir-media-partition"
-version = "0.1.0"
-
-[[package]]
-name = "pajoniiir-media-session"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-media-block",
-]
-
-[[package]]
-name = "pajoniiir-media-usb-msc"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-media-block",
- "pajoniiir-media-fs",
- "pajoniiir-media-partition",
- "pajoniiir-media-session",
-]
-
-[[package]]
-name = "pajoniiir-mixer"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-audio-dsp",
- "pajoniiir-controller-core",
-]
-
-[[package]]
-name = "pajoniiir-ota"
-version = "0.1.0"
-dependencies = [
- "p256",
- "sha2",
-]
-
-[[package]]
-name = "pajoniiir-rekordbox"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-core",
- "pajoniiir-media-catalog",
- "pajoniiir-media-identity",
- "pajoniiir-media-session",
- "pajoniiir-track-analysis",
-]
-
-[[package]]
-name = "pajoniiir-service"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-audio-runtime",
- "pajoniiir-board-profile",
- "pajoniiir-control-scheduler",
- "pajoniiir-controller-core",
- "pajoniiir-controller-session",
- "pajoniiir-core",
- "pajoniiir-deck",
- "pajoniiir-hot-cues",
- "pajoniiir-media-catalog",
- "pajoniiir-media-session",
- "pajoniiir-mixer",
- "pajoniiir-track-analysis",
-]
-
-[[package]]
-name = "pajoniiir-settings"
-version = "0.1.0"
-
-[[package]]
-name = "pajoniiir-track-analysis"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-core",
- "pajoniiir-media-session",
-]
-
-[[package]]
-name = "pajoniiir-uac"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-audio-dsp",
- "pajoniiir-audio-runtime",
- "pajoniiir-controller-usb",
-]
-
-[[package]]
-name = "pajoniiir-ui-model"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-controller-core",
- "pajoniiir-core",
- "pajoniiir-deck",
- "pajoniiir-hot-cues",
- "pajoniiir-mixer",
-]
-
-[[package]]
-name = "pajoniiir-waveform"
-version = "0.1.0"
-dependencies = [
- "embedded-graphics",
- "pajoniiir-track-analysis",
-]
-
-[[package]]
-name = "pajoniiir-web"
-version = "0.1.0"
-dependencies = [
- "pajoniiir-controller-core",
- "pajoniiir-core",
- "pajoniiir-media-catalog",
- "pajoniiir-media-session",
-]
-
-[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3944,6 +3635,315 @@ name = "rustversion"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
+
+[[package]]
+name = "ruzina-apta-adapter"
+version = "0.1.0"
+dependencies = [
+ "embassy-futures",
+ "libapta",
+ "ruzina-audio-runtime",
+ "ruzina-controller-core",
+ "ruzina-controller-session",
+ "ruzina-core",
+ "ruzina-deck",
+ "ruzina-hot-cues",
+ "ruzina-media-block",
+ "ruzina-media-catalog",
+ "ruzina-media-exfat",
+ "ruzina-media-fat32",
+ "ruzina-media-fs",
+ "ruzina-media-identity",
+ "ruzina-media-io",
+ "ruzina-media-session",
+ "ruzina-mixer",
+ "ruzina-service",
+ "ruzina-track-analysis",
+ "ruzina-waveform",
+]
+
+[[package]]
+name = "ruzina-audio-dsp"
+version = "0.1.0"
+dependencies = [
+ "libm",
+]
+
+[[package]]
+name = "ruzina-audio-keylock"
+version = "0.1.0"
+dependencies = [
+ "libm",
+ "ruzina-audio-dsp",
+]
+
+[[package]]
+name = "ruzina-audio-runtime"
+version = "0.1.0"
+dependencies = [
+ "libm",
+ "nanoaudio-core",
+ "nanoaudio-flac",
+ "nanoaudio-mp3",
+ "ruzina-audio-dsp",
+ "ruzina-audio-keylock",
+ "ruzina-audio-scratch",
+ "ruzina-controller-core",
+ "ruzina-deck",
+ "ruzina-mixer",
+]
+
+[[package]]
+name = "ruzina-audio-scratch"
+version = "0.1.0"
+dependencies = [
+ "ruzina-audio-dsp",
+]
+
+[[package]]
+name = "ruzina-board-profile"
+version = "0.1.0"
+
+[[package]]
+name = "ruzina-control-scheduler"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+]
+
+[[package]]
+name = "ruzina-controller-core"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+]
+
+[[package]]
+name = "ruzina-controller-profile"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+]
+
+[[package]]
+name = "ruzina-controller-profile-storage"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-profile",
+ "ruzina-media-fs",
+ "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-controller-session"
+version = "0.1.0"
+dependencies = [
+ "ruzina-control-scheduler",
+ "ruzina-controller-core",
+ "ruzina-controller-profile",
+ "ruzina-controller-usb",
+]
+
+[[package]]
+name = "ruzina-controller-usb"
+version = "0.1.0"
+
+[[package]]
+name = "ruzina-core"
+version = "0.1.0"
+
+[[package]]
+name = "ruzina-deck"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+ "ruzina-core",
+ "ruzina-hot-cues",
+ "ruzina-media-session",
+ "ruzina-rekordbox",
+ "ruzina-track-analysis",
+ "ruzina-waveform",
+]
+
+[[package]]
+name = "ruzina-hot-cues"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+ "ruzina-media-identity",
+]
+
+[[package]]
+name = "ruzina-media-block"
+version = "0.1.0"
+
+[[package]]
+name = "ruzina-media-catalog"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+ "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-media-exfat"
+version = "0.1.0"
+dependencies = [
+ "exfat-embedded",
+ "ruzina-media-block",
+ "ruzina-media-fs",
+ "ruzina-media-io",
+ "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-media-fat32"
+version = "0.1.0"
+dependencies = [
+ "embedded-sdmmc",
+ "ruzina-media-block",
+ "ruzina-media-fs",
+ "ruzina-media-io",
+ "ruzina-media-partition",
+ "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-media-fs"
+version = "0.1.0"
+dependencies = [
+ "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-media-identity"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+]
+
+[[package]]
+name = "ruzina-media-io"
+version = "0.1.0"
+dependencies = [
+ "ruzina-media-block",
+]
+
+[[package]]
+name = "ruzina-media-partition"
+version = "0.1.0"
+
+[[package]]
+name = "ruzina-media-session"
+version = "0.1.0"
+dependencies = [
+ "ruzina-media-block",
+]
+
+[[package]]
+name = "ruzina-media-usb-msc"
+version = "0.1.0"
+dependencies = [
+ "ruzina-media-block",
+ "ruzina-media-fs",
+ "ruzina-media-partition",
+ "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-mixer"
+version = "0.1.0"
+dependencies = [
+ "ruzina-audio-dsp",
+ "ruzina-controller-core",
+]
+
+[[package]]
+name = "ruzina-ota"
+version = "0.1.0"
+dependencies = [
+ "p256",
+ "sha2",
+]
+
+[[package]]
+name = "ruzina-rekordbox"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+ "ruzina-media-catalog",
+ "ruzina-media-identity",
+ "ruzina-media-session",
+ "ruzina-track-analysis",
+]
+
+[[package]]
+name = "ruzina-service"
+version = "0.1.0"
+dependencies = [
+ "ruzina-audio-runtime",
+ "ruzina-board-profile",
+ "ruzina-control-scheduler",
+ "ruzina-controller-core",
+ "ruzina-controller-session",
+ "ruzina-core",
+ "ruzina-deck",
+ "ruzina-hot-cues",
+ "ruzina-media-catalog",
+ "ruzina-media-session",
+ "ruzina-mixer",
+ "ruzina-track-analysis",
+]
+
+[[package]]
+name = "ruzina-settings"
+version = "0.1.0"
+
+[[package]]
+name = "ruzina-track-analysis"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+ "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-uac"
+version = "0.1.0"
+dependencies = [
+ "ruzina-audio-dsp",
+ "ruzina-audio-runtime",
+ "ruzina-controller-usb",
+]
+
+[[package]]
+name = "ruzina-ui-model"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+ "ruzina-core",
+ "ruzina-deck",
+ "ruzina-hot-cues",
+ "ruzina-mixer",
+]
+
+[[package]]
+name = "ruzina-waveform"
+version = "0.1.0"
+dependencies = [
+ "embedded-graphics",
+ "ruzina-track-analysis",
+]
+
+[[package]]
+name = "ruzina-web"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+ "ruzina-core",
+ "ruzina-media-catalog",
+ "ruzina-media-session",
+]
 
 [[package]]
 name = "safe_arch"

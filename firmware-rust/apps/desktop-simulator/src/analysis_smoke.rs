@@ -1,5 +1,5 @@
 use super::*;
-use pajoniiir_service::analysis::{Observation, Reason, Sample, State};
+use ruzina_service::analysis::{Observation, Reason, Sample, State};
 pub fn run(
     ui: &MainWindow,
     state: &RefCell<Session>,
@@ -30,7 +30,7 @@ pub fn run(
             sample: Sample {
                 state: status,
                 reason,
-                deck: Some(pajoniiir_core::DeckId::One),
+                deck: Some(ruzina_core::DeckId::One),
                 load_generation: Some(7),
             },
             serial: index as u64 + 1,

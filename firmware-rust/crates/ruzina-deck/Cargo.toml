@@ -1,0 +1,17 @@
+[package]
+name = "ruzina-deck"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-controller-core.workspace = true
+ruzina-core.workspace = true
+ruzina-hot-cues.workspace = true
+ruzina-track-analysis.workspace = true
+
+[dev-dependencies]
+ruzina-rekordbox.workspace = true
+ruzina-media-session.workspace = true
+ruzina-waveform.workspace = true

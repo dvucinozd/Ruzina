@@ -1,0 +1,13 @@
+[package]
+name = "ruzina-controller-profile-storage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-controller-profile.workspace = true
+ruzina-media-fs.workspace = true
+
+[dev-dependencies]
+ruzina-media-session.workspace = true

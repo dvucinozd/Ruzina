@@ -1,7 +1,7 @@
 //! A failed durable operation latches the store unavailable for this boot.
 //! Keep servicing requests so a Library load queued before the fault terminates.
-use pajoniiir_core::MediaTrackId;
-use pajoniiir_hot_cues::{HotCueBank, HotCueStore};
+use ruzina_core::MediaTrackId;
+use ruzina_hot_cues::{HotCueBank, HotCueStore};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum HotCueLoadResult {

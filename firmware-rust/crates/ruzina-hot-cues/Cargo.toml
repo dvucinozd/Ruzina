@@ -1,0 +1,10 @@
+[package]
+name = "ruzina-hot-cues"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-core.workspace = true
+ruzina-media-identity.workspace = true

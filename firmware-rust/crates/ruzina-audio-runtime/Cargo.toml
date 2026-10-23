@@ -1,0 +1,18 @@
+[package]
+name = "ruzina-audio-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+nanoaudio-core = { version = "=0.1.1", default-features = false }
+nanoaudio-mp3 = { version = "=0.1.1", default-features = false }
+nanoaudio-flac = { version = "=0.1.2", default-features = false }
+libm.workspace = true
+ruzina-audio-dsp.workspace = true
+ruzina-audio-keylock.workspace = true
+ruzina-audio-scratch.workspace = true
+ruzina-controller-core.workspace = true
+ruzina-deck.workspace = true
+ruzina-mixer.workspace = true

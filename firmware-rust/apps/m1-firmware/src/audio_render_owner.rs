@@ -4,8 +4,8 @@ use core::cell::RefCell;
 use embassy_sync::blocking_mutex::CriticalSectionMutex;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel};
 use embassy_time::{Duration, Timer};
-use pajoniiir_audio_dsp::PcmFrame;
-use pajoniiir_audio_runtime::{
+use ruzina_audio_dsp::PcmFrame;
+use ruzina_audio_runtime::{
     fx::{FX_DECK_STORAGE_SAMPLES, FX_TOTAL_STORAGE_SAMPLES, product_fx_controls},
     pcm_stream::PcmStreamBlock,
     playback::PlaybackOutput,
@@ -16,7 +16,7 @@ use pajoniiir_audio_runtime::{
     sink::{BlockProgress, SinkBlock, SinkRole},
     source::{CanonicalSource, IngestResult, SOURCE_HISTORY_FRAMES, SOURCE_PREFETCH_BLOCK_LIMIT},
 };
-use pajoniiir_controller_session::DeckId;
+use ruzina_controller_session::DeckId;
 use static_cell::{ConstStaticCell, StaticCell};
 
 use crate::{

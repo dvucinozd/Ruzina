@@ -1,5 +1,5 @@
 [package]
-name = "pajoniiir-m1-firmware"
+name = "ruzina-m1-firmware"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95.0"
@@ -19,7 +19,7 @@ guition-flash-probe = ["board-diagnostics", "dep:critical-section"]
 guition-psram-test = ["board-diagnostics"]
 # Diagnostic-only bounded publication from product owner modules.
 # Does not enable any USB owner or select Guition pins.
-runtime-health = ["pajoniiir-service/runtime-owners"]
+runtime-health = ["ruzina-service/runtime-owners"]
 # Compile-verified target wiring only. Do not enable in normal firmware until
 # USB0 VBUS/power switching, PHY and hot-plug are physically verified.
 usb0-hardware-bringup = []
@@ -33,8 +33,8 @@ hotcue-flash-storage = ["dep:esp-storage"]
 # End-to-end Library browse/load ownership: published PSRAM catalog + USB0
 # filesystem clients + USB1 semantic controls + durable Hot Cue flash owner.
 library-deck-load = [
-    "pajoniiir-rekordbox/analysis",
-    "pajoniiir-track-analysis/owned",
+    "ruzina-rekordbox/analysis",
+    "ruzina-track-analysis/owned",
     "usb0-hardware-bringup",
     "usb1-controller-bringup",
     "p4-psram-storage",
@@ -53,7 +53,7 @@ pcm-transport-bringup = ["wav-audio-source-bringup"]
 render-graph-bringup = ["pcm-transport-bringup"]
 # Compile-only optional analysis integration; Guition selectors remain guarded.
 # Analysis yields storage to foreground and is cancelled while playback is active.
-apta-usb0-bringup = ["render-graph-bringup", "dep:pajoniiir-apta-adapter", "dep:libapta"]
+apta-usb0-bringup = ["render-graph-bringup", "dep:ruzina-apta-adapter", "dep:libapta"]
 # Compile-verified M1 microSD SDMMC0 ownership and card-init boundary. Runtime
 # card/FAT/profile success still requires physical qualification.
 sdmmc-profile-storage-bringup = []
@@ -64,10 +64,10 @@ p4-psram-storage = ["dep:esp-alloc", "dep:allocator-api2"]
 [dependencies]
 critical-section = { version = "=1.2.0", optional = true }
 libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "25d09de364e9507532c0508c838a8fecf0772d13", default-features = false, optional = true }
-pajoniiir-apta-adapter = { path = "../../crates/pajoniiir-apta-adapter", features = ["owned-handoff"], optional = true }
+ruzina-apta-adapter = { path = "../../crates/ruzina-apta-adapter", features = ["owned-handoff"], optional = true }
 allocator-api2 = { version = "=0.3.1", default-features = false, features = ["alloc"], optional = true }
-pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
-pajoniiir-service = { path = "../../crates/pajoniiir-service" }
+ruzina-board-profile = { path = "../../crates/ruzina-board-profile" }
+ruzina-service = { path = "../../crates/ruzina-service" }
 aligned = { version = "=0.4.3", default-features = false }
 block-device-driver = { version = "=0.2.0", default-features = false }
 embassy-executor = { version = "=0.10.0", default-features = false }
@@ -82,31 +82,31 @@ esp-rtos = { version = "=0.4.0", default-features = false, features = ["embassy"
 esp-storage = { version = "=0.10.0", default-features = false, features = ["critical-section", "esp32p4"], optional = true }
 sdio = { version = "=0.5.1", default-features = false }
 static_cell = { version = "=2.1.1", default-features = false }
-pajoniiir-audio-dsp = { path = "../../crates/pajoniiir-audio-dsp" }
-pajoniiir-audio-keylock = { path = "../../crates/pajoniiir-audio-keylock" }
-pajoniiir-audio-runtime = { path = "../../crates/pajoniiir-audio-runtime" }
-pajoniiir-controller-core = { path = "../../crates/pajoniiir-controller-core" }
-pajoniiir-core = { path = "../../crates/pajoniiir-core" }
-pajoniiir-controller-profile-storage = { path = "../../crates/pajoniiir-controller-profile-storage" }
-pajoniiir-controller-session = { path = "../../crates/pajoniiir-controller-session" }
-pajoniiir-controller-usb = { path = "../../crates/pajoniiir-controller-usb" }
-pajoniiir-deck = { path = "../../crates/pajoniiir-deck" }
-pajoniiir-hot-cues = { path = "../../crates/pajoniiir-hot-cues" }
-pajoniiir-mixer = { path = "../../crates/pajoniiir-mixer" }
-pajoniiir-media-block = { path = "../../crates/pajoniiir-media-block" }
-pajoniiir-media-catalog = { path = "../../crates/pajoniiir-media-catalog" }
-pajoniiir-media-exfat = { path = "../../crates/pajoniiir-media-exfat" }
-pajoniiir-media-fat32 = { path = "../../crates/pajoniiir-media-fat32" }
-pajoniiir-media-fs = { path = "../../crates/pajoniiir-media-fs" }
-pajoniiir-media-identity = { path = "../../crates/pajoniiir-media-identity" }
-pajoniiir-media-io = { path = "../../crates/pajoniiir-media-io" }
-pajoniiir-media-partition = { path = "../../crates/pajoniiir-media-partition" }
-pajoniiir-media-session = { path = "../../crates/pajoniiir-media-session" }
-pajoniiir-media-usb-msc = { path = "../../crates/pajoniiir-media-usb-msc" }
-pajoniiir-rekordbox = { path = "../../crates/pajoniiir-rekordbox", default-features = false }
-pajoniiir-track-analysis = { path = "../../crates/pajoniiir-track-analysis" }
-pajoniiir-ui-model = { path = "../../crates/pajoniiir-ui-model" }
-pajoniiir-waveform = { path = "../../crates/pajoniiir-waveform" }
+ruzina-audio-dsp = { path = "../../crates/ruzina-audio-dsp" }
+ruzina-audio-keylock = { path = "../../crates/ruzina-audio-keylock" }
+ruzina-audio-runtime = { path = "../../crates/ruzina-audio-runtime" }
+ruzina-controller-core = { path = "../../crates/ruzina-controller-core" }
+ruzina-core = { path = "../../crates/ruzina-core" }
+ruzina-controller-profile-storage = { path = "../../crates/ruzina-controller-profile-storage" }
+ruzina-controller-session = { path = "../../crates/ruzina-controller-session" }
+ruzina-controller-usb = { path = "../../crates/ruzina-controller-usb" }
+ruzina-deck = { path = "../../crates/ruzina-deck" }
+ruzina-hot-cues = { path = "../../crates/ruzina-hot-cues" }
+ruzina-mixer = { path = "../../crates/ruzina-mixer" }
+ruzina-media-block = { path = "../../crates/ruzina-media-block" }
+ruzina-media-catalog = { path = "../../crates/ruzina-media-catalog" }
+ruzina-media-exfat = { path = "../../crates/ruzina-media-exfat" }
+ruzina-media-fat32 = { path = "../../crates/ruzina-media-fat32" }
+ruzina-media-fs = { path = "../../crates/ruzina-media-fs" }
+ruzina-media-identity = { path = "../../crates/ruzina-media-identity" }
+ruzina-media-io = { path = "../../crates/ruzina-media-io" }
+ruzina-media-partition = { path = "../../crates/ruzina-media-partition" }
+ruzina-media-session = { path = "../../crates/ruzina-media-session" }
+ruzina-media-usb-msc = { path = "../../crates/ruzina-media-usb-msc" }
+ruzina-rekordbox = { path = "../../crates/ruzina-rekordbox", default-features = false }
+ruzina-track-analysis = { path = "../../crates/ruzina-track-analysis" }
+ruzina-ui-model = { path = "../../crates/ruzina-ui-model" }
+ruzina-waveform = { path = "../../crates/ruzina-waveform" }
 
 [profile.dev]
 panic = "abort"

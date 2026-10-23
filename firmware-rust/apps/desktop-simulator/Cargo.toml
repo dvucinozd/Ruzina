@@ -7,23 +7,23 @@ publish.workspace = true
 build = "build.rs"
 
 [dependencies]
-pajoniiir-core.workspace = true
-pajoniiir-ui-model.workspace = true
-pajoniiir-waveform.workspace = true
-pajoniiir-board-profile = { path = "../../crates/pajoniiir-board-profile" }
-pajoniiir-controller-core.workspace = true
-pajoniiir-deck.workspace = true
-pajoniiir-hot-cues.workspace = true
-pajoniiir-media-catalog.workspace = true
-pajoniiir-mixer.workspace = true
-pajoniiir-media-session.workspace = true
-pajoniiir-rekordbox.workspace = true
-pajoniiir-service.workspace = true
-pajoniiir-track-analysis = { workspace = true, features = ["owned"] }
+ruzina-core.workspace = true
+ruzina-ui-model.workspace = true
+ruzina-waveform.workspace = true
+ruzina-board-profile = { path = "../../crates/ruzina-board-profile" }
+ruzina-controller-core.workspace = true
+ruzina-deck.workspace = true
+ruzina-hot-cues.workspace = true
+ruzina-media-catalog.workspace = true
+ruzina-mixer.workspace = true
+ruzina-media-session.workspace = true
+ruzina-rekordbox.workspace = true
+ruzina-service.workspace = true
+ruzina-track-analysis = { workspace = true, features = ["owned"] }
 slint.workspace = true
 
 [dev-dependencies]
-pajoniiir-service = { workspace = true, features = ["owner-adapters", "runtime-owners"] }
+ruzina-service = { workspace = true, features = ["owner-adapters", "runtime-owners"] }
 
 [build-dependencies]
 slint-build.workspace = true

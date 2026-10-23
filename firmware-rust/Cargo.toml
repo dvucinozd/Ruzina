@@ -1,77 +1,77 @@
 [workspace]
 members = [
-    "crates/pajoniiir-apta-adapter",
+    "crates/ruzina-apta-adapter",
     "apps/desktop-simulator",
-    "crates/pajoniiir-audio-dsp",
-    "crates/pajoniiir-audio-keylock",
-    "crates/pajoniiir-audio-runtime",
-    "crates/pajoniiir-audio-scratch",
-    "crates/pajoniiir-board-profile",
-    "crates/pajoniiir-core",
-    "crates/pajoniiir-controller-core",
-    "crates/pajoniiir-controller-profile",
-    "crates/pajoniiir-controller-profile-storage",
-    "crates/pajoniiir-controller-session",
-    "crates/pajoniiir-controller-usb",
-    "crates/pajoniiir-control-scheduler",
-    "crates/pajoniiir-deck",
-    "crates/pajoniiir-hot-cues",
-    "crates/pajoniiir-mixer",
-    "crates/pajoniiir-ota",
-    "crates/pajoniiir-media-block",
-    "crates/pajoniiir-media-catalog",
-    "crates/pajoniiir-media-exfat",
-    "crates/pajoniiir-media-fat32",
-    "crates/pajoniiir-media-fs",
-    "crates/pajoniiir-media-identity",
-    "crates/pajoniiir-media-io",
-    "crates/pajoniiir-media-partition",
-    "crates/pajoniiir-media-session",
-    "crates/pajoniiir-media-usb-msc",
-    "crates/pajoniiir-rekordbox",
-    "crates/pajoniiir-service",
-    "crates/pajoniiir-settings",
-    "crates/pajoniiir-track-analysis",
-    "crates/pajoniiir-uac",
-    "crates/pajoniiir-ui-model",
-    "crates/pajoniiir-waveform",
-    "crates/pajoniiir-web",
+    "crates/ruzina-audio-dsp",
+    "crates/ruzina-audio-keylock",
+    "crates/ruzina-audio-runtime",
+    "crates/ruzina-audio-scratch",
+    "crates/ruzina-board-profile",
+    "crates/ruzina-core",
+    "crates/ruzina-controller-core",
+    "crates/ruzina-controller-profile",
+    "crates/ruzina-controller-profile-storage",
+    "crates/ruzina-controller-session",
+    "crates/ruzina-controller-usb",
+    "crates/ruzina-control-scheduler",
+    "crates/ruzina-deck",
+    "crates/ruzina-hot-cues",
+    "crates/ruzina-mixer",
+    "crates/ruzina-ota",
+    "crates/ruzina-media-block",
+    "crates/ruzina-media-catalog",
+    "crates/ruzina-media-exfat",
+    "crates/ruzina-media-fat32",
+    "crates/ruzina-media-fs",
+    "crates/ruzina-media-identity",
+    "crates/ruzina-media-io",
+    "crates/ruzina-media-partition",
+    "crates/ruzina-media-session",
+    "crates/ruzina-media-usb-msc",
+    "crates/ruzina-rekordbox",
+    "crates/ruzina-service",
+    "crates/ruzina-settings",
+    "crates/ruzina-track-analysis",
+    "crates/ruzina-uac",
+    "crates/ruzina-ui-model",
+    "crates/ruzina-waveform",
+    "crates/ruzina-web",
 ]
 default-members = [
     "apps/desktop-simulator",
-    "crates/pajoniiir-audio-dsp",
-    "crates/pajoniiir-audio-keylock",
-    "crates/pajoniiir-audio-runtime",
-    "crates/pajoniiir-audio-scratch",
-    "crates/pajoniiir-board-profile",
-    "crates/pajoniiir-core",
-    "crates/pajoniiir-controller-core",
-    "crates/pajoniiir-controller-profile",
-    "crates/pajoniiir-controller-profile-storage",
-    "crates/pajoniiir-controller-session",
-    "crates/pajoniiir-controller-usb",
-    "crates/pajoniiir-control-scheduler",
-    "crates/pajoniiir-deck",
-    "crates/pajoniiir-hot-cues",
-    "crates/pajoniiir-mixer",
-    "crates/pajoniiir-ota",
-    "crates/pajoniiir-media-block",
-    "crates/pajoniiir-media-catalog",
-    "crates/pajoniiir-media-exfat",
-    "crates/pajoniiir-media-fat32",
-    "crates/pajoniiir-media-fs",
-    "crates/pajoniiir-media-identity",
-    "crates/pajoniiir-media-io",
-    "crates/pajoniiir-media-partition",
-    "crates/pajoniiir-media-session",
-    "crates/pajoniiir-rekordbox",
-    "crates/pajoniiir-service",
-    "crates/pajoniiir-settings",
-    "crates/pajoniiir-track-analysis",
-    "crates/pajoniiir-uac",
-    "crates/pajoniiir-ui-model",
-    "crates/pajoniiir-waveform",
-    "crates/pajoniiir-web",
+    "crates/ruzina-audio-dsp",
+    "crates/ruzina-audio-keylock",
+    "crates/ruzina-audio-runtime",
+    "crates/ruzina-audio-scratch",
+    "crates/ruzina-board-profile",
+    "crates/ruzina-core",
+    "crates/ruzina-controller-core",
+    "crates/ruzina-controller-profile",
+    "crates/ruzina-controller-profile-storage",
+    "crates/ruzina-controller-session",
+    "crates/ruzina-controller-usb",
+    "crates/ruzina-control-scheduler",
+    "crates/ruzina-deck",
+    "crates/ruzina-hot-cues",
+    "crates/ruzina-mixer",
+    "crates/ruzina-ota",
+    "crates/ruzina-media-block",
+    "crates/ruzina-media-catalog",
+    "crates/ruzina-media-exfat",
+    "crates/ruzina-media-fat32",
+    "crates/ruzina-media-fs",
+    "crates/ruzina-media-identity",
+    "crates/ruzina-media-io",
+    "crates/ruzina-media-partition",
+    "crates/ruzina-media-session",
+    "crates/ruzina-rekordbox",
+    "crates/ruzina-service",
+    "crates/ruzina-settings",
+    "crates/ruzina-track-analysis",
+    "crates/ruzina-uac",
+    "crates/ruzina-ui-model",
+    "crates/ruzina-waveform",
+    "crates/ruzina-web",
 ]
 resolver = "2"
 
@@ -91,36 +91,36 @@ sha2 = { version = "=0.10.9", default-features = false }
 slint = { version = "=1.18.1", default-features = false, features = ["std", "backend-winit-x11", "renderer-software", "compat-1-18"] }
 slint-build = { version = "=1.18.1" }
 
-pajoniiir-audio-dsp = { path = "crates/pajoniiir-audio-dsp" }
-pajoniiir-audio-keylock = { path = "crates/pajoniiir-audio-keylock" }
-pajoniiir-audio-runtime = { path = "crates/pajoniiir-audio-runtime" }
-pajoniiir-audio-scratch = { path = "crates/pajoniiir-audio-scratch" }
-pajoniiir-core = { path = "crates/pajoniiir-core" }
-pajoniiir-controller-core = { path = "crates/pajoniiir-controller-core" }
-pajoniiir-controller-profile = { path = "crates/pajoniiir-controller-profile" }
-pajoniiir-controller-profile-storage = { path = "crates/pajoniiir-controller-profile-storage" }
-pajoniiir-controller-session = { path = "crates/pajoniiir-controller-session" }
-pajoniiir-controller-usb = { path = "crates/pajoniiir-controller-usb" }
-pajoniiir-control-scheduler = { path = "crates/pajoniiir-control-scheduler" }
-pajoniiir-deck = { path = "crates/pajoniiir-deck" }
-pajoniiir-hot-cues = { path = "crates/pajoniiir-hot-cues" }
-pajoniiir-mixer = { path = "crates/pajoniiir-mixer" }
-pajoniiir-ota = { path = "crates/pajoniiir-ota" }
-pajoniiir-media-block = { path = "crates/pajoniiir-media-block" }
-pajoniiir-media-catalog = { path = "crates/pajoniiir-media-catalog" }
-pajoniiir-media-exfat = { path = "crates/pajoniiir-media-exfat" }
-pajoniiir-media-fat32 = { path = "crates/pajoniiir-media-fat32" }
-pajoniiir-media-fs = { path = "crates/pajoniiir-media-fs" }
-pajoniiir-media-identity = { path = "crates/pajoniiir-media-identity" }
-pajoniiir-media-io = { path = "crates/pajoniiir-media-io" }
-pajoniiir-media-partition = { path = "crates/pajoniiir-media-partition" }
-pajoniiir-media-session = { path = "crates/pajoniiir-media-session" }
-pajoniiir-media-usb-msc = { path = "crates/pajoniiir-media-usb-msc" }
-pajoniiir-rekordbox = { path = "crates/pajoniiir-rekordbox" }
-pajoniiir-service = { path = "crates/pajoniiir-service" }
-pajoniiir-settings = { path = "crates/pajoniiir-settings" }
-pajoniiir-track-analysis = { path = "crates/pajoniiir-track-analysis" }
-pajoniiir-uac = { path = "crates/pajoniiir-uac" }
-pajoniiir-ui-model = { path = "crates/pajoniiir-ui-model" }
-pajoniiir-waveform = { path = "crates/pajoniiir-waveform" }
-pajoniiir-web = { path = "crates/pajoniiir-web" }
+ruzina-audio-dsp = { path = "crates/ruzina-audio-dsp" }
+ruzina-audio-keylock = { path = "crates/ruzina-audio-keylock" }
+ruzina-audio-runtime = { path = "crates/ruzina-audio-runtime" }
+ruzina-audio-scratch = { path = "crates/ruzina-audio-scratch" }
+ruzina-core = { path = "crates/ruzina-core" }
+ruzina-controller-core = { path = "crates/ruzina-controller-core" }
+ruzina-controller-profile = { path = "crates/ruzina-controller-profile" }
+ruzina-controller-profile-storage = { path = "crates/ruzina-controller-profile-storage" }
+ruzina-controller-session = { path = "crates/ruzina-controller-session" }
+ruzina-controller-usb = { path = "crates/ruzina-controller-usb" }
+ruzina-control-scheduler = { path = "crates/ruzina-control-scheduler" }
+ruzina-deck = { path = "crates/ruzina-deck" }
+ruzina-hot-cues = { path = "crates/ruzina-hot-cues" }
+ruzina-mixer = { path = "crates/ruzina-mixer" }
+ruzina-ota = { path = "crates/ruzina-ota" }
+ruzina-media-block = { path = "crates/ruzina-media-block" }
+ruzina-media-catalog = { path = "crates/ruzina-media-catalog" }
+ruzina-media-exfat = { path = "crates/ruzina-media-exfat" }
+ruzina-media-fat32 = { path = "crates/ruzina-media-fat32" }
+ruzina-media-fs = { path = "crates/ruzina-media-fs" }
+ruzina-media-identity = { path = "crates/ruzina-media-identity" }
+ruzina-media-io = { path = "crates/ruzina-media-io" }
+ruzina-media-partition = { path = "crates/ruzina-media-partition" }
+ruzina-media-session = { path = "crates/ruzina-media-session" }
+ruzina-media-usb-msc = { path = "crates/ruzina-media-usb-msc" }
+ruzina-rekordbox = { path = "crates/ruzina-rekordbox" }
+ruzina-service = { path = "crates/ruzina-service" }
+ruzina-settings = { path = "crates/ruzina-settings" }
+ruzina-track-analysis = { path = "crates/ruzina-track-analysis" }
+ruzina-uac = { path = "crates/ruzina-uac" }
+ruzina-ui-model = { path = "crates/ruzina-ui-model" }
+ruzina-waveform = { path = "crates/ruzina-waveform" }
+ruzina-web = { path = "crates/ruzina-web" }

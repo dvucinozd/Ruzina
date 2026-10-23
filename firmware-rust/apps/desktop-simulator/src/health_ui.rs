@@ -1,5 +1,5 @@
 use super::*;
-use pajoniiir_service::{AnalysisStatus, Health, Snapshot};
+use ruzina_service::{AnalysisStatus, Health, Snapshot};
 
 fn observed(value: Option<u32>) -> String {
     value
@@ -63,8 +63,8 @@ pub fn refresh(ui: &MainWindow, s: Snapshot) {
                 "Publication: {:?} / {}\nGeneration: {} / sequence: {} / age: {} ms\n",
                 o.freshness,
                 o.stamp.map_or("UNKNOWN", |s| match s.activity {
-                    pajoniiir_service::publication::Activity::Idle => "IDLE",
-                    pajoniiir_service::publication::Activity::Active => "ACTIVE",
+                    ruzina_service::publication::Activity::Idle => "IDLE",
+                    ruzina_service::publication::Activity::Active => "ACTIVE",
                 }),
                 o.generation.map_or("NONE".into(), |v| v.to_string()),
                 o.stamp.map_or("NONE".into(), |s| s.sequence.to_string()),

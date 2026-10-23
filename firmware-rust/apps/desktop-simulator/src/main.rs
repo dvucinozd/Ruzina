@@ -8,12 +8,12 @@ mod mix_fx_ui;
 mod session;
 mod smoke;
 
-use pajoniiir_board_profile::{BoardId, profile};
-use pajoniiir_media_catalog::{
+use ruzina_board_profile::{BoardId, profile};
+use ruzina_media_catalog::{
     artwork::{ARTWORK_DECK_EDGE, ArtworkView},
     default_artwork::DEFAULT_ARTWORK_DECK,
 };
-use pajoniiir_ui_model::{DeckAction, cue_event};
+use ruzina_ui_model::{DeckAction, cue_event};
 use session::{Session, deck};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::{
@@ -276,7 +276,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
         };
-        let mut report = pajoniiir_board_profile::diagnostics::ReportBuffer::<4096>::default();
+        let mut report = ruzina_board_profile::diagnostics::ReportBuffer::<4096>::default();
         Session::for_board(board)
             .diagnostics()
             .write_to(&mut report)

@@ -5,15 +5,15 @@ use embassy_sync::{
     mutex::Mutex,
     signal::Signal,
 };
-use pajoniiir_controller_profile_storage::{
+use ruzina_controller_profile_storage::{
     MAX_INIT_SYSEX, MAX_PROFILE_SIZE, Profile, ProfileActivationState, ProfileActivationTicket,
     ProfileRegistry, ProfileSlot,
 };
-use pajoniiir_controller_session::{
+use ruzina_controller_session::{
     ControllerSession, LedUpdate, SessionDeliverySink, SessionDispatchOutcome, UsbMidiBatchError,
     UsbMidiBatchReport,
 };
-use pajoniiir_controller_usb::UsbMidiEvent;
+use ruzina_controller_usb::UsbMidiEvent;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct ProfileCatalogMatch {

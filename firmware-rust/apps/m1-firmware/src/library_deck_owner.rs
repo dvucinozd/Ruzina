@@ -7,15 +7,15 @@ use embassy_sync::{
     signal::Signal,
 };
 use embassy_time::{Duration, Timer};
-use pajoniiir_audio_runtime::decode::SourceDescriptor;
-use pajoniiir_controller_session::DeckId;
-use pajoniiir_hot_cues::HotCueBank;
-use pajoniiir_media_catalog::CatalogLoadCandidate;
-use pajoniiir_media_fs::{BoundedPath, EntryKind, FileHandle};
-use pajoniiir_rekordbox::anlz_analysis::{
+use ruzina_audio_runtime::decode::SourceDescriptor;
+use ruzina_controller_session::DeckId;
+use ruzina_hot_cues::HotCueBank;
+use ruzina_media_catalog::CatalogLoadCandidate;
+use ruzina_media_fs::{BoundedPath, EntryKind, FileHandle};
+use ruzina_rekordbox::anlz_analysis::{
     ANLZ_READ_BYTES, AnalysisFileKind, AnlzImporter, extended_path,
 };
-use pajoniiir_track_analysis::owned::AnalysisIdentity;
+use ruzina_track_analysis::owned::AnalysisIdentity;
 use static_cell::StaticCell;
 
 #[cfg(feature = "wav-audio-source-bringup")]
@@ -513,7 +513,7 @@ async fn scan_analysis_file(
 
 async fn open_file(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     path: BoundedPath,
 ) -> Option<Usb0FsFileHandle> {
     let mut request = Usb0FsRequest::OpenRead {
@@ -544,7 +544,7 @@ enum SeekOutcome {
 
 async fn read_at(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     position: u64,
@@ -584,7 +584,7 @@ async fn read_at(
 
 async fn seek_file(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     file: Usb0FsFileHandle,
     position: u64,
 ) -> SeekOutcome {
@@ -620,7 +620,7 @@ async fn seek_file(
 
 async fn close_file(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     file: Usb0FsFileHandle,
 ) -> bool {
     let mut request = Usb0FsRequest::CloseFile {

@@ -3,8 +3,8 @@
 use crate::{product_runtime::ProductRuntime, usb0_msc::Usb0MscBinding};
 use core::cell::RefCell;
 use embassy_sync::blocking_mutex::CriticalSectionMutex;
-use pajoniiir_controller_session::ControllerSession;
-use pajoniiir_service::{
+use ruzina_controller_session::ControllerSession;
+use ruzina_service::{
     handoff::Producer,
     owners::{ControllerObservation, MediaObservation, OWNER_TICK_MS, RuntimeOwners, RuntimeView},
 };

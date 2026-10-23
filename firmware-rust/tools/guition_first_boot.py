@@ -84,7 +84,7 @@ def build(args):
             require(sources(args) == (records, fingerprint), "Build inputs changed during compilation")
             require(git(args, "rev-parse", "HEAD").decode().strip() == commit, "HEAD changed during compilation")
             elf = folder / "firmware.elf"
-            shutil.copyfile(args.target_dir.resolve() / TARGET / "release/pajoniiir-m1-firmware", elf)
+            shutil.copyfile(args.target_dir.resolve() / TARGET / "release/ruzina-m1-firmware", elf)
             require(image_id.encode() in elf.read_bytes(), "ELF does not contain its expected image identity")
             manifest = {"schema": 1, "board": board, "model": model, "image_id": image_id,
                         "source_commit": commit, "source_digest": fingerprint,

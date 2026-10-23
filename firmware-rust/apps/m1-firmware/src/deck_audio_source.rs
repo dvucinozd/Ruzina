@@ -6,8 +6,8 @@ use embassy_sync::{
     channel::{Channel, TrySendError},
 };
 use embassy_time::{Duration, Timer};
-use pajoniiir_audio_dsp::PcmFrame;
-use pajoniiir_audio_runtime::{
+use ruzina_audio_dsp::PcmFrame;
+use ruzina_audio_runtime::{
     decode::{
         AudioCodec, DecodeAction, DecoderStorage, ENCODED_BUFFER_BYTES, Mp3CheckpointStorage,
         SourceDecoder, SourceDescriptor, StreamChange,
@@ -18,9 +18,9 @@ use pajoniiir_audio_runtime::{
         WavPcm16SourceDescriptor, parse_chunk_header, parse_pcm16_format, parse_riff_header,
     },
 };
-use pajoniiir_controller_session::DeckId;
-use pajoniiir_media_catalog::CatalogLoadCandidate;
-use pajoniiir_media_fs::{BoundedPath, FileHandle};
+use ruzina_controller_session::DeckId;
+use ruzina_media_catalog::CatalogLoadCandidate;
+use ruzina_media_fs::{BoundedPath, FileHandle};
 use static_cell::StaticCell;
 
 use crate::{
@@ -40,7 +40,7 @@ const PCM_QUEUE_DEPTH: usize = 16;
 const SOURCE_READ_BUFFER_BYTES: usize = 512;
 const _: () = assert!(
     PCM_QUEUE_DEPTH * (SOURCE_READ_BUFFER_BYTES / 4)
-        >= pajoniiir_audio_runtime::source::SOURCE_LOOKAHEAD_FRAMES as usize
+        >= ruzina_audio_runtime::source::SOURCE_LOOKAHEAD_FRAMES as usize
 );
 
 static DECK_A_COMMANDS: Channel<
@@ -804,7 +804,7 @@ async fn seek_source(
 async fn prime(
     deck: DeckId,
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     mut file: Usb0FsFileHandle,
     stream: &mut SourceDecoder,
     mut buffer: &'static mut [u8],
@@ -929,7 +929,7 @@ async fn allocation_failed(deck: DeckId) -> ! {
 
 async fn open_file(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     path: BoundedPath,
 ) -> Option<Usb0FsFileHandle> {
     let mut request = Usb0FsRequest::OpenRead {
@@ -960,7 +960,7 @@ enum SeekOutcome {
 
 async fn read_at(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     position: u64,
@@ -974,7 +974,7 @@ async fn read_at(
 
 async fn read_next(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
 ) -> (Usb0FsFileHandle, &'static mut [u8], usize) {
@@ -1009,7 +1009,7 @@ async fn read_next(
 
 async fn seek_file(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     file: Usb0FsFileHandle,
     position: u64,
 ) -> SeekOutcome {
@@ -1045,7 +1045,7 @@ async fn seek_file(
 
 async fn close_file(
     client: &mut Usb0FilesystemClient,
-    lease: pajoniiir_media_session::MediaLease,
+    lease: ruzina_media_session::MediaLease,
     file: Usb0FsFileHandle,
 ) -> bool {
     let mut request = Usb0FsRequest::CloseFile {

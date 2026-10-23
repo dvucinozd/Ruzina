@@ -1,7 +1,7 @@
 use super::*;
-use pajoniiir_controller_core::{BeatFxTarget, ControlEvent, DeckId};
-use pajoniiir_deck::{BeatFxBeat, BeatFxEffect, PadFxBank};
-use pajoniiir_ui_model::{
+use ruzina_controller_core::{BeatFxTarget, ControlEvent, DeckId};
+use ruzina_deck::{BeatFxBeat, BeatFxEffect, PadFxBank};
+use ruzina_ui_model::{
     BeatFxAction, MixerParameter, MixerToggle, fx_depth_event, fx_target_event, pad_fx_event,
     present_fx, present_mixer,
 };

@@ -1,4 +1,4 @@
-# Pajoniiir M1
+# Ruzina
 
 Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with

@@ -1,39 +1,33 @@
 //! Host owner: real deck semantics and importer, simulated transport/media.
 //! This does not pump audio, access USB, or persist settings/cues to disk.
-use pajoniiir_board_profile::BoardId;
-use pajoniiir_controller_core::{
-    ControlDomain, ControlEvent, ControlValue, DeckId, SemanticControl,
-};
-use pajoniiir_core::MediaTrackId;
-use pajoniiir_deck::{DeckEffect, DeckLoadGate, DeckProductState, LoadPermit, LoadRefusal};
-use pajoniiir_hot_cues::HotCueBank;
-use pajoniiir_media_catalog::{
+use ruzina_board_profile::BoardId;
+use ruzina_controller_core::{ControlDomain, ControlEvent, ControlValue, DeckId, SemanticControl};
+use ruzina_core::MediaTrackId;
+use ruzina_deck::{DeckEffect, DeckLoadGate, DeckProductState, LoadPermit, LoadRefusal};
+use ruzina_hot_cues::HotCueBank;
+use ruzina_media_catalog::{
     artwork::{ArtworkDecks, ArtworkIdentity, ArtworkView},
     jpeg::BaselineJpegDecoder,
 };
-use pajoniiir_media_session::{MediaLease, MediaSession, MediaSourceId};
-use pajoniiir_mixer::MixerState;
-use pajoniiir_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};
-use pajoniiir_service::publication::{Activity, Publication, Slot, Stamp};
-use pajoniiir_service::{
+use ruzina_media_session::{MediaLease, MediaSession, MediaSourceId};
+use ruzina_mixer::MixerState;
+use ruzina_rekordbox::anlz_analysis::{AnalysisFileKind, AnlzImporter};
+use ruzina_service::publication::{Activity, Publication, Slot, Stamp};
+use ruzina_service::{
     AnalysisStatus, EventKind, Identity, LoadBlock, MediaStatus, RuntimeStatus, Service, Snapshot,
 };
 
 /// Host owner heartbeat contract, independent of whether a deck is playing.
 pub const RUNTIME_MAX_AGE_MS: u64 = 1000;
-use pajoniiir_track_analysis::{
+use ruzina_track_analysis::{
     TrackAnalysis,
     owned::{AnalysisIdentity, AnalysisPins},
 };
-use pajoniiir_ui_model::{
-    BeatFxAction, DeckPresentation, pad_bank_event, pad_fx_event, present_deck,
-};
+use ruzina_ui_model::{BeatFxAction, DeckPresentation, pad_bank_event, pad_fx_event, present_deck};
 
-const DAT_A: &[u8] =
-    include_bytes!("../../../crates/pajoniiir-rekordbox/tests/fixtures/track-a.DAT");
-const DAT_B: &[u8] =
-    include_bytes!("../../../crates/pajoniiir-rekordbox/tests/fixtures/track-b.DAT");
-const EXT: &[u8] = include_bytes!("../../../crates/pajoniiir-rekordbox/tests/fixtures/track-a.EXT");
+const DAT_A: &[u8] = include_bytes!("../../../crates/ruzina-rekordbox/tests/fixtures/track-a.DAT");
+const DAT_B: &[u8] = include_bytes!("../../../crates/ruzina-rekordbox/tests/fixtures/track-b.DAT");
+const EXT: &[u8] = include_bytes!("../../../crates/ruzina-rekordbox/tests/fixtures/track-a.EXT");
 pub const TITLES: [&str; 4] = [
     "01 / Grid study · 120 BPM",
     "02 / Offset beats · 128 BPM",
@@ -45,19 +39,19 @@ const DURATIONS: [u32; 4] = [10_000, 14_000, 10_000, 10_000];
 /// tracks without one, and a progressive file the bounded decoder refuses.
 const COVERS: [Option<&[u8]>; 4] = [
     Some(include_bytes!(concat!(
-        "../../../crates/pajoniiir-media-catalog/tests/fixtures/artwork/",
+        "../../../crates/ruzina-media-catalog/tests/fixtures/artwork/",
         "cover-420.jpg"
     ))),
     None,
     None,
     Some(include_bytes!(concat!(
-        "../../../crates/pajoniiir-media-catalog/tests/fixtures/artwork/",
+        "../../../crates/ruzina-media-catalog/tests/fixtures/artwork/",
         "cover-progressive.jpg"
     ))),
 ];
 
 pub struct Session {
-    pub analysis_observation: pajoniiir_service::analysis::Observation,
+    pub analysis_observation: ruzina_service::analysis::Observation,
     pub decks: DeckProductState,
     pub mixer: MixerState,
     pub selected: usize,
@@ -111,7 +105,7 @@ impl Session {
     }
     pub fn for_board(board: BoardId) -> Self {
         let mut result = Self {
-            analysis_observation: pajoniiir_service::analysis::Observation::DISABLED,
+            analysis_observation: ruzina_service::analysis::Observation::DISABLED,
             decks: DeckProductState::new(),
             mixer: MixerState::new(),
             selected: 0,
@@ -454,7 +448,7 @@ impl Session {
     pub fn cancel_pads(&mut self) {
         for i in 0..2 {
             if let Some(active) = self.decks.deck(deck(i)).active_pad_fx {
-                let bank = if active.bank == pajoniiir_deck::PadFxBank::One {
+                let bank = if active.bank == ruzina_deck::PadFxBank::One {
                     0
                 } else {
                     1
@@ -466,7 +460,7 @@ impl Session {
     pub fn select_pad_bank(&mut self, target: DeckId, bank: i32) {
         if let Some(event) = pad_bank_event(target, bank) {
             if let Some(active) = self.decks.deck(target).active_pad_fx {
-                let old_bank = if active.bank == pajoniiir_deck::PadFxBank::One {
+                let old_bank = if active.bank == ruzina_deck::PadFxBank::One {
                     0
                 } else {
                     1

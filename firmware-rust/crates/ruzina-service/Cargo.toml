@@ -1,0 +1,36 @@
+[package]
+name = "ruzina-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+owner-adapters = ["dep:ruzina-audio-runtime", "dep:ruzina-control-scheduler"]
+runtime-owners = ["dep:ruzina-controller-session", "dep:ruzina-control-scheduler", "dep:ruzina-media-session"]
+
+[dependencies]
+ruzina-core.workspace = true
+ruzina-board-profile = { path = "../ruzina-board-profile" }
+ruzina-audio-runtime = { workspace = true, optional = true }
+ruzina-control-scheduler = { workspace = true, optional = true }
+ruzina-controller-session = { workspace = true, optional = true }
+ruzina-media-session = { workspace = true, optional = true }
+
+[dev-dependencies]
+ruzina-controller-core.workspace = true
+ruzina-audio-runtime.workspace = true
+ruzina-controller-session.workspace = true
+ruzina-deck.workspace = true
+ruzina-hot-cues.workspace = true
+ruzina-media-catalog.workspace = true
+ruzina-mixer.workspace = true
+ruzina-track-analysis.workspace = true
+
+[[test]]
+name = "runtime_owners"
+required-features = ["runtime-owners"]
+
+[[test]]
+name = "composed_failures"
+required-features = ["runtime-owners"]

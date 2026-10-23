@@ -1,4 +1,4 @@
-# Pajoniiir-M1 Rust Product Requirements
+# Ruzina Rust Product Requirements
 
 **Status:** Guition / M2.5 requirements baseline; updated 2026-10-22
 **Recorded:** 2026-09-24  
@@ -7,7 +7,7 @@
 
 ## 1. Purpose and authority
 
-This document defines the product-level acceptance requirements for the Pajoniiir-M1 Rust firmware.
+This document defines the product-level acceptance requirements for the Ruzina Rust firmware.
 
 The authorities are intentionally split:
 
@@ -190,7 +190,7 @@ The generic controller-audio capability model shall be able to express at least:
 |---|---|
 | M1R-P1-001 | Integrate libapta behind the neutral `TrackAnalysis` provider boundary after its upstream embedded/release gates are satisfied. |
 | M1R-P1-002 | Support ordinary MP3/WAV/FLAC folder libraries in addition to Rekordbox media. |
-| M1R-P1-003 | Implement versioned `/PAJONIIIR` sidecars/catalog/playlists with transactional writes and stale-part recovery. |
+| M1R-P1-003 | Implement versioned `/RUZINA` sidecars/catalog/playlists with transactional writes and stale-part recovery. |
 | M1R-P1-004 | Add bounded tag readers for ID3v2.3/v2.4, FLAC Vorbis comments and WAV RIFF/INFO. |
 | M1R-P1-005 | Add factory firmware target for board bring-up and manufacturing/service tests. |
 | M1R-P1-006 | Add property tests, fuzzing and fault injection for parsers, profile format, OTA manifest, media identity and storage write boundaries. |

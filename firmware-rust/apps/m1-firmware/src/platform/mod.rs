@@ -75,18 +75,18 @@ pub(crate) fn start(spawner: Spawner, peripherals: Peripherals) {
 fn start_guition(
     spawner: Spawner,
     peripherals: Peripherals,
-    profile: &'static pajoniiir_board_profile::BoardProfile,
+    profile: &'static ruzina_board_profile::BoardProfile,
 ) {
     #[cfg(feature = "board-diagnostics")]
-    let memory_report = pajoniiir_board_profile::memory::MemoryReport {
+    let memory_report = ruzina_board_profile::memory::MemoryReport {
         #[cfg(feature = "guition-flash-probe")]
         flash: memory::flash_probe(peripherals.FLASH),
         #[cfg(not(feature = "guition-flash-probe"))]
-        flash: pajoniiir_board_profile::memory::FlashProbe::NotRequested,
+        flash: ruzina_board_profile::memory::FlashProbe::NotRequested,
         #[cfg(feature = "guition-psram-test")]
         psram: memory::psram_test(peripherals.PSRAM, profile.psram_bytes),
         #[cfg(not(feature = "guition-psram-test"))]
-        psram: pajoniiir_board_profile::memory::PsramProbe::NotRequested,
+        psram: ruzina_board_profile::memory::PsramProbe::NotRequested,
     };
     let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
     esp_rtos::start(timg0.timer0, peripherals.FROM_CPU_INTR0);

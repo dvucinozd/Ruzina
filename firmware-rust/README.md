@@ -1,4 +1,4 @@
-# Pajoniiir M1 Rust workspace
+# Ruzina Rust workspace
 
 The host workspace contains the reusable DJ product logic and the interactive
 Slint simulator. Active hardware targets are Guition JC1060P470C_I_W_Y and
@@ -12,14 +12,14 @@ existing host-tested foundations do not establish complete release parity.
 
 - Product crates own semantic controls, controller profiles, decks, media identity,
   Rekordbox analysis, bounded decoding/render/FX and headphone routing.
-- `pajoniiir-board-profile` owns source-audited candidate data, observations,
+- `ruzina-board-profile` owns source-audited candidate data, observations,
   memory-test policy and inactive panel/touch adapter contracts.
 - `apps/desktop-simulator` uses the shared model and Slint views with simulated
   media/clock and captured diagnostics. It provides no physical audio or USB.
 - `apps/m1-firmware` is a separate embedded workspace so HAL dependencies stay
   outside the default host graph. Only its selected Guition BSP may acquire board
   resources. Product-owner modules have a separate compile-only integration gate.
-- Optional `pajoniiir-apta-adapter` converts native analysis behind neutral
+- Optional `ruzina-apta-adapter` converts native analysis behind neutral
   ownership/publication contracts. It is excluded from default product graphs.
 
 ## Toolchain and checks

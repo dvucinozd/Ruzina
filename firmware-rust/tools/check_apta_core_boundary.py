@@ -11,7 +11,7 @@ import subprocess
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    forbidden = {"libapta", "pajoniiir-apta-adapter"}
+    forbidden = {"libapta", "ruzina-apta-adapter"}
     profiles = [
         (
             "desktop simulator",
