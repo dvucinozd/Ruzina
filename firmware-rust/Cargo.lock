@@ -3373,6 +3373,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-uac"
+version = "0.1.0"
+dependencies = [
+ "pajoniiir-audio-dsp",
+ "pajoniiir-audio-runtime",
+ "pajoniiir-controller-usb",
+]
+
+[[package]]
 name = "pajoniiir-ui-model"
 version = "0.1.0"
 dependencies = [

@@ -32,6 +32,7 @@ members = [
     "crates/pajoniiir-service",
     "crates/pajoniiir-settings",
     "crates/pajoniiir-track-analysis",
+    "crates/pajoniiir-uac",
     "crates/pajoniiir-ui-model",
     "crates/pajoniiir-waveform",
     "crates/pajoniiir-web",
@@ -67,6 +68,7 @@ default-members = [
     "crates/pajoniiir-service",
     "crates/pajoniiir-settings",
     "crates/pajoniiir-track-analysis",
+    "crates/pajoniiir-uac",
     "crates/pajoniiir-ui-model",
     "crates/pajoniiir-waveform",
     "crates/pajoniiir-web",
@@ -118,6 +120,7 @@ pajoniiir-rekordbox = { path = "crates/pajoniiir-rekordbox" }
 pajoniiir-service = { path = "crates/pajoniiir-service" }
 pajoniiir-settings = { path = "crates/pajoniiir-settings" }
 pajoniiir-track-analysis = { path = "crates/pajoniiir-track-analysis" }
+pajoniiir-uac = { path = "crates/pajoniiir-uac" }
 pajoniiir-ui-model = { path = "crates/pajoniiir-ui-model" }
 pajoniiir-waveform = { path = "crates/pajoniiir-waveform" }
 pajoniiir-web = { path = "crates/pajoniiir-web" }

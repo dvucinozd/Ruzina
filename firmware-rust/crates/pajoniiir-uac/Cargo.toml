@@ -1,0 +1,13 @@
+[package]
+name = "pajoniiir-uac"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pajoniiir-audio-dsp.workspace = true
+
+[dev-dependencies]
+pajoniiir-audio-runtime.workspace = true
+pajoniiir-controller-usb.workspace = true
