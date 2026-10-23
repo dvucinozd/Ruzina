@@ -56,8 +56,11 @@ pub enum ProfileIdError {
 pub struct ProfileMeta {
     pub vid: u16,
     pub pid: u16,
+    pub version: u16,
+    pub crc: u32,
     pub input_count: u16,
     pub output_count: u16,
+    pub init_sysex_len: u8,
     pub size: usize,
 }
 
@@ -71,10 +74,18 @@ impl ProfileMeta {
         Ok(Self {
             vid: profile.vid(),
             pid: profile.pid(),
+            version: profile.version(),
+            crc: profile.crc(),
             input_count: profile.input_count() as u16,
             output_count: profile.output_count() as u16,
+            // Parser bounds the payload to MAX_INIT_SYSEX (128).
+            init_sysex_len: profile.init_sysex().len() as u8,
             size: blob.len(),
         })
+    }
+
+    pub const fn requires_initialization(self) -> bool {
+        self.init_sysex_len != 0
     }
 }
 
@@ -104,9 +115,18 @@ pub enum ProfileActivationState {
     Idle,
     Matched,
     Activating,
+    /// The profile blob is published for the current binding, but its initial
+    /// SysEx has not been enqueued yet. MIDI input and LED output stay closed.
+    Initializing,
     Active,
     Failed,
     Unsupported,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProfileCommit {
+    Active,
+    InitializationRequired,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -351,9 +371,22 @@ impl ProfileRegistry {
     }
 
     pub fn activation_ticket_is_current(&self, ticket: ProfileActivationTicket) -> bool {
+        self.ticket_matches(ticket, ProfileActivationState::Activating)
+    }
+
+    pub fn initialization_ticket_is_current(&self, ticket: ProfileActivationTicket) -> bool {
+        self.ticket_matches(ticket, ProfileActivationState::Initializing)
+            && self.active_index == Some(ticket.index)
+    }
+
+    fn ticket_matches(
+        &self,
+        ticket: ProfileActivationTicket,
+        state: ProfileActivationState,
+    ) -> bool {
         self.connected == Some(ticket.controller)
             && self.matched_index == Some(ticket.index)
-            && self.activation_state == ProfileActivationState::Activating
+            && self.activation_state == state
             && self.profile(ticket.index).map(|slot| slot.meta) == Some(ticket.expected_meta)
     }
 
@@ -379,23 +412,46 @@ impl ProfileRegistry {
         })
     }
 
+    /// Publish a validated blob for the ticket's binding. A profile with an
+    /// initial SysEx enters `Initializing`; only `complete_initialization` for
+    /// the same, still-current ticket opens MIDI/LED activation.
     pub fn commit_activation(
         &mut self,
         ticket: ProfileActivationTicket,
-    ) -> Result<(), ProfileActivationError> {
+    ) -> Result<ProfileCommit, ProfileActivationError> {
         if !self.activation_ticket_is_current(ticket) {
             return Err(ProfileActivationError::StaleBinding);
         }
         self.active_index = Some(ticket.index);
+        if ticket.expected_meta.requires_initialization() {
+            self.activation_state = ProfileActivationState::Initializing;
+            Ok(ProfileCommit::InitializationRequired)
+        } else {
+            self.activation_state = ProfileActivationState::Active;
+            Ok(ProfileCommit::Active)
+        }
+    }
+
+    pub fn complete_initialization(
+        &mut self,
+        ticket: ProfileActivationTicket,
+    ) -> Result<(), ProfileActivationError> {
+        if !self.initialization_ticket_is_current(ticket) {
+            return Err(ProfileActivationError::StaleBinding);
+        }
         self.activation_state = ProfileActivationState::Active;
         Ok(())
     }
 
+    /// Close an activation or initialization for the current ticket. FAILED
+    /// persists until reconnect, rescan or a new descriptor binding.
     pub fn fail_activation(
         &mut self,
         ticket: ProfileActivationTicket,
     ) -> Result<(), ProfileActivationError> {
-        if !self.activation_ticket_is_current(ticket) {
+        if !self.activation_ticket_is_current(ticket)
+            && !self.initialization_ticket_is_current(ticket)
+        {
             return Err(ProfileActivationError::StaleBinding);
         }
         self.active_index = None;
@@ -718,6 +774,153 @@ mod tests {
         registry.fail_activation(ticket).unwrap();
         assert_eq!(registry.active_index(), None);
         assert_eq!(registry.activation_state(), ProfileActivationState::Failed);
+    }
+
+    const INIT_SYSEX: [u8; 5] = [0xf0, 0x00, 0x20, 0x7f, 0xf7];
+
+    fn v4_init_blob(vid: u16, pid: u16) -> std::vec::Vec<u8> {
+        let mut bytes = profile_blob(vid, pid).to_vec();
+        bytes[4..6].copy_from_slice(&4u16.to_le_bytes());
+        bytes[30..32].copy_from_slice(&(INIT_SYSEX.len() as u16).to_le_bytes());
+        bytes.extend_from_slice(&INIT_SYSEX);
+        let size = bytes.len() as u32;
+        bytes[8..12].copy_from_slice(&size.to_le_bytes());
+        let checksum = crc32(&bytes[16..]);
+        bytes[12..16].copy_from_slice(&checksum.to_le_bytes());
+        bytes
+    }
+
+    fn initializing_registry(
+        blob: &[u8],
+        epoch: u32,
+    ) -> (ProfileRegistry, ProfileActivationTicket) {
+        let mut registry = ProfileRegistry::new();
+        registry.push_blob("init_controller", blob).unwrap();
+        registry.on_descriptor(0x1209, 0x0004, 3, epoch).unwrap();
+        let ticket = registry.begin_activation(0).unwrap();
+        assert_eq!(
+            registry
+                .validate_activation_blob(ticket, blob)
+                .unwrap()
+                .init_sysex(),
+            &INIT_SYSEX
+        );
+        assert_eq!(
+            registry.commit_activation(ticket),
+            Ok(ProfileCommit::InitializationRequired)
+        );
+        (registry, ticket)
+    }
+
+    #[test]
+    fn profile_without_init_sysex_commits_directly_to_active() {
+        let flx4 = profile_blob(0x2b73, 0x0045);
+        let mut registry = ProfileRegistry::new();
+        registry.push_blob("pioneer_ddj_flx4", &flx4).unwrap();
+        registry.on_descriptor(0x2b73, 0x0045, 3, 50).unwrap();
+        let ticket = registry.begin_activation(0).unwrap();
+        assert!(!ticket.expected_meta().requires_initialization());
+        assert_eq!(
+            registry.commit_activation(ticket),
+            Ok(ProfileCommit::Active)
+        );
+        assert_eq!(
+            registry.complete_initialization(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+        assert_eq!(registry.activation_state(), ProfileActivationState::Active);
+    }
+
+    #[test]
+    fn init_sysex_profile_stays_closed_until_current_binding_completes_it() {
+        let blob = v4_init_blob(0x1209, 0x0004);
+        let (mut registry, ticket) = initializing_registry(&blob, 60);
+        assert_eq!(ticket.expected_meta().version, 4);
+        assert_eq!(ticket.expected_meta().init_sysex_len, 5);
+        assert_eq!(
+            registry.activation_state(),
+            ProfileActivationState::Initializing
+        );
+        assert_eq!(registry.active_index(), Some(0));
+        assert!(registry.initialization_ticket_is_current(ticket));
+        assert_eq!(
+            registry.commit_activation(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+
+        registry.complete_initialization(ticket).unwrap();
+        assert_eq!(registry.activation_state(), ProfileActivationState::Active);
+        assert_eq!(
+            registry.complete_initialization(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+    }
+
+    #[test]
+    fn reconnect_rescan_or_rebind_during_initialization_invalidates_it() {
+        let blob = v4_init_blob(0x1209, 0x0004);
+
+        let (mut registry, ticket) = initializing_registry(&blob, 70);
+        assert!(registry.on_disconnect());
+        registry.on_descriptor(0x1209, 0x0004, 3, 71).unwrap();
+        assert_eq!(
+            registry.complete_initialization(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+        assert_eq!(registry.activation_state(), ProfileActivationState::Matched);
+        assert_eq!(registry.active_index(), None);
+
+        let (mut registry, ticket) = initializing_registry(&blob, 80);
+        let mut scanned = ProfileRegistry::new();
+        scanned.push_blob("init_controller", &blob).unwrap();
+        registry.apply_rescan(&scanned);
+        assert_eq!(
+            registry.complete_initialization(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+
+        let (mut registry, ticket) = initializing_registry(&blob, 90);
+        registry.on_descriptor(0x1209, 0x0004, 3, 90).unwrap();
+        assert_eq!(registry.activation_state(), ProfileActivationState::Matched);
+        assert_eq!(
+            registry.complete_initialization(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+    }
+
+    #[test]
+    fn initialization_failure_closes_activation_until_rebind() {
+        let blob = v4_init_blob(0x1209, 0x0004);
+        let (mut registry, ticket) = initializing_registry(&blob, 100);
+        registry.fail_activation(ticket).unwrap();
+        assert_eq!(registry.activation_state(), ProfileActivationState::Failed);
+        assert_eq!(registry.active_index(), None);
+        assert_eq!(
+            registry.complete_initialization(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+        assert_eq!(
+            registry.fail_activation(ticket),
+            Err(ProfileActivationError::StaleBinding)
+        );
+    }
+
+    #[test]
+    fn activation_rejects_same_shape_profile_with_different_content() {
+        let scanned = profile_blob(0x2b73, 0x0045);
+        let mut replaced = scanned;
+        replaced[HEADER_SIZE + INPUT_ENTRY_SIZE + 6] = 0x7e;
+        let checksum = crc32(&replaced[16..]);
+        replaced[12..16].copy_from_slice(&checksum.to_le_bytes());
+
+        let mut registry = ProfileRegistry::new();
+        registry.push_blob("pioneer_ddj_flx4", &scanned).unwrap();
+        registry.on_descriptor(0x2b73, 0x0045, 3, 110).unwrap();
+        let ticket = registry.begin_activation(0).unwrap();
+        assert!(matches!(
+            registry.validate_activation_blob(ticket, &replaced),
+            Err(ProfileActivationError::MetadataChanged { .. })
+        ));
     }
 
     #[test]

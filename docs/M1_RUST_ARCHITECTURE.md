@@ -1,14 +1,16 @@
 # Pajoniiir M1 architecture
 
-Updated: 2026-10-21. Targets: Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y.
+Updated: 2026-10-22. Targets: Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y.
 
 ## Product and platform
 
 Native no_std Rust product logic is independent of esp-hal, board GPIOs and
 physical transport. The host workspace supplies deterministic regressions and
 the Slint desktop simulator. The separate P4 workspace owns HAL integration.
-Pajoniiir M2.2 remains the functional reference; physical unit qualification is
-separate from product-model and build evidence.
+Released Pajoniiir M2.5 supersedes the original M2.2 functional reference;
+physical unit qualification is separate from product-model and build evidence.
+The [parity plan](M2_5_PARITY_PLAN.md) distinguishes existing Rust behavior,
+missing stable features and selected later shared-P4 repairs.
 
 ```mermaid
 flowchart TD
@@ -57,6 +59,12 @@ fault containment. A faulted store cannot acknowledge an unconfirmed durable
 write, and persistent failures must not block other transport/control work.
 General settings storage and signed OTA are separate, unfinished subsystems.
 
+The planned profile compatibility boundary is S3CP v2/v3/v4; the current Rust
+parser/compiler still support v2 only. CUE preview, explicit jog modes, shared
+async load admission and loop/source/memory cue extensions remain open. New
+capabilities belong to semantic product owners rather than per-view or
+controller-name branches. Reconnect epochs must fence queued input and output.
+
 ## Media and analysis
 
 FAT32/exFAT and USB media modules use lease/generation-bound clients and bounded
@@ -65,6 +73,11 @@ replacement fences stale source, analysis and catalog completions.
 Rekordbox PDB/DAT/optional EXT analysis feeds neutral waveform, beatgrid and cue
 consumers. Missing EXT does not invalidate a usable DAT; malformed partial
 analysis is not published.
+
+Playlist hierarchy, artwork and PWV4 require bounded owners and generation-safe
+publication. Their metadata/analysis time cannot replace decoded file duration.
+Cold MP3 seek/index budgets and donor persistent-data migration policy remain
+explicit work, despite existing exact recent-seek and local Hot Cue tests.
 
 The optional APTA adapter owns bounded worker banks, retained/recycled delivery
 and stopped-deck arbitration. It cannot replace already accepted analysis or

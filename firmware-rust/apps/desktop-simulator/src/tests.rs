@@ -94,6 +94,24 @@ fn overview_cue_and_playhead_are_aligned_to_track_time() {
 }
 
 #[test]
+fn imported_pqtz_bar_one_renders_as_the_tall_downbeat_tick() {
+    // track-a.DAT stores PQTZ bar positions 1,2,3,4,1,... at 1000 + n*500 ms.
+    // Cues cover 1000/2000 ms, so in this window only the 3000 ms bar-one beat
+    // may reach the tall-tick row; the 1500..4500 ms neighbours stay short.
+    let mut s = loaded();
+    s.decks.set_position_ms(DeckId::One, 3200);
+    let pixels = compositor::compose(s.presentation(0), s.analysis(0), true);
+    let ticks = |row: usize| -> Vec<usize> {
+        (0..compositor::WIDTH)
+            .filter(|x| pixels[row * compositor::WIDTH + x] == 0x94b2)
+            .collect()
+    };
+    let short = ticks(2);
+    assert_eq!(short.len(), 6);
+    assert_eq!(ticks(7), vec![short[2]]);
+}
+
+#[test]
 fn invalid_action_and_cue_codes_are_rejected() {
     assert!(DeckAction::from_code(-1).is_none());
     assert!(DeckAction::from_code(10).is_none());

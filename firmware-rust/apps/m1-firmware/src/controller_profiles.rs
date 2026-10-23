@@ -6,8 +6,8 @@ use embassy_sync::{
     signal::Signal,
 };
 use pajoniiir_controller_profile_storage::{
-    MAX_PROFILE_SIZE, Profile, ProfileActivationState, ProfileActivationTicket, ProfileRegistry,
-    ProfileSlot,
+    MAX_INIT_SYSEX, MAX_PROFILE_SIZE, Profile, ProfileActivationState, ProfileActivationTicket,
+    ProfileRegistry, ProfileSlot,
 };
 use pajoniiir_controller_session::{
     ControllerSession, LedUpdate, SessionDeliverySink, SessionDispatchOutcome, UsbMidiBatchError,
@@ -42,6 +42,13 @@ pub(crate) enum ActiveProfileLedError {
     StaleController,
     InvalidActiveProfile,
     InvalidMidiOutput,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ProfileInitializationError {
+    NotInitializing,
+    StaleController,
+    InvalidActiveProfile,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -105,6 +112,7 @@ struct ActiveProfileBlob {
     index: Option<u8>,
     controller_epoch: u32,
     revision: u32,
+    ticket: Option<ProfileActivationTicket>,
 }
 
 impl ActiveProfileBlob {
@@ -115,6 +123,7 @@ impl ActiveProfileBlob {
             index: None,
             controller_epoch: 0,
             revision: 0,
+            ticket: None,
         }
     }
 
@@ -122,6 +131,7 @@ impl ActiveProfileBlob {
         self.len = 0;
         self.index = None;
         self.controller_epoch = 0;
+        self.ticket = None;
     }
 }
 
@@ -245,6 +255,7 @@ pub(crate) async fn complete_profile_activation(
     active.index = Some(request.ticket.index());
     active.controller_epoch = request.ticket.controller().epoch;
     active.revision = revision;
+    active.ticket = Some(request.ticket);
     PROFILE_ACTIVATION_CHANGED.signal(revision);
     true
 }
@@ -263,6 +274,90 @@ pub(crate) async fn fail_profile_activation(request: ProfileActivationRequest) {
     if let Some(revision) = revision {
         PROFILE_ACTIVATION_CHANGED.signal(revision);
     }
+}
+
+/// Copy the published profile's initial SysEx for the controller binding that
+/// is still waiting for it. MIDI input and LED output stay closed meanwhile.
+pub(crate) async fn pending_profile_initialization(
+    controller_epoch: u32,
+    output: &mut [u8; MAX_INIT_SYSEX],
+) -> Result<(ProfileActivationTicket, usize), ProfileInitializationError> {
+    let active = ACTIVE_PROFILE.lock().await;
+    let ticket = active
+        .ticket
+        .ok_or(ProfileInitializationError::NotInitializing)?;
+    if !profile_initialization_is_current(ticket, controller_epoch)
+        || active.controller_epoch != controller_epoch
+        || active.index != Some(ticket.index())
+    {
+        return Err(ProfileInitializationError::StaleController);
+    }
+
+    let profile = Profile::parse(&active.bytes[..active.len])
+        .map_err(|_| ProfileInitializationError::InvalidActiveProfile)?;
+    let sysex = profile.init_sysex();
+    output[..sysex.len()].copy_from_slice(sysex);
+    Ok((ticket, sysex.len()))
+}
+
+pub(crate) fn profile_initialization_is_current(
+    ticket: ProfileActivationTicket,
+    controller_epoch: u32,
+) -> bool {
+    ticket.controller().epoch == controller_epoch
+        && PROFILE_CATALOG.lock(|cell| {
+            cell.borrow()
+                .registry
+                .initialization_ticket_is_current(ticket)
+        })
+}
+
+/// Open MIDI/LED activation after every SysEx packet was accepted by USB
+/// output, or close the activation as FAILED. Successful enqueue does not
+/// prove that the controller accepted the command.
+pub(crate) async fn finish_profile_initialization(
+    ticket: ProfileActivationTicket,
+    enqueued: bool,
+) -> bool {
+    // Same lock order as activation commit: blob owner, then catalog. A stale
+    // ticket must not clear or reopen a newer activation's published blob.
+    let mut active = ACTIVE_PROFILE.lock().await;
+    let revision = PROFILE_CATALOG.lock(|cell| {
+        let mut catalog = cell.borrow_mut();
+        if enqueued {
+            catalog.registry.complete_initialization(ticket).ok()?;
+        } else {
+            catalog.registry.fail_activation(ticket).ok()?;
+        }
+        Some(catalog.bump_activation_revision())
+    });
+    let Some(revision) = revision else {
+        return false;
+    };
+    if enqueued {
+        active.revision = revision;
+    } else if active.ticket == Some(ticket) {
+        active.clear();
+    }
+    PROFILE_ACTIVATION_CHANGED.signal(revision);
+    enqueued
+}
+
+/// Profile-owned FILTER_ALWAYS for the current, fully active binding only.
+/// Disconnect, initialization, failure or a profile without it yields false.
+pub(crate) async fn active_channel_filter_always(controller_epoch: u32) -> bool {
+    let active = ACTIVE_PROFILE.lock().await;
+    let current = PROFILE_CATALOG.lock(|cell| {
+        let catalog = cell.borrow();
+        catalog.registry.activation_state() == ProfileActivationState::Active
+            && catalog.registry.connected().map(|controller| controller.epoch)
+                == Some(controller_epoch)
+            && active.controller_epoch == controller_epoch
+            && active.index == catalog.registry.active_index()
+    });
+    current
+        && Profile::parse(&active.bytes[..active.len])
+            .is_ok_and(|profile| profile.channel_filter_always())
 }
 
 pub(crate) async fn process_active_midi_transfer(

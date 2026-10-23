@@ -6,7 +6,9 @@ owner-reported v3.2 silicon. The minimum configured revision is 302.
 
 The boards are in transit. Product logic, simulation and target compilation are
 verified separately; physical boot, peripherals and audible output are pending.
-Pajoniiir M2.2 remains the functional reference.
+Pajoniiir **M2.5** is now the released functional reference. The rewrite started
+from M2.2; the [M2.5 parity audit and plan](docs/M2_5_PARITY_PLAN.md) records the
+remaining differences and separately evaluates newer shared-P4 beta/master work.
 
 ## Development boards
 
@@ -36,6 +38,18 @@ combined with a Guition selector.
 
 Experimental APTA remains excluded from simulator/default firmware dependencies.
 The original `codex/native-apta-consumer` branch remains unmerged.
+
+## Next software work
+
+1. Correct PDB title lookup and complete S3CP v2/v3/v4 tooling/runtime compatibility.
+2. Complete CUE preview, VINYL/CDJ, shared load lock and source/memory/loop cue semantics.
+3. Add playlist hierarchy, bounded artwork/PWV4 and predictable cold MP3 seeks.
+4. Complete durable settings, Web/network and signed OTA state machines, then
+   integrate and qualify physical UAC/DAC and per-board product owners.
+
+These are open tasks, including behavior already present in the C M2.5 release.
+Later headphone-level, reconnect and MT/cache repairs supply additional regression
+contracts. Extra controllers and Pro DJ Link remain separate optional scope.
 
 ## Audio policy
 
@@ -74,7 +88,9 @@ or flash command is selected.
 
 ## Documentation
 
+- [Start here: agent handoff and exact continuation branch](docs/HANDOFF.md)
 - [Development status and next steps](docs/DEVELOPMENT.md)
+- [M2.5 parity audit, priorities and acceptance](docs/M2_5_PARITY_PLAN.md)
 - [Architecture](docs/M1_RUST_ARCHITECTURE.md)
 - [Product requirements](docs/M1_RUST_PRODUCT_REQUIREMENTS.md)
 - [First boot and diagnostic packages](docs/boards/GUITION_FIRST_BOOT_2026-10-20.md)

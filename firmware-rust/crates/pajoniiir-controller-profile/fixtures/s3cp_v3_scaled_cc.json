@@ -1,0 +1,19 @@
+{
+  "schema": "p4-controller-profile-v1",
+  "name": "RP-02 synthetic S3CP v3 scaled CC",
+  "vendor": "Pajoniiir test fixture",
+  "vid": "0x1209",
+  "pid": "0x0003",
+  "decks": 2,
+  "capabilities": {
+    "led_feedback": true
+  },
+  "inputs": [
+    { "type": "cc7_to14", "event": "deck1.tempo", "status": "0xB0", "data1": "0x00" },
+    { "type": "cc7_to14", "event": "mixer.ch1_volume", "status": "0xB0", "data1": "0x13", "replay": true },
+    { "type": "button", "event": "deck1.play", "status": "0x90", "data1": "0x0B" }
+  ],
+  "outputs": [
+    { "kind": "note", "led": "play", "status": "0x90", "deck": 0, "data1": "0x0B" }
+  ]
+}

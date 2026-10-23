@@ -480,6 +480,11 @@ impl ProductRuntime {
         &self.mixer
     }
 
+    /// The controller owner mirrors the active profile's FILTER_ALWAYS here.
+    pub(crate) fn set_channel_filter_always(&mut self, always: bool) {
+        self.mixer.set_channel_filter_always(always);
+    }
+
     pub(crate) const fn deck(&self) -> &DeckProductState {
         &self.deck
     }

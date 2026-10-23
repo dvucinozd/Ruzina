@@ -3,9 +3,11 @@ use core::cell::RefCell;
 #[cfg(feature = "render-graph-bringup")]
 use crate::audio_render_owner::publish_product_render_control;
 use crate::controller_profiles::{
-    ActiveProfileLedError, ActiveProfileMidiError, bind_controller_descriptor,
-    dispatch_session_deliveries, map_active_led_update, match_scanned_profile,
-    on_controller_disconnect, process_active_midi_transfer, request_profile_activation,
+    ActiveProfileLedError, ActiveProfileMidiError, active_channel_filter_always,
+    bind_controller_descriptor,
+    dispatch_session_deliveries, finish_profile_initialization, map_active_led_update,
+    match_scanned_profile, on_controller_disconnect, pending_profile_initialization,
+    process_active_midi_transfer, profile_initialization_is_current, request_profile_activation,
     wait_for_profile_activation_change, wait_for_profile_catalog_change,
 };
 use crate::deck_effect_owners::{dispatch_product_effects, wait_for_effect_owner_progress};
@@ -19,10 +21,10 @@ use embassy_usb_driver::{
     host::{DeviceEvent, PipeError, UsbHostAllocator, UsbHostController, UsbPipe, pipe},
 };
 use embassy_usb_host::{BusController, BusRoute, BusState, handler::EnumerationInfo};
-use pajoniiir_controller_profile_storage::ProfileActivationState;
+use pajoniiir_controller_profile_storage::{MAX_INIT_SYSEX, ProfileActivationState};
 use pajoniiir_controller_session::{ControllerSession, UsbMidiBatchReport};
 use pajoniiir_controller_usb::{
-    ControllerUsbCapabilities, ControllerUsbDescriptorError, UsbMidiEvent,
+    ControllerUsbCapabilities, ControllerUsbDescriptorError, UsbMidiEvent, UsbMidiSysExPackets,
     find_midi_streaming_interface, inspect_configuration,
 };
 
@@ -358,6 +360,10 @@ pub(crate) async fn run_root_controller_owner(usb: esp_hal::usb::otg::Usb<'stati
             &mut product,
         )
         .await;
+        // Detach restores the default policy even on paths that skip a drain.
+        product.set_channel_filter_always(false);
+        #[cfg(feature = "render-graph-bringup")]
+        publish_product_render_control(&product);
         drop(midi_transport);
         bus.free_address(info.device_address);
     }
@@ -480,6 +486,53 @@ where
     loop {
         #[cfg(feature = "runtime-health")]
         crate::runtime_health::publish_control(product, session, probe.product_backpressured);
+        if probe.profile_activation_state == ProfileActivationState::Initializing {
+            let outcome = initialize_controller_profile(
+                &mut *controller,
+                probe,
+                midi_transport.as_deref_mut(),
+            )
+            .await;
+            match outcome {
+                ProfileInitOutcome::Initialized | ProfileInitOutcome::Failed => {
+                    refresh_profile_probe(probe, false);
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Ready(*probe));
+                    continue;
+                }
+                ProfileInitOutcome::ProfileChanged => {
+                    session.reset_profile_state();
+                    refresh_profile_probe(probe, true);
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Ready(*probe));
+                    continue;
+                }
+                ProfileInitOutcome::Disconnected => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Detached);
+                    return None;
+                }
+                ProfileInitOutcome::Overcurrent => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Failed(
+                        Usb1ControllerFailure::Overcurrent,
+                    ));
+                    return None;
+                }
+                ProfileInitOutcome::Connected(speed) => {
+                    session.set_connected(false);
+                    on_controller_disconnect();
+                    drain_product_dispatch(probe, session, product).await;
+                    set_state(Usb1ControllerState::Detached);
+                    return Some(speed);
+                }
+            }
+        }
+
         if probe.profile_activation_state == ProfileActivationState::Active
             && product.has_dirty_leds()
             && let Some(transport) = midi_transport.as_mut()
@@ -734,6 +787,10 @@ async fn drain_product_dispatch(
     session: &mut ControllerSession,
     product: &mut ProductRuntime,
 ) {
+    // Mirror the profile capability before any control or render publication.
+    product.set_channel_filter_always(
+        active_channel_filter_always(probe.controller_epoch).await,
+    );
     loop {
         let library_before = dispatch_library_runtime(product);
         let before = dispatch_product_effects(product);
@@ -776,6 +833,77 @@ async fn drain_product_dispatch(
     publish_product_render_control(product);
     #[cfg(feature = "runtime-health")]
     crate::runtime_health::publish_control(product, session, probe.product_backpressured);
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ProfileInitOutcome {
+    Initialized,
+    ProfileChanged,
+    Failed,
+    Disconnected,
+    Overcurrent,
+    Connected(embassy_usb_driver::Speed),
+}
+
+/// Enqueue the active profile's bounded initial SysEx before MIDI input or LED
+/// output open. The binding is rechecked before every packet; a profile change
+/// stops after at most the packet already in flight. Any transfer failure or
+/// unrelated device event closes this activation as FAILED rather than leaving
+/// a truncated initialization behind an open profile.
+async fn initialize_controller_profile<'d, C, A>(
+    controller: &mut BusController<'d, C>,
+    probe: &Usb1ControllerProbe,
+    transport: Option<&mut Usb1MidiTransport<'d, A>>,
+) -> ProfileInitOutcome
+where
+    C: UsbHostController<'d>,
+    A: UsbHostAllocator<'d>,
+{
+    let mut sysex = [0u8; MAX_INIT_SYSEX];
+    let Ok((ticket, len)) =
+        pending_profile_initialization(probe.controller_epoch, &mut sysex).await
+    else {
+        return ProfileInitOutcome::ProfileChanged;
+    };
+    let (Some(transport), Ok(packets)) = (
+        transport.filter(|transport| transport.has_output()),
+        UsbMidiSysExPackets::new(0, &sysex[..len]),
+    ) else {
+        finish_profile_initialization(ticket, false).await;
+        return ProfileInitOutcome::Failed;
+    };
+
+    for event in packets {
+        if !profile_initialization_is_current(ticket, probe.controller_epoch) {
+            return ProfileInitOutcome::ProfileChanged;
+        }
+        match select(
+            controller.wait_for_device_event(),
+            transport.write_event(event),
+        )
+        .await
+        {
+            Either::First(DeviceEvent::Disconnected) => return ProfileInitOutcome::Disconnected,
+            Either::First(DeviceEvent::Overcurrent) => return ProfileInitOutcome::Overcurrent,
+            Either::First(DeviceEvent::Connected(speed)) => {
+                return ProfileInitOutcome::Connected(speed);
+            }
+            Either::Second(Ok(())) => {}
+            Either::Second(Err(Usb1MidiTransportError::Transfer(PipeError::Disconnected))) => {
+                return ProfileInitOutcome::Disconnected;
+            }
+            Either::First(_) | Either::Second(Err(_)) => {
+                finish_profile_initialization(ticket, false).await;
+                return ProfileInitOutcome::Failed;
+            }
+        }
+    }
+
+    if finish_profile_initialization(ticket, true).await {
+        ProfileInitOutcome::Initialized
+    } else {
+        ProfileInitOutcome::ProfileChanged
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

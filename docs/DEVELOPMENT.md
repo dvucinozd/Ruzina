@@ -1,7 +1,12 @@
 # Development status and next steps
 
-Updated: 2026-10-21. This page describes the current Guition Rust development
+Updated: 2026-10-22. This page describes the current Guition Rust development
 scope; compilation, host behavior and physical acceptance remain distinct.
+
+For continuation by another agent, read the [handoff](HANDOFF.md) first. It
+records the exact branch/worktree, source pins, next batches, constraints and
+verification boundaries. RP-01/02 are host-implemented; continue with
+RP-03/04/05. This is not complete M2.5 feature parity.
 
 ## Implemented software
 
@@ -21,6 +26,31 @@ Optional APTA conversion/worker/service/lifecycle logic is adopted selectively.
 It has bounded banks and generation-safe publication, stopped-deck scheduling
 and captured state/reason diagnostics. The original integration branch is still
 unmerged. APTA remains OFF on Guition and outside default dependency graphs.
+
+## M2.5 functional baseline and next software batches
+
+The original foundation was M2.2. Released M2.5 at `20f1c3f0` is now the
+functional reference; later shared-P4 beta/master fixes are evaluated separately.
+The [pinned parity audit](M2_5_PARITY_PLAN.md) records implementation evidence,
+RP-01..20 tasks, requirement mappings and acceptance for each batch:
+
+1. **RP-01/02 (host-implemented):** PDB title index correction, independent
+   import fixtures and end-to-end S3CP v2/v3/v4 compatibility, including bounded
+   output initialization and the M2.5 Smart CFX/FILTER_ALWAYS channel-filter
+   gate. Firmware wiring is compile-only; an upload path remains open.
+2. **RP-03/04/05/15/18:** CUE hold-preview/PLAY commit, explicit VINYL/CDJ,
+   shared load admission, loop/memory/source cue behavior and reconnect fencing.
+3. **RP-06/07/08:** ordered playlist hierarchy, artwork/PWV4 and cold MP3
+   seek/duration budgets, preserving existing sample-exact decoder behavior.
+4. **RP-11/12/13:** durable settings, C6/Web contracts and signed OTA/readiness
+   state machines with host fault injection before physical activation.
+5. **RP-09/10/14/16/17:** UAC descriptors/packets/clocks, board-owned USB roles,
+   MAIN switching, headphone gain ownership and bounded cache/diagnostic behavior.
+
+The first four batches and host portions of the fifth can proceed before board
+arrival. Current host coverage does not close these newly identified gaps.
+RP-19 extra-controller/absolute-PFL work and RP-20 Pro DJ Link are optional;
+native APTA, recorder and disabled donor UI are not added to R1 by inference.
 
 ## Prepared Guition work
 

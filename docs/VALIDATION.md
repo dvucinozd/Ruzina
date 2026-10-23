@@ -4,6 +4,13 @@ Host and compile evidence is separate from physical qualification. Every result
 belongs to its exact source tree, feature set, toolchain and image. A skipped,
 unstarted or waived check is not PASS.
 
+The functional corpus now targets released M2.5. The [parity audit](M2_5_PARITY_PLAN.md)
+records the pinned donor/Rust sources, existing 315-test focused run and open
+RP-01..20 work. Existing regression success is not a differential parity result.
+Each batch must add independent donor-behavior fixtures and failure cases before
+its gap can be closed. New shared-P4 beta/master repairs retain separate source
+provenance and do not inherit stable M2.5 or other-board hardware acceptance.
+
 ## Repeatable checks
 
 From `firmware-rust`:

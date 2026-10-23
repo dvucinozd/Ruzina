@@ -13,7 +13,12 @@ extern crate std;
 use pajoniiir_controller_core::{DeckId, LedUpdate};
 
 pub const S3CP_MAGIC: &[u8; 4] = b"S3CP";
-pub const S3CP_VERSION: u16 = 2;
+/// Stable M2.5 accepts three binary versions. The compiler emits the oldest
+/// version that represents a profile: v2 base tables, v3 adds CC7_TO14, and
+/// v4 adds NOTE_SELECT, initial SysEx, LED value scaling and FILTER_ALWAYS.
+pub const S3CP_VERSION_LEGACY: u16 = 2;
+pub const S3CP_VERSION_SCALED: u16 = 3;
+pub const S3CP_VERSION_EXTENDED: u16 = 4;
 pub const HEADER_SIZE: usize = 32;
 pub const INPUT_ENTRY_SIZE: usize = 16;
 pub const OUTPUT_ENTRY_SIZE: usize = 12;
@@ -21,6 +26,7 @@ pub const OUTPUT_ENTRY_SIZE: usize = 12;
 pub const MAX_INPUTS: usize = 320;
 pub const MAX_OUTPUTS: usize = 160;
 pub const MAX_PAIR_SLOTS: usize = 40;
+pub const MAX_INIT_SYSEX: usize = 128;
 
 pub const INPUT_FLAG_REPLAY: u16 = 0x0001;
 pub const INPUT_FLAG_PAIR_MEMBER_B: u16 = 0x0002;
@@ -32,6 +38,10 @@ pub const PROFILE_FLAG_LED_FEEDBACK: u32 = 1 << 0;
 pub const PROFILE_FLAG_USB_AUDIO: u32 = 1 << 1;
 pub const PROFILE_FLAG_JOG_TOUCH: u32 = 1 << 2;
 pub const PROFILE_FLAG_PITCH_14BIT: u32 = 1 << 3;
+/// v4 only: the channel filter is not gated by Smart CFX for this profile.
+pub const PROFILE_FLAG_FILTER_ALWAYS: u32 = 1 << 4;
+
+const SEMANTIC_TYPE_PITCH: u8 = 0x03;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ParseError {
@@ -53,6 +63,10 @@ pub enum RawType {
     Cc14Lsb = 5,
     Cc7Abs = 6,
     NoteStatePair = 7,
+    /// v3+: center-preserving 7-bit to 14-bit absolute CC.
+    Cc7To14 = 8,
+    /// v4: Note On press emits a fixed nonnegative value; release is ignored.
+    NoteSelect = 9,
 }
 
 impl RawType {
@@ -66,13 +80,34 @@ impl RawType {
             5 => Some(Self::Cc14Lsb),
             6 => Some(Self::Cc7Abs),
             7 => Some(Self::NoteStatePair),
+            8 => Some(Self::Cc7To14),
+            9 => Some(Self::NoteSelect),
             _ => None,
+        }
+    }
+
+    const fn min_version(self) -> u16 {
+        match self {
+            Self::Cc7To14 => S3CP_VERSION_SCALED,
+            Self::NoteSelect => S3CP_VERSION_EXTENDED,
+            _ => S3CP_VERSION_LEGACY,
         }
     }
 
     fn needs_pair_slot(self) -> bool {
         matches!(self, Self::Cc14Msb | Self::Cc14Lsb | Self::NoteStatePair)
     }
+}
+
+/// Integer 0/64/127 -> 0/8192/16383 scaling; monotonic between detents.
+pub const fn cc7_to14(data2: u8) -> i16 {
+    let value = (data2 & 0x7f) as i32;
+    let scaled = if value <= 64 {
+        value * 128
+    } else {
+        8192 + ((value - 64) * 8191 + 31) / 63
+    };
+    scaled as i16
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -116,6 +151,23 @@ pub struct OutputEntry {
     pub off_value: u8,
     pub on_value: u8,
     pub blink_value: u8,
+    /// v4 only; zero keeps the selected byte. Reserved and ignored in v2/v3.
+    pub value_scale: u16,
+}
+
+impl OutputEntry {
+    fn value_for_state(self, state: u8) -> u8 {
+        let value = match self.kind {
+            OutputKind::CcValue => state & 0x7f,
+            OutputKind::NoteOnOff if state == 0 => self.off_value,
+            OutputKind::NoteOnOff if state == 2 => self.blink_value,
+            OutputKind::NoteOnOff => self.on_value,
+        };
+        if self.value_scale == 0 {
+            return value;
+        }
+        (u32::from(value) * u32::from(self.value_scale) / 127).min(127) as u8
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -128,6 +180,8 @@ pub struct ProfileEvent {
 #[derive(Clone, Copy, Debug)]
 pub struct Profile<'a> {
     blob: &'a [u8],
+    version: u16,
+    crc: u32,
     vid: u16,
     pid: u16,
     flags: u32,
@@ -135,6 +189,7 @@ pub struct Profile<'a> {
     output_count: usize,
     pair_slot_count: usize,
     decks: u8,
+    init_sysex_len: usize,
 }
 
 impl<'a> Profile<'a> {
@@ -151,7 +206,11 @@ impl<'a> Profile<'a> {
         let profile_size = read_u32(blob, 8) as usize;
         let expected_crc = read_u32(blob, 12);
 
-        if version != S3CP_VERSION || header_size != HEADER_SIZE {
+        if !matches!(
+            version,
+            S3CP_VERSION_LEGACY | S3CP_VERSION_SCALED | S3CP_VERSION_EXTENDED
+        ) || header_size != HEADER_SIZE
+        {
             return Err(ParseError::Version);
         }
         if profile_size != blob.len() || profile_size < HEADER_SIZE {
@@ -161,13 +220,22 @@ impl<'a> Profile<'a> {
             return Err(ParseError::Crc);
         }
 
+        let flags = read_u32(blob, 20);
         let input_count = read_u16(blob, 24) as usize;
         let output_count = read_u16(blob, 26) as usize;
         let pair_slot_count = blob[28] as usize;
+        // Offset 30 is reserved and ignored before v4, as in M2.5.
+        let init_sysex_len = if version >= S3CP_VERSION_EXTENDED {
+            read_u16(blob, 30) as usize
+        } else {
+            0
+        };
 
         if input_count > MAX_INPUTS
             || output_count > MAX_OUTPUTS
             || pair_slot_count > MAX_PAIR_SLOTS
+            || init_sysex_len > MAX_INIT_SYSEX
+            || (version < S3CP_VERSION_EXTENDED && flags & PROFILE_FLAG_FILTER_ALWAYS != 0)
         {
             return Err(ParseError::Bounds);
         }
@@ -183,6 +251,7 @@ impl<'a> Profile<'a> {
                     .checked_mul(OUTPUT_ENTRY_SIZE)
                     .and_then(|outputs| value.checked_add(outputs))
             })
+            .and_then(|value| value.checked_add(init_sysex_len))
             .ok_or(ParseError::Size)?;
 
         if need != blob.len() {
@@ -191,21 +260,46 @@ impl<'a> Profile<'a> {
 
         let profile = Self {
             blob,
+            version,
+            crc: expected_crc,
             vid: read_u16(blob, 16),
             pid: read_u16(blob, 18),
-            flags: read_u32(blob, 20),
+            flags,
             input_count,
             output_count,
             pair_slot_count,
             decks: blob[29],
+            init_sysex_len,
         };
 
         for index in 0..profile.input_count {
             let entry = profile.input(index).ok_or(ParseError::Bounds)?;
+            if entry.raw_type.min_version() > version {
+                return Err(ParseError::Bounds);
+            }
             if entry.raw_type.needs_pair_slot()
                 && (entry.pair_slot == PAIR_SLOT_NONE
                     || entry.pair_slot as usize >= profile.pair_slot_count)
             {
+                return Err(ParseError::Bounds);
+            }
+            let invalid = match entry.raw_type {
+                RawType::NoteSelect => {
+                    entry.match_status & 0xf0 != 0x90
+                        || entry.pair_slot != PAIR_SLOT_NONE
+                        || entry.flags != 0
+                        || entry.press_mask != 0
+                        || entry.base_value < 0
+                }
+                RawType::Cc7To14 => {
+                    entry.match_status & 0xf0 != 0xb0
+                        || entry.semantic_type != SEMANTIC_TYPE_PITCH
+                        || entry.pair_slot != PAIR_SLOT_NONE
+                        || entry.flags & !INPUT_FLAG_REPLAY != 0
+                }
+                _ => false,
+            };
+            if invalid {
                 return Err(ParseError::Bounds);
             }
         }
@@ -216,7 +310,38 @@ impl<'a> Profile<'a> {
             }
         }
 
+        let sysex = profile.init_sysex();
+        if let [first, body @ .., last] = sysex {
+            if *first != 0xf0 || *last != 0xf7 || body.iter().any(|byte| *byte > 0x7f) {
+                return Err(ParseError::Bounds);
+            }
+        } else if !sysex.is_empty() {
+            return Err(ParseError::Bounds);
+        }
+
         Ok(profile)
+    }
+
+    pub const fn version(&self) -> u16 {
+        self.version
+    }
+
+    pub const fn crc(&self) -> u32 {
+        self.crc
+    }
+
+    /// Bounded initial output SysEx (v4). Empty for v2/v3 and for v4 profiles
+    /// without one. MIDI/LED activation must wait until it was enqueued for
+    /// the current controller binding.
+    pub fn init_sysex(&self) -> &'a [u8] {
+        let start = self.blob.len() - self.init_sysex_len;
+        &self.blob[start..]
+    }
+
+    /// Profile-owned capability: the channel filter bypasses the Smart CFX
+    /// enable gate. Absent for every v2/v3 profile.
+    pub const fn channel_filter_always(&self) -> bool {
+        self.flags & PROFILE_FLAG_FILTER_ALWAYS != 0
     }
 
     pub const fn vid(&self) -> u16 {
@@ -293,6 +418,11 @@ impl<'a> Profile<'a> {
             off_value: bytes[5],
             on_value: bytes[6],
             blink_value: bytes[7],
+            value_scale: if self.version >= S3CP_VERSION_EXTENDED {
+                u16::from_le_bytes([bytes[8], bytes[9]])
+            } else {
+                0
+            },
         })
     }
 
@@ -306,13 +436,7 @@ impl<'a> Profile<'a> {
                 continue;
             }
 
-            let value = match entry.kind {
-                OutputKind::CcValue => state & 0x7f,
-                OutputKind::NoteOnOff if state == 0 => entry.off_value,
-                OutputKind::NoteOnOff if state == 2 => entry.blink_value,
-                OutputKind::NoteOnOff => entry.on_value,
-            };
-            return Some([entry.status, entry.data1, value]);
+            return Some([entry.status, entry.data1, entry.value_for_state(state)]);
         }
 
         None
@@ -331,13 +455,7 @@ impl<'a> Profile<'a> {
                 continue;
             }
 
-            let state = update.state.wire_value();
-            let value = match entry.kind {
-                OutputKind::CcValue => state & 0x7f,
-                OutputKind::NoteOnOff if state == 0 => entry.off_value,
-                OutputKind::NoteOnOff if state == 2 => entry.blink_value,
-                OutputKind::NoteOnOff => entry.on_value,
-            };
+            let value = entry.value_for_state(update.state.wire_value());
             return Some([entry.status, entry.data1, value]);
         }
 
@@ -412,6 +530,12 @@ impl ProfileRuntime {
 
             let pressed = data2 > 0;
             let value = match entry.raw_type {
+                RawType::NoteSelect => {
+                    if !pressed {
+                        return None;
+                    }
+                    entry.base_value
+                }
                 RawType::NoteButton => {
                     if pressed {
                         1
@@ -451,8 +575,13 @@ impl ProfileRuntime {
                     }
                     slot.value()?
                 }
-                RawType::Cc7Abs => {
-                    let value = (data2 & 0x7f) as i16;
+                RawType::Cc7Abs | RawType::Cc7To14 => {
+                    // Replay stores the scaled value, matching M2.5.
+                    let value = if entry.raw_type == RawType::Cc7To14 {
+                        cc7_to14(data2)
+                    } else {
+                        (data2 & 0x7f) as i16
+                    };
                     self.cc7_value[index] = value;
                     self.cc7_valid[index] = true;
                     value
@@ -503,7 +632,9 @@ impl ProfileRuntime {
 
             let value = match entry.raw_type {
                 RawType::Cc14Msb => self.slots[entry.pair_slot as usize].value(),
-                RawType::Cc7Abs if self.cc7_valid[index] => Some(self.cc7_value[index]),
+                RawType::Cc7Abs | RawType::Cc7To14 if self.cc7_valid[index] => {
+                    Some(self.cc7_value[index])
+                }
                 _ => None,
             };
 
@@ -561,7 +692,7 @@ mod tests {
     fn minimal_profile() -> [u8; HEADER_SIZE + INPUT_ENTRY_SIZE + OUTPUT_ENTRY_SIZE] {
         let mut bytes = [0u8; HEADER_SIZE + INPUT_ENTRY_SIZE + OUTPUT_ENTRY_SIZE];
         bytes[0..4].copy_from_slice(S3CP_MAGIC);
-        bytes[4..6].copy_from_slice(&S3CP_VERSION.to_le_bytes());
+        bytes[4..6].copy_from_slice(&S3CP_VERSION_LEGACY.to_le_bytes());
         bytes[6..8].copy_from_slice(&(HEADER_SIZE as u16).to_le_bytes());
         let profile_size = bytes.len() as u32;
         bytes[8..12].copy_from_slice(&profile_size.to_le_bytes());
@@ -677,5 +808,296 @@ mod tests {
         let mut bytes = minimal_profile();
         bytes[20] ^= 0x01;
         assert!(matches!(Profile::parse(&bytes), Err(ParseError::Crc)));
+    }
+
+    // RP-02 version contract. Header/entry offsets and expected values are
+    // literal M2.5 schema numbers, not derived from this parser's constants.
+    use std::vec::Vec;
+
+    fn input(status: u8, data1: u8, raw: u8, sem_type: u8, sem_id: u8) -> [u8; 16] {
+        let mut entry = [0u8; 16];
+        entry[..6].copy_from_slice(&[status, data1, raw, 0xff, sem_type, sem_id]);
+        entry[12..].copy_from_slice(&[0xff; 4]);
+        entry
+    }
+
+    fn output(led: u8, kind: u8, status: u8, data1: u8, scale: u16) -> [u8; 12] {
+        let mut entry = [led, 0, kind, status, data1, 0x00, 0x7f, 0x40, 0, 0, 0, 0];
+        entry[8..10].copy_from_slice(&scale.to_le_bytes());
+        entry
+    }
+
+    fn blob(
+        version: u16,
+        flags: u32,
+        inputs: &[[u8; 16]],
+        outputs: &[[u8; 12]],
+        sysex: &[u8],
+    ) -> Vec<u8> {
+        let mut bytes = std::vec![0u8; 32];
+        bytes[0..4].copy_from_slice(b"S3CP");
+        bytes[4..6].copy_from_slice(&version.to_le_bytes());
+        bytes[6..8].copy_from_slice(&32u16.to_le_bytes());
+        bytes[16..18].copy_from_slice(&0x1209u16.to_le_bytes());
+        bytes[18..20].copy_from_slice(&0x0002u16.to_le_bytes());
+        bytes[20..24].copy_from_slice(&flags.to_le_bytes());
+        bytes[24..26].copy_from_slice(&(inputs.len() as u16).to_le_bytes());
+        bytes[26..28].copy_from_slice(&(outputs.len() as u16).to_le_bytes());
+        bytes[29] = 2;
+        bytes[30..32].copy_from_slice(&(sysex.len() as u16).to_le_bytes());
+        inputs
+            .iter()
+            .for_each(|entry| bytes.extend_from_slice(entry));
+        outputs
+            .iter()
+            .for_each(|entry| bytes.extend_from_slice(entry));
+        bytes.extend_from_slice(sysex);
+        seal(&mut bytes);
+        bytes
+    }
+
+    fn seal(bytes: &mut [u8]) {
+        let size = bytes.len() as u32;
+        bytes[8..12].copy_from_slice(&size.to_le_bytes());
+        let checksum = crc32(&bytes[16..]);
+        bytes[12..16].copy_from_slice(&checksum.to_le_bytes());
+    }
+
+    const SYSEX: [u8; 5] = [0xf0, 0x00, 0x20, 0x7f, 0xf7];
+
+    #[test]
+    fn accepts_exactly_versions_two_three_and_four() {
+        let button = input(0x90, 0x0b, 0, 0x01, 0x10);
+        for version in [2u16, 3, 4] {
+            let bytes = blob(version, 0, &[button], &[], &[]);
+            assert_eq!(Profile::parse(&bytes).unwrap().version(), version);
+        }
+        for version in [0u16, 1, 5, 0x0200] {
+            let bytes = blob(version, 0, &[button], &[], &[]);
+            assert_eq!(Profile::parse(&bytes).err(), Some(ParseError::Version));
+        }
+    }
+
+    #[test]
+    fn new_raw_types_and_filter_capability_require_their_version() {
+        let to14 = input(0xb0, 0x13, 8, 0x03, 0x50);
+        let select = input(0x90, 0x20, 9, 0x01, 0x77);
+        assert_eq!(
+            Profile::parse(&blob(2, 0, &[to14], &[], &[])).err(),
+            Some(ParseError::Bounds)
+        );
+        assert!(Profile::parse(&blob(3, 0, &[to14], &[], &[])).is_ok());
+        assert_eq!(
+            Profile::parse(&blob(3, 0, &[select], &[], &[])).err(),
+            Some(ParseError::Bounds)
+        );
+        assert!(Profile::parse(&blob(4, 0, &[select, to14], &[], &[])).is_ok());
+        assert_eq!(
+            Profile::parse(&blob(4, 0, &[input(0, 0, 10, 1, 0x10)], &[], &[])).err(),
+            Some(ParseError::Bounds)
+        );
+
+        for version in [2u16, 3] {
+            assert_eq!(
+                Profile::parse(&blob(version, 1 << 4, &[], &[], &[])).err(),
+                Some(ParseError::Bounds)
+            );
+        }
+        let v4 = blob(4, 1 << 4, &[], &[], &[]);
+        assert!(Profile::parse(&v4).unwrap().channel_filter_always());
+        assert!(
+            !Profile::parse(&blob(4, 0, &[], &[], &[]))
+                .unwrap()
+                .channel_filter_always()
+        );
+    }
+
+    #[test]
+    fn v2_and_v3_ignore_reserved_sysex_length_and_led_scale_fields() {
+        let led = output(1, 0, 0x90, 0x0b, 300);
+        for version in [2u16, 3] {
+            let mut bytes = blob(version, 0, &[], &[led], &[]);
+            bytes[30..32].copy_from_slice(&7u16.to_le_bytes());
+            seal(&mut bytes);
+            let profile = Profile::parse(&bytes).unwrap();
+            assert!(profile.init_sysex().is_empty());
+            assert_eq!(profile.output(0).unwrap().value_scale, 0);
+            assert_eq!(profile.map_led(1, 0, 1), Some([0x90, 0x0b, 0x7f]));
+        }
+    }
+
+    #[test]
+    fn note_select_and_cc7_to14_entries_are_strictly_bounded() {
+        let mut note_select_cases = Vec::new();
+        note_select_cases.push(input(0xb0, 0x20, 9, 0x01, 0x77));
+        let mut with_slot = input(0x90, 0x20, 9, 0x01, 0x77);
+        with_slot[3] = 0;
+        note_select_cases.push(with_slot);
+        let mut with_flags = input(0x90, 0x20, 9, 0x01, 0x77);
+        with_flags[6] = 0x01;
+        note_select_cases.push(with_flags);
+        let mut with_mask = input(0x90, 0x20, 9, 0x01, 0x77);
+        with_mask[10] = 0x80;
+        note_select_cases.push(with_mask);
+        let mut negative = input(0x90, 0x20, 9, 0x01, 0x77);
+        negative[8..10].copy_from_slice(&(-1i16).to_le_bytes());
+        note_select_cases.push(negative);
+        for entry in note_select_cases {
+            let bytes = blob(4, 0, &[entry], &[], &[]);
+            assert_eq!(Profile::parse(&bytes).err(), Some(ParseError::Bounds));
+        }
+
+        let mut to14_cases = Vec::new();
+        to14_cases.push(input(0x90, 0x13, 8, 0x03, 0x50));
+        to14_cases.push(input(0xb0, 0x13, 8, 0x01, 0x50));
+        let mut with_slot = input(0xb0, 0x13, 8, 0x03, 0x50);
+        with_slot[3] = 0;
+        to14_cases.push(with_slot);
+        let mut member_b = input(0xb0, 0x13, 8, 0x03, 0x50);
+        member_b[6] = 0x02;
+        to14_cases.push(member_b);
+        for entry in to14_cases {
+            let bytes = blob(4, 0, &[entry], &[], &[]);
+            assert_eq!(Profile::parse(&bytes).err(), Some(ParseError::Bounds));
+        }
+
+        let mut replay = input(0xb0, 0x13, 8, 0x03, 0x50);
+        replay[6] = 0x01;
+        assert!(Profile::parse(&blob(3, 0, &[replay], &[], &[])).is_ok());
+    }
+
+    #[test]
+    fn v4_init_sysex_is_bounded_framed_and_covered_by_size_and_crc() {
+        let profile_bytes = blob(4, 0, &[], &[], &SYSEX);
+        let profile = Profile::parse(&profile_bytes).unwrap();
+        assert_eq!(profile.init_sysex(), &SYSEX);
+
+        let mut max = std::vec![0x00u8; 128];
+        max[0] = 0xf0;
+        max[127] = 0xf7;
+        assert_eq!(
+            Profile::parse(&blob(4, 0, &[], &[], &max))
+                .unwrap()
+                .init_sysex()
+                .len(),
+            128
+        );
+        let mut too_long = std::vec![0x00u8; 129];
+        too_long[0] = 0xf0;
+        too_long[128] = 0xf7;
+
+        for invalid in [
+            &[0xf0][..],
+            &[0xf0, 0x01, 0x02][..],
+            &[0x00, 0x01, 0xf7][..],
+            &[0xf0, 0x80, 0xf7][..],
+            &too_long[..],
+        ] {
+            assert_eq!(
+                Profile::parse(&blob(4, 0, &[], &[], invalid)).err(),
+                Some(ParseError::Bounds)
+            );
+        }
+
+        let mut trailing = blob(4, 0, &[], &[], &SYSEX);
+        trailing.push(0xf7);
+        seal(&mut trailing);
+        assert_eq!(Profile::parse(&trailing).err(), Some(ParseError::Size));
+
+        let mut short = blob(4, 0, &[], &[], &SYSEX);
+        short.pop();
+        seal(&mut short);
+        assert_eq!(Profile::parse(&short).err(), Some(ParseError::Size));
+
+        let mut corrupted = profile_bytes.clone();
+        let last = corrupted.len() - 2;
+        corrupted[last] ^= 0x01;
+        assert_eq!(Profile::parse(&corrupted).err(), Some(ParseError::Crc));
+    }
+
+    #[test]
+    fn cc7_to14_keeps_detents_endpoints_and_monotonic_order() {
+        for (input, expected) in [
+            (0u8, 0i16),
+            (1, 128),
+            (63, 8064),
+            (64, 8192),
+            (65, 8322),
+            (126, 16253),
+            (127, 16383),
+            (0xff, 16383),
+        ] {
+            assert_eq!(cc7_to14(input), expected, "data2 {input}");
+        }
+        for value in 1..=127u8 {
+            assert!(cc7_to14(value) > cc7_to14(value - 1));
+        }
+    }
+
+    #[test]
+    fn note_select_emits_on_press_only_and_cc7_to14_replays_scaled_value() {
+        let mut to14 = input(0xb0, 0x13, 8, 0x03, 0x50);
+        to14[6] = 0x01;
+        let mut select = input(0x94, 0x12, 9, 0x01, 0x77);
+        select[8..10].copy_from_slice(&2i16.to_le_bytes());
+        let bytes = blob(4, 0, &[select, to14], &[], &[]);
+        let profile = Profile::parse(&bytes).unwrap();
+        let mut runtime = ProfileRuntime::new();
+
+        assert_eq!(
+            runtime.process(&profile, 0x94, 0x12, 0x01),
+            Some(ProfileEvent {
+                semantic_type: 0x01,
+                semantic_id: 0x77,
+                value: 2,
+            })
+        );
+        assert_eq!(runtime.process(&profile, 0x94, 0x12, 0x00), None);
+        assert_eq!(
+            runtime.process(&profile, 0xb0, 0x13, 64).unwrap().value,
+            8192
+        );
+
+        let mut replayed = Vec::new();
+        runtime.emit_snapshot(&profile, |event| {
+            replayed.push(event);
+            true
+        });
+        assert_eq!(
+            replayed,
+            [ProfileEvent {
+                semantic_type: 0x03,
+                semantic_id: 0x50,
+                value: 8192,
+            }]
+        );
+    }
+
+    #[test]
+    fn v4_led_value_scale_applies_after_state_selection_and_clamps() {
+        let outputs = [
+            output(1, 0, 0x90, 0x0b, 64),
+            output(5, 1, 0xb0, 0x02, 254),
+            output(0, 0, 0x90, 0x0c, 0),
+        ];
+        let bytes = blob(4, 0, &[], &outputs, &[]);
+        let profile = Profile::parse(&bytes).unwrap();
+
+        // on 0x7f * 64 / 127 = 64; blink 0x40 * 64 / 127 = 32; off stays 0.
+        assert_eq!(profile.map_led(1, 0, 1), Some([0x90, 0x0b, 64]));
+        assert_eq!(profile.map_led(1, 0, 2), Some([0x90, 0x0b, 32]));
+        assert_eq!(profile.map_led(1, 0, 0), Some([0x90, 0x0b, 0]));
+        // CC passthrough 0x30 * 254 / 127 = 96; 0x50 doubles past 127 and clamps.
+        assert_eq!(profile.map_led(5, 0, 0x30), Some([0xb0, 0x02, 96]));
+        assert_eq!(profile.map_led(5, 0, 0x50), Some([0xb0, 0x02, 127]));
+        assert_eq!(profile.map_led(0, 0, 1), Some([0x90, 0x0c, 0x7f]));
+        assert_eq!(
+            profile.map_led_update(LedUpdate {
+                led: SemanticLedId::PLAY,
+                deck: Some(DeckId::One),
+                state: LedState::On,
+            }),
+            Some([0x90, 0x0b, 64])
+        );
     }
 }

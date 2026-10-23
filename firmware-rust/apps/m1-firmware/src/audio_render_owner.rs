@@ -133,6 +133,7 @@ pub(crate) fn publish_product_render_control(product: &ProductRuntime) {
             eq_mid: mixer_deck.eq_mid,
             eq_high: mixer_deck.eq_high,
             filter_raw: mixer.effective_filter_raw(deck),
+            filter_enabled: mixer.channel_filter_enabled(),
             pfl_enabled: mixer_deck.pfl_enabled,
         };
     }

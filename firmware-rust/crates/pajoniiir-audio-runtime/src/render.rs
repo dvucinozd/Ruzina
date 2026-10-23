@@ -24,6 +24,8 @@ pub struct RenderDeckControl {
     pub eq_mid: u16,
     pub eq_high: u16,
     pub filter_raw: u16,
+    /// Owner-resolved channel-filter gate (`MixerState::channel_filter_enabled`).
+    pub filter_enabled: bool,
     pub pfl_enabled: bool,
 }
 
@@ -46,6 +48,8 @@ impl RenderDeckControl {
             eq_mid: pajoniiir_audio_dsp::EQ_RAW_CENTER,
             eq_high: pajoniiir_audio_dsp::EQ_RAW_CENTER,
             filter_raw: pajoniiir_audio_dsp::FILTER_RAW_CENTER,
+            // A centered filter is transparent, so idle stays neutral.
+            filter_enabled: true,
             pfl_enabled: false,
         }
     }
@@ -322,6 +326,10 @@ impl<'a> FixedRateRenderGraph<'a> {
                 deck_control.eq_high,
             );
             state.filter.set_raw(deck_control.filter_raw);
+            if !deck_control.filter_enabled {
+                // Re-enabling starts from clean SVF state instead of stale energy.
+                state.filter.reset();
+            }
             if let Some(fx) = &mut self.fx {
                 fx[deck].configure(scope, deck_control.fx);
             }
@@ -359,7 +367,9 @@ impl<'a> FixedRateRenderGraph<'a> {
                 dsp.left *= pre_gain;
                 dsp.right *= pre_gain;
                 dsp = self.decks[deck].eq.process_frame(dsp);
-                dsp = self.decks[deck].filter.process_frame(true, dsp);
+                dsp = self.decks[deck]
+                    .filter
+                    .process_frame(deck_control.filter_enabled, dsp);
                 if let Some(fx) = &mut self.fx {
                     dsp = fx[deck].process(dsp);
                 }
@@ -539,6 +549,7 @@ mod tests {
             eq_mid: EQ_RAW_CENTER,
             eq_high: EQ_RAW_CENTER,
             filter_raw: FILTER_RAW_CENTER,
+            filter_enabled: true,
             pfl_enabled: false,
         }
     }

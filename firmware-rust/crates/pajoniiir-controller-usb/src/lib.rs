@@ -203,6 +203,69 @@ impl MidiChannelVoice {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UsbMidiSysExError {
+    InvalidCable(u8),
+    /// Not one complete F0 .. F7 message with 7-bit data bytes.
+    InvalidFraming,
+}
+
+/// USB-MIDI 1.0 event packets for one complete SysEx message: CIN 0x4 for
+/// each full three-byte start/continue packet, then CIN 0x5/0x6/0x7 for the
+/// final one to three bytes.
+#[derive(Clone, Debug)]
+pub struct UsbMidiSysExPackets<'a> {
+    cable: u8,
+    remaining: &'a [u8],
+}
+
+impl<'a> UsbMidiSysExPackets<'a> {
+    pub fn new(cable: u8, message: &'a [u8]) -> Result<Self, UsbMidiSysExError> {
+        if cable > 0x0f {
+            return Err(UsbMidiSysExError::InvalidCable(cable));
+        }
+        let [0xf0, body @ .., 0xf7] = message else {
+            return Err(UsbMidiSysExError::InvalidFraming);
+        };
+        if body.iter().any(|byte| *byte > 0x7f) {
+            return Err(UsbMidiSysExError::InvalidFraming);
+        }
+        Ok(Self {
+            cable,
+            remaining: message,
+        })
+    }
+
+    pub const fn packet_count(&self) -> usize {
+        self.remaining.len().div_ceil(3)
+    }
+}
+
+impl Iterator for UsbMidiSysExPackets<'_> {
+    type Item = UsbMidiEvent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining.is_empty() {
+            return None;
+        }
+        let (len, cin) = match self.remaining.len() {
+            1 => (1, 0x05),
+            2 => (2, 0x06),
+            3 => (3, 0x07),
+            _ => (3, 0x04),
+        };
+        let mut bytes = [0u8; 3];
+        bytes[..len].copy_from_slice(&self.remaining[..len]);
+        self.remaining = &self.remaining[len..];
+        Some(UsbMidiEvent {
+            cable: self.cable,
+            cin,
+            bytes,
+            len: len as u8,
+        })
+    }
+}
+
 const fn cin_payload_len(cin: u8) -> Option<u8> {
     match cin {
         0x02 | 0x06 | 0x0c | 0x0d => Some(2),
@@ -561,6 +624,70 @@ mod tests {
         assert_eq!(
             inspect_configuration(&bytes),
             Err(ControllerUsbDescriptorError::InvalidConfigurationLength)
+        );
+    }
+
+    fn sysex_packets<const N: usize>(cable: u8, message: &[u8]) -> [[u8; 4]; N] {
+        let packets = UsbMidiSysExPackets::new(cable, message).unwrap();
+        assert_eq!(packets.packet_count(), N);
+        let mut out = [[0u8; 4]; N];
+        let mut count = 0;
+        for (slot, event) in out.iter_mut().zip(packets) {
+            assert_eq!(UsbMidiEvent::decode(event.as_usb_packet()), Some(event));
+            *slot = event.as_usb_packet();
+            count += 1;
+        }
+        assert_eq!(count, N);
+        out
+    }
+
+    #[test]
+    fn sysex_uses_usb_midi_start_continue_and_end_packets() {
+        // USB-MIDI 1.0 table 4-1: CIN 4 start/continue, 5/6/7 end with 1/2/3.
+        assert_eq!(
+            sysex_packets::<1>(0, &[0xf0, 0xf7]),
+            [[0x06, 0xf0, 0xf7, 0]]
+        );
+        assert_eq!(
+            sysex_packets::<1>(0, &[0xf0, 0x01, 0xf7]),
+            [[0x07, 0xf0, 0x01, 0xf7]]
+        );
+        assert_eq!(
+            sysex_packets::<2>(1, &[0xf0, 0x01, 0x02, 0xf7]),
+            [[0x14, 0xf0, 0x01, 0x02], [0x15, 0xf7, 0, 0]]
+        );
+        assert_eq!(
+            sysex_packets::<3>(0, &[0xf0, 0x00, 0x20, 0x7f, 0x03, 0x01, 0xf7]),
+            [
+                [0x04, 0xf0, 0x00, 0x20],
+                [0x04, 0x7f, 0x03, 0x01],
+                [0x05, 0xf7, 0, 0],
+            ]
+        );
+        assert_eq!(
+            sysex_packets::<2>(0, &[0xf0, 0x01, 0x02, 0x03, 0x04, 0xf7]),
+            [[0x04, 0xf0, 0x01, 0x02], [0x07, 0x03, 0x04, 0xf7]]
+        );
+    }
+
+    #[test]
+    fn sysex_packetizer_rejects_partial_or_8_bit_messages() {
+        for message in [
+            &[][..],
+            &[0xf0][..],
+            &[0xf0, 0x01][..],
+            &[0x90, 0x01, 0xf7][..],
+            &[0xf0, 0x80, 0xf7][..],
+            &[0xf0, 0xf7, 0xf7][..],
+        ] {
+            assert_eq!(
+                UsbMidiSysExPackets::new(0, message).err(),
+                Some(UsbMidiSysExError::InvalidFraming)
+            );
+        }
+        assert_eq!(
+            UsbMidiSysExPackets::new(16, &[0xf0, 0xf7]).err(),
+            Some(UsbMidiSysExError::InvalidCable(16))
         );
     }
 }

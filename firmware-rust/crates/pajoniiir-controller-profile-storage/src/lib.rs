@@ -3,8 +3,8 @@
 
 use pajoniiir_controller_profile::{MAX_CONTROLLER_PROFILES, MAX_PROFILE_ID_BYTES, ProfileId};
 pub use pajoniiir_controller_profile::{
-    MAX_PROFILE_SIZE, Profile, ProfileActivationState, ProfileActivationTicket, ProfileRegistry,
-    ProfileSlot,
+    MAX_INIT_SYSEX, MAX_PROFILE_SIZE, Profile, ProfileActivationState, ProfileActivationTicket,
+    ProfileRegistry, ProfileSlot,
 };
 use pajoniiir_media_fs::{AsyncFileSystem, EntryKind, FS_NAME_MAX, FileHandle};
 
@@ -660,6 +660,58 @@ mod tests {
         assert_eq!(report.registry.len(), MAX_CONTROLLER_PROFILES);
         assert!(report.stats.capacity_reached);
         assert_eq!(report.registry.match_index(0xaaaa, 0xbbbb), None);
+    }
+
+    const V2_FLX4: &[u8] = include_bytes!(
+        "../../pajoniiir-controller-profile/fixtures/pioneer_ddj_flx4.v2-golden.s3bin"
+    );
+    const V3_SCALED: &[u8] = include_bytes!(
+        "../../pajoniiir-controller-profile/fixtures/s3cp_v3_scaled_cc.golden.s3bin"
+    );
+    const V4_EXTENDED: &[u8] =
+        include_bytes!("../../pajoniiir-controller-profile/fixtures/s3cp_v4_extended.golden.s3bin");
+
+    fn profile(id: &str, bytes: &[u8]) -> TestProfile {
+        TestProfile {
+            id: id.to_string(),
+            bytes: bytes.to_vec(),
+            directory: true,
+            readable: true,
+        }
+    }
+
+    #[test]
+    fn scan_and_reload_share_the_v2_v3_v4_parser_contract() {
+        // Offset 30 declares 7 SysEx bytes; dropping the final F7 makes the
+        // payload malformed while keeping the CRC valid.
+        let mut malformed_v4 = V4_EXTENDED.to_vec();
+        malformed_v4.pop();
+        malformed_v4.push(0x00);
+        let checksum = crc32(&malformed_v4[16..]);
+        malformed_v4[12..16].copy_from_slice(&checksum.to_le_bytes());
+
+        let mut filesystem = fs(std::vec![
+            profile("pioneer_ddj_flx4", V2_FLX4),
+            profile("scaled_cc", V3_SCALED),
+            profile("extended", V4_EXTENDED),
+            profile("malformed_v4", &malformed_v4),
+        ]);
+        let mut buffers = ProfileScanBuffers::new();
+        let report = block_on_ready(buffers.scan(&mut filesystem)).unwrap();
+
+        assert_eq!(report.registry.len(), 3);
+        assert_eq!(report.stats.invalid_profiles, 1);
+        for (index, version, sysex_len) in [(0u8, 2u16, 0u8), (1, 3, 0), (2, 4, 7)] {
+            let slot = report.registry.profile(index).unwrap();
+            assert_eq!(slot.meta.version, version);
+            assert_eq!(slot.meta.init_sysex_len, sysex_len);
+            let loaded = block_on_ready(buffers.load_profile(&mut filesystem, slot)).unwrap();
+            assert_eq!(
+                pajoniiir_controller_profile::ProfileMeta::parse(loaded).unwrap(),
+                slot.meta
+            );
+        }
+        assert_eq!(report.registry.match_index(0x1209, 0x0004), Some(2));
     }
 
     #[test]

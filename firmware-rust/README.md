@@ -4,6 +4,10 @@ The host workspace contains the reusable DJ product logic and the interactive
 Slint simulator. Active hardware targets are Guition JC1060P470C_I_W_Y and
 JC8012P4A1C_I_W_Y, ESP32-P4 minimum silicon revision 302.
 
+Released M2.5 is the functional reference. See the [parity plan](../docs/M2_5_PARITY_PLAN.md)
+for missing v3/v4 profiles, transport/library features and unfinished services;
+existing host-tested foundations do not establish complete release parity.
+
 ## Boundaries
 
 - Product crates own semantic controls, controller profiles, decks, media identity,
