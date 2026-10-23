@@ -160,7 +160,21 @@
         1024,
         600
       ],
-      "rgb_sha256": "44c6318ce9fb3b48fc3be4503182ee6cc723b1682d518677f906c51a93a6a4c1"
+      "rgb_sha256": "5780572b484753e1119abb60e811891942a87dcb715a7bbecb903860fed0015a"
+    },
+    "jc1060-library-playlist": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "250cefa1770c051812b7b3929d6d083f2f1a1a18588e5d456f8e6e43e61b7109"
+    },
+    "jc1060-library-playlists": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "ed2a7a2d7497b4e34308696d6140c717e1c642f9b4271050ce06bc1277e3c037"
     },
     "jc1060-mixer-active": {
       "size": [
@@ -181,7 +195,7 @@
         1024,
         600
       ],
-      "rgb_sha256": "b3371df46eeecb807e08a588373a4b18ff981bce1d6e57a03f24f88a4284416f"
+      "rgb_sha256": "229b5bfdea8f4885743a785ce3b69134385e47ca187a55f4f6a688209d296b77"
     },
     "jc1060-screensaver": {
       "size": [
@@ -356,7 +370,21 @@
         800,
         1280
       ],
-      "rgb_sha256": "155e96f5df3a092677c540a0ec261fc0d0e9688aba44529c1c91b46249efba7a"
+      "rgb_sha256": "21efe77656f5c9af2f9ab322bdf1597b616fa79d57ab5f1820bb46cecafef4df"
+    },
+    "jc8012-library-playlist": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "f8a318aa75979b96ea82742a619b18bcef4594fce018114ed42acfb625301f08"
+    },
+    "jc8012-library-playlists": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "67a8bba656548baab3d17e9a71fa9e0079ebcaf290de7b9bd9fcff2e8e05eb8b"
     },
     "jc8012-mixer-active": {
       "size": [
@@ -377,7 +405,7 @@
         800,
         1280
       ],
-      "rgb_sha256": "520d94ac80f4dd195c95e0c6e409e37460587e32c2346995298a421b5a1142a5"
+      "rgb_sha256": "b1ece6ea7accf92fc26c9fa9ba98ec88c4b62d88be8c9f7486b5dad53fa44fe1"
     },
     "jc8012-screensaver": {
       "size": [

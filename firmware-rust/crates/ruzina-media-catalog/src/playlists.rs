@@ -538,6 +538,15 @@ impl LibraryBrowser {
         changed
     }
 
+    /// Touch selection of row `index` on the current level.
+    pub fn select(&mut self, index: u16) -> bool {
+        if index >= self.count {
+            return false;
+        }
+        self.selected = index;
+        true
+    }
+
     /// The donor PLAYLISTS/BACK action: track list -> top level, playlist ->
     /// its folder, folder -> parent, top level -> track list.
     pub fn back<V: CatalogView, S: PlaylistStore>(
@@ -962,5 +971,20 @@ mod tests {
             panic!("track list must resolve a load");
         };
         assert_eq!(candidate.track.source_track_id, 10);
+    }
+
+    #[test]
+    fn touch_selection_stays_inside_the_current_level() {
+        let catalog = catalog(1, 1);
+        let mut browser = LibraryBrowser::new();
+        browser.publish::<_, Store>(&catalog, None);
+        let count = browser.count();
+        assert!(count > 1);
+        assert!(browser.select(count - 1));
+        assert_eq!(browser.selected_index(), Some(count - 1));
+        assert!(!browser.select(count), "past the level is refused");
+        assert_eq!(browser.selected_index(), Some(count - 1));
+        let mut empty = LibraryBrowser::new();
+        assert!(!empty.select(0));
     }
 }

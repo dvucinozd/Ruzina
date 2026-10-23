@@ -97,9 +97,10 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
             BoardId::GuitionJc8012P4a1cIwY
         });
         screensaver(&ui, &state, output, name, width as f32, height as f32)?;
+        library_playlists(&ui, &state, output, name)?;
     }
     println!(
-        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 56 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 60 software-rendered snapshots: PASS"
     );
     Ok(())
 }
@@ -165,6 +166,68 @@ fn screensaver(
     state.borrow_mut().wake();
     let _ = (width, height);
     println!("Idle screensaver show/wake/no-deck-input/playback inhibit: PASS at {name}");
+    Ok(())
+}
+
+/// RP-06 playlist hierarchy through the product `LibraryBrowser`: PLAYLISTS
+/// opens the tree, LOAD opens folders and playlists without loading, LOAD on
+/// a playlist track loads it, and BACK walks up to the track list.
+fn library_playlists(
+    ui: &MainWindow,
+    state: &Rc<RefCell<Session>>,
+    output: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let board = state.borrow().diagnostics().identity.board;
+    *state.borrow_mut() = Session::for_board(board);
+    ui.set_page(1);
+    refresh(ui, &state.borrow());
+    assert!(ui.get_library_top());
+    assert_eq!(ui.get_library_path(), "DEMO LIBRARY");
+    ui.invoke_library_back();
+    assert!(!ui.get_library_top());
+    assert_eq!(ui.get_library_path(), "PLAYLISTS");
+    let labels = |ui: &MainWindow| -> Vec<String> {
+        ui.get_library_rows()
+            .iter()
+            .map(|row| row.label.to_string())
+            .collect()
+    };
+    assert_eq!(
+        labels(ui),
+        ["FOLDER · Sets", "PLAYLIST · Recovery checks (2)"]
+    );
+    capture(ui, output, &format!("{name}-library-playlists"))?;
+    ui.invoke_select_track(0);
+    ui.invoke_load_track(0);
+    assert_eq!(ui.get_library_path(), "PLAYLISTS / Sets");
+    assert!(
+        !state.borrow().presentation(0).transport.loaded,
+        "opening loads nothing"
+    );
+    assert_eq!(
+        labels(ui),
+        ["PLAYLIST · Warm-up (2)", "PLAYLIST · Peak time (2)"]
+    );
+    ui.invoke_select_track(0);
+    ui.invoke_load_track(1);
+    assert_eq!(ui.get_library_path(), "PLAYLISTS / Sets / Warm-up");
+    assert_eq!(labels(ui), [session::TITLES[1], session::TITLES[0]]);
+    capture(ui, output, &format!("{name}-library-playlist"))?;
+    ui.invoke_select_track(0);
+    ui.invoke_load_track(1);
+    assert_eq!(
+        state.borrow().title(1),
+        session::TITLES[1],
+        "playlist order, not track order"
+    );
+    for path in ["PLAYLISTS / Sets", "PLAYLISTS", "DEMO LIBRARY"] {
+        ui.invoke_library_back();
+        assert_eq!(ui.get_library_path(), path);
+    }
+    assert!(ui.get_library_top());
+    assert_eq!(labels(ui).len(), session::TITLES.len());
+    println!("Library playlist tree open/load/back: PASS at {name}");
     Ok(())
 }
 

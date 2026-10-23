@@ -52,8 +52,8 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    cue behavior (RP-05 host-implemented; memory-cue view/recall pending RP-07),
    reconnect fencing (RP-15 host-implemented) and PDB row/EXT cue/loop-range
    edges (RP-18 host-implemented; remote CUE tap waits for the Web Remote).
-3. **RP-06/07/08:** ordered playlist hierarchy (RP-06 host-implemented; no
-   Slint hierarchy view yet), artwork/PWV4 (RP-07 host-implemented: PWV4 and
+3. **RP-06/07/08:** ordered playlist hierarchy (RP-06 host-implemented, with a
+   simulator PLAYLISTS/BACK tree view), artwork/PWV4 (RP-07 host-implemented: PWV4 and
    memory-cue markers, artwork references, bounded baseline JPEG decoder and
    cover/logo in the simulator deck; target display open) and cold MP3
    seek/duration (RP-08 host-implemented: bounded frame
