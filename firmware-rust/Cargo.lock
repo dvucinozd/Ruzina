@@ -3195,6 +3195,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "pajoniiir-settings"
+version = "0.1.0"
+
+[[package]]
 name = "pajoniiir-track-analysis"
 version = "0.1.0"
 dependencies = [

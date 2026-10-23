@@ -5,9 +5,9 @@ scope; compilation, host behavior and physical acceptance remain distinct.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
-verification boundaries. RP-01..08 and RP-15/18 are host-implemented (RP-07 cover
-display in the simulator only); continue with RP-11/12/13. This is not complete
-M2.5 parity.
+verification boundaries. RP-01..08, RP-11 and RP-15/18 are host-implemented
+(RP-07 cover display in the simulator only; RP-11 settings without a target
+flash owner); continue with RP-12/13. This is not complete M2.5 parity.
 
 ## Implemented software
 
@@ -53,8 +53,10 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    seek/duration (RP-08 host-implemented: bounded frame
    index, exact indexed cold seeks, scanned untagged duration), preserving
    existing sample-exact decoder behavior.
-4. **RP-11/12/13:** durable settings, C6/Web contracts and signed OTA/readiness
-   state machines with host fault injection before physical activation.
+4. **RP-11/12/13:** durable settings (RP-11 host-implemented in
+   `pajoniiir-settings`: versioned A/B records, durable-before-publish owner,
+   explicit M2.5 import), C6/Web contracts and signed OTA/readiness state
+   machines with host fault injection before physical activation.
 5. **RP-09/10/14/16/17:** UAC descriptors/packets/clocks, board-owned USB roles,
    MAIN switching, headphone gain ownership and bounded cache/diagnostic behavior.
 
