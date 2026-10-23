@@ -23,6 +23,7 @@ use ruzina_track_analysis::{
     TrackAnalysis,
     owned::{AnalysisIdentity, AnalysisPins},
 };
+use ruzina_ui_model::idle::{IDLE_DEFAULT_TIMEOUT_MS, IdleScreen, InputSource};
 use ruzina_ui_model::{BeatFxAction, DeckPresentation, pad_bank_event, pad_fx_event, present_deck};
 
 const DAT_A: &[u8] = include_bytes!("../../../crates/ruzina-rekordbox/tests/fixtures/track-a.DAT");
@@ -70,6 +71,8 @@ pub struct Session {
     health_sequence: u64,
     artwork: ArtworkDecks,
     jpeg: Box<BaselineJpegDecoder>,
+    idle: IdleScreen,
+    idle_clock_ms: u32,
 }
 
 pub const fn deck(index: usize) -> DeckId {
@@ -124,6 +127,8 @@ impl Session {
             health_sequence: 0,
             artwork: ArtworkDecks::new(),
             jpeg: Box::new(BaselineJpegDecoder::new()),
+            idle: IdleScreen::new(IDLE_DEFAULT_TIMEOUT_MS, 0),
+            idle_clock_ms: 0,
         };
         result.reconnect();
         result
@@ -164,6 +169,7 @@ impl Session {
         self.publish_health();
     }
     pub fn load(&mut self, target: DeckId) -> bool {
+        self.note_activity();
         let loaded = self.load_inner(target);
         self.publish_health();
         loaded
@@ -342,6 +348,7 @@ impl Session {
         )
     }
     pub fn control(&mut self, event: ControlEvent) {
+        self.note_activity();
         self.control_inner(event);
         self.publish_health();
     }
@@ -498,12 +505,30 @@ impl Session {
                 self.decks.set_position_ms(deck(i), next as u32);
             }
         }
+        self.idle_clock_ms = self.idle_clock_ms.wrapping_add(elapsed_ms);
+        self.update_idle();
         self.publish_health();
     }
     /// Advance only the observer. Replay uses this to model a stopped publisher.
     /// The interactive timer normally calls tick(), which also runs the owner.
     pub fn observe_elapsed(&mut self, elapsed_ms: u32) {
         self.service.advance(u64::from(elapsed_ms));
+    }
+    /// Touch, navigation or a control; restarts the screensaver countdown.
+    pub fn note_activity(&mut self) {
+        self.idle.input(InputSource::Physical, self.idle_clock_ms);
+    }
+    /// The input that dismisses the screensaver is spent on waking (M2.5).
+    pub fn wake(&mut self) {
+        self.note_activity();
+        self.update_idle();
+    }
+    pub const fn screensaver(&self) -> bool {
+        self.idle.shown()
+    }
+    fn update_idle(&mut self) {
+        let playing = (0..2).any(|i| self.presentation(i).transport.playing);
+        self.idle.tick(self.idle_clock_ms, playing, false);
     }
     fn restart_health_owner(&mut self) {
         self.health_publication.unbind();

@@ -23,8 +23,10 @@ completion. Host failure tests cover media replacement/removal, stale completion
 backpressure, source errors and persistence containment.
 
 The Slint simulator provides interactive decks, Library, Hot Cues, session
-settings, mixer/PFL/FX and health/analysis views. Its media, timing and audio
-environment are simulated. The reference output sink does not establish physical
+settings, mixer/PFL/FX and health/analysis views, with the Ruzina emblem as the
+fallback cover and the M2.5 idle screensaver (2 min, playback inhibits, the
+waking input reaches no deck) showing the owner-supplied branding. Its media,
+timing and audio environment are simulated. The reference output sink does not establish physical
 I2S/UAC timing or listening acceptance.
 
 Optional APTA conversion/worker/service/lifecycle logic is adopted selectively.

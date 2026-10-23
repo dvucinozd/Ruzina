@@ -1,6 +1,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod idle;
 mod mix_fx;
 pub use mix_fx::*;
 

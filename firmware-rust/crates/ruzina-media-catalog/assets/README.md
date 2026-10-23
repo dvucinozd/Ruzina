@@ -1,22 +1,24 @@
 # Default artwork
 
-`default_artwork.svg` is the operator-supplied Pajoniiir logo that M2.5 shows
-when a loaded track has no usable cover. It is byte-identical to the donor's
-`firmware/main-deck-p4/components/ui/assets/default_artwork.svg` (SHA-256
-`cc7213894515a6438de36828c99386e7d9eebf6d5bb31bf70ea79c37bfc2661d`) and is kept
-here as the source of record and for attribution.
+A loaded track without a usable cover shows the Ruzina emblem (RP-07). Its
+source of record is the owner-supplied
+`firmware-rust/assets/branding/ruzina-emblem.png` (see that folder's README).
 
-`src/default_artwork.rs` holds the 34x34 deck and 40x40 Library RGB565 pixels
-that the M2.5 tool `tools/generate_default_artwork.cjs` (sharp 0.35.4 / libvips
-8.18.6) rendered from it at donor commit
-`20f1c3f04a615209ae25e9bbdae649d0f5b44e8d`. The pixels are copied unchanged by
-`extract_default_artwork.py` from that commit's generated
-`ui_artwork_placeholder.c`:
+`src/default_artwork.rs` holds the 34x34 deck and 40x40 Library RGB565 pixels.
+`generate_default_artwork.py` renders them with the Python standard library
+only, so the result does not depend on an image tool version:
 
 ```text
-python3 -I extract_default_artwork.py ui_artwork_placeholder.c ../src/default_artwork.rs
+python3 -I generate_default_artwork.py ../../../assets/branding/ruzina-emblem.png ../src/default_artwork.rs
 ```
 
-No SVG renderer, decoder or file access is needed at runtime. Changing the
-logo or a thumbnail size means re-rendering in the donor tool and reviewing the
-UI goldens.
+The script decodes the PNG, composites any alpha over black, crops a square
+around the visible emblem (luminance above 40, 3% margin) and area-averages it
+to each edge. No SVG renderer, decoder or file access is needed at runtime.
+Changing the emblem or a thumbnail size means rerunning the script and
+reviewing the UI goldens.
+
+Until 2026-10-24 this was the attributed M2.5 Pajoniiir logo
+(`default_artwork.svg`, SHA-256
+`cc7213894515a6438de36828c99386e7d9eebf6d5bb31bf70ea79c37bfc2661d`); it remains
+in the donor and in this repository's history.
