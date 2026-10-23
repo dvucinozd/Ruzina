@@ -20,9 +20,14 @@ pub struct ReadyStream {
 
 impl ReadyStream {
     fn valid(self) -> bool {
+        // The render rate, or 44.1 kHz through the adapter's exact-phase
+        // converter (`pajoniiir-uac::resample`). Nothing else has a path.
         self.connection_epoch != 0
             && self.stream_epoch != 0
-            && self.sample_rate_hz == crate::render::RENDER_SAMPLE_RATE_HZ
+            && matches!(
+                self.sample_rate_hz,
+                crate::render::RENDER_SAMPLE_RATE_HZ | 44_100
+            )
             && matches!(self.sample_bits, 16 | 24 | 32)
             && self.pair.left != self.pair.right
             && self.pair.left < self.channels
@@ -313,7 +318,11 @@ mod tests {
     fn unsupported_format_or_uninitialized_epoch_is_not_a_ready_dac() {
         for bad in [
             ReadyStream {
-                sample_rate_hz: 44_100,
+                sample_rate_hz: 96_000,
+                ..stream(10, 0, 1)
+            },
+            ReadyStream {
+                sample_rate_hz: 32_000,
                 ..stream(10, 0, 1)
             },
             ReadyStream {
@@ -333,6 +342,20 @@ mod tests {
                 MainRoute::Controller(_)
             ));
         }
+    }
+
+    #[test]
+    fn a_44_1_khz_controller_stream_is_routable_through_the_converter() {
+        let mut available = controller();
+        for stream in [
+            available.controller_main.as_mut().unwrap(),
+            available.controller_headphones.as_mut().unwrap(),
+        ] {
+            stream.sample_rate_hz = 44_100;
+        }
+        let routes = select_routes(available);
+        assert!(matches!(routes.main, MainRoute::Controller(_)));
+        assert!(matches!(routes.headphones, HeadphoneRoute::Controller(_)));
     }
 
     #[test]

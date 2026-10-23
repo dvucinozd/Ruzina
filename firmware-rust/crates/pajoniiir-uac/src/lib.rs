@@ -13,4 +13,5 @@
 pub mod descriptor;
 pub mod health;
 pub mod packet;
+pub mod resample;
 pub mod stream;
