@@ -37,7 +37,7 @@ fn format_time(position_ms: u64) -> String {
     )
 }
 
-/// The loaded track's cover, or the attributed logo while it is missing,
+/// The loaded track's cover, or the Ruzina emblem while it is missing,
 /// loading or refused; nothing for an empty deck (RP-07, M2.5).
 fn artwork_image(view: ArtworkView<'_>) -> slint::Image {
     let pixels: &[u16] = match view {
@@ -139,6 +139,7 @@ fn refresh(ui: &MainWindow, session: &Session) {
     ui.set_selection(session.selected as i32);
     ui.set_media_ready(session.connected());
     ui.set_message(session.message.clone().into());
+    ui.set_screensaver(session.screensaver());
     mix_fx_ui::refresh(ui, session);
     health_ui::refresh(ui, session.diagnostics());
     analysis_ui::refresh(ui, session.analysis_observation);
@@ -206,6 +207,7 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
     let weak = ui.as_weak();
     let session = state.clone();
     ui.on_select_track(move |selection| {
+        session.borrow_mut().note_activity();
         if (0..session::TITLES.len() as i32).contains(&selection) && session.borrow().connected() {
             session.borrow_mut().selected = selection as usize;
             if let Some(ui) = weak.upgrade() {
@@ -237,6 +239,16 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
             refresh(&ui, &session.borrow());
         }
     });
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_wake(move || {
+        session.borrow_mut().wake();
+        if let Some(ui) = weak.upgrade() {
+            refresh(&ui, &session.borrow());
+        }
+    });
+    let session = state.clone();
+    ui.on_activity(move || session.borrow_mut().note_activity());
     let weak = ui.as_weak();
     ui.on_display_changed(move || {
         if let Some(ui) = weak.upgrade() {

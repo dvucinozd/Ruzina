@@ -87,9 +87,84 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         health_smoke::recovery(&ui, &state, output, name, width as f32)?;
         analysis_smoke::run(&ui, &state, output, name, width as f32)?;
     }
+    // Last, so the overlay's keyboard focus cannot alter earlier scenes.
+    for (name, width, height) in [("jc1060", 1024, 600), ("jc8012", 800, 1280)] {
+        window.set_size(slint::PhysicalSize::new(width, height));
+        ui.set_board_label(format!("{name} · HOST SIMULATOR").into());
+        *state.borrow_mut() = Session::for_board(if name == "jc1060" {
+            BoardId::GuitionJc1060P470cIwY
+        } else {
+            BoardId::GuitionJc8012P4a1cIwY
+        });
+        screensaver(&ui, &state, output, name, width as f32, height as f32)?;
+    }
     println!(
-        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 54 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 56 software-rendered snapshots: PASS"
     );
+    Ok(())
+}
+
+/// Idle screensaver from a fresh session: it appears at the M2.5 timeout,
+/// stays away while a deck plays, and the touch or key that dismisses it
+/// reaches no deck.
+fn screensaver(
+    ui: &MainWindow,
+    state: &Rc<RefCell<Session>>,
+    output: &Path,
+    name: &str,
+    width: f32,
+    height: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use ruzina_ui_model::idle::IDLE_DEFAULT_TIMEOUT_MS;
+    use slint::platform::WindowEvent;
+    let board = state.borrow().diagnostics().identity.board;
+    *state.borrow_mut() = Session::for_board(board);
+    ui.set_page(0);
+    refresh(ui, &state.borrow());
+    state.borrow_mut().tick(IDLE_DEFAULT_TIMEOUT_MS - 1);
+    refresh(ui, &state.borrow());
+    assert!(!ui.get_screensaver());
+    state.borrow_mut().tick(1);
+    refresh(ui, &state.borrow());
+    assert!(ui.get_screensaver());
+    capture(ui, output, &format!("{name}-screensaver"))?;
+    // The touch lands where DECK 1 PLAY is, but only wakes the screen.
+    click(ui, 70.0, 356.0);
+    assert!(!ui.get_screensaver());
+    assert!(!state.borrow().presentation(0).transport.playing);
+    assert_eq!(ui.get_page(), 0);
+    state.borrow_mut().tick(IDLE_DEFAULT_TIMEOUT_MS);
+    refresh(ui, &state.borrow());
+    ui.window().take_snapshot()?;
+    assert!(ui.get_screensaver());
+    ui.window()
+        .dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+    ui.window()
+        .dispatch_event(WindowEvent::KeyReleased { text: " ".into() });
+    assert!(!ui.get_screensaver(), "a key wakes it too");
+    assert!(!state.borrow().presentation(0).transport.playing);
+    // Due in one second, but playback holds it off and its stop restarts the
+    // countdown instead of blanking at once.
+    ui.invoke_select_track(0);
+    ui.invoke_load_track(0);
+    state.borrow_mut().tick(IDLE_DEFAULT_TIMEOUT_MS - 1_000);
+    ui.invoke_deck_action(0, 0);
+    for _ in 0..50 {
+        state.borrow_mut().tick(100);
+    }
+    refresh(ui, &state.borrow());
+    assert!(state.borrow().presentation(0).transport.playing);
+    assert!(!ui.get_screensaver());
+    ui.invoke_deck_action(0, 0);
+    state.borrow_mut().tick(IDLE_DEFAULT_TIMEOUT_MS - 1);
+    refresh(ui, &state.borrow());
+    assert!(!ui.get_screensaver());
+    state.borrow_mut().tick(1);
+    refresh(ui, &state.borrow());
+    assert!(ui.get_screensaver());
+    state.borrow_mut().wake();
+    let _ = (width, height);
+    println!("Idle screensaver show/wake/no-deck-input/playback inhibit: PASS at {name}");
     Ok(())
 }
 

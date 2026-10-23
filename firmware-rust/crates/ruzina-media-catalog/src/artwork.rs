@@ -5,7 +5,7 @@
 //! deck, the track identity and a per-deck sequence; only the current ticket
 //! may publish. Missing, oversized, unreadable, non-baseline or undecodable
 //! covers degrade to an explicit fallback that presentation renders as the
-//! attributed Pajoniiir logo.
+//! Ruzina emblem.
 
 use ruzina_core::MediaTrackId;
 use ruzina_media_session::MediaLease;
@@ -146,7 +146,7 @@ pub enum ArtworkView<'a> {
         edge: u16,
         pixels: &'a [u16],
     },
-    /// Render the attributed Pajoniiir logo.
+    /// Render the Ruzina emblem.
     Fallback(ArtworkFallback),
 }
 

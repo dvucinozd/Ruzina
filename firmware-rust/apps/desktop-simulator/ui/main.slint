@@ -105,7 +105,7 @@ component DeckPanel inherits Rectangle {
         }
         HorizontalLayout {
             height: 34px; spacing: 8px;
-            // Cover or the attributed Pajoniiir logo; empty decks show none.
+            // Cover or the Ruzina emblem; empty decks show none.
             if root.data.loaded: Image {
                 width: 34px; height: 34px; source: root.data.artwork; image-fit: fill;
                 accessible-role: image; accessible-label: "Track artwork";
@@ -268,7 +268,12 @@ export component MainWindow inherits Window {
     callback pad-bank(int, int);
     callback pad-fx(int, int, int, bool);
     callback cancel-pads;
-    changed page => { if (self.page != 5) { self.cancel-pads(); } }
+    // Idle screensaver (M2.5 timing in ruzina-ui-model). While it is shown it
+    // takes every touch and key, so the input that wakes it reaches no deck.
+    in property <bool> screensaver;
+    callback wake;
+    callback activity;
+    changed page => { if (self.page != 5) { self.cancel-pads(); } self.activity(); }
 
     VerticalLayout {
         padding: 16px; spacing: 12px;
@@ -444,5 +449,27 @@ export component MainWindow inherits Window {
             }
         }
         Text { height: 22px; text: root.message; color: #8ed9bb; font-size: 13px; overflow: elide; vertical-alignment: center; }
+    }
+
+    if root.screensaver: Rectangle {
+        x: 0; y: 0; width: root.width; height: root.height;
+        background: #140d09;
+        // Owner-supplied branding: the landscape splash, or emblem and
+        // wordmark stacked for the portrait panel.
+        if !root.portrait: Image {
+            width: parent.width; height: parent.height;
+            source: @image-url("../../../assets/branding/ruzina-screensaver.png");
+            image-fit: cover;
+        }
+        if root.portrait: VerticalLayout {
+            alignment: center; spacing: 56px; padding: 64px;
+            Image { height: 640px; source: @image-url("../../../assets/branding/ruzina-emblem.png"); image-fit: contain; }
+            Image { height: 156px; source: @image-url("../../../assets/branding/ruzina-wordmark.png"); image-fit: contain; }
+        }
+        TouchArea { clicked => { root.wake(); } }
+        FocusScope {
+            init => { self.focus(); }
+            key-pressed(event) => { root.wake(); accept }
+        }
     }
 }

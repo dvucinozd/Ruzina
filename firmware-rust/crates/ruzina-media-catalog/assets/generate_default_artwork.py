@@ -1,0 +1,164 @@
+"""Render the Ruzina emblem into the RGB565 fallback cover thumbnails.
+
+Standard library only, so the pixels do not depend on an image tool version:
+decode the 8-bit non-interlaced PNG, composite any alpha over black, crop a
+square around the visible emblem and area-average down to the deck and Library
+edges.
+
+    python3 -I generate_default_artwork.py ../../../assets/branding/ruzina-emblem.png ../src/default_artwork.rs
+"""
+import hashlib
+import struct
+import sys
+import zlib
+from pathlib import Path
+
+DECK_EDGE = 34
+ROW_EDGE = 40
+
+
+def decode_png(data):
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG"
+    at, idat, header = 8, b"", None
+    while at < len(data):
+        length, kind = struct.unpack(">I4s", data[at:at + 8])
+        body = data[at + 8:at + 8 + length]
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", body)
+        elif kind == b"IDAT":
+            idat += body
+        at += 12 + length
+    width, height, depth, color, _, _, interlace = header
+    assert depth == 8 and interlace == 0 and color in (2, 6), header
+    channels = 4 if color == 6 else 3
+    raw = zlib.decompress(idat)
+    stride = width * channels
+    rows, previous, at = [], bytearray(stride), 0
+    for _ in range(height):
+        kind, line = raw[at], bytearray(raw[at + 1:at + 1 + stride])
+        at += 1 + stride
+        for i in range(stride):
+            a = line[i - channels] if i >= channels else 0
+            b = previous[i]
+            c = previous[i - channels] if i >= channels else 0
+            if kind == 1:
+                line[i] = (line[i] + a) & 0xFF
+            elif kind == 2:
+                line[i] = (line[i] + b) & 0xFF
+            elif kind == 3:
+                line[i] = (line[i] + (a + b) // 2) & 0xFF
+            elif kind == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 0xFF
+        rows.append(line)
+        previous = line
+    pixels = []
+    for line in rows:
+        for x in range(width):
+            px = line[x * channels:(x + 1) * channels]
+            alpha = px[3] if channels == 4 else 255
+            pixels.append(tuple(v * alpha / 255.0 for v in px[:3]))
+    return width, height, pixels
+
+
+def emblem_square(width, height, pixels, threshold=40.0, margin=0.03):
+    """Square around the visible emblem (luminance above `threshold`)."""
+    xs, ys = [], []
+    for y in range(height):
+        for x in range(width):
+            r, g, b = pixels[y * width + x]
+            if 0.299 * r + 0.587 * g + 0.114 * b > threshold:
+                xs.append(x)
+                ys.append(y)
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    side = max(max(xs) - min(xs), max(ys) - min(ys)) * (1 + 2 * margin)
+    side = int(min(side, width, height))
+    left = int(min(max(cx - side / 2, 0), width - side))
+    top = int(min(max(cy - side / 2, 0), height - side))
+    return left, top, side
+
+
+def thumbnail(width, height, pixels, edge, square):
+    left, top, side = square
+    out = []
+    for ty in range(edge):
+        y0, y1 = ty * side / edge, (ty + 1) * side / edge
+        for tx in range(edge):
+            x0, x1 = tx * side / edge, (tx + 1) * side / edge
+            acc, area = [0.0, 0.0, 0.0], 0.0
+            for sy in range(int(y0), min(side, int(y1) + 1)):
+                wy = min(y1, sy + 1) - max(y0, sy)
+                if wy <= 0:
+                    continue
+                for sx in range(int(x0), min(side, int(x1) + 1)):
+                    wx = min(x1, sx + 1) - max(x0, sx)
+                    if wx <= 0:
+                        continue
+                    r, g, b = pixels[(top + sy) * width + left + sx]
+                    weight = wx * wy
+                    acc[0] += r * weight
+                    acc[1] += g * weight
+                    acc[2] += b * weight
+                    area += weight
+            out.append(tuple(int(round(v / area)) for v in acc))
+    return out
+
+
+def rgb565(rgb):
+    r, g, b = rgb
+    return (r >> 3) << 11 | (g >> 2) << 5 | b >> 3
+
+
+def array(name, values, per_line=12):
+    lines = [f"pub const {name}: [u16; {len(values)}] = ["]
+    for i in range(0, len(values), per_line):
+        lines.append("    " + ", ".join(f"0x{v:04x}" for v in values[i:i + per_line]) + ",")
+    lines.append("];")
+    return "\n".join(lines)
+
+
+def main():
+    source, target = Path(sys.argv[1]), Path(sys.argv[2])
+    data = source.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    width, height, pixels = decode_png(data)
+    square = emblem_square(width, height, pixels)
+    deck = [rgb565(p) for p in thumbnail(width, height, pixels, DECK_EDGE, square)]
+    row = [rgb565(p) for p in thumbnail(width, height, pixels, ROW_EDGE, square)]
+    header = f'''//! Ruzina emblem shown when a loaded track has no usable cover (RP-07).
+//!
+//! Generated by `assets/generate_default_artwork.py` from the owner-supplied
+//! `firmware-rust/assets/branding/ruzina-emblem.png` (SHA-256
+//! {digest}):
+//! square crop around the emblem, alpha over black, area-averaged to the deck
+//! and Library edges, RGB565. No image decoder or file access is needed at
+//! runtime. Do not hand-edit pixels; rerun the script.
+
+use crate::artwork::ARTWORK_DECK_EDGE;
+
+/// Library row thumbnail edge of the pre-rendered logo.
+pub const DEFAULT_ARTWORK_ROW_EDGE: u16 = {ROW_EDGE};
+
+const _: () = assert!(
+    ARTWORK_DECK_EDGE == {DECK_EDGE},
+    "regenerate the logo after a deck resize"
+);
+'''
+    target.write_text(header + "\n" + array("DEFAULT_ARTWORK_DECK", deck) + "\n\n" + array("DEFAULT_ARTWORK_ROW", row) + "\n")
+    if len(sys.argv) > 3:
+        # Optional preview of the deck thumbnail, 8x nearest-neighbour.
+        scale, edge = 8, DECK_EDGE
+        rgb = thumbnail(width, height, pixels, edge, square)
+        raw = b"".join(
+            b"\x00" + b"".join(bytes(rgb[(y // scale) * edge + x // scale]) for x in range(edge * scale))
+            for y in range(edge * scale)
+        )
+        chunk = lambda k, d: struct.pack(">I", len(d)) + k + d + struct.pack(">I", zlib.crc32(k + d) & 0xFFFFFFFF)
+        png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", edge * scale, edge * scale, 8, 2, 0, 0, 0))
+        Path(sys.argv[3]).write_bytes(png + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+    print(target, len(deck), len(row), digest, square)
+
+
+if __name__ == "__main__":
+    main()
