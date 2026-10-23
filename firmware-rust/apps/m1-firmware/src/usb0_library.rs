@@ -8,26 +8,34 @@ use embassy_sync::{
     channel::Channel,
     signal::Signal,
 };
+#[cfg(feature = "p4-psram-storage")]
+use pajoniiir_media_catalog::playlists::{
+    CATALOG_MAX_PLAYLIST_ENTRIES, CATALOG_MAX_PLAYLIST_NODES, PlaylistBuilder, PlaylistEntry,
+    PlaylistIndex, PlaylistNode, PlaylistStore,
+};
+use pajoniiir_media_catalog::playlists::{LibraryActivation, LibraryBrowser, PlaylistImportStats};
 use pajoniiir_media_catalog::{
     CatalogBank, CatalogBankBuilder, CatalogBankPublisher, CatalogBuildError, CatalogLoadCandidate,
-    CatalogPublicationId, CatalogSelection, CatalogTrack, MEDIA_CATALOG_MAX_TRACKS,
+    CatalogPublicationId, CatalogTrack, MEDIA_CATALOG_MAX_TRACKS,
 };
 use pajoniiir_media_fs::{BoundedPath, FileHandle};
 use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 use pajoniiir_media_session::MediaLease;
 use pajoniiir_rekordbox::{
-    PDB_MAX_NAMES, PDB_NAME_MAX, PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_TABLE_ALBUMS,
-    PDB_TABLE_ARTISTS, PDB_TABLE_KEYS, PDB_TABLE_TRACKS, PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES,
-    PdbCatalogError, PdbError, PdbHeader, PdbNameEntry, PdbNameLookup, PdbNameRowHeader,
-    PdbNameRowLayout, PdbPageSlotWalker, PdbTableDirectory, PdbText, PdbTrackRow,
-    REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb, parse_devicesql_field_header,
-    parse_pdb_header, parse_pdb_name_row_header, parse_pdb_page_header, parse_pdb_table_directory,
-    parse_pdb_track_row_header, pdb_track_string_page_offset, recover_pdb_title,
-    resolve_pdb_track_names,
+    PDB_MAX_NAMES, PDB_NAME_MAX, PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_PLAYLIST_ENTRY_ROW_BYTES,
+    PDB_PLAYLIST_TREE_ROW_HEADER_BYTES, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_KEYS,
+    PDB_TABLE_PLAYLIST_ENTRIES, PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS, PDB_TITLE_MAX,
+    PDB_TRACK_ROW_HEADER_BYTES, PdbCatalogError, PdbError, PdbHeader, PdbNameEntry, PdbNameLookup,
+    PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbPlaylistEntryRow, PdbPlaylistTreeRow,
+    PdbTableDirectory, PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb,
+    parse_devicesql_field_header, parse_pdb_header, parse_pdb_name_row_header,
+    parse_pdb_page_header, parse_pdb_playlist_entry_row, parse_pdb_playlist_tree_row,
+    parse_pdb_table_directory, parse_pdb_track_row_header, pdb_track_string_page_offset,
+    recover_pdb_title, resolve_pdb_track_names,
 };
 use static_cell::StaticCell;
 
-use crate::product_runtime::LibraryEffect;
+use crate::product_runtime::{LibraryEffect, set_library_cursor_on_node};
 use crate::usb0_msc::{
     USB0_LIBRARY_EVENTS, Usb0FilesystemClient, Usb0FsCompletion, Usb0FsFileHandle,
     Usb0FsOperationError, Usb0FsRequest, Usb0FsSubmitResult, Usb0LibraryEvent, Usb0MscBinding,
@@ -136,6 +144,12 @@ fn set_catalog_publication(publication: Option<CatalogPublicationId>) {
     USB0_LIBRARY_PUBLICATION.lock(|cell| {
         *cell.borrow_mut() = publication;
     });
+}
+
+/// Mirrors the cursor for load admission and stale-candidate checks.
+fn publish_browser(browser: &LibraryBrowser) {
+    set_catalog_publication(browser.publication());
+    set_library_cursor_on_node(browser.on_node_row());
 }
 
 #[cfg(feature = "p4-psram-storage")]
@@ -259,6 +273,67 @@ impl CatalogBank for Usb0CatalogBank {
     }
 }
 
+/// Playlist tree and entries reserved once in PSRAM, so a PDB walk never
+/// grows the heap (RP-06).
+#[cfg(feature = "p4-psram-storage")]
+struct Usb0PlaylistStore {
+    nodes: Vec<PlaylistNode>,
+    entries: Vec<PlaylistEntry>,
+}
+
+#[cfg(feature = "p4-psram-storage")]
+impl Usb0PlaylistStore {
+    fn try_new() -> Result<Self, ()> {
+        let mut nodes = Vec::new();
+        nodes
+            .try_reserve_exact(CATALOG_MAX_PLAYLIST_NODES)
+            .map_err(|_| ())?;
+        let mut entries = Vec::new();
+        entries
+            .try_reserve_exact(CATALOG_MAX_PLAYLIST_ENTRIES)
+            .map_err(|_| ())?;
+        Ok(Self { nodes, entries })
+    }
+}
+
+#[cfg(feature = "p4-psram-storage")]
+impl PlaylistStore for Usb0PlaylistStore {
+    fn node_capacity(&self) -> usize {
+        CATALOG_MAX_PLAYLIST_NODES
+    }
+    fn entry_capacity(&self) -> usize {
+        CATALOG_MAX_PLAYLIST_ENTRIES
+    }
+    fn nodes(&self) -> &[PlaylistNode] {
+        &self.nodes
+    }
+    fn nodes_mut(&mut self) -> &mut [PlaylistNode] {
+        &mut self.nodes
+    }
+    fn entries(&self) -> &[PlaylistEntry] {
+        &self.entries
+    }
+    fn entries_mut(&mut self) -> &mut [PlaylistEntry] {
+        &mut self.entries
+    }
+    fn clear(&mut self) {
+        self.nodes.clear();
+        self.entries.clear();
+    }
+    fn push_node_prechecked(&mut self, node: PlaylistNode) {
+        debug_assert!(self.nodes.len() < CATALOG_MAX_PLAYLIST_NODES);
+        self.nodes.push(node);
+    }
+    fn push_entry_prechecked(&mut self, entry: PlaylistEntry) {
+        debug_assert!(self.entries.len() < CATALOG_MAX_PLAYLIST_ENTRIES);
+        self.entries.push(entry);
+    }
+    fn truncate(&mut self, nodes: usize, entries: usize) {
+        self.nodes.truncate(nodes);
+        self.entries.truncate(entries);
+    }
+}
+
 struct Usb0LibraryCatalogStage {
     #[cfg(feature = "p4-psram-storage")]
     publisher: CatalogBankPublisher<Usb0CatalogBank>,
@@ -270,6 +345,13 @@ struct Usb0LibraryCatalogStage {
     builder: Option<CatalogBankBuilder<Usb0CatalogBank>>,
     #[cfg(feature = "p4-psram-storage")]
     next_revision: u32,
+    /// Published together with the catalog snapshot it was validated against.
+    #[cfg(feature = "p4-psram-storage")]
+    playlists: Option<PlaylistIndex<Usb0PlaylistStore>>,
+    #[cfg(feature = "p4-psram-storage")]
+    playlist_builder: Option<PlaylistBuilder<Usb0PlaylistStore>>,
+    #[cfg(feature = "p4-psram-storage")]
+    playlist_stores: [Option<Usb0PlaylistStore>; 2],
 }
 
 impl Usb0LibraryCatalogStage {
@@ -278,12 +360,20 @@ impl Usb0LibraryCatalogStage {
         {
             let first = Usb0CatalogBank::try_new()?;
             let second = Usb0CatalogBank::try_new()?;
+            // Two stores: one published while the next import builds.
+            let playlist_stores = [
+                Some(Usb0PlaylistStore::try_new()?),
+                Some(Usb0PlaylistStore::try_new()?),
+            ];
             Ok(Self {
                 publisher: CatalogBankPublisher::new(),
                 available: Some(first),
                 reserve: Some(second),
                 builder: None,
                 next_revision: 1,
+                playlists: None,
+                playlist_builder: None,
+                playlist_stores,
             })
         }
 
@@ -304,6 +394,21 @@ impl Usb0LibraryCatalogStage {
         }
     }
 
+    #[cfg(feature = "p4-psram-storage")]
+    fn recycle_playlist_store(&mut self, store: Usb0PlaylistStore) {
+        match self.playlist_stores.iter_mut().find(|slot| slot.is_none()) {
+            Some(slot) => *slot = Some(store),
+            None => debug_assert!(false, "more than two playlist stores returned to the pool"),
+        }
+    }
+
+    #[cfg(feature = "p4-psram-storage")]
+    fn retire_playlists(&mut self) {
+        if let Some(index) = self.playlists.take() {
+            self.recycle_playlist_store(index.into_store());
+        }
+    }
+
     fn prepare_generation(&mut self, lease: MediaLease) {
         #[cfg(feature = "p4-psram-storage")]
         {
@@ -316,6 +421,7 @@ impl Usb0LibraryCatalogStage {
                 if let Some(snapshot) = self.publisher.take_current() {
                     self.recycle_bank(snapshot.into_bank());
                 }
+                self.retire_playlists();
             }
         }
 
@@ -331,13 +437,56 @@ impl Usb0LibraryCatalogStage {
                 .available
                 .take()
                 .ok_or(Usb0LibraryError::CatalogBankUnavailable)?;
+            let Some(store) = self.playlist_stores.iter_mut().find_map(Option::take) else {
+                self.recycle_bank(bank);
+                return Err(Usb0LibraryError::CatalogBankUnavailable);
+            };
             self.builder = Some(CatalogBankBuilder::new(lease, bank));
+            self.playlist_builder = Some(PlaylistBuilder::new(store));
         }
 
         #[cfg(not(feature = "p4-psram-storage"))]
         let _ = lease;
 
         Ok(())
+    }
+
+    fn retain_playlist_node(&mut self, row: PdbPlaylistTreeRow, name: &str) -> bool {
+        #[cfg(feature = "p4-psram-storage")]
+        if let Some(builder) = self.playlist_builder.as_mut() {
+            return builder.push_node(row.id, row.parent_id, row.sort_order, row.is_folder, name);
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = (row, name);
+
+        true
+    }
+
+    fn retain_playlist_entry(&mut self, row: PdbPlaylistEntryRow) -> bool {
+        #[cfg(feature = "p4-psram-storage")]
+        if let Some(builder) = self.playlist_builder.as_mut() {
+            return builder.push_entry(row.playlist_id, row.entry_index, row.track_id);
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = row;
+
+        true
+    }
+
+    fn note_playlist_invalid_row(&mut self) {
+        #[cfg(feature = "p4-psram-storage")]
+        if let Some(builder) = self.playlist_builder.as_mut() {
+            builder.note_invalid_row();
+        }
+    }
+
+    fn note_playlist_truncated(&mut self) {
+        #[cfg(feature = "p4-psram-storage")]
+        if let Some(builder) = self.playlist_builder.as_mut() {
+            builder.note_truncated();
+        }
     }
 
     fn validate_names(&self, probe: &Usb0LibraryPdbProbe) -> Result<(), Usb0LibraryError> {
@@ -401,7 +550,9 @@ impl Usb0LibraryCatalogStage {
         Ok(())
     }
 
-    fn publish(&mut self) -> Result<(), Usb0LibraryError> {
+    /// Publishes the catalog, then validates the staged playlist rows against
+    /// that exact snapshot so both share one publication id.
+    fn publish(&mut self) -> Result<Option<PlaylistImportStats>, Usb0LibraryError> {
         #[cfg(feature = "p4-psram-storage")]
         {
             let builder = self
@@ -416,43 +567,73 @@ impl Usb0LibraryCatalogStage {
             } else if let Some(bank) = self.reserve.take() {
                 self.recycle_bank(bank);
             }
+
+            self.retire_playlists();
+            let (Some(playlists), Some(snapshot)) =
+                (self.playlist_builder.take(), self.publisher.current())
+            else {
+                return Ok(None);
+            };
+            let index = playlists.finish(snapshot);
+            let stats = index.stats();
+            self.playlists = Some(index);
+            Ok(Some(stats))
         }
 
-        Ok(())
+        #[cfg(not(feature = "p4-psram-storage"))]
+        {
+            Ok(None)
+        }
     }
 
-    fn sync_selection(&self, selection: &mut CatalogSelection) {
+    fn sync_selection(&self, browser: &mut LibraryBrowser) {
         #[cfg(feature = "p4-psram-storage")]
         match self.publisher.current() {
-            Some(snapshot) => selection.publish(snapshot),
-            None => selection.clear(),
+            Some(snapshot) => browser.publish(snapshot, self.playlists.as_ref()),
+            None => browser.clear(),
         }
 
         #[cfg(not(feature = "p4-psram-storage"))]
-        selection.clear();
+        browser.clear();
 
-        set_catalog_publication(selection.publication());
+        publish_browser(browser);
     }
 
-    fn resolve_selected(&self, selection: &CatalogSelection) -> Option<CatalogLoadCandidate> {
+    fn browse_back(&self, browser: &mut LibraryBrowser) {
+        #[cfg(feature = "p4-psram-storage")]
+        if let Some(snapshot) = self.publisher.current() {
+            let _ = browser.back(snapshot, self.playlists.as_ref());
+        }
+
+        #[cfg(not(feature = "p4-psram-storage"))]
+        let _ = browser;
+    }
+
+    fn activate(&self, browser: &mut LibraryBrowser) -> LibraryActivation {
         #[cfg(feature = "p4-psram-storage")]
         {
-            self.publisher
-                .current()
-                .and_then(|snapshot| selection.resolve(snapshot))
+            match self.publisher.current() {
+                Some(snapshot) => browser.activate(snapshot, self.playlists.as_ref()),
+                None => LibraryActivation::Stale,
+            }
         }
 
         #[cfg(not(feature = "p4-psram-storage"))]
         {
-            let _ = selection;
-            None
+            let _ = browser;
+            LibraryActivation::Stale
         }
     }
 
     fn abort(&mut self) {
         #[cfg(feature = "p4-psram-storage")]
-        if let Some(builder) = self.builder.take() {
-            self.recycle_bank(builder.into_bank());
+        {
+            if let Some(builder) = self.builder.take() {
+                self.recycle_bank(builder.into_bank());
+            }
+            if let Some(builder) = self.playlist_builder.take() {
+                self.recycle_playlist_store(builder.into_store());
+            }
         }
     }
 
@@ -462,6 +643,13 @@ impl Usb0LibraryCatalogStage {
             self.abort();
             if let Some(snapshot) = self.publisher.take_if_lease(lease) {
                 self.recycle_bank(snapshot.into_bank());
+            }
+            if self
+                .playlists
+                .as_ref()
+                .is_some_and(|index| index.publication().lease == lease)
+            {
+                self.retire_playlists();
             }
         }
 
@@ -531,10 +719,14 @@ pub(crate) struct Usb0LibraryPdbProbe {
     pub(crate) artists_first_page: Option<u32>,
     pub(crate) albums_first_page: Option<u32>,
     pub(crate) keys_first_page: Option<u32>,
+    pub(crate) playlist_tree_first_page: Option<u32>,
+    pub(crate) playlist_entries_first_page: Option<u32>,
     pub(crate) tracks_layout: Option<Usb0LibraryTableProbe>,
     pub(crate) artists_layout: Option<Usb0LibraryNameTableProbe>,
     pub(crate) albums_layout: Option<Usb0LibraryNameTableProbe>,
     pub(crate) keys_layout: Option<Usb0LibraryNameTableProbe>,
+    /// Published hierarchy counts; invalid rows never fail the track catalog.
+    pub(crate) playlists: Option<PlaylistImportStats>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -961,10 +1153,13 @@ fn parse_first_page(
         artists_first_page: first_page(&tables, PDB_TABLE_ARTISTS),
         albums_first_page: first_page(&tables, PDB_TABLE_ALBUMS),
         keys_first_page: first_page(&tables, PDB_TABLE_KEYS),
+        playlist_tree_first_page: first_page(&tables, PDB_TABLE_PLAYLIST_TREE),
+        playlist_entries_first_page: first_page(&tables, PDB_TABLE_PLAYLIST_ENTRIES),
         tracks_layout: None,
         artists_layout: None,
         albums_layout: None,
         keys_layout: None,
+        playlists: None,
     })
 }
 
@@ -1488,6 +1683,206 @@ async fn scan_optional_name_table(
     (file, buffer, result.map(Some))
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PlaylistTable {
+    Tree,
+    Entries,
+}
+
+/// Walks a playlist table into the staged builder (RP-06). Storage errors
+/// abort the import; malformed rows are counted, and a broken page chain or
+/// reached bound stops this table as truncated without failing the tracks.
+async fn scan_playlist_table(
+    client: &mut Usb0FilesystemClient,
+    lease: MediaLease,
+    mut file: Usb0FsFileHandle,
+    mut buffer: &'static mut [u8],
+    header: PdbHeader,
+    first_page: u32,
+    table: PlaylistTable,
+    catalog: &mut Usb0LibraryCatalogStage,
+) -> (
+    Usb0FsFileHandle,
+    &'static mut [u8],
+    Result<(), Usb0LibraryError>,
+) {
+    let row_bytes = match table {
+        PlaylistTable::Tree => PDB_PLAYLIST_TREE_ROW_HEADER_BYTES as u32 + 1,
+        PlaylistTable::Entries => PDB_PLAYLIST_ENTRY_ROW_BYTES as u32,
+    };
+    let mut page = first_page;
+    let mut pages = 0u32;
+
+    'pages: loop {
+        if page >= header.total_pages || pages >= header.total_pages {
+            catalog.note_playlist_truncated();
+            break;
+        }
+
+        let page_start = u64::from(page) * u64::from(header.page_size);
+        let (next_file, next_buffer, bytes) =
+            match read_at(client, lease, file, buffer, page_start).await {
+                PrefixReadResult::Complete {
+                    file,
+                    buffer,
+                    bytes,
+                } => (file, buffer, bytes),
+                PrefixReadResult::Failed {
+                    file,
+                    buffer,
+                    error,
+                } => return (file, buffer, Err(error)),
+            };
+        file = next_file;
+        buffer = next_buffer;
+
+        let Ok(page_header) = parse_pdb_page_header(&buffer[..bytes], header.page_size) else {
+            catalog.note_playlist_truncated();
+            break;
+        };
+        let Ok(mut walker) = PdbPageSlotWalker::new(header.page_size, page_header.declared_rows)
+        else {
+            catalog.note_playlist_truncated();
+            break;
+        };
+
+        while let Some(plan) = walker.next_batch_plan() {
+            let absolute = page_start + u64::from(plan.offset);
+            let (next_file, next_buffer, bytes) =
+                match read_at(client, lease, file, buffer, absolute).await {
+                    PrefixReadResult::Complete {
+                        file,
+                        buffer,
+                        bytes,
+                    } => (file, buffer, bytes),
+                    PrefixReadResult::Failed {
+                        file,
+                        buffer,
+                        error,
+                    } => return (file, buffer, Err(error)),
+                };
+            file = next_file;
+            buffer = next_buffer;
+
+            let Ok(row_offsets) = walker.ingest_batch(plan, &buffer[..bytes]) else {
+                catalog.note_playlist_truncated();
+                break 'pages;
+            };
+
+            for heap_offset in row_offsets.offsets().iter().copied() {
+                let page_relative = PDB_PAGE_HEAP_OFFSET as u32 + u32::from(heap_offset);
+                if page_relative.saturating_add(row_bytes) > header.page_size {
+                    catalog.note_playlist_invalid_row();
+                    continue;
+                }
+
+                let absolute = page_start + u64::from(page_relative);
+                let (next_file, next_buffer, bytes) =
+                    match read_at(client, lease, file, buffer, absolute).await {
+                        PrefixReadResult::Complete {
+                            file,
+                            buffer,
+                            bytes,
+                        } => (file, buffer, bytes),
+                        PrefixReadResult::Failed {
+                            file,
+                            buffer,
+                            error,
+                        } => return (file, buffer, Err(error)),
+                    };
+                file = next_file;
+                buffer = next_buffer;
+
+                let keep_reading = match table {
+                    PlaylistTable::Entries => {
+                        match parse_pdb_playlist_entry_row(&buffer[..bytes]) {
+                            Ok(Some(row)) => catalog.retain_playlist_entry(row),
+                            Ok(None) | Err(_) => {
+                                catalog.note_playlist_invalid_row();
+                                true
+                            }
+                        }
+                    }
+                    PlaylistTable::Tree => match parse_pdb_playlist_tree_row(&buffer[..bytes]) {
+                        Ok(Some(row)) => {
+                            let (next_file, next_buffer, name) = read_name_text(
+                                client,
+                                lease,
+                                file,
+                                buffer,
+                                page_start,
+                                header.page_size,
+                                heap_offset,
+                                row.name,
+                            )
+                            .await;
+                            file = next_file;
+                            buffer = next_buffer;
+                            match name {
+                                Ok(name) => match name.as_str() {
+                                    Some(name) => catalog.retain_playlist_node(row, name),
+                                    None => {
+                                        catalog.note_playlist_invalid_row();
+                                        true
+                                    }
+                                },
+                                Err(Usb0LibraryError::Pdb(_)) => {
+                                    catalog.note_playlist_invalid_row();
+                                    true
+                                }
+                                Err(error) => return (file, buffer, Err(error)),
+                            }
+                        }
+                        Ok(None) | Err(_) => {
+                            catalog.note_playlist_invalid_row();
+                            true
+                        }
+                    },
+                };
+                if !keep_reading {
+                    break 'pages;
+                }
+            }
+        }
+
+        if walker.summary().truncated {
+            catalog.note_playlist_truncated();
+        }
+        pages += 1;
+        if page_header.next_page == u32::MAX {
+            break;
+        }
+        page = page_header.next_page;
+    }
+
+    (file, buffer, Ok(()))
+}
+
+async fn scan_optional_playlist_table(
+    client: &mut Usb0FilesystemClient,
+    lease: MediaLease,
+    file: Usb0FsFileHandle,
+    buffer: &'static mut [u8],
+    header: PdbHeader,
+    first_page: Option<u32>,
+    table: PlaylistTable,
+    catalog: &mut Usb0LibraryCatalogStage,
+) -> (
+    Usb0FsFileHandle,
+    &'static mut [u8],
+    Result<(), Usb0LibraryError>,
+) {
+    match first_page {
+        Some(first_page) => {
+            scan_playlist_table(
+                client, lease, file, buffer, header, first_page, table, catalog,
+            )
+            .await
+        }
+        None => (file, buffer, Ok(())),
+    }
+}
+
 async fn scan_probe_tables(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
@@ -1556,7 +1951,7 @@ async fn scan_probe_tables(
         return (file, buffer, Err(error));
     }
 
-    let (file, buffer, tracks) = scan_table_layout(
+    let (mut file, mut buffer, tracks) = scan_table_layout(
         client,
         lease,
         probe.volume_identity,
@@ -1576,6 +1971,32 @@ async fn scan_probe_tables(
         return (file, buffer, Err(error));
     }
     probe.tracks_layout = Some(tracks);
+
+    // Entries are only meaningful with a tree to resolve them against.
+    let entries_first_page = probe
+        .playlist_tree_first_page
+        .and(probe.playlist_entries_first_page);
+    for (table, first_page) in [
+        (PlaylistTable::Tree, probe.playlist_tree_first_page),
+        (PlaylistTable::Entries, entries_first_page),
+    ] {
+        let (next_file, next_buffer, result) = scan_optional_playlist_table(
+            client,
+            lease,
+            file,
+            buffer,
+            probe.header,
+            first_page,
+            table,
+            catalog,
+        )
+        .await;
+        file = next_file;
+        buffer = next_buffer;
+        if let Err(error) = result {
+            return (file, buffer, Err(error));
+        }
+    }
 
     (file, buffer, Ok(probe))
 }
@@ -1626,9 +2047,12 @@ async fn probe_export_pdb(
             catalog.abort();
             Err(error)
         }
-        Ok(probe) => match close_result {
+        Ok(mut probe) => match close_result {
             Ok(()) => match catalog.publish() {
-                Ok(()) => Ok(probe),
+                Ok(playlists) => {
+                    probe.playlists = playlists;
+                    Ok(probe)
+                }
                 Err(error) => {
                     catalog.abort();
                     Err(error)
@@ -1646,16 +2070,31 @@ async fn probe_export_pdb(
 
 fn handle_library_command(
     catalog: Option<&Usb0LibraryCatalogStage>,
-    selection: &mut CatalogSelection,
+    browser: &mut LibraryBrowser,
     command: Usb0LibraryCommand,
 ) -> Usb0LibraryCompletion {
     let request_id = command.request_id;
-    match command.effect {
+    let completion = match command.effect {
         LibraryEffect::Browse { delta, multiplier } => {
-            let _ = selection.browse(delta, multiplier);
+            let _ = browser.browse(delta, multiplier);
             Usb0LibraryCompletion::Applied { request_id }
         }
         LibraryEffect::OpenLibrary => Usb0LibraryCompletion::Applied { request_id },
+        LibraryEffect::Back => {
+            if let Some(catalog) = catalog {
+                catalog.browse_back(browser);
+            }
+            Usb0LibraryCompletion::Applied { request_id }
+        }
+        // No permit: a stale mirror that now rests on a track loads nothing.
+        LibraryEffect::Open => {
+            if let Some(catalog) = catalog
+                && browser.on_node_row()
+            {
+                let _ = catalog.activate(browser);
+            }
+            Usb0LibraryCompletion::Applied { request_id }
+        }
         LibraryEffect::Load { deck, .. } => {
             let Some(catalog) = catalog else {
                 return Usb0LibraryCompletion::Failed {
@@ -1663,25 +2102,27 @@ fn handle_library_command(
                     error: Usb0LibraryCommandError::CatalogUnavailable,
                 };
             };
-            if selection.count() == 0 {
-                return Usb0LibraryCompletion::Failed {
-                    request_id,
-                    error: Usb0LibraryCommandError::EmptyCatalog,
-                };
-            }
-            match catalog.resolve_selected(selection) {
-                Some(candidate) => Usb0LibraryCompletion::LoadResolved {
+            match catalog.activate(browser) {
+                // The permit is finished by the Library deck owner on Applied.
+                LibraryActivation::Opened => Usb0LibraryCompletion::Applied { request_id },
+                LibraryActivation::Load(candidate) => Usb0LibraryCompletion::LoadResolved {
                     request_id,
                     deck,
                     candidate,
                 },
-                None => Usb0LibraryCompletion::Failed {
+                LibraryActivation::Empty => Usb0LibraryCompletion::Failed {
+                    request_id,
+                    error: Usb0LibraryCommandError::EmptyCatalog,
+                },
+                LibraryActivation::Stale => Usb0LibraryCompletion::Failed {
                     request_id,
                     error: Usb0LibraryCommandError::StaleSelection,
                 },
             }
         }
-    }
+    };
+    publish_browser(browser);
+    completion
 }
 
 pub(crate) async fn run_usb0_library_worker() -> ! {
@@ -1689,7 +2130,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
     let mut page_buffer = &mut USB0_LIBRARY_PDB_IO.init([0; USB0_LIBRARY_PDB_IO_BYTES])[..];
     let mut name_stage: Option<Usb0LibraryNameStage> = None;
     let mut catalog_stage: Option<Usb0LibraryCatalogStage> = None;
-    let mut selection = CatalogSelection::new();
+    let mut selection = LibraryBrowser::new();
 
     loop {
         match select(USB0_LIBRARY_EVENTS.wait(), USB0_LIBRARY_COMMANDS.receive()).await {
@@ -1705,7 +2146,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                         catalog.sync_selection(&mut selection);
                     } else {
                         selection.clear();
-                        set_catalog_publication(None);
+                        publish_browser(&selection);
                     }
                     if let Some(staging) = name_stage.as_mut() {
                         staging.clear();
@@ -1776,7 +2217,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     catalog.sync_selection(&mut selection);
                 } else {
                     selection.clear();
-                    set_catalog_publication(None);
+                    publish_browser(&selection);
                 }
                 set_library_state(Usb0LibraryState::Failed {
                     binding,
@@ -1793,7 +2234,7 @@ pub(crate) async fn run_usb0_library_worker() -> ! {
                     catalog.sync_selection(&mut selection);
                 } else {
                     selection.clear();
-                    set_catalog_publication(None);
+                    publish_browser(&selection);
                 }
                 set_library_state(Usb0LibraryState::Detached { binding });
             }
