@@ -1,0 +1,10 @@
+[package]
+name = "ruzina-mixer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-audio-dsp.workspace = true
+ruzina-controller-core.workspace = true

@@ -13,13 +13,13 @@ use embassy_sync::{
     channel::Channel,
     signal::Signal,
 };
-use pajoniiir_apta_adapter::{
+use ruzina_apta_adapter::{
     owner::{Output, Owner, Workspace},
     service::{Authority, Command, Port, Retained, Selection, Service, Status},
     storage::{LocalTempoBuffers, LocalTempoStorage},
     streaming::StreamLimits,
 };
-use pajoniiir_media_fs::analysis::Client;
+use ruzina_media_fs::analysis::Client;
 
 const FRAMES: u64 = 48_000 * 600;
 const FRAMES_PER_COLUMN: u32 = 65_536;
@@ -35,7 +35,7 @@ static OUTPUTS: Channel<CriticalSectionRawMutex, Retained<'static>, 1> = Channel
 static PROGRESS: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 static ALLOWED: AtomicBool = AtomicBool::new(false);
 static READY: AtomicBool = AtomicBool::new(false);
-use pajoniiir_service::analysis::{Monitor, Observation, Reason, Sample};
+use ruzina_service::analysis::{Monitor, Observation, Reason, Sample};
 struct Snapshot {
     diagnostic: Monitor,
     authority: Authority,
@@ -97,7 +97,7 @@ impl crate::analysis_product::Port<'static> for ProductPort {
     fn ready(&self) -> bool {
         READY.load(Ordering::Acquire)
     }
-    fn media(&self) -> pajoniiir_media_session::MediaSession {
+    fn media(&self) -> ruzina_media_session::MediaSession {
         crate::usb0_msc::analysis_media_snapshot()
     }
     fn allow_io(&mut self, allowed: bool) {
@@ -132,7 +132,7 @@ impl Port<'static> for OwnerPort {
         });
         command
     }
-    fn media(&self) -> pajoniiir_media_session::MediaSession {
+    fn media(&self) -> ruzina_media_session::MediaSession {
         crate::usb0_msc::analysis_media_snapshot()
     }
     fn authority(&mut self, authority: Authority) {
@@ -148,7 +148,7 @@ impl Port<'static> for OwnerPort {
                 },
             )
     }
-    fn failure(&mut self, reason: pajoniiir_apta_adapter::service::Failure) {
+    fn failure(&mut self, reason: ruzina_apta_adapter::service::Failure) {
         report_status(
             Status::Failed,
             crate::analysis_product::failure_reason(reason),
@@ -200,19 +200,19 @@ struct Storage {
     bytes: Vec<u8>,
     pcm: Vec<f32>,
     io: Vec<u8>,
-    beats: [Vec<pajoniiir_track_analysis::Beat>; 2],
-    waveform: [Vec<pajoniiir_waveform::WaveformColumn>; 2],
+    beats: [Vec<ruzina_track_analysis::Beat>; 2],
+    waveform: [Vec<ruzina_waveform::WaveformColumn>; 2],
 }
 impl Storage {
     fn new() -> Result<Self, ()> {
         let plan = LocalTempoStorage::plan(FRAMES, FRAMES_PER_COLUMN, 256, BEATS, 201_000)
             .map_err(|_| ())?;
-        let beat = pajoniiir_track_analysis::Beat {
+        let beat = ruzina_track_analysis::Beat {
             time_ms: 0,
             phase: 0,
             bpm_x100: 0,
         };
-        let wave = pajoniiir_waveform::WaveformColumn {
+        let wave = ruzina_waveform::WaveformColumn {
             peak: 0,
             color_rgb565: 0,
         };

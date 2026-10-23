@@ -1,0 +1,23 @@
+[package]
+name = "ruzina-rekordbox"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = ["analysis"]
+analysis = ["ruzina-track-analysis/owned"]
+
+[dependencies]
+ruzina-track-analysis.workspace = true
+ruzina-media-catalog.workspace = true
+ruzina-media-identity.workspace = true
+
+[dev-dependencies]
+ruzina-core.workspace = true
+ruzina-media-session.workspace = true
+
+[[example]]
+name = "analysis_inspect"
+required-features = ["analysis"]

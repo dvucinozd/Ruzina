@@ -1,5 +1,5 @@
 use super::*;
-use pajoniiir_controller_core::DeckId;
+use ruzina_controller_core::DeckId;
 
 fn loaded() -> Session {
     let mut s = Session::new();
@@ -131,7 +131,7 @@ fn overview_cue_and_playhead_are_aligned_to_track_time() {
 
 #[test]
 fn deck_artwork_shows_the_decoded_cover_or_logo_and_never_an_old_cover() {
-    use pajoniiir_media_catalog::artwork::{ArtworkFallback, ArtworkView};
+    use ruzina_media_catalog::artwork::{ArtworkFallback, ArtworkView};
     let mut s = loaded();
     let ArtworkView::Cover { pixels, .. } = s.artwork(0) else {
         panic!("track 01 carries a baseline cover");
@@ -159,7 +159,7 @@ fn deck_artwork_shows_the_decoded_cover_or_logo_and_never_an_old_cover() {
 
 #[test]
 fn memory_cues_are_marked_apart_from_hot_cues_and_pwv4_colors_the_preview() {
-    use pajoniiir_track_analysis::{AnalysisProvider, ColorPreviewEntry, TrackAnalysis};
+    use ruzina_track_analysis::{AnalysisProvider, ColorPreviewEntry, TrackAnalysis};
     let s = loaded();
     // Track A's fixture carries one memory point at 750 ms (of 10 s).
     let pixels = compositor::compose(s.presentation(0), s.analysis(0), false);
@@ -259,7 +259,7 @@ fn review_track_end_is_counted_only_when_entering_eof() {
 
 #[test]
 fn mixer_controls_work_unloaded_and_survive_media_removal_as_configuration() {
-    use pajoniiir_ui_model::{MixerParameter, MixerToggle, present_mixer};
+    use ruzina_ui_model::{MixerParameter, MixerToggle, present_mixer};
     let mut s = Session::new();
     s.control(MixerParameter::Crossfader.event(None, 0).unwrap());
     s.control(
@@ -281,7 +281,7 @@ fn mixer_controls_work_unloaded_and_survive_media_removal_as_configuration() {
 
 #[test]
 fn fx_uses_global_state_and_pad_cancellation_cannot_stop_another_deck() {
-    use pajoniiir_ui_model::{BeatFxAction, fx_depth_event, fx_target_event, pad_fx_event};
+    use ruzina_ui_model::{BeatFxAction, fx_depth_event, fx_target_event, pad_fx_event};
     let mut s = loaded();
     s.load(DeckId::Two);
     s.control(BeatFxAction::Next.event(true));
@@ -292,7 +292,7 @@ fn fx_uses_global_state_and_pad_cancellation_cannot_stop_another_deck() {
     assert_eq!(s.decks.beat_fx().depth, 96);
     assert_eq!(
         s.decks.beat_fx().target,
-        pajoniiir_controller_core::BeatFxTarget::ChannelTwo
+        ruzina_controller_core::BeatFxTarget::ChannelTwo
     );
     s.control(pad_fx_event(DeckId::One, 0, 2, true).unwrap());
     s.control(pad_fx_event(DeckId::Two, 1, 4, true).unwrap());
@@ -305,14 +305,14 @@ fn fx_uses_global_state_and_pad_cancellation_cannot_stop_another_deck() {
     s.control(pad_fx_event(DeckId::One, 0, 1, true).unwrap());
     s.detach();
     assert!(s.decks.deck(DeckId::One).active_pad_fx.is_none());
-    assert_eq!(s.decks.beat_fx(), pajoniiir_deck::BeatFxState::new());
+    assert_eq!(s.decks.beat_fx(), ruzina_deck::BeatFxState::new());
     s.control(pad_fx_event(DeckId::One, 0, 1, true).unwrap());
     assert!(s.decks.deck(DeckId::One).active_pad_fx.is_none());
 }
 
 #[test]
 fn load_lock_refusals_preserve_the_loaded_track_and_report_the_reason() {
-    use pajoniiir_controller_core::{ControlEvent, ControlValue, SemanticControl};
+    use ruzina_controller_core::{ControlEvent, ControlValue, SemanticControl};
     let jog = |down| ControlEvent {
         deck: Some(DeckId::One),
         control: SemanticControl::JogTouch,
@@ -344,7 +344,7 @@ fn load_lock_refusals_preserve_the_loaded_track_and_report_the_reason() {
 
 #[test]
 fn service_counts_real_load_outcomes_and_recovers_without_erasing_history() {
-    use pajoniiir_service::{AnalysisStatus, Health};
+    use ruzina_service::{AnalysisStatus, Health};
     let mut s = loaded();
     press(&mut s, DeckAction::Play);
     assert!(!s.load(DeckId::One));
@@ -387,7 +387,7 @@ fn service_clock_advances_while_paused_but_eof_is_recorded_once() {
 
 #[test]
 fn runtime_heartbeat_is_independent_of_playback_and_refresh_reads() {
-    use pajoniiir_service::{
+    use ruzina_service::{
         Health,
         publication::{Activity, Freshness},
     };

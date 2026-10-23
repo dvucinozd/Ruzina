@@ -1,22 +1,22 @@
 use crate::transport_owner_state::{TransportCompletion, TransportOutcome};
-use pajoniiir_audio_runtime::decode::SourceDescriptor;
+use ruzina_audio_runtime::decode::SourceDescriptor;
 #[cfg(feature = "library-deck-load")]
-use pajoniiir_controller_core::{ControlValue, SemanticControl};
-use pajoniiir_controller_session::{
+use ruzina_controller_core::{ControlValue, SemanticControl};
+use ruzina_controller_session::{
     BeatFxTarget, ConnectionState, ControlDomain, ControllerLedFrame, DeckId, LedState, LedUpdate,
     PadMode, SemanticLedId, SessionDelivery, SessionDeliverySink,
 };
-use pajoniiir_deck::{
+use ruzina_deck::{
     DeckClaim, DeckEffect, DeckEffectBroker, DeckLoadGate, DeckProductState, JogMode, LoadPermit,
     LoopAdjustMode, PadFxBank,
 };
-use pajoniiir_hot_cues::HotCueBank;
-use pajoniiir_media_catalog::CatalogLoadCandidate;
-use pajoniiir_media_session::MediaLease;
-use pajoniiir_mixer::MixerState;
-use pajoniiir_track_analysis::TrackAnalysis;
+use ruzina_hot_cues::HotCueBank;
+use ruzina_media_catalog::CatalogLoadCandidate;
+use ruzina_media_session::MediaLease;
+use ruzina_mixer::MixerState;
+use ruzina_track_analysis::TrackAnalysis;
 #[cfg(feature = "library-deck-load")]
-use pajoniiir_track_analysis::owned::{AnalysisIdentity, AnalysisPins, AnalysisPublication};
+use ruzina_track_analysis::owned::{AnalysisIdentity, AnalysisPins, AnalysisPublication};
 
 #[cfg(feature = "library-deck-load")]
 #[derive(Debug)]
@@ -70,7 +70,7 @@ fn library_cursor_on_node() -> bool {
 }
 
 /// RP-04 single-flight load gates shared by the product control owner and the
-/// asynchronous Library deck worker (see `pajoniiir_deck::DeckLoadGate`).
+/// asynchronous Library deck worker (see `ruzina_deck::DeckLoadGate`).
 static LOAD_GATES: [DeckLoadGate; 2] = [DeckLoadGate::new(), DeckLoadGate::new()];
 
 fn decoded_duration_ms(source: SourceDescriptor) -> Option<u32> {
@@ -88,10 +88,10 @@ pub(crate) fn load_gate(deck: DeckId) -> &'static DeckLoadGate {
 /// PLAY, CUE (hold-preview) and VINYL platter touch (scratch). CDJ ignores
 /// platter-top touch, so it never claims the deck.
 fn claims_transport(
-    event: pajoniiir_controller_core::ControlEvent,
+    event: ruzina_controller_core::ControlEvent,
     deck_state: &DeckProductState,
 ) -> Option<DeckId> {
-    use pajoniiir_controller_core::{ControlValue, SemanticControl};
+    use ruzina_controller_core::{ControlValue, SemanticControl};
     let deck = event.deck?;
     match (event.control, event.value) {
         (SemanticControl::Play | SemanticControl::Cue, ControlValue::Pressed(true)) => Some(deck),
@@ -164,7 +164,7 @@ pub(crate) struct ProductLoadedTrack {
     pub(crate) analysis_identity: Option<AnalysisIdentity>,
 }
 
-use pajoniiir_service::handoff::{ProductCounters as ProductRuntimeStats, ProductObservation};
+use ruzina_service::handoff::{ProductCounters as ProductRuntimeStats, ProductObservation};
 
 pub(crate) struct ProductRuntime {
     #[cfg(feature = "apta-usb0-bringup")]
@@ -357,7 +357,7 @@ impl ProductRuntime {
         &mut self,
         deck: DeckId,
         publication: AnalysisPublication,
-        media: &pajoniiir_media_session::MediaSession,
+        media: &ruzina_media_session::MediaSession,
         transport_idle: bool,
     ) -> Result<(), (BackgroundAnalysisRefusal, AnalysisPublication)> {
         let index = deck_index(deck);
@@ -368,8 +368,8 @@ impl ProductRuntime {
             || self.analyses.view(index, identity).is_some()
             || !matches!(
                 publication.view().provider(),
-                pajoniiir_track_analysis::AnalysisProvider::AptaNative
-                    | pajoniiir_track_analysis::AnalysisProvider::AptaCache
+                ruzina_track_analysis::AnalysisProvider::AptaNative
+                    | ruzina_track_analysis::AnalysisProvider::AptaCache
             )
         {
             return Err((BackgroundAnalysisRefusal::Rejected, publication));
@@ -800,7 +800,7 @@ impl SessionDeliverySink for ProductRuntime {
                     );
                     if self.persistence_faulted
                         && effects.items.iter().flatten().any(|effect| {
-                            effect.target() == pajoniiir_deck::DeckEffectTarget::Persistence
+                            effect.target() == ruzina_deck::DeckEffectTarget::Persistence
                         })
                     {
                         // Consume the rejected edit without changing its bank/LED

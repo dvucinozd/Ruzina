@@ -1,0 +1,12 @@
+[package]
+name = "ruzina-media-usb-msc"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-media-block.workspace = true
+ruzina-media-session.workspace = true
+ruzina-media-fs.workspace = true
+ruzina-media-partition.workspace = true

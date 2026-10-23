@@ -69,14 +69,14 @@ jobs:
       - name: Experimental APTA core portability and product exclusion
         run: |
           rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
-          cargo check --locked -p pajoniiir-apta-adapter --lib --no-default-features --target riscv32imafc-unknown-none-elf
+          cargo check --locked -p ruzina-apta-adapter --lib --no-default-features --target riscv32imafc-unknown-none-elf
           python3 tools/check_apta_core_boundary.py
 
       - name: Experimental APTA worker lifecycle and current product handoff
         run: |
-          cargo clippy --locked -p pajoniiir-apta-adapter --all-features --all-targets -- -D warnings
-          cargo test --locked -p pajoniiir-apta-adapter --all-features --release
-          cargo check --locked -p pajoniiir-apta-adapter --lib --features owned-handoff --target riscv32imafc-unknown-none-elf
+          cargo clippy --locked -p ruzina-apta-adapter --all-features --all-targets -- -D warnings
+          cargo test --locked -p ruzina-apta-adapter --all-features --release
+          cargo check --locked -p ruzina-apta-adapter --lib --features owned-handoff --target riscv32imafc-unknown-none-elf
 
       - name: Repeated APTA owner lifecycle and Guition package tools
         run: |
@@ -86,9 +86,9 @@ jobs:
       - name: Composed runtime owner recovery evidence
         run: |
           mkdir -p target
-          cargo test --locked -p pajoniiir-service --features runtime-owners --test runtime_owners -- --nocapture --test-threads=1 > target/runtime-owners.log 2>&1
-          cargo clippy --locked -p pajoniiir-service --features runtime-owners --tests -- -D warnings
-          cargo test --locked -p pajoniiir-service --features runtime-owners --test composed_failures -- --nocapture --test-threads=1 > target/composed-failures.log 2>&1
+          cargo test --locked -p ruzina-service --features runtime-owners --test runtime_owners -- --nocapture --test-threads=1 > target/runtime-owners.log 2>&1
+          cargo clippy --locked -p ruzina-service --features runtime-owners --tests -- -D warnings
+          cargo test --locked -p ruzina-service --features runtime-owners --test composed_failures -- --nocapture --test-threads=1 > target/composed-failures.log 2>&1
 
       - name: Interactive UI and screenshot goldens
         run: |

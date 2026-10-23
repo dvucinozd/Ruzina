@@ -1,14 +1,14 @@
 //! Shared real-product supervisor. One job/pending delivery; bounded recycling.
 use crate::product_runtime::{BackgroundAnalysisRefusal, ProductRuntime};
-use pajoniiir_apta_adapter::{
+use ruzina_apta_adapter::{
     owner::Output,
     publication::{Outcome, PendingDelivery, Refusal},
     service::{Authority, Command, Retained, Selection, Status},
 };
-use pajoniiir_core::DeckId;
-use pajoniiir_media_session::MediaSession;
-use pajoniiir_service::analysis::{Reason, Sample, State};
-use pajoniiir_track_analysis::owned::AnalysisIdentity;
+use ruzina_core::DeckId;
+use ruzina_media_session::MediaSession;
+use ruzina_service::analysis::{Reason, Sample, State};
+use ruzina_track_analysis::owned::AnalysisIdentity;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Report {
@@ -298,8 +298,8 @@ const fn index(deck: DeckId) -> usize {
 }
 
 /// Same scalar mapping in the concrete port and real-service host harness.
-pub(crate) fn failure_reason(value: pajoniiir_apta_adapter::service::Failure) -> Reason {
-    use pajoniiir_apta_adapter::service::Failure as F;
+pub(crate) fn failure_reason(value: ruzina_apta_adapter::service::Failure) -> Reason {
+    use ruzina_apta_adapter::service::Failure as F;
     match value {
         F::Storage => Reason::Storage,
         F::Format => Reason::Format,

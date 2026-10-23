@@ -5,7 +5,7 @@
 
 ## Context
 
-Pajoniiir waveforms are high-update-rate visualizations with beat grids, cues and a moving playhead. Representing waveform samples as large numbers of GUI elements is unnecessary overhead.
+Ruzina waveforms are high-update-rate visualizations with beat grids, cues and a moving playhead. Representing waveform samples as large numbers of GUI elements is unnecessary overhead.
 
 ## Decision
 

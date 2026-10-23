@@ -1,7 +1,7 @@
 //! JC1060 BSP boundary; peripheral drivers await exact-unit bring-up.
 use embassy_executor::Spawner;
 use esp_hal::peripherals::Peripherals;
-use pajoniiir_board_profile::{BoardProfile, jc1060};
+use ruzina_board_profile::{BoardProfile, jc1060};
 
 pub(super) const PROFILE: &BoardProfile = &jc1060::PROFILE;
 

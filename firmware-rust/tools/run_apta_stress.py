@@ -24,7 +24,7 @@ def main():
     require(not args.output.exists(), "Output must be a new directory")
     args.output.mkdir(parents=True)
     records, fingerprint = sources(args)
-    command = ["cargo", "test", "--locked", "-p", "pajoniiir-apta-adapter", "--all-features",
+    command = ["cargo", "test", "--locked", "-p", "ruzina-apta-adapter", "--all-features",
                "--release", "--test", "usb0", "--no-run", "--message-format=json"]
     with (args.output / "build.log").open("wb") as log:
         built = subprocess.run(command, cwd=ROOT / "firmware-rust", stdout=subprocess.PIPE, stderr=log, check=True)

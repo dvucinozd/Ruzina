@@ -1,0 +1,9 @@
+[package]
+name = "ruzina-audio-scratch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-audio-dsp.workspace = true

@@ -1,0 +1,12 @@
+[package]
+name = "ruzina-controller-session"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-control-scheduler.workspace = true
+ruzina-controller-core.workspace = true
+ruzina-controller-profile.workspace = true
+ruzina-controller-usb.workspace = true

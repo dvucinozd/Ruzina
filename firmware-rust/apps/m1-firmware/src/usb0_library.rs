@@ -9,19 +9,19 @@ use embassy_sync::{
     signal::Signal,
 };
 #[cfg(feature = "p4-psram-storage")]
-use pajoniiir_media_catalog::playlists::{
+use ruzina_media_catalog::playlists::{
     CATALOG_MAX_PLAYLIST_ENTRIES, CATALOG_MAX_PLAYLIST_NODES, PlaylistBuilder, PlaylistEntry,
     PlaylistIndex, PlaylistNode, PlaylistStore,
 };
-use pajoniiir_media_catalog::playlists::{LibraryActivation, LibraryBrowser, PlaylistImportStats};
-use pajoniiir_media_catalog::{
+use ruzina_media_catalog::playlists::{LibraryActivation, LibraryBrowser, PlaylistImportStats};
+use ruzina_media_catalog::{
     CatalogBank, CatalogBankBuilder, CatalogBankPublisher, CatalogBuildError, CatalogLoadCandidate,
     CatalogPublicationId, CatalogTrack, MEDIA_CATALOG_MAX_TRACKS,
 };
-use pajoniiir_media_fs::{BoundedPath, FileHandle};
-use pajoniiir_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
-use pajoniiir_media_session::MediaLease;
-use pajoniiir_rekordbox::{
+use ruzina_media_fs::{BoundedPath, FileHandle};
+use ruzina_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
+use ruzina_media_session::MediaLease;
+use ruzina_rekordbox::{
     PDB_MAX_NAMES, PDB_NAME_MAX, PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_PLAYLIST_ENTRY_ROW_BYTES,
     PDB_PLAYLIST_TREE_ROW_HEADER_BYTES, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_ARTWORK,
     PDB_TABLE_KEYS, PDB_TABLE_PLAYLIST_ENTRIES, PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS,
@@ -89,7 +89,7 @@ pub(crate) enum Usb0LibraryCompletion {
     },
     LoadResolved {
         request_id: u32,
-        deck: pajoniiir_controller_session::DeckId,
+        deck: ruzina_controller_session::DeckId,
         candidate: CatalogLoadCandidate,
     },
     Failed {
@@ -2297,7 +2297,7 @@ mod tests {
     use super::*;
 
     fn lease() -> MediaLease {
-        use pajoniiir_media_session::{MediaGeneration, MediaSourceId};
+        use ruzina_media_session::{MediaGeneration, MediaSourceId};
 
         MediaLease {
             generation: MediaGeneration::initial(),

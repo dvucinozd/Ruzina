@@ -1,5 +1,5 @@
 use esp_storage::{FlashStorage, FlashStorageError};
-use pajoniiir_hot_cues::journal::{
+use ruzina_hot_cues::journal::{
     HOT_CUE_JOURNAL_PARTITION_SIZE, HOT_CUE_JOURNAL_SECTOR_SIZE, HotCueJournalFlash,
     JournalFlashLayout,
 };

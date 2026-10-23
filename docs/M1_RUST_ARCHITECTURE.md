@@ -1,4 +1,4 @@
-# Pajoniiir M1 architecture
+# Ruzina architecture
 
 Updated: 2026-10-22. Targets: Guition JC1060P470C_I_W_Y and JC8012P4A1C_I_W_Y.
 
@@ -48,7 +48,7 @@ the journal. No persistent address or board programming layout is selected.
 
 ## Product and controller lifecycle
 
-`pajoniiir-core`, controller core/profile/session/USB crates, deck and mixer
+`ruzina-core`, controller core/profile/session/USB crates, deck and mixer
 modules separate semantic controls from device descriptor/profile bindings.
 Controller replacement/reconnect invalidates generation-bound held state and
 reconciles only replayable absolute state. Product ownership remains authoritative

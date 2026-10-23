@@ -1,8 +1,8 @@
-use pajoniiir_track_analysis::{
+use ruzina_track_analysis::{
     TrackAnalysis, WaveformColumn, color_preview_column, color_preview_peak,
 };
-use pajoniiir_ui_model::DeckPresentation;
-use pajoniiir_waveform::{Rgb565Surface, WaveformView};
+use ruzina_ui_model::DeckPresentation;
+use ruzina_waveform::{Rgb565Surface, WaveformView};
 
 pub const WIDTH: usize = 700;
 pub const HEIGHT: usize = 90;

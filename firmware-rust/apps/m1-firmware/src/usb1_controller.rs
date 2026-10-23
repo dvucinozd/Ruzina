@@ -21,9 +21,9 @@ use embassy_usb_driver::{
     host::{DeviceEvent, PipeError, UsbHostAllocator, UsbHostController, UsbPipe, pipe},
 };
 use embassy_usb_host::{BusController, BusRoute, BusState, handler::EnumerationInfo};
-use pajoniiir_controller_profile_storage::{MAX_INIT_SYSEX, ProfileActivationState};
-use pajoniiir_controller_session::{ControllerSession, UsbMidiBatchReport};
-use pajoniiir_controller_usb::{
+use ruzina_controller_profile_storage::{MAX_INIT_SYSEX, ProfileActivationState};
+use ruzina_controller_session::{ControllerSession, UsbMidiBatchReport};
+use ruzina_controller_usb::{
     ControllerUsbCapabilities, ControllerUsbDescriptorError, UsbMidiEvent, UsbMidiSysExPackets,
     find_midi_streaming_interface, inspect_configuration,
 };
@@ -249,7 +249,7 @@ pub(crate) async fn run_root_controller_owner(usb: esp_hal::usb::otg::Usb<'stati
                     &mut product,
                     crate::analysis_io::owner_tick(
                         controller.wait_for_device_event(),
-                        embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+                        embassy_time::Timer::after_millis(ruzina_service::owners::OWNER_TICK_MS),
                     ),
                 )
                 .await
@@ -265,7 +265,7 @@ pub(crate) async fn run_root_controller_owner(usb: esp_hal::usb::otg::Usb<'stati
                 #[cfg(all(feature = "runtime-health", not(feature = "apta-usb0-bringup")))]
                 let event = match select(
                     controller.wait_for_device_event(),
-                    embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+                    embassy_time::Timer::after_millis(ruzina_service::owners::OWNER_TICK_MS),
                 )
                 .await
                 {
@@ -387,7 +387,7 @@ where
             product,
             crate::analysis_io::owner_tick(
                 controller.wait_for_device_event(),
-                embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+                embassy_time::Timer::after_millis(ruzina_service::owners::OWNER_TICK_MS),
             ),
         )
         .await
@@ -400,7 +400,7 @@ where
         #[cfg(all(feature = "runtime-health", not(feature = "apta-usb0-bringup")))]
         let event = match select(
             controller.wait_for_device_event(),
-            embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+            embassy_time::Timer::after_millis(ruzina_service::owners::OWNER_TICK_MS),
         )
         .await
         {
@@ -591,7 +591,7 @@ where
         let runtime_change = async {
             match select(
                 runtime_change,
-                embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+                embassy_time::Timer::after_millis(ruzina_service::owners::OWNER_TICK_MS),
             )
             .await
             {

@@ -1,0 +1,71 @@
+[package]
+name = "ruzina-apta-adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+libapta = { git = "https://github.com/dvucinozd/libapta-audio.git", rev = "25d09de364e9507532c0508c838a8fecf0772d13", default-features = false }
+ruzina-track-analysis.workspace = true
+ruzina-waveform.workspace = true
+embassy-futures = { version = "=0.1.2", default-features = false, optional = true }
+ruzina-core = { workspace = true, optional = true }
+ruzina-deck = { workspace = true, optional = true }
+ruzina-media-session = { workspace = true, optional = true }
+ruzina-media-catalog = { workspace = true, optional = true }
+ruzina-media-identity = { workspace = true, optional = true }
+ruzina-media-fs = { workspace = true, features = ["analysis-client"], optional = true }
+
+[dev-dependencies]
+ruzina-controller-core.workspace = true
+ruzina-core.workspace = true
+ruzina-deck.workspace = true
+ruzina-media-fat32.workspace = true
+ruzina-media-exfat.workspace = true
+ruzina-media-io.workspace = true
+ruzina-media-block.workspace = true
+ruzina-controller-session.workspace = true
+ruzina-mixer.workspace = true
+ruzina-hot-cues.workspace = true
+ruzina-audio-runtime.workspace = true
+ruzina-service.workspace = true
+
+[features]
+default = []
+workers = ["dep:embassy-futures", "dep:ruzina-core", "dep:ruzina-deck", "dep:ruzina-media-session", "dep:ruzina-media-catalog", "dep:ruzina-media-identity", "dep:ruzina-media-fs"]
+owned-handoff = ["workers", "ruzina-track-analysis/owned"]
+# Host source-inclusion of the actual Library-enabled ProductRuntime.
+library-deck-load = ["owned-handoff"]
+
+[[test]]
+name = "broker"
+required-features = ["workers"]
+[[test]]
+name = "job"
+required-features = ["workers"]
+[[test]]
+name = "owner"
+required-features = ["workers"]
+[[test]]
+name = "policy"
+required-features = ["workers"]
+[[test]]
+name = "service"
+required-features = ["workers"]
+[[test]]
+name = "source"
+required-features = ["workers"]
+[[test]]
+name = "streaming"
+required-features = ["workers"]
+[[test]]
+name = "worker"
+required-features = ["workers"]
+[[test]]
+name = "product"
+required-features = ["library-deck-load"]
+
+[[test]]
+name = "usb0"
+required-features = ["library-deck-load"]

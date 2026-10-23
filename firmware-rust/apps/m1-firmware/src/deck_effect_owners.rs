@@ -32,16 +32,16 @@ use embassy_sync::{
 ))]
 use embassy_time::{Duration, Timer};
 #[cfg(feature = "pcm-transport-bringup")]
-use pajoniiir_audio_runtime::decode::StreamChange;
+use ruzina_audio_runtime::decode::StreamChange;
 #[cfg(feature = "render-graph-bringup")]
-use pajoniiir_audio_runtime::pcm_stream::PcmStreamProgress;
-use pajoniiir_audio_runtime::{AudioEffectCommand, map_deck_effect};
-use pajoniiir_controller_session::DeckId;
+use ruzina_audio_runtime::pcm_stream::PcmStreamProgress;
+use ruzina_audio_runtime::{AudioEffectCommand, map_deck_effect};
+use ruzina_controller_session::DeckId;
 #[cfg(feature = "hotcue-flash-storage")]
-use pajoniiir_core::MediaTrackId;
-use pajoniiir_deck::{DeckEffect, DeckEffectTarget};
+use ruzina_core::MediaTrackId;
+use ruzina_deck::{DeckEffect, DeckEffectTarget};
 #[cfg(feature = "hotcue-flash-storage")]
-use pajoniiir_hot_cues::{RecordBackedHotCueStore, journal::HotCueJournalBackend};
+use ruzina_hot_cues::{RecordBackedHotCueStore, journal::HotCueJournalBackend};
 
 const TRANSPORT_OWNER_QUEUE_DEPTH: usize = 16;
 const AUDIO_DSP_OWNER_QUEUE_DEPTH: usize = 16;
@@ -414,7 +414,7 @@ fn try_submit<const N: usize>(
 #[cfg(feature = "hotcue-flash-storage")]
 pub(crate) async fn run_persistence_owner(
     flash: esp_hal::peripherals::FLASH<'static>,
-    layout: pajoniiir_hot_cues::journal::JournalFlashLayout,
+    layout: ruzina_hot_cues::journal::JournalFlashLayout,
 ) -> ! {
     let store = EspHotCueFlash::open(flash, layout)
         .ok()

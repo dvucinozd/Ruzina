@@ -65,7 +65,7 @@ GSL3680 firmware is not bundled. The current published [Guition touch NOTICE](ht
 
 ## Rust BSP structure
 
-`pajoniiir-board-profile` is no_std and HAL-independent. It records each model's
+`ruzina-board-profile` is no_std and HAL-independent. It records each model's
 documented memory, geometry, controllers, candidate GPIOs/LDOs and unresolved USB/
 panel state. `check_unit` compares detected identity; it does not qualify wiring.
 Panel/touch source fingerprints are recorded in

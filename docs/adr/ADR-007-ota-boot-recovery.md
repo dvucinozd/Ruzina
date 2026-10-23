@@ -31,6 +31,6 @@ Preserve `.ddjota` compatibility where practical; any incompatible successor req
 - Firmware health is part of the authoritative system state.
 - Host failure injection must interrupt transfer, flash, settings and candidate
   confirmation boundaries before physical OTA qualification. Since 2026-10-23
-  these rules exist as host contracts in `pajoniiir-ota` (RP-13 in the parity
+  these rules exist as host contracts in `ruzina-ota` (RP-13 in the parity
   plan); no target partition, transport or TLS adapter exists yet, and no
   OTA, rollback or reboot behavior is hardware-verified.

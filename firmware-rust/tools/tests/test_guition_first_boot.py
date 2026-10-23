@@ -181,7 +181,7 @@ class FirstBootTests(unittest.TestCase):
                     self.assertNotIn("flash", command)
                     features = command[command.index("--features") + 1]
                     self.assertEqual([name for name in features.split(",") if name.startswith("guition-")], list(boot.PROBES[probe]))
-                    image = args.target_dir / boot.TARGET / "release/pajoniiir-m1-firmware"
+                    image = args.target_dir / boot.TARGET / "release/ruzina-m1-firmware"
                     image.parent.mkdir(parents=True, exist_ok=True)
                     image.write_bytes(b"ELF" + kwargs["env"]["M1_IMAGE_ID"].encode())
                     kwargs["stdout"].write(b"mock build; no device")

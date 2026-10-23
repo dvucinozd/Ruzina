@@ -1,7 +1,7 @@
 use super::smoke::{capture, click, nav};
 use super::*;
-use pajoniiir_service::publication::{Activity, Freshness};
-use pajoniiir_service::{AnalysisStatus, Health};
+use ruzina_service::publication::{Activity, Freshness};
+use ruzina_service::{AnalysisStatus, Health};
 use std::path::Path;
 
 pub fn capture_health(
@@ -10,7 +10,7 @@ pub fn capture_health(
     output: &Path,
     name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut report = pajoniiir_board_profile::diagnostics::ReportBuffer::<4096>::default();
+    let mut report = ruzina_board_profile::diagnostics::ReportBuffer::<4096>::default();
     state
         .borrow()
         .diagnostics()

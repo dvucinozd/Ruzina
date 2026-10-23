@@ -1,9 +1,9 @@
 //! Pure transport transitions shared by the P4 owner and composed host tests.
-use pajoniiir_audio_runtime::pcm_stream::{
+use ruzina_audio_runtime::pcm_stream::{
     PcmBlockDisposition, PcmStreamBlock, PcmStreamProgress, PcmTransportCursor, frame_to_ms,
 };
-use pajoniiir_controller_session::DeckId;
-use pajoniiir_deck::DeckEffect;
+use ruzina_controller_session::DeckId;
+use ruzina_deck::DeckEffect;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct TransportDeckOwnerState {

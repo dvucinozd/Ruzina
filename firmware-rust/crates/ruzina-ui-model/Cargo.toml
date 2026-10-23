@@ -1,0 +1,13 @@
+[package]
+name = "ruzina-ui-model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-core.workspace = true
+ruzina-controller-core.workspace = true
+ruzina-deck.workspace = true
+ruzina-hot-cues.workspace = true
+ruzina-mixer.workspace = true

@@ -12,30 +12,30 @@ use embassy_usb_host::{
     class::msc::{BlockCapacity, MscDevice, MscError, MscLun},
     handler::EnumerationInfo,
 };
-use pajoniiir_media_block::{BlockGeometry, TransferError};
-use pajoniiir_media_exfat::{
+use ruzina_media_block::{BlockGeometry, TransferError};
+use ruzina_media_exfat::{
     ExFatAsyncBootInfo, ExFatAsyncBootSectorError, ExFatAsyncDirectoryHandle, ExFatAsyncFileHandle,
     ExFatAsyncFsError, ExFatAsyncMountError, ExFatAsyncVolume, parse_exfat_boot_sector,
 };
-use pajoniiir_media_fat32::{
+use ruzina_media_fat32::{
     Fat32AsyncDirectoryHandle, Fat32AsyncFileHandle, Fat32AsyncFileSystem, Fat32AsyncFsError,
     Fat32AsyncMountError, Fat32BootInfo, Fat32BootSectorError, Fat32FsInfo, Fat32FsInfoError,
     parse_fat32_boot_sector, parse_fat32_fs_info,
 };
-use pajoniiir_media_fs::{
+use ruzina_media_fs::{
     AsyncFileSystem, BoundedPath, DirEntry, DirectoryHandle, FS_NAME_MAX, FileHandle, FileStat,
     FileSystemClientId, FileSystemKind, FileSystemRequestSequencer, FileSystemRequestTicket,
     LeaseBound,
 };
-use pajoniiir_media_identity::{
+use ruzina_media_identity::{
     VolumeIdentity, derive_exfat_volume_identity, derive_fat32_volume_identity,
 };
-use pajoniiir_media_io::{
+use ruzina_media_io::{
     AsyncPartitionDevice, AsyncPartitionError, OwnedBlockDevice, OwnedWritableBlockDevice,
 };
-use pajoniiir_media_partition::{VolumeKind, classify_boot_sector};
-use pajoniiir_media_session::{DisconnectResult, MediaHandle, MediaLease, MediaSession};
-use pajoniiir_media_usb_msc::{
+use ruzina_media_partition::{VolumeKind, classify_boot_sector};
+use ruzina_media_session::{DisconnectResult, MediaHandle, MediaLease, MediaSession};
+use ruzina_media_usb_msc::{
     UsbMscCapacity, UsbMscCompletionGate, UsbMscDiscoveryPlan, UsbMscDiscoveryPlanError,
     UsbMscHandleSequencer, UsbMscMountAttempt, UsbMscMountCoordinator, UsbMscMountError,
     UsbMscMountSelection, UsbMscMountedMedia, UsbMscRequestKind, UsbMscRequestTicket,
@@ -635,7 +635,7 @@ pub(crate) fn media_state() -> Usb0MscMediaState {
 /// producer immediately; only a matching Ready/Detached event supplies a new one.
 struct MediaHealthReporter {
     #[cfg(feature = "runtime-health")]
-    producer: Option<pajoniiir_service::handoff::Producer>,
+    producer: Option<ruzina_service::handoff::Producer>,
     #[cfg(feature = "runtime-health")]
     failures: u32,
 }
@@ -672,7 +672,7 @@ impl MediaHealthReporter {
     }
     #[cfg(feature = "runtime-health")]
     fn publish(&mut self) {
-        use pajoniiir_service::owners::{MediaObservation, MediaPhase};
+        use ruzina_service::owners::{MediaObservation, MediaPhase};
         let (phase, binding, detached) = match media_state() {
             Usb0MscMediaState::Idle => (MediaPhase::Idle, None, false),
             Usb0MscMediaState::Discovering { binding } => {
@@ -2291,7 +2291,7 @@ pub(crate) async fn run_usb0_media_worker() -> ! {
         #[cfg(feature = "runtime-health")]
         let event = match embassy_futures::select::select(
             USB0_MSC_OWNER_EVENTS.receive(),
-            embassy_time::Timer::after_millis(pajoniiir_service::owners::OWNER_TICK_MS),
+            embassy_time::Timer::after_millis(ruzina_service::owners::OWNER_TICK_MS),
         )
         .await
         {
@@ -2642,7 +2642,7 @@ impl Usb0AnalysisTransport {
     }
 }
 #[cfg(feature = "apta-usb0-bringup")]
-impl pajoniiir_media_fs::analysis::Transport for Usb0AnalysisTransport {
+impl ruzina_media_fs::analysis::Transport for Usb0AnalysisTransport {
     type Handle = Usb0FsFileHandle;
     type Error = Usb0FsOperationError;
     type Unexpected = Usb0FsCompletion;
@@ -2657,9 +2657,9 @@ impl pajoniiir_media_fs::analysis::Transport for Usb0AnalysisTransport {
     }
     fn try_send(
         &mut self,
-        request: pajoniiir_media_fs::analysis::Request<Self::Handle>,
-    ) -> Result<(), pajoniiir_media_fs::analysis::Request<Self::Handle>> {
-        use pajoniiir_media_fs::analysis::Request;
+        request: ruzina_media_fs::analysis::Request<Self::Handle>,
+    ) -> Result<(), ruzina_media_fs::analysis::Request<Self::Handle>> {
+        use ruzina_media_fs::analysis::Request;
         let request = match request {
             Request::Open(ticket, path) => Usb0FsRequest::OpenRead { ticket, path },
             Request::Read(ticket, file, buffer, limit) => Usb0FsRequest::AnalysisRead {
@@ -2689,8 +2689,8 @@ impl pajoniiir_media_fs::analysis::Transport for Usb0AnalysisTransport {
     }
     async fn receive(
         &mut self,
-    ) -> pajoniiir_media_fs::analysis::Completion<Self::Handle, Self::Error, Self::Unexpected> {
-        use pajoniiir_media_fs::analysis::Completion;
+    ) -> ruzina_media_fs::analysis::Completion<Self::Handle, Self::Error, Self::Unexpected> {
+        use ruzina_media_fs::analysis::Completion;
         match USB0_FS_ANALYSIS_COMPLETIONS.receive().await {
             Usb0FsCompletion::OpenRead { ticket, result } => Completion::Open(ticket, result),
             Usb0FsCompletion::Read {

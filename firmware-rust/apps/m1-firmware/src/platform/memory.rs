@@ -2,9 +2,9 @@
 //! SPI RDID semantics follow pinned esp-storage 0.10.0 hardware.rs. Unlike its
 //! constructor this probe has a finite polling budget and retains the raw ID.
 #[cfg(feature = "guition-flash-probe")]
-use pajoniiir_board_profile::memory::FlashProbe;
+use ruzina_board_profile::memory::FlashProbe;
 #[cfg(feature = "guition-psram-test")]
-use pajoniiir_board_profile::memory::{
+use ruzina_board_profile::memory::{
     PsramProbe, ScratchError, ScratchWords, TEST_WORDS, test_scratch,
 };
 

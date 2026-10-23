@@ -19,8 +19,8 @@ From `firmware-rust`:
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo test --locked -p pajoniiir-apta-adapter --all-features --release
-cargo test --locked -p pajoniiir-service --features runtime-owners --test runtime_owners --test composed_failures
+cargo test --locked -p ruzina-apta-adapter --all-features --release
+cargo test --locked -p ruzina-service --features runtime-owners --test runtime_owners --test composed_failures
 python3 -m unittest discover -s tools/tests -v
 python3 tools/check_docs.py
 python3 tools/check_apta_core_boundary.py

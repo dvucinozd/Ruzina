@@ -1,6 +1,6 @@
 use super::smoke::{capture, click, nav};
 use super::*;
-use pajoniiir_controller_core::DeckId;
+use ruzina_controller_core::DeckId;
 use slint::platform::{PointerEventButton, WindowEvent};
 use std::path::Path;
 
@@ -129,7 +129,7 @@ pub fn pointer(ui: &MainWindow, s: &Rc<RefCell<Session>>, width: f32, height: f3
     click(ui, 16.0 + beat_width / 2.0, 280.0);
     assert_eq!(
         s.borrow().decks.beat_fx().target,
-        pajoniiir_controller_core::BeatFxTarget::ChannelTwo
+        ruzina_controller_core::BeatFxTarget::ChannelTwo
     );
     click(ui, 16.0 + beat_width / 3.0, 341.0);
     key(ui, slint::platform::Key::Home.into());
@@ -172,7 +172,7 @@ pub fn pointer(ui: &MainWindow, s: &Rc<RefCell<Session>>, width: f32, height: f3
             .active_pad_fx
             .unwrap()
             .bank,
-        pajoniiir_deck::PadFxBank::Two
+        ruzina_deck::PadFxBank::Two
     );
     ui.window().dispatch_event(WindowEvent::PointerExited);
     assert!(s.borrow().decks.deck(DeckId::One).active_pad_fx.is_none());

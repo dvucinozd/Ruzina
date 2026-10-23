@@ -1,9 +1,9 @@
 //! Displays a bounded captured observation. The simulator never starts APTA.
 use super::*;
-use pajoniiir_service::analysis::Observation;
+use ruzina_service::analysis::Observation;
 pub fn refresh(ui: &MainWindow, value: Observation) {
     let s = value.sample;
-    use pajoniiir_service::analysis::State;
+    use ruzina_service::analysis::State;
     ui.set_analysis_status(
         format!(
             "{} / ANALYSIS {}",
@@ -22,7 +22,7 @@ pub fn refresh(ui: &MainWindow, value: Observation) {
         _ => 0,
     });
     ui.set_analysis_recovery(s.reason.help().into());
-    ui.set_health_analysis_text(format!("NATIVE ANALYSIS / CAPTURED OBSERVATION\n\nState: {}\nReason: {}\nDeck: {}\nLoad generation: {}\nTransition sequence: {}\nTransition time (source clock): {} ms\n\n{}\n\nCaptured record; no live worker connection.\nA transition time is not a heartbeat or percentage.\nAudio timing / hardware acceptance: NOT QUALIFIED",s.state.label(),s.reason.label(),s.deck.map_or("NONE",|d|match d {pajoniiir_core::DeckId::One=>"1",pajoniiir_core::DeckId::Two=>"2"}),s.load_generation.map_or("NONE".into(),|g|g.to_string()),value.serial,value.changed_ms,s.reason.help()).into());
+    ui.set_health_analysis_text(format!("NATIVE ANALYSIS / CAPTURED OBSERVATION\n\nState: {}\nReason: {}\nDeck: {}\nLoad generation: {}\nTransition sequence: {}\nTransition time (source clock): {} ms\n\n{}\n\nCaptured record; no live worker connection.\nA transition time is not a heartbeat or percentage.\nAudio timing / hardware acceptance: NOT QUALIFIED",s.state.label(),s.reason.label(),s.deck.map_or("NONE",|d|match d {ruzina_core::DeckId::One=>"1",ruzina_core::DeckId::Two=>"2"}),s.load_generation.map_or("NONE".into(),|g|g.to_string()),value.serial,value.changed_ms,s.reason.help()).into());
 }
 pub fn read(path: &std::path::Path) -> Result<Observation, Box<dyn std::error::Error>> {
     use std::io::Read;
