@@ -155,6 +155,15 @@ impl<const N: usize> LibraryEffectQueue<N> {
     }
 }
 
+/// RP-08: a length the deck source learns after the load (an untagged MP3's
+/// complete frame walk), for the track and media it was prepared from.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ScannedDuration {
+    pub(crate) track: ruzina_core::MediaTrackId,
+    pub(crate) lease: MediaLease,
+    pub(crate) duration_ms: u32,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct ProductLoadedTrack {
     pub(crate) candidate: CatalogLoadCandidate,
@@ -346,6 +355,20 @@ impl ProductRuntime {
 
     pub(crate) fn loaded_track(&self, deck: DeckId) -> Option<ProductLoadedTrack> {
         self.loaded_tracks[deck_index(deck)]
+    }
+
+    /// RP-08: the walked length of an untagged MP3, learned after the load,
+    /// bounds later loops on that deck. A report from an earlier load or other
+    /// media is ignored; a known length is never replaced.
+    pub(crate) fn apply_scanned_duration(&mut self, deck: DeckId, report: ScannedDuration) -> bool {
+        let Some(loaded) = self.loaded_tracks[deck_index(deck)] else {
+            return false;
+        };
+        loaded.candidate.track.track_id == report.track
+            && loaded.candidate.publication.lease == report.lease
+            && self
+                .deck
+                .learn_decoded_duration_ms(deck, report.track, report.duration_ms)
     }
 
     /// Background copies use the current load identity and existing owned pins.

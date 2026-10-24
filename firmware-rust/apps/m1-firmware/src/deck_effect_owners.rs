@@ -15,7 +15,7 @@ use crate::hotcue_access::HotCueAccess;
 pub(crate) use crate::hotcue_access::HotCueLoadResult;
 #[cfg(feature = "hotcue-flash-storage")]
 use crate::hotcue_flash::EspHotCueFlash;
-use crate::product_runtime::ProductRuntime;
+use crate::product_runtime::{ProductRuntime, ScannedDuration};
 use crate::transport_owner_state::{
     TransportCommand, TransportCompletion, TransportOutcome, TransportOwnerState,
 };
@@ -71,6 +71,19 @@ static TRANSPORT_COMPLETIONS: Channel<
     TRANSPORT_COMPLETION_DEPTH,
 > = Channel::new();
 static EFFECT_OWNER_PROGRESS: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+
+static SCANNED_DURATIONS: [Signal<CriticalSectionRawMutex, ScannedDuration>; 2] =
+    [Signal::new(), Signal::new()];
+
+/// Source owner side: publish the latest learned length and wake dispatch.
+pub(crate) fn report_scanned_duration(deck: DeckId, duration: ScannedDuration) {
+    let index = match deck {
+        DeckId::One => 0,
+        DeckId::Two => 1,
+    };
+    SCANNED_DURATIONS[index].signal(duration);
+    EFFECT_OWNER_PROGRESS.signal(());
+}
 #[cfg(feature = "apta-usb0-bringup")]
 static TRANSPORT_ACTIVITY: crate::transport_activity::TransportActivity =
     crate::transport_activity::TransportActivity::new();
@@ -239,6 +252,15 @@ pub(crate) async fn load_persisted_hot_cues(
 
 pub(crate) fn dispatch_product_effects(product: &mut ProductRuntime) -> EffectOwnerDispatchReport {
     let mut report = EffectOwnerDispatchReport::default();
+
+    for (deck, scanned) in [DeckId::One, DeckId::Two]
+        .into_iter()
+        .zip(&SCANNED_DURATIONS)
+    {
+        if let Some(duration) = scanned.try_take() {
+            product.apply_scanned_duration(deck, duration);
+        }
+    }
 
     sync_transport_epochs(product);
     while let Ok(completion) = TRANSPORT_COMPLETIONS.try_receive() {

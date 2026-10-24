@@ -10,7 +10,7 @@ use ruzina_audio_dsp::PcmFrame;
 use ruzina_audio_runtime::{
     decode::{
         AudioCodec, DecodeAction, DecoderStorage, ENCODED_BUFFER_BYTES, Mp3CheckpointStorage,
-        SourceDecoder, SourceDescriptor, StreamChange,
+        SourceDecoder, SourceDescriptor, SourceDuration, StreamChange,
     },
     pcm_stream::{PcmStreamBlock, StreamActivation, next_stream_generation},
     wav::{
@@ -24,6 +24,8 @@ use ruzina_media_fs::{BoundedPath, FileHandle};
 use static_cell::StaticCell;
 
 use crate::{
+    deck_effect_owners::report_scanned_duration,
+    product_runtime::ScannedDuration,
     usb0_library::{current_media_lease, wait_for_media_lease_change},
     usb0_msc::{
         Usb0FilesystemClient, Usb0FsCompletion, Usb0FsFileHandle, Usb0FsRequest, Usb0FsSubmitResult,
@@ -143,6 +145,8 @@ struct PreparedAudioSource {
     stream: SourceDecoder,
     primed: Option<PcmStreamBlock>,
     eof_queued: bool,
+    /// The walked length was handed to the product once (RP-08).
+    duration_reported: bool,
 }
 
 pub(crate) async fn prepare_audio_source(
@@ -477,7 +481,8 @@ async fn run_owner(
                     let scanned = match prepared.as_mut() {
                         Some(source) => {
                             let (next_buffer, scanned) =
-                                scan_frame_index(&mut client, source, buffer, &mut storage).await;
+                                scan_frame_index(deck, &mut client, source, buffer, &mut storage)
+                                    .await;
                             buffer = next_buffer;
                             scanned
                         }
@@ -605,6 +610,7 @@ async fn prepare_source(
                         stream,
                         primed: Some(block),
                         eof_queued: false,
+                        duration_reported: false,
                     }),
                 )
             }
@@ -734,6 +740,7 @@ async fn prepare_source(
                         stream,
                         primed: Some(block),
                         eof_queued: false,
+                        duration_reported: false,
                     }),
                 ),
                 _ => {
@@ -834,14 +841,35 @@ async fn prime(
 
 /// One bounded read of the background MP3 frame walk, taken only while the
 /// PCM queue is full so it never delays a block (RP-08). Returns false when
-/// the source has nothing left to walk. A failed read is retried later.
+/// the source has nothing left to walk; a complete untagged walk then hands
+/// its length to the product once. A failed read is retried later.
 async fn scan_frame_index(
+    deck: DeckId,
     client: &mut Usb0FilesystemClient,
     source: &mut PreparedAudioSource,
     buffer: &'static mut [u8],
     storage: &mut DecoderStorage,
 ) -> (&'static mut [u8], bool) {
     let Some((offset, maximum)) = source.stream.index_read(storage, buffer.len()) else {
+        if !source.duration_reported
+            && let SourceDuration::Scanned(_) = source.stream.duration(storage)
+        {
+            source.duration_reported = true;
+            if let Some(duration_ms) = source
+                .stream
+                .duration(storage)
+                .millis(source.descriptor.sample_rate_hz())
+            {
+                report_scanned_duration(
+                    deck,
+                    ScannedDuration {
+                        track: source.candidate.track.track_id,
+                        lease: source.candidate.publication.lease,
+                        duration_ms,
+                    },
+                );
+            }
+        }
         return (buffer, false);
     };
     let (file, buffer, bytes) = read_at(

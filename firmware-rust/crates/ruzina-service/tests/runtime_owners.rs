@@ -582,3 +582,70 @@ fn actual_product_keeps_shared_track_cue_edits_current_across_decks() {
         assert!(cues.slot(2).is_some());
     }
 }
+
+// RP-08: an untagged MP3's walked length reaches loop admission only for the
+// track and media it was walked from.
+#[test]
+fn actual_product_learns_a_scanned_length_only_for_the_loaded_track() {
+    use product_runtime::ScannedDuration;
+    use ruzina_core::MediaTrackId;
+    use ruzina_hot_cues::HotCueBank;
+    use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId, CatalogTrack};
+    let mut h = Harness::new();
+    h.media.on_connect(MediaSourceId::new(1).unwrap());
+    let lease = h.media.lease().unwrap();
+    let track = MediaTrackId([9; 16]);
+    let candidate = CatalogLoadCandidate {
+        publication: CatalogPublicationId { lease, revision: 1 },
+        index: 0,
+        track: CatalogTrack {
+            track_id: track,
+            source_track_id: 9,
+            ..CatalogTrack::EMPTY
+        },
+    };
+    let source = HotCueBank::empty(track);
+    assert!(
+        h.product
+            .commit_library_load(DeckId::One, candidate, source, None, true, None)
+    );
+    assert_eq!(h.product.deck().decoded_duration_ms(DeckId::One), None);
+
+    let report = ScannedDuration {
+        track,
+        lease,
+        duration_ms: 431_250,
+    };
+    assert_eq!(h.media.on_disconnect(None), DisconnectResult::Accepted);
+    h.media.on_connect(MediaSourceId::new(1).unwrap());
+    let other_media = h.media.lease().unwrap();
+    for (deck, refused) in [
+        (DeckId::Two, report),
+        (
+            DeckId::One,
+            ScannedDuration {
+                track: MediaTrackId([8; 16]),
+                ..report
+            },
+        ),
+        (
+            DeckId::One,
+            ScannedDuration {
+                lease: other_media,
+                ..report
+            },
+        ),
+    ] {
+        assert!(!h.product.apply_scanned_duration(deck, refused));
+    }
+    assert_eq!(h.product.deck().decoded_duration_ms(DeckId::One), None);
+    assert!(h.product.apply_scanned_duration(DeckId::One, report));
+    assert_eq!(
+        h.product.deck().decoded_duration_ms(DeckId::One),
+        Some(431_250)
+    );
+    assert!(
+        !h.product.apply_scanned_duration(DeckId::One, report),
+        "once"
+    );
+}

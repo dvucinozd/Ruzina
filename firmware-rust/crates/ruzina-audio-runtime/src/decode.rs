@@ -89,6 +89,20 @@ pub enum SourceDuration {
     Unknown,
 }
 
+impl SourceDuration {
+    /// Whole milliseconds at `sample_rate_hz` (`frames * 1000 / rate`, as the
+    /// deck's loop admission uses it); `None` while unknown or without a rate.
+    pub fn millis(self, sample_rate_hz: u32) -> Option<u32> {
+        let (Self::Exact(frames) | Self::Scanned(frames)) = self else {
+            return None;
+        };
+        (sample_rate_hz != 0).then(|| {
+            u32::try_from(frames.saturating_mul(1_000) / u64::from(sample_rate_hz))
+                .unwrap_or(u32::MAX)
+        })
+    }
+}
+
 #[derive(Clone)]
 pub struct DecoderStorage {
     mp3: Mp3Decoder<i16>,
