@@ -515,3 +515,123 @@ fn zero_bpm_and_invalid_bar_positions_do_not_become_a_usable_grid() {
         assert!(feed(&mut AnlzImporter::new(), AnalysisFileKind::Dat, &bytes).is_err());
     }
 }
+
+fn same_analysis(a: &AnalysisPublication, b: &AnalysisPublication) {
+    let (a, b) = (a.view(), b.view());
+    assert_eq!(a.bpm_x100(), b.bpm_x100());
+    assert_eq!(
+        a.beat_grid().map(|grid| grid.beats()),
+        b.beat_grid().map(|grid| grid.beats())
+    );
+    assert_eq!(a.preview(), b.preview());
+    assert_eq!(a.detail(), b.detail());
+    assert_eq!(a.detail_rate_hz(), b.detail_rate_hz());
+    assert_eq!(a.cues(), b.cues());
+    assert_eq!(a.memory_cues(), b.memory_cues());
+    assert_eq!(a.memory_cues_truncated(), b.memory_cues_truncated());
+    assert_eq!(a.color_preview(), b.color_preview());
+    assert_eq!(a.color_preview_truncated(), b.color_preview_truncated());
+}
+
+// RP-18 / M2.5 anlz_parse_ext: a rejected EXT leaves the DAT parse untouched.
+#[test]
+fn rejected_ext_is_discarded_and_publishes_exactly_the_dat_analysis() {
+    let dat_only = import_dat(DAT).unwrap();
+    let columns = [[10, 0, 0, 1, 2, 3], [20, 0, 0, 4, 5, 6]];
+    let mut broken_tail = tag(b"UNKN", &[], &[0; 4]);
+    write32(&mut broken_tail, 8, 64);
+    let mut detail = EXT.to_vec();
+    write32(&mut detail, section(EXT, b"PWV3") + 12, 2);
+    let late = container(&[
+        hot_list(&[hot_pcpt(4, 1, 8_000, 0)]),
+        memory_list(&[memory_pcpt(2, 5_000, 6_000)]),
+        pwv4(6, 2, &columns, 0),
+        broken_tail,
+    ]);
+    // Bad detail header, or a broken section after cues and colors were added.
+    for ext in [detail, late, EXT[..EXT.len() - 1].to_vec()] {
+        let mut importer = AnlzImporter::new();
+        feed(&mut importer, AnalysisFileKind::Dat, DAT).unwrap();
+        let ingested = importer.begin_file(AnalysisFileKind::Ext, ext.len() as u64);
+        let mut failed = ingested.is_err();
+        while let (false, Some(plan)) = (failed, importer.read_plan()) {
+            let start = plan.offset as usize;
+            failed = match ext.get(start..start + plan.len) {
+                Some(bytes) => importer.ingest(plan.offset, bytes).is_err(),
+                None => true,
+            };
+        }
+        assert!(failed || !importer.file_complete());
+        assert!(!importer.ext_discarded());
+        assert!(importer.discard_ext());
+        assert!(importer.ext_discarded());
+        // One EXT per import, even after a discard.
+        assert!(
+            importer
+                .begin_file(AnalysisFileKind::Ext, EXT.len() as u64)
+                .is_err()
+        );
+        assert!(importer.discard_ext());
+        same_analysis(&importer.finish(identity(1), 12_000).unwrap(), &dat_only);
+    }
+
+    // A clean EXT can be refused too; nothing of it survives.
+    let mut importer = AnlzImporter::new();
+    feed(&mut importer, AnalysisFileKind::Dat, DAT).unwrap();
+    feed(&mut importer, AnalysisFileKind::Ext, EXT).unwrap();
+    assert!(importer.discard_ext());
+    same_analysis(&importer.finish(identity(1), 12_000).unwrap(), &dat_only);
+
+    // Without a completed DAT there is nothing to keep.
+    let mut importer = AnlzImporter::new();
+    assert!(!importer.discard_ext());
+    let mut bad = DAT.to_vec();
+    write32(&mut bad, section(DAT, b"PWAV") + 12, 399);
+    assert!(feed(&mut importer, AnalysisFileKind::Dat, &bad).is_err());
+    assert!(!importer.discard_ext());
+    assert!(importer.finish(identity(1), 12_000).is_err());
+}
+
+fn cut_container(mut bytes: Vec<u8>, drop: usize) -> Vec<u8> {
+    bytes.truncate(bytes.len() - drop);
+    let len = bytes.len() as u32;
+    write32(&mut bytes, 8, len);
+    bytes
+}
+
+// RP-18 / M2.5 082d2c0a: a cut-off trailing PWV4 degrades to the PWV3 data;
+// no other truncated section is excused.
+#[test]
+fn truncated_trailing_pwv4_degrades_but_other_truncations_still_fail() {
+    let columns = [[10, 0, 0, 1, 2, 3], [20, 0, 0, 4, 5, 6]];
+    let cue = hot_list(&[hot_pcpt(4, 1, 8_000, 0)]);
+    let color = pwv4(6, 2, &columns, 0);
+    let full = container(&[cue.clone(), color.clone()]);
+
+    // Payload cut short, header intact: cue D kept, colors dropped.
+    for drop in [1, 6, 12] {
+        let (data, rejected) = import_ext_flagged(&cut_container(full.clone(), drop));
+        assert!(rejected);
+        assert!(data.view().color_preview().is_empty());
+        assert_eq!(data.view().cues().len(), 3);
+        assert_eq!(data.view().cues()[2].start_ms, 8_000);
+    }
+
+    // The 24-byte PWV4 header itself cut: no excuse.
+    let header_cut = cut_container(full.clone(), 12 + 1);
+    assert!(import_dat_ext(&header_cut).is_err());
+    // A truncated trailing cue list, or a truncated PWV4 in a DAT, still fails.
+    let cue_cut = cut_container(container(&[color.clone(), cue.clone()]), 4);
+    assert!(import_dat_ext(&cue_cut).is_err());
+    let dat_cut = cut_container(
+        {
+            let mut dat = DAT.to_vec();
+            dat.extend_from_slice(&color);
+            let len = dat.len() as u32;
+            write32(&mut dat, 8, len);
+            dat
+        },
+        4,
+    );
+    assert!(import_dat(&dat_cut).is_err());
+}

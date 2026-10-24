@@ -268,8 +268,9 @@ impl Session {
         };
         let publication = data.and_then(|data| {
             feed(&mut importer, AnalysisFileKind::Dat, data).ok()?;
-            if selection == 0 {
-                feed(&mut importer, AnalysisFileKind::Ext, EXT).ok()?;
+            // A rejected EXT keeps the DAT analysis, as on the device.
+            if selection == 0 && feed(&mut importer, AnalysisFileKind::Ext, EXT).is_err() {
+                importer.discard_ext();
             }
             importer
                 .finish(id, if selection == 1 { 12800 } else { 12000 })

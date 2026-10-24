@@ -10,11 +10,12 @@ use ruzina_rekordbox::{
     PDB_PLAYLIST_TREE_ROW_HEADER_BYTES, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_ARTWORK,
     PDB_TABLE_KEYS, PDB_TABLE_PLAYLIST_ENTRIES, PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS,
     PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES, PdbHeader, PdbNameEntry, PdbNameLookup,
-    PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbTableDirectory, PdbTableEntry,
-    PdbText, PdbTrackRow, catalog_track_from_pdb, parse_devicesql_field_header, parse_pdb_header,
-    parse_pdb_name_row_header, parse_pdb_page_header, parse_pdb_playlist_entry_row,
-    parse_pdb_playlist_tree_row, parse_pdb_table_directory, parse_pdb_track_row_header,
-    pdb_track_string_page_offset, recover_pdb_title, resolve_pdb_track_names,
+    PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbRowEnds, PdbTableDirectory,
+    PdbTableEntry, PdbText, PdbTrackRow, catalog_track_from_pdb, parse_devicesql_field_header,
+    parse_pdb_header, parse_pdb_name_row_header, parse_pdb_page_header,
+    parse_pdb_playlist_entry_row, parse_pdb_playlist_tree_row, parse_pdb_table_directory,
+    parse_pdb_track_row_header, pdb_track_string_page_offset, recover_pdb_title,
+    resolve_pdb_track_names,
 };
 
 /// `USB0_LIBRARY_PDB_IO_BYTES`.
@@ -55,29 +56,35 @@ fn read_track_text<const N: usize>(
     }
 }
 
+/// A name must start and end before `limit`; one that does not is `None`.
 fn read_name_text(
     file: &[u8],
     page_start: u64,
-    page_size: u32,
+    limit: u32,
     heap_offset: u16,
     header: PdbNameRowHeader,
-) -> Result<PdbText<PDB_NAME_MAX>, String> {
+) -> Result<Option<PdbText<PDB_NAME_MAX>>, String> {
     let offset = PDB_PAGE_HEAP_OFFSET as u32
         + u32::from(heap_offset)
         + u32::from(header.text_relative_offset);
-    if offset >= page_size {
-        return Err("NameRowOutOfRange".into());
+    if offset >= limit {
+        return Ok(None);
     }
-    read_text(file, page_start, page_size, offset)
+    let buffer = read_at(file, page_start + u64::from(offset));
+    let field = parse_devicesql_field_header(buffer, 0).map_err(|e| format!("{e:?}"))?;
+    if offset + u32::from(field.total_len) > limit {
+        return Ok(None);
+    }
+    read_text(file, page_start, limit, offset).map(Some)
 }
 
-/// Calls `row` for each present row of a table's page chain, as the firmware
-/// walkers do.
+/// Calls `row` with each present row of a table's page chain and the row's
+/// length up to the next slot (`PdbRowEnds`), as the firmware walkers do.
 fn walk_table(
     file: &[u8],
     header: PdbHeader,
     table: PdbTableEntry,
-    mut row: impl FnMut(u64, u16) -> Result<(), String>,
+    mut row: impl FnMut(u64, u16, u32) -> Result<(), String>,
 ) -> Result<(u32, bool), String> {
     let mut page = table.first_page;
     let mut pages = 0u32;
@@ -98,8 +105,18 @@ fn walk_table(
             let offsets = walker
                 .ingest_batch(plan, read_at(file, page_start + u64::from(plan.offset)))
                 .map_err(|e| format!("page {page}: {e:?}"))?;
-            for heap_offset in offsets.offsets().iter().copied() {
-                row(page_start, heap_offset).map_err(|e| format!("page {page}: {e}"))?;
+            let mut ends = PdbRowEnds::new(&offsets, header.page_size, page_header.declared_rows);
+            let mut scan = PdbPageSlotWalker::new(header.page_size, page_header.declared_rows)
+                .map_err(|e| format!("page {page}: {e:?}"))?;
+            while let Some(slots) = scan.next_batch_plan() {
+                let data = read_at(file, page_start + u64::from(slots.offset));
+                ends.observe(slots, data)
+                    .and_then(|()| scan.ingest_batch(slots, data).map(|_| ()))
+                    .map_err(|e| format!("page {page}: {e:?}"))?;
+            }
+            for (index, heap_offset) in offsets.offsets().iter().copied().enumerate() {
+                row(page_start, heap_offset, ends.row_len(index))
+                    .map_err(|e| format!("page {page}: {e}"))?;
             }
         }
         truncated |= walker.summary().truncated;
@@ -117,6 +134,7 @@ struct NameMap {
     capacity: usize,
     optional: bool,
     seen: u32,
+    out_of_row: u32,
 }
 
 impl PdbNameLookup for NameMap {
@@ -135,18 +153,30 @@ fn scan_names(
     layout: PdbNameRowLayout,
     map: &mut NameMap,
 ) -> Result<(u32, bool), String> {
-    walk_table(file, header, table, |page_start, heap_offset| {
+    walk_table(file, header, table, |page_start, heap_offset, row_len| {
         let page_relative = PDB_PAGE_HEAP_OFFSET as u32 + u32::from(heap_offset);
         if page_relative + layout.minimum_bytes() as u32 > header.page_size {
             return Err("NameRowOutOfRange".into());
         }
+        let limit = if layout.bounded_to_row() {
+            if row_len < layout.minimum_bytes() as u32 {
+                map.out_of_row += 1;
+                return Ok(());
+            }
+            page_relative + row_len
+        } else {
+            header.page_size
+        };
         let row = read_at(file, page_start + u64::from(page_relative));
         let Some(row_header) =
             parse_pdb_name_row_header(row, layout).map_err(|e| format!("{e:?}"))?
         else {
             return Ok(());
         };
-        let name = read_name_text(file, page_start, header.page_size, heap_offset, row_header)?;
+        let Some(name) = read_name_text(file, page_start, limit, heap_offset, row_header)? else {
+            map.out_of_row += 1;
+            return Ok(());
+        };
         if let Some(entry) = PdbNameEntry::from_header_and_field(row_header, name) {
             map.seen += 1;
             if map.entries.iter().any(|existing| existing.id == entry.id) {
@@ -239,7 +269,11 @@ fn main() -> Result<(), String> {
                 "IMPORT FAILED in {name}: truncated or over capacity"
             ));
         }
-        eprintln!("{name}: {} entries, {pages} pages", map.entries.len());
+        eprintln!(
+            "{name}: {} entries, {pages} pages, {} out of row",
+            map.entries.len(),
+            map.out_of_row
+        );
     }
     if let Some(page) = first(PDB_TABLE_ARTWORK) {
         // Covers are optional: a malformed table leaves every track on the fallback.
@@ -271,77 +305,81 @@ fn main() -> Result<(), String> {
         tracks: Vec::new(),
     };
     let tracks_page = first(PDB_TABLE_TRACKS).ok_or("IMPORT FAILED: MissingTracksTable")?;
-    let (pages, truncated) = walk_table(&file, header, tracks_page, |page_start, heap_offset| {
-        let page_relative = PDB_PAGE_HEAP_OFFSET as u32 + u32::from(heap_offset);
-        if page_relative + PDB_TRACK_ROW_HEADER_BYTES as u32 > header.page_size {
-            return Err("TrackRowOutOfRange".into());
-        }
-        let row = read_at(&file, page_start + u64::from(page_relative));
-        let Some(track_header) = parse_pdb_track_row_header(row).map_err(|e| format!("{e:?}"))?
-        else {
-            return Ok(());
-        };
-        let text = |relative| {
-            read_track_text::<PDB_TITLE_MAX>(
-                &file,
-                page_start,
-                header.page_size,
-                heap_offset,
-                relative,
-            )
-        };
-        let path = |relative| {
-            read_track_text::<PDB_PATH_MAX>(
-                &file,
-                page_start,
-                header.page_size,
-                heap_offset,
-                relative,
-            )
-        };
-        let title = text(track_header.strings.title).unwrap_or_else(|_| {
-            recover_pdb_title::<PDB_TITLE_MAX>(Err(ruzina_rekordbox::PdbError::DeviceSqlTruncated))
-        });
-        let track = PdbTrackRow::from_header_and_fields(
-            track_header,
-            title,
-            text(track_header.strings.filename)?,
-            path(track_header.strings.file_path)?,
-            path(track_header.strings.anlz_path)?,
-        );
-        if track.file_path.was_truncated() {
-            return Err(format!("track {}: PathTooLong", track.track_id));
-        }
-        let audio_path = track
-            .file_path
-            .as_str()
-            .ok_or(format!("track {}: InvalidTrackPathUtf8", track.track_id))?;
-        derive_track_id(volume, audio_path)
-            .map_err(|e| format!("track {}: {e:?}", track.track_id))?;
-        let resolved = resolve_pdb_track_names(&track, &artists, &albums, &keys)
-            .with_artwork(&track, &artworks);
-        let entry = catalog_track_from_pdb(volume, &track, resolved)
-            .map_err(|e| format!("track {}: {e:?}", track.track_id))?;
-        if catalog.tracks.len() >= MEDIA_CATALOG_MAX_TRACKS {
-            return Err("CatalogBuild Full".into());
-        }
-        if catalog.tracks.iter().any(|t| t.track_id == entry.track_id) {
-            return Err(format!(
-                "DuplicateTrackId for source {}",
-                entry.source_track_id
-            ));
-        }
-        if catalog
-            .tracks
-            .iter()
-            .any(|t| t.source_track_id == entry.source_track_id)
-        {
-            return Err(format!("DuplicateSourceTrackId({})", entry.source_track_id));
-        }
-        catalog.tracks.push(entry);
-        Ok(())
-    })
-    .map_err(|e| format!("IMPORT FAILED in tracks: {e}"))?;
+    let (pages, truncated) =
+        walk_table(&file, header, tracks_page, |page_start, heap_offset, _| {
+            let page_relative = PDB_PAGE_HEAP_OFFSET as u32 + u32::from(heap_offset);
+            if page_relative + PDB_TRACK_ROW_HEADER_BYTES as u32 > header.page_size {
+                return Err("TrackRowOutOfRange".into());
+            }
+            let row = read_at(&file, page_start + u64::from(page_relative));
+            let Some(track_header) =
+                parse_pdb_track_row_header(row).map_err(|e| format!("{e:?}"))?
+            else {
+                return Ok(());
+            };
+            let text = |relative| {
+                read_track_text::<PDB_TITLE_MAX>(
+                    &file,
+                    page_start,
+                    header.page_size,
+                    heap_offset,
+                    relative,
+                )
+            };
+            let path = |relative| {
+                read_track_text::<PDB_PATH_MAX>(
+                    &file,
+                    page_start,
+                    header.page_size,
+                    heap_offset,
+                    relative,
+                )
+            };
+            let title = text(track_header.strings.title).unwrap_or_else(|_| {
+                recover_pdb_title::<PDB_TITLE_MAX>(Err(
+                    ruzina_rekordbox::PdbError::DeviceSqlTruncated,
+                ))
+            });
+            let track = PdbTrackRow::from_header_and_fields(
+                track_header,
+                title,
+                text(track_header.strings.filename)?,
+                path(track_header.strings.file_path)?,
+                path(track_header.strings.anlz_path)?,
+            );
+            if track.file_path.was_truncated() {
+                return Err(format!("track {}: PathTooLong", track.track_id));
+            }
+            let audio_path = track
+                .file_path
+                .as_str()
+                .ok_or(format!("track {}: InvalidTrackPathUtf8", track.track_id))?;
+            derive_track_id(volume, audio_path)
+                .map_err(|e| format!("track {}: {e:?}", track.track_id))?;
+            let resolved = resolve_pdb_track_names(&track, &artists, &albums, &keys)
+                .with_artwork(&track, &artworks);
+            let entry = catalog_track_from_pdb(volume, &track, resolved)
+                .map_err(|e| format!("track {}: {e:?}", track.track_id))?;
+            if catalog.tracks.len() >= MEDIA_CATALOG_MAX_TRACKS {
+                return Err("CatalogBuild Full".into());
+            }
+            if catalog.tracks.iter().any(|t| t.track_id == entry.track_id) {
+                return Err(format!(
+                    "DuplicateTrackId for source {}",
+                    entry.source_track_id
+                ));
+            }
+            if catalog
+                .tracks
+                .iter()
+                .any(|t| t.source_track_id == entry.source_track_id)
+            {
+                return Err(format!("DuplicateSourceTrackId({})", entry.source_track_id));
+            }
+            catalog.tracks.push(entry);
+            Ok(())
+        })
+        .map_err(|e| format!("IMPORT FAILED in tracks: {e}"))?;
     if truncated {
         return Err("IMPORT FAILED: CatalogTableTruncated".into());
     }
@@ -374,7 +412,7 @@ fn main() -> Result<(), String> {
         } else {
             PDB_PLAYLIST_ENTRY_ROW_BYTES as u32
         };
-        let result = walk_table(&file, header, page, |page_start, heap_offset| {
+        let result = walk_table(&file, header, page, |page_start, heap_offset, _| {
             let page_relative = PDB_PAGE_HEAP_OFFSET as u32 + u32::from(heap_offset);
             if page_relative + row_bytes > header.page_size {
                 builder.note_invalid_row();
@@ -391,7 +429,7 @@ fn main() -> Result<(), String> {
                             heap_offset,
                             node.name,
                         ) {
-                            Ok(name) => match name.as_str() {
+                            Ok(name) => match name.as_ref().and_then(PdbText::as_str) {
                                 Some(name) => {
                                     println!(
                                         "P\t{}\t{}\t{}\t{}\t{}",

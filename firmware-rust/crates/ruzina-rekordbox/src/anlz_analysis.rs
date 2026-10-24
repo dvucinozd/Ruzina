@@ -9,8 +9,8 @@ use ruzina_track_analysis::{
     AnalysisCue, AnalysisMemoryCue, AnalysisProvider, Beat, ColorPreviewEntry,
     MAX_COLOR_PREVIEW_COLUMNS, WaveformColumn,
     owned::{
-        AnalysisBuilder, AnalysisDataError, AnalysisIdentity, AnalysisPublication,
-        MAX_ANALYSIS_BEATS, MAX_DETAIL_COLUMNS,
+        AnalysisBuilder, AnalysisCheckpoint, AnalysisDataError, AnalysisIdentity,
+        AnalysisPublication, MAX_ANALYSIS_BEATS, MAX_DETAIL_COLUMNS,
     },
 };
 
@@ -82,6 +82,15 @@ enum Stage {
     Failed,
 }
 
+/// Importer state when the DAT completed, restored when EXT is rejected.
+#[derive(Clone, Copy)]
+struct DatMark {
+    data: AnalysisCheckpoint,
+    seen_detail: bool,
+    seen_color_preview: bool,
+    color_preview_rejected: bool,
+}
+
 pub struct AnlzImporter {
     data: AnalysisBuilder,
     stage: Stage,
@@ -99,6 +108,8 @@ pub struct AnlzImporter {
     seen_memory: bool,
     seen_color_preview: bool,
     color_preview_rejected: bool,
+    dat_mark: Option<DatMark>,
+    ext_discarded: bool,
 }
 impl AnlzImporter {
     pub const fn new() -> Self {
@@ -119,6 +130,8 @@ impl AnlzImporter {
             seen_memory: false,
             seen_color_preview: false,
             color_preview_rejected: false,
+            dat_mark: None,
+            ext_discarded: false,
         }
     }
     /// A PWV4 section was present but malformed or repeated and was skipped;
@@ -126,11 +139,31 @@ impl AnlzImporter {
     pub const fn color_preview_rejected(&self) -> bool {
         self.color_preview_rejected
     }
+    /// The EXT was rejected and the publication carries the DAT data only.
+    pub const fn ext_discarded(&self) -> bool {
+        self.ext_discarded
+    }
+    /// Rejects the EXT enrichment, whatever state it reached, and keeps the
+    /// completed DAT data (M2.5: "EXT rejected; previous metadata retained").
+    /// Returns false, changing nothing, unless a DAT completed.
+    pub fn discard_ext(&mut self) -> bool {
+        let Some(mark) = self.dat_mark else {
+            return false;
+        };
+        self.data.rollback(mark.data);
+        self.seen_detail = mark.seen_detail;
+        self.seen_color_preview = mark.seen_color_preview;
+        self.color_preview_rejected = mark.color_preview_rejected;
+        self.ext_discarded = true;
+        self.stage = Stage::Done;
+        true
+    }
     pub fn begin_file(&mut self, kind: AnalysisFileKind, len: u64) -> Result<(), ImportError> {
         if !matches!(self.stage, Stage::Idle | Stage::Done)
             || !(12..=u64::from(ANLZ_MAX_FILE_BYTES)).contains(&len)
             || (kind == AnalysisFileKind::Dat && self.dat_started)
-            || (kind == AnalysisFileKind::Ext && (!self.dat_done || self.ext_started))
+            || (kind == AnalysisFileKind::Ext
+                && (!self.dat_done || self.ext_started || self.ext_discarded))
         {
             self.stage = Stage::Failed;
             return Err(ImportError::Container);
@@ -209,6 +242,13 @@ impl AnlzImporter {
                     .checked_add(1)
                     .filter(|n| *n <= ANLZ_MAX_SECTIONS)
                     .ok_or(ImportError::Bounds)?;
+                if self.truncated_color_tail(position, bytes) {
+                    // M2.5 082d2c0a: a cut-off trailing PWV4 degrades to PWV3;
+                    // nothing else in the file may be truncated.
+                    self.color_preview_rejected = true;
+                    self.complete_file();
+                    return Ok(());
+                }
                 let section = parse_section_header(position, self.file_len, bytes)?;
                 if section.tag == PMAI {
                     return Err(ImportError::Container);
@@ -404,13 +444,35 @@ impl AnlzImporter {
         }
         Ok(())
     }
+    /// An EXT PWV4 whose 24-byte header fits but whose payload runs past the
+    /// end of the file.
+    fn truncated_color_tail(&self, position: u32, bytes: &[u8]) -> bool {
+        let left = self.file_len - position;
+        let (header, segment) = (be32(bytes, 4), be32(bytes, 8));
+        self.kind == AnalysisFileKind::Ext
+            && be32(bytes, 0) == PWV4
+            && (24..=left).contains(&header)
+            && segment >= header
+            && segment > left
+    }
+    fn complete_file(&mut self) {
+        self.stage = Stage::Done;
+        match self.kind {
+            AnalysisFileKind::Dat => {
+                self.dat_done = true;
+                self.dat_mark = Some(DatMark {
+                    data: self.data.checkpoint(),
+                    seen_detail: self.seen_detail,
+                    seen_color_preview: self.seen_color_preview,
+                    color_preview_rejected: self.color_preview_rejected,
+                });
+            }
+            AnalysisFileKind::Ext => self.ext_done = true,
+        }
+    }
     fn next_section(&mut self, offset: u32) -> Result<(), ImportError> {
         if offset == self.file_len {
-            self.stage = Stage::Done;
-            match self.kind {
-                AnalysisFileKind::Dat => self.dat_done = true,
-                AnalysisFileKind::Ext => self.ext_done = true,
-            }
+            self.complete_file();
         } else {
             if offset > self.file_len || self.file_len - offset < 12 {
                 return Err(ImportError::Bounds);
@@ -428,7 +490,7 @@ impl AnlzImporter {
         fallback_bpm_x100: u32,
     ) -> Result<AnalysisPublication, ImportError> {
         if !self.dat_done
-            || (self.ext_started && !self.ext_done)
+            || (self.ext_started && !self.ext_done && !self.ext_discarded)
             || !matches!(self.stage, Stage::Done)
         {
             return Err(ImportError::Incomplete);

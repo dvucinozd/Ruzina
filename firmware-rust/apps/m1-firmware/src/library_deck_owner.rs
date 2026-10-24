@@ -412,7 +412,6 @@ async fn load_source_analysis(
         buffer = next_buffer;
         if dat == AnalysisScanResult::Complete {
             let mut ext_storage = [0u8; 256];
-            let mut valid = true;
             if let Some(path) =
                 extended_path(candidate.track.analysis_path.as_str(), &mut ext_storage)
                     .and_then(|path| BoundedPath::new(path).ok())
@@ -427,9 +426,12 @@ async fn load_source_analysis(
                 )
                 .await;
                 buffer = next_buffer;
-                valid = ext != AnalysisScanResult::Invalid;
+                // A rejected EXT keeps the DAT analysis, as in M2.5.
+                if ext == AnalysisScanResult::Invalid {
+                    importer.discard_ext();
+                }
             }
-            if valid && catalog_publication_matches(candidate.publication) {
+            if catalog_publication_matches(candidate.publication) {
                 let identity = AnalysisIdentity {
                     track: candidate.track.track_id,
                     lease: candidate.publication.lease,
