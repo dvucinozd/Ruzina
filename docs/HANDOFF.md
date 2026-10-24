@@ -1,8 +1,7 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-24. Next action: **the remaining host work (tempo
-nudge/paused scrub); target adapters and RP-09/10/14
-budgets wait for board qualification**. The project is now named Ruzina, with
+Updated: 2026-10-24. Next action: **the planned host work is done; target adapters, the firmware
+wiring of host contracts and RP-09/10/14 budgets wait for board qualification**. The project is now named Ruzina, with
 its own branding (see below).
 Host-implemented and merged to `main` on 2026-10-23 (PRs #23-#36, each with
 host and ESP32-P4 CI passing on `main`): RP-01/02 (PR #23, `ogranak/m25-rust-parity-plan`),
@@ -22,7 +21,7 @@ RP-07 part 2: baseline JPEG decoder and cover/logo display (PR #31,
 (PR #35, `ogranak/m25-rp09-17-audio-platform`) and the UAC 48 to 44.1 kHz
 converter (PR #36, `ogranak/m25-uac-resampler`). See the parity
 plan rows for evidence and open items (HTTP adapter for uploads, Web Remote admission/tap
-semantics, tempo nudge/paused scrub, physical controller/
+semantics, physical controller/
 import/listening acceptance). The sections below still describe the original
 baseline.
 

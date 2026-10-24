@@ -452,3 +452,50 @@ fn playlist_levels_never_survive_a_media_reconnect() {
     assert!(s.library_load(DeckId::Two));
     assert_eq!(s.title(1), session::TITLES[2]);
 }
+
+#[test]
+fn jog_nudges_a_playing_deck_and_scrubs_a_paused_one() {
+    use ruzina_controller_core::{ControlEvent, ControlValue, SemanticControl};
+    let jog = |control, ticks| ControlEvent {
+        deck: Some(DeckId::One),
+        control,
+        value: ControlValue::Relative(ticks),
+    };
+    let mut plain = loaded();
+    let mut nudged = loaded();
+    for s in [&mut plain, &mut nudged] {
+        press(s, DeckAction::Play);
+    }
+    nudged.control(jog(SemanticControl::JogBend, 15));
+    for _ in 0..40 {
+        plain.tick(5);
+        nudged.tick(5);
+    }
+    let ahead =
+        nudged.presentation(0).transport.position_ms - plain.presentation(0).transport.position_ms;
+    assert!(
+        (5..=30).contains(&ahead),
+        "the bend pushed the deck {ahead} ms ahead, then sprang back"
+    );
+    plain.tick(100);
+    nudged.tick(100);
+    let later =
+        nudged.presentation(0).transport.position_ms - plain.presentation(0).transport.position_ms;
+    assert!(later.abs_diff(ahead) <= 1, "no lasting tempo change");
+    assert_eq!(
+        nudged.presentation(0).transport.pitch_centi_percent,
+        0,
+        "the fader is unchanged"
+    );
+
+    press(&mut nudged, DeckAction::Play);
+    let paused = nudged.presentation(0).transport.position_ms;
+    nudged.control(jog(SemanticControl::JogScratch, 10));
+    assert_eq!(
+        nudged.presentation(0).transport.position_ms,
+        paused + 30,
+        "3 ms per tick"
+    );
+    nudged.control(jog(SemanticControl::JogScratch, -20));
+    assert_eq!(nudged.presentation(0).transport.position_ms, paused - 30);
+}

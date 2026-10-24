@@ -827,6 +827,7 @@ dependencies = [
 name = "desktop-simulator"
 version = "0.1.0"
 dependencies = [
+ "ruzina-audio-runtime",
  "ruzina-board-profile",
  "ruzina-controller-core",
  "ruzina-core",
