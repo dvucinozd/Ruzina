@@ -59,6 +59,10 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         ui.invoke_cue_action(0, 2, false);
         assert!(state.borrow().presentation(0).cues[2].is_some());
         capture(&ui, output, &format!("{name}-cues"))?;
+        // M2.5 MEMORY panel: deck 1's imported list replaces its pads.
+        ui.set_memory_deck(0);
+        capture(&ui, output, &format!("{name}-memory"))?;
+        ui.set_memory_deck(-1);
         ui.invoke_cue_action(0, 2, true);
         assert!(state.borrow().presentation(0).cues[2].is_none());
         ui.set_page(3);
@@ -100,7 +104,7 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         library_playlists(&ui, &state, output, name)?;
     }
     println!(
-        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 60 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 62 software-rendered snapshots: PASS"
     );
     Ok(())
 }
@@ -345,8 +349,20 @@ fn pointer_smoke(ui: &MainWindow, state: &Rc<RefCell<Session>>, width: f32) {
         button: PointerEventButton::Left,
     });
     assert!(state.borrow().presentation(0).cues[0].is_none());
+    // MEMORY toggles deck 1's list (the fifth button of its transport row);
+    // leaving the page closes it.
+    let memory_x = if width > 900.0 { 450.0 } else { 700.0 };
+    click(ui, memory_x, 296.0);
+    assert_eq!(ui.get_memory_deck(), 0);
+    click(ui, memory_x, 296.0);
+    assert_eq!(ui.get_memory_deck(), -1);
+    click(ui, memory_x, 296.0);
+    assert_eq!(ui.get_memory_deck(), 0);
+    nav(ui, width, 0);
+    ui.window().take_snapshot().unwrap();
+    assert_eq!(ui.get_memory_deck(), -1);
     println!(
-        "Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete: PASS at width {width}"
+        "Pointer navigation/load/play/refresh/focus/Space/Return/Tab/cue/delete/memory: PASS at width {width}"
     );
 }
 

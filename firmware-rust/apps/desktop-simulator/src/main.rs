@@ -14,7 +14,11 @@ use ruzina_media_catalog::{
     default_artwork::DEFAULT_ARTWORK_DECK,
     playlists::LibraryLevel,
 };
-use ruzina_ui_model::{DeckAction, cue_event};
+use ruzina_track_analysis::TrackAnalysis;
+use ruzina_ui_model::{
+    DeckAction, cue_event,
+    memory_cues::{MEMORY_CUE_EMPTY, MemoryCueTitle, memory_cue_lines},
+};
 use session::{Session, deck};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::{
@@ -48,6 +52,26 @@ fn artwork_image(view: ArtworkView<'_>) -> slint::Image {
     };
     let edge = u32::from(ARTWORK_DECK_EDGE);
     compositor::rgb565_image(pixels, edge, edge)
+}
+
+/// The M2.5 MEMORY panel for one deck: its title and one line per imported
+/// memory point or loop, or "No memory cues".
+fn memory_cue_text(i: usize, analysis: Option<TrackAnalysis<'_>>) -> (String, String) {
+    let cues = analysis.map_or(&[][..], |analysis| analysis.memory_cues());
+    let title = MemoryCueTitle {
+        deck: deck(i),
+        count: cues.len(),
+        truncated: analysis.is_some_and(|analysis| analysis.memory_cues_truncated()),
+    };
+    let lines: Vec<String> = memory_cue_lines(cues.iter().map(|cue| (cue.start_ms, cue.end_ms)))
+        .map(|line| line.to_string())
+        .collect();
+    let text = if lines.is_empty() {
+        MEMORY_CUE_EMPTY.into()
+    } else {
+        lines.join("\n")
+    };
+    (title.to_string(), text)
 }
 
 fn refresh(ui: &MainWindow, session: &Session) {
@@ -86,6 +110,7 @@ fn refresh(ui: &MainWindow, session: &Session) {
                     occupied: p.cues[slot].is_some(),
                 })
                 .collect::<Vec<_>>();
+            let (memory_title, memory_text) = memory_cue_text(i, analysis);
             let cue_model = rows.row_data(i).unwrap().cues;
             let cue_rows = cue_model
                 .as_any()
@@ -130,6 +155,8 @@ fn refresh(ui: &MainWindow, session: &Session) {
                     })
                     .unwrap_or("LOOP OFF".into())
                     .into(),
+                memory_title: memory_title.into(),
+                memory_text: memory_text.into(),
             }
         })
         .collect();

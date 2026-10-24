@@ -179,6 +179,40 @@ fn memory_cues_are_marked_apart_from_hot_cues_and_pwv4_colors_the_preview() {
     assert_eq!(pixels[center + 300], 0xf800);
 }
 
+// M2.5 MEMORY panel: export order, points and loops, truncation, empty deck.
+#[test]
+fn memory_panel_lists_imported_points_and_loops_like_m25() {
+    use ruzina_track_analysis::{AnalysisMemoryCue, AnalysisProvider};
+    let s = loaded();
+    assert_eq!(
+        memory_cue_text(0, s.analysis(0)),
+        ("D1 MEMORY CUES: 1".into(), "01  00:00:00  CUE".into())
+    );
+    assert_eq!(
+        memory_cue_text(1, s.analysis(1)),
+        ("D2 MEMORY CUES: 0".into(), "No memory cues".into())
+    );
+    let cues = [
+        AnalysisMemoryCue {
+            start_ms: 95_000,
+            end_ms: Some(103_500),
+        },
+        AnalysisMemoryCue {
+            start_ms: 61_000,
+            end_ms: None,
+        },
+    ];
+    let analysis = TrackAnalysis::new(AnalysisProvider::RekordboxImport, 1, 12_000, None)
+        .with_memory_cues(&cues, true);
+    assert_eq!(
+        memory_cue_text(1, Some(analysis)),
+        (
+            "D2 MEMORY CUES: 2 (TRUNCATED)".into(),
+            "01  00:01:35  LOOP - 00:01:43\n02  00:01:01  CUE".into()
+        )
+    );
+}
+
 #[test]
 fn imported_pqtz_bar_one_renders_as_the_tall_downbeat_tick() {
     // track-a.DAT stores PQTZ bar positions 1,2,3,4,1,... at 1000 + n*500 ms.

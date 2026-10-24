@@ -50,7 +50,7 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    (RP-03 host-implemented, including the B13a tempo nudge and paused scrub), shared load
    admission (RP-04 host-implemented: default-on LOAD LOCK verdict, single-flight
    permits and PLAY-vs-LOAD fencing before audio replacement), loop/memory/source
-   cue behavior (RP-05 host-implemented; memory-cue view/recall pending RP-07),
+   cue behavior (RP-05 host-implemented, with the M2.5 MEMORY list in the simulator),
    reconnect fencing (RP-15 host-implemented) and PDB row/EXT cue/loop-range
    edges (RP-18 host-implemented; remote CUE tap waits for the Web Remote).
 3. **RP-06/07/08:** ordered playlist hierarchy (RP-06 host-implemented, with a
