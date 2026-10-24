@@ -9,14 +9,16 @@ mod session;
 mod smoke;
 
 use ruzina_board_profile::{BoardId, profile};
+use ruzina_hot_cues::HotCueKind;
 use ruzina_media_catalog::{
-    artwork::{ARTWORK_DECK_EDGE, ArtworkView},
+    artwork::{ARTWORK_DECK_EDGE, ARTWORK_ROW_EDGE, ArtworkView},
     default_artwork::DEFAULT_ARTWORK_DECK,
     playlists::LibraryLevel,
 };
 use ruzina_track_analysis::TrackAnalysis;
 use ruzina_ui_model::{
     DeckAction, cue_event,
+    labels::{HotCueName, TrackTime, deck_key},
     memory_cues::{MEMORY_CUE_EMPTY, MemoryCueTitle, memory_cue_lines},
 };
 use session::{Session, deck};
@@ -99,15 +101,19 @@ fn refresh(ui: &MainWindow, session: &Session) {
                 None if t.loaded => "NO ANALYSIS · BPM FALLBACK",
                 None => "LOAD FROM LIBRARY",
             };
-            let cues = (0..8)
-                .map(|slot| CueView {
-                    label: format!(
-                        "{}{}",
-                        slot + 1,
-                        if p.cues[slot].is_some() { " ●" } else { "" }
-                    )
-                    .into(),
-                    occupied: p.cues[slot].is_some(),
+            let cues = (0..8u8)
+                .map(|slot| {
+                    let cue = p.cues[usize::from(slot)];
+                    CueView {
+                        label: HotCueName {
+                            slot,
+                            is_loop: cue.is_some_and(|cue| cue.kind == HotCueKind::Loop),
+                        }
+                        .to_string()
+                        .into(),
+                        occupied: cue.is_some(),
+                        letter: HotCueName::letter(slot).to_string().into(),
+                    }
                 })
                 .collect::<Vec<_>>();
             let (memory_title, memory_text) = memory_cue_text(i, analysis);
@@ -122,6 +128,7 @@ fn refresh(ui: &MainWindow, session: &Session) {
             DeckView {
                 title: session.title(i).into(),
                 artwork: artwork_image(session.artwork(i)),
+                key: deck_key(session.key(i)).into(),
                 bpm: if t.loaded {
                     format_bpm(t.bpm_milli)
                 } else {
@@ -178,13 +185,27 @@ fn library_refresh(ui: &MainWindow, session: &Session) {
     let rows: Vec<LibraryRowView> = session
         .library_rows()
         .into_iter()
-        .map(|(label, kind)| LibraryRowView {
-            label: label.into(),
-            kind: match kind {
-                session::RowKind::Track => 0,
-                session::RowKind::Folder => 1,
-                session::RowKind::Playlist => 2,
-            },
+        .zip(session.library_row_tracks())
+        .map(|((label, kind), track)| {
+            let mut row = LibraryRowView {
+                label: label.into(),
+                kind: match kind {
+                    session::RowKind::Track => 0,
+                    session::RowKind::Folder => 1,
+                    session::RowKind::Playlist => 2,
+                },
+                ..LibraryRowView::default()
+            };
+            if let Some(track) = track {
+                let (artist, key, bpm, duration_ms) = session.track_columns(track);
+                row.artist = artist.into();
+                row.key = key.into();
+                row.bpm = bpm.to_string().into();
+                row.time = TrackTime(duration_ms).to_string().into();
+                let edge = u32::from(ARTWORK_ROW_EDGE);
+                row.artwork = compositor::rgb565_image(session.row_artwork(track), edge, edge);
+            }
+            row
         })
         .collect();
     let model = ui.get_library_rows();

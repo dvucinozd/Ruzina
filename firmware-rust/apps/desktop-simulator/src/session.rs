@@ -8,7 +8,11 @@ use ruzina_deck::{DeckEffect, DeckLoadGate, DeckProductState, LoadPermit, LoadRe
 use ruzina_hot_cues::HotCueBank;
 use ruzina_media_catalog::{
     CatalogBuilder, CatalogSnapshot, CatalogText, CatalogTrack,
-    artwork::{ArtworkDecks, ArtworkIdentity, ArtworkView},
+    artwork::{
+        ARTWORK_ROW_EDGE, ARTWORK_ROW_PIXELS, ArtworkDecks, ArtworkIdentity, ArtworkView,
+        decode_thumbnail,
+    },
+    default_artwork::DEFAULT_ARTWORK_ROW,
     jpeg::BaselineJpegDecoder,
     playlists::{
         InlinePlaylistStore, LibraryActivation, LibraryBrowser, LibraryLevel, LibraryRow,
@@ -45,6 +49,11 @@ pub const TITLES: [&str; 4] = [
     "04 / Damaged analysis · recovery",
 ];
 const DURATIONS: [u32; 4] = [10_000, 14_000, 10_000, 10_000];
+/// Demo export rows: artist and key names as the PDB tables would give them
+/// (empty when absent) and the export tempo.
+const ARTISTS: [&str; 4] = ["Grid Lab", "Offset Unit", "", "Ruzina Demo"];
+const KEYS: [&str; 4] = ["Am", "Fm", "", "Dm"];
+const BPMS_X100: [u32; 4] = [12_000, 12_800, 12_000, 12_000];
 /// Demo covers as the export would reference them: a baseline cover, two
 /// tracks without one, and a progressive file the bounded decoder refuses.
 const COVERS: [Option<&[u8]>; 4] = [
@@ -86,6 +95,8 @@ pub struct Session {
     playlists: Option<DemoPlaylists>,
     library: LibraryBrowser,
     nudge: [TempoNudge; 2],
+    /// Library row thumbnails per demo track: the cover or the logo (M2.5).
+    row_artwork: Vec<[u16; ARTWORK_ROW_PIXELS]>,
     /// Touch HOLD RESTORE (M2.5 performance tab), on the idle clock.
     restore: LongPress<usize>,
 }
@@ -158,8 +169,22 @@ impl Session {
             playlists: None,
             library: LibraryBrowser::new(),
             nudge: [TempoNudge::new(); 2],
+            row_artwork: Vec::new(),
             restore: LongPress::new(),
         };
+        let mut jpeg = BaselineJpegDecoder::new();
+        result.row_artwork = COVERS
+            .iter()
+            .map(|cover| {
+                let mut pixels = [0; ARTWORK_ROW_PIXELS];
+                match cover
+                    .map(|bytes| decode_thumbnail(bytes, ARTWORK_ROW_EDGE, &mut pixels, &mut jpeg))
+                {
+                    Some(Ok(())) => pixels,
+                    _ => DEFAULT_ARTWORK_ROW,
+                }
+            })
+            .collect();
         result.reconnect();
         result
     }
@@ -369,6 +394,10 @@ impl Session {
         self.loaded[i]
             .map(|(selection, _)| TITLES[selection])
             .unwrap_or("No track loaded")
+    }
+    /// The loaded track's key name, if the export has one.
+    pub fn key(&self, i: usize) -> Option<&str> {
+        self.loaded[i].map(|(selection, _)| KEYS[selection])
     }
     pub fn presentation(&self, i: usize) -> DeckPresentation {
         let duration = self.loaded[i]
@@ -597,7 +626,10 @@ impl Session {
                     track_id: MediaTrackId([i as u8 + 1; 16]),
                     source_track_id: i as u32 + 1,
                     duration_ms: DURATIONS[i],
+                    bpm_x100: BPMS_X100[i],
                     title: CatalogText::try_from_str(title).expect("demo title fits"),
+                    artist: CatalogText::try_from_str(ARTISTS[i]).expect("demo artist fits"),
+                    key: CatalogText::try_from_str(KEYS[i]).expect("demo key fits"),
                     ..CatalogTrack::EMPTY
                 })
                 .expect("demo catalog capacity");
@@ -663,6 +695,33 @@ impl Session {
                 )
             })
             .collect()
+    }
+    /// The demo track shown in each row of the current Library level, for
+    /// its columns and thumbnail (M2.5 `dj_track_t`); `None` on node rows.
+    pub fn library_row_tracks(&self) -> Vec<Option<usize>> {
+        let Some(catalog) = &self.catalog else {
+            return (0..TITLES.len()).map(Some).collect();
+        };
+        (0..self.library.count())
+            .filter_map(
+                |i| match self.library.row_at(i, catalog, self.playlists.as_ref())? {
+                    LibraryRow::Track(candidate) => Some(Some(usize::from(candidate.index))),
+                    LibraryRow::Node(_) => Some(None),
+                },
+            )
+            .collect()
+    }
+    /// Row columns of a demo track: artist, key, rounded BPM and length.
+    pub fn track_columns(&self, track: usize) -> (&'static str, &'static str, u32, u32) {
+        (
+            ARTISTS[track],
+            KEYS[track],
+            ruzina_ui_model::labels::library_bpm(BPMS_X100[track]),
+            DURATIONS[track],
+        )
+    }
+    pub fn row_artwork(&self, track: usize) -> &[u16] {
+        &self.row_artwork[track]
     }
 
     /// "DEMO LIBRARY" for the track list, otherwise the playlist path.

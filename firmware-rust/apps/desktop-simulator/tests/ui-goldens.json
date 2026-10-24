@@ -62,28 +62,28 @@
         1024,
         600
       ],
-      "rgb_sha256": "e77171a039b1e1ebe3bc5a21084d573fd39a1d18961ba4942d227fd97d7b06ca"
+      "rgb_sha256": "e90381bc55666777a9d4b86bae0dbb28691f7f654c76519c0b4de8f7ed2c7522"
     },
     "jc1060-deck-fallback": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "77404a6f2d706178423466a2efcd7ddeaed4a81902b5e8888d73c1bf7dbc82b5"
+      "rgb_sha256": "f2fdd813d1920a8a3f8d2923ddd4366ade1ed4d8c9f36c2b80430c566ed49c40"
     },
     "jc1060-decks": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "29f5737c27adf61de78cd48bbede946a657f4022386e240a03028ae261df427e"
+      "rgb_sha256": "1d68631367d573005f1f9af042385f6c26ce60bde39ca6a597f7da40744377ff"
     },
     "jc1060-empty": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "c9f658e3dc9d92b83f0d76604abe8775aefdf2dea1fe12fc92ca998285200dcd"
+      "rgb_sha256": "0168ecef249e1ccbeda4ab70ffb89648f83b55e6eb9f62aeebd831ab3a1c0b9e"
     },
     "jc1060-fx-active": {
       "size": [
@@ -160,14 +160,14 @@
         1024,
         600
       ],
-      "rgb_sha256": "5780572b484753e1119abb60e811891942a87dcb715a7bbecb903860fed0015a"
+      "rgb_sha256": "352084575776eb52e79e457519114f31735b5642edfe1a32ef17a90c6eb0fcd4"
     },
     "jc1060-library-playlist": {
       "size": [
         1024,
         600
       ],
-      "rgb_sha256": "250cefa1770c051812b7b3929d6d083f2f1a1a18588e5d456f8e6e43e61b7109"
+      "rgb_sha256": "15efcc76083111bf4d81176d7d84e3b823b9345b1cb67e48450af99b24ee6e8a"
     },
     "jc1060-library-playlists": {
       "size": [
@@ -181,7 +181,7 @@
         1024,
         600
       ],
-      "rgb_sha256": "224e135fd644a0d2139f74dd4cbc637b66bb8801072ece1410ffdcc75dd73fdf"
+      "rgb_sha256": "10087a4affb9017d06844f598395f71647a6a3b0b2e52e5aba869dcabe18b1cd"
     },
     "jc1060-mixer-active": {
       "size": [
@@ -202,7 +202,7 @@
         1024,
         600
       ],
-      "rgb_sha256": "229b5bfdea8f4885743a785ce3b69134385e47ca187a55f4f6a688209d296b77"
+      "rgb_sha256": "00a6bf036a9292c003ee999cb31164746dfb8a4b75ea900e69abdbbee856c2e6"
     },
     "jc1060-screensaver": {
       "size": [
@@ -279,28 +279,28 @@
         800,
         1280
       ],
-      "rgb_sha256": "16ddf1ad4e70ca4ef472f87b3706938ef7ea9da1045585b7612a607b5b5c58c2"
+      "rgb_sha256": "8416130022a6627a46693b3828f7f5fe3ab6f35ebf68fe82c923633c079e9c00"
     },
     "jc8012-deck-fallback": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "f22e6870c3d3426dbebe05a62908bd4ed4f96886c2f719c63bdb8a448be35d2c"
+      "rgb_sha256": "77086548d487a576724d6cafe5b8d5a12bb030977121d8d83ad8688713cce1f2"
     },
     "jc8012-decks": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "75ca37844d344687ab084c2a982c979f7f4a706cde00569d092b81c79d7a363d"
+      "rgb_sha256": "516172357a8e9c04edf04cc6bf679dbd77a5dd9edd4beee98e1129318dac29de"
     },
     "jc8012-empty": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "78af0b726d91e093ea7d303776deeabb65e6010db16829a718676c9c90038f98"
+      "rgb_sha256": "17bb9b154c28ff86421a7dddba9d686ac92637f3834bb19d0d445358b57275cd"
     },
     "jc8012-fx-active": {
       "size": [
@@ -377,14 +377,14 @@
         800,
         1280
       ],
-      "rgb_sha256": "21efe77656f5c9af2f9ab322bdf1597b616fa79d57ab5f1820bb46cecafef4df"
+      "rgb_sha256": "c7e016f289015ba86cc30d3d6d878f47eab0d3d857de64d7e0b7c927c755b2b3"
     },
     "jc8012-library-playlist": {
       "size": [
         800,
         1280
       ],
-      "rgb_sha256": "f8a318aa75979b96ea82742a619b18bcef4594fce018114ed42acfb625301f08"
+      "rgb_sha256": "f495df63501304c309aa5291475454f036d00f47b44646d1512cd372e0ee556c"
     },
     "jc8012-library-playlists": {
       "size": [
@@ -398,7 +398,7 @@
         800,
         1280
       ],
-      "rgb_sha256": "0791d3c00d9c0fcc05c48a18d19b936bf2938e69d5957e9a166ca2fb86340c30"
+      "rgb_sha256": "3f91de6f3b04ff85d132a7b7bb3ec83e901dcf212ffeffc4ce28f0f5693b1186"
     },
     "jc8012-mixer-active": {
       "size": [
@@ -419,7 +419,7 @@
         800,
         1280
       ],
-      "rgb_sha256": "b1ece6ea7accf92fc26c9fa9ba98ec88c4b62d88be8c9f7486b5dad53fa44fe1"
+      "rgb_sha256": "64b9ab256afc1d13780eedc5866bad1f7c261d35d3c9f062c1ca6f308dd98de3"
     },
     "jc8012-screensaver": {
       "size": [

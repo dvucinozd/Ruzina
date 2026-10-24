@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod idle;
+pub mod labels;
 pub mod long_press;
 pub mod memory_cues;
 mod mix_fx;

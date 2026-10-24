@@ -117,6 +117,40 @@ pub trait ArtworkDecoder {
     fn decode(&mut self, jpeg: &[u8], info: JpegInfo, edge: u16, out: &mut [u16]) -> bool;
 }
 
+/// M2.5 `DJ_ART_ROW_PX`: Library row thumbnails.
+pub const ARTWORK_ROW_EDGE: u16 = 40;
+pub const ARTWORK_ROW_PIXELS: usize = ARTWORK_ROW_EDGE as usize * ARTWORK_ROW_EDGE as usize;
+
+/// One complete cover file to an `edge`-square RGB565 thumbnail under the
+/// deck rules (size, baseline JPEG, source dimensions); any refusal is the
+/// reason the logo is shown instead.
+pub fn decode_thumbnail<D: ArtworkDecoder>(
+    jpeg: &[u8],
+    edge: u16,
+    out: &mut [u16],
+    decoder: &mut D,
+) -> Result<(), ArtworkFallback> {
+    if jpeg.len() as u64 > ARTWORK_MAX_FILE_BYTES {
+        return Err(ArtworkFallback::TooLarge);
+    }
+    let info = probe_jpeg(jpeg);
+    match info.verdict {
+        JpegVerdict::Baseline => {}
+        JpegVerdict::NotJpeg => return Err(ArtworkFallback::NotJpeg),
+        JpegVerdict::NotBaseline => return Err(ArtworkFallback::NotBaseline),
+        JpegVerdict::Sampling => return Err(ArtworkFallback::Sampling),
+    }
+    let source = 1..=ARTWORK_MAX_SOURCE_EDGE;
+    if !source.contains(&info.width) || !source.contains(&info.height) {
+        return Err(ArtworkFallback::Dimensions);
+    }
+    if decoder.decode(jpeg, info, edge, out) {
+        Ok(())
+    } else {
+        Err(ArtworkFallback::DecodeFailed)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ArtworkIdentity {
     pub track: MediaTrackId,
@@ -253,30 +287,13 @@ impl ArtworkDecks {
         if self.current(ticket).is_none() {
             return false;
         }
-        if jpeg.len() as u64 > ARTWORK_MAX_FILE_BYTES {
-            return self.fail(ticket, ArtworkFallback::TooLarge);
-        }
-        let info = probe_jpeg(jpeg);
-        let refused = match info.verdict {
-            JpegVerdict::Baseline => None,
-            JpegVerdict::NotJpeg => Some(ArtworkFallback::NotJpeg),
-            JpegVerdict::NotBaseline => Some(ArtworkFallback::NotBaseline),
-            JpegVerdict::Sampling => Some(ArtworkFallback::Sampling),
-        }
-        .or_else(|| {
-            let edge = 1..=ARTWORK_MAX_SOURCE_EDGE;
-            (!edge.contains(&info.width) || !edge.contains(&info.height))
-                .then_some(ArtworkFallback::Dimensions)
-        });
-        if let Some(reason) = refused {
-            return self.fail(ticket, reason);
-        }
         let slot = &mut self.slots[ticket.deck];
-        if decoder.decode(jpeg, info, ARTWORK_DECK_EDGE, &mut slot.pixels) {
-            slot.state = SlotState::Ready;
-            true
-        } else {
-            self.fail(ticket, ArtworkFallback::DecodeFailed)
+        match decode_thumbnail(jpeg, ARTWORK_DECK_EDGE, &mut slot.pixels, decoder) {
+            Ok(()) => {
+                slot.state = SlotState::Ready;
+                true
+            }
+            Err(reason) => self.fail(ticket, reason),
         }
     }
 
