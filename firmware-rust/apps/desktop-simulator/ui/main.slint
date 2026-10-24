@@ -1,14 +1,16 @@
 import { Slider } from "std-widgets.slint";
 
-export struct CueView { label: string, occupied: bool }
+// label: M2.5 "CUE A" / "LOOP A"; letter names the slot on its delete key.
+export struct CueView { label: string, occupied: bool, letter: string }
 export struct MixerChannelView { volume: int, trim: int, high: int, mid: int, low: int, filter: int, pfl: bool }
 export struct MixerView { crossfader: int, master: int, headphone-mix: int, headphone-level: int, master-cue: bool, smart-cfx: bool, smart-fader: bool }
 export struct FxView { effect: string, beat: string, target: int, depth: int, enabled: bool }
 export struct PadFxView { bank: int, active-bank: int, active-pad: int, loaded: bool }
 // kind: 0 track, 1 folder, 2 playlist (RP-06).
-export struct LibraryRowView { label: string, kind: int }
+// Track rows carry the M2.5 columns and a 40 px cover (or logo) thumbnail.
+export struct LibraryRowView { label: string, kind: int, artist: string, key: string, bpm: string, time: string, artwork: image }
 export struct DeckView {
-    title: string, artwork: image, bpm: string, time: string, status: string, analysis: string,
+    title: string, artwork: image, key: string, bpm: string, time: string, status: string, analysis: string,
     loaded: bool, playing: bool, synced: bool, quantize: bool, range: string,
     overview: image, detail: image, cues: [CueView], loop-text: string,
     // M2.5 MEMORY panel (ruzina-ui-model::memory_cues).
@@ -117,7 +119,9 @@ component DeckPanel inherits Rectangle {
                 width: 34px; height: 34px; source: root.data.artwork; image-fit: fill;
                 accessible-role: image; accessible-label: "Track artwork";
             }
-            Text { text: root.data.title; color: #aebed1; font-size: 14px; overflow: elide; vertical-alignment: center; }
+            Text { text: root.data.title; color: #aebed1; font-size: 14px; overflow: elide; vertical-alignment: center; horizontal-stretch: 1; min-width: 0px; }
+            // M2.5 deck KEY: the export's key name, "--" without one.
+            Text { text: "KEY " + root.data.key; color: #ffce85; font-size: 14px; font-weight: 700; vertical-alignment: center; horizontal-alignment: right; horizontal-stretch: 0; }
         }
         Image { height: 36px; source: root.data.overview; image-fit: fill; }
         if !root.cue-page: Image { height: 54px; source: root.data.detail; image-fit: fill; }
@@ -165,7 +169,7 @@ component DeckPanel inherits Rectangle {
             }
             HorizontalLayout { spacing: 5px;
                 for cue[index] in root.data.cues: Action {
-                    text: "× " + (index + 1); enabled: root.data.loaded && cue.occupied;
+                    text: "× " + cue.letter; enabled: root.data.loaded && cue.occupied;
                     clicked => { root.cue(index, true); }
                 }
             }
@@ -173,6 +177,45 @@ component DeckPanel inherits Rectangle {
             HoldAction { text: "HOLD RESTORE"; height: 40px; enabled: root.data.loaded; held(_, pressed) => { root.restore(pressed); } }
         }
         if !root.memory-shown: Rectangle { vertical-stretch: 1; background: transparent; }
+    }
+}
+
+// A Library row as M2.5 lays it out: thumbnail, TITLE, ARTIST, then KEY, BPM
+// and TIME right-aligned. Folder and playlist rows show their label only.
+component LibraryRow inherits Rectangle {
+    in property <LibraryRowView> item;
+    in property <bool> active;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 48px;
+    border-radius: 5px;
+    background: !enabled ? #161e28 : active ? #175d64 : touch.has-hover ? #304054 : #243244;
+    border-width: 1px;
+    border-color: focus.has-focus ? #dce8f3 : active ? #58d9bd : #3b4a5b;
+    accessible-role: button;
+    accessible-label: item.label;
+    accessible-enabled: enabled;
+    forward-focus: focus;
+    private property <color> ink: root.enabled ? #eef5fb : #586676;
+    private property <color> muted: root.enabled ? #aebed1 : #586676;
+    if root.item.kind != 0: Text { x: 0; width: parent.width; height: parent.height; text: root.item.label; color: root.ink; horizontal-alignment: center; vertical-alignment: center; font-size: 14px; }
+    if root.item.kind == 0: HorizontalLayout {
+        padding: 4px; padding-right: 12px; spacing: 10px;
+        Image { width: 40px; height: 40px; source: root.item.artwork; image-fit: fill; accessible-role: image; accessible-label: "Track artwork"; }
+        Text { text: root.item.label; color: root.ink; font-size: 14px; overflow: elide; vertical-alignment: center; min-width: 0px; horizontal-stretch: 3; }
+        Text { text: root.item.artist; color: root.muted; font-size: 13px; overflow: elide; vertical-alignment: center; min-width: 0px; horizontal-stretch: 2; }
+        Text { width: 36px; text: root.item.key; color: root.muted; font-size: 13px; horizontal-alignment: right; vertical-alignment: center; }
+        Text { width: 36px; text: root.item.bpm; color: root.muted; font-size: 13px; horizontal-alignment: right; vertical-alignment: center; }
+        Text { width: 44px; text: root.item.time; color: root.muted; font-size: 13px; horizontal-alignment: right; vertical-alignment: center; }
+    }
+    touch := TouchArea { enabled: root.enabled; clicked => { focus.focus(); root.clicked(); } }
+    focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") { root.clicked(); return accept; }
+            return reject;
+        }
     }
 }
 
@@ -342,7 +385,7 @@ export component MainWindow inherits Window {
             VerticalLayout { padding: 22px; spacing: 12px;
                 Text { text: root.library-path; color: #eef5fb; font-size: 23px; font-weight: 700; height: 32px; overflow: elide; }
                 Text { text: !root.media-ready ? "Media removed. Reconnect to load tracks." : root.library-top ? "Select a track, then choose its destination." : "LOAD opens a folder or playlist; on a track it loads the deck."; color: #a1b4c9; height: 24px; }
-                for row[i] in root.library-rows: Action { height: 48px; text: row.label; active: root.selection == i; enabled: root.media-ready; clicked => { root.select-track(i); } }
+                for row[i] in root.library-rows: LibraryRow { item: row; active: root.selection == i; enabled: root.media-ready; clicked => { root.select-track(i); } }
                 HorizontalLayout { height: 44px; spacing: 12px;
                     Action { text: "LOAD DECK 1"; enabled: root.media-ready; clicked => { root.load-track(0); } }
                     Action { text: "LOAD DECK 2"; enabled: root.media-ready; clicked => { root.load-track(1); } }

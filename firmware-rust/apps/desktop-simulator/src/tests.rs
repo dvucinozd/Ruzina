@@ -213,6 +213,30 @@ fn memory_cues_are_marked_apart_from_hot_cues_and_pwv4_colors_the_preview() {
     assert_eq!(pixels[center + 300], 0xf800);
 }
 
+// M2.5 Library rows and deck labels: export columns, cover-or-logo row
+// thumbnails, "--" for a deck without a key, CUE/LOOP pad names.
+#[test]
+fn library_columns_thumbnails_and_deck_key_follow_m25() {
+    use ruzina_media_catalog::default_artwork::DEFAULT_ARTWORK_ROW;
+    let mut s = loaded();
+    assert_eq!(s.library_row_tracks(), [Some(0), Some(1), Some(2), Some(3)]);
+    assert_eq!(s.track_columns(0), ("Grid Lab", "Am", 120, 10_000));
+    assert_eq!(s.track_columns(1), ("Offset Unit", "Fm", 128, 14_000));
+    // Track 1 has a baseline cover; 2 and 3 none; 4 a progressive file.
+    assert_ne!(s.row_artwork(0), &DEFAULT_ARTWORK_ROW[..]);
+    for track in [1, 2, 3] {
+        assert_eq!(s.row_artwork(track), &DEFAULT_ARTWORK_ROW[..]);
+    }
+    assert_eq!(deck_key(s.key(0)), "Am");
+    assert_eq!(deck_key(s.key(1)), "--", "empty deck");
+    s.selected = 2;
+    assert!(s.load(DeckId::Two));
+    assert_eq!(deck_key(s.key(1)), "--", "track without a key");
+    // Folder and playlist rows carry no track columns.
+    s.library_back();
+    assert!(s.library_row_tracks().iter().all(Option::is_none));
+}
+
 // M2.5 MEMORY panel: export order, points and loops, truncation, empty deck.
 #[test]
 fn memory_panel_lists_imported_points_and_loops_like_m25() {
