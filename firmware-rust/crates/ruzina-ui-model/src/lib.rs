@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod idle;
+pub mod long_press;
 pub mod memory_cues;
 mod mix_fx;
 pub use mix_fx::*;
@@ -28,6 +29,9 @@ pub enum DeckAction {
     LoopExit,
     Quantize,
     TempoRange,
+    /// Drops local cue edits for the Rekordbox bank (profile ext action 7);
+    /// touch sends it only after a [`long_press`] hold.
+    RestoreSourceCues,
 }
 
 impl DeckAction {
@@ -43,6 +47,8 @@ impl DeckAction {
             7 => Self::LoopExit,
             8 => Self::Quantize,
             9 => Self::TempoRange,
+            // RestoreSourceCues has no click code: touch reaches it only
+            // through the long press.
             _ => return None,
         })
     }
@@ -56,19 +62,20 @@ impl DeckAction {
             Self::LoopIn => SemanticControl::LoopIn,
             Self::LoopOut => SemanticControl::LoopOut,
             Self::LoopExit => SemanticControl::ReloopExit,
-            Self::Quantize => SemanticControl::DeckExtAction,
+            Self::Quantize | Self::RestoreSourceCues => SemanticControl::DeckExtAction,
             Self::TempoRange => SemanticControl::TempoRange,
+        };
+        let ext = match self {
+            Self::Quantize => Some(DeckExtAction::Quantize),
+            Self::RestoreSourceCues => Some(DeckExtAction::RestoreSourceCues),
+            _ => None,
         };
         ControlEvent {
             deck: Some(deck),
             control,
-            value: if matches!(self, Self::Quantize) {
-                ControlValue::DeckExtAction(DeckExtActionValue {
-                    action: DeckExtAction::Quantize,
-                    pressed,
-                })
-            } else {
-                ControlValue::Pressed(pressed)
+            value: match ext {
+                Some(action) => ControlValue::DeckExtAction(DeckExtActionValue { action, pressed }),
+                None => ControlValue::Pressed(pressed),
             },
         }
     }

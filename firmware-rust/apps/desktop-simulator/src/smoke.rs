@@ -102,6 +102,7 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         });
         screensaver(&ui, &state, output, name, width as f32, height as f32)?;
         library_playlists(&ui, &state, output, name)?;
+        hold_restore(&ui, &state, name);
     }
     println!(
         "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 62 software-rendered snapshots: PASS"
@@ -233,6 +234,43 @@ fn library_playlists(
     assert_eq!(labels(ui).len(), session::TITLES.len());
     println!("Library playlist tree open/load/back: PASS at {name}");
     Ok(())
+}
+
+/// M2.5 HOLD RESTORE by pointer, under deck 1's delete row: a short press
+/// keeps a local delete, a 400 ms hold brings the Rekordbox cue back, and a
+/// page change while held restores nothing. A fresh session keeps the other
+/// scenes' clocks.
+fn hold_restore(ui: &MainWindow, state: &Rc<RefCell<Session>>, name: &str) {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let board = state.borrow().diagnostics().identity.board;
+    *state.borrow_mut() = Session::for_board(board);
+    ui.set_page(1);
+    ui.invoke_select_track(0);
+    ui.invoke_load_track(0);
+    ui.set_page(2);
+    ui.invoke_cue_action(0, 0, true);
+    assert!(state.borrow().presentation(0).cues[0].is_none());
+    let position = slint::LogicalPosition::new(100.0, 434.0);
+    let button = PointerEventButton::Left;
+    for (held_ms, leave_page, restored) in
+        [(200, false, false), (400, true, false), (400, false, true)]
+    {
+        ui.set_page(2);
+        ui.window().take_snapshot().unwrap();
+        ui.window()
+            .dispatch_event(WindowEvent::PointerPressed { position, button });
+        if leave_page {
+            ui.set_page(0);
+            ui.window().take_snapshot().unwrap();
+        }
+        state.borrow_mut().tick(held_ms);
+        refresh(ui, &state.borrow());
+        ui.window()
+            .dispatch_event(WindowEvent::PointerReleased { position, button });
+        state.borrow_mut().tick(400);
+        assert_eq!(state.borrow().presentation(0).cues[0].is_some(), restored);
+    }
+    println!("HOLD RESTORE short press/page change/long press: PASS at {name}");
 }
 
 pub(super) fn click(ui: &MainWindow, x: f32, y: f32) {

@@ -95,6 +95,7 @@ component DeckPanel inherits Rectangle {
     in property <bool> cue-page;
     in property <bool> memory-shown;
     callback memory;
+    callback restore(bool);
     callback action(int);
     callback hold(int, bool);
     callback cue(int, bool);
@@ -168,6 +169,8 @@ component DeckPanel inherits Rectangle {
                     clicked => { root.cue(index, true); }
                 }
             }
+            // M2.5 HOLD RESTORE: back to the Rekordbox cues after a long press.
+            HoldAction { text: "HOLD RESTORE"; height: 40px; enabled: root.data.loaded; held(_, pressed) => { root.restore(pressed); } }
         }
         if !root.memory-shown: Rectangle { vertical-stretch: 1; background: transparent; }
     }
@@ -299,7 +302,9 @@ export component MainWindow inherits Window {
     // Deck whose MEMORY list is open on the HOT CUES page, or -1. Leaving the
     // page closes it, as M2.5 hides the panel with the performance tab.
     in-out property <int> memory-deck: -1;
-    changed page => { if (self.page != 5) { self.cancel-pads(); } self.memory-deck = -1; self.activity(); }
+    // HOLD RESTORE press or release on a deck; deck -1 is a lost press.
+    callback restore-hold(int, bool);
+    changed page => { if (self.page != 5) { self.cancel-pads(); } self.memory-deck = -1; self.restore-hold(-1, false); self.activity(); }
 
     VerticalLayout {
         padding: 16px; spacing: 12px;
@@ -325,7 +330,8 @@ export component MainWindow inherits Window {
                 height: root.portrait ? (parent.height - 12px) / 2 : parent.height;
                 data: data; number: i + 1; cue-page: root.page == 2;
                 memory-shown: root.page == 2 && root.memory-deck == i;
-                memory => { root.memory-deck = root.memory-deck == i ? -1 : i; root.activity(); }
+                memory => { root.restore-hold(-1, false); root.memory-deck = root.memory-deck == i ? -1 : i; root.activity(); }
+                restore(pressed) => { root.restore-hold(i, pressed); }
                 action(code) => { root.deck-action(i, code); }
                 hold(code, pressed) => { root.deck-hold(i, code, pressed); }
                 cue(slot, clear) => { root.cue-action(i, slot, clear); }
