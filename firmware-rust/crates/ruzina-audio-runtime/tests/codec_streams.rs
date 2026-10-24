@@ -811,6 +811,7 @@ fn untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration() {
     let mut d = Driver::new(LONG_VBR_UNTAGGED, AudioCodec::Mp3);
     let baseline = d.all();
     assert_eq!(d.stream.duration(&d.storage), SourceDuration::Unknown);
+    assert_eq!(d.stream.duration(&d.storage).millis(44_100), None);
     d.scan(usize::MAX);
     let index = d.storage.mp3_index();
     assert_eq!(index.kind(), Mp3TagKind::Plain);
@@ -819,6 +820,13 @@ fn untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration() {
         d.stream.duration(&d.storage),
         SourceDuration::Scanned(baseline.len() as u64)
     );
+    // The deck learns the walked length in whole milliseconds (RP-08).
+    let rate = d.stream.descriptor().unwrap().sample_rate_hz();
+    assert_eq!(
+        d.stream.duration(&d.storage).millis(rate),
+        Some((baseline.len() as u64 * 1_000 / u64::from(rate)) as u32)
+    );
+    assert_eq!(SourceDuration::Scanned(1).millis(0), None);
     // The codec's byte arithmetic would misplace an untagged VBR seek, so it
     // is never used; the result is the linear-exact fallback.
     cold_seek(LONG_VBR_UNTAGGED, true, 6500, &baseline);

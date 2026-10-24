@@ -695,6 +695,26 @@ impl DeckProductState {
         self.decoded_durations_ms[deck_index(deck)]
     }
 
+    /// A length the source learns after the load (RP-08: an untagged MP3's
+    /// complete frame walk). It applies only to the track still loaded and
+    /// only while the length is unknown, so it never replaces an exact one;
+    /// later loop admissions use it, an already active loop is kept.
+    pub fn learn_decoded_duration_ms(
+        &mut self,
+        deck: DeckId,
+        track_id: MediaTrackId,
+        duration_ms: u32,
+    ) -> bool {
+        let index = deck_index(deck);
+        if self.hot_cue_sources[index].map(|source| source.track_id()) != Some(track_id)
+            || self.decoded_durations_ms[index].is_some()
+        {
+            return false;
+        }
+        self.decoded_durations_ms[index] = Some(duration_ms);
+        true
+    }
+
     /// M2.5 c0ee8152 `audio_loop_range_valid`: the exclusive end may equal the
     /// decoded end; while the length is unknown, ordered ranges are accepted.
     /// Refused loops leave deck state untouched, so UI and audio agree.
@@ -4549,6 +4569,59 @@ mod tests {
             state.handle_control(hot_cue(DeckId::One, 0, false)).items[1],
             Some(DeckEffect::SetLoop { end_ms: 6_000, .. })
         ));
+    }
+
+    // RP-08: an untagged MP3's walked length arrives after the load.
+    #[test]
+    fn a_scanned_length_learned_after_load_bounds_later_loops() {
+        let track = media_id(0x93);
+        let mut state = loaded_with_source(DeckId::One, track);
+        assert_eq!(state.decoded_duration_ms(DeckId::One), None);
+
+        // Another track's report, or one for the other deck, changes nothing.
+        assert!(!state.learn_decoded_duration_ms(DeckId::One, media_id(0x94), 5_000));
+        assert!(!state.learn_decoded_duration_ms(DeckId::Two, track, 5_000));
+        assert_eq!(state.decoded_duration_ms(DeckId::One), None);
+
+        // Before it arrives a loop past 5 s is admitted (length unknown).
+        state.set_position_ms(DeckId::One, 4_000);
+        state.handle_control(pressed(DeckId::One, SemanticControl::LoopIn, true));
+        state.set_position_ms(DeckId::One, 5_200);
+        assert_ne!(
+            state.handle_control(pressed(DeckId::One, SemanticControl::LoopOut, true)),
+            DeckEffects::NONE
+        );
+        state.handle_control(pressed(DeckId::One, SemanticControl::ReloopExit, true));
+
+        assert!(state.learn_decoded_duration_ms(DeckId::One, track, 5_000));
+        assert_eq!(state.decoded_duration_ms(DeckId::One), Some(5_000));
+        // Once known it is not replaced, and the same loop is now refused.
+        assert!(!state.learn_decoded_duration_ms(DeckId::One, track, 9_000));
+        state.set_position_ms(DeckId::One, 4_000);
+        state.handle_control(pressed(DeckId::One, SemanticControl::LoopIn, true));
+        state.set_position_ms(DeckId::One, 5_200);
+        assert_eq!(
+            state.handle_control(pressed(DeckId::One, SemanticControl::LoopOut, true)),
+            DeckEffects::NONE
+        );
+
+        // A new load forgets it; an exact length is never overwritten.
+        let next = media_id(0x95);
+        assert!(
+            state
+                .commit_track_load(
+                    DeckId::One,
+                    next,
+                    12_000,
+                    HotCueBank::empty(next).as_source(),
+                    None
+                )
+                .is_ok()
+        );
+        assert_eq!(state.decoded_duration_ms(DeckId::One), None);
+        state.set_decoded_duration_ms(DeckId::One, Some(7_000));
+        assert!(!state.learn_decoded_duration_ms(DeckId::One, next, 5_000));
+        assert_eq!(state.decoded_duration_ms(DeckId::One), Some(7_000));
     }
 
     #[test]
