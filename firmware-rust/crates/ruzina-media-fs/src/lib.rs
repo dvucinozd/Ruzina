@@ -443,6 +443,9 @@ pub trait AsyncWritableFileSystem: AsyncFileSystem {
     async fn remove(&mut self, path: &str) -> Result<(), Self::Error>;
     async fn sync(&mut self) -> Result<(), Self::Error>;
 
+    /// Creates a directory; succeeds when it already exists.
+    async fn create_directory(&mut self, path: &str) -> Result<(), Self::Error>;
+
     async fn write_all(
         &mut self,
         file: &mut Self::File,

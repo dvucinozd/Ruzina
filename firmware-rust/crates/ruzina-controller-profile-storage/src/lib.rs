@@ -8,13 +8,17 @@ pub use ruzina_controller_profile::{
 };
 use ruzina_media_fs::{AsyncFileSystem, EntryKind, FS_NAME_MAX, FileHandle};
 
+mod install;
+pub use install::{
+    CONTROLLER_PROFILE_BACKUP_FILENAME, CONTROLLER_PROFILE_UPLOAD_FILENAME, InstallError,
+    InstallStep, InstalledProfile, PROFILE_UPLOAD_MIN,
+};
+
 pub const CONTROLLER_PROFILE_ROOT: &str = "/controllers";
 pub const CONTROLLER_PROFILE_FILENAME: &str = "profile.s3bin";
-const PROFILE_PATH_CAPACITY: usize = CONTROLLER_PROFILE_ROOT.len()
-    + 1
-    + MAX_PROFILE_ID_BYTES
-    + 1
-    + CONTROLLER_PROFILE_FILENAME.len();
+const PROFILE_FILENAME_MAX: usize = 14;
+const PROFILE_PATH_CAPACITY: usize =
+    CONTROLLER_PROFILE_ROOT.len() + 1 + MAX_PROFILE_ID_BYTES + 1 + PROFILE_FILENAME_MAX;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ProfileScanStats {
@@ -146,41 +150,41 @@ pub enum ProfileLoadError<E> {
     Close(E),
 }
 
-struct ProfilePath {
+pub(crate) struct ProfilePath {
     bytes: [u8; PROFILE_PATH_CAPACITY],
     len: usize,
 }
 
 impl ProfilePath {
     fn new(id: &str) -> Option<Self> {
-        let expected = CONTROLLER_PROFILE_ROOT
-            .len()
-            .checked_add(1)?
-            .checked_add(id.len())?
-            .checked_add(1)?
-            .checked_add(CONTROLLER_PROFILE_FILENAME.len())?;
-        if expected > PROFILE_PATH_CAPACITY {
+        Self::file(id, CONTROLLER_PROFILE_FILENAME)
+    }
+
+    /// `/controllers/<id>/<name>`.
+    pub(crate) fn file(id: &str, name: &str) -> Option<Self> {
+        if name.len() > PROFILE_FILENAME_MAX {
             return None;
         }
+        Self::join(&[CONTROLLER_PROFILE_ROOT, "/", id, "/", name])
+    }
 
+    /// `/controllers/<id>`.
+    pub(crate) fn directory(id: &str) -> Option<Self> {
+        Self::join(&[CONTROLLER_PROFILE_ROOT, "/", id])
+    }
+
+    fn join(parts: &[&str]) -> Option<Self> {
         let mut bytes = [0u8; PROFILE_PATH_CAPACITY];
         let mut cursor = 0usize;
-        for part in [
-            CONTROLLER_PROFILE_ROOT.as_bytes(),
-            b"/",
-            id.as_bytes(),
-            b"/",
-            CONTROLLER_PROFILE_FILENAME.as_bytes(),
-        ] {
+        for part in parts {
             let end = cursor.checked_add(part.len())?;
-            bytes.get_mut(cursor..end)?.copy_from_slice(part);
+            bytes.get_mut(cursor..end)?.copy_from_slice(part.as_bytes());
             cursor = end;
         }
-
         Some(Self { bytes, len: cursor })
     }
 
-    fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         core::str::from_utf8(&self.bytes[..self.len])
             .expect("profile path is assembled from validated UTF-8")
     }
