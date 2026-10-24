@@ -23,11 +23,12 @@ use ruzina_media_identity::{IdentityError, VolumeIdentity, derive_track_id};
 use ruzina_media_session::MediaLease;
 use ruzina_rekordbox::{
     PDB_MAX_NAMES, PDB_NAME_MAX, PDB_PAGE_HEAP_OFFSET, PDB_PATH_MAX, PDB_PLAYLIST_ENTRY_ROW_BYTES,
-    PDB_PLAYLIST_TREE_ROW_HEADER_BYTES, PDB_TABLE_ALBUMS, PDB_TABLE_ARTISTS, PDB_TABLE_ARTWORK,
-    PDB_TABLE_KEYS, PDB_TABLE_PLAYLIST_ENTRIES, PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS,
-    PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES, PdbCatalogError, PdbError, PdbHeader, PdbNameEntry,
-    PdbNameLookup, PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbPlaylistEntryRow,
-    PdbPlaylistTreeRow, PdbTableDirectory, PdbTableEntry, PdbText, PdbTrackRow,
+    PDB_PLAYLIST_TREE_ROW_HEADER_BYTES, PDB_ROW_SLOT_BATCH_ROWS, PDB_TABLE_ALBUMS,
+    PDB_TABLE_ARTISTS, PDB_TABLE_ARTWORK, PDB_TABLE_KEYS, PDB_TABLE_PLAYLIST_ENTRIES,
+    PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS, PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES,
+    PdbCatalogError, PdbError, PdbHeader, PdbNameEntry, PdbNameLookup, PdbNameRowHeader,
+    PdbNameRowLayout, PdbPageSlotWalker, PdbPlaylistEntryRow, PdbPlaylistTreeRow, PdbRowEnds,
+    PdbSlotBatchPlan, PdbTableDirectory, PdbTableEntry, PdbText, PdbTrackRow,
     REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb, parse_devicesql_field_header,
     parse_pdb_header, parse_pdb_name_row_header, parse_pdb_page_header,
     parse_pdb_playlist_entry_row, parse_pdb_playlist_tree_row, parse_pdb_table_directory,
@@ -724,6 +725,8 @@ pub(crate) struct Usb0LibraryNameTableProbe {
     pub(crate) names: u32,
     pub(crate) slot_truncated: bool,
     pub(crate) truncated_values: u32,
+    /// Rows whose name lies outside the row (or page), skipped as in M2.5.
+    pub(crate) out_of_row: u32,
     pub(crate) capacity_exceeded: bool,
 }
 
@@ -1042,32 +1045,29 @@ async fn read_track_text<const N: usize>(
     (file, buffer, text)
 }
 
+/// Reads a name that must start and end before the page-relative `limit`
+/// (the row end for bounded name tables, else the page size); a name that
+/// does not is `None`, as M2.5 082d2c0a drops such rows.
 async fn read_name_text(
     client: &mut Usb0FilesystemClient,
     lease: MediaLease,
     file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     page_start: u64,
-    page_size: u32,
+    limit: u32,
     heap_offset: u16,
     header: PdbNameRowHeader,
 ) -> (
     Usb0FsFileHandle,
     &'static mut [u8],
-    Result<PdbText<PDB_NAME_MAX>, Usb0LibraryError>,
+    Result<Option<PdbText<PDB_NAME_MAX>>, Usb0LibraryError>,
 ) {
     let page_relative = match (PDB_PAGE_HEAP_OFFSET as u32)
         .checked_add(u32::from(heap_offset))
         .and_then(|offset| offset.checked_add(u32::from(header.text_relative_offset)))
     {
-        Some(offset) if offset < page_size => offset,
-        _ => {
-            return (
-                file,
-                buffer,
-                Err(Usb0LibraryError::Pdb(PdbError::NameRowOutOfRange)),
-            );
-        }
+        Some(offset) if offset < limit => offset,
+        _ => return (file, buffer, Ok(None)),
     };
 
     let absolute = match page_start.checked_add(u64::from(page_relative)) {
@@ -1101,17 +1101,10 @@ async fn read_name_text(
         Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
     };
     let field_len = field.total_len_usize();
-    let field_end = match page_relative.checked_add(u32::from(field.total_len)) {
-        Some(end) => end,
-        None => {
-            return (
-                file,
-                buffer,
-                Err(Usb0LibraryError::Pdb(PdbError::DeviceSqlTruncated)),
-            );
-        }
-    };
-    if field_end > page_size || field_len > available {
+    if page_relative + u32::from(field.total_len) > limit {
+        return (file, buffer, Ok(None));
+    }
+    if field_len > available {
         return (
             file,
             buffer,
@@ -1119,8 +1112,62 @@ async fn read_name_text(
         );
     }
 
-    let text = PdbText::from_devicesql_field(&buffer[..field_len]).map_err(Usb0LibraryError::Pdb);
+    let text = PdbText::from_devicesql_field(&buffer[..field_len])
+        .map(Some)
+        .map_err(Usb0LibraryError::Pdb);
     (file, buffer, text)
+}
+
+/// Lowers `ends` by every slot batch of the page except `seen`, which the
+/// caller has already observed.
+#[allow(clippy::too_many_arguments)]
+async fn observe_other_batches(
+    client: &mut Usb0FilesystemClient,
+    lease: MediaLease,
+    mut file: Usb0FsFileHandle,
+    mut buffer: &'static mut [u8],
+    page_start: u64,
+    page_size: u32,
+    declared_rows: u32,
+    seen: PdbSlotBatchPlan,
+    ends: &mut PdbRowEnds,
+) -> (
+    Usb0FsFileHandle,
+    &'static mut [u8],
+    Result<(), Usb0LibraryError>,
+) {
+    let mut scan = match PdbPageSlotWalker::new(page_size, declared_rows) {
+        Ok(scan) => scan,
+        Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
+    };
+    while let Some(plan) = scan.next_batch_plan() {
+        let absolute = page_start + u64::from(plan.offset);
+        let (next_file, next_buffer, bytes) =
+            match read_at(client, lease, file, buffer, absolute).await {
+                PrefixReadResult::Complete {
+                    file,
+                    buffer,
+                    bytes,
+                } => (file, buffer, bytes),
+                PrefixReadResult::Failed {
+                    file,
+                    buffer,
+                    error,
+                } => return (file, buffer, Err(error)),
+            };
+        file = next_file;
+        buffer = next_buffer;
+        let data = &buffer[..bytes];
+        let observed = if plan == seen {
+            Ok(())
+        } else {
+            ends.observe(plan, data)
+        };
+        if let Err(error) = observed.and_then(|()| scan.ingest_batch(plan, data).map(|_| ())) {
+            return (file, buffer, Err(Usb0LibraryError::Pdb(error)));
+        }
+    }
+    (file, buffer, Ok(()))
 }
 
 async fn close_file(
@@ -1490,6 +1537,7 @@ async fn scan_name_table_layout(
     let mut names = 0u32;
     let mut slot_truncated = false;
     let mut truncated_values = 0u32;
+    let mut out_of_row = 0u32;
 
     loop {
         if page >= header.total_pages {
@@ -1547,8 +1595,35 @@ async fn scan_name_table_layout(
                 Ok(row_offsets) => row_offsets,
                 Err(error) => return (file, buffer, Err(Usb0LibraryError::Pdb(error))),
             };
+            let mut ends =
+                PdbRowEnds::new(&row_offsets, header.page_size, page_header.declared_rows);
+            if let Err(error) = ends.observe(plan, &buffer[..bytes]) {
+                return (file, buffer, Err(Usb0LibraryError::Pdb(error)));
+            }
+            if layout.bounded_to_row()
+                && page_header.declared_rows as usize > PDB_ROW_SLOT_BATCH_ROWS
+            {
+                // Rows of a multi-batch page end at slots of the other batches too.
+                let (next_file, next_buffer, observed) = observe_other_batches(
+                    client,
+                    lease,
+                    file,
+                    buffer,
+                    page_start,
+                    header.page_size,
+                    page_header.declared_rows,
+                    plan,
+                    &mut ends,
+                )
+                .await;
+                file = next_file;
+                buffer = next_buffer;
+                if let Err(error) = observed {
+                    return (file, buffer, Err(error));
+                }
+            }
 
-            for heap_offset in row_offsets.offsets().iter().copied() {
+            for (index, heap_offset) in row_offsets.offsets().iter().copied().enumerate() {
                 let page_relative =
                     match (PDB_PAGE_HEAP_OFFSET as u32).checked_add(u32::from(heap_offset)) {
                         Some(offset) => offset,
@@ -1560,6 +1635,16 @@ async fn scan_name_table_layout(
                             );
                         }
                     };
+                let limit = if layout.bounded_to_row() {
+                    let row_len = ends.row_len(index);
+                    if row_len < layout.minimum_bytes() as u32 {
+                        out_of_row = out_of_row.saturating_add(1);
+                        continue;
+                    }
+                    page_relative + row_len
+                } else {
+                    header.page_size
+                };
                 let row_end = match page_relative.checked_add(layout.minimum_bytes() as u32) {
                     Some(end) => end,
                     None => {
@@ -1607,7 +1692,7 @@ async fn scan_name_table_layout(
                     file,
                     buffer,
                     page_start,
-                    header.page_size,
+                    limit,
                     heap_offset,
                     row_header,
                 )
@@ -1615,7 +1700,11 @@ async fn scan_name_table_layout(
                 file = next_file;
                 buffer = next_buffer;
                 let name = match name {
-                    Ok(name) => name,
+                    Ok(Some(name)) => name,
+                    Ok(None) => {
+                        out_of_row = out_of_row.saturating_add(1);
+                        continue;
+                    }
                     Err(error) => return (file, buffer, Err(error)),
                 };
 
@@ -1676,6 +1765,7 @@ async fn scan_name_table_layout(
             names,
             slot_truncated,
             truncated_values,
+            out_of_row,
             capacity_exceeded: names > PDB_MAX_NAMES as u32,
         }),
     )
@@ -1840,7 +1930,7 @@ async fn scan_playlist_table(
                             file = next_file;
                             buffer = next_buffer;
                             match name {
-                                Ok(name) => match name.as_str() {
+                                Ok(name) => match name.as_ref().and_then(PdbText::as_str) {
                                     Some(name) => catalog.retain_playlist_node(row, name),
                                     None => {
                                         catalog.note_playlist_invalid_row();

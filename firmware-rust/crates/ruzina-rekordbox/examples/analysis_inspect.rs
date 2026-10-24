@@ -42,8 +42,12 @@ fn main() -> Result<(), String> {
     }
     let mut importer = AnlzImporter::new();
     feed(&mut importer, &args[0], AnalysisFileKind::Dat)?;
-    if let Some(ext) = args.get(1) {
-        feed(&mut importer, ext, AnalysisFileKind::Ext)?;
+    // As on the device, a rejected EXT keeps the DAT analysis.
+    if let Some(ext) = args.get(1)
+        && let Err(error) = feed(&mut importer, ext, AnalysisFileKind::Ext)
+    {
+        eprintln!("EXT discarded: {error}");
+        importer.discard_ext();
     }
     let mut media = MediaSession::new();
     let ConnectResult::Accepted(lease) = media.on_connect(MediaSourceId::new(1).unwrap()) else {

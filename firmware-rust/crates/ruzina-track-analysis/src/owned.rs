@@ -31,6 +31,20 @@ pub enum AnalysisDataError {
     InvalidIdentity,
 }
 
+/// Lengths and flags of an [`AnalysisBuilder`] at one point of an import.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AnalysisCheckpoint {
+    beats: usize,
+    preview: usize,
+    detail: usize,
+    cues: usize,
+    memory_cues: usize,
+    memory_cues_truncated: bool,
+    detail_rate_hz: u16,
+    color_preview: usize,
+    color_preview_truncated: bool,
+}
+
 #[derive(Debug)]
 pub struct AnalysisBuilder {
     beats: Vec<Beat>,
@@ -168,6 +182,37 @@ impl AnalysisBuilder {
             return Ok(());
         }
         self.push_memory_cue(cue)
+    }
+    /// Marks the data held now, so a rejected enrichment can be undone.
+    pub fn checkpoint(&self) -> AnalysisCheckpoint {
+        AnalysisCheckpoint {
+            beats: self.beats.len(),
+            preview: self.preview.len(),
+            detail: self.detail.len(),
+            cues: self.cues.len(),
+            memory_cues: self.memory_cues.len(),
+            memory_cues_truncated: self.memory_cues_truncated,
+            detail_rate_hz: self.detail_rate_hz,
+            color_preview: self.color_preview.len(),
+            color_preview_truncated: self.color_preview_truncated,
+        }
+    }
+    /// Drops everything added since `checkpoint` and frees the reservations it
+    /// made. Data only ever appends, so the earlier state returns exactly.
+    pub fn rollback(&mut self, checkpoint: AnalysisCheckpoint) {
+        fn cut<T>(values: &mut Vec<T>, len: usize) {
+            values.truncate(len);
+            values.shrink_to(len);
+        }
+        cut(&mut self.beats, checkpoint.beats);
+        cut(&mut self.preview, checkpoint.preview);
+        cut(&mut self.detail, checkpoint.detail);
+        cut(&mut self.cues, checkpoint.cues);
+        cut(&mut self.memory_cues, checkpoint.memory_cues);
+        cut(&mut self.color_preview, checkpoint.color_preview);
+        self.memory_cues_truncated = checkpoint.memory_cues_truncated;
+        self.detail_rate_hz = checkpoint.detail_rate_hz;
+        self.color_preview_truncated = checkpoint.color_preview_truncated;
     }
     pub fn finish(
         self,

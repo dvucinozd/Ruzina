@@ -182,6 +182,15 @@ built with gcc.
 - **Still open:** a real export with playlists, and physical USB import on the
   board.
 
+The remaining RP-18 import edges followed the same day:
+
+- A rejected EXT is discarded and the DAT analysis is kept.
+- A cut-off trailing PWV4 degrades to PWV3.
+- Names are bounded to their own row.
+
+The real export is unchanged by them: no name row out of bounds, and the same
+PDB and ANLZ results. A real EXT cut inside PWV4 or PWV3 matches the donor.
+
 ## Policies that must survive continuation
 
 - **Headphones/CUE/PFL always use controller UAC.** A ready external stereo DAC

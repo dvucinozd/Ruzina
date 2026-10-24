@@ -484,6 +484,74 @@ impl PdbPageSlotWalker {
     }
 }
 
+/// Where the rows of one slot batch end (M2.5 082d2c0a `name_row_end`): at
+/// the nearest slot offset above the row, deleted slots included because
+/// their bytes are not part of a live row, or else at the slot table. Feed
+/// every slot batch of the page to [`Self::observe`] before reading a bound.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PdbRowEnds {
+    rows: PdbRowOffsetBatch,
+    /// Heap-relative exclusive ends, parallel to `rows`.
+    ends: [u16; PDB_ROW_SLOT_BATCH_ROWS],
+}
+
+impl PdbRowEnds {
+    pub fn new(rows: &PdbRowOffsetBatch, page_size: u32, declared_rows: u32) -> Self {
+        let groups = declared_rows / 16;
+        let tail = declared_rows % 16;
+        let slot_bytes = groups * (4 + 16 * 2) + if tail == 0 { 0 } else { 4 + tail * 2 };
+        let slot_table = page_size
+            .saturating_sub(slot_bytes)
+            .saturating_sub(PDB_PAGE_HEAP_OFFSET as u32)
+            .min(u32::from(u16::MAX)) as u16;
+        Self {
+            rows: rows.clone(),
+            ends: [slot_table; PDB_ROW_SLOT_BATCH_ROWS],
+        }
+    }
+
+    /// Lowers the row ends by the slots of one batch, present or deleted.
+    pub fn observe(&mut self, plan: PdbSlotBatchPlan, data: &[u8]) -> Result<(), PdbError> {
+        let required = usize::from(plan.len);
+        if data.len() < required {
+            return Err(PdbError::PageBufferTooSmall {
+                required,
+                actual: data.len(),
+            });
+        }
+        let mut cursor = required;
+        let mut remaining = usize::from(plan.row_count);
+        while remaining > 0 {
+            let group_count = remaining.min(16);
+            let group_bytes = 4 + group_count * 2;
+            if cursor < group_bytes {
+                return Err(PdbError::SlotBatchPlanMismatch);
+            }
+            for slot_index in 0..group_count {
+                let slot = read_le16(data, cursor - 4 - 2 * (slot_index + 1))
+                    .ok_or(PdbError::SlotBatchPlanMismatch)?;
+                for (row, end) in self.rows.offsets().iter().zip(self.ends.iter_mut()) {
+                    if slot > *row && slot < *end {
+                        *end = slot;
+                    }
+                }
+            }
+            cursor -= group_bytes;
+            remaining -= group_count;
+        }
+        Ok(())
+    }
+
+    /// Bytes of the `index`-th row of the batch; zero when its start lies at
+    /// or past the slot table.
+    pub fn row_len(&self, index: usize) -> u32 {
+        match (self.rows.offsets().get(index), self.ends.get(index)) {
+            (Some(row), Some(end)) => u32::from(end.saturating_sub(*row)),
+            _ => 0,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PdbPageWalk {
     pub declared_rows: u32,
@@ -857,6 +925,12 @@ impl PdbNameRowLayout {
             Self::Key => KEY_ROW_MIN_BYTES,
             Self::Artwork => ARTWORK_ROW_MIN_BYTES,
         }
+    }
+
+    /// Artist, album and key names must lie inside their own row (M2.5
+    /// 082d2c0a, see [`PdbRowEnds`]); artwork paths keep the page bound.
+    pub const fn bounded_to_row(self) -> bool {
+        !matches!(self, Self::Artwork)
     }
 
     const fn row_shape(self) -> Option<(u16, usize, usize)> {
@@ -1448,6 +1522,7 @@ mod tests {
 
     use super::*;
     use std::string::String;
+    use std::{vec, vec::Vec};
 
     fn put_le16(data: &mut [u8], offset: usize, value: u16) {
         data[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
@@ -1555,6 +1630,77 @@ mod tests {
                 .unwrap()
                 .declared_rows,
             0
+        );
+    }
+
+    /// Writes the slot groups at the end of `page` for (heap offset, present).
+    fn put_slots(page: &mut [u8], slots: &[(u16, bool)]) {
+        let mut cursor = page.len();
+        for group in slots.chunks(16) {
+            let mut present = 0u16;
+            for (index, (offset, live)) in group.iter().enumerate() {
+                put_le16(page, cursor - 4 - 2 * (index + 1), *offset);
+                present |= u16::from(*live) << index;
+            }
+            put_le16(page, cursor - 4, present);
+            cursor -= 4 + group.len() * 2;
+        }
+    }
+
+    fn row_lens(page: &[u8], declared_rows: u32) -> Vec<Vec<u32>> {
+        let page_size = page.len() as u32;
+        let mut walker = PdbPageSlotWalker::new(page_size, declared_rows).unwrap();
+        let mut batches = Vec::new();
+        while let Some(plan) = walker.next_batch_plan() {
+            let at = plan.offset as usize;
+            let rows = walker.ingest_batch(plan, &page[at..]).unwrap();
+            let mut ends = PdbRowEnds::new(&rows, page_size, declared_rows);
+            let mut scan = PdbPageSlotWalker::new(page_size, declared_rows).unwrap();
+            while let Some(slots) = scan.next_batch_plan() {
+                let at = slots.offset as usize;
+                ends.observe(slots, &page[at..]).unwrap();
+                scan.ingest_batch(slots, &page[at..]).unwrap();
+            }
+            batches.push((0..rows.len()).map(|index| ends.row_len(index)).collect());
+        }
+        batches
+    }
+
+    // M2.5 082d2c0a `name_row_end`: slots need not be in heap order, a
+    // deleted slot still ends the row before it, and the last row ends at the
+    // slot table.
+    #[test]
+    fn row_ends_use_every_slot_and_the_slot_table() {
+        let mut page = vec![0u8; 512];
+        put_slots(&mut page, &[(50, true), (0, true), (35, false), (20, true)]);
+        // 4 rows: one 12-byte group; the heap ends at 512 - 12 - 0x28 = 460.
+        assert_eq!(row_lens(&page, 4), vec![vec![410, 20, 15]]);
+
+        // A row in the first batch ends at a slot of the second batch.
+        let mut page = vec![0u8; 4096];
+        let mut slots: Vec<(u16, bool)> = (0..300).map(|i| (1_000 + i * 2, false)).collect();
+        slots[0] = (10, true);
+        slots[299] = (40, false);
+        slots[257] = (90, true);
+        put_slots(&mut page, &slots);
+        assert_eq!(row_lens(&page, 300), vec![vec![30], vec![912]]);
+
+        // Without observation every row runs to the slot table; a row at or
+        // past it has no bytes.
+        let rows = PdbRowOffsetBatch {
+            offsets: {
+                let mut offsets = [0u16; PDB_ROW_SLOT_BATCH_ROWS];
+                offsets[0] = 400;
+                offsets[1] = 470;
+                offsets
+            },
+            len: 2,
+            truncated: false,
+        };
+        let ends = PdbRowEnds::new(&rows, 512, 4);
+        assert_eq!(
+            (ends.row_len(0), ends.row_len(1), ends.row_len(2)),
+            (60, 0, 0)
         );
     }
 
