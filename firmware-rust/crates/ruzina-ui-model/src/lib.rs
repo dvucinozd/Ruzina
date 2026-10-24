@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod idle;
+pub mod memory_cues;
 mod mix_fx;
 pub use mix_fx::*;
 

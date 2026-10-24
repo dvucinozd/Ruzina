@@ -11,6 +11,8 @@ export struct DeckView {
     title: string, artwork: image, bpm: string, time: string, status: string, analysis: string,
     loaded: bool, playing: bool, synced: bool, quantize: bool, range: string,
     overview: image, detail: image, cues: [CueView], loop-text: string,
+    // M2.5 MEMORY panel (ruzina-ui-model::memory_cues).
+    memory-title: string, memory-text: string,
 }
 
 component Action inherits Rectangle {
@@ -91,6 +93,8 @@ component DeckPanel inherits Rectangle {
     in property <DeckView> data;
     in property <int> number;
     in property <bool> cue-page;
+    in property <bool> memory-shown;
+    callback memory;
     callback action(int);
     callback hold(int, bool);
     callback cue(int, bool);
@@ -129,6 +133,8 @@ component DeckPanel inherits Rectangle {
             HoldAction { text: "CUE"; height: 40px; enabled: root.data.loaded; held(_, pressed) => { root.hold(1, pressed); } }
             Action { text: "SYNC"; active: root.data.synced; enabled: root.data.loaded; clicked => { root.action(2); } }
             Action { text: "Q"; active: root.data.quantize; enabled: root.data.loaded; clicked => { root.action(8); } }
+            // The M2.5 performance-tab MEMORY toggle: the list replaces the pads.
+            if root.cue-page: Action { text: "MEMORY"; active: root.memory-shown; clicked => { root.memory(); } }
         }
         if !root.cue-page: HorizontalLayout { spacing: 7px;
             Action { text: "JUMP −"; enabled: root.data.loaded; clicked => { root.action(3); } }
@@ -137,7 +143,19 @@ component DeckPanel inherits Rectangle {
             Action { text: "OUT"; enabled: root.data.loaded; clicked => { root.action(6); } }
             Action { text: "EXIT"; enabled: root.data.loaded; clicked => { root.action(7); } }
         }
-        if root.cue-page: VerticalLayout { spacing: 6px;
+        if root.cue-page && root.memory-shown: Rectangle {
+            vertical-stretch: 1; min-height: 0px; preferred-height: 0px;
+            background: #0b111a; border-radius: 5px; clip: true;
+            VerticalLayout { padding: 10px; spacing: 6px;
+                Text { height: 20px; text: root.data.memory-title; color: #ffce85; font-size: 15px; font-weight: 700; }
+                Flickable {
+                    min-height: 0px; preferred-height: 0px; vertical-stretch: 1;
+                    content-height: memory-list.preferred-height;
+                    memory-list := Text { width: parent.width; text: root.data.memory-text; color: #eef5fb; font-size: 13px; vertical-alignment: top; }
+                }
+            }
+        }
+        if root.cue-page && !root.memory-shown: VerticalLayout { spacing: 6px;
             HorizontalLayout { spacing: 5px;
                 for cue[index] in root.data.cues: Action {
                     text: cue.label; active: cue.occupied; enabled: root.data.loaded;
@@ -151,7 +169,7 @@ component DeckPanel inherits Rectangle {
                 }
             }
         }
-        Rectangle { vertical-stretch: 1; background: transparent; }
+        if !root.memory-shown: Rectangle { vertical-stretch: 1; background: transparent; }
     }
 }
 
@@ -278,7 +296,10 @@ export component MainWindow inherits Window {
     in property <bool> screensaver;
     callback wake;
     callback activity;
-    changed page => { if (self.page != 5) { self.cancel-pads(); } self.activity(); }
+    // Deck whose MEMORY list is open on the HOT CUES page, or -1. Leaving the
+    // page closes it, as M2.5 hides the panel with the performance tab.
+    in-out property <int> memory-deck: -1;
+    changed page => { if (self.page != 5) { self.cancel-pads(); } self.memory-deck = -1; self.activity(); }
 
     VerticalLayout {
         padding: 16px; spacing: 12px;
@@ -303,6 +324,8 @@ export component MainWindow inherits Window {
                 width: root.portrait ? parent.width : (parent.width - 12px) / 2;
                 height: root.portrait ? (parent.height - 12px) / 2 : parent.height;
                 data: data; number: i + 1; cue-page: root.page == 2;
+                memory-shown: root.page == 2 && root.memory-deck == i;
+                memory => { root.memory-deck = root.memory-deck == i ? -1 : i; root.activity(); }
                 action(code) => { root.deck-action(i, code); }
                 hold(code, pressed) => { root.deck-hold(i, code, pressed); }
                 cue(slot, clear) => { root.cue-action(i, slot, clear); }

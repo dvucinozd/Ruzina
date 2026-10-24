@@ -62,7 +62,7 @@
         1024,
         600
       ],
-      "rgb_sha256": "d08832533cbbc7f41f4adb2269616a3e943245cd525e57b6e7caac2855e9f8e7"
+      "rgb_sha256": "2e1f827710549b0c687b5889ed179748dc2cf18a0af3b405c713e33654dea375"
     },
     "jc1060-deck-fallback": {
       "size": [
@@ -176,6 +176,13 @@
       ],
       "rgb_sha256": "ed2a7a2d7497b4e34308696d6140c717e1c642f9b4271050ce06bc1277e3c037"
     },
+    "jc1060-memory": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "28b841ba021cbf8722f0506dadc64e0575ba8efead021d730fab328840a11559"
+    },
     "jc1060-mixer-active": {
       "size": [
         1024,
@@ -272,7 +279,7 @@
         800,
         1280
       ],
-      "rgb_sha256": "34a1f1e35250baeab2916406abdb2b2e85bce9a0d74500b5d9a0d1d8e831a7c2"
+      "rgb_sha256": "e28e89f91acd57dc820b2d55b2cc76f704e97faabec5268d295229966308f45f"
     },
     "jc8012-deck-fallback": {
       "size": [
@@ -385,6 +392,13 @@
         1280
       ],
       "rgb_sha256": "67a8bba656548baab3d17e9a71fa9e0079ebcaf290de7b9bd9fcff2e8e05eb8b"
+    },
+    "jc8012-memory": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "6aa96c295e25d4609f8eaff8472c6954c7f29c00b2c4e146a98cd898a6a0e97d"
     },
     "jc8012-mixer-active": {
       "size": [
