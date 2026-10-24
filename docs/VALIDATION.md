@@ -35,6 +35,19 @@ in the host harness. These do not demonstrate physical USB timing or buffer/DMA
 behavior. UI goldens cover 54 representative simulator images across the two
 documented geometries.
 
+A real Rekordbox export is compared from a read-only copy of its `PIONEER`
+folder, never the stick itself and never committed. The firmware import is
+replayed over `export.pdb` (TSV of tracks, playlists and entries), and each
+track's analysis over its DAT and EXT:
+
+```sh
+cargo run --locked -p ruzina-rekordbox --example export_inspect -- /copy/PIONEER/rekordbox/export.pdb
+cargo run --locked -p ruzina-rekordbox --example analysis_inspect -- ANLZ0000.DAT ANLZ0000.EXT
+```
+
+Diff the output against a dump made with the pinned donor `rekordbox_pdb.c` and
+`rekordbox_anlz.c`; see the 2026-10-24 result in the [handoff](HANDOFF.md).
+
 From `firmware-rust/apps/m1-firmware`:
 
 ```sh

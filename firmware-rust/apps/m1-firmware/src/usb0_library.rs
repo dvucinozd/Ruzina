@@ -27,11 +27,12 @@ use ruzina_rekordbox::{
     PDB_TABLE_KEYS, PDB_TABLE_PLAYLIST_ENTRIES, PDB_TABLE_PLAYLIST_TREE, PDB_TABLE_TRACKS,
     PDB_TITLE_MAX, PDB_TRACK_ROW_HEADER_BYTES, PdbCatalogError, PdbError, PdbHeader, PdbNameEntry,
     PdbNameLookup, PdbNameRowHeader, PdbNameRowLayout, PdbPageSlotWalker, PdbPlaylistEntryRow,
-    PdbPlaylistTreeRow, PdbTableDirectory, PdbText, PdbTrackRow, REKORDBOX_EXPORT_PDB_PATH,
-    catalog_track_from_pdb, parse_devicesql_field_header, parse_pdb_header,
-    parse_pdb_name_row_header, parse_pdb_page_header, parse_pdb_playlist_entry_row,
-    parse_pdb_playlist_tree_row, parse_pdb_table_directory, parse_pdb_track_row_header,
-    pdb_track_string_page_offset, recover_pdb_title, resolve_pdb_track_names,
+    PdbPlaylistTreeRow, PdbTableDirectory, PdbTableEntry, PdbText, PdbTrackRow,
+    REKORDBOX_EXPORT_PDB_PATH, catalog_track_from_pdb, parse_devicesql_field_header,
+    parse_pdb_header, parse_pdb_name_row_header, parse_pdb_page_header,
+    parse_pdb_playlist_entry_row, parse_pdb_playlist_tree_row, parse_pdb_table_directory,
+    parse_pdb_track_row_header, pdb_track_string_page_offset, recover_pdb_title,
+    resolve_pdb_track_names,
 };
 use static_cell::StaticCell;
 
@@ -732,13 +733,13 @@ pub(crate) struct Usb0LibraryPdbProbe {
     pub(crate) volume_identity: VolumeIdentity,
     pub(crate) file_len: u64,
     pub(crate) header: PdbHeader,
-    pub(crate) tracks_first_page: u32,
-    pub(crate) artists_first_page: Option<u32>,
-    pub(crate) albums_first_page: Option<u32>,
-    pub(crate) keys_first_page: Option<u32>,
-    pub(crate) playlist_tree_first_page: Option<u32>,
-    pub(crate) playlist_entries_first_page: Option<u32>,
-    pub(crate) artwork_first_page: Option<u32>,
+    pub(crate) tracks_table: PdbTableEntry,
+    pub(crate) artists_table: Option<PdbTableEntry>,
+    pub(crate) albums_table: Option<PdbTableEntry>,
+    pub(crate) keys_table: Option<PdbTableEntry>,
+    pub(crate) playlist_tree_table: Option<PdbTableEntry>,
+    pub(crate) playlist_entries_table: Option<PdbTableEntry>,
+    pub(crate) artwork_table: Option<PdbTableEntry>,
     pub(crate) tracks_layout: Option<Usb0LibraryTableProbe>,
     pub(crate) artists_layout: Option<Usb0LibraryNameTableProbe>,
     pub(crate) albums_layout: Option<Usb0LibraryNameTableProbe>,
@@ -1144,10 +1145,10 @@ async fn close_file(
     }
 }
 
-fn first_page(tables: &PdbTableDirectory, kind: u32) -> Option<u32> {
+fn table(tables: &PdbTableDirectory, kind: u32) -> Option<PdbTableEntry> {
     tables
         .find(kind)
-        .and_then(|entry| (entry.first_page != u32::MAX).then_some(entry.first_page))
+        .filter(|entry| entry.first_page != u32::MAX)
 }
 
 fn parse_first_page(
@@ -1161,21 +1162,21 @@ fn parse_first_page(
     let header = parse_pdb_header(&buffer[..available], file_len).map_err(Usb0LibraryError::Pdb)?;
     let tables =
         parse_pdb_table_directory(&buffer[..available], header).map_err(Usb0LibraryError::Pdb)?;
-    let tracks_first_page =
-        first_page(&tables, PDB_TABLE_TRACKS).ok_or(Usb0LibraryError::MissingTracksTable)?;
+    let tracks_table =
+        table(&tables, PDB_TABLE_TRACKS).ok_or(Usb0LibraryError::MissingTracksTable)?;
 
     Ok(Usb0LibraryPdbProbe {
         lease,
         volume_identity,
         file_len,
         header,
-        tracks_first_page,
-        artists_first_page: first_page(&tables, PDB_TABLE_ARTISTS),
-        albums_first_page: first_page(&tables, PDB_TABLE_ALBUMS),
-        keys_first_page: first_page(&tables, PDB_TABLE_KEYS),
-        playlist_tree_first_page: first_page(&tables, PDB_TABLE_PLAYLIST_TREE),
-        playlist_entries_first_page: first_page(&tables, PDB_TABLE_PLAYLIST_ENTRIES),
-        artwork_first_page: first_page(&tables, PDB_TABLE_ARTWORK),
+        tracks_table,
+        artists_table: table(&tables, PDB_TABLE_ARTISTS),
+        albums_table: table(&tables, PDB_TABLE_ALBUMS),
+        keys_table: table(&tables, PDB_TABLE_KEYS),
+        playlist_tree_table: table(&tables, PDB_TABLE_PLAYLIST_TREE),
+        playlist_entries_table: table(&tables, PDB_TABLE_PLAYLIST_ENTRIES),
+        artwork_table: table(&tables, PDB_TABLE_ARTWORK),
         tracks_layout: None,
         artists_layout: None,
         albums_layout: None,
@@ -1192,7 +1193,7 @@ async fn scan_table_layout(
     mut file: Usb0FsFileHandle,
     mut buffer: &'static mut [u8],
     header: PdbHeader,
-    first_page: u32,
+    table: PdbTableEntry,
     names: &Usb0LibraryNameStage,
     catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
@@ -1200,7 +1201,7 @@ async fn scan_table_layout(
     &'static mut [u8],
     Result<Usb0LibraryTableProbe, Usb0LibraryError>,
 ) {
-    let mut page = first_page;
+    let mut page = table.first_page;
     let mut pages = 0u32;
     let mut declared_rows = 0u32;
     let mut present_rows = 0u32;
@@ -1442,17 +1443,17 @@ async fn scan_table_layout(
         truncated |= summary.truncated;
         pages += 1;
 
-        if page_header.next_page == u32::MAX {
+        let Some(next_page) = page_header.next_in_table(page, table) else {
             break;
-        }
-        if page_header.next_page >= header.total_pages {
+        };
+        if next_page >= header.total_pages {
             return (
                 file,
                 buffer,
-                Err(Usb0LibraryError::PageOutOfRange(page_header.next_page)),
+                Err(Usb0LibraryError::PageOutOfRange(next_page)),
             );
         }
-        page = page_header.next_page;
+        page = next_page;
     }
 
     (
@@ -1474,7 +1475,7 @@ async fn scan_name_table_layout(
     mut file: Usb0FsFileHandle,
     mut buffer: &'static mut [u8],
     header: PdbHeader,
-    first_page: u32,
+    table: PdbTableEntry,
     layout: PdbNameRowLayout,
     stage: &mut Usb0LibraryNameMap,
 ) -> (
@@ -1482,7 +1483,7 @@ async fn scan_name_table_layout(
     &'static mut [u8],
     Result<Usb0LibraryNameTableProbe, Usb0LibraryError>,
 ) {
-    let mut page = first_page;
+    let mut page = table.first_page;
     let mut pages = 0u32;
     let mut declared_rows = 0u32;
     let mut present_rows = 0u32;
@@ -1652,17 +1653,17 @@ async fn scan_name_table_layout(
         slot_truncated |= summary.truncated;
         pages += 1;
 
-        if page_header.next_page == u32::MAX {
+        let Some(next_page) = page_header.next_in_table(page, table) else {
             break;
-        }
-        if page_header.next_page >= header.total_pages {
+        };
+        if next_page >= header.total_pages {
             return (
                 file,
                 buffer,
-                Err(Usb0LibraryError::PageOutOfRange(page_header.next_page)),
+                Err(Usb0LibraryError::PageOutOfRange(next_page)),
             );
         }
-        page = page_header.next_page;
+        page = next_page;
     }
 
     (
@@ -1686,7 +1687,7 @@ async fn scan_optional_name_table(
     file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     header: PdbHeader,
-    first_page: Option<u32>,
+    table: Option<PdbTableEntry>,
     layout: PdbNameRowLayout,
     stage: &mut Usb0LibraryNameMap,
 ) -> (
@@ -1694,14 +1695,12 @@ async fn scan_optional_name_table(
     &'static mut [u8],
     Result<Option<Usb0LibraryNameTableProbe>, Usb0LibraryError>,
 ) {
-    let Some(first_page) = first_page else {
+    let Some(table) = table else {
         return (file, buffer, Ok(None));
     };
 
-    let (file, buffer, result) = scan_name_table_layout(
-        client, lease, file, buffer, header, first_page, layout, stage,
-    )
-    .await;
+    let (file, buffer, result) =
+        scan_name_table_layout(client, lease, file, buffer, header, table, layout, stage).await;
     (file, buffer, result.map(Some))
 }
 
@@ -1720,7 +1719,7 @@ async fn scan_playlist_table(
     mut file: Usb0FsFileHandle,
     mut buffer: &'static mut [u8],
     header: PdbHeader,
-    first_page: u32,
+    pdb_table: PdbTableEntry,
     table: PlaylistTable,
     catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
@@ -1732,7 +1731,7 @@ async fn scan_playlist_table(
         PlaylistTable::Tree => PDB_PLAYLIST_TREE_ROW_HEADER_BYTES as u32 + 1,
         PlaylistTable::Entries => PDB_PLAYLIST_ENTRY_ROW_BYTES as u32,
     };
-    let mut page = first_page;
+    let mut page = pdb_table.first_page;
     let mut pages = 0u32;
 
     'pages: loop {
@@ -1871,10 +1870,10 @@ async fn scan_playlist_table(
             catalog.note_playlist_truncated();
         }
         pages += 1;
-        if page_header.next_page == u32::MAX {
+        let Some(next_page) = page_header.next_in_table(page, pdb_table) else {
             break;
-        }
-        page = page_header.next_page;
+        };
+        page = next_page;
     }
 
     (file, buffer, Ok(()))
@@ -1886,7 +1885,7 @@ async fn scan_optional_playlist_table(
     file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     header: PdbHeader,
-    first_page: Option<u32>,
+    pdb_table: Option<PdbTableEntry>,
     table: PlaylistTable,
     catalog: &mut Usb0LibraryCatalogStage,
 ) -> (
@@ -1894,10 +1893,10 @@ async fn scan_optional_playlist_table(
     &'static mut [u8],
     Result<(), Usb0LibraryError>,
 ) {
-    match first_page {
-        Some(first_page) => {
+    match pdb_table {
+        Some(pdb_table) => {
             scan_playlist_table(
-                client, lease, file, buffer, header, first_page, table, catalog,
+                client, lease, file, buffer, header, pdb_table, table, catalog,
             )
             .await
         }
@@ -1924,7 +1923,7 @@ async fn scan_probe_tables(
         file,
         buffer,
         probe.header,
-        probe.artists_first_page,
+        probe.artists_table,
         PdbNameRowLayout::Artist,
         &mut staging.artists,
     )
@@ -1940,7 +1939,7 @@ async fn scan_probe_tables(
         file,
         buffer,
         probe.header,
-        probe.albums_first_page,
+        probe.albums_table,
         PdbNameRowLayout::Album,
         &mut staging.albums,
     )
@@ -1956,7 +1955,7 @@ async fn scan_probe_tables(
         file,
         buffer,
         probe.header,
-        probe.keys_first_page,
+        probe.keys_table,
         PdbNameRowLayout::Key,
         &mut staging.keys,
     )
@@ -1972,7 +1971,7 @@ async fn scan_probe_tables(
         file,
         buffer,
         probe.header,
-        probe.artwork_first_page,
+        probe.artwork_table,
         PdbNameRowLayout::Artwork,
         &mut staging.artworks,
     )
@@ -2003,7 +2002,7 @@ async fn scan_probe_tables(
         file,
         buffer,
         probe.header,
-        probe.tracks_first_page,
+        probe.tracks_table,
         staging,
         catalog,
     )
@@ -2018,12 +2017,10 @@ async fn scan_probe_tables(
     probe.tracks_layout = Some(tracks);
 
     // Entries are only meaningful with a tree to resolve them against.
-    let entries_first_page = probe
-        .playlist_tree_first_page
-        .and(probe.playlist_entries_first_page);
-    for (table, first_page) in [
-        (PlaylistTable::Tree, probe.playlist_tree_first_page),
-        (PlaylistTable::Entries, entries_first_page),
+    let entries_table = probe.playlist_tree_table.and(probe.playlist_entries_table);
+    for (table, pdb_table) in [
+        (PlaylistTable::Tree, probe.playlist_tree_table),
+        (PlaylistTable::Entries, entries_table),
     ] {
         let (next_file, next_buffer, result) = scan_optional_playlist_table(
             client,
@@ -2031,7 +2028,7 @@ async fn scan_probe_tables(
             file,
             buffer,
             probe.header,
-            first_page,
+            pdb_table,
             table,
             catalog,
         )
@@ -2337,10 +2334,10 @@ mod tests {
         let probe =
             parse_first_page(lease(), volume_identity(), 512 * 6, &page, page.len()).unwrap();
         assert_eq!(probe.header.page_size, 512);
-        assert_eq!(probe.tracks_first_page, 1);
-        assert_eq!(probe.artists_first_page, Some(2));
-        assert_eq!(probe.albums_first_page, Some(3));
-        assert_eq!(probe.keys_first_page, Some(4));
+        assert_eq!(probe.tracks_table.first_page, 1);
+        assert_eq!(probe.artists_table.map(|table| table.first_page), Some(2));
+        assert_eq!(probe.albums_table.map(|table| table.first_page), Some(3));
+        assert_eq!(probe.keys_table.map(|table| table.last_page), Some(4));
         assert_eq!(probe.tracks_layout, None);
     }
 
@@ -2363,6 +2360,6 @@ mod tests {
         .unwrap();
 
         assert_eq!(probe.header.page_size, 65_536);
-        assert_eq!(probe.tracks_first_page, 1);
+        assert_eq!(probe.tracks_table.first_page, 1);
     }
 }

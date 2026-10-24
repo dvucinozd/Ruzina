@@ -30,6 +30,9 @@ const PDB_TABLE_DIRECTORY_OFFSET: usize = 0x1c;
 const PDB_TABLE_ENTRY_SIZE: usize = 16;
 const PDB_PAGE_NROWS_OFFSET: usize = 0x18;
 const PDB_PAGE_NEXT_OFFSET: usize = 0x0c;
+const PDB_PAGE_FLAGS_OFFSET: usize = 0x1b;
+/// crate-digger `is_data_page`: index pages set this flag and hold no rows.
+const PDB_PAGE_FLAG_INDEX: u8 = 0x40;
 
 const TRACK_ROW_SUBTYPE: u16 = 0x0024;
 const TRACK_OFF_ARTWORK_ID: usize = 0x1c;
@@ -260,7 +263,29 @@ pub const PDB_ROW_SLOT_BATCH_BYTES_MAX: usize = (PDB_ROW_SLOT_BATCH_ROWS / 16) *
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PdbPageHeader {
     pub next_page: u32,
+    /// Zero on index pages, whose slots are not table rows.
     pub declared_rows: u32,
+}
+
+impl PdbPageHeader {
+    /// The page after `page` in `table`'s chain, or `None` at its end.
+    /// Rekordbox links a table's last page on to its empty candidate and from
+    /// there into unrelated pages (the file header, then past the end), so the
+    /// chain ends at `last_page`, as in crate-digger, not only at `u32::MAX`.
+    pub const fn next_in_table(self, page: u32, table: PdbTableEntry) -> Option<u32> {
+        if page == table.last_page || self.next_page == u32::MAX {
+            None
+        } else {
+            Some(self.next_page)
+        }
+    }
+}
+
+fn page_data_rows(page_prefix: &[u8]) -> Option<u32> {
+    if page_prefix.get(PDB_PAGE_FLAGS_OFFSET)? & PDB_PAGE_FLAG_INDEX != 0 {
+        return Some(0);
+    }
+    Some(read_le32(page_prefix, PDB_PAGE_NROWS_OFFSET)? & 0x1fff)
 }
 
 pub fn parse_pdb_page_header(
@@ -280,9 +305,7 @@ pub fn parse_pdb_page_header(
     Ok(PdbPageHeader {
         next_page: read_le32(page_prefix, PDB_PAGE_NEXT_OFFSET)
             .ok_or(PdbError::TrackRowOutOfRange)?,
-        declared_rows: read_le32(page_prefix, PDB_PAGE_NROWS_OFFSET)
-            .ok_or(PdbError::TrackRowOutOfRange)?
-            & 0x1fff,
+        declared_rows: page_data_rows(page_prefix).ok_or(PdbError::TrackRowOutOfRange)?,
     })
 }
 
@@ -475,11 +498,10 @@ pub fn visit_pdb_page_rows(
 ) -> Result<PdbPageWalk, PdbError> {
     require_page(page, page_size)?;
     let size = page_size as usize;
-    let declared_rows =
-        read_le32(page, PDB_PAGE_NROWS_OFFSET).ok_or(PdbError::PageBufferTooSmall {
-            required: size,
-            actual: page.len(),
-        })? & 0x1fff;
+    let declared_rows = page_data_rows(page).ok_or(PdbError::PageBufferTooSmall {
+        required: size,
+        actual: page.len(),
+    })?;
 
     if declared_rows == 0 {
         return Ok(PdbPageWalk {
@@ -1515,7 +1537,8 @@ mod tests {
     fn parses_page_header_from_fixed_prefix() {
         let mut prefix = [0u8; PDB_PAGE_HEADER_BYTES];
         put_le32(&mut prefix, PDB_PAGE_NEXT_OFFSET, 9);
-        put_le32(&mut prefix, PDB_PAGE_NROWS_OFFSET, 0x6000_0012);
+        // Data page flags 0x24 as in a real export; the row count is 13 bits.
+        put_le32(&mut prefix, PDB_PAGE_NROWS_OFFSET, 0x2400_e012);
 
         assert_eq!(
             parse_pdb_page_header(&prefix, 65_536).unwrap(),
@@ -1524,6 +1547,42 @@ mod tests {
                 declared_rows: 18,
             }
         );
+
+        // An index page (flags 0x64) has no table rows.
+        prefix[PDB_PAGE_FLAGS_OFFSET] = 0x64;
+        assert_eq!(
+            parse_pdb_page_header(&prefix, 65_536)
+                .unwrap()
+                .declared_rows,
+            0
+        );
+    }
+
+    #[test]
+    fn table_chain_ends_at_last_page_not_at_the_empty_candidate() {
+        // Artist table of a real Rekordbox 6 export: index page 5, data page
+        // 6 (last), whose next link leads to empty candidate 46, then page 0.
+        let artists = PdbTableEntry {
+            kind: PDB_TABLE_ARTISTS,
+            empty_candidate: 46,
+            first_page: 5,
+            last_page: 6,
+        };
+        let page = |next_page| PdbPageHeader {
+            next_page,
+            declared_rows: 0,
+        };
+        assert_eq!(page(6).next_in_table(5, artists), Some(6));
+        assert_eq!(page(46).next_in_table(6, artists), None);
+        assert_eq!(page(u32::MAX).next_in_table(5, artists), None);
+
+        // Without a recorded last page the explicit terminator still ends it.
+        let open = PdbTableEntry {
+            last_page: u32::MAX,
+            ..artists
+        };
+        assert_eq!(page(46).next_in_table(6, open), Some(46));
+        assert_eq!(page(u32::MAX).next_in_table(6, open), None);
     }
 
     #[test]

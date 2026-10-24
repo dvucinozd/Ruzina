@@ -79,12 +79,25 @@ fn main() -> Result<(), String> {
         }
         digest
     };
+    let mut cue_hash = 0xcbf29ce484222325;
+    for cue in view.cues() {
+        cue_hash = hash([cue.slot], cue_hash);
+        cue_hash = hash(cue.start_ms.to_le_bytes(), cue_hash);
+        cue_hash = hash(cue.end_ms.unwrap_or(0).to_le_bytes(), cue_hash);
+    }
+    let mut memory_hash = 0xcbf29ce484222325;
+    for cue in view.memory_cues() {
+        memory_hash = hash(cue.start_ms.to_le_bytes(), memory_hash);
+        memory_hash = hash(cue.end_ms.unwrap_or(0).to_le_bytes(), memory_hash);
+    }
     println!(
-        "{{\"beats\":{},\"preview\":{},\"detail\":{},\"cues\":{},\"bpm_x100\":{},\"beat_hash\":\"{beat_hash:016x}\",\"preview_hash\":\"{:016x}\",\"detail_hash\":\"{:016x}\"}}",
+        "{{\"beats\":{},\"preview\":{},\"detail\":{},\"cues\":{},\"memory_cues\":{},\"color_preview\":{},\"bpm_x100\":{},\"beat_hash\":\"{beat_hash:016x}\",\"cue_hash\":\"{cue_hash:016x}\",\"memory_hash\":\"{memory_hash:016x}\",\"preview_hash\":\"{:016x}\",\"detail_hash\":\"{:016x}\"}}",
         beats.len(),
         view.preview().len(),
         view.detail().len(),
         view.cues().len(),
+        view.memory_cues().len(),
+        view.color_preview().len(),
         view.bpm_x100(),
         wave_hash(view.preview()),
         wave_hash(view.detail())
