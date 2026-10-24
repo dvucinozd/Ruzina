@@ -159,6 +159,29 @@ Branding: the owner-supplied artwork is in `firmware-rust/assets/branding`
 A case-insensitive search for the old name may show only the donor
 references listed above.
 
+## Real Rekordbox export comparison (2026-10-24)
+
+One owner export (Rekordbox 6, 189 tracks, no playlists) was copied off the
+stick read-only and compared outside the repository. The Rust side is the
+`export_inspect` and `analysis_inspect` examples in `ruzina-rekordbox`. The
+M2.5 side is `rekordbox_pdb.c`/`rekordbox_anlz.c` from donor `20f1c3f0`,
+built with gcc.
+
+- **Fixed:** every Rust PDB page walk (tracks, names, playlists) followed a
+  table past its `last_page`. Rekordbox links the last page to the table's
+  empty candidate, then to page 0 and past the end, so the firmware import
+  failed with `PageOutOfRange` on this export. `PdbPageHeader::next_in_table`
+  now ends the chain at `last_page`, and index pages (`page_flags & 0x40`)
+  yield no rows.
+- **PDB:** all 189 tracks match M2.5 in title, key, BPM, duration, paths and
+  cover. Rust additionally resolves 9 non-ASCII artists and the album table,
+  which M2.5 drops.
+- **ANLZ:** beat grids, waveforms, color previews and memory cues match for
+  all 189 tracks, and hot cues for 188. In the last track, cue D exists only in
+  the EXT PCOB; Rust imports it and M2.5 drops it.
+- **Still open:** a real export with playlists, and physical USB import on the
+  board.
+
 ## Policies that must survive continuation
 
 - **Headphones/CUE/PFL always use controller UAC.** A ready external stereo DAC
