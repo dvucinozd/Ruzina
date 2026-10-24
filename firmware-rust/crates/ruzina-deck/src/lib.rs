@@ -203,6 +203,9 @@ impl ShiftedLoopRoll {
     }
 }
 
+/// Paused jog scrub step (M2.5 `deck_core` on_jog).
+pub const JOG_SCRUB_MS_PER_TICK: i64 = 3;
+
 /// Per-deck jog semantics (M2.5 B13a). VINYL is the startup default: platter
 /// touch owns scratch. CDJ ignores platter-top touch, so jog deltas never
 /// engage scratch. Track load keeps the choice; reboot returns to VINYL.
@@ -327,6 +330,12 @@ pub enum DeckEffect {
         ticks: i16,
         epoch: u32,
     },
+    /// Transient tempo bend from a jog while playing (M2.5 B13a); the audio
+    /// owner adds it on top of the tempo fader and lets it decay.
+    JogNudge {
+        deck: DeckId,
+        ticks: i16,
+    },
     SetLoop {
         deck: DeckId,
         start_ms: u32,
@@ -362,6 +371,7 @@ impl DeckEffect {
             | Self::Seek { deck, .. }
             | Self::SetPitchCentipercent { deck, .. }
             | Self::ScratchJog { deck, .. }
+            | Self::JogNudge { deck, .. }
             | Self::SetLoop { deck, .. }
             | Self::ClearLoop { deck }
             | Self::ApplyPadFx { deck, .. } => Some(deck),
@@ -376,6 +386,7 @@ impl DeckEffect {
             | Self::Seek { .. }
             | Self::SetPitchCentipercent { .. }
             | Self::ScratchJog { .. }
+            | Self::JogNudge { .. }
             | Self::SetLoop { .. }
             | Self::ClearLoop { .. } => DeckEffectTarget::Transport,
             Self::PersistHotCues { .. } => DeckEffectTarget::Persistence,
@@ -951,7 +962,7 @@ impl DeckProductState {
                         _ => DeckEffects::NONE,
                     }
                 } else {
-                    DeckEffects::NONE
+                    self.handle_jog(deck, event.value)
                 }
             }
             SemanticControl::Sync => self.handle_sync(deck, event.value, analysis),
@@ -1259,6 +1270,33 @@ impl DeckProductState {
                 position_ms: 0,
             },
         )
+    }
+
+    /// An untouched jog (either mode) or the bend ring (M2.5 B13a): while
+    /// playing it nudges tempo; while paused it scrubs 3 ms per tick, kept
+    /// inside the measured length when one is known.
+    fn handle_jog(&mut self, deck: DeckId, value: ControlValue) -> DeckEffects {
+        let ControlValue::Relative(ticks) = value else {
+            return DeckEffects::NONE;
+        };
+        if ticks == 0 {
+            return DeckEffects::NONE;
+        }
+        let end = self.decoded_duration_ms(deck).unwrap_or(u32::MAX);
+        let state = &mut self.decks[deck_index(deck)];
+        if state.playing {
+            return DeckEffects::one(DeckEffect::JogNudge { deck, ticks });
+        }
+        let target = (i64::from(state.position_ms) + i64::from(ticks) * JOG_SCRUB_MS_PER_TICK)
+            .clamp(0, i64::from(end)) as u32;
+        if target == state.position_ms {
+            return DeckEffects::NONE;
+        }
+        state.position_ms = target;
+        DeckEffects::one(DeckEffect::Seek {
+            deck,
+            position_ms: target,
+        })
     }
 
     fn handle_tempo(&mut self, deck: DeckId, value: ControlValue) -> DeckEffects {
@@ -4535,9 +4573,13 @@ mod tests {
 
         state.handle_control(pressed(DeckId::One, SemanticControl::JogTouch, true));
         assert!(!state.deck(DeckId::One).jog_touched);
+        // CDJ never scratches; a paused CDJ jog scrubs (B13a).
         assert_eq!(
             state.handle_control(relative(DeckId::One, SemanticControl::JogScratch, 12)),
-            DeckEffects::NONE
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 36,
+            })
         );
         assert_eq!(state.load_admission(DeckId::One), Ok(LoadAllowed::Stopped));
         assert_eq!(state.deck(DeckId::Two).jog_mode, JogMode::Vinyl);
@@ -4558,5 +4600,88 @@ mod tests {
                 .items[0],
             Some(DeckEffect::ScratchJog { ticks: 12, .. })
         ));
+    }
+
+    #[test]
+    fn untouched_jog_nudges_while_playing_and_scrubs_while_paused() {
+        let mut state = DeckProductState::new();
+        let jog = |ticks| relative(DeckId::One, SemanticControl::JogScratch, ticks);
+        let bend = |ticks| relative(DeckId::One, SemanticControl::JogBend, ticks);
+        state.decks[0].position_ms = 1_000;
+        assert_eq!(
+            state.handle_control(jog(-5)),
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 985
+            })
+        );
+        assert_eq!(state.deck(DeckId::One).position_ms, 985);
+        assert_eq!(
+            state.handle_control(bend(-1_000)),
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 0
+            }),
+            "scrub stops at the start"
+        );
+        assert!(
+            state.handle_control(jog(-1)).is_empty(),
+            "already at the start"
+        );
+        state.set_decoded_duration_ms(DeckId::One, Some(2_000));
+        state.decks[0].position_ms = 1_990;
+        assert_eq!(
+            state.handle_control(jog(100)),
+            DeckEffects::one(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 2_000
+            }),
+            "and at the measured end"
+        );
+        assert_eq!(state.deck(DeckId::Two).position_ms, 0, "deck isolation");
+
+        state.decks[0].playing = true;
+        for (event, ticks) in [(jog(3), 3), (bend(-2), -2)] {
+            assert_eq!(
+                state.handle_control(event),
+                DeckEffects::one(DeckEffect::JogNudge {
+                    deck: DeckId::One,
+                    ticks
+                })
+            );
+        }
+        assert_eq!(
+            state.deck(DeckId::One).position_ms,
+            2_000,
+            "a nudge never seeks"
+        );
+        // The bend ring stays a nudge even with the platter touched; the
+        // touched platter itself scratches.
+        state.handle_control(pressed(DeckId::One, SemanticControl::JogTouch, true));
+        assert!(matches!(
+            state.handle_control(bend(4)).items[0],
+            Some(DeckEffect::JogNudge { ticks: 4, .. })
+        ));
+        assert!(matches!(
+            state.handle_control(jog(4)).items[0],
+            Some(DeckEffect::ScratchJog { ticks: 4, .. })
+        ));
+        assert!(state.handle_control(jog(0)).is_empty());
+        assert_eq!(
+            DeckEffect::JogNudge {
+                deck: DeckId::Two,
+                ticks: 1
+            }
+            .source_deck(),
+            Some(DeckId::Two)
+        );
+        assert_eq!(
+            DeckEffect::JogNudge {
+                deck: DeckId::Two,
+                ticks: 1
+            }
+            .target(),
+            DeckEffectTarget::Transport
+        );
     }
 }

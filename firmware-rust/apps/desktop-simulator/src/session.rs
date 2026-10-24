@@ -1,5 +1,6 @@
 //! Host owner: real deck semantics and importer, simulated transport/media.
 //! This does not pump audio, access USB, or persist settings/cues to disk.
+use ruzina_audio_runtime::nudge::TempoNudge;
 use ruzina_board_profile::BoardId;
 use ruzina_controller_core::{ControlDomain, ControlEvent, ControlValue, DeckId, SemanticControl};
 use ruzina_core::MediaTrackId;
@@ -81,6 +82,7 @@ pub struct Session {
     catalog: Option<CatalogSnapshot<4>>,
     playlists: Option<DemoPlaylists>,
     library: LibraryBrowser,
+    nudge: [TempoNudge; 2],
 }
 
 type DemoPlaylists = PlaylistIndex<InlinePlaylistStore<8, 16>>;
@@ -150,6 +152,7 @@ impl Session {
             catalog: None,
             playlists: None,
             library: LibraryBrowser::new(),
+            nudge: [TempoNudge::new(); 2],
         };
         result.reconnect();
         result
@@ -458,6 +461,7 @@ impl Session {
                         }
                     }
                 }
+                DeckEffect::JogNudge { deck, ticks } => self.nudge[index(deck)].add(ticks),
                 DeckEffect::PersistHotCues { deck, bank } => {
                     if let Some((selection, _)) = self.loaded[index(deck)] {
                         self.local[selection] = Some(bank);
@@ -511,7 +515,10 @@ impl Session {
             if !p.transport.playing {
                 continue;
             }
-            let rate = (10_000 + p.transport.pitch_centi_percent).max(0) as u64;
+            // A jog nudge rides on the fader pitch and springs back (B13a).
+            let pitch = self.nudge[i].apply_centipercent(p.transport.pitch_centi_percent as i16);
+            self.nudge[i].advance(elapsed_ms.saturating_mul(48), 48_000);
+            let rate = (10_000 + i32::from(pitch)).max(0) as u64;
             let scaled = u64::from(elapsed_ms) * rate + self.fraction[i];
             self.fraction[i] = scaled % 10_000;
             let mut next = p.transport.position_ms + scaled / 10_000;

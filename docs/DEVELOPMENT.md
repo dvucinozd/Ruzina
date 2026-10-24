@@ -47,7 +47,7 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    gate. Firmware wiring is compile-only. The upload transaction and its Web admission
    are host-implemented; no HTTP server calls them yet.
 2. **RP-03/04/05/15/18:** CUE hold-preview/PLAY commit and explicit VINYL/CDJ
-   (RP-03 host-implemented; tempo nudge/paused scrub still absent), shared load
+   (RP-03 host-implemented, including the B13a tempo nudge and paused scrub), shared load
    admission (RP-04 host-implemented: default-on LOAD LOCK verdict, single-flight
    permits and PLAY-vs-LOAD fencing before audio replacement), loop/memory/source
    cue behavior (RP-05 host-implemented; memory-cue view/recall pending RP-07),

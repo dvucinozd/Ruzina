@@ -6,6 +6,7 @@ pub mod fx;
 pub mod history;
 pub mod main_change;
 pub mod mp3_index;
+pub mod nudge;
 pub mod pcm_stream;
 pub mod playback;
 pub mod render;
