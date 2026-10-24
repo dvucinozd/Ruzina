@@ -268,6 +268,15 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
     });
     let weak = ui.as_weak();
     let session = state.clone();
+    ui.on_restore_hold(move |i, pressed| {
+        let deck = usize::try_from(i).ok().filter(|i| *i < 2);
+        session.borrow_mut().restore_hold(deck, pressed);
+        if let Some(ui) = weak.upgrade() {
+            refresh(&ui, &session.borrow());
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
     ui.on_select_track(move |selection| {
         session.borrow_mut().note_activity();
         if selection >= 0 && session.borrow().connected() {

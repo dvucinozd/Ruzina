@@ -30,7 +30,10 @@ use ruzina_track_analysis::{
     owned::{AnalysisIdentity, AnalysisPins},
 };
 use ruzina_ui_model::idle::{IDLE_DEFAULT_TIMEOUT_MS, IdleScreen, InputSource};
-use ruzina_ui_model::{BeatFxAction, DeckPresentation, pad_bank_event, pad_fx_event, present_deck};
+use ruzina_ui_model::long_press::LongPress;
+use ruzina_ui_model::{
+    BeatFxAction, DeckAction, DeckPresentation, pad_bank_event, pad_fx_event, present_deck,
+};
 
 const DAT_A: &[u8] = include_bytes!("../../../crates/ruzina-rekordbox/tests/fixtures/track-a.DAT");
 const DAT_B: &[u8] = include_bytes!("../../../crates/ruzina-rekordbox/tests/fixtures/track-b.DAT");
@@ -83,6 +86,8 @@ pub struct Session {
     playlists: Option<DemoPlaylists>,
     library: LibraryBrowser,
     nudge: [TempoNudge; 2],
+    /// Touch HOLD RESTORE (M2.5 performance tab), on the idle clock.
+    restore: LongPress<usize>,
 }
 
 type DemoPlaylists = PlaylistIndex<InlinePlaylistStore<8, 16>>;
@@ -153,6 +158,7 @@ impl Session {
             playlists: None,
             library: LibraryBrowser::new(),
             nudge: [TempoNudge::new(); 2],
+            restore: LongPress::new(),
         };
         result.reconnect();
         result
@@ -476,7 +482,12 @@ impl Session {
                             }
                         }
                     }
-                    self.message = "Local cue edit retained for this session".into();
+                    self.message = if bank.override_mask() == 0 {
+                        "Rekordbox cues restored for this session"
+                    } else {
+                        "Local cue edit retained for this session"
+                    }
+                    .into();
                 }
                 _ => {} // Deck state already records pause/pitch/loop; no audio DSP in host.
             }
@@ -539,8 +550,21 @@ impl Session {
             }
         }
         self.idle_clock_ms = self.idle_clock_ms.wrapping_add(elapsed_ms);
+        if let Some(i) = self.restore.tick(self.idle_clock_ms) {
+            self.control(DeckAction::RestoreSourceCues.event(deck(i), true));
+        }
         self.update_idle();
         self.publish_health();
+    }
+    /// HOLD RESTORE pressed or released on a deck; `None` is a lost press
+    /// (page change). The restore fires only after the M2.5 long press.
+    pub fn restore_hold(&mut self, deck: Option<usize>, pressed: bool) {
+        self.note_activity();
+        match (deck, pressed) {
+            (Some(i), true) if i < 2 => self.restore.press(i, self.idle_clock_ms),
+            (Some(i), false) => self.restore.release(i),
+            _ => self.restore.cancel(),
+        }
     }
     /// Advance only the observer. Replay uses this to model a stopped publisher.
     /// The interactive timer normally calls tick(), which also runs the owner.

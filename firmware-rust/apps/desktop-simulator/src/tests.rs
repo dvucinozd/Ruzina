@@ -10,6 +10,40 @@ fn press(s: &mut Session, action: DeckAction) {
     s.control(action.event(DeckId::One, true));
 }
 
+// M2.5 HOLD RESTORE: only a 400 ms hold restores the Rekordbox cues; an early
+// release or a lost press (page change) does nothing.
+#[test]
+fn hold_restore_brings_back_source_cues_only_after_the_long_press() {
+    let mut s = loaded();
+    let source = s.presentation(0).cues[0];
+    assert!(source.is_some());
+    s.control(cue_event(DeckId::One, 0, true, true).unwrap());
+    assert!(s.presentation(0).cues[0].is_none(), "local delete");
+
+    s.restore_hold(Some(0), true);
+    s.tick(200);
+    s.restore_hold(Some(0), false);
+    s.tick(500);
+    s.restore_hold(Some(0), true);
+    s.restore_hold(None, false);
+    s.tick(500);
+    assert!(s.presentation(0).cues[0].is_none());
+
+    s.restore_hold(Some(0), true);
+    s.tick(399);
+    assert!(s.presentation(0).cues[0].is_none());
+    s.tick(1);
+    assert_eq!(s.presentation(0).cues[0], source);
+    assert_eq!(s.message, "Rekordbox cues restored for this session");
+    s.restore_hold(Some(0), false);
+
+    // Another deck's release does not end the hold; nothing to restore is a no-op.
+    s.restore_hold(Some(0), true);
+    s.restore_hold(Some(1), false);
+    s.tick(400);
+    assert_eq!(s.presentation(0).cues[0], source);
+}
+
 #[test]
 fn transport_uses_confirmed_state_and_load_lock_then_stops_at_end() {
     let mut s = loaded();
