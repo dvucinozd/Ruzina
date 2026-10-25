@@ -9,7 +9,8 @@
 
 use crate::remote::ContinuousControl;
 
-pub const ORDERING_SLOTS: usize = 16;
+/// Room for every continuous control of two pages (15 each).
+pub const ORDERING_SLOTS: usize = 32;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct Entry {

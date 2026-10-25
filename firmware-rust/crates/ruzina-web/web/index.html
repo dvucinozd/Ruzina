@@ -25,9 +25,17 @@
         <button data-action="cue">CUE</button>
         <button data-action="sync">SYNC</button>
         <button data-action="pfl">PFL</button>
+        <button data-action="loop_4" class="wide">4B LOOP</button>
+        <button data-action="loop_clear" class="wide">LOOP CLEAR</button>
       </div>
       <label>VOLUME <input type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
       <label>PITCH <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
+      <div class="eq">
+        <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
+        <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
+        <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
+        <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
+      </div>
     </article>
     <article class="deck" data-deck="2">
       <div class="deck-head"><span class="deck-name">DECK 2</span><span class="bpm" data-field="bpm">— BPM</span></div>
@@ -40,15 +48,32 @@
         <button data-action="cue">CUE</button>
         <button data-action="sync">SYNC</button>
         <button data-action="pfl">PFL</button>
+        <button data-action="loop_4" class="wide">4B LOOP</button>
+        <button data-action="loop_clear" class="wide">LOOP CLEAR</button>
       </div>
       <label>VOLUME <input type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
       <label>PITCH <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
+      <div class="eq">
+        <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
+        <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
+        <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
+        <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
+      </div>
     </article>
   </section>
   <section class="mixer">
     <label>CROSSFADER <span class="hint">D1 ↔ D2</span>
-      <input id="crossfader" type="range" min="0" max="16383" value="8192">
+      <input type="range" min="0" max="16383" value="8192" data-continuous="crossfader">
     </label>
+    <div class="mixer-row">
+      <label>MASTER <input type="range" min="0" max="16383" value="16383" data-continuous="master_volume"></label>
+      <label>HEADPHONES <span class="hint">CUE ↔ MASTER</span> <input type="range" min="0" max="16383" value="8192" data-continuous="headphone_mix"></label>
+      <div class="buttons smart">
+        <button data-action="smart_cfx">SMART CFX</button>
+        <button data-action="smart_fader">SMART FADER</button>
+      </div>
+    </div>
+    <div class="hint">Double-click a fader to reset it.</div>
   </section>
   <section class="library">
     <div class="library-head">

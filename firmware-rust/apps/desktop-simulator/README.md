@@ -56,7 +56,9 @@ inferred. Counters describe this demo session, not audio/USB driver loss.
 **Web Remote** (RP-12): `--web PORT` serves the built-in page at
 `http://127.0.0.1:PORT/` and its API (`/api/status`, the paged
 `/api/library`, `/api/control` and `/api/load`) on `127.0.0.1` from the UI
-timer, over the same session paths touch uses. The loopback address stands in for the AP address,
+timer, over the same session paths touch uses. The page drives both decks
+(transport, 4B LOOP, LOOP CLEAR, volume, pitch, EQ and filter), the mixer
+(crossfader, master, headphone mix, Smart CFX/Fader) and Library loads. The loopback address stands in for the AP address,
 so only a local client passes the Host allow-list; mutations need the
 `X-DDJ-Control: 1` header:
 

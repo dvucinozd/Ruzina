@@ -41,3 +41,7 @@ input[type="range"] { width: 100%; }
 #tracks .num { color: var(--muted); font-size: 12px; text-align: right; }
 #tracks button { padding: 6px 10px; }
 .message { min-height: 1.3em; color: var(--warn); margin: 0; }
+.buttons .wide { grid-column: span 2; }
+.eq { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; }
+.mixer-row { display: grid; gap: 4px 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: end; }
+.buttons.smart { grid-template-columns: 1fr 1fr; margin: 6px 0 0; }

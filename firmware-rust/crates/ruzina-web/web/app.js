@@ -1,6 +1,7 @@
 'use strict';
-// RUZINA Web Remote: polls /api/status, sends taps and faders to /api/control
-// and loads from the paged /api/library (ruzina-web). Every mutation carries
+// RUZINA Web Remote: polls /api/status, sends taps, loops and faders (decks
+// and mixer) to /api/control and loads from the paged /api/library
+// (ruzina-web). Every mutation carries
 // X-DDJ-Control; faders carry this page's client token and a sequence, so a
 // late request can never move a fader backwards.
 
@@ -65,7 +66,12 @@ function clock(ms) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-function renderDeck(deck, data, pfl, volume) {
+// Show a fader's reported value unless the user is moving it.
+function showValue(slider, value) {
+  if (slider && value !== undefined && !dragging.has(slider)) slider.value = value;
+}
+
+function renderDeck(deck, data, mixer) {
   const card = deckCard(deck);
   const field = (name) => $(`[data-field="${name}"]`, card);
   const loaded = data.state_text !== 'IDLE';
@@ -83,12 +89,23 @@ function renderDeck(deck, data, pfl, volume) {
   play.textContent = data.playing ? 'PAUSE' : 'PLAY';
   play.classList.toggle('active', data.playing);
   $('[data-action="sync"]', card).classList.toggle('active', data.sync_enabled);
-  $('[data-action="pfl"]', card).classList.toggle('active', pfl);
+  $('[data-action="pfl"]', card).classList.toggle('active', mixer[`pfl${deck}`]);
   for (const button of card.querySelectorAll('[data-action]')) {
     if (button.dataset.action !== 'pfl') button.disabled = !loaded;
   }
-  const slider = $('[data-continuous="volume"]', card);
-  if (!dragging.has(slider)) slider.value = volume;
+  for (const action of ['volume', 'eq_low', 'eq_mid', 'eq_high', 'filter']) {
+    const key = action === 'volume' || action === 'filter' ? `${action}${deck}` : action.replace('eq_', `eq${deck}_`);
+    showValue($(`[data-continuous="${action}"]`, card), mixer[key]);
+  }
+}
+
+function renderMixer(mixer) {
+  const section = $('.mixer');
+  for (const action of ['crossfader', 'master_volume', 'headphone_mix']) {
+    showValue($(`[data-continuous="${action}"]`, section), mixer[action]);
+  }
+  $('[data-action="smart_cfx"]', section).classList.toggle('active', mixer.smart_cfx);
+  $('[data-action="smart_fader"]', section).classList.toggle('active', mixer.smart_fader);
 }
 
 async function pollStatus() {
@@ -99,10 +116,9 @@ async function pollStatus() {
     $('#conn').classList.add('ok');
     if (supersedes(status.stamp, applied)) {
       applied = status.stamp;
-      renderDeck(1, status.deck1, status.mixer.pfl1, status.mixer.volume1);
-      renderDeck(2, status.deck2, status.mixer.pfl2, status.mixer.volume2);
-      const crossfader = $('#crossfader');
-      if (!dragging.has(crossfader)) crossfader.value = status.mixer.crossfader;
+      renderDeck(1, status.deck1, status.mixer);
+      renderDeck(2, status.deck2, status.mixer);
+      renderMixer(status.mixer);
       if (status.stamp.library_revision !== libraryRevision) {
         libraryRevision = status.stamp.library_revision;
         loadLibrary();
@@ -175,17 +191,23 @@ function renderLibrary() {
 }
 
 function bindControls() {
+  // Deck controls carry their card's deck; mixer controls carry none.
+  const deckOf = (element) => element.closest('.deck')?.dataset.deck || null;
+  for (const button of document.querySelectorAll('[data-action]')) {
+    button.addEventListener('click', () => control(deckOf(button), button.dataset.action));
+  }
+  for (const slider of document.querySelectorAll('[data-continuous]')) {
+    const deck = deckOf(slider);
+    const action = slider.dataset.continuous;
+    const send = () => sendContinuous(`${action}${deck || ''}`, deck, action, slider.value);
+    slider.addEventListener('pointerdown', () => dragging.add(slider));
+    slider.addEventListener('pointerup', () => dragging.delete(slider));
+    slider.addEventListener('change', () => dragging.delete(slider));
+    slider.addEventListener('input', send);
+    slider.addEventListener('dblclick', () => { slider.value = slider.defaultValue; send(); });
+  }
   for (const card of document.querySelectorAll('.deck')) {
     const deck = card.dataset.deck;
-    for (const button of card.querySelectorAll('[data-action]')) {
-      button.addEventListener('click', () => control(deck, button.dataset.action));
-    }
-    for (const slider of card.querySelectorAll('[data-continuous]')) {
-      const action = slider.dataset.continuous;
-      slider.addEventListener('pointerdown', () => dragging.add(slider));
-      slider.addEventListener('pointerup', () => dragging.delete(slider));
-      slider.addEventListener('input', () => sendContinuous(`${action}${deck}`, deck, action, slider.value));
-    }
     const bar = $('[data-field="bar"]', card);
     bar.addEventListener('click', (event) => {
       const duration = Number(card.dataset.duration) || 0;
@@ -194,10 +216,6 @@ function bindControls() {
       if (duration) control(deck, 'seek', Math.round(fraction * duration));
     });
   }
-  const crossfader = $('#crossfader');
-  crossfader.addEventListener('pointerdown', () => dragging.add(crossfader));
-  crossfader.addEventListener('pointerup', () => dragging.delete(crossfader));
-  crossfader.addEventListener('input', () => sendContinuous('crossfader', null, 'crossfader', crossfader.value));
   $('#search').addEventListener('input', renderLibrary);
 }
 
