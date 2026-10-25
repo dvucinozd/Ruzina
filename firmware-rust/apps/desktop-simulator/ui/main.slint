@@ -21,6 +21,9 @@ component Action inherits Rectangle {
     in property <string> text;
     in property <bool> active;
     in property <bool> enabled: true;
+    // Still tappable, shown at M2.5's 40 % (a locked LOAD key).
+    in property <bool> dimmed;
+    opacity: dimmed ? 0.4 : 1.0;
     callback clicked;
     min-height: 40px;
     border-radius: 5px;
@@ -315,6 +318,13 @@ export component MainWindow inherits Window {
     in property <[LibraryRowView]> library-rows;
     in property <string> library-path;
     in property <bool> library-top: true;
+    // M2.5 LOAD LOCK (ruzina-ui-model::labels): key texts, which are locked,
+    // and the read-only Settings field.
+    in property <[string]> load-keys: ["LOAD DECK 1", "LOAD DECK 2"];
+    in property <[bool]> load-locked: [false, false];
+    in property <string> load-lock-text: "LOAD LOCK: ON";
+    in property <bool> load-lock-on: true;
+    callback load-lock-toggle;
     callback library-back;
     in property <int> selection;
     in property <bool> media-ready;
@@ -387,8 +397,8 @@ export component MainWindow inherits Window {
                 Text { text: !root.media-ready ? "Media removed. Reconnect to load tracks." : root.library-top ? "Select a track, then choose its destination." : "LOAD opens a folder or playlist; on a track it loads the deck."; color: #a1b4c9; height: 24px; }
                 for row[i] in root.library-rows: LibraryRow { item: row; active: root.selection == i; enabled: root.media-ready; clicked => { root.select-track(i); } }
                 HorizontalLayout { height: 44px; spacing: 12px;
-                    Action { text: "LOAD DECK 1"; enabled: root.media-ready; clicked => { root.load-track(0); } }
-                    Action { text: "LOAD DECK 2"; enabled: root.media-ready; clicked => { root.load-track(1); } }
+                    Action { text: root.load-keys[0]; dimmed: root.load-locked[0]; enabled: root.media-ready; clicked => { root.load-track(0); } }
+                    Action { text: root.load-keys[1]; dimmed: root.load-locked[1]; enabled: root.media-ready; clicked => { root.load-track(1); } }
                     Action { text: root.library-top ? "PLAYLISTS" : "BACK"; enabled: root.media-ready; clicked => { root.library-back(); } }
                     Action { text: root.media-ready ? "REMOVE MEDIA" : "RECONNECT"; clicked => { root.media-action(); } }
                 }
@@ -399,7 +409,12 @@ export component MainWindow inherits Window {
             background: #131d29; border-radius: 8px;
             VerticalLayout { padding: 22px; spacing: 16px;
                 Text { height: 35px; text: "SESSION SETTINGS"; color: #eef5fb; font-size: 23px; font-weight: 700; }
-                Action { height: 44px; text: root.remaining ? "TIME: REMAINING" : "TIME: ELAPSED"; clicked => { root.remaining = !root.remaining; root.display-changed(); } }
+                HorizontalLayout { height: 44px; spacing: 12px;
+                    Action { text: root.remaining ? "TIME: REMAINING" : "TIME: ELAPSED"; clicked => { root.remaining = !root.remaining; root.display-changed(); } }
+                    // LOAD LOCK switch (Ruzina; stable M2.5 keeps it on),
+                    // saved to the settings record before the decks use it.
+                    Action { text: root.load-lock-text; active: root.load-lock-on; clicked => { root.load-lock-toggle(); } }
+                }
                 for data[i] in root.decks: HorizontalLayout { height: 44px; spacing: 12px;
                     Text { text: "DECK " + (i + 1); color: #a1b4c9; vertical-alignment: center; }
                     Action { text: "QUANTIZE"; enabled: data.loaded; active: data.quantize; clicked => { root.deck-action(i, 8); } }

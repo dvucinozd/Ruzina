@@ -162,6 +162,13 @@
       ],
       "rgb_sha256": "352084575776eb52e79e457519114f31735b5642edfe1a32ef17a90c6eb0fcd4"
     },
+    "jc1060-library-locked": {
+      "size": [
+        1024,
+        600
+      ],
+      "rgb_sha256": "dee9b927203dcde211bd26600a7f63485ede10e76740254f436c3b5f2e5e5c19"
+    },
     "jc1060-library-playlist": {
       "size": [
         1024,
@@ -216,7 +223,7 @@
         1024,
         600
       ],
-      "rgb_sha256": "e562f6f02cf3b8df28a56cf62af5c1aae14138531584d0472986d9a4a0780438"
+      "rgb_sha256": "29dc5fe6e16a6f8a515d3d19a5b5f9cacb9f6b4ef7a10a9c13f4f9c165d2ac31"
     },
     "jc8012-analysis-analyzing": {
       "size": [
@@ -379,6 +386,13 @@
       ],
       "rgb_sha256": "c7e016f289015ba86cc30d3d6d878f47eab0d3d857de64d7e0b7c927c755b2b3"
     },
+    "jc8012-library-locked": {
+      "size": [
+        800,
+        1280
+      ],
+      "rgb_sha256": "d5eaa3956ba9c358845673c9bc0f9acd43fe64a11ca4886a81d265607d65e4c8"
+    },
     "jc8012-library-playlist": {
       "size": [
         800,
@@ -433,7 +447,7 @@
         800,
         1280
       ],
-      "rgb_sha256": "b3523451335c13c265111919727ff1d18cc89b43a1b33f917b18e4d99fe28a10"
+      "rgb_sha256": "d1006e5e4a04c52002f9cca00f1b437f669a34b9380cd71d7e6e3e9e418bb850"
     }
   }
 }

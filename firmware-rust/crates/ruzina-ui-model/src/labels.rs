@@ -1,7 +1,8 @@
 //! Deck and Library text as M2.5 `dj_ui` shows it: row BPM rounded to a whole
-//! number, row time as `m:ss`, `--` for a deck without a key, and hot cue
-//! names `CUE A`..`CUE H`, `LOOP A` for a loop.
+//! number, row time as `m:ss`, `--` for a deck without a key, hot cue names
+//! `CUE A`..`CUE H` (`LOOP A` for a loop), and the LOAD LOCK texts.
 use core::fmt;
+use ruzina_core::DeckId;
 
 /// `(int)(bpm + 0.5)` from the export tempo in hundredths.
 pub const fn library_bpm(bpm_x100: u32) -> u32 {
@@ -23,6 +24,37 @@ pub fn deck_key(key: Option<&str>) -> &str {
     match key {
         Some(key) if !key.is_empty() => key,
         _ => "--",
+    }
+}
+
+/// Library LOAD key: `LOAD DECK 1`, or `D1 LOCKED` while LOAD LOCK refuses
+/// that deck (M2.5 v293; the key stays tappable and the owner says why).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LoadKey {
+    pub deck: DeckId,
+    pub locked: bool,
+}
+
+impl fmt::Display for LoadKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let deck = match self.deck {
+            DeckId::One => 1,
+            DeckId::Two => 2,
+        };
+        if self.locked {
+            write!(f, "D{deck} LOCKED")
+        } else {
+            write!(f, "LOAD DECK {deck}")
+        }
+    }
+}
+
+/// The Settings field: M2.5 shows the switch state only.
+pub const fn load_lock_field(on: bool) -> &'static str {
+    if on {
+        "LOAD LOCK: ON"
+    } else {
+        "LOAD LOCK: OFF"
     }
 }
 
@@ -70,5 +102,14 @@ mod tests {
         let name = |slot, is_loop| HotCueName { slot, is_loop }.to_string();
         assert_eq!(name(0, false), "CUE A");
         assert_eq!(name(7, true), "LOOP H");
+    }
+
+    #[test]
+    fn load_keys_and_lock_field_follow_m25() {
+        let key = |deck, locked| LoadKey { deck, locked }.to_string();
+        assert_eq!(key(DeckId::One, false), "LOAD DECK 1");
+        assert_eq!(key(DeckId::Two, true), "D2 LOCKED");
+        assert_eq!(load_lock_field(true), "LOAD LOCK: ON");
+        assert_eq!(load_lock_field(false), "LOAD LOCK: OFF");
     }
 }

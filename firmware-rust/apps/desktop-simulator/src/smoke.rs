@@ -103,9 +103,10 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         screensaver(&ui, &state, output, name, width as f32, height as f32)?;
         library_playlists(&ui, &state, output, name)?;
         hold_restore(&ui, &state, name);
+        load_lock(&ui, &state, output, name)?;
     }
     println!(
-        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 62 software-rendered snapshots: PASS"
+        "Slint deck/mixer/FX/health callback + pointer/keyboard smoke in both geometries; 64 software-rendered snapshots: PASS"
     );
     Ok(())
 }
@@ -271,6 +272,55 @@ fn hold_restore(ui: &MainWindow, state: &Rc<RefCell<Session>>, name: &str) {
         assert_eq!(state.borrow().presentation(0).cues[0].is_some(), restored);
     }
     println!("HOLD RESTORE short press/page change/long press: PASS at {name}");
+}
+
+/// M2.5 LOAD LOCK: while deck 1 plays its LOAD key reads "D1 LOCKED" at
+/// 40 %, a tap is refused by the owner, and the lock lifts on folder rows.
+fn load_lock(
+    ui: &MainWindow,
+    state: &Rc<RefCell<Session>>,
+    output: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let board = state.borrow().diagnostics().identity.board;
+    *state.borrow_mut() = Session::for_board(board);
+    ui.set_page(1);
+    ui.invoke_select_track(0);
+    ui.invoke_load_track(0);
+    ui.invoke_deck_action(0, 0);
+    ui.invoke_select_track(1);
+    let keys = |ui: &MainWindow| -> Vec<String> {
+        ui.get_load_keys()
+            .iter()
+            .map(|key| key.to_string())
+            .collect()
+    };
+    assert_eq!(keys(ui), ["D1 LOCKED", "LOAD DECK 2"]);
+    capture(ui, output, &format!("{name}-library-locked"))?;
+    ui.invoke_load_track(0);
+    assert_eq!(state.borrow().title(0), session::TITLES[0], "refused");
+    // The Ruzina switch: off unlocks the key and replaces the playing deck.
+    ui.invoke_load_lock_toggle();
+    assert!(!ui.get_load_lock_on());
+    assert_eq!(ui.get_load_lock_text(), "LOAD LOCK: OFF");
+    // Read back from the settings record, as after a restart.
+    state.borrow_mut().reload_settings();
+    refresh(ui, &state.borrow());
+    assert!(!ui.get_load_lock_on());
+    assert_eq!(keys(ui), ["LOAD DECK 1", "LOAD DECK 2"]);
+    ui.invoke_load_track(0);
+    assert_eq!(state.borrow().title(0), session::TITLES[1], "replaced");
+    ui.invoke_load_lock_toggle();
+    assert!(ui.get_load_lock_on());
+    ui.invoke_deck_action(0, 0);
+    assert_eq!(keys(ui), ["D1 LOCKED", "LOAD DECK 2"]);
+    ui.invoke_library_back();
+    assert_eq!(keys(ui), ["LOAD DECK 1", "LOAD DECK 2"]);
+    ui.invoke_library_back();
+    ui.invoke_deck_action(0, 0);
+    assert_eq!(keys(ui), ["LOAD DECK 1", "LOAD DECK 2"]);
+    println!("LOAD LOCK key/refusal/folder rows: PASS at {name}");
+    Ok(())
 }
 
 pub(super) fn click(ui: &MainWindow, x: f32, y: f32) {

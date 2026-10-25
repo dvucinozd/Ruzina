@@ -29,12 +29,15 @@ use ruzina_service::{
 
 /// Host owner heartbeat contract, independent of whether a deck is playing.
 pub const RUNTIME_MAX_AGE_MS: u64 = 1000;
+use ruzina_settings::owner::SettingsOwner;
 use ruzina_track_analysis::{
     TrackAnalysis,
     owned::{AnalysisIdentity, AnalysisPins},
 };
 use ruzina_ui_model::idle::{IDLE_DEFAULT_TIMEOUT_MS, IdleScreen, InputSource};
 use ruzina_ui_model::long_press::LongPress;
+
+use crate::settings_store::RamFlash;
 use ruzina_ui_model::{
     BeatFxAction, DeckAction, DeckPresentation, pad_bank_event, pad_fx_event, present_deck,
 };
@@ -99,6 +102,8 @@ pub struct Session {
     row_artwork: Vec<[u16; ARTWORK_ROW_PIXELS]>,
     /// Touch HOLD RESTORE (M2.5 performance tab), on the idle clock.
     restore: LongPress<usize>,
+    /// RP-11 product settings committed to a RAM settings partition.
+    settings: SettingsOwner<RamFlash>,
 }
 
 type DemoPlaylists = PlaylistIndex<InlinePlaylistStore<8, 16>>;
@@ -171,7 +176,11 @@ impl Session {
             nudge: [TempoNudge::new(); 2],
             row_artwork: Vec::new(),
             restore: LongPress::new(),
+            settings: SettingsOwner::load(RamFlash::new())
+                .expect("RAM settings partition")
+                .0,
         };
+        result.apply_settings();
         let mut jpeg = BaselineJpegDecoder::new();
         result.row_artwork = COVERS
             .iter()
@@ -748,6 +757,59 @@ impl Session {
         self.library.level()
     }
 
+    /// LOAD LOCK refuses a track load to this deck now (M2.5 `D1 LOCKED`).
+    /// On folder and playlist rows LOAD only opens, so nothing is locked.
+    pub fn load_locked(&self, i: usize) -> bool {
+        let on_node = self.catalog.is_some() && self.library.on_node_row();
+        !on_node && self.decks.load_admission(deck(i)).is_err()
+    }
+    pub fn load_lock(&self) -> bool {
+        self.decks.load_lock()
+    }
+    /// Settings LOAD LOCK switch (a Ruzina addition; stable M2.5 keeps it
+    /// on). It is committed to the settings record first and reaches the
+    /// deck only once stored, so a failed write changes nothing.
+    pub fn set_load_lock(&mut self, on: bool) -> bool {
+        self.note_activity();
+        let next = ruzina_settings::ProductSettings {
+            load_lock: on,
+            ..self.settings.settings()
+        };
+        match self.settings.apply(next) {
+            Ok(_) => {
+                self.decks.set_load_lock(on);
+                self.message = if on {
+                    "LOAD LOCK on · no load while a deck plays"
+                } else {
+                    "LOAD LOCK off · a playing deck can be replaced"
+                }
+                .into();
+                true
+            }
+            Err(_) => {
+                self.message = "Settings not saved · LOAD LOCK unchanged".into();
+                false
+            }
+        }
+    }
+    /// Power-cycles the settings owner: the record is read back from the
+    /// partition and applied, as at boot.
+    pub fn reload_settings(&mut self) {
+        let flash = core::mem::replace(
+            &mut self.settings,
+            SettingsOwner::load(RamFlash::new())
+                .expect("RAM settings partition")
+                .0,
+        )
+        .into_flash();
+        self.settings = SettingsOwner::load(flash)
+            .expect("RAM settings partition")
+            .0;
+        self.apply_settings();
+    }
+    fn apply_settings(&mut self) {
+        self.decks.set_load_lock(self.settings.settings().load_lock);
+    }
     pub fn library_selected(&self) -> Option<usize> {
         self.library.selected_index().map(usize::from)
     }

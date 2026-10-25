@@ -6,6 +6,7 @@ mod health_ui;
 mod mix_fx_smoke;
 mod mix_fx_ui;
 mod session;
+mod settings_store;
 mod smoke;
 
 use ruzina_board_profile::{BoardId, profile};
@@ -18,7 +19,7 @@ use ruzina_media_catalog::{
 use ruzina_track_analysis::TrackAnalysis;
 use ruzina_ui_model::{
     DeckAction, cue_event,
-    labels::{HotCueName, TrackTime, deck_key},
+    labels::{HotCueName, LoadKey, TrackTime, deck_key, load_lock_field},
     memory_cues::{MEMORY_CUE_EMPTY, MemoryCueTitle, memory_cue_lines},
 };
 use session::{Session, deck};
@@ -223,6 +224,25 @@ fn library_refresh(ui: &MainWindow, session: &Session) {
     } else {
         model.set_vec(rows);
     }
+    let locked = [session.load_locked(0), session.load_locked(1)];
+    let keys: Vec<slint::SharedString> = (0..2)
+        .map(|i| {
+            LoadKey {
+                deck: deck(i),
+                locked: locked[i],
+            }
+            .to_string()
+            .into()
+        })
+        .collect();
+    if ui.get_load_keys().iter().ne(keys.iter().cloned()) {
+        ui.set_load_keys(ModelRc::new(VecModel::from(keys)));
+    }
+    if ui.get_load_locked().iter().ne(locked.iter().copied()) {
+        ui.set_load_locked(ModelRc::new(VecModel::from(locked.to_vec())));
+    }
+    ui.set_load_lock_text(load_lock_field(session.load_lock()).into());
+    ui.set_load_lock_on(session.load_lock());
     let top = session.library_level() == LibraryLevel::AllTracks;
     ui.set_library_top(top);
     ui.set_library_path(session.library_path().into());
@@ -314,6 +334,15 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
             return;
         }
         session.borrow_mut().library_load(deck(i as usize));
+        if let Some(ui) = weak.upgrade() {
+            refresh(&ui, &session.borrow());
+        }
+    });
+    let weak = ui.as_weak();
+    let session = state.clone();
+    ui.on_load_lock_toggle(move || {
+        let on = session.borrow().load_lock();
+        session.borrow_mut().set_load_lock(!on);
         if let Some(ui) = weak.upgrade() {
             refresh(&ui, &session.borrow());
         }

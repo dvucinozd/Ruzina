@@ -32,7 +32,7 @@ python3 tools/run_apta_stress.py --iterations 25 --output /absolute/new/stress
 The stress campaign pins sources/executable and requires actual lifecycle
 markers; 25 iterations cover 1,600 cancel/reload cycles and 800 detach lifetimes
 in the host harness. These do not demonstrate physical USB timing or buffer/DMA
-behavior. UI goldens cover 62 representative simulator images across the two
+behavior. UI goldens cover 64 representative simulator images across the two
 documented geometries.
 
 A real Rekordbox export is compared from a read-only copy of its `PIONEER`

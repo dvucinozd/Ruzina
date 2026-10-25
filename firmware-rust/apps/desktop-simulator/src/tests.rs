@@ -237,6 +237,47 @@ fn library_columns_thumbnails_and_deck_key_follow_m25() {
     assert!(s.library_row_tracks().iter().all(Option::is_none));
 }
 
+// M2.5 LOAD LOCK (v293): a playing deck's LOAD key reads "D1 LOCKED" on
+// track rows, not on folder rows, and the switch stays on.
+#[test]
+fn load_lock_marks_the_playing_deck_on_track_rows_only() {
+    let mut s = loaded();
+    assert!(s.load_lock());
+    assert!(!s.load_locked(0));
+    press(&mut s, DeckAction::Play);
+    assert!(s.load_locked(0));
+    assert!(!s.load_locked(1));
+    s.library_select(1);
+    assert!(!s.library_load(DeckId::One), "the owner refuses");
+    assert_eq!(s.title(0), session::TITLES[0]);
+    s.library_back();
+    assert!(!s.load_locked(0), "LOAD opens folders and playlists");
+    s.library_back();
+    press(&mut s, DeckAction::Play);
+    assert!(!s.load_locked(0));
+}
+
+// Ruzina LOAD LOCK switch: committed to the RP-11 settings record before the
+// decks use it, and read back after a settings power cycle.
+#[test]
+fn load_lock_switch_is_saved_and_survives_a_settings_reload() {
+    let mut s = loaded();
+    press(&mut s, DeckAction::Play);
+    assert!(s.set_load_lock(false));
+    assert!(!s.load_lock() && !s.load_locked(0));
+    s.library_select(1);
+    assert!(s.library_load(DeckId::One), "a playing deck is replaced");
+    assert_eq!(s.title(0), session::TITLES[1]);
+
+    s.reload_settings();
+    assert!(!s.load_lock(), "stored off");
+    assert!(s.set_load_lock(true));
+    s.reload_settings();
+    assert!(s.load_lock());
+    press(&mut s, DeckAction::Play);
+    assert!(s.load_locked(0));
+}
+
 // M2.5 MEMORY panel: export order, points and loops, truncation, empty deck.
 #[test]
 fn memory_panel_lists_imported_points_and_loops_like_m25() {
