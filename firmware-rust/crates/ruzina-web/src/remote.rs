@@ -6,9 +6,19 @@
 //! Buttons are explicit taps, a press followed by its release (RP-03: a CUE
 //! tap must not leave a hold-preview running). Continuous values carry the
 //! controller's 14-bit range and an ordering key for [`crate::ordering`].
+//!
+//! M2.5 actions: `play_pause`, `cue`, `pfl`, `sync`, `volume`, `pitch`,
+//! `crossfader`, `seek`, `loop_4` (Beat Loop pad 8, four beats) and
+//! `loop_clear` (RELOOP stop). Its `main_sink` switched the JC4880 USB/PCM5102A
+//! output and has no Guition counterpart. Ruzina adds the mixer the status
+//! already reports: `eq_low`, `eq_mid`, `eq_high`, `filter`, `master_volume`,
+//! `headphone_mix`, `smart_cfx` and `smart_fader`.
 
 use crate::{HttpStatus, parse};
-use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
+use ruzina_controller_core::{
+    ControlEvent, ControlValue, DeckExtAction, DeckExtActionValue, DeckId, PadAction, PadMode,
+    SemanticControl,
+};
 
 /// 14-bit absolute range shared with controller profiles (M2.5 0..16383).
 pub const REMOTE_ABSOLUTE_MAX: u16 = 0x3fff;
@@ -19,6 +29,10 @@ pub enum ContinuousControl {
     Volume(DeckId),
     Crossfader,
     Tempo(DeckId),
+    /// An EQ band or the filter of one channel.
+    Channel(DeckId, SemanticControl),
+    /// Master volume or headphone mix.
+    Global(SemanticControl),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -80,21 +94,19 @@ pub fn parse_remote(query: &str) -> Result<RemoteCommand, RemoteError> {
             })
             .ok_or(RemoteError::Value)
     };
-    let tap = |deck: DeckId, control| RemoteCommand::Controls {
-        events: [
-            Some(ControlEvent {
-                deck: Some(deck),
-                control,
-                value: ControlValue::Pressed(true),
+    let tap_with = |deck: Option<DeckId>, control, value: &dyn Fn(bool) -> ControlValue| {
+        RemoteCommand::Controls {
+            events: [true, false].map(|pressed| {
+                Some(ControlEvent {
+                    deck,
+                    control,
+                    value: value(pressed),
+                })
             }),
-            Some(ControlEvent {
-                deck: Some(deck),
-                control,
-                value: ControlValue::Pressed(false),
-            }),
-        ],
-        ordering: None,
+            ordering: None,
+        }
     };
+    let tap = |deck: DeckId, control| tap_with(Some(deck), control, &ControlValue::Pressed);
     let continuous = |deck: Option<DeckId>, control, value, ordering| RemoteCommand::Controls {
         events: [
             Some(ControlEvent {
@@ -135,6 +147,51 @@ pub fn parse_remote(query: &str) -> Result<RemoteCommand, RemoteError> {
             absolute()?,
             ContinuousControl::Crossfader,
         ),
+        // M2.5 `web_queue_loop_set`: pad 8 in Beat Loop mode.
+        "loop_4" => tap_with(Some(deck()?), SemanticControl::PadAction, &|pressed| {
+            ControlValue::PadAction(PadAction {
+                pad: 7,
+                mode: PadMode::BeatLoop,
+                shifted: false,
+                pressed,
+            })
+        }),
+        "loop_clear" => tap_with(Some(deck()?), SemanticControl::DeckExtAction, &|pressed| {
+            ControlValue::DeckExtAction(DeckExtActionValue {
+                action: DeckExtAction::ReloopStop,
+                pressed,
+            })
+        }),
+        "eq_low" | "eq_mid" | "eq_high" | "filter" => {
+            let deck = deck()?;
+            let control = match action {
+                "eq_low" => SemanticControl::EqLow,
+                "eq_mid" => SemanticControl::EqMid,
+                "eq_high" => SemanticControl::EqHigh,
+                _ => SemanticControl::Filter,
+            };
+            continuous(
+                Some(deck),
+                control,
+                absolute()?,
+                ContinuousControl::Channel(deck, control),
+            )
+        }
+        "master_volume" | "headphone_mix" => {
+            let control = if action == "master_volume" {
+                SemanticControl::MasterVolume
+            } else {
+                SemanticControl::HeadphoneMix
+            };
+            continuous(
+                None,
+                control,
+                absolute()?,
+                ContinuousControl::Global(control),
+            )
+        }
+        "smart_cfx" => tap_with(None, SemanticControl::SmartCfx, &ControlValue::Pressed),
+        "smart_fader" => tap_with(None, SemanticControl::SmartFader, &ControlValue::Pressed),
         "seek" => RemoteCommand::Seek {
             deck: deck()?,
             position_ms: parse::query_value(query, "value")
@@ -228,6 +285,71 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn loops_and_the_mixer_use_controller_semantics() {
+        let set = events(parse_remote("action=loop_4&deck=2").unwrap());
+        assert_eq!(set[0].unwrap().deck, Some(DeckId::Two));
+        assert_eq!(
+            set[0].unwrap().value,
+            ControlValue::PadAction(PadAction {
+                pad: 7,
+                mode: PadMode::BeatLoop,
+                shifted: false,
+                pressed: true
+            })
+        );
+        assert!(matches!(
+            set[1].unwrap().value,
+            ControlValue::PadAction(PadAction { pressed: false, .. })
+        ));
+        let clear = events(parse_remote("action=loop_clear&deck=1").unwrap());
+        assert_eq!(
+            clear[0].unwrap().value,
+            ControlValue::DeckExtAction(DeckExtActionValue {
+                action: DeckExtAction::ReloopStop,
+                pressed: true
+            })
+        );
+        let RemoteCommand::Controls {
+            events: pair,
+            ordering,
+        } = parse_remote("action=eq_mid&deck=2&value=0").unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(pair[0].unwrap().control, SemanticControl::EqMid);
+        assert_eq!(
+            ordering,
+            Some(ContinuousControl::Channel(
+                DeckId::Two,
+                SemanticControl::EqMid
+            ))
+        );
+        let RemoteCommand::Controls {
+            events: pair,
+            ordering,
+        } = parse_remote("action=master_volume&value=9000").unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(pair[0].unwrap().deck, None);
+        assert_eq!(
+            ordering,
+            Some(ContinuousControl::Global(SemanticControl::MasterVolume))
+        );
+        let smart = events(parse_remote("action=smart_cfx").unwrap());
+        assert_eq!(smart[0].unwrap().control, SemanticControl::SmartCfx);
+        assert_eq!(smart[1].unwrap().value, ControlValue::Pressed(false));
+        for (query, error) in [
+            ("action=loop_4", RemoteError::Deck),
+            ("action=filter&value=1", RemoteError::Deck),
+            ("action=headphone_mix&value=16384", RemoteError::Value),
+            ("action=main_sink&value=usb", RemoteError::UnknownAction),
+        ] {
+            assert_eq!(parse_remote(query), Err(error), "{query}");
+        }
     }
 
     #[test]

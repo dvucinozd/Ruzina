@@ -775,6 +775,58 @@ fn web_remote_status_controls_and_loads_use_the_session() {
 }
 
 #[test]
+fn web_remote_loops_and_mixer_reach_the_session() {
+    use ruzina_web::server::WebServer;
+    let mut server = WebServer::new(9, web::WEB_HOST);
+    let mut s = loaded();
+    // M2.5 4B LOOP: four beats of the 120 BPM track from the playhead.
+    let ok = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/control?action=loop_4&deck=1"),
+    );
+    assert!(ok.ends_with("\r\n\r\nOK"), "{ok}");
+    let (start, end) = s.presentation(0).loop_region.expect("loop set");
+    assert_eq!(end - start, 2000);
+    web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/control?action=loop_clear&deck=1"),
+    );
+    assert_eq!(s.presentation(0).loop_region, None);
+
+    for query in [
+        "action=eq_low&deck=2&value=100",
+        "action=filter&deck=1&value=12000",
+        "action=master_volume&value=9000",
+        "action=headphone_mix&value=0",
+        "action=smart_cfx",
+    ] {
+        let ok = web_exchange(
+            &mut server,
+            &mut s,
+            &web_post(&format!("/api/control?{query}")),
+        );
+        assert!(ok.ends_with("\r\n\r\nOK"), "{query}: {ok}");
+    }
+    let status = web_exchange(
+        &mut server,
+        &mut s,
+        "GET /api/status HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\n",
+    );
+    for field in [
+        "\"master_volume\":9000",
+        "\"headphone_mix\":0",
+        "\"eq2_low\":100",
+        "\"filter1\":12000",
+        "\"smart_cfx\":true",
+        "\"smart_fader\":false",
+    ] {
+        assert!(status.contains(field), "{field} in {status}");
+    }
+}
+
+#[test]
 fn web_port_answers_a_real_loopback_connection() {
     use std::io::{Read, Write};
     let mut port = web::WebPort::bind(0, 5).unwrap();
