@@ -673,13 +673,17 @@ impl Session {
 
     /// The catalog publication a Web page lists from (`library_revision`).
     pub fn catalog_publication(&self) -> Option<ruzina_media_catalog::CatalogPublicationId> {
-        self.catalog
-            .as_ref()
-            .filter(|catalog| self.media.validate(catalog.lease()))
+        self.web_catalog()
             .map(|catalog| ruzina_media_catalog::CatalogPublicationId {
                 lease: catalog.lease(),
                 revision: catalog.revision(),
             })
+    }
+    /// The published catalog while its media lease holds (Web Library).
+    pub fn web_catalog(&self) -> Option<&CatalogSnapshot<4>> {
+        self.catalog
+            .as_ref()
+            .filter(|catalog| self.media.validate(catalog.lease()))
     }
     /// The load generation of the deck's current track, 0 when empty.
     pub fn load_generation(&self, i: usize) -> u32 {

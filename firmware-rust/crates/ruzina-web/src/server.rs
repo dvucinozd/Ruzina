@@ -2,14 +2,15 @@
 //! (M2.5 `web_server.c`). The order is M2.5's: parse the head, route, then
 //! `api_request_allowed` (Host allow-list; mutations also need the control
 //! marker and a same-origin `Origin`), then the handler. Bodies are refused
-//! before they are read. Implemented here: `GET /api/status`,
+//! before they are read. Implemented here: the Web Remote page
+//! ([`crate::assets`]), `GET /api/status`, the paged `GET /api/library`,
 //! `POST /api/control` and `POST /api/load`; other M2.5 routes answer 501
 //! until their adapters exist.
 
 use crate::{
-    HttpStatus, guard,
+    HttpStatus, assets, guard,
     http::{self, Request},
-    json::{self, DeckStatus, MixerStatus, StatusSnapshot},
+    json::{self, DeckStatus, LibraryRow, MixerStatus, StatusSnapshot},
     ordering::{LatestValueGate, Ordering},
     parse,
     remote::{self, RemoteCommand},
@@ -73,6 +74,11 @@ pub trait WebBackend {
     fn load(&mut self, deck: DeckId, track: u32, revision: u32) -> LoadOutcome;
     /// Known length of the loaded track, for seek clamping.
     fn duration_ms(&self, deck: DeckId) -> Option<u32>;
+    /// The listed catalog's revision and row count, or `None` while there is
+    /// none (M2.5 `503 Library snapshot unavailable`).
+    fn library(&self) -> Option<(u32, usize)>;
+    /// Row `index` of that same catalog.
+    fn library_row(&self, index: usize) -> Option<LibraryRow<'_>>;
 }
 
 pub struct WebServer {
@@ -143,12 +149,22 @@ impl WebServer {
             return text(refusal.status(), body, out);
         }
         match route {
-            Route::Status | Route::Control | Route::Load
+            Route::Index
+            | Route::Style
+            | Route::App
+            | Route::Status
+            | Route::Library
+            | Route::Control
+            | Route::Load
                 if !parse::body_length_allowed(parse::BodyKind::Empty, request.content_length) =>
             {
                 text(HttpStatus::PayloadTooLarge, "No body expected", out)
             }
+            Route::Index => asset(assets::INDEX, out),
+            Route::Style => asset(assets::STYLE, out),
+            Route::App => asset(assets::APP, out),
             Route::Status => self.status(backend, out),
+            Route::Library => library(&request, backend, out),
             Route::Control => {
                 let (status, body) = self.control(&request, backend);
                 text(status, body, out)
@@ -172,13 +188,7 @@ impl WebServer {
             decks: parts.decks,
             mixer: parts.mixer,
         };
-        let body = out.get_mut(HEAD_RESERVE..).ok_or(response::Overflow)?;
-        let body_len = json::write_status(&snapshot, body).map_err(|_| response::Overflow)?;
-        let mut head = [0u8; HEAD_RESERVE];
-        let head_len = response::write_head(&Response::json(b""), body_len, &mut head)?;
-        out.copy_within(HEAD_RESERVE..HEAD_RESERVE + body_len, head_len);
-        out[..head_len].copy_from_slice(&head[..head_len]);
-        Ok(head_len + body_len)
+        json_response(out, |body| json::write_status(&snapshot, body))
     }
 
     fn control<B: WebBackend>(
@@ -244,6 +254,59 @@ impl WebServer {
             } => load_outcome(backend.load(deck, track, revision)),
         }
     }
+}
+
+/// A generated JSON body, written after room for its head and moved up.
+fn json_response(
+    out: &mut [u8],
+    write: impl FnOnce(&mut [u8]) -> Result<usize, json::Overflow>,
+) -> Result<usize, response::Overflow> {
+    let body = out.get_mut(HEAD_RESERVE..).ok_or(response::Overflow)?;
+    let body_len = write(body).map_err(|_| response::Overflow)?;
+    let mut head = [0u8; HEAD_RESERVE];
+    let head_len = response::write_head(&Response::json(b""), body_len, &mut head)?;
+    out.copy_within(HEAD_RESERVE..HEAD_RESERVE + body_len, head_len);
+    out[..head_len].copy_from_slice(&head[..head_len]);
+    Ok(head_len + body_len)
+}
+
+fn asset(asset: assets::Asset, out: &mut [u8]) -> Result<usize, response::Overflow> {
+    let response = Response {
+        status: HttpStatus::Ok,
+        content_type: asset.content_type,
+        body: asset.body,
+        location: None,
+    };
+    response::write_response(&response, out)
+}
+
+/// `GET /api/library?offset=N`: one page of one catalog revision.
+fn library<B: WebBackend>(
+    request: &Request<'_>,
+    backend: &mut B,
+    out: &mut [u8],
+) -> Result<usize, response::Overflow> {
+    let offset = match parse::query_value(request.query, "offset") {
+        None if !request.query.contains("offset") => 0,
+        value => match value.and_then(parse::parse_u32) {
+            Some(offset) => offset as usize,
+            None => {
+                let refusal = Response::text(HttpStatus::BadRequest, "Offset must be a number");
+                return response::write_response(&refusal, out);
+            }
+        },
+    };
+    let Some((revision, total)) = backend.library() else {
+        let refusal = Response::text(
+            HttpStatus::ServiceUnavailable,
+            "Library snapshot unavailable",
+        );
+        return response::write_response(&refusal, out);
+    };
+    let rows = (offset..total).map_while(|index| backend.library_row(index));
+    json_response(out, |body| {
+        json::write_library_page(revision, total, offset, rows, body)
+    })
 }
 
 /// `POST /api/load?track_key=&generation=&deck=` (M2.5 names).

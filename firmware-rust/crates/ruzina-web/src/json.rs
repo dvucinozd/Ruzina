@@ -82,6 +82,93 @@ pub struct StatusSnapshot<'a> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Overflow;
 
+/// One `/api/library` row (M2.5 keys; `track_key` is the export track id
+/// a load names, `bpm` whole BPM).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct LibraryRow<'a> {
+    pub track_key: u32,
+    pub title: &'a str,
+    pub artist: &'a str,
+    pub bpm: u32,
+    pub duration_ms: u32,
+}
+
+/// Room kept for `],"next":4294967295}` after the last row.
+const LIBRARY_FOOTER_RESERVE: usize = 32;
+
+/// `/api/library` from one catalog revision (M2.5 `generation`): as many
+/// rows from `offset` as fit in `out`, then `next`, the offset of the first
+/// row left out, or `null` at the end. M2.5 streams the whole list chunked;
+/// pages keep every response a fixed size. A page with no room for even one
+/// pending row is an [`Overflow`].
+pub fn write_library_page<'a>(
+    revision: u32,
+    total: usize,
+    offset: usize,
+    rows: impl IntoIterator<Item = LibraryRow<'a>>,
+    out: &mut [u8],
+) -> Result<usize, Overflow> {
+    let room = out
+        .len()
+        .checked_sub(LIBRARY_FOOTER_RESERVE)
+        .ok_or(Overflow)?;
+    let (body, _) = out.split_at_mut(room);
+    let mut json = Writer { out: body, len: 0 };
+    json.raw("{\"generation\":")?;
+    json.unsigned(revision)?;
+    json.raw(",\"total\":")?;
+    json.unsigned(u32::try_from(total).map_err(|_| Overflow)?)?;
+    json.raw(",\"offset\":")?;
+    json.unsigned(u32::try_from(offset).map_err(|_| Overflow)?)?;
+    json.raw(",\"tracks\":[")?;
+    let mut next = offset;
+    for row in rows.into_iter().take(total.saturating_sub(offset)) {
+        let mark = json.len;
+        if write_library_row(&mut json, next, next != offset, &row).is_err() {
+            json.len = mark;
+            break;
+        }
+        next += 1;
+    }
+    if next == offset && offset < total {
+        return Err(Overflow);
+    }
+    let len = json.len;
+    let mut json = Writer { out, len };
+    json.raw("],\"next\":")?;
+    if next < total {
+        json.unsigned(u32::try_from(next).map_err(|_| Overflow)?)?;
+    } else {
+        json.raw("null")?;
+    }
+    json.raw("}")?;
+    Ok(json.len)
+}
+
+fn write_library_row(
+    json: &mut Writer<'_>,
+    index: usize,
+    separator: bool,
+    row: &LibraryRow<'_>,
+) -> Result<(), Overflow> {
+    if separator {
+        json.raw(",")?;
+    }
+    json.raw("{\"index\":")?;
+    json.unsigned(u32::try_from(index).map_err(|_| Overflow)?)?;
+    json.raw(",\"track_key\":")?;
+    json.unsigned(row.track_key)?;
+    json.raw(",\"title\":")?;
+    json.string(row.title)?;
+    json.raw(",\"artist\":")?;
+    json.string(row.artist)?;
+    json.raw(",\"bpm\":")?;
+    json.unsigned(row.bpm)?;
+    json.raw(",\"duration_ms\":")?;
+    json.unsigned(row.duration_ms)?;
+    json.raw("}")
+}
+
 pub fn write_status(status: &StatusSnapshot<'_>, out: &mut [u8]) -> Result<usize, Overflow> {
     let mut json = Writer { out, len: 0 };
     let stamp = status.stamp;
@@ -316,6 +403,52 @@ mod tests {
         assert!(text.contains("\"library_revision\":null"));
         assert_eq!(
             write_status(&snapshot("x", true), &mut [0u8; 64]),
+            Err(Overflow)
+        );
+    }
+
+    fn row(track_key: u32) -> LibraryRow<'static> {
+        LibraryRow {
+            track_key,
+            title: "Helpless",
+            artist: "The Flirts",
+            bpm: 118,
+            duration_ms: 465_000,
+        }
+    }
+
+    #[test]
+    fn library_pages_hold_whole_rows_and_name_the_next_offset() {
+        let mut out = [0u8; 1024];
+        let len = write_library_page(3, 2, 0, [row(10), row(42)], &mut out).unwrap();
+        assert_eq!(
+            core::str::from_utf8(&out[..len]).unwrap(),
+            concat!(
+                "{\"generation\":3,\"total\":2,\"offset\":0,\"tracks\":[",
+                "{\"index\":0,\"track_key\":10,\"title\":\"Helpless\",\"artist\":\"The Flirts\",",
+                "\"bpm\":118,\"duration_ms\":465000},",
+                "{\"index\":1,\"track_key\":42,\"title\":\"Helpless\",\"artist\":\"The Flirts\",",
+                "\"bpm\":118,\"duration_ms\":465000}],\"next\":null}"
+            )
+        );
+
+        // A small buffer ends the page after whole rows and names the next one.
+        let mut small = [0u8; 340];
+        let len = write_library_page(3, 5, 1, (1..5).map(row), &mut small).unwrap();
+        let text = core::str::from_utf8(&small[..len]).unwrap();
+        assert!(text.contains("\"offset\":1,"));
+        assert!(text.contains("\"index\":1,\"track_key\":1,"));
+        assert!(text.ends_with("}],\"next\":3}"), "{text}");
+
+        // Past the end is an empty last page; no room for one row overflows.
+        let len = write_library_page(3, 2, 2, [], &mut out).unwrap();
+        assert!(
+            core::str::from_utf8(&out[..len])
+                .unwrap()
+                .ends_with("\"tracks\":[],\"next\":null}")
+        );
+        assert_eq!(
+            write_library_page(3, 2, 0, [row(10)], &mut [0u8; 90]),
             Err(Overflow)
         );
     }

@@ -12,11 +12,13 @@
 //!
 //! The HTTP adapter core turns bytes into those rules: a bounded request-head
 //! parser ([`http`]), the M2.5 routes ([`router`]), complete responses
-//! ([`response`]), the status JSON ([`json`]) and one request handler over a
-//! product backend ([`server`]).
+//! ([`response`]), the status and library JSON ([`json`]), the built-in Web
+//! Remote page ([`assets`]) and one request handler over a product backend
+//! ([`server`]).
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod assets;
 pub mod guard;
 pub mod http;
 pub mod json;
