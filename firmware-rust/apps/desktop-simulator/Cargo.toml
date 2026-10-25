@@ -20,6 +20,7 @@ ruzina-mixer.workspace = true
 ruzina-media-session.workspace = true
 ruzina-rekordbox.workspace = true
 ruzina-service.workspace = true
+ruzina-settings.workspace = true
 ruzina-track-analysis = { workspace = true, features = ["owned"] }
 slint.workspace = true
 

@@ -838,6 +838,7 @@ dependencies = [
  "ruzina-mixer",
  "ruzina-rekordbox",
  "ruzina-service",
+ "ruzina-settings",
  "ruzina-track-analysis",
  "ruzina-ui-model",
  "ruzina-waveform",
