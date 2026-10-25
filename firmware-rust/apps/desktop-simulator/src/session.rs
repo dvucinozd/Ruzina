@@ -766,6 +766,28 @@ impl Session {
     pub fn load_lock(&self) -> bool {
         self.decks.load_lock()
     }
+    /// M2.5 elapsed/remaining time, from the settings record.
+    pub fn time_remaining(&self) -> bool {
+        self.settings.settings().time_display == ruzina_settings::TimeDisplay::Remaining
+    }
+    /// Commits the time display; a failed write keeps the shown one.
+    pub fn set_time_remaining(&mut self, remaining: bool) -> bool {
+        self.note_activity();
+        let time_display = if remaining {
+            ruzina_settings::TimeDisplay::Remaining
+        } else {
+            ruzina_settings::TimeDisplay::Elapsed
+        };
+        let next = ruzina_settings::ProductSettings {
+            time_display,
+            ..self.settings.settings()
+        };
+        let saved = self.settings.apply(next).is_ok();
+        if !saved {
+            self.message = "Settings not saved · time display unchanged".into();
+        }
+        saved
+    }
     /// Settings LOAD LOCK switch (a Ruzina addition; stable M2.5 keeps it
     /// on). It is committed to the settings record first and reaches the
     /// deck only once stored, so a failed write changes nothing.

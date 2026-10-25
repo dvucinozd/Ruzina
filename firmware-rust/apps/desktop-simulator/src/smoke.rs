@@ -86,6 +86,7 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
         ui.set_page(1);
         ui.invoke_media_action();
         ui.set_remaining(false);
+        ui.invoke_display_changed();
         pointer_smoke(&ui, &state, width as f32);
         mix_fx_smoke::pointer(&ui, &state, width as f32, height as f32);
         health_smoke::recovery(&ui, &state, output, name, width as f32)?;

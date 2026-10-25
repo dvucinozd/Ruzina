@@ -594,6 +594,8 @@ pub(crate) async fn run_transport_owner() -> ! {
                         execute_source_command(command, &mut source_request_id).await;
                     } else if let DeckEffect::ScratchJog { deck, ticks, epoch } = effect {
                         crate::audio_render_owner::queue_scratch_jog(deck, ticks, epoch).await;
+                    } else if let DeckEffect::JogNudge { deck, ticks } = effect {
+                        crate::audio_render_owner::queue_jog_nudge(deck, ticks).await;
                     } else {
                         let completion =
                             TRANSPORT_OWNER_STATE.lock(|cell| cell.borrow_mut().apply(command));

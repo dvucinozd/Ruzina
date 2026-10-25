@@ -7,6 +7,7 @@ use embassy_time::{Duration, Timer};
 use ruzina_audio_dsp::PcmFrame;
 use ruzina_audio_runtime::{
     fx::{FX_DECK_STORAGE_SAMPLES, FX_TOTAL_STORAGE_SAMPLES, product_fx_controls},
+    nudge::TempoNudge,
     pcm_stream::PcmStreamBlock,
     playback::PlaybackOutput,
     render::{
@@ -64,6 +65,28 @@ pub(crate) async fn queue_scratch_jog(deck: DeckId, ticks: i16, gesture_epoch: u
             generation,
             ticks,
             gesture_epoch,
+        })
+        .await;
+}
+
+/// RP-03 B13a: an untouched jog's tempo nudge for the stream it was made on.
+#[derive(Clone, Copy)]
+struct JogNudge {
+    deck: DeckId,
+    generation: u32,
+    ticks: i16,
+}
+static JOG_NUDGES: Channel<CriticalSectionRawMutex, JogNudge, 16> = Channel::new();
+
+/// Called by the transport owner, like [`queue_scratch_jog`]; a nudge made
+/// before a seek or load keeps its old generation and is dropped.
+pub(crate) async fn queue_jog_nudge(deck: DeckId, ticks: i16) {
+    let generation = current_stream_generation(deck);
+    JOG_NUDGES
+        .send(JogNudge {
+            deck,
+            generation,
+            ticks,
         })
         .await;
 }
@@ -170,6 +193,8 @@ pub(crate) async fn run_audio_render_owner() -> ! {
     ];
     let mut pending_blocks: [Option<PcmStreamBlock>; 2] = [None, None];
     let mut observed_generation = [0u32; 2];
+    // Per-deck jog bend (B13a), owned here so it decays per rendered block.
+    let mut nudges = [TempoNudge::new(); 2];
     // Explicit reference consumer: no physical DAC/UAC readiness is advertised.
     let mut playback = PlaybackOutput::new_reference(PLAYBACK_MAIN.take(), PLAYBACK_PHONES.take())
         .expect("reference delivery capacity");
@@ -182,6 +207,7 @@ pub(crate) async fn run_audio_render_owner() -> ! {
                 sources[index].reset(generation);
                 pending_blocks[index] = None;
                 graph.reset_deck(index);
+                nudges[index].clear();
             }
             for _ in 0..SOURCE_PREFETCH_BLOCK_LIMIT {
                 let Some(block) = pending_blocks[index]
@@ -246,6 +272,27 @@ pub(crate) async fn run_audio_render_owner() -> ! {
             {
                 sources[index].jog(jog.generation, jog.gesture_epoch, jog.ticks);
             }
+        }
+
+        for _ in 0..16 {
+            let Ok(nudge) = JOG_NUDGES.try_receive() else {
+                break;
+            };
+            let index = if nudge.deck == DeckId::One { 0 } else { 1 };
+            if control.decks[index].playing
+                && control.decks[index].stream_generation == nudge.generation
+            {
+                nudges[index].add(nudge.ticks);
+            }
+        }
+        // The bend rides on the fader pitch and springs back; a paused deck or
+        // a platter hold (scratch) clears it, as in the simulator transport.
+        for (deck, nudge) in control.decks.iter_mut().zip(&mut nudges) {
+            if !deck.playing || deck.scratch_active {
+                nudge.clear();
+            }
+            deck.pitch_centipercent = nudge.apply_centipercent(deck.pitch_centipercent);
+            nudge.advance(RENDER_BLOCK_FRAMES as u32, RENDER_SAMPLE_RATE_HZ);
         }
 
         let permit = playback.render_permit();

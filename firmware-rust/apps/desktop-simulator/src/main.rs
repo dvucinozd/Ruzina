@@ -78,6 +78,7 @@ fn memory_cue_text(i: usize, analysis: Option<TrackAnalysis<'_>>) -> (String, St
 }
 
 fn refresh(ui: &MainWindow, session: &Session) {
+    ui.set_remaining(session.time_remaining());
     let model = ui.get_decks();
     let rows = model
         .as_any()
@@ -379,8 +380,10 @@ fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {
     let session = state.clone();
     ui.on_activity(move || session.borrow_mut().note_activity());
     let weak = ui.as_weak();
+    // The TIME key flips `remaining` in the UI; the settings record decides.
     ui.on_display_changed(move || {
         if let Some(ui) = weak.upgrade() {
+            state.borrow_mut().set_time_remaining(ui.get_remaining());
             refresh(&ui, &state.borrow());
         }
     });

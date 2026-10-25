@@ -278,6 +278,22 @@ fn load_lock_switch_is_saved_and_survives_a_settings_reload() {
     assert!(s.load_locked(0));
 }
 
+// M2.5 keeps elapsed/remaining in its settings; so does the RP-11 record.
+#[test]
+fn time_display_is_saved_with_the_settings() {
+    let mut s = Session::new();
+    assert!(!s.time_remaining());
+    assert!(s.set_time_remaining(true));
+    s.reload_settings();
+    assert!(s.time_remaining());
+    assert!(s.set_load_lock(false));
+    s.reload_settings();
+    assert!(s.time_remaining() && !s.load_lock(), "both fields kept");
+    assert!(s.set_time_remaining(false));
+    s.reload_settings();
+    assert!(!s.time_remaining());
+}
+
 // M2.5 MEMORY panel: export order, points and loops, truncation, empty deck.
 #[test]
 fn memory_panel_lists_imported_points_and_loops_like_m25() {
