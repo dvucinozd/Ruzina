@@ -842,6 +842,7 @@ dependencies = [
  "ruzina-track-analysis",
  "ruzina-ui-model",
  "ruzina-waveform",
+ "ruzina-web",
  "slint",
  "slint-build",
 ]
