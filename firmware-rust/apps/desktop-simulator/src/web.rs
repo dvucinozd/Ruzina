@@ -6,7 +6,8 @@
 use crate::session::{Session, deck, index};
 use ruzina_controller_core::{ControlEvent, DeckId};
 use ruzina_web::{
-    json::{DeckStateText, DeckStatus, MixerStatus},
+    assets,
+    json::{DeckStateText, DeckStatus, LibraryRow, MixerStatus},
     server::{ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend, WebServer},
 };
 use std::{
@@ -19,7 +20,8 @@ use std::{
 pub const WEB_HOST: &str = "127.0.0.1";
 /// Request bytes read per connection (head plus any refused body).
 const REQUEST_MAX: usize = 4096;
-const RESPONSE_MAX: usize = 4096;
+/// Room for the largest page asset and its head.
+const RESPONSE_MAX: usize = assets::LARGEST_BYTES + 512;
 const READ_TIMEOUT: Duration = Duration::from_millis(250);
 
 fn deck_status(session: &Session, i: usize) -> DeckStatus<'_> {
@@ -92,6 +94,22 @@ impl WebBackend for Session {
         let t = self.presentation(index(target)).transport;
         (t.loaded && t.duration_ms > 0).then(|| t.duration_ms.min(u64::from(u32::MAX)) as u32)
     }
+
+    fn library(&self) -> Option<(u32, usize)> {
+        self.web_catalog()
+            .map(|catalog| (catalog.revision(), catalog.len()))
+    }
+
+    fn library_row(&self, i: usize) -> Option<LibraryRow<'_>> {
+        let track = self.web_catalog()?.get(i)?;
+        Some(LibraryRow {
+            track_key: track.source_track_id,
+            title: track.title.as_str(),
+            artist: track.artist.as_str(),
+            bpm: ruzina_ui_model::labels::library_bpm(track.bpm_x100),
+            duration_ms: track.duration_ms,
+        })
+    }
 }
 
 /// A listening Web Remote on the loopback address.
@@ -149,7 +167,7 @@ fn serve(mut stream: TcpStream, server: &mut WebServer, session: &mut Session) -
             break;
         }
     }
-    let mut response = [0u8; RESPONSE_MAX];
+    let mut response = vec![0u8; RESPONSE_MAX];
     let written = server.handle(&request[..len], session, &mut response);
     stream.write_all(&response[..written])?;
     stream.shutdown(Shutdown::Both)

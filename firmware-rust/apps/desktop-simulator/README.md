@@ -53,9 +53,10 @@ media fault without erasing warning history. Hardware identity, memory and CPU
 measurements remain unknown in this host harness. Product readiness is not
 inferred. Counters describe this demo session, not audio/USB driver loss.
 
-**Web Remote API** (RP-12): `--web PORT` serves `/api/status`,
-`/api/control` and `/api/load` on `127.0.0.1` from the UI timer, over the same
-session paths touch uses. The loopback address stands in for the AP address,
+**Web Remote** (RP-12): `--web PORT` serves the built-in page at
+`http://127.0.0.1:PORT/` and its API (`/api/status`, the paged
+`/api/library`, `/api/control` and `/api/load`) on `127.0.0.1` from the UI
+timer, over the same session paths touch uses. The loopback address stands in for the AP address,
 so only a local client passes the Host allow-list; mutations need the
 `X-DDJ-Control: 1` header:
 

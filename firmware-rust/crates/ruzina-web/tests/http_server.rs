@@ -2,7 +2,8 @@
 //! handler, response) against a recording fake product backend.
 use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
 use ruzina_web::{
-    json::{DeckStateText, DeckStatus, MixerStatus},
+    assets,
+    json::{DeckStateText, DeckStatus, LibraryRow, MixerStatus},
     server::{
         CAPTIVE_PORTAL, ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend,
         WebServer,
@@ -19,6 +20,8 @@ struct Fake {
     busy: bool,
     load_outcome: Option<LoadOutcome>,
     duration: Option<u32>,
+    /// (revision, rows) of the listed catalog.
+    library: Option<(u32, Vec<(u32, String)>)>,
 }
 
 impl WebBackend for Fake {
@@ -62,10 +65,29 @@ impl WebBackend for Fake {
     fn duration_ms(&self, _: DeckId) -> Option<u32> {
         self.duration
     }
+    fn library(&self) -> Option<(u32, usize)> {
+        self.library
+            .as_ref()
+            .map(|(revision, rows)| (*revision, rows.len()))
+    }
+    fn library_row(&self, index: usize) -> Option<LibraryRow<'_>> {
+        let (key, title) = self.library.as_ref()?.1.get(index)?;
+        Some(LibraryRow {
+            track_key: *key,
+            title,
+            artist: "Artist",
+            bpm: 120,
+            duration_ms: 10_000,
+        })
+    }
 }
 
 fn exchange(server: &mut WebServer, fake: &mut Fake, request: &str) -> String {
-    let mut out = [0u8; 4096];
+    exchange_in(server, fake, request, 4096)
+}
+
+fn exchange_in(server: &mut WebServer, fake: &mut Fake, request: &str, size: usize) -> String {
+    let mut out = vec![0u8; size];
     let len = server.handle(request.as_bytes(), fake, &mut out);
     String::from_utf8(out[..len].to_vec()).unwrap()
 }
@@ -269,7 +291,7 @@ X-DDJ-Control: 1\r\nContent-Length: 4\r\n\r\nbody",
             "HTTP/1.1 505 HTTP Version Not Supported",
         ),
         (
-            "GET /api/library HTTP/1.1\r\nHost: ruzina.local\r\n\r\n",
+            "GET /api/firmware HTTP/1.1\r\nHost: ruzina.local\r\n\r\n",
             "HTTP/1.1 501 Not Implemented",
         ),
     ];
@@ -306,4 +328,83 @@ X-DDJ-Control: 1\r\nContent-Length: 4\r\n\r\nbody",
             .unwrap()
             .starts_with("HTTP/1.1 500 ")
     );
+}
+
+#[test]
+fn library_pages_cover_one_catalog_revision() {
+    let mut server = WebServer::new(1, AP);
+    let mut fake = Fake::default();
+    let get =
+        |query: &str| format!("GET /api/library{query} HTTP/1.1\r\nHost: ruzina.local\r\n\r\n");
+    let none = exchange(&mut server, &mut fake, &get(""));
+    assert_eq!(status_line(&none), "HTTP/1.1 503 Service Unavailable");
+    assert_eq!(body(&none), "Library snapshot unavailable");
+
+    fake.library = Some((
+        4,
+        (1..=40)
+            .map(|key| (key, format!("Track number {key}")))
+            .collect(),
+    ));
+    // Small responses: follow `next` until null and collect every row once.
+    let mut keys = Vec::new();
+    let mut offset = Some(0u32);
+    let mut pages = 0;
+    while let Some(at) = offset {
+        let page = exchange_in(&mut server, &mut fake, &get(&format!("?offset={at}")), 1500);
+        assert_eq!(status_line(&page), "HTTP/1.1 200 OK");
+        let json = body(&page);
+        assert!(json.starts_with(&format!("{{\"generation\":4,\"total\":40,\"offset\":{at},")));
+        for part in json.split("\"track_key\":").skip(1) {
+            keys.push(part.split(',').next().unwrap().parse::<u32>().unwrap());
+        }
+        let next = json
+            .rsplit_once("\"next\":")
+            .unwrap()
+            .1
+            .trim_end_matches('}');
+        offset = (next != "null").then(|| next.parse().unwrap());
+        pages += 1;
+    }
+    assert!(pages > 1, "paged");
+    assert_eq!(keys, (1..=40).collect::<Vec<_>>());
+
+    let bad = exchange(&mut server, &mut fake, &get("?offset=-1"));
+    assert_eq!(status_line(&bad), "HTTP/1.1 400 Bad Request");
+}
+
+#[test]
+fn the_web_remote_page_is_served_from_the_image() {
+    let mut server = WebServer::new(1, AP);
+    let mut fake = Fake::default();
+    for (path, asset) in [
+        ("/", assets::INDEX),
+        ("/index.html", assets::INDEX),
+        ("/style.css", assets::STYLE),
+        ("/app.js", assets::APP),
+    ] {
+        let response = exchange_in(
+            &mut server,
+            &mut fake,
+            &format!("GET {path} HTTP/1.1\r\nHost: ruzina.local\r\n\r\n"),
+            assets::LARGEST_BYTES + 512,
+        );
+        assert_eq!(status_line(&response), "HTTP/1.1 200 OK", "{path}");
+        assert!(response.contains(&format!("\r\nContent-Type: {}\r\n", asset.content_type)));
+        assert_eq!(body(&response).as_bytes(), asset.body, "{path}");
+    }
+    // The page uses only routes this server implements.
+    let app = std::str::from_utf8(assets::APP.body).unwrap();
+    for route in ["/api/status", "/api/control", "/api/load", "/api/library"] {
+        assert!(app.contains(route), "{route}");
+    }
+    for unimplemented in [
+        "/api/ota",
+        "/api/firmware",
+        "/api/recording",
+        "/api/controller-profile",
+    ] {
+        assert!(!app.contains(unimplemented), "{unimplemented}");
+    }
+    assert!(app.contains("'X-DDJ-Control': '1'"));
 }

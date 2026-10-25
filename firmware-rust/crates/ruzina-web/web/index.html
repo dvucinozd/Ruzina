@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RUZINA Web Remote</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>RUZINA</h1>
+  <span class="sub">Web Remote</span>
+  <span id="conn" class="conn" title="Connection">●</span>
+</header>
+<main>
+  <section class="decks">
+    <article class="deck" data-deck="1">
+      <div class="deck-head"><span class="deck-name">DECK 1</span><span class="bpm" data-field="bpm">— BPM</span></div>
+      <div class="title" data-field="title">No track loaded</div>
+      <div class="artist" data-field="artist"></div>
+      <div class="bar" data-field="bar" role="slider" aria-label="Deck 1 position"><div class="fill"></div></div>
+      <div class="meta"><span data-field="time">0:00 / 0:00</span><span data-field="state">IDLE</span><span data-field="pitch">+0.00%</span></div>
+      <div class="buttons">
+        <button data-action="play_pause">PLAY</button>
+        <button data-action="cue">CUE</button>
+        <button data-action="sync">SYNC</button>
+        <button data-action="pfl">PFL</button>
+      </div>
+      <label>VOLUME <input type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
+      <label>PITCH <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
+    </article>
+    <article class="deck" data-deck="2">
+      <div class="deck-head"><span class="deck-name">DECK 2</span><span class="bpm" data-field="bpm">— BPM</span></div>
+      <div class="title" data-field="title">No track loaded</div>
+      <div class="artist" data-field="artist"></div>
+      <div class="bar" data-field="bar" role="slider" aria-label="Deck 2 position"><div class="fill"></div></div>
+      <div class="meta"><span data-field="time">0:00 / 0:00</span><span data-field="state">IDLE</span><span data-field="pitch">+0.00%</span></div>
+      <div class="buttons">
+        <button data-action="play_pause">PLAY</button>
+        <button data-action="cue">CUE</button>
+        <button data-action="sync">SYNC</button>
+        <button data-action="pfl">PFL</button>
+      </div>
+      <label>VOLUME <input type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
+      <label>PITCH <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
+    </article>
+  </section>
+  <section class="mixer">
+    <label>CROSSFADER <span class="hint">D1 ↔ D2</span>
+      <input id="crossfader" type="range" min="0" max="16383" value="8192">
+    </label>
+  </section>
+  <section class="library">
+    <div class="library-head">
+      <h2>LIBRARY</h2>
+      <input id="search" type="search" placeholder="Search title or artist" autocomplete="off">
+    </div>
+    <div id="library-info" class="hint">Waiting for media…</div>
+    <ul id="tracks"></ul>
+  </section>
+  <p id="message" class="message" role="status"></p>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

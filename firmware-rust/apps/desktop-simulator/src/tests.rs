@@ -684,6 +684,21 @@ fn web_remote_status_controls_and_loads_use_the_session() {
     )));
     assert!(status.contains("\"deck2\":{\"title\":\"\""), "empty deck");
 
+    // The Library lists the published catalog, keyed as loads name tracks.
+    let library = web_exchange(
+        &mut server,
+        &mut s,
+        "GET /api/library HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\n",
+    );
+    assert!(library.starts_with("HTTP/1.1 200 OK\r\n"), "{library}");
+    assert!(library.contains("{\"generation\":1,\"total\":4,\"offset\":0,\"tracks\":["));
+    assert!(library.contains(&format!(
+        "{{\"index\":1,\"track_key\":2,\"title\":\"{}\",\"artist\":\"Offset Unit\",\
+\"bpm\":128,\"duration_ms\":14000}}",
+        session::TITLES[1]
+    )));
+    assert!(library.ends_with(",\"next\":null}"));
+
     // PLAY is a tap through the deck core.
     let ok = web_exchange(
         &mut server,
@@ -743,6 +758,12 @@ fn web_remote_status_controls_and_loads_use_the_session() {
         &web_post("/api/load?track_key=2&generation=1&deck=2"),
     );
     assert!(no_media.ends_with("Library generation changed"));
+    let no_library = web_exchange(
+        &mut server,
+        &mut s,
+        "GET /api/library HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\n",
+    );
+    assert!(no_library.starts_with("HTTP/1.1 503 Service Unavailable"));
 
     // A foreign Host (DNS rebinding) never reaches the session.
     let foreign = web_exchange(
@@ -759,21 +780,28 @@ fn web_port_answers_a_real_loopback_connection() {
     let mut port = web::WebPort::bind(0, 5).unwrap();
     let address = (web::WEB_HOST, port.port().unwrap());
     let client = std::thread::spawn(move || {
-        let mut stream = std::net::TcpStream::connect(address).unwrap();
-        let host = format!("{}:{}", address.0, address.1);
-        write!(stream, "GET /api/status HTTP/1.1\r\nHost: {host}\r\n\r\n").unwrap();
-        let mut response = String::new();
-        stream.read_to_string(&mut response).unwrap();
-        response
+        ["/api/status", "/app.js"].map(|path| {
+            let mut stream = std::net::TcpStream::connect(address).unwrap();
+            let host = format!("{}:{}", address.0, address.1);
+            write!(stream, "GET {path} HTTP/1.1\r\nHost: {host}\r\n\r\n").unwrap();
+            let mut response = String::new();
+            stream.read_to_string(&mut response).unwrap();
+            response
+        })
     });
     let mut s = Session::new();
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    while port.poll(&mut s) == 0 {
+    let mut served = 0;
+    while served < 2 {
         assert!(std::time::Instant::now() < deadline, "no connection served");
+        served += port.poll(&mut s);
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
-    let response = client.join().unwrap();
-    assert!(response.starts_with("HTTP/1.1 200 OK\r\n"), "{response}");
-    assert!(response.contains("\"stamp\":{\"boot\":5,\"sequence\":1"));
-    assert!(response.contains("\r\nConnection: close\r\n"));
+    let [status, page] = client.join().unwrap();
+    assert!(status.starts_with("HTTP/1.1 200 OK\r\n"), "{status}");
+    assert!(status.contains("\"stamp\":{\"boot\":5,\"sequence\":1"));
+    assert!(status.contains("\r\nConnection: close\r\n"));
+    // The whole script, larger than a status response, in one answer.
+    assert!(page.starts_with("HTTP/1.1 200 OK\r\n"));
+    assert!(page.ends_with(std::str::from_utf8(ruzina_web::assets::APP.body).unwrap()));
 }
