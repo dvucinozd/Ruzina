@@ -8,6 +8,7 @@ mod mix_fx_ui;
 mod session;
 mod settings_store;
 mod smoke;
+mod web;
 
 use ruzina_board_profile::{BoardId, profile};
 use ruzina_hot_cues::HotCueKind;
@@ -402,12 +403,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         None
     };
-    if analysis.is_some()
+    // `--web PORT`: serve the Web Remote API on 127.0.0.1 (RP-12).
+    let web_port = if let Some(index) = args.iter().position(|s| s == "--web") {
+        let port = args
+            .get(index + 1)
+            .and_then(|port| port.parse::<u16>().ok())
+            .filter(|port| *port != 0)
+            .ok_or("--web requires a port 1..65535")?;
+        args.drain(index..=index + 1);
+        Some(port)
+    } else {
+        None
+    };
+    if (analysis.is_some() || web_port.is_some())
         && args
             .first()
             .is_some_and(|a| a == "--smoke" || a == "--diagnostic-report")
     {
-        return Err("--analysis-observation is an interactive captured-record option".into());
+        return Err("--analysis-observation and --web are interactive options".into());
     }
     if args.first().is_some_and(|a| a == "--diagnostic-report") {
         let (output, board) = match args.as_slice() {
@@ -441,7 +454,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             profile(BoardId::GuitionJc8012P4a1cIwY)
         }
         _ => {
-            return Err("Usage: desktop-simulator [--board jc1060|jc8012] [--analysis-observation FILE] | --smoke OUTPUT".into());
+            return Err("Usage: desktop-simulator [--board jc1060|jc8012] [--analysis-observation FILE] [--web PORT] | --smoke OUTPUT".into());
         }
     };
     let ui = MainWindow::new()?;
@@ -456,6 +469,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     bind(&ui, state.clone());
     refresh(&ui, &state.borrow());
+    let mut web = match web_port {
+        Some(port) => {
+            // A new value per start, so pages notice the restart.
+            let boot = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(1, |elapsed| elapsed.subsec_nanos() | 1);
+            let web = web::WebPort::bind(port, boot)?;
+            println!(
+                "Web Remote API: http://{}:{}/api/status",
+                web::WEB_HOST,
+                web.port()?
+            );
+            Some(web)
+        }
+        None => None,
+    };
     let timer = slint::Timer::default();
     let weak = ui.as_weak();
     let mut last = Instant::now();
@@ -470,6 +499,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .min(u128::from(u32::MAX)) as u32;
             last = now;
             state.borrow_mut().tick(elapsed);
+            if let Some(web) = web.as_mut() {
+                web.poll(&mut state.borrow_mut());
+            }
             if let Some(ui) = weak.upgrade() {
                 refresh(&ui, &state.borrow());
             }

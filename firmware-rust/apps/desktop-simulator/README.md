@@ -21,8 +21,10 @@ adapter. A Linux X11 environment is required for the current pinned Slint backen
    to seek, an empty slot to store the current position, or **×** to delete it.
    Session-local overrides/tombstones survive track reload, including media
    reconnect in this process. They are lost when the application closes.
-4. **Settings** changes elapsed/remaining time, quantization and tempo range.
-   It is a session UI, not a durable general settings store or audio-route owner.
+4. **Settings** changes elapsed/remaining time, LOAD LOCK, quantization and
+   tempo range. Time and LOAD LOCK are committed through the RP-11 settings
+   owner to a RAM partition that lasts for the process; it is not an
+   audio-route owner.
 5. **Remove Media** stops/unloads both decks and clears analysis. **Reconnect**
    permits a fresh explicit load; no old deck pointer is restored.
 
@@ -50,6 +52,20 @@ session events. Events scroll when needed. Reconnect clears the current absent-
 media fault without erasing warning history. Hardware identity, memory and CPU
 measurements remain unknown in this host harness. Product readiness is not
 inferred. Counters describe this demo session, not audio/USB driver loss.
+
+**Web Remote API** (RP-12): `--web PORT` serves `/api/status`,
+`/api/control` and `/api/load` on `127.0.0.1` from the UI timer, over the same
+session paths touch uses. The loopback address stands in for the AP address,
+so only a local client passes the Host allow-list; mutations need the
+`X-DDJ-Control: 1` header:
+
+```sh
+cargo run --locked -p desktop-simulator -- --board jc1060 --web 8080
+curl http://127.0.0.1:8080/api/status
+curl -X POST -H 'X-DDJ-Control: 1' 'http://127.0.0.1:8080/api/control?action=play_pause&deck=1'
+```
+
+There is no Web UI page yet; other routes answer 501.
 
 Export a fresh, separate host-process report without opening a window:
 

@@ -648,3 +648,132 @@ fn jog_nudges_a_playing_deck_and_scrubs_a_paused_one() {
     nudged.control(jog(SemanticControl::JogScratch, -20));
     assert_eq!(nudged.presentation(0).transport.position_ms, paused - 30);
 }
+
+// RP-12: the Web Remote drives the session through the same paths as touch.
+fn web_exchange(
+    server: &mut ruzina_web::server::WebServer,
+    s: &mut Session,
+    request: &str,
+) -> String {
+    let mut out = [0u8; 4096];
+    let len = server.handle(request.as_bytes(), s, &mut out);
+    String::from_utf8(out[..len].to_vec()).unwrap()
+}
+fn web_post(path_query: &str) -> String {
+    format!(
+        "POST {path_query} HTTP/1.1\r\nHost: 127.0.0.1:8080\r\nX-DDJ-Control: 1\r\n\
+Origin: http://127.0.0.1:8080\r\n\r\n"
+    )
+}
+
+#[test]
+fn web_remote_status_controls_and_loads_use_the_session() {
+    use ruzina_web::server::WebServer;
+    let mut server = WebServer::new(9, web::WEB_HOST);
+    let mut s = loaded();
+    let status = web_exchange(
+        &mut server,
+        &mut s,
+        "GET /api/status HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\n",
+    );
+    assert!(status.starts_with("HTTP/1.1 200 OK\r\n"));
+    assert!(status.contains("\"library_revision\":1"));
+    assert!(status.contains(&format!(
+        "\"deck1\":{{\"title\":\"{}\",\"artist\":\"Grid Lab\"",
+        session::TITLES[0]
+    )));
+    assert!(status.contains("\"deck2\":{\"title\":\"\""), "empty deck");
+
+    // PLAY is a tap through the deck core.
+    let ok = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/control?action=play_pause&deck=1"),
+    );
+    assert!(ok.ends_with("\r\n\r\nOK"));
+    assert!(s.presentation(0).transport.playing);
+
+    // LOAD LOCK refuses the playing deck; a stale revision or unknown track is refused first.
+    let locked = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/load?track_key=2&generation=1&deck=1"),
+    );
+    assert!(
+        locked.starts_with("HTTP/1.1 409 Conflict")
+            && locked.ends_with("Deck is playing (load lock)")
+    );
+    let stale = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/load?track_key=2&generation=7&deck=2"),
+    );
+    assert!(stale.ends_with("Library generation changed"));
+    let missing = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/load?track_key=99&generation=1&deck=2"),
+    );
+    assert!(missing.starts_with("HTTP/1.1 404 Not Found"));
+    let loaded = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/load?track_key=2&generation=1&deck=2"),
+    );
+    assert!(loaded.ends_with("\r\n\r\nOK"));
+    assert_eq!(s.title(1), session::TITLES[1]);
+
+    // Seeks are clamped to the loaded length; an empty deck is not seekable.
+    web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/control?action=seek&deck=2&value=99999"),
+    );
+    assert_eq!(s.presentation(1).transport.position_ms, 14_000);
+    s.detach();
+    let empty = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/control?action=seek&deck=2&value=5"),
+    );
+    assert!(empty.ends_with("Deck not seekable"));
+    let no_media = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post("/api/load?track_key=2&generation=1&deck=2"),
+    );
+    assert!(no_media.ends_with("Library generation changed"));
+
+    // A foreign Host (DNS rebinding) never reaches the session.
+    let foreign = web_exchange(
+        &mut server,
+        &mut s,
+        "GET /api/status HTTP/1.1\r\nHost: ruzina.example\r\n\r\n",
+    );
+    assert!(foreign.starts_with("HTTP/1.1 403 Forbidden"));
+}
+
+#[test]
+fn web_port_answers_a_real_loopback_connection() {
+    use std::io::{Read, Write};
+    let mut port = web::WebPort::bind(0, 5).unwrap();
+    let address = (web::WEB_HOST, port.port().unwrap());
+    let client = std::thread::spawn(move || {
+        let mut stream = std::net::TcpStream::connect(address).unwrap();
+        let host = format!("{}:{}", address.0, address.1);
+        write!(stream, "GET /api/status HTTP/1.1\r\nHost: {host}\r\n\r\n").unwrap();
+        let mut response = String::new();
+        stream.read_to_string(&mut response).unwrap();
+        response
+    });
+    let mut s = Session::new();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while port.poll(&mut s) == 0 {
+        assert!(std::time::Instant::now() < deadline, "no connection served");
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    let response = client.join().unwrap();
+    assert!(response.starts_with("HTTP/1.1 200 OK\r\n"), "{response}");
+    assert!(response.contains("\"stamp\":{\"boot\":5,\"sequence\":1"));
+    assert!(response.contains("\r\nConnection: close\r\n"));
+}

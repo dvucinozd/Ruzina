@@ -671,6 +671,62 @@ impl Session {
         self.playlists = Some(playlists);
     }
 
+    /// The catalog publication a Web page lists from (`library_revision`).
+    pub fn catalog_publication(&self) -> Option<ruzina_media_catalog::CatalogPublicationId> {
+        self.catalog
+            .as_ref()
+            .filter(|catalog| self.media.validate(catalog.lease()))
+            .map(|catalog| ruzina_media_catalog::CatalogPublicationId {
+                lease: catalog.lease(),
+                revision: catalog.revision(),
+            })
+    }
+    /// The load generation of the deck's current track, 0 when empty.
+    pub fn load_generation(&self, i: usize) -> u32 {
+        self.loaded[i].map_or(0, |(_, id)| id.load_generation)
+    }
+    pub fn artist(&self, i: usize) -> &'static str {
+        self.loaded[i].map_or("", |(selection, _)| ARTISTS[selection])
+    }
+    /// Web Remote load (M2.5 `/api/load`): the track must be in the catalog
+    /// revision the page listed, then LOAD LOCK, then the normal load path.
+    pub fn web_load(
+        &mut self,
+        target: DeckId,
+        track: u32,
+        revision: u32,
+    ) -> ruzina_web::server::LoadOutcome {
+        use ruzina_web::{server::LoadOutcome, status};
+        self.note_activity();
+        let catalog = self
+            .catalog
+            .as_ref()
+            .filter(|_| self.media.lease().is_some());
+        let candidate = match status::resolve_load(catalog, track, revision) {
+            Ok(candidate) => candidate,
+            Err(status::LoadRefusal::UnknownTrack) => return LoadOutcome::NotFound,
+            Err(_) => return LoadOutcome::LibraryChanged,
+        };
+        if self.decks.load_admission(target).is_err() {
+            return LoadOutcome::Locked;
+        }
+        self.selected = usize::from(candidate.index);
+        if self.load(target) {
+            LoadOutcome::Loaded
+        } else {
+            LoadOutcome::Busy
+        }
+    }
+    /// Web Remote seek on a loaded deck; the server already clamped it.
+    pub fn web_seek(&mut self, target: DeckId, position_ms: u32) -> bool {
+        self.note_activity();
+        if !self.presentation(index(target)).transport.loaded {
+            return false;
+        }
+        self.decks.set_position_ms(target, position_ms);
+        true
+    }
+
     /// Rows of the current Library level. Without media the demo titles stay
     /// listed (disabled), as before.
     pub fn library_rows(&self) -> Vec<(String, RowKind)> {
