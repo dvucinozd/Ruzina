@@ -2,6 +2,9 @@
 
 Updated: 2026-10-27. Active fix branch: `fix/astra-review-phase-a`, based on
 remote main `4a8c660183910b0950ae7ddabce9e8b395a2f10d`.
+Implementation is committed at `cb70a425d691d0fd10ec097b263567fdefe70070`.
+See the [final review and C01/C02 preparation report](reviews/2026-10-27-publication-and-bringup.md)
+for CodeRabbit evidence, ready diagnostic kits and immutable package hashes.
 Read the [current status](DEVELOPMENT_STATUS.md),
 [implementation plan](reviews/2026-10-27-ruzina-fix-implementation-plan.md)
 and [execution log](reviews/2026-10-27-astra-implementation-log.md).

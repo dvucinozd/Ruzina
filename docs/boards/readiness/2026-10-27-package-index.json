@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "prepared_date": "2026-10-27",
+  "readiness": "BUILD_ONLY",
+  "hardware": "NOT_RUN",
+  "boards": {
+    "jc1060": {
+      "schema": 1,
+      "model": "JC1060P470C_I_W_Y",
+      "board": "jc1060",
+      "source_commit": "cb70a425d691d0fd10ec097b263567fdefe70070",
+      "hardware": "NOT_RUN",
+      "readiness": "BUILD_ONLY",
+      "variants": {
+        "basic": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc1060-none",
+          "elf_sha256": "b0673fca19e99aae997d31888a94c64088a01f4ce75d83896660567fd511647f",
+          "archive_sha256": "d04ed6ca120f7db05002c40d49866d1d406919057892f4a86e5bf4b4c488ec1c",
+          "features": "board-jc1060,board-diagnostics"
+        },
+        "flash": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc1060-flash",
+          "elf_sha256": "db00971b9b5f7537c7f2011cd0cbfe6fc4368e02a1ca13a80bd9e8d61f8df0fa",
+          "archive_sha256": "35d10c5c649f40f1e8e48c44029fa443209d8caf0cd9463b3899a3b5bb71b84a",
+          "features": "board-jc1060,board-diagnostics,guition-flash-probe"
+        },
+        "psram": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc1060-psram",
+          "elf_sha256": "2f9fca72d6b92f3f9969b190f7f519a6b28a9c99b590118d7d56eb1192981a69",
+          "archive_sha256": "7f3064b35fc564e06d12ab709c3343a8200f6f624b20d5152cfc6b313f91fcbf",
+          "features": "board-jc1060,board-diagnostics,guition-psram-test"
+        },
+        "memory": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc1060-memory",
+          "elf_sha256": "bb95327ece8a7fb2c8395f33cddc62b35ff2ff7a32e60f5071c16b28b1cf0890",
+          "archive_sha256": "ed5e6c0fac4676d22a29b5f435a8b612c9c20374e9a51d588c143b9731bd67d2",
+          "features": "board-jc1060,board-diagnostics,guition-flash-probe,guition-psram-test"
+        }
+      },
+      "archive": "firmware-rust/target/guition-c01c02-20261027/kits-final/jc1060-c01c02-ready.zip",
+      "archive_bytes": 1030630,
+      "archive_sha256": "536f99c73e056bbc5cc6541691ba439a0aeb2b71f57c0dde915819e77709fad6"
+    },
+    "jc8012": {
+      "schema": 1,
+      "model": "JC8012P4A1C_I_W_Y",
+      "board": "jc8012",
+      "source_commit": "cb70a425d691d0fd10ec097b263567fdefe70070",
+      "hardware": "NOT_RUN",
+      "readiness": "BUILD_ONLY",
+      "variants": {
+        "basic": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc8012-none",
+          "elf_sha256": "deff291695ecb5991a03a73b3524711f93a1f335fa628f56c5c12926f833427f",
+          "archive_sha256": "5e0c9c25e2ee938e1bef8f4f5c364d09bcc2f3f9eca7f575b5fd2d896c12d17a",
+          "features": "board-jc8012,board-diagnostics"
+        },
+        "flash": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc8012-flash",
+          "elf_sha256": "69fe612ee2e59bdab17390f024618d8be25cb95428147db253d714f049d15b61",
+          "archive_sha256": "77d69310dfa94961b47d6fb08f4805b9817145d214e3a22643a27227a941c044",
+          "features": "board-jc8012,board-diagnostics,guition-flash-probe"
+        },
+        "psram": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc8012-psram",
+          "elf_sha256": "d0f865e00554c808987e8f4a1af4ccd4f7fd82b350bd7a85cff50cc0ef41256f",
+          "archive_sha256": "ec7f0bbe8df1f1fbe70098d771cc6ace8a85a4386090627e41d1439ff19d4caa",
+          "features": "board-jc8012,board-diagnostics,guition-psram-test"
+        },
+        "memory": {
+          "image_id": "cb70a425d691-src-a655f1d59760e2a2-jc8012-memory",
+          "elf_sha256": "f97105d5b6424fd3c6768c83acc72f892f08e89c364160be912c441c84277a5e",
+          "archive_sha256": "1efffc5548772c6aa27a0dc2259f35859f34b30a0f1d4aaeb7dc40b033b52c9a",
+          "features": "board-jc8012,board-diagnostics,guition-flash-probe,guition-psram-test"
+        }
+      },
+      "archive": "firmware-rust/target/guition-c01c02-20261027/kits-final/jc8012-c01c02-ready.zip",
+      "archive_bytes": 1030808,
+      "archive_sha256": "88cb5945f60a96aa043d2835e9d3d5c08f6d05d92b5f557fcd2479486b73ef54"
+    }
+  }
+}

@@ -83,6 +83,9 @@ $hashA
 The existing package builder produces both models for each of `none`, `flash`,
 `psram` and `memory` and refuses to overwrite output evidence. Local package
 hashes/source identities will be recorded in the readiness package index.
+The prepared local images are now recorded in the
+[package index](readiness/2026-10-27-package-index.json); see the
+[final preparation report](../reviews/2026-10-27-publication-and-bringup.md).
 Remote CI also retains `guition-firstboot-diagnostics` and
 `guition-memory-diagnostics` artifacts for its own exact commit/build inputs.
 Do not substitute CI/local archives merely because their source code matches:
