@@ -19,6 +19,8 @@
 //! override a later choice; the network record is written first and the
 //! settings record last, which also marks the import done. An interrupted
 //! import simply runs again.
+//! An existing independent network record is preserved without rewriting;
+//! a newer network format refuses the entire import before any write.
 //!
 //! Hot Cue and analysis-cache data are not imported here. Any later import
 //! must go through `ruzina-media-identity` (full volume/path identity and
@@ -66,6 +68,7 @@ impl core::fmt::Debug for M25Network<'_> {
 pub enum M25NetworkImport {
     Absent,
     Imported,
+    PreservedExisting,
     Rejected(NetworkConfigError),
 }
 
@@ -126,18 +129,25 @@ impl<F: SettingsFlash> SettingsOwner<F> {
             RecordStatus::Stored { .. } => return Ok(M25Import::AlreadyMigrated),
             RecordStatus::NewerPreserved { .. } => return Err(SettingsError::NewerRecordPreserved),
         }
-        let network = match legacy.network {
-            None => M25NetworkImport::Absent,
-            Some(network) if network.ssid.is_empty() && network.url.is_empty() => {
-                M25NetworkImport::Absent
-            }
-            Some(network) => {
-                match NetworkConfig::new(network.ssid, network.password, network.url) {
-                    Ok(config) => {
-                        self.commit_network(config)?;
-                        M25NetworkImport::Imported
+        if matches!(self.status().1, RecordStatus::NewerPreserved { .. }) {
+            return Err(SettingsError::NewerRecordPreserved);
+        }
+        let network = if matches!(self.status().1, RecordStatus::Stored { .. }) {
+            M25NetworkImport::PreservedExisting
+        } else {
+            match legacy.network {
+                None => M25NetworkImport::Absent,
+                Some(network) if network.ssid.is_empty() && network.url.is_empty() => {
+                    M25NetworkImport::Absent
+                }
+                Some(network) => {
+                    match NetworkConfig::new(network.ssid, network.password, network.url) {
+                        Ok(config) => {
+                            self.commit_network(config)?;
+                            M25NetworkImport::Imported
+                        }
+                        Err(error) => M25NetworkImport::Rejected(error),
                     }
-                    Err(error) => M25NetworkImport::Rejected(error),
                 }
             }
         };
@@ -212,7 +222,7 @@ mod tests {
         assert_eq!(
             owner.import_m25(&legacy()),
             Ok(M25Import::Imported {
-                network: M25NetworkImport::Imported,
+                network: M25NetworkImport::PreservedExisting,
                 audio_route_dropped: true,
             })
         );
@@ -253,5 +263,64 @@ mod tests {
         );
         assert!(!owner.network().is_configured());
         assert_eq!(owner.status().1, RecordStatus::Defaults);
+    }
+}
+#[cfg(test)]
+mod review_regressions {
+    use super::*;
+    use crate::network::PasswordUpdate;
+    use crate::store::{RecordKind, RecordStore, fake::FakeFlash};
+    fn legacy() -> M25Settings<'static> {
+        M25Settings {
+            network: Some(M25Network {
+                ssid: "Legacy",
+                password: "legacy-pass",
+                url: "https://legacy.example",
+            }),
+            ..M25Settings::default()
+        }
+    }
+    #[test]
+    fn review_migration_preserves_existing_network_choice() {
+        let (mut owner, _) = SettingsOwner::load(FakeFlash::new()).unwrap();
+        owner
+            .set_network(
+                "Chosen",
+                PasswordUpdate::Set("chosen-pass"),
+                "https://chosen.example",
+            )
+            .unwrap();
+        let saved = *owner.network();
+        let sequence = owner.status().1;
+        owner.import_m25(&legacy()).unwrap();
+        assert_eq!(
+            *owner.network(),
+            saved,
+            "Legacy import must preserve the independent network choice"
+        );
+        assert_eq!(owner.status().1, sequence);
+        let (owner, _) = owner.reboot();
+        assert_eq!(*owner.network(), saved);
+    }
+    #[test]
+    fn review_migration_preserves_newer_network_format() {
+        let mut store = RecordStore::new(FakeFlash::new());
+        store
+            .write(RecordKind::Network, 2, b"opaque newer settings")
+            .unwrap();
+        let flash = store.into_flash();
+        let saved = flash.bytes.clone();
+        let (mut owner, report) = SettingsOwner::load(flash).unwrap();
+        assert_eq!(report.network, RecordStatus::NewerPreserved { version: 2 });
+        assert_eq!(
+            owner.import_m25(&legacy()),
+            Err(SettingsError::NewerRecordPreserved)
+        );
+        assert_eq!(
+            owner.status().1,
+            RecordStatus::NewerPreserved { version: 2 },
+            "Import must not bypass the newer-record guard"
+        );
+        assert_eq!(owner.into_flash().bytes, saved);
     }
 }

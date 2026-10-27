@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "model": "JC8012P4A1C_I_W_Y",
+  "board": "jc8012",
+  "unit_id": null,
+  "physical_acceptance": "NOT_RUN",
+  "observed": {"pcb_marking": null, "module_marking": null, "panel_marking": null, "chip_revision": null, "flash_rdid": null, "flash_bytes": null, "psram_bytes": null, "service_connector": null, "service_transport": null, "power_source": null},
+  "factory": {"boot_log": null, "programmer_tool_version": null, "read1_command": null, "read1_file": null, "read1_sha256": null, "read2_command": null, "read2_file": null, "read2_sha256": null, "readback_start": null, "readback_bytes": null, "independent_reads_confirmed_by": null, "secondary_storage_copy": null, "backup_verification": "NOT_RUN"},
+  "recovery": {"rom_entry_sequence": null, "handshake_log": null, "repeatable_entry": "NOT_RUN", "restoration_procedure": null, "programming_layout_review": "NOT_RUN", "actual_factory_restore": "NOT_RUN"},
+  "diagnostics": {"package_manifest": null, "source_commit": null, "image_id": null, "elf_sha256": null, "programmed_bytes_readback_evidence": null, "cold_boot": "NOT_RUN", "warm_reset": "NOT_RUN", "service_reconnect": "NOT_RUN", "flash_probe": "NOT_RUN", "psram_scratch": "NOT_RUN"},
+  "open": ["GSL3680 payload/provisioning rights", "actual panel/init", "USB-FS v3.2 mapping", "VBUS/backfeed", "CH340 versus native diagnostic path", "OTA trust/project/slot adapter"]
+}

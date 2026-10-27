@@ -1,11 +1,12 @@
 //! One HTTP request to one response over a product [`WebBackend`]
 //! (M2.5 `web_server.c`). The order is M2.5's: parse the head, route, then
 //! `api_request_allowed` (Host allow-list; mutations also need the control
-//! marker and a same-origin `Origin`), then the handler. Bodies are refused
-//! before they are read. Implemented here: the Web Remote page
+//! marker and a same-origin `Origin`), then the handler. Management bodies
+//! have bounded single-flight leases; rejected bodies are never drained.
+//! Implemented here: the Web Remote page
 //! ([`crate::assets`]), `GET /api/status`, the paged `GET /api/library`,
-//! `POST /api/control` and `POST /api/load`; other M2.5 routes answer 501
-//! until their adapters exist.
+//! `POST /api/control`, `POST /api/load` and management backend dispatch.
+//! Recording routes remain 501; absent management adapters fail explicitly.
 
 use crate::{
     HttpStatus, assets, guard,
@@ -64,6 +65,23 @@ pub enum LoadOutcome {
 /// The product side: everything enters the same paths a controller and the
 /// touch UI use (RP-04 admission, RP-06 load, RP-03 CUE ownership).
 pub trait WebBackend {
+    fn management(&mut self, _route: Route, _out: &mut [u8]) -> Result<usize, HttpStatus> {
+        Err(HttpStatus::NotImplemented)
+    }
+    fn upload_begin(
+        &mut self,
+        _kind: crate::upload::UploadKind,
+        _length: usize,
+    ) -> Result<(), HttpStatus> {
+        Err(HttpStatus::NotImplemented)
+    }
+    fn upload_write(&mut self, _bytes: &[u8]) -> Result<(), HttpStatus> {
+        Err(HttpStatus::NotImplemented)
+    }
+    fn upload_finish(&mut self) -> Result<(), HttpStatus> {
+        Err(HttpStatus::NotImplemented)
+    }
+    fn upload_cancel(&mut self) {}
     fn status(&mut self) -> StatusParts<'_>;
     /// Events in order; a tap is press then release.
     fn control(&mut self, events: &[ControlEvent]) -> ControlOutcome;
@@ -85,6 +103,8 @@ pub struct WebServer {
     ap_ipv4: &'static str,
     sequencer: StatusSequencer,
     ordering: LatestValueGate,
+    active_upload: Option<crate::upload::Active>,
+    next_upload: u64,
 }
 
 impl WebServer {
@@ -94,6 +114,93 @@ impl WebServer {
             ap_ipv4,
             sequencer: StatusSequencer::new(boot),
             ordering: LatestValueGate::new(),
+            active_upload: None,
+            next_upload: 0,
+        }
+    }
+
+    /// Admit a body before reading it. None means the ordinary handler owns it.
+    pub fn begin_body<B: WebBackend>(
+        &mut self,
+        head: &[u8],
+        backend: &mut B,
+    ) -> Result<Option<crate::upload::UploadLease>, HttpStatus> {
+        let request = http::parse_request(head).map_err(|e| e.status())?;
+        let Some(kind) = crate::upload::kind(&request)? else {
+            return Ok(None);
+        };
+        guard::admit(&request.guard_head(), self.ap_ipv4).map_err(|e| e.status())?;
+        if self.active_upload.is_some() {
+            return Err(HttpStatus::ServiceUnavailable);
+        }
+        backend.upload_begin(kind, request.content_length)?;
+        self.next_upload = self.next_upload.wrapping_add(1);
+        let lease = crate::upload::UploadLease(self.next_upload);
+        self.active_upload = Some(crate::upload::Active {
+            lease,
+            remaining: request.content_length,
+        });
+        Ok(Some(lease))
+    }
+
+    pub fn body_chunk<B: WebBackend>(
+        &mut self,
+        lease: crate::upload::UploadLease,
+        bytes: &[u8],
+        backend: &mut B,
+    ) -> Result<bool, HttpStatus> {
+        let active = self
+            .active_upload
+            .as_mut()
+            .filter(|a| a.lease == lease)
+            .ok_or(HttpStatus::Conflict)?;
+        if bytes.len() > 4096 || bytes.len() > active.remaining {
+            self.cancel_body(lease, backend);
+            return Err(HttpStatus::BadRequest);
+        }
+        if let Err(error) = backend.upload_write(bytes) {
+            self.cancel_body(lease, backend);
+            return Err(error);
+        }
+        let active = self.active_upload.as_mut().expect("current upload");
+        active.remaining -= bytes.len();
+        Ok(active.remaining == 0)
+    }
+
+    pub fn finish_body<B: WebBackend>(
+        &mut self,
+        lease: crate::upload::UploadLease,
+        backend: &mut B,
+    ) -> Result<(), HttpStatus> {
+        let active = self
+            .active_upload
+            .as_ref()
+            .filter(|a| a.lease == lease)
+            .ok_or(HttpStatus::Conflict)?;
+        if active.remaining != 0 {
+            self.cancel_body(lease, backend);
+            return Err(HttpStatus::BadRequest);
+        }
+        self.active_upload = None;
+        let result = backend.upload_finish();
+        if result.is_err() {
+            backend.upload_cancel();
+        }
+        result
+    }
+
+    pub fn cancel_body<B: WebBackend>(
+        &mut self,
+        lease: crate::upload::UploadLease,
+        backend: &mut B,
+    ) {
+        if self
+            .active_upload
+            .as_ref()
+            .is_some_and(|a| a.lease == lease)
+        {
+            self.active_upload = None;
+            backend.upload_cancel();
         }
     }
 
@@ -149,6 +256,58 @@ impl WebServer {
             return text(refusal.status(), body, out);
         }
         match route {
+            Route::OtaConfigSet | Route::ControllerProfileUpload | Route::OtaUpload => {
+                let status = match self.begin_body(bytes, backend) {
+                    Ok(Some(lease)) => {
+                        let body = &bytes[request.head_len..];
+                        let result = if body.len() != request.content_length {
+                            Err(HttpStatus::BadRequest)
+                        } else {
+                            body.chunks(4096)
+                                .try_for_each(|chunk| {
+                                    self.body_chunk(lease, chunk, backend).map(|_| ())
+                                })
+                                .and_then(|_| self.finish_body(lease, backend))
+                        };
+                        self.cancel_body(lease, backend);
+                        result.err().unwrap_or(HttpStatus::Ok)
+                    }
+                    Err(status) => status,
+                    Ok(None) => HttpStatus::NotImplemented,
+                };
+                text(status, status.reason(), out)
+            }
+            Route::OtaConfigGet
+            | Route::ControllerProfiles
+            | Route::Firmware
+            | Route::Resources
+            | Route::DiagnosticLog => {
+                if request.content_length != 0 || !request.query.is_empty() {
+                    return text(HttpStatus::BadRequest, "Bad request", out);
+                }
+                let Some(body) = out.get_mut(HEAD_RESERVE..) else {
+                    return Err(response::Overflow);
+                };
+                match backend.management(route, body) {
+                    Ok(len) if len <= body.len() => {
+                        out.copy_within(HEAD_RESERVE..HEAD_RESERVE + len, 0);
+                        // Move the body after an exactly sized response head.
+                        let head = response::write_head(
+                            &Response::json(&[]),
+                            len,
+                            &mut [0u8; HEAD_RESERVE],
+                        )?;
+                        if head + len > out.len() {
+                            return Err(response::Overflow);
+                        }
+                        out.copy_within(0..len, head);
+                        response::write_head(&Response::json(&[]), len, out)?;
+                        Ok(head + len)
+                    }
+                    Ok(_) => Err(response::Overflow),
+                    Err(status) => text(status, status.reason(), out),
+                }
+            }
             Route::Index
             | Route::Style
             | Route::App
@@ -226,7 +385,7 @@ impl WebServer {
                     parse::query_value(request.query, "seq").and_then(parse::parse_u32),
                 );
                 if let (Some(control), Some(client), Some(sequence)) = order
-                    && self.ordering.admit(client, control, sequence) == Ordering::Superseded
+                    && self.ordering.classify(client, control, sequence) == Ordering::Superseded
                 {
                     return (HttpStatus::Ok, "OK");
                 }
@@ -236,7 +395,12 @@ impl WebServer {
                     _ => return (HttpStatus::BadRequest, "Unknown action"),
                 };
                 match outcome {
-                    ControlOutcome::Applied => (HttpStatus::Ok, "OK"),
+                    ControlOutcome::Applied => {
+                        if let (Some(control), Some(client), Some(sequence)) = order {
+                            self.ordering.commit_applied(client, control, sequence);
+                        }
+                        (HttpStatus::Ok, "OK")
+                    }
                     ControlOutcome::Busy => (HttpStatus::ServiceUnavailable, "Control queue busy"),
                 }
             }

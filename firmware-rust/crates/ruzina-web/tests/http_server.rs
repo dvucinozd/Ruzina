@@ -35,6 +35,7 @@ impl WebBackend for Fake {
                     artist: "The Flirts",
                     bpm: 118,
                     pitch_centipercent: 0,
+                    pitch_raw: 8192,
                     position_ms: 1000,
                     duration_ms: 465_000,
                     playing: true,
@@ -407,4 +408,37 @@ fn the_web_remote_page_is_served_from_the_image() {
         assert!(!app.contains(unimplemented), "{unimplemented}");
     }
     assert!(app.contains("'X-DDJ-Control': '1'"));
+}
+#[test]
+fn review_busy_value_must_remain_retryable() {
+    let mut server = WebServer::new(1, AP);
+    let mut fake = Fake {
+        busy: true,
+        ..Fake::default()
+    };
+    let request = post("/api/control?action=volume&deck=1&value=1000&client=7&seq=12");
+    assert_eq!(
+        status_line(&exchange(&mut server, &mut fake, &request)),
+        "HTTP/1.1 503 Service Unavailable"
+    );
+    fake.busy = false;
+    let retry = exchange(&mut server, &mut fake, &request);
+    assert_eq!(status_line(&retry), "HTTP/1.1 200 OK");
+    assert_eq!(
+        fake.controls.len(),
+        1,
+        "The accepted retry must actually deliver its value"
+    );
+    exchange(&mut server, &mut fake, &request);
+    assert_eq!(fake.controls.len(), 1, "duplicate must not apply twice");
+    fake.busy = true;
+    let newer = post("/api/control?action=volume&deck=1&value=2000&client=7&seq=14");
+    exchange(&mut server, &mut fake, &newer);
+    fake.busy = false;
+    let middle = post("/api/control?action=volume&deck=1&value=1500&client=7&seq=13");
+    exchange(&mut server, &mut fake, &middle);
+    assert_eq!(fake.controls.len(), 2, "unaccepted 14 must not exclude 13");
+    exchange(&mut server, &mut fake, &newer);
+    exchange(&mut server, &mut fake, &middle);
+    assert_eq!(fake.controls.len(), 3, "accepted 14 excludes late 13");
 }

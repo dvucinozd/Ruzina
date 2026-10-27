@@ -34,6 +34,8 @@ pub struct Request<'a> {
     pub origin: Option<&'a str>,
     pub control_marker: Option<&'a str>,
     pub content_type: Option<&'a str>,
+    pub profile_id: Option<&'a str>,
+    pub profile_overwrite: Option<&'a str>,
     pub content_length: usize,
     /// Bytes of the head including the blank line; the body follows.
     pub head_len: usize,
@@ -101,6 +103,8 @@ pub fn parse_request(buffer: &[u8]) -> Result<Request<'_>, HttpError> {
         origin: None,
         control_marker: None,
         content_type: None,
+        profile_id: None,
+        profile_overwrite: None,
         content_length: 0,
         head_len: end + 4,
     };
@@ -118,6 +122,10 @@ pub fn parse_request(buffer: &[u8]) -> Result<Request<'_>, HttpError> {
             set_once(&mut request.control_marker, value)?;
         } else if name.eq_ignore_ascii_case("content-type") {
             set_once(&mut request.content_type, value)?;
+        } else if name.eq_ignore_ascii_case("x-ddj-profile-id") {
+            set_once(&mut request.profile_id, value)?;
+        } else if name.eq_ignore_ascii_case("x-ddj-profile-overwrite") {
+            set_once(&mut request.profile_overwrite, value)?;
         } else if name.eq_ignore_ascii_case("content-length") {
             if length_seen {
                 return Err(HttpError::Malformed);
@@ -188,6 +196,20 @@ fn header_line(line: &str) -> Result<(&str, &str), HttpError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_mutation_seed_5eedb001_never_panics_or_allocates() {
+        let base=b"POST /api/ota/config HTTP/1.1\r\nHost: 127.0.0.1\r\nX-DDJ-Control: 1\r\nContent-Type: application/json\r\nContent-Length: 14\r\n\r\n";
+        let mut seed = 0x5eed_b001u32;
+        for _ in 0..2048 {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            let mut data = [0; HEAD_MAX_BYTES];
+            data[..base.len()].copy_from_slice(base);
+            data[seed as usize % base.len()] ^= (seed >> 24) as u8;
+            let _ = parse_request(&data[..base.len()]);
+            let _ = crate::config::parse(&data[..(seed as usize % 513)]);
+        }
+    }
 
     #[test]
     fn a_well_formed_head_is_borrowed_with_its_fields() {

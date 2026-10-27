@@ -8,7 +8,12 @@
 const CLIENT = crypto.getRandomValues(new Uint32Array(1))[0] >>> 0;
 let sequence = 0;
 let applied = null;          // last applied status stamp
-let libraryRevision = null;  // catalog revision the list came from
+let desiredIdentity = null;
+let loadedSnapshot = null;
+let libraryRequestToken = 0;
+let libraryInFlight = false;
+let retryAt = 0;
+let retryAttempt = 0;
 let tracks = [];
 const dragging = new Set();  // sliders the user is moving now
 
@@ -83,6 +88,7 @@ function renderDeck(deck, data, mixer) {
   field('state').textContent = data.state_text;
   const pitch = Number(data.pitch_percent);
   field('pitch').textContent = `${pitch >= 0 ? '+' : ''}${pitch.toFixed(2)}%`;
+  showValue($('[data-continuous="pitch"]', card), data.pitch_raw);
   const fraction = data.duration_ms ? Math.min(1, data.position_ms / data.duration_ms) : 0;
   $('.fill', field('bar')).style.width = `${(fraction * 100).toFixed(2)}%`;
   const play = $('[data-action="play_pause"]', card);
@@ -119,11 +125,21 @@ async function pollStatus() {
       renderDeck(1, status.deck1, status.mixer);
       renderDeck(2, status.deck2, status.mixer);
       renderMixer(status.mixer);
-      if (status.stamp.library_revision !== libraryRevision) {
-        libraryRevision = status.stamp.library_revision;
-        loadLibrary();
+      const identity = {boot: status.stamp.boot, revision: status.stamp.library_revision};
+      if (!sameIdentity(identity, desiredIdentity)) {
+        desiredIdentity = identity;
+        libraryRequestToken++;
+        libraryInFlight = false;
+        loadedSnapshot = null;
+        tracks = [];
+        retryAttempt = 0;
+        retryAt = 0;
+        $('#library-info').textContent = identity.revision === null ? 'No media connected' : 'Loading library';
+        renderLibrary();
       }
     }
+    if (desiredIdentity?.revision !== null && desiredIdentity && !loadedSnapshot &&
+        !libraryInFlight && Date.now() >= retryAt) loadLibrary();
   } catch (error) {
     $('#conn').classList.remove('ok');
   }
@@ -131,34 +147,49 @@ async function pollStatus() {
 }
 
 async function loadLibrary() {
-  if (libraryRevision === null) {
-    tracks = [];
-    $('#library-info').textContent = 'No media connected';
-    renderLibrary();
-    return;
-  }
-  const revision = libraryRevision;
+  const identity = desiredIdentity;
+  const token = ++libraryRequestToken;
+  const current = () => token === libraryRequestToken && sameIdentity(identity, desiredIdentity);
+  libraryInFlight = true;
   const collected = [];
+  const seen = new Set();
   let offset = 0;
   try {
     while (offset !== null) {
+      if (seen.has(offset)) throw new Error('Repeated library page');
+      seen.add(offset);
       const response = await fetch(`/api/library?offset=${offset}`, { cache: 'no-store' });
+      if (!current()) return;
       if (!response.ok) throw new Error(await response.text());
       const page = await response.json();
-      if (page.generation !== revision) return; // a newer revision reloads
+      if (!current()) return;
+      if (page.generation !== identity.revision) throw new Error('Library changed');
+      if (page.next !== null && (!Number.isInteger(page.next) || page.next <= offset)) throw new Error('Invalid library page');
       collected.push(...page.tracks);
       offset = page.next;
     }
   } catch (error) {
+    if (!current()) return;
     $('#library-info').textContent = 'Library unavailable';
+    retryAt = Date.now() + Math.min(5000, 1000 * 2 ** Math.min(retryAttempt++, 3));
     return;
+  } finally {
+    if (current()) libraryInFlight = false;
   }
+  if (!current()) return;
+  loadedSnapshot = {identity, tracks: collected};
+  retryAttempt = 0;
   tracks = collected;
   $('#library-info').textContent = `${tracks.length} tracks`;
   renderLibrary();
 }
 
+function sameIdentity(a, b) {
+  return !!a && !!b && a.boot === b.boot && a.revision === b.revision;
+}
+
 function renderLibrary() {
+  const snapshot = loadedSnapshot;
   const filter = $('#search').value.trim().toLowerCase();
   const list = $('#tracks');
   list.replaceChildren();
@@ -181,7 +212,8 @@ function renderLibrary() {
       const button = document.createElement('button');
       button.textContent = `LOAD ${deck}`;
       button.addEventListener('click', () => {
-        const params = new URLSearchParams({ track_key: track.track_key, generation: libraryRevision, deck });
+        if (!snapshot || snapshot !== loadedSnapshot || !sameIdentity(snapshot.identity, desiredIdentity)) return;
+        const params = new URLSearchParams({ track_key: track.track_key, generation: snapshot.identity.revision, deck });
         mutate(`/api/load?${params}`).then((ok) => { if (ok) message(''); });
       });
       row.append(button);

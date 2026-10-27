@@ -1,8 +1,22 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-24. Next action: **the planned host work is done; target adapters, the firmware
-wiring of host contracts and RP-09/10/14 budgets wait for board qualification**. The project is now named Ruzina, with
-its own branding (see below).
+Updated: 2026-10-27. Active fix branch: `fix/astra-review-phase-a`, based on
+remote main `4a8c660183910b0950ae7ddabce9e8b395a2f10d`.
+Implementation is committed at `cb70a425d691d0fd10ec097b263567fdefe70070`.
+See the [final review and C01/C02 preparation report](reviews/2026-10-27-publication-and-bringup.md)
+for CodeRabbit evidence, ready diagnostic kits and immutable package hashes.
+Read the [current status](DEVELOPMENT_STATUS.md),
+[implementation plan](reviews/2026-10-27-ruzina-fix-implementation-plan.md)
+and [execution log](reviews/2026-10-27-astra-implementation-log.md).
+Phase B host integrations and remaining gates are recorded in the
+[management log](reviews/2026-10-27-phase-b-log.md) and
+[HTTP contract](WEB_INTEGRATION_CONTRACT.md). Product OTA trust/slot configuration,
+permitted real fixtures, board runtime wiring and physical qualification remain open.
+
+## Historical handoff — 2026-10-24 and earlier
+
+The following branch identities and test totals are historical snapshots.
+Use the current status and execution log above for continuation.
 Host-implemented and merged to `main` on 2026-10-23 (PRs #23-#36, each with
 host and ESP32-P4 CI passing on `main`): RP-01/02 (PR #23, `ogranak/m25-rust-parity-plan`),
 RP-04 load admission (PR #24, `ogranak/m25-rp04-load-admission`), RP-03 CUE

@@ -19,6 +19,7 @@
 #![forbid(unsafe_code)]
 
 pub mod assets;
+pub mod config;
 pub mod guard;
 pub mod http;
 pub mod json;
@@ -32,6 +33,7 @@ pub mod response;
 pub mod router;
 pub mod server;
 pub mod status;
+pub mod upload;
 
 /// HTTP status an adapter returns.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

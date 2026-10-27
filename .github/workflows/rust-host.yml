@@ -57,6 +57,13 @@ jobs:
       - name: Format
         run: cargo fmt --all --check
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Web async regressions
+        run: node --test crates/ruzina-web/web/tests/app.test.cjs
+
       - name: Clippy
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
 

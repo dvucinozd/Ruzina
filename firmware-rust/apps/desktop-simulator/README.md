@@ -68,7 +68,15 @@ curl http://127.0.0.1:8080/api/status
 curl -X POST -H 'X-DDJ-Control: 1' 'http://127.0.0.1:8080/api/control?action=play_pause&deck=1'
 ```
 
-There is no Web UI page yet; other routes answer 501.
+The Web Remote page is served at `/`, with `/app.js` and `/style.css`.
+Library loads use committed catalog snapshots; sockets are polled without
+blocking the UI thread. Profile/config uploads and resources/diagnostic/firmware
+metadata APIs are connected to host owners. OTA upload returns 503 until an
+explicit trust/project/slot adapter is configured; its streaming/A-B composition
+is tested with synthetic trust in ruzina-ota. Recording routes remain 501.
+Settings and profile files use RAM per process;
+the simulator Session does not render audible DSP output. See the repository
+[status matrix](../../../docs/DEVELOPMENT_STATUS.md).
 
 Export a fresh, separate host-process report without opening a window:
 

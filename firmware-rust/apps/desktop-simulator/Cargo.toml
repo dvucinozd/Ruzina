@@ -13,6 +13,9 @@ ruzina-ui-model.workspace = true
 ruzina-waveform.workspace = true
 ruzina-board-profile = { path = "../../crates/ruzina-board-profile" }
 ruzina-controller-core.workspace = true
+ruzina-controller-profile.workspace = true
+ruzina-controller-profile-storage.workspace = true
+ruzina-media-fs.workspace = true
 ruzina-deck.workspace = true
 ruzina-hot-cues.workspace = true
 ruzina-media-catalog.workspace = true

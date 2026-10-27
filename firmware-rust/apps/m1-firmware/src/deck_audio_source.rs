@@ -12,6 +12,7 @@ use ruzina_audio_runtime::{
         AudioCodec, DecodeAction, DecoderStorage, ENCODED_BUFFER_BYTES, Mp3CheckpointStorage,
         SourceDecoder, SourceDescriptor, SourceDuration, StreamChange,
     },
+    index_scan::IndexScanPolicy,
     pcm_stream::{PcmStreamBlock, StreamActivation, next_stream_generation},
     wav::{
         CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16Decoder,
@@ -147,6 +148,7 @@ struct PreparedAudioSource {
     eof_queued: bool,
     /// The walked length was handed to the product once (RP-08).
     duration_reported: bool,
+    index_scan: IndexScanPolicy,
 }
 
 pub(crate) async fn prepare_audio_source(
@@ -611,6 +613,7 @@ async fn prepare_source(
                         primed: Some(block),
                         eof_queued: false,
                         duration_reported: false,
+                        index_scan: IndexScanPolicy::default(),
                     }),
                 )
             }
@@ -741,6 +744,7 @@ async fn prepare_source(
                         primed: Some(block),
                         eof_queued: false,
                         duration_reported: false,
+                        index_scan: IndexScanPolicy::default(),
                     }),
                 ),
                 _ => {
@@ -842,7 +846,8 @@ async fn prime(
 /// One bounded read of the background MP3 frame walk, taken only while the
 /// PCM queue is full so it never delays a block (RP-08). Returns false when
 /// the source has nothing left to walk; a complete untagged walk then hands
-/// its length to the product once. A failed read is retried later.
+/// its length to the product once. Three consecutive failed reads disable
+/// this optional walk for the prepared source; failures return false to yield.
 async fn scan_frame_index(
     deck: DeckId,
     client: &mut Usb0FilesystemClient,
@@ -850,6 +855,9 @@ async fn scan_frame_index(
     buffer: &'static mut [u8],
     storage: &mut DecoderStorage,
 ) -> (&'static mut [u8], bool) {
+    if !source.index_scan.can_attempt() {
+        return (buffer, false);
+    }
     let Some((offset, maximum)) = source.stream.index_read(storage, buffer.len()) else {
         if !source.duration_reported
             && let SourceDuration::Scanned(_) = source.stream.duration(storage)
@@ -881,12 +889,13 @@ async fn scan_frame_index(
     )
     .await;
     source.file = file;
-    if bytes != 0 {
-        let _ = source
+    let accepted = bytes != 0
+        && bytes <= maximum
+        && source
             .stream
-            .provide_index(storage, offset, &buffer[..bytes.min(maximum)]);
-    }
-    (buffer, true)
+            .provide_index(storage, offset, &buffer[..bytes]);
+    source.index_scan.record_result(accepted);
+    (buffer, accepted)
 }
 
 async fn produce_pcm_block(
