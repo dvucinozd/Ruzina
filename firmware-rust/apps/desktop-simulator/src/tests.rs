@@ -6,6 +6,21 @@ fn loaded() -> Session {
     assert!(s.load(DeckId::One));
     s
 }
+
+#[test]
+fn remote_load_preserves_visible_browser_cursor() {
+    let mut s = Session::new();
+    let revision = s.catalog_publication().unwrap().revision;
+    let key = s.web_catalog().unwrap().get(1).unwrap().source_track_id;
+    assert_eq!(
+        s.web_load(DeckId::One, key, revision),
+        ruzina_web::server::LoadOutcome::Loaded
+    );
+    let visible = s.visible_library_selection();
+    assert_eq!(visible, s.library_selected());
+    assert!(s.library_load(DeckId::Two));
+    assert_ne!(s.title(0), s.title(1));
+}
 fn press(s: &mut Session, action: DeckAction) {
     s.control(action.event(DeckId::One, true));
 }
@@ -856,4 +871,321 @@ fn web_port_answers_a_real_loopback_connection() {
     // The whole script, larger than a status response, in one answer.
     assert!(page.starts_with("HTTP/1.1 200 OK\r\n"));
     assert!(page.ends_with(std::str::from_utf8(ruzina_web::assets::APP.body).unwrap()));
+}
+
+fn management_request(path: &str, content_type: &str, extra: &str, body: &[u8]) -> Vec<u8> {
+    let mut request=format!("POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nX-DDJ-Control: 1\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\n{extra}\r\n",body.len()).into_bytes();
+    request.extend_from_slice(body);
+    request
+}
+fn management_exchange(
+    server: &mut ruzina_web::server::WebServer,
+    s: &mut Session,
+    request: &[u8],
+) -> String {
+    let mut out = vec![0; 8192];
+    let n = server.handle(request, s, &mut out);
+    String::from_utf8(out[..n].to_vec()).unwrap()
+}
+#[test]
+fn network_http_commit_reboot_and_redaction_use_the_settings_owner() {
+    let mut server = ruzina_web::server::WebServer::new(1, web::WEB_HOST);
+    let mut s = Session::new();
+    let set = management_request(
+        "/api/ota/config",
+        "application/json",
+        "",
+        br#"{"ssid":"Club","password":"private-pass","url":"https://updates.example"}"#,
+    );
+    assert!(management_exchange(&mut server, &mut s, &set).starts_with("HTTP/1.1 200"));
+    s.reload_settings();
+    assert_eq!(s.settings.network().ssid(), "Club");
+    let get = b"GET /api/ota/config HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
+    let reply = management_exchange(&mut server, &mut s, get);
+    assert!(reply.contains("\"password_set\":true"));
+    assert!(!reply.contains("private-pass"));
+    let keep = management_request(
+        "/api/ota/config",
+        "application/json",
+        "",
+        br#"{"ssid":"New","keep_password":true,"url":"https://new.example"}"#,
+    );
+    assert!(management_exchange(&mut server, &mut s, &keep).starts_with("HTTP/1.1 200"));
+    let saved = *s.settings.network();
+    for bad in [
+        br#"{"clear":true,"password":"oops"}"#.as_slice(),
+        br#"{"ssid":"x","password":"short","url":"http://bad"}"#,
+    ] {
+        let request = management_request("/api/ota/config", "application/json", "", bad);
+        assert!(management_exchange(&mut server, &mut s, &request).starts_with("HTTP/1.1 400"));
+        assert_eq!(*s.settings.network(), saved);
+    }
+    let clear = management_request(
+        "/api/ota/config",
+        "application/json",
+        "",
+        br#"{"clear":true}"#,
+    );
+    assert!(management_exchange(&mut server, &mut s, &clear).starts_with("HTTP/1.1 200"));
+    s.reload_settings();
+    assert!(!s.settings.network().is_configured());
+}
+#[test]
+fn upload_leases_bound_chunks_cancel_and_single_flight() {
+    let mut server = ruzina_web::server::WebServer::new(1, web::WEB_HOST);
+    let mut s = Session::new();
+    let body = br#"{"ssid":"Club","password":"private-pass","url":"https://updates.example"}"#;
+    let request = management_request("/api/ota/config", "application/json", "", body);
+    let head = &request[..request.len() - body.len()];
+    let old = server.begin_body(head, &mut s).unwrap().unwrap();
+    assert_eq!(
+        server.begin_body(head, &mut s),
+        Err(ruzina_web::HttpStatus::ServiceUnavailable)
+    );
+    assert!(!server.body_chunk(old, &body[..1], &mut s).unwrap());
+    assert!(server.finish_body(old, &mut s).is_err());
+    assert!(!s.settings.network().is_configured());
+    let next = server.begin_body(head, &mut s).unwrap().unwrap();
+    server.cancel_body(old, &mut s);
+    assert!(server.body_chunk(old, body, &mut s).is_err());
+    for byte in body {
+        server.body_chunk(next, &[*byte], &mut s).unwrap();
+    }
+    server.finish_body(next, &mut s).unwrap();
+    assert!(s.settings.network().is_configured());
+    assert!(server.body_chunk(next, &[0], &mut s).is_err());
+    let third = server.begin_body(head, &mut s).unwrap().unwrap();
+    assert!(server.body_chunk(third, &[0; 4097], &mut s).is_err());
+    assert!(server.begin_body(head, &mut s).unwrap().is_some());
+}
+#[test]
+fn profile_http_install_rescan_and_invalid_upload_preserve_the_registry() {
+    use ruzina_controller_profile::Profile;
+    let blob = include_bytes!(
+        "../../../crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.v2-golden.s3bin"
+    );
+    let mut server = ruzina_web::server::WebServer::new(1, web::WEB_HOST);
+    let mut s = Session::new();
+    let request = management_request(
+        "/api/controller-profile",
+        "application/octet-stream",
+        "X-DDJ-Profile-ID: flx4\r\n",
+        blob,
+    );
+    assert!(management_exchange(&mut server, &mut s, &request).starts_with("HTTP/1.1 200"));
+    assert_eq!(s.management.registry.len(), 1);
+    let profile = Profile::parse(blob).unwrap();
+    let registry = &mut s.management.registry;
+    registry
+        .on_descriptor(profile.vid(), profile.pid(), 0, 1)
+        .unwrap();
+    let ticket = registry.begin_activation(0).unwrap();
+    let installed = s
+        .management
+        .profiles
+        .files
+        .get("/controllers/flx4/profile.s3bin")
+        .unwrap();
+    let activated = registry
+        .validate_activation_blob(ticket, installed)
+        .unwrap();
+    assert_eq!(activated.input(0), profile.input(0));
+    let button = (0..activated.input_count())
+        .filter_map(|i| activated.input(i))
+        .find(|e| e.raw_type == ruzina_controller_profile::RawType::NoteButton)
+        .unwrap();
+    let event = ruzina_controller_profile::ProfileRuntime::new()
+        .process(&activated, button.match_status, button.match_data1, 127)
+        .unwrap();
+    let event = ruzina_controller_profile::adapt_profile_event(event).unwrap();
+    registry.commit_activation(ticket).unwrap();
+    let controls = s.diagnostics().counters.control_events;
+    s.control(event);
+    assert_eq!(s.diagnostics().counters.control_events, controls + 1);
+    let before = s.management.registry;
+    let mut bad = blob.to_vec();
+    bad[32] ^= 1;
+    let request = management_request(
+        "/api/controller-profile",
+        "application/octet-stream",
+        "X-DDJ-Profile-ID: flx4\r\nX-DDJ-Profile-Overwrite: 1\r\n",
+        &bad,
+    );
+    assert!(management_exchange(&mut server, &mut s, &request).starts_with("HTTP/1.1 400"));
+    assert_eq!(s.management.registry, before);
+    assert_eq!(
+        s.management
+            .profiles
+            .files
+            .get("/controllers/flx4/profile.s3bin")
+            .unwrap(),
+        blob
+    );
+}
+#[test]
+fn management_diagnostics_are_bounded_redacted_and_explicitly_simulated() {
+    let mut server = ruzina_web::server::WebServer::new(1, web::WEB_HOST);
+    let mut s = Session::new();
+    for _ in 0..30 {
+        s.detach();
+        s.reconnect();
+    }
+    for path in [
+        "/api/resources",
+        "/api/diagnostic-log",
+        "/api/firmware",
+        "/api/controller-profiles",
+    ] {
+        let request = format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+        let reply = management_exchange(&mut server, &mut s, request.as_bytes());
+        assert!(reply.starts_with("HTTP/1.1 200"), "{reply}");
+        assert!(reply.contains("\"simulated\":true"));
+        if path == "/api/diagnostic-log" {
+            assert!(reply.contains("\"truncated\":true"));
+        }
+    }
+}
+
+#[test]
+fn http_profile_power_cut_recovers_old_or_new_valid_blob() {
+    use crate::profile_store::ready;
+    use ruzina_controller_profile_storage::ProfileScanBuffers;
+    let old = include_bytes!(
+        "../../../crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.v2-golden.s3bin"
+    );
+    let new = include_bytes!(
+        "../../../crates/ruzina-controller-profile/fixtures/hercules_djcontrol_inpulse_500.v2-golden.s3bin"
+    );
+    for budget in 0..20 {
+        let mut server = ruzina_web::server::WebServer::new(1, web::WEB_HOST);
+        let mut s = Session::new();
+        let request = management_request(
+            "/api/controller-profile",
+            "application/octet-stream",
+            "X-DDJ-Profile-ID: device\r\n",
+            old,
+        );
+        assert!(management_exchange(&mut server, &mut s, &request).starts_with("HTTP/1.1 200"));
+        s.management.profiles.mutation_budget = Some(budget);
+        let request = management_request(
+            "/api/controller-profile",
+            "application/octet-stream",
+            "X-DDJ-Profile-ID: device\r\nX-DDJ-Profile-Overwrite: 1\r\n",
+            new,
+        );
+        management_exchange(&mut server, &mut s, &request);
+        s.management.profiles.mutation_budget = None;
+        let mut buffers = Box::new(ProfileScanBuffers::new());
+        ready(buffers.recover_profile(&mut s.management.profiles, "device")).unwrap();
+        let blob = s
+            .management
+            .profiles
+            .files
+            .get("/controllers/device/profile.s3bin")
+            .unwrap();
+        assert!(
+            blob.as_slice() == old || blob.as_slice() == new,
+            "budget {budget}"
+        );
+        ruzina_controller_profile::Profile::parse(blob).unwrap();
+    }
+}
+
+#[test]
+fn http_network_write_failure_and_newer_format_preserve_durable_state() {
+    use crate::settings_store::RamFlash;
+    use ruzina_settings::{
+        owner::SettingsOwner,
+        store::{RecordKind, RecordStore},
+    };
+    let empty = || SettingsOwner::load(RamFlash::new()).unwrap().0;
+    for budget in 0..5 {
+        let mut server = ruzina_web::server::WebServer::new(1, web::WEB_HOST);
+        let mut s = Session::new();
+        let old = management_request(
+            "/api/ota/config",
+            "application/json",
+            "",
+            br#"{"ssid":"Old","password":"old-secret","url":"https://old.example"}"#,
+        );
+        assert!(management_exchange(&mut server, &mut s, &old).starts_with("HTTP/1.1 200"));
+        let mut flash = std::mem::replace(&mut s.settings, empty()).into_flash();
+        flash.mutation_budget = Some(budget);
+        s.settings = SettingsOwner::load(flash).unwrap().0;
+        let new = management_request(
+            "/api/ota/config",
+            "application/json",
+            "",
+            br#"{"ssid":"New","password":"new-secret","url":"https://new.example"}"#,
+        );
+        let reply = management_exchange(&mut server, &mut s, &new);
+        s.reload_settings();
+        let ssid = s.settings.network().ssid();
+        assert!(ssid == "Old" || ssid == "New");
+        if !reply.starts_with("HTTP/1.1 200") {
+            assert_eq!(ssid, "Old");
+        }
+    }
+    let mut store = RecordStore::new(RamFlash::new());
+    store
+        .write(RecordKind::Network, 2, b"opaque future network")
+        .unwrap();
+    let flash = store.into_flash();
+    let before = flash.bytes().to_vec();
+    let mut s = Session::new();
+    s.settings = SettingsOwner::load(flash).unwrap().0;
+    let mut server = ruzina_web::server::WebServer::new(1, web::WEB_HOST);
+    let clear = management_request(
+        "/api/ota/config",
+        "application/json",
+        "",
+        br#"{"clear":true}"#,
+    );
+    assert!(management_exchange(&mut server, &mut s, &clear).starts_with("HTTP/1.1 409"));
+    assert_eq!(s.settings.into_flash().bytes(), before);
+}
+
+#[test]
+fn idle_web_peer_does_not_stall_the_ui_tick() {
+    let mut port = web::WebPort::bind(0, 5).unwrap();
+    let _idle = std::net::TcpStream::connect((web::WEB_HOST, port.port().unwrap())).unwrap();
+    let start = std::time::Instant::now();
+    port.poll(&mut Session::new());
+    assert!(start.elapsed() < std::time::Duration::from_millis(100));
+}
+
+#[test]
+fn real_socket_management_body_and_get_work_beside_an_idle_peer() {
+    use std::io::{Read, Write};
+    let mut port = web::WebPort::bind(0, 1).unwrap();
+    let address = (web::WEB_HOST, port.port().unwrap());
+    let _idle = std::net::TcpStream::connect(address).unwrap();
+    let client = std::thread::spawn(move || {
+        let body = br#"{"ssid":"Socket","password":"socket-secret","url":"https://host.example"}"#;
+        let request = management_request("/api/ota/config", "application/json", "", body);
+        let mut stream = std::net::TcpStream::connect(address).unwrap();
+        stream.write_all(&request).unwrap();
+        let mut reply = String::new();
+        stream.read_to_string(&mut reply).unwrap();
+        assert!(reply.starts_with("HTTP/1.1 200"));
+        let mut stream = std::net::TcpStream::connect(address).unwrap();
+        stream
+            .write_all(b"GET /api/ota/config HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+            .unwrap();
+        let mut reply = String::new();
+        stream.read_to_string(&mut reply).unwrap();
+        reply
+    });
+    let mut s = Session::new();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let mut sent = 0;
+    while sent < 2 {
+        assert!(std::time::Instant::now() < deadline);
+        sent += port.poll(&mut s);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let reply = client.join().unwrap();
+    assert!(reply.contains("Socket"));
+    assert!(!reply.contains("socket-secret"));
+    assert_eq!(s.settings.network().ssid(), "Socket");
 }

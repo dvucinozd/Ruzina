@@ -32,6 +32,210 @@ const EXPECTED: Expected<'static> = Expected {
     max_image_size: MAX_IMAGE_SIZE,
 };
 
+/// HTTP composition over the same A/B device and playback models used by the
+/// sync installer tests. Trust is explicit test-only configuration.
+struct HttpOta {
+    device: Device,
+    audio: Audio,
+    push: Option<ruzina_ota::push::Push>,
+    key: [u8; 65],
+}
+impl HttpOta {
+    fn new() -> Self {
+        Self {
+            device: Device::new(),
+            audio: Audio::default(),
+            push: None,
+            key: *TEST_KEY,
+        }
+    }
+}
+impl ruzina_web::server::WebBackend for HttpOta {
+    fn upload_begin(
+        &mut self,
+        kind: ruzina_web::upload::UploadKind,
+        len: usize,
+    ) -> Result<(), ruzina_web::HttpStatus> {
+        if !matches!(kind, ruzina_web::upload::UploadKind::Ota) {
+            return Err(ruzina_web::HttpStatus::NotImplemented);
+        }
+        if self.push.is_some() {
+            return Err(ruzina_web::HttpStatus::ServiceUnavailable);
+        }
+        self.push =
+            Some(ruzina_ota::push::Push::new(len).map_err(|_| ruzina_web::HttpStatus::BadRequest)?);
+        Ok(())
+    }
+    fn upload_write(&mut self, bytes: &[u8]) -> Result<(), ruzina_web::HttpStatus> {
+        self.push
+            .as_mut()
+            .ok_or(ruzina_web::HttpStatus::Conflict)?
+            .feed(
+                bytes,
+                &EXPECTED,
+                &self.key,
+                &mut self.device,
+                &mut self.audio,
+            )
+            .map_err(push_status)
+    }
+    fn upload_finish(&mut self) -> Result<(), ruzina_web::HttpStatus> {
+        self.push
+            .take()
+            .ok_or(ruzina_web::HttpStatus::Conflict)?
+            .finish(&EXPECTED, &mut self.device, &mut self.audio)
+            .map(|_| ())
+            .map_err(push_status)
+    }
+    fn upload_cancel(&mut self) {
+        if let Some(mut push) = self.push.take() {
+            push.cancel(&mut self.device, &mut self.audio);
+        }
+    }
+    fn status(&mut self) -> ruzina_web::server::StatusParts<'_> {
+        panic!("status outside this OTA composition")
+    }
+    fn control(
+        &mut self,
+        _: &[ruzina_controller_core::ControlEvent],
+    ) -> ruzina_web::server::ControlOutcome {
+        panic!("control outside OTA composition")
+    }
+    fn seek(
+        &mut self,
+        _: ruzina_controller_core::DeckId,
+        _: u32,
+    ) -> ruzina_web::server::SeekOutcome {
+        panic!("seek outside OTA composition")
+    }
+    fn load(
+        &mut self,
+        _: ruzina_controller_core::DeckId,
+        _: u32,
+        _: u32,
+    ) -> ruzina_web::server::LoadOutcome {
+        panic!("load outside OTA composition")
+    }
+    fn duration_ms(&self, _: ruzina_controller_core::DeckId) -> Option<u32> {
+        None
+    }
+    fn library(&self) -> Option<(u32, usize)> {
+        None
+    }
+    fn library_row(&self, _: usize) -> Option<ruzina_web::json::LibraryRow<'_>> {
+        None
+    }
+}
+fn push_status(e: ruzina_ota::push::PushError) -> ruzina_web::HttpStatus {
+    use ruzina_ota::push::PushError::*;
+    use ruzina_web::HttpStatus as H;
+    match e {
+        Flash => H::InternalServerError,
+        Busy => H::ServiceUnavailable,
+        Inactive => H::Conflict,
+        _ => H::BadRequest,
+    }
+}
+fn http_head(len: usize) -> Vec<u8> {
+    format!("POST /api/ota/p4 HTTP/1.1\r\nHost: 192.168.4.1\r\nX-DDJ-Control: 1\r\nContent-Type: application/octet-stream\r\nContent-Length: {len}\r\n\r\n").into_bytes()
+}
+#[test]
+fn incremental_http_ota_installs_then_boots_pending_and_rolls_back_unconfirmed() {
+    for (blob, version) in [(NEWER, NEWER_VERSION), (OLDER, "M2.4-7-g0badc0d")] {
+        let mut backend = HttpOta::new();
+        backend.device.descriptor_version = Some(version.into());
+        let mut server = ruzina_web::server::WebServer::new(1, "192.168.4.1");
+        let lease = server
+            .begin_body(&http_head(blob.len()), &mut backend)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            server.begin_body(&http_head(blob.len()), &mut backend),
+            Err(ruzina_web::HttpStatus::ServiceUnavailable)
+        );
+        for byte in blob {
+            server.body_chunk(lease, &[*byte], &mut backend).unwrap();
+        }
+        assert_eq!(
+            backend.device.boot, 0,
+            "candidate must not publish before finish"
+        );
+        server.finish_body(lease, &mut backend).unwrap();
+        assert!(backend.audio.stopped);
+        backend.device.power_on();
+        assert_eq!(backend.device.running().1, Otadata::Pending);
+        backend.device.power_on();
+        assert_eq!(
+            backend.device.running().0,
+            0,
+            "unconfirmed reset rolls back"
+        );
+    }
+}
+#[test]
+fn incremental_http_ota_rejects_bad_trust_hash_and_project_and_cancels_partial_flash() {
+    for variant in 0..3 {
+        let mut blob = NEWER.to_vec();
+        let mut backend = HttpOta::new();
+        match variant {
+            0 => backend.key = RELEASE_PUBLIC_KEY,
+            1 => {
+                let last = blob.len() - 1;
+                blob[last] ^= 1;
+            }
+            _ => blob = OTHER_PROJECT.to_vec(),
+        }
+        let mut raw = http_head(blob.len());
+        raw.extend_from_slice(&blob);
+        let mut server = ruzina_web::server::WebServer::new(1, "192.168.4.1");
+        let mut out = [0; 512];
+        let n = server.handle(&raw, &mut backend, &mut out);
+        assert!(out[..n].starts_with(b"HTTP/1.1 400"));
+        assert_eq!(backend.device.boot, 0);
+        assert!(!backend.audio.stopped);
+        if variant != 1 {
+            assert_eq!(backend.device.flash_ops, 0, "reject before slot mutation");
+        }
+    }
+    for cut in [0, 1, 187, 211, 212, 500, NEWER.len() - 1] {
+        let mut backend = HttpOta::new();
+        let mut server = ruzina_web::server::WebServer::new(1, "192.168.4.1");
+        let lease = server
+            .begin_body(&http_head(NEWER.len()), &mut backend)
+            .unwrap()
+            .unwrap();
+        for chunk in NEWER[..cut].chunks(512) {
+            server.body_chunk(lease, chunk, &mut backend).unwrap();
+        }
+        server.cancel_body(lease, &mut backend);
+        assert!(!backend.audio.stopped);
+        assert_eq!(backend.device.boot, 0);
+        assert!(backend.device.open.is_none());
+        assert!(server.body_chunk(lease, &[0], &mut backend).is_err());
+    }
+}
+#[test]
+fn incremental_http_flash_failures_never_publish_a_bad_candidate() {
+    for budget in 0..15 {
+        let mut backend = HttpOta::new();
+        backend.device.budget = Some(budget);
+        let mut raw = http_head(NEWER.len());
+        raw.extend_from_slice(NEWER);
+        let mut server = ruzina_web::server::WebServer::new(1, "192.168.4.1");
+        let mut out = [0; 512];
+        let n = server.handle(&raw, &mut backend, &mut out);
+        if !out[..n].starts_with(b"HTTP/1.1 200") {
+            assert_eq!(backend.device.boot, 0);
+            assert!(!backend.audio.stopped);
+        }
+        backend.device.power_on();
+        assert!(matches!(
+            backend.device.running().1,
+            Otadata::Valid | Otadata::Pending
+        ));
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Otadata {
     Valid,

@@ -806,6 +806,41 @@ fn cold_mp3_seeks_use_the_frame_index_and_stay_sample_exact() {
 }
 
 #[test]
+fn background_index_failure_budget_preserves_playback_and_partial_index() {
+    use ruzina_audio_runtime::{decode::SourceDuration, index_scan::IndexScanPolicy};
+    let mut d = Driver::new(LONG_VBR_UNTAGGED, AudioCodec::Mp3);
+    let first = d.block();
+    assert!(!first.faulted);
+    d.scan(4);
+    let frames = d.storage.mp3_index().frames();
+    let mut policy = IndexScanPolicy::default();
+    let mut reads = 0;
+    for _ in 0..20 {
+        if !policy.can_attempt() {
+            continue;
+        }
+        let (offset, _) = d.stream.index_read(&mut d.storage, 512).unwrap();
+        reads += 1;
+        // Simulate zero-byte failure, then a rejected range, then zero again.
+        let accepted = if reads == 2 {
+            d.stream.provide_index(&mut d.storage, offset + 1, &[0; 4])
+        } else {
+            false
+        };
+        policy.record_result(accepted);
+    }
+    assert_eq!(reads, 3);
+    assert_eq!(d.storage.mp3_index().frames(), frames);
+    assert_eq!(d.stream.duration(&d.storage), SourceDuration::Unknown);
+    let next = d.block();
+    assert!(!next.faulted);
+    assert_eq!(
+        next.first_frame,
+        first.first_frame + first.frames().len() as u64
+    );
+}
+
+#[test]
 fn untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration() {
     use ruzina_audio_runtime::{decode::SourceDuration, mp3_index::Mp3TagKind};
     let mut d = Driver::new(LONG_VBR_UNTAGGED, AudioCodec::Mp3);

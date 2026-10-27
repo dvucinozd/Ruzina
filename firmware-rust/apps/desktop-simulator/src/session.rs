@@ -103,7 +103,8 @@ pub struct Session {
     /// Touch HOLD RESTORE (M2.5 performance tab), on the idle clock.
     restore: LongPress<usize>,
     /// RP-11 product settings committed to a RAM settings partition.
-    settings: SettingsOwner<RamFlash>,
+    pub(crate) settings: SettingsOwner<RamFlash>,
+    pub(crate) management: crate::management::Management,
 }
 
 type DemoPlaylists = PlaylistIndex<InlinePlaylistStore<8, 16>>;
@@ -176,6 +177,7 @@ impl Session {
             nudge: [TempoNudge::new(); 2],
             row_artwork: Vec::new(),
             restore: LongPress::new(),
+            management: crate::management::Management::new(),
             settings: SettingsOwner::load(RamFlash::new())
                 .expect("RAM settings partition")
                 .0,
@@ -894,6 +896,14 @@ impl Session {
     }
     pub fn library_selected(&self) -> Option<usize> {
         self.library.selected_index().map(usize::from)
+    }
+
+    pub fn visible_library_selection(&self) -> Option<usize> {
+        if self.connected() {
+            self.library_selected()
+        } else {
+            Some(self.selected)
+        }
     }
 
     pub fn library_select(&mut self, row: usize) {

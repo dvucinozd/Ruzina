@@ -3,8 +3,10 @@ mod analysis_ui;
 mod compositor;
 mod health_smoke;
 mod health_ui;
+mod management;
 mod mix_fx_smoke;
 mod mix_fx_ui;
+mod profile_store;
 mod session;
 mod settings_store;
 mod smoke;
@@ -248,11 +250,7 @@ fn library_refresh(ui: &MainWindow, session: &Session) {
     let top = session.library_level() == LibraryLevel::AllTracks;
     ui.set_library_top(top);
     ui.set_library_path(session.library_path().into());
-    ui.set_selection(if top || !session.connected() {
-        session.selected as i32
-    } else {
-        session.library_selected().map_or(-1, |i| i as i32)
-    });
+    ui.set_selection(session.visible_library_selection().map_or(-1, |i| i as i32));
 }
 
 fn bind(ui: &MainWindow, state: Rc<RefCell<Session>>) {

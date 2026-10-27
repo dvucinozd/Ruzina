@@ -830,10 +830,13 @@ dependencies = [
  "ruzina-audio-runtime",
  "ruzina-board-profile",
  "ruzina-controller-core",
+ "ruzina-controller-profile",
+ "ruzina-controller-profile-storage",
  "ruzina-core",
  "ruzina-deck",
  "ruzina-hot-cues",
  "ruzina-media-catalog",
+ "ruzina-media-fs",
  "ruzina-media-session",
  "ruzina-mixer",
  "ruzina-rekordbox",
@@ -3866,6 +3869,8 @@ name = "ruzina-ota"
 version = "0.1.0"
 dependencies = [
  "p256",
+ "ruzina-controller-core",
+ "ruzina-web",
  "sha2",
 ]
 

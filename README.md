@@ -41,15 +41,17 @@ The original `codex/native-apta-consumer` branch remains unmerged.
 
 ## Next software work
 
-1. Correct PDB title lookup and complete S3CP v2/v3/v4 tooling/runtime compatibility.
-2. Complete CUE preview, VINYL/CDJ, shared load lock and source/memory/loop cue semantics.
-3. Add playlist hierarchy, bounded artwork/PWV4 and predictable cold MP3 seeks.
-4. Complete durable settings, Web/network and signed OTA state machines, then
-   integrate and qualify physical UAC/DAC and per-board product owners.
+PDB titles, S3CP v2/v3/v4, CUE/VINYL/CDJ, load lock, playlists, artwork/PWV4
+and indexed MP3 seeking have shared implementations and host coverage.
+The simulator serves the Web Remote page and status/control/library/load APIs.
 
-These are open tasks, including behavior already present in the C M2.5 release.
-Later headphone-level, reconnect and MT/cache repairs supply additional regression
-contracts. Extra controllers and Pro DJ Link remain separate optional scope.
+HTTP profile/network configuration and diagnostics are connected to host owners;
+incremental signed OTA has HTTP/A-B composition tests with explicit synthetic
+trust. The demo simulator leaves OTA upload unavailable until a product
+trust/project/slot adapter is selected. Next: extend permitted real-media fixtures,
+then wire and qualify the per-board product runtime. The [current status matrix](docs/DEVELOPMENT_STATUS.md)
+distinguishes host, simulator, target compilation and physical evidence.
+Extra controllers and Pro DJ Link remain separate optional scope.
 
 ## Audio policy
 
@@ -114,3 +116,5 @@ After the boards arrive: identify each unit, preserve factory firmware, establis
 ROM recovery, then qualify boot, memory, display/touch, storage, USB and audio
 independently for each exact image. Host tests and builds do not establish those
 physical results.
+- [C01/C02 operator preparation and recovery gates](docs/boards/GUITION_C01_C02_READINESS.md)
+- [Per-model peripheral ownership cards](docs/boards/GUITION_PERIPHERAL_OWNERSHIP.md)

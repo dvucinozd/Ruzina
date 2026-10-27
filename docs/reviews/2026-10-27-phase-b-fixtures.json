@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "date": "2026-10-27",
+  "scope": "existing repo fixtures only; OTA bundles are synthetic and never firmware",
+  "new_captures": "none; hardware and permitted real exports remain open",
+  "fixtures": [
+    {
+      "path": "firmware-rust/crates/ruzina-controller-profile/fixtures/hercules_djcontrol_inpulse_500.v2-golden.s3bin",
+      "bytes": 5700,
+      "sha256": "4eb737e7dd6c96432878e273b1d0466c19ff07b295fc372940c42e3c0db5aa70",
+      "provenance": "firmware-rust/crates/ruzina-controller-profile/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.v2-golden.s3bin",
+      "bytes": 6236,
+      "sha256": "b9f8a786eb4659280801a5e7435f8ab945d3700640b0fdbb2ddfbaff06de82db",
+      "provenance": "firmware-rust/crates/ruzina-controller-profile/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-controller-profile/fixtures/s3cp_v3_scaled_cc.golden.s3bin",
+      "bytes": 92,
+      "sha256": "07db154a7a7bf77551a52a3d68929df268fd7d2ea0dd9e95defb13fe86634438",
+      "provenance": "firmware-rust/crates/ruzina-controller-profile/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-controller-profile/fixtures/s3cp_v4_extended.golden.s3bin",
+      "bytes": 155,
+      "sha256": "b3c88648e992cbe4a550af4d6a72f61ea86232451f7574130858636157304dae",
+      "provenance": "firmware-rust/crates/ruzina-controller-profile/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-ota/tests/fixtures/newer.ddjota",
+      "bytes": 4407,
+      "sha256": "06ee2a2b2320565dda7129bb00a8ed1d5ed64b2011a13a84a21e5083dd760798",
+      "provenance": "firmware-rust/crates/ruzina-ota/tests/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-ota/tests/fixtures/newer_high_s.ddjota",
+      "bytes": 4407,
+      "sha256": "e5b5e81b7a9e04c031c3cb51551050bb537d8d2a530ce488e59f73659fb663f6",
+      "provenance": "firmware-rust/crates/ruzina-ota/tests/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-ota/tests/fixtures/older.ddjota",
+      "bytes": 1688,
+      "sha256": "c50630d5bf31e07d6bdceee4c9adb3575b83c532cd7eb8e7cfd2952a16d87c57",
+      "provenance": "firmware-rust/crates/ruzina-ota/tests/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-ota/tests/fixtures/other_project.ddjota",
+      "bytes": 788,
+      "sha256": "2fb7fa6a3496fa0314c7eb3a39dd1a15dd475d99e73477345202c44e77a9427f",
+      "provenance": "firmware-rust/crates/ruzina-ota/tests/fixtures/README.md",
+      "new_external_data": false
+    },
+    {
+      "path": "firmware-rust/crates/ruzina-ota/tests/fixtures/test_key.sec1",
+      "bytes": 65,
+      "sha256": "b07a050a7de18ed17e03c8fd656a632dee003f1c6cf057da0006754614c18a82",
+      "provenance": "firmware-rust/crates/ruzina-ota/tests/fixtures/README.md",
+      "new_external_data": false
+    }
+  ]
+}

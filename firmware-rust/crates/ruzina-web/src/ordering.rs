@@ -46,7 +46,20 @@ impl LatestValueGate {
         }
     }
 
-    pub fn admit(&mut self, client: u32, control: ContinuousControl, sequence: u32) -> Ordering {
+    pub fn classify(&self, client: u32, control: ContinuousControl, sequence: u32) -> Ordering {
+        if self.entries.iter().flatten().any(|entry| {
+            entry.client == client && entry.control == control && !newer(sequence, entry.sequence)
+        }) {
+            Ordering::Superseded
+        } else {
+            Ordering::Apply
+        }
+    }
+
+    pub fn commit_applied(&mut self, client: u32, control: ContinuousControl, sequence: u32) {
+        if self.classify(client, control, sequence) == Ordering::Superseded {
+            return;
+        }
         self.clock = self.clock.wrapping_add(1);
         let clock = self.clock;
         if let Some(entry) = self
@@ -56,11 +69,8 @@ impl LatestValueGate {
             .find(|entry| entry.client == client && entry.control == control)
         {
             entry.used = clock;
-            if !newer(sequence, entry.sequence) {
-                return Ordering::Superseded;
-            }
             entry.sequence = sequence;
-            return Ordering::Apply;
+            return;
         }
         let slot = match self.entries.iter().position(Option::is_none) {
             Some(free) => free,
@@ -80,7 +90,15 @@ impl LatestValueGate {
             sequence,
             used: clock,
         });
-        Ordering::Apply
+    }
+
+    #[cfg(test)]
+    fn admit(&mut self, client: u32, control: ContinuousControl, sequence: u32) -> Ordering {
+        let result = self.classify(client, control, sequence);
+        if result == Ordering::Apply {
+            self.commit_applied(client, control, sequence);
+        }
+        result
     }
 }
 

@@ -184,6 +184,7 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
     };
     let mut current = PlaybackFormat::EMPTY;
     let mut streaming = false;
+    let mut seen_format_type = false;
     let mut offset = 9;
     while offset < total {
         let malformed = DescriptorError::Malformed { offset };
@@ -206,6 +207,7 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
                     out.push(&current);
                 }
                 current = PlaybackFormat::EMPTY;
+                seen_format_type = false;
                 // Alternate 0 is the zero-bandwidth setting.
                 streaming = d[5] == CLASS_AUDIO && d[6] == SUBCLASS_STREAMING && d[3] != 0;
                 current.interface = d[2];
@@ -216,10 +218,14 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
                     return Err(malformed);
                 }
                 match d[2] {
-                    AS_GENERAL if len >= 7 => {
-                        current.pcm = le16(d, 5) == FORMAT_TAG_PCM;
-                    }
-                    AS_FORMAT_TYPE if len >= 8 && d[3] == FORMAT_TYPE_I => {
+                    AS_GENERAL if len < 7 => return Err(malformed),
+                    AS_FORMAT_TYPE if len < 8 || seen_format_type => return Err(malformed),
+                    AS_FORMAT_TYPE => {
+                        seen_format_type = true;
+                        if d[3] != FORMAT_TYPE_I {
+                            offset += len;
+                            continue;
+                        }
                         current.channels = d[4];
                         current.subframe_bytes = d[5];
                         current.bits = d[6];
@@ -227,8 +233,6 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
                         if count > MAX_RATES {
                             return Err(DescriptorError::TooManyRates { offset });
                         }
-                        // Zero means a continuous range; only discrete
-                        // rates are supported.
                         if len < 8 + count * 3 {
                             return Err(malformed);
                         }
@@ -236,10 +240,17 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
                             let at = 8 + index * 3;
                             let rate = u32::from_le_bytes([d[at], d[at + 1], d[at + 2], 0]);
                             if rate != 0 {
-                                current.rates[usize::from(current.rate_count)] = rate;
+                                let slot = current
+                                    .rates
+                                    .get_mut(usize::from(current.rate_count))
+                                    .ok_or(DescriptorError::TooManyRates { offset })?;
+                                *slot = rate;
                                 current.rate_count += 1;
                             }
                         }
+                    }
+                    AS_GENERAL if len >= 7 => {
+                        current.pcm = le16(d, 5) == FORMAT_TAG_PCM;
                     }
                     _ => {}
                 }
@@ -261,7 +272,10 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
                     current.feedback = true;
                 }
             }
-            DESCRIPTOR_CS_ENDPOINT if streaming && len >= 3 => {
+            DESCRIPTOR_CS_ENDPOINT if streaming => {
+                if len < 4 {
+                    return Err(malformed);
+                }
                 current.frequency_control = d[3] & 0x01 != 0;
             }
             _ => {}
@@ -377,6 +391,32 @@ pub(crate) mod tests {
         parts.push(&[7, 5, 0x02, 0x02, 64, 0, 0]);
         parts.push(&[7, 5, 0x82, 0x02, 64, 0, 0]);
         config(&parts)
+    }
+
+    #[test]
+    fn malformed_class_descriptors_are_errors() {
+        let interface = [9, 4, 1, 1, 1, 1, 2, 0, 0];
+        for short in [&[3, 0x25, 1][..], &[3, 0x24, 1], &[3, 0x24, 2]] {
+            assert!(parse_playback_formats(&config(&[&interface, short])).is_err());
+        }
+    }
+
+    #[test]
+    fn repeated_format_type_is_rejected_without_overflow() {
+        let interface = [9, 4, 1, 1, 1, 1, 2, 0, 0];
+        let mut format = std::vec![32, 0x24, 2, 1, 4, 2, 16, 8];
+        for _ in 0..8 {
+            format.extend_from_slice(&[0x80, 0xbb, 0]);
+        }
+        assert!(parse_playback_formats(&config(&[&interface, &format, &format])).is_err());
+    }
+
+    #[test]
+    fn every_truncated_configuration_is_rejected() {
+        let bytes = controller(&[alternate(1, 1, 2, 2, 16, &[48_000], 0x09, 192, 1)]);
+        for end in 0..bytes.len() {
+            assert!(parse_playback_formats(&bytes[..end]).is_err());
+        }
     }
 
     #[test]

@@ -1,6 +1,8 @@
 # Development status and next steps
 
-Updated: 2026-10-24. This page describes the current Guition Rust development
+Updated: 2026-10-27. See the authoritative [status matrix](DEVELOPMENT_STATUS.md)
+and [review fix execution log](reviews/2026-10-27-astra-implementation-log.md).
+This page describes the current Guition Rust development
 scope; compilation, host behavior and physical acceptance remain distinct.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
@@ -8,10 +10,15 @@ records the exact branch/worktree, source pins, next batches, constraints and
 verification boundaries. RP-01..08, RP-11 and RP-15/18 are host-implemented
 (RP-07 cover display in the simulator only; RP-11 settings without a target
 flash owner); RP-12 and RP-13 have host contracts with fake transports and
-slots (no HTTP server, C6 driver, TLS or target flash adapter), and the host
+slots. The simulator has an HTTP server and Web Remote page for status,
+controls and library loads, plus profile/config uploads and diagnostic snapshots.
+OTA upload is unavailable (503) in the demo Session without an explicit trust/slot
+adapter; HTTP-to-OTA composition is covered with the synthetic A/B device model.
+There is no C6 driver, TLS or target flash adapter. The host
 parts of RP-09/10/14/16/17 exist (UAC, USB roles, MAIN change, headphone
 packing, MT regression; no USB adapter or board budgets). The remaining work
-is board qualification and adapters. This is not complete M2.5 parity.
+includes HTTP-to-owner integrations, fixture expansion, board qualification
+and adapters. This is not complete M2.5 parity.
 
 ## Implemented software
 
@@ -45,7 +52,8 @@ RP-01..20 tasks, requirement mappings and acceptance for each batch:
    import fixtures and end-to-end S3CP v2/v3/v4 compatibility, including bounded
    output initialization and the M2.5 Smart CFX/FILTER_ALWAYS channel-filter
    gate. Firmware wiring is compile-only. The upload transaction and its Web admission
-   are host-implemented; no HTTP server calls them yet.
+   are host-implemented and called by the simulator HTTP adapter over RAM
+   storage; the target SD write adapter remains open.
 2. **RP-03/04/05/15/18:** CUE hold-preview/PLAY commit and explicit VINYL/CDJ
    (RP-03 host-implemented, including the B13a tempo nudge and paused scrub), shared load
    admission (RP-04 host-implemented: default-on LOAD LOCK verdict, single-flight

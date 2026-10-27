@@ -7,18 +7,35 @@ use ruzina_settings::store::{SETTINGS_PARTITION_SIZE, SETTINGS_SECTOR_SIZE, Sett
 pub enum RamFlashError {
     OutOfBounds,
     NotErased,
+    Injected,
 }
 
 #[derive(Clone, Debug)]
 pub struct RamFlash {
     bytes: Vec<u8>,
+    pub mutation_budget: Option<usize>,
 }
 
 impl RamFlash {
     pub fn new() -> Self {
         Self {
             bytes: vec![0xff; SETTINGS_PARTITION_SIZE as usize],
+            mutation_budget: None,
         }
+    }
+
+    fn mutate(&mut self) -> Result<(), RamFlashError> {
+        if let Some(left) = &mut self.mutation_budget {
+            if *left == 0 {
+                return Err(RamFlashError::Injected);
+            }
+            *left -= 1;
+        }
+        Ok(())
+    }
+    #[cfg(test)]
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
     }
 
     fn range(&self, offset: u32, len: usize) -> Result<core::ops::Range<usize>, RamFlashError> {
@@ -41,6 +58,7 @@ impl SettingsFlash for RamFlash {
     }
 
     fn write_nor(&mut self, offset: u32, data: &[u8]) -> Result<(), RamFlashError> {
+        self.mutate()?;
         let range = self.range(offset, data.len())?;
         if self.bytes[range.clone()]
             .iter()
@@ -56,6 +74,7 @@ impl SettingsFlash for RamFlash {
     }
 
     fn erase_sector(&mut self, offset: u32) -> Result<(), RamFlashError> {
+        self.mutate()?;
         if !offset.is_multiple_of(SETTINGS_SECTOR_SIZE) {
             return Err(RamFlashError::OutOfBounds);
         }

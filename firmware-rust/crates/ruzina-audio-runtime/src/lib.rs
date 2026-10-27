@@ -4,6 +4,7 @@
 pub mod decode;
 pub mod fx;
 pub mod history;
+pub mod index_scan;
 pub mod main_change;
 pub mod mp3_index;
 pub mod nudge;

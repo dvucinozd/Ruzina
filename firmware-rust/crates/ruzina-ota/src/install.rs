@@ -202,6 +202,9 @@ pub struct RebootPermit {
 }
 
 impl RebootPermit {
+    pub(crate) fn verified(version: Version) -> Self {
+        Self { version }
+    }
     pub const CORE: u8 = 0;
     pub const DELAY_MS: u32 = 1000;
 

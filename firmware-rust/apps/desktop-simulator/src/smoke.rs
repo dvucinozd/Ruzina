@@ -1,4 +1,5 @@
 use super::*;
+use ruzina_controller_core::DeckId;
 use slint::platform::{
     Platform, WindowAdapter,
     software_renderer::{MinimalSoftwareWindow, RepaintBufferType},
@@ -23,6 +24,20 @@ pub fn run(output: &Path) -> Result<(), Box<dyn std::error::Error>> {
     bind(&ui, state.clone());
     refresh(&ui, &state.borrow());
     ui.show()?;
+    // Exercise the real refresh binding after Web changes the last loaded row.
+    {
+        let mut s = state.borrow_mut();
+        let revision = s.catalog_publication().unwrap().revision;
+        let key = s.web_catalog().unwrap().get(1).unwrap().source_track_id;
+        assert_eq!(
+            s.web_load(DeckId::One, key, revision),
+            ruzina_web::server::LoadOutcome::Loaded
+        );
+        refresh(&ui, &s);
+        assert_eq!(ui.get_selection(), s.library_selected().unwrap() as i32);
+        assert!(s.library_load(DeckId::Two));
+        assert_ne!(s.title(0), s.title(1));
+    }
     for (name, width, height) in [("jc1060", 1024, 600), ("jc8012", 800, 1280)] {
         *state.borrow_mut() = Session::for_board(if name == "jc1060" {
             BoardId::GuitionJc1060P470cIwY

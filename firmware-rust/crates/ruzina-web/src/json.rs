@@ -34,6 +34,7 @@ pub struct DeckStatus<'a> {
     /// Current tempo (track BPM with the fader pitch), whole BPM as M2.5.
     pub bpm: u32,
     pub pitch_centipercent: i16,
+    pub pitch_raw: u16,
     pub position_ms: u32,
     pub duration_ms: u32,
     pub playing: bool,
@@ -48,6 +49,7 @@ impl DeckStatus<'_> {
         artist: "",
         bpm: 0,
         pitch_centipercent: 0,
+        pitch_raw: 8192,
         position_ms: 0,
         duration_ms: 0,
         playing: false,
@@ -199,6 +201,8 @@ pub fn write_status(status: &StatusSnapshot<'_>, out: &mut [u8]) -> Result<usize
         json.unsigned(deck.bpm)?;
         json.raw(",\"pitch_percent\":")?;
         json.hundredths(deck.pitch_centipercent)?;
+        json.raw(",\"pitch_raw\":")?;
+        json.unsigned(u32::from(deck.pitch_raw))?;
         json.raw(",\"position_ms\":")?;
         json.unsigned(deck.position_ms)?;
         json.raw(",\"duration_ms\":")?;
@@ -250,6 +254,13 @@ pub fn write_status(status: &StatusSnapshot<'_>, out: &mut [u8]) -> Result<usize
 struct Writer<'a> {
     out: &'a mut [u8],
     len: usize,
+}
+
+/// Escapes one JSON string into a bounded caller-owned buffer.
+pub fn write_string(value: &str, out: &mut [u8]) -> Result<usize, Overflow> {
+    let mut writer = Writer { out, len: 0 };
+    writer.string(value)?;
+    Ok(writer.len)
 }
 
 impl Writer<'_> {
@@ -351,6 +362,7 @@ mod tests {
                     artist: "Grid Lab",
                     bpm: 113,
                     pitch_centipercent: -625,
+                    pitch_raw: 100,
                     position_ms: 1770,
                     duration_ms: 10_000,
                     playing: true,
@@ -379,11 +391,11 @@ mod tests {
                 "{\"stamp\":{\"boot\":7,\"sequence\":42,\"library_revision\":3,",
                 "\"load_generations\":[5,0]},",
                 "\"deck1\":{\"title\":\"Helpless \\\"live\\\"\\\\\\u0001\",\"artist\":\"Grid Lab\",",
-                "\"bpm\":113,\"pitch_percent\":-6.25,\"position_ms\":1770,\"duration_ms\":10000,",
+                "\"bpm\":113,\"pitch_percent\":-6.25,\"pitch_raw\":100,\"position_ms\":1770,\"duration_ms\":10000,",
                 "\"playing\":true,\"sync_enabled\":false,\"sync_master\":true,",
                 "\"state_text\":\"PLAYING\"},",
                 "\"deck2\":{\"title\":\"\",\"artist\":\"\",\"bpm\":0,\"pitch_percent\":0.00,",
-                "\"position_ms\":0,\"duration_ms\":0,\"playing\":false,\"sync_enabled\":false,",
+                "\"pitch_raw\":8192,\"position_ms\":0,\"duration_ms\":0,\"playing\":false,\"sync_enabled\":false,",
                 "\"sync_master\":false,\"state_text\":\"IDLE\"},",
                 "\"mixer\":{\"volume1\":16383,\"volume2\":0,\"crossfader\":8192,",
                 "\"master_volume\":0,\"headphone_mix\":0,\"eq1_low\":0,\"eq1_mid\":0,",
