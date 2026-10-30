@@ -10,12 +10,10 @@ use embassy_time::{Duration, Timer};
 use ruzina_audio_runtime::decode::SourceDescriptor;
 use ruzina_controller_session::DeckId;
 use ruzina_hot_cues::HotCueBank;
-use ruzina_media_catalog::CatalogLoadCandidate;
-use ruzina_media_fs::{BoundedPath, EntryKind, FileHandle};
-use ruzina_rekordbox::anlz_analysis::{
-    ANLZ_READ_BYTES, AnalysisFileKind, AnlzImporter, extended_path,
-};
-use ruzina_track_analysis::owned::AnalysisIdentity;
+use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
+use ruzina_media_fs::{BoundedPath, FileStat};
+use ruzina_media_load::{ANLZ_READ_BYTES, LoadFiles, load_source_analysis, validate_audio_source};
+use ruzina_media_session::MediaLease;
 use static_cell::StaticCell;
 
 #[cfg(feature = "wav-audio-source-bringup")]
@@ -230,13 +228,19 @@ pub(crate) async fn run_library_deck_owner() -> ! {
                 if !catalog_publication_matches(candidate.publication) {
                     failed
                 } else {
-                    let client = &mut library_load;
-                    if !validate_audio_source(client, candidate).await {
+                    let mut files = Usb0LoadFiles(&mut library_load);
+                    if !validate_audio_source(&mut files, &candidate).await {
                         failed
                     } else {
-                        let (next_buffer, source, source_cues_available, analysis) =
-                            load_source_analysis(client, candidate, buffer, request_id).await;
-                        buffer = next_buffer;
+                        let loaded =
+                            load_source_analysis(&mut files, candidate, buffer, request_id).await;
+                        buffer = loaded.buffer;
+                        let source = loaded.source;
+                        let source_cues_available = loaded.source_cues_available;
+                        let analysis = ProductAnalysisLoad {
+                            generation: request_id,
+                            publication: loaded.publication,
+                        };
 
                         if !catalog_publication_matches(candidate.publication) {
                             failed
@@ -355,167 +359,68 @@ fn release_prepared_audio_source(deck: DeckId, audio_source: Option<SourceDescri
     }
 }
 
-async fn validate_audio_source(
-    client: &mut Usb0FilesystemClient,
-    candidate: CatalogLoadCandidate,
-) -> bool {
-    if candidate.track.audio_path.is_empty() {
-        return false;
-    }
-    let Ok(path) = BoundedPath::new(candidate.track.audio_path.as_str()) else {
-        return false;
-    };
-    let lease = candidate.publication.lease;
-    let mut request = Usb0FsRequest::Stat {
-        ticket: client.issue_ticket(lease),
-        path,
-    };
-    loop {
-        match client.submit(request).await {
-            Usb0FsSubmitResult::Completed(Usb0FsCompletion::Stat { result, .. }) => {
-                return result.is_ok_and(|stat| stat.kind == EntryKind::File && stat.len != 0);
-            }
-            Usb0FsSubmitResult::QueueFull(returned) => {
-                request = returned;
-                Timer::after(Duration::from_millis(1)).await;
-            }
-            Usb0FsSubmitResult::PendingCompletion(_) | Usb0FsSubmitResult::WrongClient(_) => {
-                return false;
-            }
-            Usb0FsSubmitResult::Completed(_) | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
-                esp_hal::system::software_reset()
-            }
-        }
-    }
-}
+/// The Library load lane's USB0 filesystem client, as the shared preflight's files.
+struct Usb0LoadFiles<'a>(&'a mut Usb0FilesystemClient);
 
-async fn load_source_analysis(
-    client: &mut Usb0FilesystemClient,
-    candidate: CatalogLoadCandidate,
-    buffer: &'static mut [u8],
-    generation: u32,
-) -> (&'static mut [u8], HotCueBank, bool, ProductAnalysisLoad) {
-    let mut source = HotCueBank::empty(candidate.track.track_id).as_source();
-    let mut buffer = buffer;
-    let mut importer = AnlzImporter::new();
-    let mut publication = None;
-    if let Ok(path) = BoundedPath::new(candidate.track.analysis_path.as_str()) {
-        let (next_buffer, dat) = scan_analysis_file(
-            client,
-            candidate,
+impl LoadFiles for Usb0LoadFiles<'_> {
+    type File = Usb0FsFileHandle;
+    type Buffer = &'static mut [u8];
+
+    fn publication_current(&self, publication: CatalogPublicationId) -> bool {
+        catalog_publication_matches(publication)
+    }
+
+    async fn stat(&mut self, lease: MediaLease, path: BoundedPath) -> Option<FileStat> {
+        let mut request = Usb0FsRequest::Stat {
+            ticket: self.0.issue_ticket(lease),
             path,
-            buffer,
-            &mut importer,
-            AnalysisFileKind::Dat,
-        )
-        .await;
-        buffer = next_buffer;
-        if dat == AnalysisScanResult::Complete {
-            let mut ext_storage = [0u8; 256];
-            if let Some(path) =
-                extended_path(candidate.track.analysis_path.as_str(), &mut ext_storage)
-                    .and_then(|path| BoundedPath::new(path).ok())
-            {
-                let (next_buffer, ext) = scan_analysis_file(
-                    client,
-                    candidate,
-                    path,
-                    buffer,
-                    &mut importer,
-                    AnalysisFileKind::Ext,
-                )
-                .await;
-                buffer = next_buffer;
-                // A rejected EXT keeps the DAT analysis, as in M2.5.
-                if ext == AnalysisScanResult::Invalid {
-                    importer.discard_ext();
-                }
-            }
-            if catalog_publication_matches(candidate.publication) {
-                let identity = AnalysisIdentity {
-                    track: candidate.track.track_id,
-                    lease: candidate.publication.lease,
-                    catalog_revision: candidate.publication.revision,
-                    load_generation: generation,
-                };
-                publication = importer.finish(identity, candidate.track.bpm_x100).ok();
-            }
-        }
-    }
-    if let Some(data) = publication.as_ref() {
-        for cue in data.view().cues() {
-            match cue.end_ms {
-                Some(end) => {
-                    source.set_loop(cue.slot, cue.start_ms, end);
-                }
-                None => {
-                    source.set_single(cue.slot, cue.start_ms);
-                }
-            }
-        }
-    }
-    let available = publication.is_some();
-    (
-        buffer,
-        source.as_source(),
-        available,
-        ProductAnalysisLoad {
-            generation,
-            publication,
-        },
-    )
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum AnalysisScanResult {
-    Missing,
-    Complete,
-    Invalid,
-}
-
-async fn scan_analysis_file(
-    client: &mut Usb0FilesystemClient,
-    candidate: CatalogLoadCandidate,
-    path: BoundedPath,
-    buffer: &'static mut [u8],
-    importer: &mut AnlzImporter,
-    kind: AnalysisFileKind,
-) -> (&'static mut [u8], AnalysisScanResult) {
-    let lease = candidate.publication.lease;
-    let Some(mut file) = open_file(client, lease, path).await else {
-        return (buffer, AnalysisScanResult::Missing);
-    };
-    let mut valid = importer.begin_file(kind, file.len()).is_ok();
-    let mut buffer = buffer;
-    while valid {
-        let Some(plan) = importer.read_plan() else {
-            break;
         };
-        if !catalog_publication_matches(candidate.publication) {
-            valid = false;
-            break;
+        loop {
+            match self.0.submit(request).await {
+                Usb0FsSubmitResult::Completed(Usb0FsCompletion::Stat { result, .. }) => {
+                    return result.ok();
+                }
+                Usb0FsSubmitResult::QueueFull(returned) => {
+                    request = returned;
+                    Timer::after(Duration::from_millis(1)).await;
+                }
+                Usb0FsSubmitResult::PendingCompletion(_) | Usb0FsSubmitResult::WrongClient(_) => {
+                    return None;
+                }
+                Usb0FsSubmitResult::Completed(_)
+                | Usb0FsSubmitResult::UnexpectedCompletion { .. } => {
+                    esp_hal::system::software_reset()
+                }
+            }
         }
-        let (next_file, next_buffer, bytes) =
-            read_at(client, lease, file, buffer, u64::from(plan.offset)).await;
-        file = next_file;
-        buffer = next_buffer;
-        valid = bytes >= plan.len && importer.ingest(plan.offset, &buffer[..plan.len]).is_ok();
     }
-    valid &= importer.file_complete();
-    valid &= close_file(client, lease, file).await;
-    (
-        buffer,
-        if valid {
-            AnalysisScanResult::Complete
-        } else {
-            AnalysisScanResult::Invalid
-        },
-    )
+
+    async fn open_read(
+        &mut self,
+        lease: MediaLease,
+        path: BoundedPath,
+    ) -> Option<Usb0FsFileHandle> {
+        open_file(self.0, lease, path).await
+    }
+
+    async fn read_at(
+        &mut self,
+        lease: MediaLease,
+        file: Usb0FsFileHandle,
+        buffer: &'static mut [u8],
+        position: u64,
+    ) -> (Usb0FsFileHandle, &'static mut [u8], usize) {
+        read_at(self.0, lease, file, buffer, position).await
+    }
+
+    async fn close_file(&mut self, lease: MediaLease, file: Usb0FsFileHandle) -> bool {
+        close_file(self.0, lease, file).await
+    }
 }
 
 async fn open_file(
     client: &mut Usb0FilesystemClient,
-    lease: ruzina_media_session::MediaLease,
+    lease: MediaLease,
     path: BoundedPath,
 ) -> Option<Usb0FsFileHandle> {
     let mut request = Usb0FsRequest::OpenRead {
@@ -546,7 +451,7 @@ enum SeekOutcome {
 
 async fn read_at(
     client: &mut Usb0FilesystemClient,
-    lease: ruzina_media_session::MediaLease,
+    lease: MediaLease,
     file: Usb0FsFileHandle,
     buffer: &'static mut [u8],
     position: u64,
@@ -586,7 +491,7 @@ async fn read_at(
 
 async fn seek_file(
     client: &mut Usb0FilesystemClient,
-    lease: ruzina_media_session::MediaLease,
+    lease: MediaLease,
     file: Usb0FsFileHandle,
     position: u64,
 ) -> SeekOutcome {
@@ -622,7 +527,7 @@ async fn seek_file(
 
 async fn close_file(
     client: &mut Usb0FilesystemClient,
-    lease: ruzina_media_session::MediaLease,
+    lease: MediaLease,
     file: Usb0FsFileHandle,
 ) -> bool {
     let mut request = Usb0FsRequest::CloseFile {

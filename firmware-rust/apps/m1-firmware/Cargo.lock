@@ -1669,6 +1669,7 @@ dependencies = [
  "ruzina-media-fs",
  "ruzina-media-identity",
  "ruzina-media-io",
+ "ruzina-media-load",
  "ruzina-media-partition",
  "ruzina-media-session",
  "ruzina-media-usb-msc",
@@ -1736,6 +1737,18 @@ name = "ruzina-media-io"
 version = "0.1.0"
 dependencies = [
  "ruzina-media-block",
+]
+
+[[package]]
+name = "ruzina-media-load"
+version = "0.1.0"
+dependencies = [
+ "ruzina-hot-cues",
+ "ruzina-media-catalog",
+ "ruzina-media-fs",
+ "ruzina-media-session",
+ "ruzina-rekordbox",
+ "ruzina-track-analysis",
 ]
 
 [[package]]

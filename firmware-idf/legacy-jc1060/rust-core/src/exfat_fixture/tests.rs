@@ -14,7 +14,7 @@ const HEAP: u32 = 24 + FAT_SECTORS;
 const VOLUME: u32 = HEAP + CLUSTERS;
 const FILE_LBA: u64 = (1 + HEAP + 2) as u64;
 
-fn entries(name: &str, cluster: u32, len: u64, dir: bool) -> Vec<[u8; 32]> {
+pub(crate) fn entries(name: &str, cluster: u32, len: u64, dir: bool) -> Vec<[u8; 32]> {
     let units: Vec<u16> = name.encode_utf16().collect();
     let mut out = vec![[0u8; 32]; 2 + units.len().div_ceil(15)];
     out[0][0] = 0x85;
@@ -46,20 +46,47 @@ fn entries(name: &str, cluster: u32, len: u64, dir: bool) -> Vec<[u8; 32]> {
 }
 
 fn image() -> Vec<u8> {
-    let mut bytes = vec![0u8; (VOLUME as usize + 1) * 512];
+    let (mut bytes, heap) = formatted(CLUSTERS);
+    assert_eq!((heap, bytes.len()), (HEAP, (VOLUME as usize + 1) * 512));
+    for (lba, set) in [
+        ((1 + HEAP) as usize, entries("RUZINA_TEST", 3, 512, true)),
+        (
+            (2 + HEAP) as usize,
+            entries("Čitanje i seek 64GB.bin", 4, SIZE.into(), false),
+        ),
+    ] {
+        for (i, entry) in set.iter().enumerate() {
+            bytes[lba * 512 + i * 32..lba * 512 + (i + 1) * 32].copy_from_slice(entry);
+        }
+    }
+    for p in 0..SIZE {
+        bytes[FILE_LBA as usize * 512 + p as usize] =
+            (p * 73 + (p >> 8) * 19 + (p >> 17) * 131 + 0x5a) as u8;
+    }
+    bytes
+}
+
+/// MBR partition at LBA 1 holding an exFAT boot region for `clusters` 512-byte
+/// clusters; returns the image and its partition-relative cluster heap offset.
+/// The root directory is cluster 2 at absolute LBA `1 + heap`.
+pub(crate) fn formatted(clusters: u32) -> (Vec<u8>, u32) {
+    let fat_sectors = ((clusters + 2) * 4).div_ceil(512);
+    let heap = 24 + fat_sectors;
+    let volume = heap + clusters;
+    let mut bytes = vec![0u8; (volume as usize + 1) * 512];
     bytes[510..512].copy_from_slice(&[0x55, 0xaa]);
     bytes[450] = 0x07;
     bytes[454..458].copy_from_slice(&1u32.to_le_bytes());
-    bytes[458..462].copy_from_slice(&VOLUME.to_le_bytes());
+    bytes[458..462].copy_from_slice(&volume.to_le_bytes());
     let boot = &mut bytes[512..1024];
     boot[0..3].copy_from_slice(&[0xeb, 0x76, 0x90]);
     boot[3..11].copy_from_slice(b"EXFAT   ");
     boot[64..72].copy_from_slice(&1u64.to_le_bytes());
-    boot[72..80].copy_from_slice(&(VOLUME as u64).to_le_bytes());
+    boot[72..80].copy_from_slice(&(volume as u64).to_le_bytes());
     boot[80..84].copy_from_slice(&24u32.to_le_bytes());
-    boot[84..88].copy_from_slice(&FAT_SECTORS.to_le_bytes());
-    boot[88..92].copy_from_slice(&HEAP.to_le_bytes());
-    boot[92..96].copy_from_slice(&CLUSTERS.to_le_bytes());
+    boot[84..88].copy_from_slice(&fat_sectors.to_le_bytes());
+    boot[88..92].copy_from_slice(&heap.to_le_bytes());
+    boot[92..96].copy_from_slice(&clusters.to_le_bytes());
     boot[96..100].copy_from_slice(&2u32.to_le_bytes());
     boot[104..106].copy_from_slice(&0x100u16.to_le_bytes());
     boot[108] = 9;
@@ -81,33 +108,18 @@ fn image() -> Vec<u8> {
     for chunk in bytes[12 * 512..13 * 512].chunks_exact_mut(4) {
         chunk.copy_from_slice(&checksum.to_le_bytes());
     }
-    for (lba, set) in [
-        ((1 + HEAP) as usize, entries("RUZINA_TEST", 3, 512, true)),
-        (
-            (2 + HEAP) as usize,
-            entries("Čitanje i seek 64GB.bin", 4, SIZE.into(), false),
-        ),
-    ] {
-        for (i, entry) in set.iter().enumerate() {
-            bytes[lba * 512 + i * 32..lba * 512 + (i + 1) * 32].copy_from_slice(entry);
-        }
-    }
-    for p in 0..SIZE {
-        bytes[FILE_LBA as usize * 512 + p as usize] =
-            (p * 73 + (p >> 8) * 19 + (p >> 17) * 131 + 0x5a) as u8;
-    }
-    bytes
+    (bytes, heap)
 }
 
-struct State {
-    queue: ReadQueue<[u8; 512]>,
-    bytes: Vec<u8>,
-    paused: Option<u64>,
+pub(crate) struct State {
+    pub(crate) queue: ReadQueue<[u8; 512]>,
+    pub(crate) bytes: Vec<u8>,
+    pub(crate) paused: Option<u64>,
     active: Option<ReadRequest<[u8; 512]>>,
-    reads: usize,
+    pub(crate) reads: usize,
 }
 #[derive(Clone)]
-struct Port(Rc<RefCell<State>>);
+pub(crate) struct Port(pub(crate) Rc<RefCell<State>>);
 impl ReadPort for Port {
     type Buffer = [u8; 512];
     fn is_current(&self, binding: Binding) -> bool {
@@ -155,6 +167,10 @@ impl ReadPort for Port {
     }
 }
 fn setup() -> (Port, Binding, ReadClient<Port>) {
+    setup_with(image())
+}
+/// One card owner over a whole-card image whose MBR partition starts at LBA 1.
+pub(crate) fn setup_with(bytes: Vec<u8>) -> (Port, Binding, ReadClient<Port>) {
     let mut queue = ReadQueue::new();
     let binding = queue
         .activate(
@@ -162,20 +178,20 @@ fn setup() -> (Port, Binding, ReadClient<Port>) {
             MediaHandle::new(1).unwrap(),
             BlockGeometry {
                 block_size: 512,
-                block_count: u64::from(VOLUME) + 1,
+                block_count: (bytes.len() / 512) as u64,
             },
         )
         .unwrap();
     let port = Port(Rc::new(RefCell::new(State {
         queue,
-        bytes: image(),
+        bytes,
         paused: None,
         active: None,
         reads: 0,
     })));
     (port.clone(), binding, ReadClient::new(port, binding))
 }
-fn ready<F: Future>(future: F) -> F::Output {
+pub(crate) fn ready<F: Future>(future: F) -> F::Output {
     match Box::pin(future)
         .as_mut()
         .poll(&mut Context::from_waker(Waker::noop()))

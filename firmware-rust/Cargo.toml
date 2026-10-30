@@ -25,6 +25,7 @@ members = [
     "crates/ruzina-media-fs",
     "crates/ruzina-media-identity",
     "crates/ruzina-media-io",
+    "crates/ruzina-media-load",
     "crates/ruzina-media-partition",
     "crates/ruzina-media-session",
     "crates/ruzina-media-usb-msc",
@@ -62,6 +63,7 @@ default-members = [
     "crates/ruzina-media-fs",
     "crates/ruzina-media-identity",
     "crates/ruzina-media-io",
+    "crates/ruzina-media-load",
     "crates/ruzina-media-partition",
     "crates/ruzina-media-session",
     "crates/ruzina-rekordbox",
@@ -113,6 +115,7 @@ ruzina-media-fat32 = { path = "crates/ruzina-media-fat32" }
 ruzina-media-fs = { path = "crates/ruzina-media-fs" }
 ruzina-media-identity = { path = "crates/ruzina-media-identity" }
 ruzina-media-io = { path = "crates/ruzina-media-io" }
+ruzina-media-load = { path = "crates/ruzina-media-load" }
 ruzina-media-partition = { path = "crates/ruzina-media-partition" }
 ruzina-media-session = { path = "crates/ruzina-media-session" }
 ruzina-media-usb-msc = { path = "crates/ruzina-media-usb-msc" }

@@ -3836,6 +3836,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzina-media-load"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+ "ruzina-hot-cues",
+ "ruzina-media-catalog",
+ "ruzina-media-fs",
+ "ruzina-media-session",
+ "ruzina-rekordbox",
+ "ruzina-track-analysis",
+]
+
+[[package]]
 name = "ruzina-media-partition"
 version = "0.1.0"
 

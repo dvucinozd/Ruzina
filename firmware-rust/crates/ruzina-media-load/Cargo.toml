@@ -1,0 +1,17 @@
+[package]
+name = "ruzina-media-load"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+ruzina-hot-cues.workspace = true
+ruzina-media-catalog.workspace = true
+ruzina-media-fs.workspace = true
+ruzina-media-session.workspace = true
+ruzina-rekordbox = { path = "../ruzina-rekordbox", default-features = false, features = ["analysis"] }
+ruzina-track-analysis = { workspace = true, features = ["owned"] }
+
+[dev-dependencies]
+ruzina-core.workspace = true

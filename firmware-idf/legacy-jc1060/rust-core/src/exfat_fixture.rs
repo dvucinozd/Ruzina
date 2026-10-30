@@ -235,4 +235,4 @@ pub async fn verify<D: OwnedBlockDevice<Buffer = [u8; 512]>>(
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

@@ -18,8 +18,11 @@ only, NOT_FLASHED. This merge does not change the current board image.
 running on JC1060 v1.3. Full fixture SHA/EOF/seeks, app restarts, open-file
 removal/reinsert and owner-confirmed cold return are observed. Initial cold
 boot/reset-reason prefix was missed. Product media/load, UI/audio/USB-host/C6
-remain unwired. Next implementation: IDF product media/load owner with live
-lease checks and buffer-drain cancellation. Native minimum 302 is unchanged.
+remain unwired. The Library load preflight is now the shared
+`ruzina-media-load` crate, used by native firmware and, host-tested, by the IDF
+core over its exFAT volume ([media/load preflight](reviews/2026-10-30-legacy-s6-media-load-preflight.md)).
+Next implementation: an IDF-backed allocator for that feature, then shared PDB
+catalog import and a separate opt-in profile. Native minimum 302 is unchanged.
 
 **Next-agent instructions (review 2026-10-30):** read the
 [legacy v1.3 review and step-by-step implementation plan](reviews/2026-10-30-jc1060-legacy-review-and-instructions.md).
