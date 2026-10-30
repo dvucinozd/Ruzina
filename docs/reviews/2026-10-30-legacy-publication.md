@@ -111,3 +111,13 @@ The required gate remains actual host, native P4 and eight-profile legacy IDF
 success on the current head, including the Rust host job. Results and final
 head identity will be recorded in PR #55. No hardware access or new physical
 qualification is part of this continuation.
+
+## Merge
+
+The continuation head `00294d18cd59ba5afcd6aaa4b9dcba8465c895b2` executed all
+required jobs: Rust host foundation (run 41122323906), Rust ESP32-P4 compile
+gate (run 41122323864) and legacy IDF build (run 41122323595: the eight
+profiles plus media-bridge-host). All passed. On the owner's instruction PR #55
+was marked ready and merged with that head pinned, as merge commit
+`46728b2a3779d125b50aadae908b293adaafa25a`. The merge adds no hardware access
+or physical qualification; the board image is unchanged.
