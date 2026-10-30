@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-s06-sd-readonly-evidence.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-sd-readonly\\jc1060-idf61-s06-sd-readonly-evidence.zip",
+  "sha256": "a53297709a3a8a6675d2907130d44da4b967f2159279968b2a18c9e54e6e8822",
+  "bytes": 5368318,
+  "members": 91,
+  "status": "READONLY_EXFAT_EMPTY_ROOT_RAW_READ_REMOVAL_REINSERT_AND_POST_COLD_SMOKE_OBSERVED_FILE_READ_NOT_RUN",
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH",
+  "release": false,
+  "contains_factory_dump": false,
+  "contains_sd_card_dump": false,
+  "working_sources_uncommitted": true,
+  "app_sha256": "53cdfb5126220aa19a1eb0dddcdd7079a2776fde2de3731eab5e700b677ce546"
+}

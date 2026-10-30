@@ -1,0 +1,12 @@
+{
+  "scenario": "USB-service-reset-2",
+  "bytes": 3933,
+  "sha256": "c7a09018ae6d0806683462e36414143cbc9d4bd4d30eeaa5e2beccf2598bf8e4",
+  "events": [
+    "USB software reset from ROM/stub"
+  ],
+  "scalar": true,
+  "heartbeat": true,
+  "watchdog": false,
+  "physical_power_cycle": false
+}

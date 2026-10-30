@@ -1,0 +1,27 @@
+{
+  "scenario": "owner-removal-during-shared-rust-exfat-file-read",
+  "status": "QUIESCE_AND_TAIL_CAPTURED",
+  "app_sha256": "ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267",
+  "reset_requested": false,
+  "console_command_sent": false,
+  "bytes": 27874,
+  "sha256": "7c69933126b10963c7359557a9500d8f735f480bb3afad93f3b35afe43bd08e0",
+  "reading_events": [
+    9,
+    10,
+    11
+  ],
+  "failed_events": [
+    [
+      11,
+      1
+    ]
+  ],
+  "quiesced": true,
+  "client_stopped": true,
+  "fault_held": false,
+  "success_after_quiesce": false,
+  "heartbeats_after_quiesce": 6,
+  "panic_or_watchdog": false,
+  "physical_owner_confirmation": "AWAITING_USER_REPLY"
+}

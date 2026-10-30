@@ -1,0 +1,25 @@
+test_display_ownership (test_config.ConfigTests.test_display_ownership) ... ok
+test_file_fixture_requires_sd_owner (test_config.ConfigTests.test_file_fixture_requires_sd_owner) ... ok
+test_guards (test_config.ConfigTests.test_guards) ... ok
+test_memory_profile (test_config.ConfigTests.test_memory_profile) ... ok
+test_rust_bridge_requires_exclusive_sd_owner (test_config.ConfigTests.test_rust_bridge_requires_exclusive_sd_owner) ... ok
+test_rust_exfat_requires_bridge (test_config.ConfigTests.test_rust_exfat_requires_bridge) ... ok
+test_sd_readonly_owner (test_config.ConfigTests.test_sd_readonly_owner) ... ok
+test_history_preserves_tail_after_smaller_upgrade (test_flash_plan.FlashPlanTests.test_history_preserves_tail_after_smaller_upgrade) ... ok
+test_invalid_table (test_flash_plan.FlashPlanTests.test_invalid_table) ... ok
+test_valid_table (test_flash_plan.FlashPlanTests.test_valid_table) ... ok
+test_exact_reviewed_records (test_panel_table.PanelTableTests.test_exact_reviewed_records) ... ok
+test_fixed_fixture_and_no_overwrite (test_sd_fixture.FixtureTests.test_fixed_fixture_and_no_overwrite) ... ok
+test_host_and_device_names_and_digest_agree (test_sd_fixture.FixtureTests.test_host_and_device_names_and_digest_agree) ... ok
+test_rust_fixture_and_c_success_telemetry_agree (test_sd_fixture.FixtureTests.test_rust_fixture_and_c_success_telemetry_agree) ... ok
+test_execute_failures_close_and_finalize (test_tools.Tests.test_execute_failures_close_and_finalize) ... ok
+test_ranges (test_tools.Tests.test_ranges) ... ok
+test_rejected_input_never_opens_transport (test_tools.Tests.test_rejected_input_never_opens_transport) ... ok
+test_unit_record (test_tools.Tests.test_unit_record) ... ok
+test_wrong_hash_and_variant_under_optimization (test_tools.Tests.test_wrong_hash_and_variant_under_optimization) ... ok
+test_wrong_header (test_tools.Tests.test_wrong_header) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 12.913s
+
+OK

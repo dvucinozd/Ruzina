@@ -1,0 +1,83 @@
+restart_request=OPERATOR_CONSOLE_R
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0x1c (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff015ce
+Core1 Saved PC:0x4ff03542
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (23) boot: ESP-IDF v6.1 2nd stage bootloader
+I (23) boot: compile time Oct 30 2026 14:14:57
+I (23) boot: Multicore bootloader
+I (24) boot: chip revision: v1.3
+I (24) boot: efuse block revision: v0.3
+I (25) boot.esp32p4: SPI Speed      : 40MHz
+I (25) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (26) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (27) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (27) boot:  2 factory          factory app      00 00 00010000 00100000
+I (28) boot: End of partition table
+I (29) esp_image: segment 0: paddr=00010020 vaddr=40010020 size=07cf0h ( 31984) map
+I (36) esp_image: segment 1: paddr=00017d18 vaddr=30100000 size=000b4h (   180) load
+I (38) esp_image: segment 2: paddr=00017dd4 vaddr=4ff00000 size=08244h ( 33348) load
+I (46) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=0fb24h ( 64292) map
+I (59) esp_image: segment 4: paddr=0002fb4c vaddr=4ff08244 size=02470h (  9328) load
+I (63) esp_image: segment 5: paddr=00031fc4 vaddr=4ff0a700 size=02650h (  9808) load
+I (68) boot: Loaded app from partition at offset 0x10000
+I (69) boot: Disabling RNG early entropy source...
+I (71) cpu_start: Multicore app
+I (81) cpu_start: Pro cpu start user code
+I (81) cpu_start: cpu freq: 360000000 Hz
+I (81) app_init: Application information:
+I (82) app_init: Project name:     ruzina_legacy_probe
+I (82) app_init: App version:      0.1.0-legacy-eval
+I (82) app_init: Compile time:     Oct 30 2026 14:14:11
+I (82) app_init: ELF file SHA256:  28fe92bf1...
+I (82) app_init: ESP-IDF:          v6.1
+I (83) efuse_init: Min chip rev:     v1.0
+I (83) efuse_init: Max chip rev:     v1.99 
+I (83) efuse_init: Chip rev:         v1.3
+I (83) heap_init: Initializing. RAM available for dynamic allocation:
+I (84) heap_init: At 4FF0E5A0 len 0002CA20 (178 KiB): RETENT_RAM
+I (84) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (84) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (85) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (85) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+W (86) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (87) spi_flash: detected chip: generic
+I (87) spi_flash: flash io: dio
+I (88) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (88) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (90) sleep_clock: System sleep clock ICG setting initialization
+I (91) main_task: Started on CPU0
+I (91) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=3
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+heartbeat=1 uptime_us=1001425
+heartbeat=2 uptime_us=2001424
+heartbeat=3 uptime_us=3001424
+heartbeat=4 uptime_us=4001424
+heartbeat=5 uptime_us=5001424
+heartbeat=6 uptime_us=6001424
+heartbeat=7 uptime_us=7001424
+heartbeat=8 uptime_us=8001424
+heartbeat=9 uptime_us=9001424
+heartbeat=10 uptime_us=10001424
+heartbeat=11 uptime_us=11001424

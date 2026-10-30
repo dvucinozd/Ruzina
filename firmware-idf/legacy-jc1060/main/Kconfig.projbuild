@@ -1,0 +1,25 @@
+config RUZINA_MEMORY_TASK
+    bool "Isolated legacy memory/task experiment"
+    default n
+
+config RUZINA_DISPLAY_TOUCH
+    bool "Isolated JC1060 New_Panel display/touch diagnostic"
+    default n
+
+config RUZINA_SD_READONLY
+    bool "Isolated read-only SD/exFAT diagnostic"
+    default n
+
+config RUZINA_SD_FIXTURE
+    bool "Verify deterministic read-only file/seek fixture repeatedly"
+    depends on RUZINA_SD_READONLY
+    default n
+
+config RUZINA_SD_RUST_BRIDGE
+    bool "Isolated IDF-owned SD transport for shared Rust block client"
+    default n
+
+config RUZINA_SD_RUST_EXFAT
+    bool "Verify fixture through shared Rust partition/exFAT reader"
+    depends on RUZINA_SD_RUST_BRIDGE
+    default n

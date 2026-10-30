@@ -1,0 +1,13 @@
+   Compiling typenum v1.20.1
+   Compiling cfg-if v1.0.5
+   Compiling exfat-embedded v0.1.3
+   Compiling ruzina-media-partition v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/ruzina-media-partition)
+   Compiling ruzina-media-fs v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/ruzina-media-fs)
+   Compiling ruzina-media-exfat v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-rust/crates/ruzina-media-exfat)
+   Compiling generic-array v0.14.7
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `release` profile [optimized] target(s) in 2.91s

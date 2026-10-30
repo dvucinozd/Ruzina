@@ -1,7 +1,9 @@
 # Guition C01/C02 operator package
 
-Prepared 2026-10-27. Each model/unit needs independent observations. No board
-has been flashed or physically qualified by this preparation.
+Prepared 2026-10-27; arrival update 2026-10-30. Each model/unit needs independent
+observations. The first JC1060 reports v1.3 on COM3 and cannot run these native
+v3.2 packages. Read the [unit-specific assessment](JC1060_ARRIVAL_2026-10-30.md).
+No board has been flashed or physically qualified by this preparation.
 
 Use the [hardware matrix](GUITION_HARDWARE_MATRIX_2026-10-20.md),
 [first-boot capture procedure](GUITION_FIRST_BOOT_2026-10-20.md) and

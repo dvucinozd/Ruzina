@@ -1,0 +1,41 @@
+{
+  "scenario": "owner-manual-cold-ROM-entry",
+  "before": "no-reset",
+  "after": "no-reset",
+  "flash_write": false,
+  "efuse_write": false,
+  "chip": "ESP32-P4",
+  "revision": 103,
+  "mac": "e8:f6:0a:e7:22:1d",
+  "security": {
+    "flags": 0,
+    "flash_crypt_cnt": 0,
+    "key_purposes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      12
+    ],
+    "chip_id": 18,
+    "api_version": 2,
+    "parsed_flags": {
+      "SECURE_BOOT_EN": false,
+      "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+      "SECURE_DOWNLOAD_ENABLE": false,
+      "SECURE_BOOT_KEY_REVOKE0": false,
+      "SECURE_BOOT_KEY_REVOKE1": false,
+      "SECURE_BOOT_KEY_REVOKE2": false,
+      "SOFT_DIS_JTAG": false,
+      "HARD_DIS_JTAG": false,
+      "DIS_USB": false,
+      "DIS_DOWNLOAD_DCACHE": false,
+      "DIS_DOWNLOAD_ICACHE": false
+    }
+  },
+  "flash_rdid": "0x184068",
+  "status": "READ_ONLY_MANUAL_ROM_HANDSHAKE_OBSERVED",
+  "log_sha256": "48932dba9dd2e933899110c7bc69d103db13b224c7f35fa424eb7b87885556be"
+}

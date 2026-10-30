@@ -1,0 +1,146 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff100ca
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (11) boot: ESP-IDF v6.1 2nd stage bootloader
+I (12) boot: compile time Oct 30 2026 20:10:26
+I (12) boot: Multicore bootloader
+I (13) boot: chip revision: v1.3
+I (13) boot: efuse block revision: v0.3
+I (13) boot.esp32p4: SPI Speed      : 40MHz
+I (14) boot.esp32p4: SPI Mode       : DIO
+I (14) boot.esp32p4: SPI Flash Size : 16MB
+I (14) boot: Enabling RNG early entropy source...
+I (15) boot: Partition Table:
+I (15) boot: ## Label            Usage          Type ST Offset   Length
+I (16) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (16) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (17) boot:  2 factory          factory app      00 00 00010000 00100000
+I (18) boot: End of partition table
+I (19) esp_image: segment 0: paddr=00010020 vaddr=40020020 size=0c5f8h ( 50680) map
+I (30) esp_image: segment 1: paddr=0001c620 vaddr=30100000 size=000b4h (   180) load
+I (31) esp_image: segment 2: paddr=0001c6dc vaddr=4ff00000 size=0393ch ( 14652) load
+I (35) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=1b880h (112768) map
+I (58) esp_image: segment 4: paddr=0003b8a8 vaddr=4ff0393c size=07470h ( 29808) load
+I (66) esp_image: segment 5: paddr=00042d20 vaddr=4ff0ae00 size=02b74h ( 11124) load
+I (72) boot: Loaded app from partition at offset 0x10000
+I (73) boot: Disabling RNG early entropy source...
+I (75) cpu_start: Multicore app
+I (85) cpu_start: Pro cpu start user code
+I (85) cpu_start: cpu freq: 360000000 Hz
+I (86) app_init: Application information:
+I (86) app_init: Project name:     ruzina_legacy_probe
+I (86) app_init: App version:      0.1.0-legacy-eval
+I (86) app_init: Compile time:     Oct 30 2026 20:09:40
+I (86) app_init: ELF file SHA256:  4eb419b67...
+I (87) app_init: ESP-IDF:          v6.1
+I (87) efuse_init: Min chip rev:     v1.0
+I (87) efuse_init: Max chip rev:     v1.99 
+I (87) efuse_init: Chip rev:         v1.3
+I (88) heap_init: Initializing. RAM available for dynamic allocation:
+I (88) heap_init: At 4FF0F220 len 0002BDA0 (175 KiB): RETENT_RAM
+I (88) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (88) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (89) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (89) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+W (90) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (91) spi_flash: detected chip: generic
+I (91) spi_flash: flash io: dio
+I (92) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (93) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (94) sleep_clock: System sleep clock ICG setting initialization
+I (96) main_task: Started on CPU0
+I (96) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=11
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+I (96) SD_HOST: src_freq_hz: 160000000
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+S6_RUST_SD_BRIDGE sectors=124735488 sector_bytes=512 max_khz=10000 width=4 ldo=4 bounce_bytes=512 readonly=1
+rust_sd_bridge pass=1 event=1 value=339d5f03 stack_free=11024
+heartbeat=1 uptime_us=1001628
+rust_sd_bridge pass=2 event=1 value=339d5f03 stack_free=10752
+heartbeat=2 uptime_us=2001627
+rust_sd_bridge pass=3 event=1 value=339d5f03 stack_free=10752
+heartbeat=3 uptime_us=3001627
+rust_sd_bridge pass=4 event=1 value=339d5f03 stack_free=10752
+heartbeat=4 uptime_us=4001628
+rust_sd_bridge pass=5 event=1 value=339d5f03 stack_free=10752
+heartbeat=5 uptime_us=5001628
+rust_sd_bridge pass=6 event=1 value=339d5f03 stack_free=10752
+heartbeat=6 uptime_us=6001628
+rust_sd_bridge pass=7 event=1 value=339d5f03 stack_free=10752
+heartbeat=7 uptime_us=7001627
+rust_sd_bridge pass=8 event=1 value=339d5f03 stack_free=10752
+heartbeat=8 uptime_us=8001628
+rust_sd_bridge pass=9 event=1 value=339d5f03 stack_free=10752
+heartbeat=9 uptime_us=9001628
+rust_sd_owner reads=80 denied_commands=0 stack_free=5848
+rust_sd_bridge pass=10 event=1 value=339d5f03 stack_free=10752
+heartbeat=10 uptime_us=10001628
+rust_sd_bridge pass=11 event=1 value=339d5f03 stack_free=10656
+heartbeat=11 uptime_us=11001628
+rust_sd_bridge pass=12 event=1 value=339d5f03 stack_free=10656
+heartbeat=12 uptime_us=12001628
+rust_sd_bridge pass=13 event=1 value=339d5f03 stack_free=10656
+heartbeat=13 uptime_us=13001628
+rust_sd_bridge pass=14 event=1 value=339d5f03 stack_free=10656
+heartbeat=14 uptime_us=14001627
+rust_sd_bridge pass=15 event=1 value=339d5f03 stack_free=10656
+heartbeat=15 uptime_us=15001627
+rust_sd_bridge pass=16 event=1 value=339d5f03 stack_free=10656
+heartbeat=16 uptime_us=16001628
+rust_sd_bridge pass=17 event=1 value=339d5f03 stack_free=10656
+heartbeat=17 uptime_us=17001628
+rust_sd_bridge pass=18 event=1 value=339d5f03 stack_free=10656
+heartbeat=18 uptime_us=18001628
+rust_sd_bridge pass=19 event=1 value=339d5f03 stack_free=10656
+heartbeat=19 uptime_us=19001627
+rust_sd_owner reads=160 denied_commands=0 stack_free=5848
+rust_sd_bridge pass=20 event=1 value=339d5f03 stack_free=10656
+heartbeat=20 uptime_us=20001627
+rust_sd_bridge pass=21 event=1 value=339d5f03 stack_free=10656
+heartbeat=21 uptime_us=21001628
+rust_sd_bridge pass=22 event=1 value=339d5f03 stack_free=10656
+heartbeat=22 uptime_us=22001627
+rust_sd_bridge pass=23 event=1 value=339d5f03 stack_free=10656
+heartbeat=23 uptime_us=23001628
+rust_sd_bridge pass=24 event=1 value=339d5f03 stack_free=10656
+heartbeat=24 uptime_us=24001627
+rust_sd_bridge pass=25 event=1 value=339d5f03 stack_free=10656
+heartbeat=25 uptime_us=25001628
+rust_sd_bridge pass=26 event=1 value=339d5f03 stack_free=10656
+heartbeat=26 uptime_us=26001628
+rust_sd_bridge pass=27 event=1 value=339d5f03 stack_free=10656
+heartbeat=27 uptime_us=27001628
+rust_sd_bridge pass=28 event=1 value=339d5f03 stack_free=10656
+heartbeat=28 uptime_us=28001628
+rust_sd_bridge pass=29 event=1 value=339d5f03 stack_free=10656
+heartbeat=29 uptime_us=29001628
+rust_sd_owner reads=240 denied_commands=0 stack_free=5848
+rust_sd_bridge pass=30 event=1 value=339d5f03 stack_free=10656
+heartbeat=30 uptime_us=30001628
+rust_sd_bridge pass=31 event=1 value=339d5f03 stack_free=10656
+heartbeat=31 uptime_us=31001627
+rust_sd_bridge pass=32 event=1 value=339d5f03 stack_free=10656
+heartbeat=32 uptime_us=32001628
+rust_sd_bridge pass=33 event=1 value=339d5f03 stack_free=10656
+heartbeat=33 uptime_us=33001628
+rust_sd_bridge pass=34 event=1 value=339d5f03 stack_free=10656
+heartbeat=34 uptime_us=34001628
+rust_sd_bridge pass=35 event=1 value=339d5f03 stack_free=10656
+heartbeat=35 uptime_us=35001627

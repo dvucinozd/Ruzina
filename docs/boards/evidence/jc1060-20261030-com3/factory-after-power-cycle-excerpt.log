@@ -1,0 +1,18 @@
+ESP-ROM:esp32p4-eco2-20240710
+rst:0x17 (CHIP_USB_UART_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+I (29) boot: chip revision: v1.3
+I esp_psram: Found 32MB PSRAM device
+I esp_psram: Speed: 200MHz
+I (1769) esp_psram: SPI SRAM memory test OK
+I (1784) app_init: Project name:     esp_brookesia_demo
+I (1789) app_init: App version:      1.0.1
+I (1803) app_init: ESP-IDF:          v5.5.4-dirty
+I (1852) esp_psram: Adding pool of 26560K of PSRAM memory to heap allocator
+I (1859) esp_psram: Adding pool of 21K of PSRAM memory gap generated due to end address alignment of irom to the heap allocator
+I (1870) esp_psram: Adding pool of 39K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (1939) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (2579) GT911: I2C address initialization procedure skipped - using default GT9xx setup
+I (2586) GT911: TouchPad_ID:0x39,0x31,0x31
+I (2589) GT911: TouchPad_Config_Version:99
+I (2599) ESP32_P4_EV: Setting LCD backlight: 100%
+I (2953) ESP32_P4_EV: Setting LCD backlight: 95%

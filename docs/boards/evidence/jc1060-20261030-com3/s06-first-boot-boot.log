@@ -1,0 +1,144 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff103d6
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (11) boot: ESP-IDF v6.1 2nd stage bootloader
+I (12) boot: compile time Oct 30 2026 15:03:49
+I (12) boot: Multicore bootloader
+I (13) boot: chip revision: v1.3
+I (13) boot: efuse block revision: v0.3
+I (14) boot.esp32p4: SPI Speed      : 40MHz
+I (14) boot.esp32p4: SPI Mode       : DIO
+I (14) boot.esp32p4: SPI Flash Size : 16MB
+I (15) boot: Enabling RNG early entropy source...
+I (15) boot: Partition Table:
+I (15) boot: ## Label            Usage          Type ST Offset   Length
+I (16) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (16) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (17) boot:  2 factory          factory app      00 00 00010000 00100000
+I (18) boot: End of partition table
+I (19) esp_image: segment 0: paddr=00010020 vaddr=40020020 size=0b638h ( 46648) map
+I (29) esp_image: segment 1: paddr=0001b660 vaddr=30100000 size=000b4h (   180) load
+I (31) esp_image: segment 2: paddr=0001b71c vaddr=4ff00000 size=048fch ( 18684) load
+I (36) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=1a128h (106792) map
+I (58) esp_image: segment 4: paddr=0003a150 vaddr=4ff048fc size=08280h ( 33408) load
+I (66) esp_image: segment 5: paddr=000423d8 vaddr=4ff0cb80 size=0316ch ( 12652) load
+I (70) esp_image: segment 6: paddr=0004554c vaddr=50108080 size=00024h (    36) load
+I (75) boot: Loaded app from partition at offset 0x10000
+I (75) boot: Disabling RNG early entropy source...
+I (79) hex_psram: vendor id    : 0x0d (AP)
+I (79) hex_psram: Latency      : 0x01 (Fixed)
+I (79) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (80) hex_psram: dev id       : 0x03 (generation 4)
+I (80) hex_psram: density      : 0x07 (256 Mbit)
+I (80) hex_psram: good-die     : 0x06 (Pass)
+I (81) hex_psram: SRF          : 0x02 (Slow Refresh)
+I (81) hex_psram: BurstType    : 0x00 ( Wrap)
+I (81) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (82) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (82) hex_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (83) hex_psram: DriveStrength: 0x00 (1/1)
+I (83) MSPI Timing: Enter psram timing tuning
+I (255) esp_psram: Found 32MB PSRAM device
+I (256) esp_psram: Speed: 80MHz
+I (259) hex_psram: psram CS IO is dedicated
+I (259) cpu_start: Multicore app
+I (1527) esp_psram: SPI SRAM memory test OK
+I (1537) cpu_start: Pro cpu start user code
+I (1537) cpu_start: cpu freq: 360000000 Hz
+I (1537) app_init: Application information:
+I (1537) app_init: Project name:     ruzina_legacy_probe
+I (1538) app_init: App version:      0.1.0-legacy-eval
+I (1538) app_init: Compile time:     Oct 30 2026 15:03:05
+I (1538) app_init: ELF file SHA256:  de4ca37b7...
+I (1538) app_init: ESP-IDF:          v6.1
+I (1538) efuse_init: Min chip rev:     v1.0
+I (1539) efuse_init: Max chip rev:     v1.99 
+I (1539) efuse_init: Chip rev:         v1.3
+I (1539) heap_init: Initializing. RAM available for dynamic allocation:
+I (1540) heap_init: At 4FF11650 len 00029970 (166 KiB): RETENT_RAM
+I (1540) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (1540) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (1541) heap_init: At 501080A4 len 00007F5C (31 KiB): RTCRAM
+I (1541) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (1541) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator
+W (1542) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (1543) spi_flash: detected chip: generic
+I (1543) spi_flash: flash io: dio
+I (1544) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1545) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1547) sleep_clock: System sleep clock ICG setting initialization
+I (1548) main_task: Started on CPU0
+I (1548) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=11
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+S6_DISPLAY_INIT commands=60 lanes=2 mbps=750 pixel_mhz=52 size=1024x600 format=RGB565 framebuffer_bytes=1228800 backlight_percent=25
+S6_TOUCH_ID address=0x5d id=39313100 config_size=1024x600 mode=POLLING reset_irq=UNTOUCHED
+s6_readiness=AWAITING_OPERATOR_COLORS_CORNERS_AND_TOUCH
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+heartbeat=1 uptime_us=1342189
+heartbeat=2 uptime_us=2342189
+heartbeat=3 uptime_us=3342189
+heartbeat=4 uptime_us=4342189
+touch_health samples=0 errors=0
+heartbeat=5 uptime_us=5342189
+heartbeat=6 uptime_us=6342189
+heartbeat=7 uptime_us=7342189
+heartbeat=8 uptime_us=8342189
+heartbeat=9 uptime_us=9342189
+touch_health samples=0 errors=0
+heartbeat=10 uptime_us=10342189
+heartbeat=11 uptime_us=11342189
+heartbeat=12 uptime_us=12342189
+heartbeat=13 uptime_us=13342189
+heartbeat=14 uptime_us=14342189
+touch_health samples=0 errors=0
+heartbeat=15 uptime_us=15342189
+heartbeat=16 uptime_us=16342189
+heartbeat=17 uptime_us=17342189
+heartbeat=18 uptime_us=18342189
+heartbeat=19 uptime_us=19342189
+touch_health samples=0 errors=0
+heartbeat=20 uptime_us=20342189
+heartbeat=21 uptime_us=21342189
+heartbeat=22 uptime_us=22342189
+heartbeat=23 uptime_us=23342189
+heartbeat=24 uptime_us=24342189
+touch_health samples=0 errors=0
+heartbeat=25 uptime_us=25342189
+heartbeat=26 uptime_us=26342189
+heartbeat=27 uptime_us=27342189
+heartbeat=28 uptime_us=28342189
+heartbeat=29 uptime_us=29342189
+touch_health samples=0 errors=0
+heartbeat=30 uptime_us=30342189
+heartbeat=31 uptime_us=31342189
+heartbeat=32 uptime_us=32342189
+heartbeat=33 uptime_us=33342189
+heartbeat=34 uptime_us=34342189
+touch_health samples=0 errors=0
+heartbeat=35 uptime_us=35342189
+heartbeat=36 uptime_us=36342189
+heartbeat=37 uptime_us=37342189
+heartbeat=38 uptime_us=38342189
+heartbeat=39 uptime_us=39342189
+touch_health samples=0 errors=0
+heartbeat=40 uptime_us=40342189
+heartbeat=41 uptime_us=41342189
+heartbeat=42 uptime_us=42342189
+heartbeat=43 uptime_us=43342189

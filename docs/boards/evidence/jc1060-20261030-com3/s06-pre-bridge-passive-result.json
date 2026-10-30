@@ -1,0 +1,9 @@
+{
+  "scenario": "passive-before-bridge-upgrade",
+  "device_reset": false,
+  "bytes": 1869,
+  "sha256": "d3ab17b1e65eddb3bed7078368358e75cb938b4560481e9f3fd6d3041f534042",
+  "fixture_pass_records": 3,
+  "heartbeat": true,
+  "watchdog": false
+}

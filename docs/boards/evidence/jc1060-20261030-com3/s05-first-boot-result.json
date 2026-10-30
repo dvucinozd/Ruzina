@@ -1,0 +1,14 @@
+{
+  "scenario": "s05-first-memory-task-boot",
+  "bytes": 6475,
+  "sha256": "f3c887bf26dcb06d1f98caa898141e828b584ce1d853b59c68ed9e8e4cb00dbc",
+  "events": [
+    "USB software reset from ROM/stub"
+  ],
+  "scalar": true,
+  "heartbeat": true,
+  "s5_match": true,
+  "s5_fail": false,
+  "watchdog": false,
+  "physical_power_cycle": false
+}

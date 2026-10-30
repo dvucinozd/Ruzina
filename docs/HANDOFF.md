@@ -1,8 +1,101 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-27. Active fix branch: `fix/astra-review-phase-a`, based on
-remote main `4a8c660183910b0950ae7ddabce9e8b395a2f10d`.
-Implementation is committed at `cb70a425d691d0fd10ec097b263567fdefe70070`.
+Updated: 2026-10-30. PR #54 merged A+B to main at
+`4fe18e986e0a97d7f5eec0e68303f96481928af4`.
+Active continuation branch: `ogranak/jc1060-c01-c02` in
+`C:/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB`.
+The primary `D:/AI/M1_PCB` checkout remains on main with its unrelated
+untracked files preserved. Publication of the legacy bring-up batch is tracked
+in the [publication checkpoint](reviews/2026-10-30-legacy-publication.md).
+
+**Current unit:** the read-only shared Rust partition/exFAT diagnostic is
+running on JC1060v1.3. Full fixture SHA/EOF/seeks, app restarts, open-file
+removal/reinsert and owner-confirmed cold return are observed. Initial cold
+boot/reset-reason prefix was missed. Product media/load, UI/audio/USB-host/C6
+remain unwired. Next implementation: IDF product media/load owner with live
+lease checks and buffer-drain cancellation. Native minimum302 is unchanged.
+
+**Next-agent instructions (review 2026-10-30):** read the
+[legacy v1.3 review and step-by-step implementation plan](reviews/2026-10-30-jc1060-legacy-review-and-instructions.md).
+S0–S3 implementation is recorded in the
+[offline execution log](reviews/2026-10-30-legacy-s0-s4-execution.md): evidence
+reconciliation, fresh build/package tooling, guarded RAM loader and dedicated CI.
+The [S4 recovery/layout analysis](boards/JC1060_LEGACY_RECOVERY.md) uses only
+existing backups. Check the execution log for actual validation outcomes before
+hardware work. That S0–S3 batch did not access COM3.
+The subsequent [S4 runtime campaign](reviews/2026-10-30-legacy-s4-runtime.md)
+has programmed/readback-verified the legacy diagnostic, observed three owner
+power cycles, three app restarts, three normal USB resets and three serial
+session reopens. Use its scenario definitions/limits before continuing.
+S4 left that scalar diagnostic on the device; it is now a retained recovery baseline.
+S5 is now implemented and has first-boot, three app restarts and owner cold-boot evidence:
+[bounded PSRAM/task/FPU/EQ report](reviews/2026-10-30-legacy-s5-memory-task.md).
+S5 left its separate memory/task profile on the device; scalar S4 recovery sectors
+remain archived. The subsequent [S6 display/touch campaign](reviews/2026-10-30-legacy-s6-display-touch.md)
+ran its own New_Panel diagnostic on the device; the owner confirmed
+static stripe colors/corners and cold return, with five-zone/named-bottom
+touch samples, three app restarts and one cold startup observed. Read its
+limits before continuing. The subsequent [read-only SD campaign](reviews/2026-10-30-legacy-s6-sd-readonly.md)
+then ran its own private read-only exFAT diagnostic on the device, with display
+inactive. The inserted64GB exFAT card mounted with0 root files/1 directory;
+one removal quiesced the owner, reinsertion plus3 app restarts remounted it,
+and post-cold runtime SD reads were observed (startup prefix missed).
+The subsequent [known-file campaign](reviews/2026-10-30-legacy-s6-sd-file.md)
+now verifies the8MiB+513 nested UTF-8 fixture, SHA/EOF/10seek cases, active-file
+removal and reinsertion with3 app restarts. At that checkpoint firmware was the
+read-only file diagnostic; display was inactive. Rechecking all nine original raw timing
+records withdrew the printf-failure claim: wall_us is5123096..5131023, above IO.
+The [Rust media bridge protocol](reviews/2026-10-30-legacy-s6-rust-media-bridge.md)
+implements the owned-buffer client and queue with host cancellation/generation
+coverage. The subsequent [concrete IDF transport](reviews/2026-10-30-legacy-s6-idf-media-transport.md)
+subsequently ran a separate raw-block diagnostic on the board:35 first-boot
+passes plus3 app restarts with15 passes each match the known first-sector hash.
+Display and all filesystems were inactive in that raw-only profile. One physical
+idle-status removal quiesced the owner/client with no late success; after owner
+reinsertion,3 app restarts each returned15 matching passes. Owner-confirmed cold
+return also has an uptime drop and15 matching passes2..16; native USB missed
+the initial init/reset-reason prefix, so direct cold init remains NOT_CAPTURED.
+The raw campaign's monitor is closed. The subsequent
+[shared Rust partition/exFAT fixture profile](reviews/2026-10-30-legacy-s6-rust-exfat.md)
+now runs on the board: three first-boot full SHA/EOF/10-seek passes, then three
+app restarts each remounting and completing one full pass. It uses one Rust
+filesystem owner over the same IDF SD transport, with live lease checks around
+cached operations.27 local Rust tests include canceled mount/read drain/remount;
+76 shared-media regressions and20 tooling tests pass. The raw profile remains a
+recovery baseline. Physical open-file removal caused pass11 read timeout/error
+and owner/client quiesce with no late success; same-card reinsertion plus3 app
+restarts each verified a full file again. Owner-confirmed cold return completed
+new pass1 SHA/EOF/10 seeks with an uptime drop and15 heartbeats; initial boot/
+reset-reason prefix was missed. All monitors are closed. Current image is the
+Rust exFAT diagnostic, app SHA `ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267`.
+Next: IDF product media/load owner and catalog integration with live lease and
+buffer-drain cancellation gates. The diagnostic has not wired that product path.
+Full flash history is
+now mandatory in the upgrade planner; see that report's ancestry regression.
+USB host/audio/C6 remain inactive. S5's bounded results do not qualify these.
+
+**Arrival blocker:** the received JC1060 on COM3 reads ESP32-P4 **v1.3 (103)**
+and 16 MiB flash. The native target requires 302 and esp-hal excludes pre-v3
+silicon. Do not flash its ready kits or reduce the revision gate. The owner
+selected a separate ESP-IDF assessment and then requested a newer IDF; the
+isolated experiment now targets stable **6.1**. Read the
+[unit evidence, feasibility assessment and ordered next gates](boards/JC1060_ARRIVAL_2026-10-30.md)
+before any hardware operation. Backup/recovery state is recorded there and in
+the unit JSON; legacy diagnostic programming is observed, while native C02
+remains blocked and unrun. Both independent
+16 MiB factory backups match and have verified secondary copies. A 6.1 / Rust
+pure-RAM probe executed scalar calls twice. The owner completed a full power
+disconnect; subsequent ROM RDID and factory boot logs passed, and the owner
+confirmed the factory demo before the later diagnostic flash. S5 is completed
+as a separate bounded diagnostic; the next adapter gate is described above. Soft reset
+after RAM execution produced repeated ROM HP watchdog resets; ROM flash-attach
+also failed before the power cycle. PURE_RAM remains unsupported; do not
+transfer the later flash-backed reset results to it or repeat RAM runs without
+an operator available for cold recovery. The owner reports
+New_Panel; both vendor BSP variants contain a stale
+EK79007 log label but call JD9165, so that label is not panel identity.
+
+The reviewed A+B implementation is `cb70a425d691d0fd10ec097b263567fdefe70070`.
 See the [final review and C01/C02 preparation report](reviews/2026-10-27-publication-and-bringup.md)
 for CodeRabbit evidence, ready diagnostic kits and immutable package hashes.
 Read the [current status](DEVELOPMENT_STATUS.md),

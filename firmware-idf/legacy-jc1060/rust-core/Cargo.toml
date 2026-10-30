@@ -1,0 +1,33 @@
+[package]
+name = "ruzina-legacy-idf-core-probe"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95.0"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+ruzina-deck = { path = "../../../firmware-rust/crates/ruzina-deck" }
+ruzina-audio-dsp = { path = "../../../firmware-rust/crates/ruzina-audio-dsp", optional = true }
+ruzina-media-block = { path = "../../../firmware-rust/crates/ruzina-media-block", optional = true }
+ruzina-media-io = { path = "../../../firmware-rust/crates/ruzina-media-io", optional = true }
+ruzina-media-session = { path = "../../../firmware-rust/crates/ruzina-media-session", optional = true }
+ruzina-media-partition = { path = "../../../firmware-rust/crates/ruzina-media-partition", optional = true }
+ruzina-media-exfat = { path = "../../../firmware-rust/crates/ruzina-media-exfat", optional = true }
+ruzina-media-fs = { path = "../../../firmware-rust/crates/ruzina-media-fs", optional = true }
+sha2 = { version = "=0.10.9", default-features = false, optional = true }
+
+[features]
+memory-task = ["dep:ruzina-audio-dsp"]
+media-bridge = ["dep:ruzina-media-block", "dep:ruzina-media-io", "dep:ruzina-media-session"]
+idf-media-bridge = ["media-bridge"]
+exfat-fixture = ["media-bridge", "dep:ruzina-media-partition", "dep:ruzina-media-exfat", "dep:ruzina-media-fs", "dep:sha2"]
+idf-exfat-fixture = ["idf-media-bridge", "exfat-fixture"]
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+
+[workspace]

@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "status": "EARLIER_REPORT_INTERPRETATION_CORRECTED_NO_PRINTF_FAILURE_OBSERVED",
+  "device_access": false,
+  "raw_log_sha256": "79a17c13387ad611005eda3042724587c4ef730d59cd3a4da77f43c28755b31b",
+  "source_log": "s06-sd-file-first-boot-boot.log",
+  "complete_records": 9,
+  "records": [
+    {
+      "pass": 1,
+      "generation": 1,
+      "io_us": 2392044,
+      "worst_read_us": 3086,
+      "worst_seek_read_us": 755,
+      "wall_us": 5131023
+    },
+    {
+      "pass": 2,
+      "generation": 1,
+      "io_us": 2389959,
+      "worst_read_us": 1190,
+      "worst_seek_read_us": 755,
+      "wall_us": 5123205
+    },
+    {
+      "pass": 3,
+      "generation": 1,
+      "io_us": 2389992,
+      "worst_read_us": 1190,
+      "worst_seek_read_us": 754,
+      "wall_us": 5123190
+    },
+    {
+      "pass": 4,
+      "generation": 1,
+      "io_us": 2390131,
+      "worst_read_us": 1190,
+      "worst_seek_read_us": 755,
+      "wall_us": 5123200
+    },
+    {
+      "pass": 5,
+      "generation": 1,
+      "io_us": 2390346,
+      "worst_read_us": 1191,
+      "worst_seek_read_us": 753,
+      "wall_us": 5123200
+    },
+    {
+      "pass": 6,
+      "generation": 1,
+      "io_us": 2390205,
+      "worst_read_us": 1190,
+      "worst_seek_read_us": 753,
+      "wall_us": 5123198
+    },
+    {
+      "pass": 7,
+      "generation": 1,
+      "io_us": 2390256,
+      "worst_read_us": 1190,
+      "worst_seek_read_us": 754,
+      "wall_us": 5123301
+    },
+    {
+      "pass": 8,
+      "generation": 1,
+      "io_us": 2390355,
+      "worst_read_us": 1191,
+      "worst_seek_read_us": 754,
+      "wall_us": 5123096
+    },
+    {
+      "pass": 9,
+      "generation": 1,
+      "io_us": 2390167,
+      "worst_read_us": 1190,
+      "worst_seek_read_us": 755,
+      "wall_us": 5123194
+    }
+  ],
+  "conclusion": "Original wall_us is 5123096..5131023 microseconds, always above IO. The earlier claim of about5123us was incorrect. Withdraw that alleged printf/ABI defect; these observations do not qualify arbitrary varargs.",
+  "firmware_changed": false
+}

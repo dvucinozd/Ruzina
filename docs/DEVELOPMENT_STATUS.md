@@ -1,7 +1,74 @@
 # Current development status
 
-Updated 2026-10-27. Base remote main: `4a8c660183910b0950ae7ddabce9e8b395a2f10d`.
-Current local work: `fix/astra-review-phase-a`.
+Updated 2026-10-30. Main after PR #54: `4fe18e986e0a97d7f5eec0e68303f96481928af4`.
+Current local work: `ogranak/jc1060-c01-c02`.
+
+Current unit runs the shared Rust partition/exFAT read-only diagnostic, with
+full fixture and bounded removal/reinsert/cold-return observations. Product
+media/load integration is the next gate. Publication/review/CI is recorded in
+the [publication checkpoint](reviews/2026-10-30-legacy-publication.md); historical
+uncommitted-source fields in runtime archives describe their build-time state.
+
+Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
+fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are
+observed on the isolated IDF diagnostic. The product media adapter remains
+unwired. Rechecking all nine original raw timing records withdrew the earlier
+printf-failure claim: wall time is about5.12million microseconds and exceeds IO.
+Current file-image cold/reconnect evidence is not inherited. The
+[Rust read-only bridge protocol](reviews/2026-10-30-legacy-s6-rust-media-bridge.md)
+has19 host ownership/cancellation tests. Its [concrete IDF transport](reviews/2026-10-30-legacy-s6-idf-media-transport.md)
+adds a concurrent host FFI test and now runs on the unit as a raw-block
+diagnostic:35 first-boot passes plus3 app restarts with15 passes each match the
+known sector hash. Physical idle removal quiesced without late success;
+same-card reinsertion plus3 app restarts each added15 matching passes. An
+owner-confirmed cold return has a captured uptime drop and15 later matching
+passes; initial init/reset-reason prefix was missed. Shared Rust filesystem
+integration was the next gate in that raw-only campaign. The subsequent
+[shared Rust exFAT profile](reviews/2026-10-30-legacy-s6-rust-exfat.md) now mounts
+the physical card, opens the UTF-8 fixture and verifies full SHA/EOF/10 seeks:
+three first-boot passes plus three app restarts with one pass each. Host tests
+cover canceled filesystem mount/read with buffer drain and remount; the actual
+product load/executor path is still unwired. On this Rust exFAT image, open-file
+removal quiesced the owner/client without late success, reinsertion plus3 app
+restarts each reverified the file, and owner-confirmed cold return completed a
+new full pass (boot prefix missed). No product storage/audio qualification is
+implied; media/load owner integration is the next software gate.
+
+The latest [read-only SD/exFAT campaign](reviews/2026-10-30-legacy-s6-sd-readonly.md)
+mounted the64GB card and enumerated0 root files/1 directory; file-read testing
+was unrun on that historical mount-only image and is covered by the later
+known-file profile above. It uses a separate SD-only diagnostic, temporarily
+replacing the display profile. Lifecycle results are recorded per scenario;
+the shared product media owner is not yet connected to this driver.
+
+S6 [display/touch diagnostic](reviews/2026-10-30-legacy-s6-display-touch.md)
+has observed New_Panel initialization and GT911 config1024x600, with operator
+confirmation of the static colors/corners. Touch/boot scenario outcomes are
+unit-specific; no product UI is active, and that display profile has no SD owner.
+
+S5 [memory/task evidence](reviews/2026-10-30-legacy-s5-memory-task.md) now
+records bounded PSRAM80MHz, scratch/allocator, C/Rust FP preemption and EQ
+measurements on the separate IDF backend. It does not promote product rows
+below to hardware PASS. Native302 target requirements remain unchanged.
+
+Latest: the separate [S4 IDF diagnostic campaign](reviews/2026-10-30-legacy-s4-runtime.md)
+has written and readback-verified a scalar image, observed runtime heartbeats
+after operator power removal and passed three app restarts. Native revision302
+and all product-peripheral hardware gates remain unchanged. Refer to the S4
+report for individual USB/reset/reconnect outcomes; the RAM reset failure below
+is historical evidence of that specific mode.
+
+The received JC1060 on COM3 is **v1.3 (103), 16 MiB flash**. Native C02 is
+blocked by incompatible silicon; its minimum remains 302. The owner requested
+a separate ESP-IDF assessment, using current stable 6.1. See the
+[arrival record and implementation gates](boards/JC1060_ARRIVAL_2026-10-30.md).
+Both factory backups match with verified secondary copies. The isolated IDF
+6.1 / Rust probe executed scalar calls twice from RAM, but native USB warm reset
+then repeated ROM watchdog resets. The owner completed power disconnect;
+subsequent ROM/factory boot succeeded and the factory display is confirmed.
+Warm reset remains unqualified. No product firmware has been
+flashed. JC8012 is still unobserved. The product
+hardware rows below remain NOT RUN; read-only ROM identity is not product PASS.
 Validation outcomes for the working changes are recorded in the
 [execution log](reviews/2026-10-27-astra-implementation-log.md).
 Phase B progress and gates: [management integration log](reviews/2026-10-27-phase-b-log.md)

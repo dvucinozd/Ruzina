@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "read1": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-1.bin",
+  "read2": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-2.bin",
+  "bytes": 16777216,
+  "sha256": "27d5782978aeb3c42f8b49659e793d3ca8f59543f62e419d7b1981de2c492060",
+  "independent_reads": "Separate esptool 5.6.0 invocations",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3",
+  "secondary_sha256": "BOTH_MATCH",
+  "factory_restore": "NOT_RUN"
+}

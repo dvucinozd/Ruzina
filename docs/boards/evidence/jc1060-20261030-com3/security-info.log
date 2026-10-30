@@ -1,0 +1,29 @@
+esptool v5.3.1
+Serial port COM3:
+Note: Pre-connection option "no-reset" was selected. Connection may fail if the chip is not in bootloader or flasher stub mode.
+Connecting...
+Connected to ESP32-P4 on COM3:
+Chip type:          ESP32-P4 (revision v1.3)
+Features:           Dual Core + LP Core, 400MHz
+Crystal frequency:  40MHz
+USB mode:           USB-Serial/JTAG
+MAC:                e8:f6:0a:e7:22:1d
+
+
+Security Information:
+=====================
+Flags: 0x00000000 (0b0)
+Key Purposes: (0, 0, 0, 0, 0, 0, 12)
+  BLOCK_KEY0 - USER/EMPTY
+  BLOCK_KEY1 - USER/EMPTY
+  BLOCK_KEY2 - USER/EMPTY
+  BLOCK_KEY3 - USER/EMPTY
+  BLOCK_KEY4 - USER/EMPTY
+  BLOCK_KEY5 - USER/EMPTY
+Chip ID: 18
+API Version: 2
+Secure Boot: Disabled
+Flash Encryption: Disabled
+SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): 0x0
+
+Staying in bootloader.

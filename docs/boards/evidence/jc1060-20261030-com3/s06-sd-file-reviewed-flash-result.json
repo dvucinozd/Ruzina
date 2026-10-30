@@ -1,0 +1,27 @@
+{
+  "scenario": "s06-readonly-sd-file-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4; no display/audio/USB-host owner",
+  "prewrite_sd_mount_sector_hashes": "MATCH",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "d24fd78524f5d67b8cfc9b1e6a7b1d736cc84306fad51fe9c171fb6c2aa14aa7"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 237568,
+      "sha256": "0db439d28dac7da5c013f4b31464aef3489e100559259f00b5dd7268604a319c"
+    }
+  ],
+  "programmer_log_sha256": "da8aa41a54d53688a2db6f6243255384627f875b54a49757f4a74b3954db7ab1"
+}

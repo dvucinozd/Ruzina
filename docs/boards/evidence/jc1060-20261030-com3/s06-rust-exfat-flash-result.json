@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-shared-rust-partition-exfat-fixture-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4; no display/audio/USB-host owner",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267",
+  "plan_sha256": "e2d2565581002013b85d4bb5325874c5a17d850458d488d762add7ba41ddb3c3",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "bbbbfe29e64c434c7bf00867d6c6d08222148d99c506b8da1d401e29b3b442f3"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 245760,
+      "sha256": "c8f20104e2ec27b8f3c48418d022c231125d71def7e571321c1ee3729b1eb784"
+    }
+  ],
+  "programmer_log_sha256": "ca909c9642c86a471998c6e37c6921054d6f929560b5d0e901d3e46f46354d63"
+}

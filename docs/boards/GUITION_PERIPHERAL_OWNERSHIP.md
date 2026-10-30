@@ -6,6 +6,12 @@ Candidate pins are documentation, not authorization to drive GPIOs.
 
 ## JC1060P470C_I_W_Y
 
+Unit-specific update2026-10-30: [S6 legacy diagnostic](../reviews/2026-10-30-legacy-s6-display-touch.md)
+uses GPIO0/23 and shared I2C7/8 with New_Panel table provenance. The schematic
+does connect touch21/22; this diagnostic leaves them unconfigured and polls
+the existing GT911 address. It does not qualify reset/interrupt control or
+transfer acceptance to the native v3.2 profiles or another unit.
+
 | Resource | Intended owner / candidate | Evidence required before activation |
 |---|---|---|
 | Service/ROM transport | C01 operator, then native Serial/JTAG diagnostic owner | Exact connector, reset/ROM sequence, transport identity |

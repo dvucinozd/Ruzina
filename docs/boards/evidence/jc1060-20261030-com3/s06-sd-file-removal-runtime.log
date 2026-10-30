@@ -1,0 +1,88 @@
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=10 generation=1 bheartbeat=78 uptime_us=78001512
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=13 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391310
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=753
+sd_fixture_wall_start_us=73535561
+sd_fixture_wall_end_us=78658319
+sd_fixture_wall_us=5122758
+heartbeat=79 uptime_us=79001511
+sd_fixture_state=READING pass=14 generation=1 expected_bytes=8389121
+heartbeat=80 uptime_us=80001512
+heartbeat=81 uptime_us=81001512
+heartbeat=82 uptime_us=82001512
+heartbeat=83 uptime_us=83001512
+heartbeat=84 uptime_us=84001512
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=14 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391365
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=754
+sd_fixture_wall_start_us=79655674
+sd_fixture_wall_end_us=84778320
+sd_fixture_wall_us=5122646
+heartbeat=85 uptime_us=85001511
+sd_fixture_state=READING pass=15 generation=1 expected_bytes=8389121
+heartbeat=86 uptime_us=86001512
+heartbeat=87 uptime_us=87001512
+heartbeat=88 uptime_us=88001512
+heartbeat=89 uptime_us=89001512
+heartbeat=90 uptime_us=90001512
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=15 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391143
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=753
+sd_fixture_wall_start_us=85775673
+sd_fixture_wall_end_us=90898321
+sd_fixture_wall_us=5122648
+heartbeat=91 uptime_us=91001511
+sd_fixture_state=READING pass=16 generation=1 expected_bytes=8389121
+heartbeat=92 uptime_us=92001512
+heartbeat=93 uptime_us=93001512
+heartbeat=94 uptime_us=94001512
+heartbeat=95 uptime_us=95001512
+heartbeat=96 uptime_us=96001512
+heartbeat=97 uptime_us=97001512
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=16 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391207
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=754
+sd_fixture_wall_start_us=91895671
+sd_fixture_wall_end_us=97018323
+sd_fixture_wall_us=5122652
+sd_health generation=1 reads=33109 write_calls=1 host_denied=0 stack_free=5784
+heartbeat=98 uptime_us=98001511
+sd_fixture_state=READING pass=17 generation=1 expected_bytes=8389121
+heartbeat=99 uptime_us=99001512
+heartbeat=100 uptime_us=100001512
+heartbeat=101 uptime_us=101001512
+heartbeat=102 uptime_us=102001512
+heartbeat=103 uptime_us=103001512
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=17 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391488
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=754
+sd_fixture_wall_start_us=98015672
+sd_fixture_wall_end_us=103138318
+sd_fixture_wall_us=5122646
+heartbeat=104 uptime_us=104001511
+sd_fixture_state=READING pass=18 generation=1 expected_bytes=8389121
+heartbeat=105 uptime_us=105001512
+heartbeat=106 uptime_us=106001512
+heartbeat=107 uptime_us=107001512
+heartbeat=108 uptime_us=108001512
+heartbeat=109 uptime_us=109001512
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=18 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391384
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=753
+sd_fixture_wall_start_us=104135668
+sd_fixture_wall_end_us=109258321
+sd_fixture_wall_us=5122653
+heartbeat=110 uptime_us=110001511
+sd_fixture_state=READING pass=19 generation=1 expected_bytes=8389121
+heartbeat=111 uptime_us=111001512
+heartbeat=112 uptime_us=112001511
+E (112328) sdmmc_req: sdmmc_host_do_transaction(24): failed to do SD transaction
+E (112328) sdmmc_cmd: sdmmc_read_sectors_dma: sdmmc_send_cmd returned 0xffffffff, failed to get status (0x107)
+sd_fixture=FAILED pass=19 offset=1617920 fresult=1 close_result=0 generation=1
+sd_state=QUIESCED error=ESP_FAIL generation=2 reads=37646 write_boundary_rejections=1 host_denied=0 reinsert=RESTART_REQUIRED

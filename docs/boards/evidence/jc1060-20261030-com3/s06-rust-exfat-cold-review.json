@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "status": "OWNER_CONFIRMED_COLD_RETURN_UPTIME_RESET_AND_FULL_RUST_FILE_PASS; INIT_RESET_REASON_PREFIX_NOT_CAPTURED",
+  "operator_confirmed_power_cycle": true,
+  "operator_confirmation": "2026-10-30 owner confirms sole USB disconnected5-10s/reconnected without BOOT/RESET; SD remains inserted",
+  "raw_result": "s06-rust-exfat-cold-result.json",
+  "raw_log_sha256": "512977006015da0e665202bb37165a8625409daa2e6009ca73ce7d33625d9924",
+  "last_pre_cycle_heartbeat": [
+    61,
+    61001534
+  ],
+  "first_post_cycle_heartbeat": [
+    1,
+    1000894
+  ],
+  "post_cycle_complete_file_passes": 1,
+  "post_cycle_pass_numbers": [
+    1
+  ],
+  "fixture_bytes": 8389121,
+  "fixture_sha256": "1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de",
+  "eof_and_10_seek_cases": "MATCH",
+  "post_cycle_heartbeats": 15,
+  "min_client_stack_free": 15232,
+  "init_prefix_captured": false,
+  "reset_reason_captured": false,
+  "rom_prefix_captured": false,
+  "physical_transition": "OWNER_REPORT_PLUS_USB_DISCONNECT_REOPEN_AND_UPTIME_DROP; NO_SOFTWARE_RESET_SENT",
+  "firmware_changed": false,
+  "sd_write": false
+}

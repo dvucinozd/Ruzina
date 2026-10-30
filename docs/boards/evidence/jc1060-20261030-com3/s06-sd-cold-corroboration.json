@@ -1,0 +1,19 @@
+{
+  "scenario": "owner-confirmed-USB-only-power-disconnect-reconnect",
+  "uptime_drops": 1,
+  "post_restart_heartbeats": 44,
+  "post_restart_sd_health_lines": [
+    "sd_health generation=1 reads=12 write_calls=1 host_denied=0 stack_free=6296",
+    "sd_health generation=1 reads=17 write_calls=1 host_denied=0 stack_free=6296",
+    "sd_health generation=1 reads=22 write_calls=1 host_denied=0 stack_free=6296",
+    "sd_health generation=1 reads=27 write_calls=1 host_denied=0 stack_free=6296",
+    "sd_health generation=1 reads=32 write_calls=1 host_denied=0 stack_free=6296",
+    "sd_health generation=1 reads=37 write_calls=1 host_denied=0 stack_free=6296",
+    "sd_health generation=1 reads=42 write_calls=1 host_denied=0 stack_free=6296",
+    "sd_health generation=1 reads=47 write_calls=1 host_denied=0 stack_free=6296"
+  ],
+  "initial_mount_marker_captured": false,
+  "raw_poweron_reason_captured": false,
+  "watchdog": false,
+  "status": "POST_COLD_RUNTIME_SD_READS_CORROBORATED_EARLY_BOOT_NOT_CAPTURED"
+}

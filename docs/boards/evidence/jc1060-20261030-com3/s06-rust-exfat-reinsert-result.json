@@ -1,0 +1,73 @@
+{
+  "scenario": "s06-rust-exfat-reinsert",
+  "mode": "restart",
+  "app_sha256": "ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267",
+  "runs": [
+    {
+      "run": 1,
+      "bytes": 16805,
+      "sha256": "a07ac2cbe84fb3727d0db8e6441f2dd1a7618114eb52b953d84c5baa2ed8d685",
+      "elapsed_s": 15.838,
+      "initialized": true,
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "complete_file_passes": 1,
+      "pass_numbers": [
+        1
+      ],
+      "errors": [],
+      "min_client_stack_free": 15248,
+      "scalar": true,
+      "heartbeats": 15,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    },
+    {
+      "run": 2,
+      "bytes": 16770,
+      "sha256": "25c07d657b0c01fb03e17394bbde731cc5bf86f3b87bfaa5958f6d33f4b878a5",
+      "elapsed_s": 15.684,
+      "initialized": true,
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "complete_file_passes": 1,
+      "pass_numbers": [
+        1
+      ],
+      "errors": [],
+      "min_client_stack_free": 15248,
+      "scalar": true,
+      "heartbeats": 15,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    },
+    {
+      "run": 3,
+      "bytes": 16770,
+      "sha256": "4de010a06f4d1e85d804693ba7fb3e1b531846d0c3c298e4e540dd723460072d",
+      "elapsed_s": 15.761,
+      "initialized": true,
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "complete_file_passes": 1,
+      "pass_numbers": [
+        1
+      ],
+      "errors": [],
+      "min_client_stack_free": 15248,
+      "scalar": true,
+      "heartbeats": 15,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-s06-display-touch-evidence.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-display-touch\\jc1060-idf61-s06-display-touch-evidence.zip",
+  "sha256": "07d792d97932403ce4d3b8b87f35b6fbe861e3815e9a3de07360d7721baa0e0c",
+  "bytes": 5248609,
+  "members": 91,
+  "status": "STATIC_DISPLAY_OPERATOR_ACCEPTED_POLLING_TOUCH_SMOKE_RESET_AND_COLD_OBSERVED_NOT_PRODUCT_QUALIFIED",
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH",
+  "release": false,
+  "contains_factory_dump": false,
+  "working_sources_uncommitted": true,
+  "app_sha256": "2d6686e2b3a95b6a91b27d0c069d6b270c040e5d1c485b15d6b9e355caa22f7d"
+}

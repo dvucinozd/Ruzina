@@ -1,0 +1,68 @@
+rust_sd_owner reads=960 denied_commands=0 stack_free=5848
+rust_sd_bridge pass=120 event=1 value=339d5f03 stack_free=10656
+heartbeat=121 uptime_us=121001539
+rust_sd_bridge pass=121 event=1 value=339d5f03 stack_free=10656
+heartbeat=122 uptime_us=122001539
+rust_sd_bridge pass=122 event=1 value=339d5f03 stack_free=10656
+heartbeat=123 uptime_us=123001539
+rust_sd_bridge pass=123 event=1 value=339d5f03 stack_free=10656
+heartbeat=124 uptime_us=124001539
+rust_sd_bridge pass=124 event=1 value=339d5f03 stack_free=10656
+heartbeat=125 uptime_us=125001539
+rust_sd_bridge pass=125 event=1 value=339d5f03 stack_free=10656
+heartbeat=126 uptime_us=126001539
+rust_sd_bridge pass=126 event=1 value=339d5f03 stack_free=10656
+heartbeat=127 uptime_us=127001539
+rust_sd_bridge pass=127 event=1 value=339d5f03 stack_free=10656
+heartbeat=128 uptime_us=128001539
+rust_sd_bridge pass=128 event=1 value=339d5f03 stack_free=10656
+heartbeat=129 uptime_us=129001539
+rust_sd_bridge pass=129 event=1 value=339d5f03 stack_free=10656
+heartbeat=130 uptime_us=130001539
+rust_sd_owner reads=1040 denied_commands=0 stack_free=5848
+rust_sd_bridge pass=130 event=1 value=339d5f03 stack_free=10656
+heartbeat=131 uptime_us=131001539
+rust_sd_bridge pass=131 event=1 value=339d5f03 stack_free=10656
+heartbeat=132 uptime_us=132001539
+rust_sd_bridge pass=132 event=1 value=339d5f03 stack_free=10656
+heartbeat=133 uptime_us=133001539
+rust_sd_bridge pass=133 event=1 value=339d5f03 stack_free=10656
+heartbeat=134 uptime_us=134001539
+rust_sd_bridge pass=134 event=1 value=339d5f03 stack_free=10656
+heartbeat=135 uptime_us=135001539
+rust_sd_bridge pass=135 event=1 value=339d5f03 stack_free=10656
+heartbeat=136 uptime_us=136001539
+rust_sd_bridge pass=136 event=1 value=339d5f03 stack_free=10656
+heartbeat=137 uptime_us=137001539
+rust_sd_bridge pass=137 event=1 value=339d5f03 stack_free=10656
+heartbeat=138 uptime_us=138001539
+rust_sd_bridge pass=138 event=1 value=339d5f03 stack_free=10656
+heartbeat=139 uptime_us=139001539
+rust_sd_bridge pass=139 event=1 value=339d5f03 stack_free=10656
+heartbeat=140 uptime_us=140001539
+rust_sd_owner reads=1120 denied_commands=0 stack_free=5848
+rust_sd_bridge pass=140 event=1 value=339d5f03 stack_free=10656
+heartbeat=141 uptime_us=141001539
+rust_sd_bridge pass=141 event=1 value=339d5f03 stack_free=10656
+heartbeat=142 uptime_us=142001539
+rust_sd_bridge pass=142 event=1 value=339d5f03 stack_free=10656
+heartbeat=143 uptime_us=143001539
+rust_sd_bridge pass=143 event=1 value=339d5f03 stack_free=10656
+heartbeat=144 uptime_us=144001539
+rust_sd_bridge pass=144 event=1 value=339d5f03 stack_free=10656
+heartbeat=145 uptime_us=145001539
+rust_sd_bridge pass=145 event=1 value=339d5f03 stack_free=10656
+heartbeat=146 uptime_us=146001539
+rust_sd_bridge pass=146 event=1 value=339d5f03 stack_free=10656
+heartbeat=147 uptime_us=147001539
+rust_sd_bridge pass=147 event=1 value=339d5f03 stack_free=10656
+heartbeat=148 uptime_us=148001539
+rust_sd_owner=QUIESCED error=ESP_ERR_TIMEOUT reads=1176 denied_commands=0 reinsert=APP_RESTART_REQUIRED
+rust_sd_bridge pass=148 event=2 value=00000000 stack_free=10656
+rust_sd_client=STOPPED result=-2 pending_drain=OWNER
+heartbeat=149 uptime_us=149001539
+heartbeat=150 uptime_us=150001539
+heartbeat=151 uptime_us=151001539
+heartbeat=152 uptime_us=152001539
+heartbeat=153 uptime_us=153001539
+heartbeat=154 uptime_us=154001539

@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "owner_report": "New_Panel; physical panel not identified",
+  "sources": [
+    {
+      "variant": "New",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_New_Panel\\common_components\\espressif__esp32_p4_function_ev_board\\esp32_p4_function_ev_board.c",
+      "sha256": "ff56c06c05a6dea121d2a393566f8cd6c961cfb14a997fe753421903fed7bcb4"
+    },
+    {
+      "variant": "New",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_New_Panel\\common_components\\espressif__esp32_p4_function_ev_board\\include\\bsp\\esp32_p4_function_ev_board.h",
+      "sha256": "fceef360cd6765088a03e28b45b33a76dd20b58d83bbe9c46f36fe186c3cea9e"
+    },
+    {
+      "variant": "New",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_New_Panel\\common_components\\espressif__esp32_p4_function_ev_board\\include\\bsp\\display.h",
+      "sha256": "93c316abb090f56c4d178b60377d1c28749b1aaa24bc6018dda34f105fed33ca"
+    },
+    {
+      "variant": "New",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_New_Panel\\common_components\\espressif__esp32_p4_function_ev_board\\idf_component.yml",
+      "sha256": "2d5a018c62e473681b3e4e6c51bd2409cb03561606976d6707fdb4961bc64a07"
+    },
+    {
+      "variant": "New",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_New_Panel\\common_components\\espressif__esp32_p4_function_ev_board\\LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "variant": "Old",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_Old_Panel\\common_components\\esp32_p4_function_ev_board\\esp32_p4_function_ev_board.c",
+      "sha256": "402b5c6f66eddde8d8932c3cc0efa78e05b5a8bfb13284febff22910b19a76d9"
+    },
+    {
+      "variant": "Old",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_Old_Panel\\common_components\\esp32_p4_function_ev_board\\include\\bsp\\esp32_p4_function_ev_board.h",
+      "sha256": "fceef360cd6765088a03e28b45b33a76dd20b58d83bbe9c46f36fe186c3cea9e"
+    },
+    {
+      "variant": "Old",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_Old_Panel\\common_components\\esp32_p4_function_ev_board\\include\\bsp\\display.h",
+      "sha256": "e25c525590547c809eb76d614dc8a00fcd1656cfd032fd3c82462779ffb839cd"
+    },
+    {
+      "variant": "Old",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_Old_Panel\\common_components\\esp32_p4_function_ev_board\\idf_component.yml",
+      "sha256": "3200dacde7080155b7a55617b6e475579c14290a2e48340ad020c88eacedfe4b"
+    },
+    {
+      "variant": "Old",
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\1-Demo\\Demo_IDF\\ESP-IDF_5.5.4\\JC1060P470C_I_W_Y_Old_Panel\\common_components\\esp32_p4_function_ev_board\\LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ],
+  "panel_table_comparison": [
+    {
+      "variant": "New",
+      "jd9165_init_table_sha256": "47ce90460389a39d9adfa9050f9ceab36efaf8b87ba82c4fb20a08f71118d6ec",
+      "constructor": "esp_lcd_new_panel_jd9165",
+      "misleading_log_label": "Install EK79007 LCD control panel"
+    },
+    {
+      "variant": "Old",
+      "jd9165_init_table_sha256": "a12f5bc93c609779e815bea72136c82b93e7f187bb4bc5fec7d53d2581a7fd10",
+      "constructor": "esp_lcd_new_panel_jd9165",
+      "misleading_log_label": "Install EK79007 LCD control panel"
+    }
+  ],
+  "table_bytes_equal": false
+}

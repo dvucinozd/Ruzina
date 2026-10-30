@@ -1,0 +1,54 @@
+I (1546) esp_psram: SPI SRAM memory test OK
+I (1555) cpu_start: Pro cpu start user code
+I (1555) cpu_start: cpu freq: 360000000 Hz
+I (1555) app_init: Application information:
+I (1556) app_init: Project name:     ruzina_legacy_probe
+I (1556) app_init: App version:      0.1.0-legacy-eval
+I (1556) app_init: Compile time:     Oct 30 2026 14:37:17
+I (1556) app_init: ELF file SHA256:  f15c592ba...
+I (1556) app_init: ESP-IDF:          v6.1
+I (1557) efuse_init: Min chip rev:     v1.0
+I (1557) efuse_init: Max chip rev:     v1.99 
+I (1557) efuse_init: Chip rev:         v1.3
+I (1557) heap_init: Initializing. RAM available for dynamic allocation:
+I (1558) heap_init: At 4FF107B0 len 0002A810 (170 KiB): RETENT_RAM
+I (1558) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (1558) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (1559) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (1559) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (1559) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator
+W (1561) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (1561) spi_flash: detected chip: generic
+I (1561) spi_flash: flash io: dio
+I (1562) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1563) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1565) sleep_clock: System sleep clock ICG setting initialization
+I (1566) main_task: Started on CPU0
+I (1567) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=1
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+S5_MEMORY_TASK_V1 psram_bytes=33554432 speed_mhz=80 cpu_mhz=360
+heap_internal_free=604096 heap_external_free=33551868
+scratch_bytes=65536 pattern_passes=4 mismatches=0 canaries=MATCH allocation_failure=EXPECTED_NULL
+fpu_mode=same-core worker=0 core=0 mismatches=0 live_other=31 stack_free_bytes=3620
+fpu_mode=same-core worker=1 core=0 mismatches=0 live_other=11 stack_free_bytes=3624
+fpu_mode=dual worker=0 core=0 mismatches=0 live_other=30 stack_free_bytes=3760
+fpu_mode=dual worker=1 core=1 mismatches=0 live_other=30 stack_free_bytes=3764
+eq_frames=256 rate_hz=44100 blocks=64 deadline_us=5804 worst_us=353 checksum=2527781824 buffer_rejections=MATCH
+heap_internal_min=595584 heap_external_min=33484280 main_stack_free_bytes=7912
+s5_result=BOUNDED_MEMORY_FPU_EQ_SMOKE_MATCH
+readiness=NOT_QUALIFIED
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+heartbeat=1 uptime_us=5470528
+heartbeat=2 uptime_us=6470528
+heartbeat=3 uptime_us=7470528
+heartbeat=4 uptime_us=8470528

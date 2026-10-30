@@ -1,0 +1,37 @@
+I (2237) boot: ESP-IDF v6.1 2nd stage bootloader
+I (2237) boot: compile time Oct 30 2026 13:26:26
+I (2238) boot: Multicore bootloader
+I (2238) boot: Enabling RNG early entropy source...
+I (2240) cpu_start: Multicore app
+I (2249) cpu_start: Pro cpu start user code
+I (2249) cpu_start: cpu freq: 360000000 Hz
+I (2249) app_init: Application information:
+I (2249) app_init: Project name:     ruzina_legacy_probe
+I (2250) app_init: App version:      0.1.0-legacy-eval
+I (2250) app_init: Compile time:     Oct 30 2026 13:26:26
+I (2250) app_init: ELF file SHA256:  000000000...
+I (2250) app_init: ESP-IDF:          v6.1
+I (2250) efuse_init: Min chip rev:     v1.0
+I (2251) efuse_init: Max chip rev:     v1.99 
+I (2251) efuse_init: Chip rev:         v1.3
+I (2251) heap_init: Initializing. RAM available for dynamic allocation:
+I (2251) heap_init: At 4FF1D1C0 len 0001DE00 (119 KiB): RETENT_RAM
+I (2252) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (2252) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (2252) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (2252) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (2253) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (2253) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (2254) sleep_clock: System sleep clock ICG setting initialization
+I (2255) main_task: Started on CPU0
+I (2255) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+execution=PURE_RAM
+flash_bytes=NOT_MEASURED
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED

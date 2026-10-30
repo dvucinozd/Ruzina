@@ -1,0 +1,15 @@
+{
+  "scenario": "physical-sd-removal-idf-rust-raw-block-bridge",
+  "status": "QUIESCE_AND_TAIL_CAPTURED",
+  "app_sha256": "5a58ab6db4f5ca1f781d9d46b18614be2e9d9d45f3177c934bcd97696b5e67d1",
+  "reset_requested": false,
+  "bytes": 3413,
+  "sha256": "83f447dad6cbb5894b0f19145560174f3c920134bacf70bf65304b10b8ad04bc",
+  "quiesced": true,
+  "client_stopped": true,
+  "fault_held": false,
+  "success_after_quiesce": false,
+  "heartbeats_after_quiesce": 6,
+  "panic_or_watchdog": false,
+  "physical_owner_confirmation": "AWAITING_USER_REPLY"
+}

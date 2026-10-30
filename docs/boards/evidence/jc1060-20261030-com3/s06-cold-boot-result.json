@@ -1,0 +1,16 @@
+{
+  "scenario": "owner-power-cycle-requested-no-BOOT",
+  "bytes": 3265,
+  "sha256": "2d7187cee83daadbd14f1f4bd40334533e487b807a08e365a67af917387bdc26",
+  "events": [
+    "COM3 opened without DTR/RTS reset",
+    "COM3 opened without DTR/RTS reset"
+  ],
+  "scalar": true,
+  "display_init": true,
+  "touch_id": true,
+  "init_failed": false,
+  "heartbeat_count": 26,
+  "watchdog": false,
+  "early_prefix_may_be_missing": true
+}

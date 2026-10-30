@@ -1,0 +1,8 @@
+{
+  "status": "CAPTURE_HARNESS_BOUNDARY_ERROR_NOT_DEVICE_FAILURE",
+  "raw_log_sha256": "099059f35732438e62df093029f3a28163807e8f8697c46d9397e7229e923b98",
+  "cause": "Original parser included one valid pre-reset pass36 before the new boot marker, making starts_at_one false. Full post-init records start at1; raw log/result preserved.",
+  "post_init_passes": 15,
+  "firmware_changed": false,
+  "device_restarts_observed": 1
+}

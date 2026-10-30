@@ -1,0 +1,10 @@
+{
+  "scenario": "s06-readonly-sd-file-upgrade",
+  "status": "PREWRITE_CHAIN_MATCH_ROM_HELD",
+  "flash_write_attempted": false,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4; no display/audio/USB-host owner",
+  "prewrite_sd_mount_sector_hashes": "MATCH",
+  "programmer_log_sha256": "2dda35eef12cedd7ab00baeb4b2dd316fa601db58b898f13dee7d1c7ec0298e8"
+}

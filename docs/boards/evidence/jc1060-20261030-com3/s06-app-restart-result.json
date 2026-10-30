@@ -1,0 +1,56 @@
+[
+  {
+    "run": 1,
+    "scenario": "console-app-restart",
+    "sha256": "66563dd2dd4d711796ad24727611f583d1484810d416fd96334c0666aed0e7ea",
+    "bytes": 5197,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "display_init": true,
+    "touch_id": true,
+    "init_failed": false,
+    "heartbeat_count": 11,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  },
+  {
+    "run": 2,
+    "scenario": "console-app-restart",
+    "sha256": "9588b6e76d39e167222e802bb4bfbbf5a4ebe72ee7fbe473d2c2544a0db4fe27",
+    "bytes": 5164,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "display_init": true,
+    "touch_id": true,
+    "init_failed": false,
+    "heartbeat_count": 10,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  },
+  {
+    "run": 3,
+    "scenario": "console-app-restart",
+    "sha256": "7a835160813185e5843e7a9e5f9a5fba2a8da401900958f638e3bf663efdc2f5",
+    "bytes": 5164,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "display_init": true,
+    "touch_id": true,
+    "init_failed": false,
+    "heartbeat_count": 10,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  }
+]

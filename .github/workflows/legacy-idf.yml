@@ -1,0 +1,58 @@
+name: Legacy P4 IDF build only
+on:
+  push:
+    branches: [main]
+    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', '.github/workflows/legacy-idf.yml']
+  pull_request:
+    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', '.github/workflows/legacy-idf.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  media-bridge-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+          rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
+      - name: Owned-buffer and cancellation contract
+        run: |
+          manifest=firmware-idf/legacy-jc1060/rust-core/Cargo.toml
+          cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
+          cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-exfat-fixture
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-exfat-fixture --tests -- -D warnings
+          cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" --features idf-exfat-fixture --target riscv32imafc-unknown-none-elf -- -D warnings
+          cargo +1.95.0 build --locked --release --manifest-path "$manifest" --features idf-exfat-fixture --target riscv32imafc-unknown-none-elf
+  legacy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [pure-ram, flash-build-only, memory-task, display-touch, sd-readonly, sd-file-readonly, sd-rust-bridge, sd-rust-exfat]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+          rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
+      - name: Pinned IDF
+        run: |
+          git clone --no-checkout https://github.com/espressif/esp-idf.git "$RUNNER_TEMP/idf"
+          git -C "$RUNNER_TEMP/idf" checkout fff9895c82d744c7237be8847347bdd1b07c6643
+          git -C "$RUNNER_TEMP/idf" submodule update --init --recursive
+          "$RUNNER_TEMP/idf/install.sh" esp32p4
+      - name: Offline tests and fresh build
+        shell: bash
+        run: |
+          . "$RUNNER_TEMP/idf/export.sh"
+          python firmware-rust/tools/check_docs.py
+          python -m unittest discover -s firmware-idf/legacy-jc1060/tools/tests -v
+          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: legacy-${{ matrix.variant }}-BUILD-ONLY
+          path: |
+            ${{ runner.temp }}/legacy-${{ matrix.variant }}/manifest.json
+            ${{ runner.temp }}/legacy-${{ matrix.variant }}/*build.log
+            ${{ runner.temp }}/legacy-${{ matrix.variant }}/build/ruzina_legacy_probe.*

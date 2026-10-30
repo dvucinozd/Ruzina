@@ -1,0 +1,10 @@
+{
+  "scenario": "s06-readonly-sd-file-upgrade",
+  "status": "FAILED",
+  "flash_write_attempted": false,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4; no display/audio/USB-host owner",
+  "error": "Live sectors differ from preserved SD mount baseline",
+  "programmer_log_sha256": "0fb7474498e4ee985f6636af6a10e9efbe2415f3bd4dda29506ba021583cf016"
+}

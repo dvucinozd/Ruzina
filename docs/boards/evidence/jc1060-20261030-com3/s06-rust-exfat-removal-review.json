@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "status": "OWNER_CONFIRMED_OPEN_RUST_FILE_READ_FAILURE_QUIESCE_NO_LATE_SUCCESS",
+  "operator_confirmation": "2026-10-30 user confirms SD removed while sole USB power retained",
+  "raw_result": "s06-rust-exfat-removal-result.json",
+  "raw_log_sha256": "7c69933126b10963c7359557a9500d8f735f480bb3afad93f3b35afe43bd08e0",
+  "failed_pass": 11,
+  "rust_error_code": 1,
+  "rust_error": "exfat_fixture::Error::Read",
+  "driver_error": "sdmmc_read_sectors_dma command timeout0x107",
+  "owner_reads": 164386,
+  "host_denied_commands": 0,
+  "post_quiesce_heartbeats": 6,
+  "late_pass11_or_after_quiesce_success": false,
+  "reset_or_flash_requested": false,
+  "physical_future_drop": "NOT_INJECTED; media IO error propagated through awaited filesystem read",
+  "instant_of_dma_versus_physical_removal": "NOT_TIMESTAMPED; failed SD read command while file pass11 was in progress",
+  "reinsert": "AWAITING_OWNER"
+}

@@ -2,6 +2,11 @@
 
 Date: 2026-10-20
 
+Arrival update 2026-10-30: the first JC1060 reports v1.3, not the expected v3.2.
+The following remains the dated source-preparation matrix. Use the
+[unit-specific arrival/ESP-IDF record](JC1060_ARRIVAL_2026-10-30.md) for current
+observations, backups and recovery limits. JC8012 remains unobserved.
+
 Scope: complete source-based preparation for the two selected models while the boards are in transit. All hardware values below are documented candidates. No received unit has been interrogated, flashed or physically accepted. The owner's v3.2 report remains separate from schematic/package labels and vendor demo folder names.
 
 ## Source authority

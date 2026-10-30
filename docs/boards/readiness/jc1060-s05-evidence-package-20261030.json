@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-s05-memory-task-evidence.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s05-memory-task\\jc1060-idf61-s05-memory-task-evidence.zip",
+  "sha256": "09d35077536fc72565de30bb0664b620e4bdde368b908c5718306eac75b9c765",
+  "bytes": 4731143,
+  "members": 75,
+  "status": "BOUNDED_PSRAM_FPU_EQ_SMOKE_OBSERVED_NOT_PRODUCT_QUALIFIED",
+  "contains_factory_dump": false,
+  "release": false,
+  "working_sources_uncommitted": true,
+  "app_sha256": "d160632d802b6a4c77d3ef47abc88a6bf6cf5df055af5944fbdd0ac5e251f0da",
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_AND_SECONDARY_MATCH"
+}

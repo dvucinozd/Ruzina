@@ -1,0 +1,60 @@
+{
+  "scenario": "owner-reinsert-and-three-app-restarts-idf-rust-bridge",
+  "runs": [
+    {
+      "run": 1,
+      "bytes": 5127,
+      "sha256": "e1b467a9fc927a54fac0ad2de54ac15f163fdc5051305eeddc465f7439da6064",
+      "operator_command_R": true,
+      "scalar": true,
+      "initialized": true,
+      "heartbeats": 15,
+      "complete_passes": 15,
+      "starts_at_one": true,
+      "all_hashes_match_prior_raw_baseline": true,
+      "min_client_stack_free": 10656,
+      "errors": false,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    },
+    {
+      "run": 2,
+      "bytes": 5191,
+      "sha256": "764663d553304f19dd0673fd4ebe042e4916ecb3e06bb4484934d90c921681d6",
+      "operator_command_R": true,
+      "scalar": true,
+      "initialized": true,
+      "heartbeats": 15,
+      "complete_passes": 15,
+      "starts_at_one": true,
+      "all_hashes_match_prior_raw_baseline": true,
+      "min_client_stack_free": 10656,
+      "errors": false,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    },
+    {
+      "run": 3,
+      "bytes": 5191,
+      "sha256": "f4560a2c621af5ab3d02b1ed1be618cf464e1c8b3129ec0d38bd58e89cb800d4",
+      "operator_command_R": true,
+      "scalar": true,
+      "initialized": true,
+      "heartbeats": 15,
+      "complete_passes": 15,
+      "starts_at_one": true,
+      "all_hashes_match_prior_raw_baseline": true,
+      "min_client_stack_free": 10656,
+      "errors": false,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    }
+  ],
+  "app_sha256": "5a58ab6db4f5ca1f781d9d46b18614be2e9d9d45f3177c934bcd97696b5e67d1"
+}

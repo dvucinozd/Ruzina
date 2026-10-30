@@ -1,0 +1,24 @@
+{
+  "scenario": "three-app-restarts-idf-rust-bridge",
+  "runs": [
+    {
+      "run": 1,
+      "bytes": 5224,
+      "sha256": "099059f35732438e62df093029f3a28163807e8f8697c46d9397e7229e923b98",
+      "operator_command_R": true,
+      "scalar": true,
+      "initialized": true,
+      "heartbeats": 16,
+      "complete_passes": 16,
+      "starts_at_one": false,
+      "all_hashes_match_prior_raw_baseline": true,
+      "min_client_stack_free": 10656,
+      "errors": false,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    }
+  ],
+  "app_sha256": "5a58ab6db4f5ca1f781d9d46b18614be2e9d9d45f3177c934bcd97696b5e67d1"
+}

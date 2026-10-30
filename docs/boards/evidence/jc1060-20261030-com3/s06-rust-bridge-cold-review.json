@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "status": "OWNER_CONFIRMED_COLD_RETURN_UPTIME_DROP_AND15_RAW_PASSES; INIT_RESET_REASON_PREFIX_NOT_CAPTURED",
+  "operator_confirmed_power_cycle": true,
+  "operator_confirmation": "2026-10-30 user confirms sole USB removed5-10s and reconnected without BOOT/RESET; SD retained",
+  "raw_capture": "s06-rust-bridge-cold-result.json",
+  "raw_log_sha256": "d7e1ae201c9e993226033270715b1f6dc8d9750430396365f27ebcbf9dd06823",
+  "last_pre_cycle_heartbeat": [
+    92,
+    92001541
+  ],
+  "first_post_cycle_heartbeat": [
+    1,
+    1000838
+  ],
+  "post_cycle_complete_passes": 15,
+  "post_cycle_pass_numbers": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "post_cycle_fnv1a": "339d5f03",
+  "min_post_cycle_client_stack_free": 10752,
+  "init_prefix_captured": false,
+  "reset_reason_captured": false,
+  "rom_prefix_captured": false,
+  "physical_transition": "OWNER_OBSERVATION_PLUS_USB_DISCONNECT_REOPEN_AND_UPTIME_RESET; NO_SOFTWARE_RESET_SENT",
+  "firmware_changed": false,
+  "sd_write": false
+}

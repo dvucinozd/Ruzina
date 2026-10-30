@@ -8,11 +8,12 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def main():
     files = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md")),
-             *sorted((ROOT / "firmware-rust").rglob("README.md"))]
+             *sorted((ROOT / "firmware-rust").rglob("README.md")),
+             *sorted((ROOT / "firmware-idf").rglob("README.md"))]
     checked = 0
     errors = []
     for file in files:
-        if "target" in file.relative_to(ROOT).parts:
+        if any(part in file.relative_to(ROOT).parts for part in ("target", "build")):
             continue
         for destination in re.findall(r"\]\(([^)]+)\)", file.read_text(encoding="utf-8")):
             destination = destination.strip().strip("<>")

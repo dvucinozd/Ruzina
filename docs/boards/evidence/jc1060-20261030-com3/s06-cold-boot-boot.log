@@ -1,0 +1,73 @@
+heartbeat=89 uptime_us=89342082
+heartbeat=90 uptime_us=90342082
+touch_health samples=100 errors=0
+heartbeat=91 uptime_us=91342082
+heartbeat=92 uptime_us=92342082
+heartbeat=93 uptime_us=93342082
+heartbeat=94 uptime_us=94342082
+heartbeat=95 uptime_us=95342082
+touch_health samples=100 errors=0
+heartbeat=96 uptime_us=96342082
+heartbeat=97 uptime_us=97342082
+heartbeat=98 uptime_us=98342082
+heartbeat=99 uptime_us=99342082
+heartbeat=100 uptime_us=100342082
+touch_health samples=100 errors=0
+heartbeat=101 uptime_us=101342082
+heartbeat=102 uptime_us=102342082
+heartbeat=103 uptime_us=103342082
+heartbeat=104 uptime_us=104342082
+heartbeat=105 uptime_us=105342082
+touch_health samples=100 errors=0
+heartbeat=106 uptime_us=106342082
+heartbeat=107 uptime_us=107342082
+heartbeat=108 uptime_us=108342082
+heartbeat=109 uptime_us=109342082
+heartbeat=110 uptime_us=110342082
+touch_health samples=100 errors=0
+heartbeat=111 uptime_us=111342083
+heartbeat=112 uptime_us=112342082
+heartbeat=113 uptime_us=113342082
+heartbeat=114 uptime_us=114342082
+I (1548) esp_psram: SPI SRAM memory test OK
+I (1557) cpu_start: Pro cpu start user code
+I (1557) cpu_start: cpu freq: 360000000 Hz
+I (1557) app_init: Application information:
+I (1558) app_init: Project name:     ruzina_legacy_probe
+I (1558) app_init: App version:      0.1.0-legacy-eval
+I (1558) app_init: Compile time:     Oct 30 2026 15:03:05
+I (1558) app_init: ELF file SHA256:  de4ca37b7...
+I (1558) app_init: ESP-IDF:          v6.1
+I (1559) efuse_init: Min chip rev:     v1.0
+I (1559) efuse_init: Max chip rev:     v1.99 
+I (1559) efuse_init: Chip rev:         v1.3
+I (1559) heap_init: Initializing. RAM available for dynamic allocation:
+I (1560) heap_init: At 4FF11650 len 00029970 (166 KiB): RETENT_RAM
+I (1560) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (1560) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (1561) heap_init: At 501080A4 len 00007F5C (31 KiB): RTCRAM
+I (1561) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (1561) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator
+W (1563) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (1563) spi_flash: detected chip: generic
+I (1563) spi_flash: flash io: dio
+I (1564) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1565) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1567) sleep_clock: System sleep clock ICG setting initialization
+I (1568) main_task: Started on CPU0
+I (1568) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=1
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+S6_DISPLAY_INIT commands=60 lanes=2 mbps=750 pixel_mhz=52 size=1024x600 format=RGB565 framebuffer_bytes=1228800 backlight_percent=25
+S6_TOUCH_ID address=0x5d id=39313100 config_size=1024x600 mode=POLLING reset_irq=UNTOUCHED
+s6_readiness=AWAITING_OPERATOR_COLORS_CORNERS_AND_TOUCH
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "status": "OWNER_CONFIRMED_CARD_REMOVAL_AND_IDLE_STATUS_QUIESCE_OBSERVED",
+  "raw_capture": "s06-rust-bridge-removal-result.json",
+  "raw_log_sha256": "83f447dad6cbb5894b0f19145560174f3c920134bacf70bf65304b10b8ad04bc",
+  "operator_confirmation": "2026-10-30 user confirms SD removed while sole USB power remains connected",
+  "detection": "Status query between raw reads timed out;1176 completed read calls=147 full8-sector passes. Client next pass148 failed before any driver read.",
+  "active_dma_removal": "NOT_OBSERVED_IN_THIS_PHYSICAL_SCENARIO",
+  "after_quiesce_success": false,
+  "heartbeats_after_quiesce": 6,
+  "sd_writes": false,
+  "reinsert": "AWAITING_OWNER"
+}

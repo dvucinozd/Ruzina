@@ -1,0 +1,59 @@
+[
+  {
+    "run": 1,
+    "scenario": "console-app-restart",
+    "sha256": "54f5bee4b41a7c4ef4b16f32745087f16696d68995ec63cc57c31560cdcffd73",
+    "bytes": 6541,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "fixture_matches": 4,
+    "fixture_failed": false,
+    "sd_match": true,
+    "quiesced": false,
+    "heartbeat_count": 25,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  },
+  {
+    "run": 2,
+    "scenario": "console-app-restart",
+    "sha256": "16acdf979efe81e9b78de9921290d1963686c448905e4eba8a102b19731c3c2f",
+    "bytes": 6505,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "fixture_matches": 4,
+    "fixture_failed": false,
+    "sd_match": true,
+    "quiesced": false,
+    "heartbeat_count": 24,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  },
+  {
+    "run": 3,
+    "scenario": "console-app-restart",
+    "sha256": "a06c581547188def1cda350f69c46af63da41983ca76cb97193bf0d38eac1297",
+    "bytes": 6540,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "fixture_matches": 4,
+    "fixture_failed": false,
+    "sd_match": true,
+    "quiesced": false,
+    "heartbeat_count": 25,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  }
+]

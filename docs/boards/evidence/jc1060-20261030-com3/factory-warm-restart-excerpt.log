@@ -1,0 +1,19 @@
+I (30) boot: chip revision: v1.3
+I esp_psram: Found 32MB PSRAM device
+I esp_psram: Speed: 200MHz
+I (1769) esp_psram: SPI SRAM memory test OK
+I (1785) app_init: Project name:     esp_brookesia_demo
+I (1790) app_init: App version:      1.0.1
+I (1803) app_init: ESP-IDF:          v5.5.4-dirty
+I (1853) esp_psram: Adding pool of 26560K of PSRAM memory to heap allocator
+I (1859) esp_psram: Adding pool of 21K of PSRAM memory gap generated due to end address alignment of irom to the heap allocator
+I (1871) esp_psram: Adding pool of 39K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (1940) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (2279) ESP32_P4_EV: Install MIPI DSI LCD control panel
+I (2283) ESP32_P4_EV: Install EK79007 LCD control panel
+I (2580) GT911: I2C address initialization procedure skipped - using default GT9xx setup
+I (2587) GT911: TouchPad_ID:0x39,0x31,0x31
+I (2590) GT911: TouchPad_Config_Version:99
+I (2594) ESP32_P4_EV: Touch calibration enabled: 800x480 -> 1024x600
+I (2600) ESP32_P4_EV: Setting LCD backlight: 100%
+I (2954) ESP32_P4_EV: Setting LCD backlight: 95%
