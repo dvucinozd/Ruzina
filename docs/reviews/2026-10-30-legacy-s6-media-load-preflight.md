@@ -57,12 +57,35 @@ serves no load and performs no IO after removal.
 
 ## Limits and next gates
 
-- `media-load` is host-only. Analysis publication allocates and the staticlib
-  has no global allocator, so no IDF profile selects it and it has no target
-  build. Next: an IDF `heap_caps`-backed allocator with an explicit memory
-  policy, then a separate opt-in profile.
+- The [IDF allocator follow-up](#idf-psram-allocator) gives `media-load` a
+  target build. No IDF profile selects it yet; a separate opt-in profile is next.
 - PDB catalog import is still native-only (`usb0_library.rs`). The IDF path
   needs the same extraction before it can resolve real candidates.
 - Deck load gate, persisted Hot Cues, audio-source preparation and the final
   commit remain with each platform's caller.
 - No physical load, real export or audio run is part of this batch.
+
+## IDF PSRAM allocator
+
+Follow-up branch `ogranak/jc1060-idf-alloc`, stacked on this batch. The target
+feature `idf-media-load` (`idf-exfat-fixture` plus `media-load`) registers
+`idf_alloc::IdfPsram` as the staticlib's global allocator. Every allocation
+calls `heap_caps_aligned_alloc(layout.align(), layout.size(),
+MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)` and is released with `heap_caps_free`.
+The constants and the aligned-free contract were checked against
+`esp_heap_caps.h` at the pinned IDF v6.1 commit `fff9895c`.
+
+Policy (ADR-008): library and analysis data go to PSRAM, and internal SRAM
+stays for DMA bounce buffers, queues and stacks. There is deliberately no
+internal fallback. A profile selecting the feature must initialize PSRAM for
+capability allocation, as the S5 memory profile does; the current SD profiles
+do not. A failed allocation returns null; the allocation-error panic then
+aborts into IDF reset policy. The buffers are CPU-only.
+
+A host test replaces the two IDF functions with shims. It checks the requested
+caps and alignment, an aligned pointer, release of every block, and a null
+result for a refused allocation. Local results: 36 legacy core tests, host
+clippy, and target clippy and release build for both `idf-exfat-fixture` and
+`idf-media-load` pass. The archive's only new undefined symbols are
+`heap_caps_aligned_alloc` and `heap_caps_free`. The allocator has not run on
+the device, and PSRAM capacity under a real load is unmeasured.
