@@ -21,8 +21,8 @@ jobs:
         run: |
           manifest=firmware-idf/legacy-jc1060/rust-core/Cargo.toml
           cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
-          cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-exfat-fixture
-          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-exfat-fixture --tests -- -D warnings
+          cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-exfat-fixture,media-load
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-exfat-fixture,media-load --tests -- -D warnings
           cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" --features idf-exfat-fixture --target riscv32imafc-unknown-none-elf -- -D warnings
           cargo +1.95.0 build --locked --release --manifest-path "$manifest" --features idf-exfat-fixture --target riscv32imafc-unknown-none-elf
   legacy:

@@ -17,6 +17,8 @@ ruzina-media-session = { path = "../../../firmware-rust/crates/ruzina-media-sess
 ruzina-media-partition = { path = "../../../firmware-rust/crates/ruzina-media-partition", optional = true }
 ruzina-media-exfat = { path = "../../../firmware-rust/crates/ruzina-media-exfat", optional = true }
 ruzina-media-fs = { path = "../../../firmware-rust/crates/ruzina-media-fs", optional = true }
+ruzina-media-catalog = { path = "../../../firmware-rust/crates/ruzina-media-catalog", optional = true }
+ruzina-media-load = { path = "../../../firmware-rust/crates/ruzina-media-load", optional = true }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
 
 [features]
@@ -25,6 +27,11 @@ media-bridge = ["dep:ruzina-media-block", "dep:ruzina-media-io", "dep:ruzina-med
 idf-media-bridge = ["media-bridge"]
 exfat-fixture = ["media-bridge", "dep:ruzina-media-partition", "dep:ruzina-media-exfat", "dep:ruzina-media-fs", "dep:sha2"]
 idf-exfat-fixture = ["idf-media-bridge", "exfat-fixture"]
+# Host-tested only until the staticlib has an IDF-backed global allocator.
+media-load = ["exfat-fixture", "dep:ruzina-media-catalog", "dep:ruzina-media-load"]
+
+[dev-dependencies]
+ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }
 
 [profile.release]
 panic = "abort"

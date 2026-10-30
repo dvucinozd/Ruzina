@@ -115,11 +115,14 @@ name = "ruzina-legacy-idf-core-probe"
 version = "0.1.0"
 dependencies = [
  "ruzina-audio-dsp",
+ "ruzina-core",
  "ruzina-deck",
  "ruzina-media-block",
+ "ruzina-media-catalog",
  "ruzina-media-exfat",
  "ruzina-media-fs",
  "ruzina-media-io",
+ "ruzina-media-load",
  "ruzina-media-partition",
  "ruzina-media-session",
  "sha2",
@@ -128,6 +131,14 @@ dependencies = [
 [[package]]
 name = "ruzina-media-block"
 version = "0.1.0"
+
+[[package]]
+name = "ruzina-media-catalog"
+version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+ "ruzina-media-session",
+]
 
 [[package]]
 name = "ruzina-media-exfat"
@@ -162,6 +173,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzina-media-load"
+version = "0.1.0"
+dependencies = [
+ "ruzina-hot-cues",
+ "ruzina-media-catalog",
+ "ruzina-media-fs",
+ "ruzina-media-session",
+ "ruzina-rekordbox",
+ "ruzina-track-analysis",
+]
+
+[[package]]
 name = "ruzina-media-partition"
 version = "0.1.0"
 
@@ -173,8 +196,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzina-rekordbox"
+version = "0.1.0"
+dependencies = [
+ "ruzina-media-catalog",
+ "ruzina-media-identity",
+ "ruzina-track-analysis",
+]
+
+[[package]]
 name = "ruzina-track-analysis"
 version = "0.1.0"
+dependencies = [
+ "ruzina-core",
+ "ruzina-media-session",
+]
 
 [[package]]
 name = "sha2"

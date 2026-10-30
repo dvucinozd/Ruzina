@@ -33,6 +33,7 @@ hotcue-flash-storage = ["dep:esp-storage"]
 # End-to-end Library browse/load ownership: published PSRAM catalog + USB0
 # filesystem clients + USB1 semantic controls + durable Hot Cue flash owner.
 library-deck-load = [
+    "dep:ruzina-media-load",
     "ruzina-rekordbox/analysis",
     "ruzina-track-analysis/owned",
     "usb0-hardware-bringup",
@@ -100,6 +101,7 @@ ruzina-media-fat32 = { path = "../../crates/ruzina-media-fat32" }
 ruzina-media-fs = { path = "../../crates/ruzina-media-fs" }
 ruzina-media-identity = { path = "../../crates/ruzina-media-identity" }
 ruzina-media-io = { path = "../../crates/ruzina-media-io" }
+ruzina-media-load = { path = "../../crates/ruzina-media-load", optional = true }
 ruzina-media-partition = { path = "../../crates/ruzina-media-partition" }
 ruzina-media-session = { path = "../../crates/ruzina-media-session" }
 ruzina-media-usb-msc = { path = "../../crates/ruzina-media-usb-msc" }

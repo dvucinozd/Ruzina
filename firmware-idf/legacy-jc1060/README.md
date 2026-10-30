@@ -191,3 +191,25 @@ read retains the outer block client; discard the interrupted volume/file, drain
 shared exFAT reader over synthetic sector data and pending transport reads.
 Device runtime, physical removal and product executor/commit gates are recorded
 separately; they are not established by the synthetic tests or a target build.
+
+## Product load preflight (host-tested)
+
+The opt-in `media-load` feature runs the product's Library load preflight over
+the same mounted exFAT volume: audio-file stat, Rekordbox ANLZ DAT/EXT import
+and the candidate's source cues. The preflight itself lives in the shared
+`ruzina-media-load` crate, which the native firmware's Library load lane also
+uses, so both platforms share one implementation. `FsLoadFiles` checks the
+live lease and catalog publication around every filesystem operation, cache
+hits included. `media_load::preflight` returns analysis only if both are still
+current after the last read; the caller rechecks them at its own commit.
+
+The catalog, the deck's load gate and the commit stay with the caller. Analysis
+publication allocates, and this staticlib has no global allocator yet, so no
+IDF profile selects `media-load` and it has no target build. Host tests use a
+real exFAT image read through `ReadQueue`/`ReadClient`: removal during an
+analysis read, cancellation followed by drain and a reload under a new lease,
+and a warm volume cache after removal.
+
+```sh
+cargo +1.95.0 test --locked --manifest-path firmware-idf/legacy-jc1060/rust-core/Cargo.toml --features idf-exfat-fixture,media-load
+```

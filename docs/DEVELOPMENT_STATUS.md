@@ -4,8 +4,10 @@ Updated 2026-10-30. Main after PR #55: `46728b2a3779d125b50aadae908b293adaafa25a
 The legacy JC1060 bring-up batch is merged; the next batch starts from main.
 
 Current unit runs the shared Rust partition/exFAT read-only diagnostic, with
-full fixture and bounded removal/reinsert/cold-return observations. Product
-media/load integration is the next gate. Publication/review/CI is recorded in
+full fixture and bounded removal/reinsert/cold-return observations. The shared
+[load preflight](reviews/2026-10-30-legacy-s6-media-load-preflight.md) runs
+host-tested over that exFAT volume; an IDF allocator, shared PDB catalog
+import and an opt-in profile are the next gates. Publication/review/CI is recorded in
 the [publication checkpoint](reviews/2026-10-30-legacy-publication.md); historical
 uncommitted-source fields in runtime archives describe their build-time state.
 The publication follow-up accepts exFAT `PartitionOffset=0` with baseline-failing

@@ -12,6 +12,9 @@ mod idf_media_bridge;
 #[cfg(feature = "exfat-fixture")]
 pub mod exfat_fixture;
 
+#[cfg(feature = "media-load")]
+pub mod media_load;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]
