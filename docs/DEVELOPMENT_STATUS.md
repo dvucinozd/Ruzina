@@ -10,8 +10,9 @@ the [publication checkpoint](reviews/2026-10-30-legacy-publication.md); historic
 uncommitted-source fields in runtime archives describe their build-time state.
 The publication follow-up accepts exFAT `PartitionOffset=0` with baseline-failing
 and mismatch regressions: 29 Rust tests pass. That source fix has a fresh IDF
-BUILD_ONLY package and was NOT_FLASHED. Draft PR #55 remains blocked by the
-Actions budget, which prevented remote jobs from executing; it is not green CI.
+BUILD_ONLY package and was NOT_FLASHED. The owner raised the Actions limit after
+the initial budget block. PR #55 now awaits fresh CI on the resumed publication
+head; no remote success is claimed until actual job execution completes.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

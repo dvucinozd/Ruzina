@@ -90,10 +90,24 @@ This is an Actions-budget infrastructure block, not code test failure or PASS.
 Billing/budgets were not changed, no failed-run retry loop was started, and the
 PR was not merged or marked merge-ready.
 
-Next external action: restore available Actions budget, then run the current PR
-head through host, native P4 and all eight legacy IDF profiles plus the isolated
-Rust host job. Only after actual success should PR #55 become ready and merge.
+At this checkpoint the next external action was restoring Actions budget, then
+running the current PR head through host, native P4 and all eight legacy IDF
+profiles plus the isolated Rust host job. Only after actual success should PR #55 become ready and merge.
 Local tests/builds do not substitute for a claimed successful remote CI result.
 The following publication follow-up commit contains the two fixes and this
 durable record; its exact final local/tracking/remote identity is verified after
 push. No source-only build is a new device-qualification image.
+
+## Actions-budget continuation
+
+The owner subsequently confirmed an increased Actions limit. The reviewed
+source/fix head is `93e401e5e901f121e0857872ae82f8aacf668deb`. Its original
+three runs remained queued with zero steps and some budget-rejected jobs;
+GitHub rejected cancellation with HTTP 409 (not in progress) and retry with
+HTTP 403 (already running). No runner/test failure is inferred from those
+responses. This documentation-only continuation starts fresh PR CI.
+
+The required gate remains actual host, native P4 and eight-profile legacy IDF
+success on the current head, including the Rust host job. Results and final
+head identity will be recorded in PR #55. No hardware access or new physical
+qualification is part of this continuation.

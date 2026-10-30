@@ -11,9 +11,9 @@ Implementation `7518d83a47a68009919fe58a036ef22195d0bae3` is pushed in
 [draft PR #55](https://github.com/dvucinozd/Ruzina/pull/55). CodeRabbit reported
 two minor issues; the publication follow-up fixes numeric prose spacing and
 exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
-only, NOT_FLASHED. Actions budget prevented every remote job from starting;
-do not merge or claim green CI until budget is restored and the current PR head
-actually passes. This checkpoint does not change the current board image.
+only, NOT_FLASHED. The original Actions budget blocked remote execution; the
+owner has now raised the limit. Fresh CI on the resumed publication head is
+pending. Do not merge or claim green CI before the current head actually passes. This checkpoint does not change the current board image.
 
 **Current unit:** the read-only shared Rust partition/exFAT diagnostic is
 running on JC1060 v1.3. Full fixture SHA/EOF/seeks, app restarts, open-file
