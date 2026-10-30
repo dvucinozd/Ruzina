@@ -1,19 +1,18 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-30. PR #54 merged A+B to main at
-`4fe18e986e0a97d7f5eec0e68303f96481928af4`.
-Active continuation branch: `ogranak/jc1060-c01-c02` in
-`C:/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB`.
-The primary `D:/AI/M1_PCB` checkout remains on main with its unrelated
-untracked files preserved. Publication of the legacy bring-up batch is tracked
-in the [publication checkpoint](reviews/2026-10-30-legacy-publication.md).
-Implementation `7518d83a47a68009919fe58a036ef22195d0bae3` is pushed in
-[draft PR #55](https://github.com/dvucinozd/Ruzina/pull/55). CodeRabbit reported
-two minor issues; the publication follow-up fixes numeric prose spacing and
+Updated: 2026-10-30. [PR #55](https://github.com/dvucinozd/Ruzina/pull/55)
+merged the legacy JC1060 bring-up batch to main at
+`46728b2a3779d125b50aadae908b293adaafa25a` (PR head
+`00294d18cd59ba5afcd6aaa4b9dcba8465c895b2`). Before the merge, that exact head
+passed host, native P4, all eight legacy IDF profiles and the isolated Rust
+media-bridge host job. Start the next batch on a new branch from current main;
+the `ogranak/jc1060-c01-c02` worktree at
+`C:/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB` holds only merged work.
+Publication and review are recorded in the
+[publication checkpoint](reviews/2026-10-30-legacy-publication.md). CodeRabbit
+reported two minor issues; the merged follow-up fixes numeric prose spacing and
 exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
-only, NOT_FLASHED. The original Actions budget blocked remote execution; the
-owner has now raised the limit. Fresh CI on the resumed publication head is
-pending. Do not merge or claim green CI before the current head actually passes. This checkpoint does not change the current board image.
+only, NOT_FLASHED. This merge does not change the current board image.
 
 **Current unit:** the read-only shared Rust partition/exFAT diagnostic is
 running on JC1060 v1.3. Full fixture SHA/EOF/seeks, app restarts, open-file

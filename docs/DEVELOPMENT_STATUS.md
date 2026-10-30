@@ -1,7 +1,7 @@
 # Current development status
 
-Updated 2026-10-30. Main after PR #54: `4fe18e986e0a97d7f5eec0e68303f96481928af4`.
-Current local work: `ogranak/jc1060-c01-c02`.
+Updated 2026-10-30. Main after PR #55: `46728b2a3779d125b50aadae908b293adaafa25a`.
+The legacy JC1060 bring-up batch is merged; the next batch starts from main.
 
 Current unit runs the shared Rust partition/exFAT read-only diagnostic, with
 full fixture and bounded removal/reinsert/cold-return observations. Product
@@ -10,9 +10,10 @@ the [publication checkpoint](reviews/2026-10-30-legacy-publication.md); historic
 uncommitted-source fields in runtime archives describe their build-time state.
 The publication follow-up accepts exFAT `PartitionOffset=0` with baseline-failing
 and mismatch regressions: 29 Rust tests pass. That source fix has a fresh IDF
-BUILD_ONLY package and was NOT_FLASHED. The owner raised the Actions limit after
-the initial budget block. PR #55 now awaits fresh CI on the resumed publication
-head; no remote success is claimed until actual job execution completes.
+BUILD_ONLY package and was NOT_FLASHED. After the owner raised the Actions
+limit, PR #55 head `00294d18cd59ba5afcd6aaa4b9dcba8465c895b2` passed host,
+native P4, all eight legacy IDF profiles and the media-bridge host job, and was
+merged.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are
