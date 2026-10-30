@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "status": "OWNER_CONFIRMED_SAME_CARD_REINSERTION_THREE_APP_RESTARTS_15_RAW_PASSES_EACH",
+  "operator_confirmation": "2026-10-30 user: umetnuta je; same SD requested",
+  "raw_result": "s06-rust-bridge-reinsert-result.json",
+  "complete_independently_reparsed_passes": 45,
+  "firmware_changed": false,
+  "sd_content_write": false,
+  "physical_reinsertions": 1,
+  "app_restarts": 3,
+  "automatic_hot_remount": "NOT_IMPLEMENTED; explicit app restart required"
+}

@@ -1,0 +1,27 @@
+{
+  "scenario": "s06-display-touch-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Owner model and Full Speed Type-C/USB-only/buttons; PCB markings unavailable; no BSP peripheral access",
+  "prewrite_s5_baseline_sector_hashes": "MATCH",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "f8354366641382711cae8bacb20dfb0fddb6772057ccc8ec64d7a61b81d189ec"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 221184,
+      "sha256": "f6ea53103e19d64e4fdc3313f5cad51c2421a6a96332a7c98e25b922c56db6d4"
+    }
+  ],
+  "programmer_log_sha256": "ddab3055e61fccfbea0861678787e2d20a0610fad4cae1f2a298926a8bd199a9"
+}

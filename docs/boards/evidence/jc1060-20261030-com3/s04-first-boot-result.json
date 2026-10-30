@@ -1,0 +1,12 @@
+{
+  "scenario": "first-USB-reset-from-programmer",
+  "bytes": 139,
+  "sha256": "808f4a8492056e562b649297fe786a473430fe43ad4ccfda4134d3ad84def83e",
+  "events": [
+    "USB software reset from ROM/stub"
+  ],
+  "scalar": false,
+  "heartbeat": false,
+  "watchdog": false,
+  "physical_power_cycle": false
+}

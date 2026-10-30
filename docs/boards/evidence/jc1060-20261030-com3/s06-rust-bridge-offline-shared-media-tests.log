@@ -1,0 +1,58 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.75s
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_block-deb5baa5690ba17a)
+
+running 6 tests
+test tests::byte_len_is_checked_for_large_geometry ... ok
+test tests::from_start_covers_superfloppy_or_unknown_extent_to_device_end ... ok
+test tests::partition_device_translates_reads_and_blocks_escape_attempts ... ok
+test tests::partition_device_translates_writes_and_flush ... ok
+test tests::geometry_rejects_misaligned_and_out_of_range_transfers ... ok
+test tests::range_translation_is_checked_and_partition_relative ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_io-b56b1a4c0a6b8e6e)
+
+running 4 tests
+test tests::async_partition_preserves_buffer_on_contract_failure ... ok
+test tests::async_partition_translates_owned_reads ... ok
+test tests::async_partition_translates_writes_and_flush ... ok
+test tests::backend_error_preserves_owned_buffer ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_session-4fda7f16d9cb2415)
+
+running 11 tests
+test tests::bound_or_mounted_session_ignores_secondary_source ... ok
+test tests::first_connect_and_duplicate_match_released_session_behavior ... ok
+test tests::foreign_disconnect_is_ignored_after_handle_binding ... ok
+test tests::generation_skips_zero_on_wrap ... ok
+test tests::handle_binding_is_generation_and_owner_safe ... ok
+test tests::mount_commit_requires_current_bound_lease ... ok
+test tests::reconnect_same_source_never_revalidates_old_handles ... ok
+test tests::releasing_foreign_handle_does_not_clear_owner ... ok
+test tests::unbound_disconnect_is_accepted_and_invalidates_lease ... ok
+test tests::unbound_enumeration_bounce_supersedes_stale_source ... ok
+test tests::zero_source_and_handle_tokens_are_unrepresentable ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_block
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_io
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_session
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

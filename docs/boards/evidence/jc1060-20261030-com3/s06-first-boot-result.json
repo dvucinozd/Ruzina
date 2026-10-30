@@ -1,0 +1,15 @@
+{
+  "scenario": "s06-first-display-touch-boot",
+  "bytes": 6424,
+  "sha256": "c8c4abbfd310adb279d8a4b62ed59e4cab760e4336a025faa31434ec4d09dfe5",
+  "events": [
+    "USB software reset from ROM/stub"
+  ],
+  "scalar": true,
+  "heartbeat": true,
+  "display_init": true,
+  "touch_id": true,
+  "init_failed": false,
+  "watchdog": false,
+  "physical_power_cycle": false
+}

@@ -1,0 +1,27 @@
+{
+  "scenario": "s05-memory-task-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Owner model and Full Speed Type-C/USB-only/buttons; PCB markings unavailable; no BSP peripheral access",
+  "prewrite_s4_baseline_sector_hashes": "MATCH",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "5ed4c4ccbb8ef69e939861a976fa9122cf63024de3e216a1ea1fcfd38fe0e117"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 172032,
+      "sha256": "fa1969332a7dc21bf453347957c7fc0c66dbee14cd2643d2f9848ef5bc8c98bb"
+    }
+  ],
+  "programmer_log_sha256": "3365d343bd2aa6f6f90d988a7e9f78fdd487c1bd702852ed2cc483c6af9ce16e"
+}

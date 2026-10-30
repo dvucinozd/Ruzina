@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "device_access": false,
+  "builds": [
+    {
+      "variant": "flash-build-only",
+      "sha256": "5ea577d9ae2bd53c340d816f1eff911a076bb3fe319122c616e20f1c5718e3f9",
+      "bytes": 148432,
+      "entrypoint": 1341133684,
+      "idf_commit": "fff9895c82d744c7237be8847347bdd1b07c6643",
+      "versions": {
+        "rust": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+        "gcc": "riscv32-esp-elf-gcc (crosstool-NG esp-15.2.0_20251204) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        "cmake": "cmake version 4.0.3\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).",
+        "ninja": "1.12.1",
+        "python": "3.13.0 (tags/v3.13.0:60403a5, Oct  7 2024, 09:38:07) [MSC v.1941 64 bit (AMD64)]",
+        "esptool": "5.6.0"
+      },
+      "readiness": "BUILD_ONLY_NOT_QUALIFIED",
+      "artifacts": {
+        "build/ruzina_legacy_probe.bin": "5ea577d9ae2bd53c340d816f1eff911a076bb3fe319122c616e20f1c5718e3f9",
+        "build/ruzina_legacy_probe.elf": "17ad7328aa13bc1ad4e2b6b6526e985dd1a4cceb0bdc6be96e0a36a1163f8d91",
+        "build/ruzina_legacy_probe.map": "d293075e6e224439e9d722d94ecafcd2a4560e49498515f69f54749456b3be25",
+        "sdkconfig": "1d318adfd131a152a4caf98a7676495f5aa39f7f185c0f68c4d6abb6574f08b8",
+        "rust/riscv32imafc-unknown-none-elf/release/libruzina_legacy_idf_core_probe.a": "18206d4f0d52bada2f3cda3180ddd71f76e915a2540226b0e998afcd5277d507",
+        "build/bootloader/bootloader.bin": "eb6e2f5230b96dcbd632d0fd742f97eb6edc2df26c73446aed7a4ab58e8ddee4",
+        "build/partition_table/partition-table.bin": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820",
+        "build/flasher_args.json": "6b679ee19b1e7eefcf1ca8d9dafbfe0d90785299b62dd8a2f2d63653b8834423"
+      },
+      "manifest_path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s03-verified-flash\\manifest.json",
+      "manifest_sha256": "604e55dc72ece0dbaa4fbc004d716f17c182708351778aebb1667a14d1f49bd2",
+      "potential_writes_not_approved": [
+        {
+          "offset": "0x8000",
+          "file": "partition_table/partition-table.bin",
+          "bytes": 3072,
+          "erase_start": "0x8000",
+          "erase_end_exclusive": "0x9000"
+        },
+        {
+          "offset": "0x2000",
+          "file": "bootloader/bootloader.bin",
+          "bytes": 23296,
+          "erase_start": "0x2000",
+          "erase_end_exclusive": "0x8000"
+        },
+        {
+          "offset": "0x10000",
+          "file": "ruzina_legacy_probe.bin",
+          "bytes": 148432,
+          "erase_start": "0x10000",
+          "erase_end_exclusive": "0x35000"
+        }
+      ]
+    },
+    {
+      "variant": "pure-ram",
+      "sha256": "071184123d67599e88f22b11f0df5cbac47ea00556172b647840d219219d77ce",
+      "bytes": 113312,
+      "entrypoint": 1341132178,
+      "idf_commit": "fff9895c82d744c7237be8847347bdd1b07c6643",
+      "versions": {
+        "rust": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+        "gcc": "riscv32-esp-elf-gcc (crosstool-NG esp-15.2.0_20251204) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        "cmake": "cmake version 4.0.3\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).",
+        "ninja": "1.12.1",
+        "python": "3.13.0 (tags/v3.13.0:60403a5, Oct  7 2024, 09:38:07) [MSC v.1941 64 bit (AMD64)]",
+        "esptool": "5.6.0"
+      },
+      "readiness": "BUILD_ONLY_NOT_QUALIFIED",
+      "artifacts": {
+        "build/ruzina_legacy_probe.bin": "071184123d67599e88f22b11f0df5cbac47ea00556172b647840d219219d77ce",
+        "build/ruzina_legacy_probe.elf": "8e3338432040fc4d46bf40f2043871ce76c16f3d657244955904d172fa84d491",
+        "build/ruzina_legacy_probe.map": "dd56555082bdd7b4bcaaa0379e8bbf43235e639aa3927df7fd7d1dc4e5aa011f",
+        "sdkconfig": "4795ef461069de314c6f8070004300acebb35c3e2583841e8df52c6f846a87c8",
+        "rust/riscv32imafc-unknown-none-elf/release/libruzina_legacy_idf_core_probe.a": "18206d4f0d52bada2f3cda3180ddd71f76e915a2540226b0e998afcd5277d507",
+        "build/flasher_args.json": "6550a69c0adbba248b35ede157c63f0ca12d3bf578937a95b3f7a4235c7792a0"
+      },
+      "manifest_path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s03-verified-ram\\manifest.json",
+      "manifest_sha256": "8a0bb471b65848c635e2192788e2ee34530abed65eab09573a42ddca6bb08a04"
+    }
+  ]
+}

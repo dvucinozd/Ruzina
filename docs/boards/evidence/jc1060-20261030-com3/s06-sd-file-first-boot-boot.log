@@ -1,0 +1,156 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff100d8
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (11) boot: ESP-IDF v6.1 2nd stage bootloader
+I (12) boot: compile time Oct 30 2026 15:51:06
+I (12) boot: Multicore bootloader
+I (13) boot: chip revision: v1.3
+I (13) boot: efuse block revision: v0.3
+I (13) boot.esp32p4: SPI Speed      : 40MHz
+I (14) boot.esp32p4: SPI Mode       : DIO
+I (14) boot.esp32p4: SPI Flash Size : 16MB
+I (14) boot: Enabling RNG early entropy source...
+I (15) boot: Partition Table:
+I (15) boot: ## Label            Usage          Type ST Offset   Length
+I (16) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (16) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (17) boot:  2 factory          factory app      00 00 00010000 00100000
+I (18) boot: End of partition table
+I (18) esp_image: segment 0: paddr=00010020 vaddr=40020020 size=0ca98h ( 51864) map
+I (30) esp_image: segment 1: paddr=0001cac0 vaddr=30100000 size=000b4h (   180) load
+I (31) esp_image: segment 2: paddr=0001cb7c vaddr=4ff00000 size=0349ch ( 13468) load
+I (35) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=1eee8h (126696) map
+I (61) esp_image: segment 4: paddr=0003ef10 vaddr=4ff0349c size=07b14h ( 31508) load
+I (69) esp_image: segment 5: paddr=00046a2c vaddr=4ff0b000 size=026d4h (  9940) load
+I (75) boot: Loaded app from partition at offset 0x10000
+I (75) boot: Disabling RNG early entropy source...
+I (78) cpu_start: Multicore app
+I (88) cpu_start: Pro cpu start user code
+I (88) cpu_start: cpu freq: 360000000 Hz
+I (88) app_init: Application information:
+I (88) app_init: Project name:     ruzina_legacy_probe
+I (89) app_init: App version:      0.1.0-legacy-eval
+I (89) app_init: Compile time:     Oct 30 2026 15:50:21
+I (89) app_init: ELF file SHA256:  190169faf...
+I (89) app_init: ESP-IDF:          v6.1
+I (89) efuse_init: Min chip rev:     v1.0
+I (90) efuse_init: Max chip rev:     v1.99 
+I (90) efuse_init: Chip rev:         v1.3
+I (91) heap_init: Initializing. RAM available for dynamic allocation:
+I (91) heap_init: At 4FF0F290 len 0002BD30 (175 KiB): RETENT_RAM
+I (91) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (91) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (92) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (92) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+W (93) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (94) spi_flash: detected chip: generic
+I (94) spi_flash: flash io: dio
+I (95) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (96) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (97) sleep_clock: System sleep clock ICG setting initialization
+I (99) main_task: Started on CPU0
+I (99) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=11
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+I (99) SD_HOST: src_freq_hz: 160000000
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+S6_SD_ID capacity_bytes=63864569856 sectors=124735488 sector_bytes=512 max_khz=10000 width=4 ldo=4 readonly=1
+S6_SD_MOUNT fs_type=4 exfat=1 cluster_sectors=256 volume_lba=2048 generation=1
+S6_SD_ROOT files=0 directories=2 enumeration_complete=1 file_read=NOT_RUN_NO_ROOT_FILE first8sectors_fnv1a=339d5f03
+sd_fixture_state=READING pass=1 generation=1 expected_bytes=8389121
+heartbeat=1 uptime_us=1001532
+heartbeat=2 uptime_us=2001532
+heartbeat=3 uptime_us=3001532
+heartbeat=4 uptime_us=4001532
+heartbeat=5 uptime_us=5001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=1 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2392044 worst_read_us=3086 worst_seek_read_us=755 wall_us=5131023
+sd_result=READONLY_EXFAT_MOUNT_ROOT_OBSERVED write_boundary_rejections=1 host_denied=0 generation=1
+heartbeat=6 uptime_us=6001531
+sd_fixture_state=READING pass=2 generation=1 expected_bytes=8389121
+heartbeat=7 uptime_us=7001532
+heartbeat=8 uptime_us=8001532
+heartbeat=9 uptime_us=9001532
+heartbeat=10 uptime_us=10001532
+heartbeat=11 uptime_us=11001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=2 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2389959 worst_read_us=1190 worst_seek_read_us=755 wall_us=5123205
+heartbeat=12 uptime_us=12001531
+sd_fixture_state=READING pass=3 generation=1 expected_bytes=8389121
+heartbeat=13 uptime_us=13001532
+heartbeat=14 uptime_us=14001532
+heartbeat=15 uptime_us=15001532
+heartbeat=16 uptime_us=16001532
+heartbeat=17 uptime_us=17001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=3 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2389992 worst_read_us=1190 worst_seek_read_us=754 wall_us=5123190
+heartbeat=18 uptime_us=18001531
+sd_fixture_state=READING pass=4 generation=1 expected_bytes=8389121
+heartbeat=19 uptime_us=19001532
+heartbeat=20 uptime_us=20001532
+heartbeat=21 uptime_us=21001532
+heartbeat=22 uptime_us=22001532
+heartbeat=23 uptime_us=23001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=4 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2390131 worst_read_us=1190 worst_seek_read_us=755 wall_us=5123200
+heartbeat=24 uptime_us=24001531
+sd_fixture_state=READING pass=5 generation=1 expected_bytes=8389121
+heartbeat=25 uptime_us=25001532
+heartbeat=26 uptime_us=26001532
+heartbeat=27 uptime_us=27001532
+heartbeat=28 uptime_us=28001532
+heartbeat=29 uptime_us=29001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=5 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2390346 worst_read_us=1191 worst_seek_read_us=753 wall_us=5123200
+heartbeat=30 uptime_us=30001531
+sd_fixture_state=READING pass=6 generation=1 expected_bytes=8389121
+heartbeat=31 uptime_us=31001532
+heartbeat=32 uptime_us=32001532
+heartbeat=33 uptime_us=33001532
+heartbeat=34 uptime_us=34001532
+heartbeat=35 uptime_us=35001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=6 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2390205 worst_read_us=1190 worst_seek_read_us=753 wall_us=5123198
+sd_health generation=1 reads=12419 write_calls=1 host_denied=0 stack_free=5752
+heartbeat=36 uptime_us=36001531
+sd_fixture_state=READING pass=7 generation=1 expected_bytes=8389121
+heartbeat=37 uptime_us=37001532
+heartbeat=38 uptime_us=38001532
+heartbeat=39 uptime_us=39001532
+heartbeat=40 uptime_us=40001532
+heartbeat=41 uptime_us=41001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=7 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2390256 worst_read_us=1190 worst_seek_read_us=754 wall_us=5123301
+heartbeat=42 uptime_us=42001531
+sd_fixture_state=READING pass=8 generation=1 expected_bytes=8389121
+heartbeat=43 uptime_us=43001532
+heartbeat=44 uptime_us=44001532
+heartbeat=45 uptime_us=45001532
+heartbeat=46 uptime_us=46001532
+heartbeat=47 uptime_us=47001532
+heartbeat=48 uptime_us=48001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=8 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2390355 worst_read_us=1191 worst_seek_read_us=754 wall_us=5123096
+heartbeat=49 uptime_us=49001531
+sd_fixture_state=READING pass=9 generation=1 expected_bytes=8389121
+heartbeat=50 uptime_us=50001532
+heartbeat=51 uptime_us=51001532
+heartbeat=52 uptime_us=52001532
+heartbeat=53 uptime_us=53001532
+heartbeat=54 uptime_us=54001532
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=9 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de io_us=2390167 worst_read_us=1190 worst_seek_read_us=755 wall_us=5123194
+heartbeat=55 uptime_us=55001531
+sd_fixture_state=READING pass=10 generation=1 expected_bytes=8389121
+heartbeat=56 uptime_us=56001532
+heartbeat=57 uptime_us=57001532
+heartbeat=58 uptime_us=58001532
+heartbeat=59 uptime_us=59001532
+heartbeat=60 uptime_us=60001532

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-rust-ram-evidence.zip",
+  "sha256": "ae25969832ca953eebca06bca45fae4669c95619d930dd829865459f45e4a061",
+  "bytes": 1434517,
+  "source": {
+    "firmware-idf/legacy-jc1060/CMakeLists.txt": "772dcb044090edcef9b2391df6fa4a3d981fb77d60ad40fab6e5c0d5c1759af9",
+    "firmware-idf/legacy-jc1060/sdkconfig.defaults": "841a8ac0a9b920c1c2fa1abde9283a0b51a541450400014bc4cc74e0d3ab38c1",
+    "firmware-idf/legacy-jc1060/sdkconfig.ram.defaults": "5f2d05a33b12b73f0f804ca7af3162a81d8172dcec42c1e6e1863c9dea09d57d",
+    "firmware-idf/legacy-jc1060/main/CMakeLists.txt": "bb88f03b9201e06bf1ffdb642249e20281e18ee792372e34afb99333853ac7a1",
+    "firmware-idf/legacy-jc1060/main/probe.c": "677b8ba29ea266a67d7a36afc2d88620f2ea7dee4449625d12ad62e8622e1568",
+    "firmware-idf/legacy-jc1060/rust-core/Cargo.toml": "7ce6337e4424a2138ff6b9453a8fae889980ebe1fe436bd10f9e60e05ef03e7a",
+    "firmware-idf/legacy-jc1060/rust-core/Cargo.lock": "b5db62842b745740738621bda1a7207fce3f182ab231bf7366ff1b43f5b4b5f5",
+    "firmware-idf/legacy-jc1060/rust-core/src/lib.rs": "be129854895ba57c7182905db47ead924a5a1453c40aa8567eb723a899e4eacc"
+  },
+  "ram_image_sha256": "fc12b85de992b0f71ba7a6b552bc68df6562498e9256cc38a30a7828f8fcc9bb",
+  "idf_commit": "fff9895c82d744c7237be8847347bdd1b07c6643",
+  "status": "RAM_SCALAR_CALLS_OBSERVED_RESET_UNQUALIFIED",
+  "working_sources_uncommitted": true,
+  "release": false,
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\after-idf61-evaluation\\jc1060-idf61-rust-ram-evidence.zip",
+  "secondary_verification": "SHA256_MATCH"
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "source_image": "C:\\Users\\Daniel\\.codex\\worktrees\\m1-guition-bsp\\M1_PCB\\firmware-rust\\target\\legacy-jc1060\\idf61-ram\\ruzina_legacy_probe.bin",
+  "image_sha256": "fc12b85de992b0f71ba7a6b552bc68df6562498e9256cc38a30a7828f8fcc9bb",
+  "image_bytes": 113312,
+  "entrypoint": "0x4ff00d92",
+  "segments": [
+    {
+      "address": "0x30100000",
+      "bytes": 180
+    },
+    {
+      "address": "0x4ff00000",
+      "bytes": 79940
+    },
+    {
+      "address": "0x4ff13880",
+      "bytes": 32560
+    },
+    {
+      "address": "0x4ff1cfa0",
+      "bytes": 532
+    }
+  ],
+  "raw_log_sha256": "b9c8fca29c6909d839187e63a6d82972d5ceaaa57206b7fb9572ed4af25aa509",
+  "revision": 103,
+  "transport": "COM3 native USB Serial/JTAG",
+  "flash_write": false,
+  "efuse_write": false,
+  "execution": "PURE_RAM",
+  "factory_reset_requested_after_capture": true,
+  "factory_boot_seen_after_probe": false,
+  "factory_after_log_sha256": "6785c29ceb8093afd54a57a3be33358ef618f01cf69505c6bf27d8337a7a95c3",
+  "physical_power_cycle": "NOT_RUN",
+  "product_qualification": "NOT_QUALIFIED",
+  "scalar_observation_match": true
+}

@@ -1,0 +1,4 @@
+# Captured evidence is byte-addressed by recorded SHA-256, including CRLF and
+# trailing spaces emitted by the firmware/toolchain. Never normalize it.
+docs/boards/evidence/** -text -whitespace
+docs/boards/readiness/*write-recovery-plan*.json -text -whitespace

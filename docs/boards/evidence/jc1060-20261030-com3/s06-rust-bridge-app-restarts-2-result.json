@@ -1,0 +1,60 @@
+{
+  "scenario": "three-app-restarts-idf-rust-bridge",
+  "runs": [
+    {
+      "run": 1,
+      "bytes": 5127,
+      "sha256": "68be09094159b5bf7e3269f5c88a42ba190271a176889ecde37ff36a6cc23f6c",
+      "operator_command_R": true,
+      "scalar": true,
+      "initialized": true,
+      "heartbeats": 15,
+      "complete_passes": 15,
+      "starts_at_one": true,
+      "all_hashes_match_prior_raw_baseline": true,
+      "min_client_stack_free": 10752,
+      "errors": false,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    },
+    {
+      "run": 2,
+      "bytes": 5224,
+      "sha256": "ce5e0379db1ed74dbf0b2c0f31f53add41bf610166aaeeb4cbab6e0fd4b2b881",
+      "operator_command_R": true,
+      "scalar": true,
+      "initialized": true,
+      "heartbeats": 16,
+      "complete_passes": 15,
+      "starts_at_one": true,
+      "all_hashes_match_prior_raw_baseline": true,
+      "min_client_stack_free": 10656,
+      "errors": false,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    },
+    {
+      "run": 3,
+      "bytes": 5191,
+      "sha256": "6d19ebaf0613de6a4cf60029a63ecbc51cad22e448ebf32557c602b2301b26a3",
+      "operator_command_R": true,
+      "scalar": true,
+      "initialized": true,
+      "heartbeats": 15,
+      "complete_passes": 15,
+      "starts_at_one": true,
+      "all_hashes_match_prior_raw_baseline": true,
+      "min_client_stack_free": 10656,
+      "errors": false,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    }
+  ],
+  "app_sha256": "5a58ab6db4f5ca1f781d9d46b18614be2e9d9d45f3177c934bcd97696b5e67d1"
+}

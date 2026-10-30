@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-s06-sd-file-evidence-v2.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-sd-file\\jc1060-idf61-s06-sd-file-evidence-v2.zip",
+  "sha256": "58669877fc7b794c6ccc5949b8babca17ed4a953ea8234deca32dd3ac7bbba5d",
+  "bytes": 9811929,
+  "members": 181,
+  "status": "KNOWN_FILE_SHA_EOF_SEEKS_ACTIVE_READ_REMOVAL_AND_REINSERT_SMOKE_OBSERVED_NOT_PRODUCT_QUALIFIED",
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH",
+  "release": false,
+  "contains_factory_dump": false,
+  "contains_sd_card_dump": false,
+  "contains_deterministic_fixture": true,
+  "working_sources_uncommitted": true,
+  "app_sha256": "f501dd087eec7bec7dff4729deb0f213a0d15d18fbe2ae8f1824e38519d9e48e",
+  "original_timing_rechecked": "ALL_NINE_RECORDS_CONSISTENT_PRINTF_FAILURE_CLAIM_WITHDRAWN",
+  "correction_evidence": "../evidence/jc1060-20261030-com3/s06-sd-file-original-timing-recheck.json",
+  "source_comment_corrected_after_build": true,
+  "accepted_sources": "Exact build-time snapshots retained; current comment-only clarification separately included",
+  "supersedes_archive": {
+    "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-s06-sd-file-evidence.zip",
+    "sha256": "a013229acbc09dbea2e215e2a71775b52d8bc9da70082156c87a6a76fb973188",
+    "reason": "Earlier report incorrectly interpreted original wall_us; preserved raw records and build artifacts unchanged"
+  }
+}

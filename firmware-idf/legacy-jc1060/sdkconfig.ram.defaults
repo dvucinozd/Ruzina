@@ -1,0 +1,4 @@
+# Append after sdkconfig.defaults in a separate build/config directory.
+CONFIG_APP_BUILD_TYPE_RAM=y
+CONFIG_APP_BUILD_TYPE_PURE_RAM_APP=y
+CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y

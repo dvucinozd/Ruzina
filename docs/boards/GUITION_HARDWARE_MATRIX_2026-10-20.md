@@ -2,6 +2,11 @@
 
 Date: 2026-10-20
 
+Arrival update 2026-10-30: the first JC1060 reports v1.3, not the expected v3.2.
+The following remains the dated source-preparation matrix. Use the
+[unit-specific arrival/ESP-IDF record](JC1060_ARRIVAL_2026-10-30.md) for current
+observations, backups and recovery limits. JC8012 remains unobserved.
+
 Scope: complete source-based preparation for the two selected models while the boards are in transit. All hardware values below are documented candidates. No received unit has been interrogated, flashed or physically accepted. The owner's v3.2 report remains separate from schematic/package labels and vendor demo folder names.
 
 ## Source authority
@@ -35,21 +40,21 @@ The recorded local hashes can be replayed from the repository root with `python 
 | Area | JC1060P470C_I_W_Y | JC8012P4A1C_I_W_Y | Evidence / remaining check |
 |---|---|---|---|
 | Silicon | Owner reports ESP32-P4 v3.2 | Owner reports ESP32-P4 v3.2 | Read actual chip revision after arrival; minimum remains 302 |
-| Memory | 16 MiB external flash; 32 MiB PSRAM | 16 MiB external flash; 32 MiB PSRAM | SPEC p3 and QIO/16MB/200MHz PSRAM demo configs; identify actual devices/mode before storage writes or allocator activation |
+| Memory | 16 MiB external flash; 32 MiB PSRAM | 16 MiB external flash; 32 MiB PSRAM | SPEC p3 and QIO/16 MB/200 MHz PSRAM demo configs; identify actual devices/mode before storage writes or allocator activation |
 | Display | 7 inch, native 1024x600, JD9165 | 10.1 inch, native 800x1280, JD9365 | SPEC p4, actual panel constructors in V3 BSP; landscape UI rotation is a separate choice |
 | DSI | 2 lanes; PHY LDO3 at 2.5 V | 2 lanes; PHY LDO3 at 2.5 V | V3 display headers; reset/init and cache/DMA remain untested |
 | Panel reset / backlight | GPIO0 / GPIO23 | GPIO27 / GPIO23 for 800x1280 branch | V3 BSP headers; choose exact panel variant before enabling |
 | Touch | GT911 | GSL3680; vendor wrapper uses address 0x40 | V3 constructor branches; exact address/orientation/calibration still requires unit interrogation |
 | Shared I2C | SDA7 / SCL8 | SDA7 / SCL8 | V3 headers and schematic codec/touch nets |
 | Touch reset / interrupt | Schematic shows 22/21; V3 example sets NC/NC | 22/21 in 800x1280 branch | Conflict retained for 1060; do not drive the pins by inference |
-| SDMMC | Slot0, D0..3=39..42, CLK43, CMD44 | Same | V3 headers and TF schematic |
+| SDMMC | Slot 0, D0..3=39..42, CLK43, CMD44 | Same | V3 headers and TF schematic |
 | SD power / detect | P4 internal LDO4; no established GPIO card-detect | Same | V3 `ldo_chan_id=4`, schematic `ESP_LDO_VO4`; requires a Guition LDO4 power policy and explicit media presence/removal observation |
 | Wireless | ESP32-C6 companion in Guition core/module | ESP32-C6; schematic SDIO2 on P4 GPIO14..19 and reset/control connections | Unit/module revision and companion firmware remain open; no Wi-Fi policy or companion image imported |
 | Native USB | Separate FS and HS Type-C data connectors | Separate FS and HS Type-C data connectors | SCH; JC8012 also has CH340C USB/UART service connector |
 | USB host power | Shared `USB5V_IN`, Type-C CC pulldowns; independent host VBUS switching/fault channels are not established | Same | Host adapters, supply/backfeed policy and current limits are unqualified |
 | FS GPIO binding | Unresolved for exact v3.2 module/board | Unresolved for exact v3.2 board | Old raw schematic labels 24/25 and copied BSP USB macros 19/20 must not be translated into a working v3.2 HAL binding by assumption |
 | Audio codec | ES8311, differential mono speaker path | ES8311, differential mono speaker path | SCH and vendor mono I2S configuration; not a stereo MAIN or independent headphone path |
-| Audio I2S | MCLK13, BCLK12, LRCK10, DOUT9, DIN48; PA enable11 | MCLK13, BCLK12, LRCK10, DOUT9, DIN11; PA enable20 | V3 BSPs; physical sample-rate/clock/mute tests remain pending |
+| Audio I2S | MCLK13, BCLK12, LRCK10, DOUT9, DIN48; PA enable 11 | MCLK13, BCLK12, LRCK10, DOUT9, DIN11; PA enable 20 | V3 BSPs; physical sample-rate/clock/mute tests remain pending |
 | Stereo MAIN / headphone | No qualified onboard stereo MAIN or independent headphone path | Same | MAIN prefers a ready external stereo DAC, then compatible controller MAIN audio. Headphones always use controller UAC; hardware wiring, detection and channel mappings remain unqualified. See [routing policy](../M1_RUST_PRODUCT_REQUIREMENTS.md#8-controller-only-headphone-policy). |
 | Other hardware | Ethernet PHY/RJ45, RS485/UART, camera, RTC and battery circuitry shown | Camera, RTC, battery circuitry and expansion FPCs shown | Keep inactive until needed and individually mapped; schematic presence is not unit acceptance |
 

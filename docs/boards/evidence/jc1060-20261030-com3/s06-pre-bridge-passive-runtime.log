@@ -1,0 +1,39 @@
+heartbeat=2000 uptime_us=2000000824
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=327 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391132
+sd_fixture_worst_read_us=1189
+sd_fixture_worst_seek_read_us=753
+sd_fixture_wall_start_us=1995304937
+sd_fixture_wall_end_us=2000427650
+sd_fixture_wall_us=5122713
+heartbeat=2001 uptime_us=2001000823
+sd_fixture_state=READING pass=328 generation=1 expected_bytes=8389121
+heartbeat=2002 uptime_us=2002000824
+heartbeat=2003 uptime_us=2003000824
+heartbeat=2004 uptime_us=2004000824
+heartbeat=2005 uptime_us=2005000824
+heartbeat=2006 uptime_us=2006000824
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=328 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2391020
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=755
+sd_fixture_wall_start_us=2001425051
+sd_fixture_wall_end_us=2006547652
+sd_fixture_wall_us=5122601
+heartbeat=2007 uptime_us=2007000823
+sd_fixture_state=READING pass=329 generation=1 expected_bytes=8389121
+heartbeat=2008 uptime_us=2008000824
+heartbeat=2009 uptime_us=2009000824
+heartbeat=2010 uptime_us=2010000824
+heartbeat=2011 uptime_us=2011000824
+heartbeat=2012 uptime_us=2012000824
+sd_fixture=CONTENT_SHA256_AND_SEEKS_MATCH pass=329 generation=1 bytes=8389121 seek_cases=10 eof=MATCH sha256=1cb18815702b14ff92ad02f4976a162481d8d91beb429ba5607b131d4ab281de
+sd_fixture_io_us=2390993
+sd_fixture_worst_read_us=1191
+sd_fixture_worst_seek_read_us=753
+sd_fixture_wall_start_us=2007545050
+sd_fixture_wall_end_us=2012667650
+sd_fixture_wall_us=5122600
+heartbeat=2013 uptime_us=2013000823
+sd_fixture_state=READING pass=330 generation=1 expected_bytes=8389121
+heartbeat=2014 uptime_us=2014000824

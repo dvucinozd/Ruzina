@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "unit_id": "JC1060-20261030-COM3",
+  "documents": [
+    {
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\5-Schematic\\JC1060P470C_I_W_Y-V1.0.pdf",
+      "sha256": "ae3f41fe9a66b201358ef8cf1f531fdced68c63f84c8bde36e23cde5132a23ee"
+    },
+    {
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\2-Specification\\JC1060P470C_I_W_Y Specifications-EN.pdf",
+      "sha256": "a19323b7d9ee1af360b6d08c23e7b568ae13bbe150568a239da1885e3a75adb6"
+    },
+    {
+      "file": "C:\\Users\\Daniel\\Desktop\\ESP-BOARDS\\JC1060P470C_I_W_Y\\6-User_Manual\\Getting started JC1060P470C_I_W_Y.pdf",
+      "sha256": "7714a5613a11523277031eb930f59d224e29e7a6b97d50e50bd3ee4c4fe1ad0b"
+    }
+  ],
+  "factory_table": {
+    "table_flash_offset": "0x73fd0",
+    "metadata_records_match": 60,
+    "old_table_metadata_match": false,
+    "direct_payload_match": 48,
+    "zero_payload_unmapped_RAM": 12,
+    "scope": "Zero-valued unmapped RAM targets are consistent with BSS, not directly compared; not physical panel identification"
+  },
+  "imported_table_records": 60,
+  "canonical_records_sha256": "a784b0c9c5311e406e6ed3d982b8eba07609d9ca3caac744d1e4b48efc11664e",
+  "pins": {
+    "display_reset": 0,
+    "backlight": 23,
+    "sda": 7,
+    "scl": 8,
+    "dphy_ldo": 3,
+    "dphy_mv": 2500,
+    "touch_reset_irq_policy": "Do not configure GPIO21/22; polling with existing GT911 address"
+  },
+  "sources": "Vendor New_Panel BSP, V1.0 schematic visually reviewed, factory table metadata/payload comparisons; physical PCB/panel marking unobserved",
+  "geometry": {
+    "width": 1024,
+    "height": 600,
+    "pixel_mhz": 52,
+    "lanes": 2,
+    "lane_mbps": 750,
+    "hbp": 136,
+    "hpw": 24,
+    "hfp": 160,
+    "vbp": 21,
+    "vpw": 2,
+    "vfp": 12
+  },
+  "status": "SOURCE_REVIEWED_PENDING_PHYSICAL_DIAGNOSTIC"
+}

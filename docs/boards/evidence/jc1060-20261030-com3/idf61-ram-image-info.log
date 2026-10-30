@@ -1,0 +1,34 @@
+esptool v5.6.0
+Image size: 113312 bytes
+Detected image type: ESP32-P4
+
+ESP32-P4 Image Header
+=====================
+Image version: 1
+Entry point: 0x4ff00d92
+Segments: 4
+Flash size: 1MB
+Flash freq: 40m
+Flash mode: QIO
+
+ESP32-P4 Extended Image Header
+==============================
+WP pin: 0xee (disabled)
+Flash pins drive settings: clk_drv: 0x0, q_drv: 0x0, d_drv: 0x0, cs0_drv: 0x0, hd_drv: 0x0, wp_drv: 0x0
+Chip ID: 18 (ESP32-P4)
+Minimal chip revision: v1.0, (legacy min_rev = 0)
+Maximal chip revision: v1.99
+
+Segments Information
+====================
+Segment   Length   Load addr   File offs  Memory types
+-------  -------  ----------  ----------  ------------
+      0  0x000b4  0x30100000  0x00000018  
+      1  0x13844  0x4ff00000  0x000000d4  DRAM, BYTE_ACCESSIBLE, IRAM
+      2  0x07f30  0x4ff13880  0x00013920  DRAM, BYTE_ACCESSIBLE, IRAM
+      3  0x00214  0x4ff1cfa0  0x0001b858  DRAM, BYTE_ACCESSIBLE, IRAM
+
+ESP32-P4 Image Footer
+=====================
+Checksum: 0x7a (valid)
+Validation hash: 95b2eae43ad4ccefe46f02e1d7c5e45836117bf3cf2d92dbc154da39ddbe5cd3 (valid)

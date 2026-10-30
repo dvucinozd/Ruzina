@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-s04-scalar-evidence.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s04-scalar-evidence\\jc1060-idf61-s04-scalar-evidence.zip",
+  "sha256": "b0573ac0b99ef01c07aac9e8c29f78e784dafce6cdfca637ad38209083a6f3db",
+  "bytes": 4294400,
+  "members": 88,
+  "verification": "ZIP_CRC_AND_ALL_MEMBER_SHA256_PLUS_SECONDARY_SHA256_MATCH",
+  "status": "SCALAR_BOOT_RESET_SMOKE_OBSERVED_NOT_PRODUCT_QUALIFIED",
+  "contains_factory_dump": false,
+  "release": false,
+  "working_sources_uncommitted": true,
+  "app_sha256": "380aa1ab9c981b0d7c3d401055b26c081ae0df97e52f5ab9d9c9f851fb2a60b0"
+}

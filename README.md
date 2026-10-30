@@ -2,10 +2,51 @@
 
 Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with
-owner-reported v3.2 silicon. The minimum configured revision is 302.
+v3.2 silicon required by the native target. The minimum configured revision is 302.
 
-The boards are in transit. Product logic, simulation and target compilation are
-verified separately; physical boot, peripherals and audible output are pending.
+The first JC1060 arrived on 2026-10-30. Readout on COM3 identifies **v1.3**,
+which the native Rust HAL does not support. See the
+[arrival evidence and separate ESP-IDF assessment](docs/boards/JC1060_ARRIVAL_2026-10-30.md).
+An isolated ESP-IDF 6.1 / shared Rust probe built, linked and executed from RAM.
+Four scalar Rust calls matched expectations. Warm reset after that RAM mode
+failed; a complete power disconnect restored ROM/factory boot, and the owner
+confirmed the factory display works. Native firmware has not been flashed.
+The separate [S4 IDF diagnostic campaign](docs/reviews/2026-10-30-legacy-s4-runtime.md)
+has now programmed and readback-verified a flash-backed scalar image. It boots,
+reports monotonic heartbeats and passed three application restarts; reset and
+reconnect scenarios are recorded independently in that report.
+The separate [S5 memory/task probe](docs/reviews/2026-10-30-legacy-s5-memory-task.md)
+observed 32 MiB PSRAM at 80 MHz, bounded scratch/allocator checks, preempted C/Rust
+FP loops and the existing EQ benchmark. These are diagnostic measurements;
+DMA, full product timing and peripherals remain unqualified.
+The isolated [S6 display/touch diagnostic](docs/reviews/2026-10-30-legacy-s6-display-touch.md)
+now initializes the New_Panel candidate and GT911. The owner confirmed the
+static color order/corners; touch coordinates and lifecycle are recorded in
+that report. It is not yet the product UI renderer.
+The separate [read-only SD/exFAT diagnostic](docs/reviews/2026-10-30-legacy-s6-sd-readonly.md)
+has mounted the owner's 64 GB card and enumerated its root without creating
+files. This diagnostic temporarily replaces the static display profile;
+file/audio streaming and product storage integration remain unqualified.
+The [known-file extension](docs/reviews/2026-10-30-legacy-s6-sd-file.md) now
+verifies an 8 MiB + 513 UTF-8-path fixture byte-for-byte and by SHA-256, EOF and
+boundary seeks, including active-read removal/reinsertion smoke. It is still
+a standalone diagnostic rather than a wired product media pipeline.
+The [read-only Rust media bridge protocol](docs/reviews/2026-10-30-legacy-s6-rust-media-bridge.md)
+now has host coverage for owned-buffer cancellation and media generations.
+Its [concrete IDF transport](docs/reviews/2026-10-30-legacy-s6-idf-media-transport.md)
+runs a separate raw-block diagnostic on the board, with first-boot and three
+app-restart hash observations. Idle removal and same-card reinsertion were
+observed, with matching raw reads after an owner-confirmed cold return (initial
+boot prefix missed). A subsequent [shared Rust partition/exFAT profile](docs/reviews/2026-10-30-legacy-s6-rust-exfat.md)
+now mounts the same card and verifies the full UTF-8 fixture SHA/EOF/seek cases,
+with three first-boot passes and three app-restart observations. This is still
+an isolated diagnostic. Open-file removal/reinsertion and a full fixture pass
+after owner-confirmed cold return are observed on its exact image (initial boot
+prefix missed). Product loading/executor and broader media qualification remain
+separate gates.
+Product logic, simulation and target
+compilation are verified separately; product boot, peripherals and audible
+output remain pending. JC8012 has no physical observations yet.
 Pajoniiir **M2.5** is now the released functional reference. The rewrite started
 from M2.2; the [M2.5 parity audit and plan](docs/M2_5_PARITY_PLAN.md) records the
 remaining differences and separately evaluates newer shared-P4 beta/master work.

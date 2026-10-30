@@ -3,6 +3,11 @@
 Updated: 2026-10-21. Applies independently to JC1060P470C_I_W_Y and
 JC8012P4A1C_I_W_Y. Boards are in transit; no hardware results are recorded.
 
+This is the dated native-v3.2 preparation. For the first received JC1060's
+v1.3 identity, factory backups and separate IDF 6.1 experiment, read the
+[2026-10-30 arrival record](JC1060_ARRIVAL_2026-10-30.md). Its native packages
+must not be flashed to that unit.
+
 ## Before replacing factory firmware
 
 1. Record unit/model, PCB/module revision, panel markings and connector photos.

@@ -1,0 +1,47 @@
+[
+  {
+    "run": 1,
+    "scenario": "console-app-restart",
+    "sha256": "32e6f1756748264d01bbe84d64b8e41c4c9d90887a57019271d7ecce4897a566",
+    "bytes": 3828,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "heartbeat_count": 11,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  },
+  {
+    "run": 2,
+    "scenario": "console-app-restart",
+    "sha256": "c5d2fc06c0bc611780bede8627ca4086fb81e1dbb6878132a174d7874098abdd",
+    "bytes": 3828,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "heartbeat_count": 11,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  },
+  {
+    "run": 3,
+    "scenario": "console-app-restart",
+    "sha256": "bb1928d8af5f90b7efb0f54068a1c07d7c75952a496fde5c980b72050b1d2f5c",
+    "bytes": 3828,
+    "events": [],
+    "request_seen": true,
+    "scalar": true,
+    "heartbeat_count": 11,
+    "watchdog": false,
+    "reset_reason_lines": [
+      "reset_reason=3"
+    ],
+    "pass": true
+  }
+]

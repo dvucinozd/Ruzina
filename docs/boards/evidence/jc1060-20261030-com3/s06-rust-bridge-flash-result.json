@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-idf-rust-readonly-raw-block-bridge-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4; no display/audio/USB-host owner",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "5a58ab6db4f5ca1f781d9d46b18614be2e9d9d45f3177c934bcd97696b5e67d1",
+  "plan_sha256": "82585d0dfcf53bf0a9e1e1795922e1d1194b6f8f93b67288c95934ff053248d9",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "a71659dd3b11c13eea7f907a2ab03b02edab5de08ab19fd6326aaa98750a69dd"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 221184,
+      "sha256": "52cdf42f8a6ede711506b6f4eafb04f5b874c39b6721194e99b37285e7c16a6b"
+    }
+  ],
+  "programmer_log_sha256": "a888b2d34d35c55f9bb62af84eecbc75af1f081e01c1e71f89b8d8f3e1400ff2"
+}

@@ -1,0 +1,27 @@
+{
+  "scenario": "first-flash-backed-scalar",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Owner model and Full Speed Type-C/USB-only/buttons; PCB markings unavailable; no BSP peripheral access",
+  "prewrite_original_sector_hashes": "MATCH",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "31f683d9d37c3f98bee7e5264ca5b14923b4a2d3474c217164d78f9f497dc6b2"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 151552,
+      "sha256": "fb71e27d4471890db433455ab66295e71a7c7a7b98a4e27c406c3cd04f0fae9d"
+    }
+  ],
+  "programmer_log_sha256": "2ef9ec898c0820a4be23c9dac11b2a39aa41c8efa381c9b7542fb63b95fdb06d"
+}

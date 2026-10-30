@@ -1,0 +1,15 @@
+{
+  "scenario": "s06-first-readonly-sd-boot",
+  "bytes": 5987,
+  "sha256": "19d53ed04dd2812c6e1918446f3a55bd2c471e1c58b7dc9cc93af025f9e67bc2",
+  "events": [
+    "USB software reset from ROM/stub"
+  ],
+  "scalar": true,
+  "heartbeat": true,
+  "sd_mount": true,
+  "sd_match": true,
+  "sd_quiesced": false,
+  "watchdog": false,
+  "physical_power_cycle": false
+}

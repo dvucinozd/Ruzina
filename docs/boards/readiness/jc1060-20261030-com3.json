@@ -1,0 +1,326 @@
+{
+  "schema": 1,
+  "model": "JC1060P470C_I_W_Y",
+  "board": "jc1060",
+  "unit_id": "JC1060-20261030-COM3",
+  "physical_acceptance": "NOT_QUALIFIED",
+  "observed": {
+    "pcb_marking": null,
+    "module_marking": null,
+    "panel_marking": null,
+    "chip_revision": 103,
+    "flash_rdid": "0x184068",
+    "flash_bytes": 16777216,
+    "psram_bytes": 33554432,
+    "service_connector": "OWNER_REPORTED: Full Speed Type-C socket; Windows enumeration previously native USB Serial/JTAG",
+    "service_transport": "Native USB Serial/JTAG; VID_303A PID_1001 MI_00",
+    "power_source": "OWNER_CONFIRMED: PC USB cable only; no other supply",
+    "base_mac": "e8:f6:0a:e7:22:1d",
+    "efuse_revision_word": {
+      "address": "0x5012d04c",
+      "value": "0xa4054313"
+    },
+    "model_identification": "OWNER_REPORTED; markings/photos NOT_RUN",
+    "secure_boot": "DISABLED",
+    "flash_encryption": "DISABLED",
+    "psram_observation": "Factory esp_brookesia_demo 1.0.1 / IDF v5.5.4-dirty reports 32MB at 200MHz and memory test OK; not our probe or qualification",
+    "factory_touch_response": "GT911: 0x39,0x31,0x31; config version 99",
+    "operator_screen": "Initially unlit; after complete power disconnect and return to factory boot owner confirms factory demo displayed",
+    "factory_display_log_label": "EK79007; both vendor BSPs retain this stale log label while calling JD9165; not panel identification",
+    "panel_variant_owner_report": "New_Panel, unverified physical marking",
+    "factory_display_operator_acceptance": "OWNER_CONFIRMED_DEMO_VISIBLE; not our panel driver qualification",
+    "buttons": "OWNER_CONFIRMED: BOOT and RESET present",
+    "physical_identity_evidence": "Owner text report 2026-10-30; PCB/module/panel photographs remain unavailable",
+    "pcb_marking_availability": "Owner: unavailable without removing case; case removal deferred for scalar-only experiment",
+    "s06_gt911": "address0x5d, product39313100, current config1024x600; polling GPIO7/8; GPIO21/22 untouched",
+    "s06_operator_display": "2026-10-30 owner confirms expected stripe order and four corners",
+    "s06_operator_cold_display": "Owner confirms same correct stripes after USB-only5-10s power disconnect",
+    "sd_owner_report": "64GB exFAT card inserted, empty/no files per owner",
+    "sd_card": {
+      "owner": "64GB exFAT empty",
+      "capacity_bytes": 63864569856,
+      "sectors": 124735488,
+      "sector_bytes": 512,
+      "fs_type": "exFAT",
+      "volume_lba": 2048,
+      "cluster_bytes": 131072,
+      "root_files": 0,
+      "root_directories": 1,
+      "root_names_not_logged": true
+    },
+    "sd_fixture_copy": "Owner confirms PC-reader copy of RUZINA_TEST UTF-8 fixture and reinsertion; firmware does not write SD"
+  },
+  "factory": {
+    "boot_log": "../evidence/jc1060-20261030-com3/factory-passive.log",
+    "programmer_tool_version": "esptool 5.3.1; 4.12.dev1; 5.6.0 (IDF 6.1 environment)",
+    "read1_command": "\"D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe\" -u -m esptool --chip esp32p4 --port COM3 --before usb-reset --after no-reset --connect-attempts 2 read-flash --flash-size 16MB 0 0x1000000 \"D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-1.bin\" --no-progress",
+    "read1_file": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-1.bin",
+    "read1_sha256": "27d5782978aeb3c42f8b49659e793d3ca8f59543f62e419d7b1981de2c492060",
+    "read2_command": "\"D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe\" -u -m esptool --chip esp32p4 --port COM3 --before usb-reset --after no-reset --connect-attempts 2 read-flash --flash-size 16MB 0 0x1000000 \"D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-2.bin\" --no-progress",
+    "read2_file": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-2.bin",
+    "read2_sha256": "27d5782978aeb3c42f8b49659e793d3ca8f59543f62e419d7b1981de2c492060",
+    "readback_start": 0,
+    "readback_bytes": 16777216,
+    "independent_reads_confirmed_by": "Separate esptool 5.6.0 invocations; source logs retained",
+    "secondary_storage_copy": {
+      "path": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3",
+      "verification": "BOTH_SHA256_MATCH"
+    },
+    "backup_verification": "TWO_INDEPENDENT_FULL_READBACKS_MATCH",
+    "failed_acquisitions": [
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-read-1.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-read-1-retry.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-read-1-stub.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-read-1-full.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-read-1-chunked.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-pass-a.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-legacy-read-1.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-conservative-read-1.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\independent-pass-1.log",
+        "status": "FAILED_OR_INTERRUPTED_NOT_A_BACKUP"
+      }
+    ],
+    "warm_restart_raw_log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-warm-restart.log",
+    "warm_restart_raw_sha256": "603149bc0811f7f135810867b4175236fa3dd50e5ee9e551b53093b7c13749f0",
+    "warm_restart_excerpt": "../evidence/jc1060-20261030-com3/factory-warm-restart-excerpt.log"
+  },
+  "recovery": {
+    "rom_entry_sequence": "Owner disconnected sole USB power 5-10 seconds, held BOOT, reconnected same Full Speed Type-C, waited 2 seconds, released BOOT; no subsequent RESET; esptool before/after no-reset",
+    "handshake_log": "../evidence/jc1060-20261030-com3/efuse-revision-word.log",
+    "repeatable_entry": "MANUAL_COLD_ROM_HANDSHAKE_OBSERVED; SOFTWARE_ROM_HANDSHAKES_REPEATED; COLD_RECOVERY_OBSERVED",
+    "restoration_procedure": "Prepared exact original-sector payloads and whole-flash source; see jc1060-s04-write-recovery-plan-20261030.json; execution NOT_RUN",
+    "programming_layout_review": "S04_SCALAR_SCOPE_REVIEWED; three sector-bounded ranges; NVS/PHY/storage excluded; physical PCB/module/panel markings deferred to BSP qualification",
+    "actual_factory_restore": "NOT_RUN",
+    "normal_factory_boot": "BOOT_LOG_OBSERVED_AFTER_OWNER_POWER_DISCONNECT; FACTORY_DEMO_OWNER_CONFIRMED",
+    "after_ram_usb_warm_reset": "FAIL: repeated HP_SYS_HP_WDT_RESET before factory app",
+    "after_ram_rom_flash_attach": "FAIL: serial data stream stopped",
+    "cold_power_cycle_after_ram": "OWNER_CONFIRMED_COMPLETE_DISCONNECT; SUBSEQUENT_ROM_RDID_AND_FACTORY_BOOT_OBSERVED",
+    "cold_boot_raw_transition": "NOT_CAPTURED; subsequent capture is software warm reset after owner power cycle",
+    "post_power_cycle_factory_log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-recovery-after-power-cycle\\factory-warm-restart.log",
+    "post_power_cycle_factory_log_sha256": "b1a4ab0cf1900cece50ffbbfbc9ed39210b4f5ffd94d0e3d859840556a892efc",
+    "post_power_cycle_factory_excerpt": "../evidence/jc1060-20261030-com3/factory-after-power-cycle-excerpt.log",
+    "manual_rom_evidence": "../evidence/jc1060-20261030-com3/s04-manual-rom-result.json",
+    "live_security_recheck": "2026-10-30: secure boot false; flash_crypt_cnt 0; secure download false"
+  },
+  "diagnostics": {
+    "package_manifest": "jc1060-s06-rust-exfat-write-recovery-plan-20261030.json",
+    "source_commit": null,
+    "image_id": "legacy-idf61-shared-rust-partition-exfat-fixture",
+    "elf_sha256": "6bc33ce499b43a2a5adb2211ff9d50029ab091b32eefa649b0fa90005563c897",
+    "programmed_bytes_readback_evidence": "../evidence/jc1060-20261030-com3/s06-rust-exfat-flash-result.json",
+    "cold_boot": "OWNER_CONFIRMED_COLD_RETURN_UPTIME_RESET_AND_FULL_RUST_FILE_PASS; INIT_RESET_REASON_PREFIX_NOT_CAPTURED",
+    "warm_reset": "3_APP_RESTARTS_EACH1_COMPLETE_RUST_FILE_SHA_EOF10SEEKS_PASS_NO_WATCHDOG",
+    "service_reconnect": "NOT_RUN_FOR_CURRENT_RUST_EXFAT_IMAGE",
+    "flash_probe": "NOT_RUN",
+    "psram_scratch": "NOT_RUN",
+    "native_c02": "BLOCKED_INCOMPATIBLE_SILICON_103_LT_302",
+    "image_sha256": "ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267",
+    "current_firmware": "LEGACY_IDF61_SHARED_RUST_PARTITION_EXFAT_FIXTURE_RUNNING_AFTER_OWNER_COLD_RETURN; display/audio/USB-host inactive",
+    "cold_boot_evidence": "../evidence/jc1060-20261030-com3/s06-rust-exfat-cold-review.json",
+    "app_restart": "3_OF_3_SHARED_RUST_EXFAT_MOUNT_AND_FULL_FIXTURE_PASS",
+    "app_restart_evidence": "../evidence/jc1060-20261030-com3/s06-rust-exfat-app-restarts-result.json",
+    "usb_service_reset": "ONE_INITIAL_USB_RESET_FROM_ROM; NOT3_SCENARIO_ACCEPTANCE",
+    "usb_service_reset_evidence": "../evidence/jc1060-20261030-com3/s06-rust-exfat-first-boot-result.json",
+    "cold_repeat_evidence": null,
+    "service_reconnect_evidence": null,
+    "runtime_readiness": "SHARED_RUST_EXFAT_FULL_FIXTURE_BOOT_RESTART_OPEN_FILE_REMOVAL_REINSERT_AND_OWNER_COLD_RETURN_OBSERVED; NOT_PRODUCT_QUALIFIED",
+    "s05_runtime_evidence": "../evidence/jc1060-20261030-com3/s05-first-boot-result.json",
+    "s05_app_restart_evidence": "../evidence/jc1060-20261030-com3/s05-app-restart-result.json",
+    "s05_package_plan": "jc1060-s05-write-recovery-plan-20261030.json",
+    "s05_cold_evidence": "../evidence/jc1060-20261030-com3/s05-cold-boot-result.json",
+    "s05_scope": "32MiB detected at80MHz; 64KiB CPU-cached scratch, FP same/dual core, EQ benchmark; no DMA/full-capacity/retention qualification",
+    "s06_runtime_evidence": "../evidence/jc1060-20261030-com3/s06-first-boot-result.json",
+    "s06_programming_evidence": "../evidence/jc1060-20261030-com3/s06-first-flash-result.json",
+    "s06_package_plan": "jc1060-s06-write-recovery-plan-20261030.json",
+    "s06_display": "OWNER_CONFIRMED_STATIC_STRIPE_ORDER_AND_ALL_FOUR_CORNERS; initial visibility only",
+    "s06_touch": "FIVE_ZONES_AND_SECOND_NAMED_BL_BR_ORDER_OBSERVED; TWO_FINGER_COUNT; ZERO_HEALTH_ERRORS; LIMITED_SMOKE",
+    "s06_app_restart": "3_OF_3_DISPLAY_AND_GT911_INIT_WITH_HEARTBEATS_NO_HP_WATCHDOG",
+    "s06_restart_evidence": "../evidence/jc1060-20261030-com3/s06-app-restart-result.json",
+    "s06_touch_evidence": "../evidence/jc1060-20261030-com3/s06-touch-corners-result.json",
+    "s06_cold_boot": "OWNER_CONFIRMED_STRIPES_RETURNED; INIT_AND_POWERON_REASON1_CAPTURED; RAW_ROM_PREFIX_MISSING",
+    "s06_cold_evidence": "../evidence/jc1060-20261030-com3/s06-cold-boot-result.json",
+    "s06_bottom_evidence": "../evidence/jc1060-20261030-com3/s06-bottom-order-result.json",
+    "s06_sd": "READONLY_EXFAT_EMPTY_ROOT_RAW_READS_REMOVAL_REINSERT_AND_POST_COLD_RUNTIME_OBSERVED; FILE_READ_NOT_RUN",
+    "s06_sd_runtime": "../evidence/jc1060-20261030-com3/s06-sd-first-boot-result.json",
+    "s06_sd_programming": "../evidence/jc1060-20261030-com3/s06-sd-first-flash-result.json",
+    "s06_sd_recovery_plan": "jc1060-s06-sd-write-recovery-plan-20261030.json",
+    "s06_sd_removal": "OWNER_CONFIRMED_REMOVAL; TIMEOUT_QUIESCED_GENERATION2_NO_HP_WATCHDOG",
+    "s06_sd_removal_evidence": "../evidence/jc1060-20261030-com3/s06-sd-removal-result.json",
+    "s06_sd_reinsert": "OWNER_CONFIRMED_SAME_CARD_REINSERTED; 3_OF_3_APP_RESTART_MOUNTS_WITH_HEARTBEATS",
+    "s06_sd_reinsert_evidence": "../evidence/jc1060-20261030-com3/s06-sd-reinsert-result.json",
+    "s06_sd_cold": "OWNER_CONFIRMED_POWER_CYCLE; NEW_UPTIME_AND_SD_HEALTH_READS; INITIAL_MOUNT_AND_RESET_REASON_NOT_CAPTURED",
+    "s06_sd_cold_evidence": "../evidence/jc1060-20261030-com3/s06-sd-cold-corroboration.json",
+    "s06_sd_file_first_runtime": "../evidence/jc1060-20261030-com3/s06-sd-file-first-boot-result.json",
+    "s06_sd_file_fixture": "8389121-byte nested UTF-8/space filename; full content/SHA256/EOF/10seek cases matched nine times",
+    "s06_sd_file_runtime": "../evidence/jc1060-20261030-com3/s06-sd-file-timing-boot-result.json",
+    "s06_sd_file_removal": "../evidence/jc1060-20261030-com3/s06-sd-file-removal-result.json",
+    "s06_sd_file_recovery_plan": "jc1060-s06-sd-file-write-recovery-plan-20261030.json",
+    "s06_sd_file_reinsert": "../evidence/jc1060-20261030-com3/s06-sd-file-reinsert-result.json",
+    "s06_sd_file_status": "9 complete passes then active-file removal; reinsertion and 3 app restarts each4 complete passes on final image",
+    "source_base_commit": "4fe18e986e0a97d7f5eec0e68303f96481928af4",
+    "source_status": "UNCOMMITTED_HASHED_SOURCE_SNAPSHOT",
+    "s06_sd_file_original_timing_recheck": "../evidence/jc1060-20261030-com3/s06-sd-file-original-timing-recheck.json",
+    "s06_sd_file_original_timing_status": "ALL_NINE_COMPLETE_RECORDS_CONSISTENT; PRIOR_PRINTF_FAILURE_CLAIM_WITHDRAWN",
+    "historical_s04_app_restart": "3_OF_3_SCALAR_AND_HEARTBEAT_OBSERVED; reset_reason=3",
+    "historical_s04_app_restart_evidence": "../evidence/jc1060-20261030-com3/s04-app-restart-result.json",
+    "historical_s04_usb_service_reset": "3_OF_3_SCALAR_AND_HEARTBEAT_OBSERVED_AFTER_NORMAL_POWER_CYCLE; reset_reason=11",
+    "historical_s04_usb_service_reset_evidence": "../evidence/jc1060-20261030-com3/s04-usb-reset-3-result.json",
+    "historical_s04_cold_boot_evidence": "../evidence/jc1060-20261030-com3/s04-cold-boot-result.json",
+    "historical_s04_cold_repeat_evidence": "../evidence/jc1060-20261030-com3/s04-power-repeat-result.json",
+    "historical_s04_service_reconnect_evidence": "../evidence/jc1060-20261030-com3/s04-session-reopen-result.json",
+    "s06_rust_bridge_runtime": "../evidence/jc1060-20261030-com3/s06-rust-bridge-first-boot-result.json",
+    "s06_rust_bridge_plan": "jc1060-s06-rust-bridge-write-recovery-plan-20261030.json",
+    "s06_rust_bridge_offline": "../evidence/jc1060-20261030-com3/s06-rust-bridge-offline-result.json",
+    "s06_rust_bridge_removal": "OWNER_CONFIRMED; IDLE_STATUS_TIMEOUT_QUIESCED; CLIENT_STOPPED;6_HEARTBEATS_NO_LATE_SUCCESS_OR_WATCHDOG",
+    "s06_rust_bridge_fs": "NOT_CONNECTED; raw block diagnostic only",
+    "s06_rust_bridge_restarts": "../evidence/jc1060-20261030-com3/s06-rust-bridge-app-restarts-2-result.json",
+    "s06_rust_bridge_removal_evidence": "../evidence/jc1060-20261030-com3/s06-rust-bridge-removal-review.json",
+    "s06_rust_bridge_reinsert": "OWNER_CONFIRMED_ONE_PHYSICAL_REINSERT; THREE_APP_RESTARTS_EACH15_MATCHING_RAW_PASSES_NO_WATCHDOG",
+    "s06_rust_bridge_reinsert_evidence": "../evidence/jc1060-20261030-com3/s06-rust-bridge-reinsert-review.json",
+    "s06_rust_bridge_cold": "../evidence/jc1060-20261030-com3/s06-rust-bridge-cold-review.json",
+    "historical_raw_bridge_cold_boot": "OWNER_CONFIRMED_COLD_RETURN_UPTIME_DROP_AND15_RAW_PASSES; INIT_RESET_REASON_PREFIX_NOT_CAPTURED",
+    "historical_raw_bridge_cold_boot_evidence": "../evidence/jc1060-20261030-com3/s06-rust-bridge-cold-review.json",
+    "historical_raw_bridge_warm_reset": "3_APP_RESTARTS_WITH15_POST_INIT_RAW_HASH_PASSES_EACH; NO_HP_WATCHDOG",
+    "historical_raw_bridge_app_restart": "3_OF_3_RUST_RAW_BLOCK_TRANSPORT_INIT_AND15_MATCHING_HASH_PASSES",
+    "historical_raw_bridge_app_restart_evidence": "../evidence/jc1060-20261030-com3/s06-rust-bridge-app-restarts-2-result.json",
+    "historical_raw_bridge_usb_service_reset": "ONE_INITIAL_USB_RESET_FROM_ROM; NOT_3_SCENARIO_ACCEPTANCE",
+    "historical_raw_bridge_usb_service_reset_evidence": "../evidence/jc1060-20261030-com3/s06-rust-bridge-first-boot-result.json",
+    "historical_raw_bridge_current_firmware": "LEGACY_IDF61_RUST_SD_RAW_BLOCK_BRIDGE_RUNNING_AFTER_OWNER_COLD_RETURN; no filesystem/display/audio",
+    "historical_raw_bridge_runtime_readiness": "BOOT_RESTART_IDLE_REMOVAL_REINSERT_AND_OWNER_COLD_RETURN_RAW_BLOCK_SMOKE_OBSERVED; NOT_PRODUCT_QUALIFIED",
+    "s06_rust_exfat_runtime": "../evidence/jc1060-20261030-com3/s06-rust-exfat-first-boot-result.json",
+    "s06_rust_exfat_offline": "../evidence/jc1060-20261030-com3/s06-rust-exfat-offline-result.json",
+    "s06_rust_exfat_removal": "OWNER_CONFIRMED; PASS11_READ_TIMEOUT_PROPAGATED; QUIESCED_CLIENT_STOPPED_NO_LATE_SUCCESS_OR_WATCHDOG",
+    "s06_rust_exfat_reinsert": "OWNER_CONFIRMED_ONE_REINSERT;3_APP_RESTARTS_EACH_COMPLETE_FILE_SHA_EOF10SEEKS_PASS",
+    "s06_rust_exfat_cold": "../evidence/jc1060-20261030-com3/s06-rust-exfat-cold-review.json",
+    "s06_rust_exfat_restarts": "../evidence/jc1060-20261030-com3/s06-rust-exfat-app-restarts-result.json",
+    "s06_rust_exfat_removal_evidence": "../evidence/jc1060-20261030-com3/s06-rust-exfat-removal-review.json",
+    "s06_rust_exfat_reinsert_evidence": "../evidence/jc1060-20261030-com3/s06-rust-exfat-reinsert-review.json"
+  },
+  "open": [
+    "PURE_RAM warm reset remains unsupported; normal flash-backed app/USB reset smoke observed separately",
+    "Native esp-hal 1.2.2 does not support this v1.3 unit; evaluate separate IDF 6.1 platform",
+    "GT911 polling startup and named corners observed; reset/IRQ control still unqualified",
+    "New_Panel static display operator-confirmed; physical panel marking and animated rendering unqualified",
+    "USB-FS v3.2 mapping",
+    "VBUS/backfeed",
+    "OTA trust/project/slot adapter",
+    "Photographed model/PCB/module/panel identity",
+    "Actual factory restore NOT_RUN"
+  ],
+  "evidence_root": "D:\\BoardEvidence\\JC1060-20261030-COM3",
+  "evidence_files": {
+    "identity-flash-id.log": {
+      "sha256": "14193ca3b3612f1dd8ca07f62ea4a0155acf4ecee23a2b4fe47d6af2e4c815ef",
+      "bytes": 459
+    },
+    "efuse-revision-word.log": {
+      "sha256": "ca2d1ca35cc5557a1742e8c64c2d6dd99dfe9593d626773b77c93aa61d081c58",
+      "bytes": 335
+    },
+    "security-info.log": {
+      "sha256": "19e0386147f467a24c2a1a2122cb7aef9ea31ba10f439f65161e0e58cccdd252",
+      "bytes": 838
+    },
+    "factory-passive.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "factory-high-address-sample.log": {
+      "sha256": "8812484f7808b1ffc0fd9b03dba5770c6b873fe4c02af2ebc5ba879e7d5b8f53",
+      "bytes": 511
+    },
+    "factory-esptool56-segment.log": {
+      "sha256": "01d3b095a041d2b79741f61eb25264cf8bfc2953983d9a6682dc1951f8820173",
+      "bytes": 552
+    }
+  },
+  "legacy_idf_experiment": {
+    "schema": 1,
+    "source_image": "C:\\Users\\Daniel\\.codex\\worktrees\\m1-guition-bsp\\M1_PCB\\firmware-rust\\target\\legacy-jc1060\\idf61-ram\\ruzina_legacy_probe.bin",
+    "image_sha256": "fc12b85de992b0f71ba7a6b552bc68df6562498e9256cc38a30a7828f8fcc9bb",
+    "image_bytes": 113312,
+    "entrypoint": "0x4ff00d92",
+    "segments": [
+      {
+        "address": "0x30100000",
+        "bytes": 180
+      },
+      {
+        "address": "0x4ff00000",
+        "bytes": 79940
+      },
+      {
+        "address": "0x4ff13880",
+        "bytes": 32560
+      },
+      {
+        "address": "0x4ff1cfa0",
+        "bytes": 532
+      }
+    ],
+    "raw_log_sha256": "b9c8fca29c6909d839187e63a6d82972d5ceaaa57206b7fb9572ed4af25aa509",
+    "revision": 103,
+    "transport": "COM3 native USB Serial/JTAG",
+    "flash_write": false,
+    "efuse_write": false,
+    "execution": "PURE_RAM",
+    "factory_reset_requested_after_capture": true,
+    "factory_boot_seen_after_probe": false,
+    "factory_after_log_sha256": "6785c29ceb8093afd54a57a3be33358ef618f01cf69505c6bf27d8337a7a95c3",
+    "physical_power_cycle": "NOT_RUN",
+    "product_qualification": "NOT_QUALIFIED",
+    "scalar_observation_match": true,
+    "idf_version": "6.1",
+    "idf_commit": "fff9895c82d744c7237be8847347bdd1b07c6643",
+    "physical_runs": 2,
+    "cpu_hz_reported": 360000000,
+    "runtime_evidence": "../evidence/jc1060-20261030-com3/idf61-ram-runtime.json",
+    "negative_v3_config": "REJECTED_BY_EXPLICIT_CMAKE_GUARD",
+    "factory_after_raw_log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\ram-run-2\\factory-after-ram.log",
+    "cold_recovery_after_ram": "OBSERVED_AFTER_OWNER_POWER_DISCONNECT",
+    "package_index": "jc1060-idf61-ram-package-20261030.json",
+    "artifact_archive_sha256": "ae25969832ca953eebca06bca45fae4669c95619d930dd829865459f45e4a061",
+    "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\after-idf61-evaluation\\jc1060-idf61-rust-ram-evidence.zip",
+    "probe_run": "../evidence/jc1060-20261030-com3/idf61-ram-runtime.json",
+    "later_recovery": {
+      "scenario": "complete-power-disconnect-after-ram",
+      "status": "OWNER_CONFIRMED_COMPLETE_DISCONNECT; SUBSEQUENT_ROM_RDID_AND_FACTORY_BOOT_OBSERVED",
+      "evidence": "../evidence/jc1060-20261030-com3/factory-after-power-cycle-excerpt.log",
+      "operator_display": "OWNER_CONFIRMED_FACTORY_DEMO_VISIBLE",
+      "cold_transition": "NOT_CAPTURED"
+    },
+    "run_snapshot_scope": "physical_power_cycle and factory_boot_seen_after_probe describe historical RAM run, not later recovery"
+  },
+  "publication": {
+    "implementation_commit": "7518d83a47a68009919fe58a036ef22195d0bae3",
+    "review_resolution": "../evidence/jc1060-20261030-com3/publication-review-resolution.json",
+    "runtime_scope": "Existing accepted image remains pre-review snapshot; PartitionOffset-zero fix locally verified/build-only and NOT_FLASHED",
+    "remote_ci": "OWNER_RAISED_ACTIONS_LIMIT; FRESH_CI_PENDING; historical budget attempts NOT_RUN",
+    "pr": "https://github.com/dvucinozd/Ruzina/pull/55"
+  }
+}

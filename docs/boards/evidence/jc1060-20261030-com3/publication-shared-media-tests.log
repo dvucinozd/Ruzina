@@ -1,0 +1,149 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.72s
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_block-deb5baa5690ba17a)
+
+running 6 tests
+test tests::partition_device_translates_writes_and_flush ... ok
+test tests::geometry_rejects_misaligned_and_out_of_range_transfers ... ok
+test tests::from_start_covers_superfloppy_or_unknown_extent_to_device_end ... ok
+test tests::byte_len_is_checked_for_large_geometry ... ok
+test tests::partition_device_translates_reads_and_blocks_escape_attempts ... ok
+test tests::range_translation_is_checked_and_partition_relative ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_exfat-c2438cc0275da832)
+
+running 23 tests
+test async_file_system::tests::directory_cursor_streams_file_entry_sets ... ok
+test async_file_system::tests::reads_contiguous_stream_and_zero_fills_uninitialized_tail ... ok
+test async_file_system::tests::follows_fat_chain_for_fragmented_stream ... ok
+test async_fs::tests::async_volume_validates_main_boot_checksum ... ok
+test async_fs::tests::async_volume_rejects_corrupt_main_boot_region ... ok
+test async_fs::tests::boot_parser_accepts_bounded_exfat_geometry ... ok
+test entry_set::tests::parses_multi_entry_utf16_name_and_contiguous_stream ... ok
+test async_fs::tests::boot_parser_rejects_sector_and_cluster_geometry_mismatch ... ok
+test entry_set::tests::accepts_benign_secondary_after_required_file_name_entries ... ok
+test entry_set::tests::preserves_directory_kind_and_fat_chain_flag ... ok
+test entry_set::tests::rejects_entry_set_checksum_corruption ... ok
+test entry_set::tests::rejects_invalid_utf16_without_replacement_characters ... ok
+test entry_set::tests::rejects_missing_stream_extension_before_name_entries ... ok
+test tests::bridge_accepts_all_exfat_sector_sizes ... ok
+test tests::bridge_rejects_invalid_sector_size_and_empty_device ... ok
+test tests::bridge_rejects_wrong_buffer_size_and_out_of_range_lba ... ok
+test tests::four_kib_sector_transfer_remains_single_backend_block ... ok
+test tests::single_sector_read_write_and_flush_reach_transport ... ok
+test tests::utf16_name_encoder_is_allocation_free_and_lossless_for_unicode ... ok
+test tests::format_mount_append_reopen_and_read_round_trip ... ok
+test tests::neutral_adapter_rejects_stale_media_handles ... ok
+test tests::neutral_adapter_reads_writes_and_rejects_fake_random_seek ... ok
+test tests::neutral_adapter_streams_unicode_directory_names_in_one_scan ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.91s
+
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_fs-9b5f4a23e14425d2)
+
+running 14 tests
+test tests::async_contract_preserves_partial_read_and_seek_rules ... ok
+test tests::bounded_path_preserves_utf8_and_enforces_fixed_capacity ... ok
+test tests::async_contract_rejects_stale_generation_and_impossible_counts ... ok
+test tests::capabilities_keep_write_support_explicit ... ok
+test tests::checked_seek_rejects_positions_past_eof ... ok
+test tests::default_directory_visit_is_allocation_free_and_compatible ... ok
+test tests::detached_handles_allow_two_decks_to_open_files_concurrently ... ok
+test tests::dir_entry_never_exposes_name_beyond_caller_storage ... ok
+test tests::filesystem_request_sequence_never_emits_zero_after_wrap ... ok
+test tests::filesystem_request_sequences_are_client_and_lease_bound ... ok
+test tests::read_exact_handles_partial_backend_reads ... ok
+test tests::read_exact_rejects_eof_and_impossible_backend_count ... ok
+test tests::stale_generation_is_explicit_on_detached_handles ... ok
+test tests::utf8_name_storage_covers_worst_case_exfat_name_width ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_io-b56b1a4c0a6b8e6e)
+
+running 4 tests
+test tests::async_partition_preserves_buffer_on_contract_failure ... ok
+test tests::async_partition_translates_owned_reads ... ok
+test tests::async_partition_translates_writes_and_flush ... ok
+test tests::backend_error_preserves_owned_buffer ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_partition-df63359c72f02755)
+
+running 18 tests
+test tests::classifies_released_fat_and_exfat_boot_sectors ... ok
+test tests::exfat_superfloppy_is_candidate_at_lba_zero_with_unknown_extent ... ok
+test tests::duplicate_candidate_upgrades_kind_without_consuming_slot ... ok
+test tests::fat32_and_type_07_mbr_candidates_match_released_behavior ... ok
+test tests::gpt_chunk_scanner_ignores_partial_or_invalid_entry_sizes ... ok
+test tests::gpt_basic_data_candidate_matches_released_fixture ... ok
+test tests::gpt_header_and_stream_reject_unbounded_entry_counts ... ok
+test tests::gpt_header_crc_mismatch_fails_closed ... ok
+test tests::gpt_entry_array_crc_mismatch_fails_closed ... ok
+test tests::gpt_entries_can_be_accumulated_across_bounded_chunks ... ok
+test tests::gpt_header_exposes_bounded_entry_table_geometry ... ok
+test tests::gpt_stream_accepts_entry_split_across_arbitrary_chunks ... ok
+test tests::gpt_stream_crc_detects_corruption_across_chunk_boundaries ... ok
+test tests::gpt_stream_ignores_bytes_after_declared_entry_count ... ok
+test tests::gpt_supports_valid_extents_beyond_u32_lba ... ok
+test tests::invalid_mbr_extent_past_u32_address_space_is_rejected ... ok
+test tests::malformed_gpt_and_short_mbr_fail_closed_without_panicking ... ok
+test tests::protective_mbr_requires_gpt_scan ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_media_session-4fda7f16d9cb2415)
+
+running 11 tests
+test tests::first_connect_and_duplicate_match_released_session_behavior ... ok
+test tests::foreign_disconnect_is_ignored_after_handle_binding ... ok
+test tests::bound_or_mounted_session_ignores_secondary_source ... ok
+test tests::generation_skips_zero_on_wrap ... ok
+test tests::handle_binding_is_generation_and_owner_safe ... ok
+test tests::mount_commit_requires_current_bound_lease ... ok
+test tests::reconnect_same_source_never_revalidates_old_handles ... ok
+test tests::releasing_foreign_handle_does_not_clear_owner ... ok
+test tests::unbound_disconnect_is_accepted_and_invalidates_lease ... ok
+test tests::unbound_enumeration_bounce_supersedes_stale_source ... ok
+test tests::zero_source_and_handle_tokens_are_unrepresentable ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_block
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_exfat
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_fs
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_io
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_partition
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_session
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

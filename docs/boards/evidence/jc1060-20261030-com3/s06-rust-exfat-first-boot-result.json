@@ -1,0 +1,31 @@
+{
+  "scenario": "s06-rust-exfat-first-boot",
+  "mode": "boot",
+  "app_sha256": "ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267",
+  "runs": [
+    {
+      "run": 1,
+      "bytes": 43243,
+      "sha256": "859c61f3247c382997595a38ab264538e3dc581c6acdf9f83c99258702b3310d",
+      "elapsed_s": 48.232,
+      "initialized": true,
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "complete_file_passes": 3,
+      "pass_numbers": [
+        1,
+        2,
+        3
+      ],
+      "errors": [],
+      "min_client_stack_free": 15248,
+      "scalar": true,
+      "heartbeats": 48,
+      "quiesced": false,
+      "fault_held": false,
+      "panic_or_watchdog": false,
+      "physical_power_cycle": false
+    }
+  ]
+}

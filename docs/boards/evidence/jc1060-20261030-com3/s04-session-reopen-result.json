@@ -1,0 +1,29 @@
+[
+  {
+    "run": 1,
+    "scenario": "host-serial-session-close-open-no-reset",
+    "sha256": "3bcaa3a0bb0a0c8ad9eeb0f066e77871148065d423499328c3d0f72966462788",
+    "heartbeat_count": 4,
+    "first_uptime": 17000734,
+    "last_uptime": 20000734,
+    "pass": true
+  },
+  {
+    "run": 2,
+    "scenario": "host-serial-session-close-open-no-reset",
+    "sha256": "7538ba21c4b3e5e41f42206295947c640b0b95f0047cba17fe004e49b1742f8a",
+    "heartbeat_count": 4,
+    "first_uptime": 21000734,
+    "last_uptime": 24000734,
+    "pass": true
+  },
+  {
+    "run": 3,
+    "scenario": "host-serial-session-close-open-no-reset",
+    "sha256": "01464133713a90c81570b3b26b29280987ad1842abbfc3d7372b73f1c2d1f3a9",
+    "heartbeat_count": 4,
+    "first_uptime": 26000734,
+    "last_uptime": 29000734,
+    "pass": true
+  }
+]

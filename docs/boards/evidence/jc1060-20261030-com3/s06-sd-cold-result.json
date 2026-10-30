@@ -1,0 +1,11 @@
+{
+  "scenario": "owner-cold-power-cycle-with-SD-requested",
+  "bytes": 5318,
+  "sha256": "39c1ac1a284aacd27da12a5f55b0ef7970c1c9d4888f6118e6eb76590e56eef9",
+  "poweron_reason": false,
+  "sd_match": false,
+  "post_card_init_heartbeats": 0,
+  "watchdog": false,
+  "early_prefix_may_be_missing": true,
+  "card_lines": []
+}

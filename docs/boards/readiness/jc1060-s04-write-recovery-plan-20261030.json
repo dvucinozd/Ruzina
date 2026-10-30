@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "status": "OFFLINE_REVIEWED_OPERATOR_GATES_OPEN",
+  "device_access": false,
+  "unit_id": "JC1060-20261030-COM3",
+  "manifest_sha256": "1632b24b189446d3d633ee9974b6e76832afcc8ce5651242c23ab4476b122c9b",
+  "factory_sha256": "27d5782978aeb3c42f8b49659e793d3ca8f59543f62e419d7b1981de2c492060",
+  "backup_copies_verified": 4,
+  "factory_partitions": [
+    {
+      "type": 1,
+      "subtype": 2,
+      "offset": 36864,
+      "bytes": 24576,
+      "label": "nvs",
+      "flags": 0
+    },
+    {
+      "type": 1,
+      "subtype": 1,
+      "offset": 61440,
+      "bytes": 4096,
+      "label": "phy_init",
+      "flags": 0
+    },
+    {
+      "type": 0,
+      "subtype": 0,
+      "offset": 65536,
+      "bytes": 7340032,
+      "label": "factory",
+      "flags": 0
+    },
+    {
+      "type": 1,
+      "subtype": 130,
+      "offset": 7405568,
+      "bytes": 8388608,
+      "label": "storage",
+      "flags": 0
+    }
+  ],
+  "diagnostic_partitions": [
+    {
+      "type": 1,
+      "subtype": 2,
+      "offset": 36864,
+      "bytes": 24576,
+      "label": "nvs",
+      "flags": 0
+    },
+    {
+      "type": 1,
+      "subtype": 1,
+      "offset": 61440,
+      "bytes": 4096,
+      "label": "phy_init",
+      "flags": 0
+    },
+    {
+      "type": 0,
+      "subtype": 0,
+      "offset": 65536,
+      "bytes": 1048576,
+      "label": "factory",
+      "flags": 0
+    }
+  ],
+  "writes": [
+    {
+      "offset": 8192,
+      "bytes": 23296,
+      "erase_end": 32768,
+      "staged_file": "write-00002000.bin",
+      "staged_sha256": "31f683d9d37c3f98bee7e5264ca5b14923b4a2d3474c217164d78f9f497dc6b2",
+      "restore_file": "restore-00002000.bin",
+      "restore_sha256": "93c52d378401d92f0bf1e6922860afc3a3f80009e0f87b3c7cf3d3a6592430e5"
+    },
+    {
+      "offset": 32768,
+      "bytes": 3072,
+      "erase_end": 36864,
+      "staged_file": "write-00008000.bin",
+      "staged_sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295",
+      "restore_file": "restore-00008000.bin",
+      "restore_sha256": "ea85e169cd6e645e95945d814d8ba0fd245473423a1a533d883dd74cee46b41c"
+    },
+    {
+      "offset": 65536,
+      "bytes": 149056,
+      "erase_end": 217088,
+      "staged_file": "write-00010000.bin",
+      "staged_sha256": "fb71e27d4471890db433455ab66295e71a7c7a7b98a4e27c406c3cd04f0fae9d",
+      "restore_file": "restore-00010000.bin",
+      "restore_sha256": "0f1153c96756304fdf61caf0916bfe8fc550fd9083a660484945a62456279eb8"
+    }
+  ],
+  "command_policy": {
+    "chip": "esp32p4",
+    "before": "no-reset",
+    "after": "no-reset",
+    "flash_mode": "keep",
+    "flash_freq": "keep",
+    "flash_size": "keep",
+    "erase_all": false,
+    "force": false
+  },
+  "full_restore": {
+    "offset": 0,
+    "bytes": 16777216,
+    "source": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-1.bin",
+    "sha256": "27d5782978aeb3c42f8b49659e793d3ca8f59543f62e419d7b1981de2c492060"
+  },
+  "remaining_gates": [
+    "Physical connector/power/markings",
+    "Manual ROM entry evidence",
+    "Live identity/security recheck",
+    "Diagnostic image reset telemetry"
+  ],
+  "command_templates_not_executed": {
+    "cwd": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s04-reviewed-telemetry-plan",
+    "write": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "write-flash",
+      "--flash-mode",
+      "keep",
+      "--flash-size",
+      "keep",
+      "--flash-freq",
+      "keep",
+      "0x2000",
+      "write-00002000.bin",
+      "0x8000",
+      "write-00008000.bin",
+      "0x10000",
+      "write-00010000.bin"
+    ],
+    "restore_changed_sectors": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "write-flash",
+      "--flash-mode",
+      "keep",
+      "--flash-size",
+      "keep",
+      "--flash-freq",
+      "keep",
+      "0x2000",
+      "restore-00002000.bin",
+      "0x8000",
+      "restore-00008000.bin",
+      "0x10000",
+      "restore-00010000.bin"
+    ],
+    "restore_full": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "write-flash",
+      "--flash-mode",
+      "keep",
+      "--flash-size",
+      "keep",
+      "--flash-freq",
+      "keep",
+      "0",
+      "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-1.bin"
+    ],
+    "readback_full": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "read-flash",
+      "--flash-size",
+      "16MB",
+      "0",
+      "0x1000000",
+      "<NEW_READBACK_PATH>"
+    ]
+  }
+}

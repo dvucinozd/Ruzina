@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "reviewed_implementation_commit": "7518d83a47a68009919fe58a036ef22195d0bae3",
+  "reviewed_tree": "06187503fbabdaaffac4d21d7579548698a28a14",
+  "review_scope_paths": 89,
+  "raw_evidence_paths_excluded_from_AI": 157,
+  "issues": 2,
+  "critical": 0,
+  "major": 0,
+  "minor": 2,
+  "resolutions": [
+    {
+      "issue": "PartitionOffset zero rejected",
+      "status": "FIXED_WITH_BASELINE_FAIL_AND_ZERO_ACCEPT_NONZERO_MISMATCH_REGRESSIONS",
+      "spec": "https://learn.microsoft.com/en-us/windows/win32/fileio/exfat-specification#314-partitionoffset-field"
+    },
+    {
+      "issue": "Missing spaces before numeric prose",
+      "status": "FIXED_DOCS_ONLY_NUMERIC_TOKENS_AND_INLINE_CODE_PRESERVED"
+    }
+  ],
+  "post_fix_rust_tests": 29,
+  "shared_tests": 76,
+  "tool_tests": 20,
+  "followup_AI_review": "NOT_RUN; fixes verified by regression/Clippy/build and documentation checks",
+  "device_access": false,
+  "review_fix_flashed": false,
+  "accepted_device_app_sha256": "ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267",
+  "pr": "https://github.com/dvucinozd/Ruzina/pull/55",
+  "remote_ci": "BLOCKED_ACTIONS_BUDGET; no test steps started",
+  "merge_performed": false
+}

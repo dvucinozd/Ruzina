@@ -1,0 +1,33 @@
+
+D:\BoardEvidence\JC1060-20261030-COM3\s05-memory-task-3\build\ruzina_legacy_probe.elf:     file format elf32-littleriscv
+
+
+Disassembly of section .spm.text:
+
+Disassembly of section .iram0.text:
+
+Disassembly of section .flash.text:
+
+4000903a <ruzina_legacy_fp_hold>:
+4000903a:	20a507d3          	fmv.s	fa5,fa0
+4000903e:	7fc00637          	lui	a2,0x7fc00
+40009042:	f0060553          	fmv.w.x	fa0,a2
+40009046:	cd9d                	beqz	a1,40009084 <ruzina_legacy_fp_hold+0x4a>
+40009048:	fff50613          	addi	a2,a0,-1
+4000904c:	003d16b7          	lui	a3,0x3d1
+40009050:	8ff68693          	addi	a3,a3,-1793 # 3d08ff <CSR_UINTSTATUS+0x3cfc4e>
+40009054:	02c6e863          	bltu	a3,a2,40009084 <ruzina_legacy_fp_hold+0x4a>
+40009058:	0035f613          	andi	a2,a1,3
+4000905c:	e605                	bnez	a2,40009084 <ruzina_legacy_fp_hold+0x4a>
+4000905e:	3f800637          	lui	a2,0x3f800
+40009062:	f00605d3          	fmv.w.x	fa1,a2
+40009066:	20f78553          	fmv.s	fa0,fa5
+4000906a:	20a50053          	fmv.s	ft0,fa0
+4000906e:	4605                	li	a2,1
+40009070:	0ac5a02f          	amoswap.w.rl	zero,a2,(a1)
+40009074:	00b07053          	fadd.s	ft0,ft0,fa1
+40009078:	157d                	addi	a0,a0,-1
+4000907a:	fd6d                	bnez	a0,40009074 <ruzina_legacy_fp_hold+0x3a>
+4000907c:	0a05a02f          	amoswap.w.rl	zero,zero,(a1)
+40009080:	20000553          	fmv.s	fa0,ft0
+40009084:	8082                	ret

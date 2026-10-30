@@ -1,0 +1,27 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.48s
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_legacy_idf_core_probe-c3d692f6b4692f5d)
+
+running 20 tests
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

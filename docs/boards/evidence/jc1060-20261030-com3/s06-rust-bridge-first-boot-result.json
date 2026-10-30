@@ -1,0 +1,18 @@
+{
+  "scenario": "first-boot-idf-rust-raw-block-bridge",
+  "app_sha256": "5a58ab6db4f5ca1f781d9d46b18614be2e9d9d45f3177c934bcd97696b5e67d1",
+  "bytes": 7149,
+  "sha256": "a839be0330100f3dcb241b0601fdb1ff30e00335c118c25c955c69f6f353f847",
+  "scalar": true,
+  "initialized": true,
+  "heartbeat": true,
+  "complete_passes": 35,
+  "all_hashes_match_prior_raw_baseline": true,
+  "min_client_stack_free": 10656,
+  "error_events": [],
+  "quiesced": false,
+  "fault_held": false,
+  "panic_or_watchdog": false,
+  "reset": "USB_SOFTWARE_RESET_FROM_ROM",
+  "physical_power_cycle": false
+}

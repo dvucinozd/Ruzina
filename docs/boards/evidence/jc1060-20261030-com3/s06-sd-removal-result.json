@@ -1,0 +1,11 @@
+{
+  "scenario": "operator-card-removal-requested",
+  "sha256": "ba79d28a7d2620e77eb0ed577a0a4f9cecbe60a86033a3530b9d61e638d851e0",
+  "bytes": 5961,
+  "quiesced": true,
+  "generation_invalidated": true,
+  "watchdog": false,
+  "terminal": [
+    "sd_state=QUIESCED error=ESP_ERR_TIMEOUT generation=2 reads=195 write_boundary_rejections=1 host_denied=0 reinsert=RESTART_REQUIRED"
+  ]
+}

@@ -1,6 +1,8 @@
 # Development status and next steps
 
-Updated: 2026-10-27. See the authoritative [status matrix](DEVELOPMENT_STATUS.md)
+Updated: 2026-10-30. The first JC1060 reports incompatible v1.3 silicon on COM3;
+see the [arrival/ESP-IDF assessment](boards/JC1060_ARRIVAL_2026-10-30.md).
+Native v3.2 policy remains unchanged. See the authoritative [status matrix](DEVELOPMENT_STATUS.md)
 and [review fix execution log](reviews/2026-10-27-astra-implementation-log.md).
 This page describes the current Guition Rust development
 scope; compilation, host behavior and physical acceptance remain distinct.

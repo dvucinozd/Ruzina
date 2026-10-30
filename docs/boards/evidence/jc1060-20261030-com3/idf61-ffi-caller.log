@@ -1,0 +1,97 @@
+
+firmware-rust\target\legacy-jc1060\idf61\ruzina_legacy_probe.elf:     file format elf32-littleriscv
+
+
+Disassembly of section .spm.text:
+
+Disassembly of section .iram0.text:
+
+Disassembly of section .flash.text:
+
+40007f9e <app_main>:
+40007f9e:	715d                	addi	sp,sp,-80
+40007fa0:	1048                	addi	a0,sp,36
+40007fa2:	c686                	sw	ra,76(sp)
+40007fa4:	c4a2                	sw	s0,72(sp)
+40007fa6:	c2a6                	sw	s1,68(sp)
+40007fa8:	c0ca                	sw	s2,64(sp)
+40007faa:	de4e                	sw	s3,60(sp)
+40007fac:	dc52                	sw	s4,56(sp)
+40007fae:	404020ef          	jal	4000a3b2 <esp_chip_info>
+40007fb2:	02c15583          	lhu	a1,44(sp)
+40007fb6:	40013537          	lui	a0,0x40013
+40007fba:	67c50513          	addi	a0,a0,1660 # 4001367c <_esp_libc_clock_array_end+0x352c>
+40007fbe:	7ff020ef          	jal	4000afbc <printf>
+40007fc2:	5712                	lw	a4,36(sp)
+40007fc4:	47c9                	li	a5,18
+40007fc6:	00f71863          	bne	a4,a5,40007fd6 <app_main+0x38>
+40007fca:	02c15703          	lhu	a4,44(sp)
+40007fce:	06700793          	li	a5,103
+40007fd2:	02f70063          	beq	a4,a5,40007ff2 <app_main+0x54>
+40007fd6:	40013537          	lui	a0,0x40013
+40007fda:	6ac50513          	addi	a0,a0,1708 # 400136ac <_esp_libc_clock_array_end+0x355c>
+40007fde:	002030ef          	jal	4000afe0 <puts>
+40007fe2:	40b6                	lw	ra,76(sp)
+40007fe4:	4426                	lw	s0,72(sp)
+40007fe6:	4496                	lw	s1,68(sp)
+40007fe8:	4906                	lw	s2,64(sp)
+40007fea:	59f2                	lw	s3,60(sp)
+40007fec:	5a62                	lw	s4,56(sp)
+40007fee:	6161                	addi	sp,sp,80
+40007ff0:	8082                	ret
+40007ff2:	080c                	addi	a1,sp,16
+40007ff4:	4501                	li	a0,0
+40007ff6:	c802                	sw	zero,16(sp)
+40007ff8:	0ff01097          	auipc	ra,0xff01
+40007ffc:	e80080e7          	jalr	-384(ra) # 4ff08e78 <esp_flash_get_size>
+40008000:	e511                	bnez	a0,4000800c <app_main+0x6e>
+40008002:	4742                	lw	a4,16(sp)
+40008004:	010007b7          	lui	a5,0x1000
+40008008:	00f70763          	beq	a4,a5,40008016 <app_main+0x78>
+4000800c:	40013537          	lui	a0,0x40013
+40008010:	6e050513          	addi	a0,a0,1760 # 400136e0 <_esp_libc_clock_array_end+0x3590>
+40008014:	b7e9                	j	40007fde <app_main+0x40>
+40008016:	200007b7          	lui	a5,0x20000
+4000801a:	ca3e                	sw	a5,20(sp)
+4000801c:	77d1                	lui	a5,0xffff4
+4000801e:	17fd                	addi	a5,a5,-1 # ffff3fff <LP_TSENS+0xafec4fff>
+40008020:	cc3e                	sw	a5,24(sp)
+40008022:	3e800793          	li	a5,1000
+40008026:	ce3e                	sw	a5,28(sp)
+40008028:	fc1a07b7          	lui	a5,0xfc1a0
+4000802c:	c1978793          	addi	a5,a5,-999 # fc19fc19 <LP_TSENS+0xac070c19>
+40008030:	d03e                	sw	a5,32(sp)
+40008032:	400137b7          	lui	a5,0x40013
+40008036:	4401                	li	s0,0
+40008038:	01410913          	addi	s2,sp,20
+4000803c:	71878a13          	addi	s4,a5,1816 # 40013718 <_esp_libc_clock_array_end+0x35c8>
+40008040:	01c10993          	addi	s3,sp,28
+40008044:	44a1                	li	s1,8
+40008046:	008907b3          	add	a5,s2,s0
+4000804a:	0007d583          	lhu	a1,0(a5)
+4000804e:	852e                	mv	a0,a1
+40008050:	c62e                	sw	a1,12(sp)
+40008052:	20b1                	jal	4000809e <ruzina_legacy_pitch_centipercent>
+40008054:	45b2                	lw	a1,12(sp)
+40008056:	862a                	mv	a2,a0
+40008058:	c42a                	sw	a0,8(sp)
+4000805a:	8552                	mv	a0,s4
+4000805c:	761020ef          	jal	4000afbc <printf>
+40008060:	008987b3          	add	a5,s3,s0
+40008064:	00079783          	lh	a5,0(a5)
+40008068:	4622                	lw	a2,8(sp)
+4000806a:	00c78763          	beq	a5,a2,40008078 <app_main+0xda>
+4000806e:	40013537          	lui	a0,0x40013
+40008072:	73c50513          	addi	a0,a0,1852 # 4001373c <_esp_libc_clock_array_end+0x35ec>
+40008076:	b7a5                	j	40007fde <app_main+0x40>
+40008078:	0409                	addi	s0,s0,2
+4000807a:	fc9416e3          	bne	s0,s1,40008046 <app_main+0xa8>
+4000807e:	45c2                	lw	a1,16(sp)
+40008080:	40013537          	lui	a0,0x40013
+40008084:	76c50513          	addi	a0,a0,1900 # 4001376c <_esp_libc_clock_array_end+0x361c>
+40008088:	735020ef          	jal	4000afbc <printf>
+4000808c:	8741a503          	lw	a0,-1932(gp) # 4ff0a774 <stdout>
+40008090:	6a7020ef          	jal	4000af36 <fflush>
+40008094:	06400513          	li	a0,100
+40008098:	72e060ef          	jal	4000e7c6 <vTaskDelay>
+4000809c:	bfe5                	j	40008094 <app_main+0xf6>

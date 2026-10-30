@@ -1,0 +1,106 @@
+restart_request=OPERATOR_CONSOLE_R
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff0171a
+Core1 Saved PC:0x4ff03e9a
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (23) boot: ESP-IDF v6.1 2nd stage bootloader
+I (23) boot: compile time Oct 30 2026 15:03:49
+I (23) boot: Multicore bootloader
+I (24) boot: chip revision: v1.3
+I (24) boot: efuse block revision: v0.3
+I (25) boot.esp32p4: SPI Speed      : 40MHz
+I (25) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (26) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (27) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (28) boot:  2 factory          factory app      00 00 00010000 00100000
+I (29) boot: End of partition table
+I (29) esp_image: segment 0: paddr=00010020 vaddr=40020020 size=0b638h ( 46648) map
+I (40) esp_image: segment 1: paddr=0001b660 vaddr=30100000 size=000b4h (   180) load
+I (41) esp_image: segment 2: paddr=0001b71c vaddr=4ff00000 size=048fch ( 18684) load
+I (46) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=1a128h (106792) map
+I (68) esp_image: segment 4: paddr=0003a150 vaddr=4ff048fc size=08280h ( 33408) load
+I (77) esp_image: segment 5: paddr=000423d8 vaddr=4ff0cb80 size=0316ch ( 12652) load
+I (81) esp_image: segment 6: paddr=0004554c vaddr=50108080 size=00024h (    36) load
+I (85) boot: Loaded app from partition at offset 0x10000
+I (85) boot: Disabling RNG early entropy source...
+I (89) hex_psram: vendor id    : 0x0d (AP)
+I (89) hex_psram: Latency      : 0x01 (Fixed)
+I (89) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (90) hex_psram: dev id       : 0x03 (generation 4)
+I (90) hex_psram: density      : 0x07 (256 Mbit)
+I (90) hex_psram: good-die     : 0x06 (Pass)
+I (90) hex_psram: SRF          : 0x02 (Slow Refresh)
+I (91) hex_psram: BurstType    : 0x00 ( Wrap)
+I (91) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (91) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (92) hex_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (92) hex_psram: DriveStrength: 0x00 (1/1)
+I (92) MSPI Timing: Enter psram timing tuning
+I (265) esp_psram: Found 32MB PSRAM device
+I (265) esp_psram: Speed: 80MHz
+I (267) hex_psram: psram CS IO is dedicated
+I (267) cpu_start: Multicore app
+I (1536) esp_psram: SPI SRAM memory test OK
+I (1545) cpu_start: Pro cpu start user code
+I (1545) cpu_start: cpu freq: 360000000 Hz
+I (1546) app_init: Application information:
+I (1546) app_init: Project name:     ruzina_legacy_probe
+I (1546) app_init: App version:      0.1.0-legacy-eval
+I (1546) app_init: Compile time:     Oct 30 2026 15:03:05
+I (1546) app_init: ELF file SHA256:  de4ca37b7...
+I (1547) app_init: ESP-IDF:          v6.1
+I (1547) efuse_init: Min chip rev:     v1.0
+I (1547) efuse_init: Max chip rev:     v1.99 
+I (1547) efuse_init: Chip rev:         v1.3
+I (1548) heap_init: Initializing. RAM available for dynamic allocation:
+I (1548) heap_init: At 4FF11650 len 00029970 (166 KiB): RETENT_RAM
+I (1548) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (1549) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (1549) heap_init: At 501080A4 len 00007F5C (31 KiB): RTCRAM
+I (1549) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (1550) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator
+W (1551) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (1552) spi_flash: detected chip: generic
+I (1552) spi_flash: flash io: dio
+I (1553) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1553) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1555) sleep_clock: System sleep clock ICG setting initialization
+I (1557) main_task: Started on CPU0
+I (1557) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=3
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+S6_DISPLAY_INIT commands=60 lanes=2 mbps=750 pixel_mhz=52 size=1024x600 format=RGB565 framebuffer_bytes=1228800 backlight_percent=25
+S6_TOUCH_ID address=0x5d id=39313100 config_size=1024x600 mode=POLLING reset_irq=UNTOUCHED
+s6_readiness=AWAITING_OPERATOR_COLORS_CORNERS_AND_TOUCH
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+heartbeat=1 uptime_us=1342081
+heartbeat=2 uptime_us=2342081
+heartbeat=3 uptime_us=3342081
+heartbeat=4 uptime_us=4342081
+touch_health samples=0 errors=0
+heartbeat=5 uptime_us=5342081
+heartbeat=6 uptime_us=6342081
+heartbeat=7 uptime_us=7342081
+heartbeat=8 uptime_us=8342081
+heartbeat=9 uptime_us=9342081
+touch_health samples=0 errors=0
+heartbeat=10 uptime_us=10342081

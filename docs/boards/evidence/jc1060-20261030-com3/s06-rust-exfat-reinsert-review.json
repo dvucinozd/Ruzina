@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "status": "OWNER_CONFIRMED_SAME_CARD_REINSERT_THREE_APP_RESTARTS_FULL_RUST_FIXTURE_PASS_EACH",
+  "operator_confirmation": "2026-10-30 user confirms same SD with fixture reinserted; USB unchanged",
+  "raw_result": "s06-rust-exfat-reinsert-result.json",
+  "independently_verified_complete_file_passes": 3,
+  "physical_reinsertions": 1,
+  "app_restarts": 3,
+  "automatic_hot_remount": "NOT_IMPLEMENTED; explicit app restart required",
+  "firmware_changed": false,
+  "sd_content_write": false
+}

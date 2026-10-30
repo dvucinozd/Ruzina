@@ -1,0 +1,118 @@
+touch_health samples=0 errors=0
+heartbeat=25 uptime_us=25342082
+heartbeat=26 uptime_us=26342082
+heartbeat=27 uptime_us=27342082
+heartbeat=28 uptime_us=28342082
+heartbeat=29 uptime_us=29342082
+touch_health samples=0 errors=0
+heartbeat=30 uptime_us=30342082
+heartbeat=31 uptime_us=31342082
+heartbeat=32 uptime_us=32342082
+heartbeat=33 uptime_us=33342082
+heartbeat=34 uptime_us=34342082
+touch_health samples=0 errors=0
+heartbeat=35 uptime_us=35342082
+heartbeat=36 uptime_us=36342082
+heartbeat=37 uptime_us=37342082
+heartbeat=38 uptime_us=38342082
+heartbeat=39 uptime_us=39342082
+touch_health samples=0 errors=0
+heartbeat=40 uptime_us=40342082
+heartbeat=41 uptime_us=41342082
+heartbeat=42 uptime_us=42342082
+heartbeat=43 uptime_us=43342082
+heartbeat=44 uptime_us=44342082
+heartbeat=45 uptime_us=45342082
+touch_health samples=0 errors=0
+heartbeat=46 uptime_us=46342082
+heartbeat=47 uptime_us=47342082
+heartbeat=48 uptime_us=48342082
+heartbeat=49 uptime_us=49342082
+heartbeat=50 uptime_us=50342082
+touch_health samples=0 errors=0
+heartbeat=51 uptime_us=51342082
+heartbeat=52 uptime_us=52342082
+heartbeat=53 uptime_us=53342082
+heartbeat=54 uptime_us=54342082
+touch_sample=1 count=1 raw=11,7 mapped=11,7
+touch_sample=2 count=1 raw=11,7 mapped=11,7
+touch_sample=3 count=1 raw=11,7 mapped=11,7
+touch_sample=4 count=1 raw=11,7 mapped=11,7
+touch_sample=5 count=1 raw=11,7 mapped=11,7
+touch_sample=6 count=1 raw=11,7 mapped=11,7
+touch_sample=7 count=1 raw=11,7 mapped=11,7
+touch_sample=8 count=1 raw=11,7 mapped=11,7
+touch_sample=9 count=1 raw=11,7 mapped=11,7
+touch_sample=10 count=1 raw=11,7 mapped=11,7
+touch_sample=11 count=1 raw=11,7 mapped=11,7
+touch_sample=12 count=1 raw=11,7 mapped=11,7
+touch_sample=13 count=1 raw=11,7 mapped=11,7
+touch_sample=14 count=1 raw=11,7 mapped=11,7
+touch_sample=15 count=1 raw=11,7 mapped=11,7
+heartbeat=55 uptime_us=55342082
+touch_health samples=15 errors=0
+heartbeat=56 uptime_us=56342082
+touch_sample=16 count=1 raw=1004,23 mapped=1004,23
+touch_sample=17 count=1 raw=1004,23 mapped=1004,23
+touch_sample=18 count=1 raw=1004,23 mapped=1004,23
+touch_sample=19 count=1 raw=1004,23 mapped=1004,23
+touch_sample=20 count=1 raw=1004,23 mapped=1004,23
+touch_sample=21 count=1 raw=1004,23 mapped=1004,23
+touch_sample=22 count=1 raw=1004,23 mapped=1004,23
+touch_sample=23 count=1 raw=1004,23 mapped=1004,23
+touch_sample=24 count=1 raw=1004,23 mapped=1004,23
+touch_sample=25 count=1 raw=1004,23 mapped=1004,23
+touch_sample=26 count=1 raw=1004,23 mapped=1004,23
+touch_sample=27 count=1 raw=1004,23 mapped=1004,23
+touch_sample=28 count=1 raw=1004,23 mapped=1004,23
+touch_sample=29 count=1 raw=1004,23 mapped=1004,23
+touch_sample=30 count=1 raw=1004,23 mapped=1004,23
+touch_sample=31 count=1 raw=1004,23 mapped=1004,23
+heartbeat=57 uptime_us=57342082
+heartbeat=58 uptime_us=58342082
+heartbeat=59 uptime_us=59342082
+heartbeat=60 uptime_us=60342082
+touch_sample=32 count=1 raw=19,581 mapped=19,581
+touch_health samples=32 errors=0
+touch_sample=33 count=1 raw=19,581 mapped=19,581
+touch_sample=34 count=1 raw=19,581 mapped=19,581
+touch_sample=35 count=1 raw=19,581 mapped=19,581
+touch_sample=36 count=1 raw=19,581 mapped=19,581
+touch_sample=37 count=1 raw=19,581 mapped=19,581
+touch_sample=38 count=1 raw=19,581 mapped=19,581
+touch_sample=39 count=1 raw=19,581 mapped=19,581
+touch_sample=40 count=1 raw=19,581 mapped=19,581
+touch_sample=41 count=1 raw=19,581 mapped=19,581
+touch_sample=42 count=1 raw=19,581 mapped=19,581
+touch_sample=43 count=1 raw=19,581 mapped=19,581
+touch_sample=44 count=1 raw=19,581 mapped=19,581
+touch_sample=45 count=1 raw=19,581 mapped=19,581
+touch_sample=46 count=1 raw=27,577 mapped=27,577
+heartbeat=61 uptime_us=61342082
+touch_sample=47 count=1 raw=1006,589 mapped=1006,589
+touch_sample=48 count=1 raw=1006,589 mapped=1006,589
+touch_sample=49 count=1 raw=1006,589 mapped=1006,589
+touch_sample=50 count=1 raw=1006,589 mapped=1006,589
+touch_sample=51 count=1 raw=1006,589 mapped=1006,589
+touch_sample=52 count=1 raw=1006,589 mapped=1006,589
+touch_sample=53 count=1 raw=1006,589 mapped=1006,589
+touch_sample=54 count=1 raw=1006,589 mapped=1006,589
+touch_sample=55 count=1 raw=1006,589 mapped=1006,589
+touch_sample=56 count=1 raw=1006,589 mapped=1006,589
+heartbeat=62 uptime_us=62342082
+touch_sample=57 count=1 raw=1006,589 mapped=1006,589
+touch_sample=58 count=1 raw=1006,589 mapped=1006,589
+touch_sample=59 count=1 raw=1006,589 mapped=1006,589
+touch_sample=60 count=1 raw=1006,589 mapped=1006,589
+touch_sample=61 count=1 raw=1006,589 mapped=1006,589
+touch_sample=62 count=1 raw=1006,589 mapped=1006,589
+touch_sample=63 count=1 raw=1006,589 mapped=1006,589
+heartbeat=63 uptime_us=63342082
+heartbeat=64 uptime_us=64342082
+heartbeat=65 uptime_us=65342082
+touch_health samples=63 errors=0
+heartbeat=66 uptime_us=66342082
+heartbeat=67 uptime_us=67342082
+heartbeat=68 uptime_us=68342082
+touch_sample=64 count=2 raw=477,276 mapped=477,276
+touch_sample=65 count=2 raw=477,276 mapped=477,276
