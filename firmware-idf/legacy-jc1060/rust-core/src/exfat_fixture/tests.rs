@@ -185,6 +185,50 @@ fn ready<F: Future>(future: F) -> F::Output {
     }
 }
 
+fn partition_offset(port: &Port, value: u64) {
+    let mut state = port.0.borrow_mut();
+    state.bytes[512 + 64..512 + 72].copy_from_slice(&value.to_le_bytes());
+    let mut checksum = 0u32;
+    for sector in 0..11 {
+        for (index, &byte) in state.bytes[(sector + 1) * 512..(sector + 2) * 512]
+            .iter()
+            .enumerate()
+        {
+            if sector == 0 && matches!(index, 106 | 107 | 112) {
+                continue;
+            }
+            checksum = checksum.rotate_right(1).wrapping_add(byte.into());
+        }
+    }
+    for chunk in state.bytes[12 * 512..13 * 512].chunks_exact_mut(4) {
+        chunk.copy_from_slice(&checksum.to_le_bytes());
+    }
+}
+
+#[test]
+fn exfat_partition_offset_zero_uses_bounded_partition_extent() {
+    let (port, binding, mut client) = setup();
+    partition_offset(&port, 0);
+    let current = || port.is_current(binding);
+    let mut volume = match ready(mount(&mut client, binding.lease, &current)) {
+        Ok(volume) => volume,
+        Err(error) => panic!("valid zero PartitionOffset was rejected: {error:?}"),
+    };
+    assert_eq!(volume.device().range().first_block(), 1);
+    assert_eq!(ready(verify(&mut volume, &current, || {})), Ok(()));
+}
+
+#[test]
+fn exfat_partition_offset_nonzero_mismatch_stays_rejected() {
+    let (port, binding, mut client) = setup();
+    partition_offset(&port, 2); // actual MBR partition starts at1
+    let current = || port.is_current(binding);
+    assert_eq!(
+        ready(mount(&mut client, binding.lease, &current)).err(),
+        Some(Error::Boot)
+    );
+}
+
 #[test]
 fn shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks() {
     let (port, binding, mut client) = setup();

@@ -29,10 +29,10 @@ full image integrity or restore execution test.
 | Pre-boot area | 0x000000 | 0x002000 | 0x2000 | Preserve opaque bytes |
 | Bootloader sector span | 0x002000 | 0x008000 | 0x6000 | Header observed, remainder preserved |
 | Partition-table sector | 0x008000 | 0x009000 | 0x1000 | MD5 validated |
-| nvs | 0x009000 | 0x00f000 | 0x6000 | Type1/subtype2; private settings |
-| phy_init | 0x00f000 | 0x010000 | 0x1000 | Type1/subtype1 |
-| factory | 0x010000 | 0x710000 | 0x700000 | Type0/subtype0, 7 MiB |
-| storage | 0x710000 | 0xf10000 | 0x800000 | Type1/subtype0x82, 8 MiB |
+| nvs | 0x009000 | 0x00f000 | 0x6000 | Type 1/subtype 2; private settings |
+| phy_init | 0x00f000 | 0x010000 | 0x1000 | Type 1/subtype 1 |
+| factory | 0x010000 | 0x710000 | 0x700000 | Type 0/subtype 0, 7 MiB |
+| storage | 0x710000 | 0xf10000 | 0x800000 | Type 1/subtype 0x82, 8 MiB |
 | Unassigned tail | 0xf10000 | 0x1000000 | 0xf0000 | Preserve opaque bytes |
 
 No OTA slot or otadata partition exists in this factory table. No C6 flash
@@ -50,10 +50,10 @@ must include those bootloader/partition inputs before it can be a write plan.
 
 | Potential write | Changed contents / consequence | Recovery source |
 |---|---|---|
-| Bootloader at 0x2000 | Replaces factory startup with pinned IDF6.1 startup | Exact bytes from verified whole-flash backup |
+| Bootloader at 0x2000 | Replaces factory startup with pinned IDF 6.1 startup | Exact bytes from verified whole-flash backup |
 | Table at 0x8000 | Replaces factory partition authority; factory storage may become unreachable | Original 0x8000 sector from backup |
 | Diagnostic app at 0x10000 | Overwrites beginning of factory executable, preventing its normal use | Original app region from backup |
-| Any full-chip erase | Destroys NVS, storage, all executable and opaque regions | Entire 16 MiB backup at origin0 |
+| Any full-chip erase | Destroys NVS, storage, all executable and opaque regions | Entire 16 MiB backup at origin 0 |
 
 The intended minimal experiment does not require full-chip erase or writes
 to NVS/storage. A generic IDF layout is not approved by this document.
@@ -87,9 +87,9 @@ inspect its partition definitions before finalizing a programming plan.
    observed; manual entry is not. Do not invent BOOT/RESET timing or pin labels.
 3. Recheck both independent full backup lengths/hashes and secondary location.
    Retain an immutable copy; never use the same path for readback after writes.
-4. Prepare exact files, sector ranges and recovery commands using esptool5.6.0,
+4. Prepare exact files, sector ranges and recovery commands using esptool 5.6.0,
    the observed connector and 16 MiB geometry. Restore source is the complete
-   verified dump at flash origin0; preserving its bytes requires avoiding
+   verified dump at flash origin 0; preserving its bytes requires avoiding
    header rewriting. Review esptool options before final command approval.
    Specific command templates and per-sector recovery payload hashes are in
    the [S4 plan](readiness/jc1060-s04-write-recovery-plan-20261030.json); their
@@ -112,7 +112,7 @@ also failed. After owner-confirmed complete power removal, ROM RDID and factory
 warm boot worked, and the owner confirmed the demo visible. The actual cold
 transition was not captured. No flash or eFuse writes were performed.
 
-Pinned IDF6.1 `components/esp_system/port/soc/esp32p4/clk.c` disables the MSPI
+Pinned IDF 6.1 `components/esp_system/port/soc/esp32p4/clk.c` disables the MSPI
 flash clock under PURE_RAM. This is one candidate explanation, not established
 causality. Native USB reset is not equivalent to complete power removal;
 do not infer that either resets every peripheral domain. An ordinary flash-backed

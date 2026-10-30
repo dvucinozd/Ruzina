@@ -9,8 +9,8 @@ See the [arrival evidence and assessment](../../docs/boards/JC1060_ARRIVAL_2026-
 
 S5 adds an independent `--variant memory-task` profile, selected by
 `sdkconfig.memory.defaults`. Scalar/pure-RAM profiles continue to reject PSRAM.
-Memory/task selects legacy360MHz, HEX PSRAM80MHz with capability allocation,
-no XiP/rodata relocation, an exclusive64KiB scratch region, internal comparison
+Memory/task selects legacy 360 MHz, HEX PSRAM 80 MHz with capability allocation,
+no XiP/rodata relocation, an exclusive 64 KiB scratch region, internal comparison
 buffer, allocation-failure/heap guards, and same-core then dual-core FP workers.
 The optional Rust `memory-task` feature links the existing audio EQ crate.
 The FP hold loop keeps ft0/fa1 live, atomically publishes an active flag after
@@ -18,18 +18,18 @@ FP initialization, and executes four million exact f32 increments without
 voluntary yields. Another same-core task must observe that flag before using
 the FPU; zero mismatches and nonzero such observations are required.
 The bounded C-owned stereo EQ buffers use a documented pointer/length ABI.
-The256-frame44.1kHz block benchmark includes EQ initialization and processing;
-its preset deadline is5804us, with no audio/DMA qualification implied.
+The 256-frame 44.1 kHz block benchmark includes EQ initialization and processing;
+its preset deadline is 5804 us, with no audio/DMA qualification implied.
 
 For an upgrade from the S4 baseline, `prepare_flash_plan.py` accepts
 `--predecessor-plan /absolute/s04-plan/plan.json`. It verifies the predecessor
 payload hashes and overlays them on the factory backup to construct the expected
 live sectors and a recovery back to S4. Full-factory recovery remains a separate
-origin0 dump restore. Live sectors must match the expected predecessor before
+origin 0 dump restore. Live sectors must match the expected predecessor before
 any write. Neither build nor plan preparation communicates with a device.
 
-Activate the pinned IDF environment (GCC esp-15.2.0_20251204, esptool5.6.0,
-Rust1.95.0 with rustfmt/clippy and the P4 bare target). Use a NEW output directory:
+Activate the pinned IDF environment (GCC esp-15.2.0_20251204, esptool 5.6.0,
+Rust 1.95.0 with rustfmt/clippy and the P4 bare target). Use a NEW output directory:
 
 ```sh
 python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --output /absolute/new/output --variant pure-ram
@@ -51,7 +51,7 @@ Generated binaries remain outside Git. Both variants are BUILD_ONLY.
 verification. A manifest must explicitly contain `variant: pure-ram`, expected
 `bytes` and `sha256`. Obtain those from a reviewed package; do not auto-approve
 an arbitrary image by computing its own hash immediately before execution.
-The immutable bytes checked are passed to esptool5.6.0 without reopening a path.
+The immutable bytes checked are passed to esptool 5.6.0 without reopening a path.
 The CLI requires explicit execute/port/unit/output/reset-policy parameters for
 any device access. Execution returns incomplete/failure unless scalar and
 factory recovery observations both succeed; no hard reset occurs in cleanup.
@@ -133,7 +133,7 @@ product runtime foundation yet.
 The opt-in Rust `media-bridge` feature implements a single-slot read protocol
 and an `OwnedBlockDevice` client using the existing shared block/IO/session
 crates. It does not enable an IDF peripheral or alter any diagnostic profile.
-Reads are limited to4096 bytes over512-byte sectors. Invalid ranges/lengths
+Reads are limited to 4096 bytes over 512-byte sectors. Invalid ranges/lengths
 reject before enqueue. The worker owns a request until IO/DMA stops; completion
 returns its original owned buffer on success, short read, error or stale lease.
 Invalidation precedes teardown, and remount waits for the old slot to drain.
@@ -146,7 +146,7 @@ no write trait or persistence API and contains no unsafe code. Its synchronous
 queue methods must be serialized by the future platform transport, with waker
 registration/recheck and notification on completion/invalidation.
 
-Reproduce the host and target type/build gates (Rust1.95.0):
+Reproduce the host and target type/build gates (Rust 1.95.0):
 
 ```sh
 cargo +1.95.0 test --locked --manifest-path firmware-idf/legacy-jc1060/rust-core/Cargo.toml --features media-bridge
@@ -155,17 +155,17 @@ cargo +1.95.0 build --locked --release --manifest-path firmware-idf/legacy-jc106
 ```
 
 The separate `sd-rust-bridge` builder variant enables `idf-media-bridge` and
-`CONFIG_RUZINA_SD_RUST_BRIDGE`. It supplies a concrete IDF owner task on core0
-and a diagnostic Rust client task on core1. The C owner alone holds card/host/
+`CONFIG_RUZINA_SD_RUST_BRIDGE`. It supplies a concrete IDF owner task on core 0
+and a diagnostic Rust client task on core 1. The C owner alone holds card/host/
 LDO4 and a512-byte internal DMA-capable bounce buffer. Rust retains its own
-owned512-byte arrays and copies from the DMA-complete C buffer synchronously;
+owned 512-byte arrays and copies from the DMA-complete C buffer synchronously;
 no Rust request/future/layout or retained buffer pointer crosses C. State uses
 one shared IDF portMUX, with wake notifications delivered after unlocking.
 The static task waker targets a persistent diagnostic task, never a freed TCB.
 Only that dedicated client task waits on notifications; SDMMC never blocks a
 shared async executor. This is a diagnostic task runner, not product execution.
 
-The bridge repeats a Rust-owned read of raw sectors0..7 and compares FNV1a on
+The bridge repeats a Rust-owned read of raw sectors 0..7 and compares FNV1a on
 each pass. It does not link FatFs, mount Rust exFAT or open the known fixture.
 Read failure invalidates the lease before returning completion/host teardown.
 Queued/active buffers remain in persistent Rust state; teardown is held if an
@@ -181,8 +181,8 @@ It retains the transport's one-sector C bounce buffer and uses a32768-byte
 diagnostic client stack. MBR/superfloppy and bounded GPT discovery reuse the
 shared partition parser; the chosen exFAT header/partition bounds and main boot
 checksum must validate. No C/FatFs mount, file handle or write API is involved.
-The file check covers every byte, full SHA-256, EOF and the same10 seek cases.
-One tick/16KiB is deliberately yielded, so this is not a throughput benchmark.
+The file check covers every byte, full SHA-256, EOF and the same 10 seek cases.
+One tick/16 KiB is deliberately yielded, so this is not a throughput benchmark.
 
 The external media lease is checked before/after filesystem operations and
 before publishing success, including cache/EOF/seek paths. Canceling mount or

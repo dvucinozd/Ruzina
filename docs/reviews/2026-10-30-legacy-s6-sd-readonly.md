@@ -1,18 +1,18 @@
 # S6 read-only SD/exFAT diagnostic
 
-Date: 2026-10-30. Unit JC1060-20261030-COM3, P4v1.3. The owner inserted a
-64GB exFAT card and reports it contains no files. This campaign must not create
+Date: 2026-10-30. Unit JC1060-20261030-COM3, P4 v1.3. The owner inserted a
+64 GB exFAT card and reports it contains no files. This campaign must not create
 test files or reformat it. The prior [display/touch diagnostic](2026-10-30-legacy-s6-display-touch.md)
 remains an exact recovery baseline, with its accepted static image and polling
 touch evidence. SD uses its own profile; display/touch is inactive during it.
 
 ## Source, power and ownership
 
-The owner-supplied New_Panel BSP uses SDMMC slot0, four lines, no established
+The owner-supplied New_Panel BSP uses SDMMC slot 0, four lines, no established
 card-detect/write-protect GPIO, and on-chip LDO4. The source-audited schematic
-maps D0..3 to39..42, clock43, command44 and ESP_LDO_VO4. The diagnostic starts
-at10MHz (below the vendor's40MHz), no UHS/DDR/1.8V override, and uses the pinned
-IDF6.1 power-control driver. It does not drive arbitrary detect/VBUS pins.
+maps D0..3 to 39..42, clock 43, command 44 and ESP_LDO_VO4. The diagnostic starts
+at 10 MHz (below the vendor's 40 MHz), no UHS/DDR/1.8V override, and uses the pinned
+IDF 6.1 power-control driver. It does not drive arbitrary detect/VBUS pins.
 
 One task owns card, filesystem, read buffers and lifecycle. No filesystem or
 card pointer escapes. The local generation increments and ready flag clears
@@ -26,7 +26,7 @@ other card consumer runs concurrently.
 Pinned IDF's default FatFs R0.16 config has FF_FS_EXFAT0 and FF_FS_READONLY0.
 The diagnostic therefore copies the pristine ff.c/ff.h/ffunicode.c/diskio.h
 into its build directory, retaining license notices, with a private ffconf:
-read-only1, exFAT1, LFN UTF-8,512-byte sectors, one volume, no format/trim.
+read-only 1, exFAT1, LFN UTF-8,512-byte sectors, one volume, no format/trim.
 The global IDF checkout and shared Rust filesystem code are not modified.
 The generic IDF read/write FatFs/VFS component is not linked. Build manifests
 hash the four pristine sources and ELF checks reject f_write/f_mkfs/unlink/
@@ -42,8 +42,8 @@ content programming, not absence of SD protocol configuration commands.
 No format fallback, mount-time repair, VFS writable mount or test-file creation
 exists. The empty card can qualify identity, mount, root enumeration and raw
 read stability, but not existing audio/export file reads. Root enumeration is
-bounded to64 entries, does not log filenames/content, and any opportunistic
-root-file prefix read is bounded to64KiB. An empty root produces an explicit
+bounded to 64 entries, does not log filenames/content, and any opportunistic
+root-file prefix read is bounded to 64 KiB. An empty root produces an explicit
 NOT_RUN_NO_ROOT_FILE, never a file-read PASS. Directories such as host-created
 system folders count as entries, not user audio files.
 
@@ -79,18 +79,18 @@ The generic writer's legacy descriptive "no BSP peripheral access" string
 applies only to its programmer stage; the SD application later activates the
 explicitly reviewed SDMMC/LDO4 resource set.
 
-On the first USB-reset boot, the card reported63,864,569,856 bytes,
-124,735,488 sectors of512 bytes. The exFAT volume atLBA2048 mounted with256-sector
-(128KiB) clusters. Root enumeration completed with0 files and1 directory;
+On the first USB-reset boot, the card reported 63,864,569,856 bytes,
+124,735,488 sectors of 512 bytes. The exFAT volume atLBA 2048 mounted with 256-sector
+(128 KiB) clusters. Root enumeration completed with 0 files and 1 directory;
 the directory's name was intentionally not logged or inferred. No test file
 was created and file reading remains NOT_RUN_NO_ROOT_FILE.
 [Initial runtime](../boards/evidence/jc1060-20261030-com3/s06-sd-first-boot-result.json)
-observed45 heartbeats, stable repeated reads of the first8 sectors
-(FNV-1a339d5f03), and no HP watchdog. The task's remaining stack was6296 bytes.
+observed 45 heartbeats, stable repeated reads of the first 8 sectors
+(FNV-1a339d5f03), and no HP watchdog. The task's remaining stack was 6296 bytes.
 This is not a hash of the entire card or a file/media streaming benchmark.
 
 `write_calls=1` is the adapter rejection self-test, not a write submitted to
-the card. It remained1 throughout health observations; host-denied remained0,
+the card. It remained 1 throughout health observations; host-denied remained 0,
 showing no forbidden opcode was attempted by initialization/mount/read paths.
 The explicitly rejected TRIM self-test also had no transaction side effect.
 The private compile-time configuration and linked-symbol checks supply the
@@ -100,23 +100,23 @@ prove whole-card immutability.
 ## Removal and reinsertion
 
 The owner removed only the SD card with USB power retained. The task timed out
-on its next card transaction, cleared ready, advanced local generation to2,
+on its next card transaction, cleared ready, advanced local generation to 2,
 unmounted, deinitialized the host and released its LDO handle. It emitted
 QUIESCED and self-deleted, without a watchdog or further SD polling:
 [removal result](../boards/evidence/jc1060-20261030-com3/s06-sd-removal-result.json).
-The terminal count was195 reads,1 deliberately rejected write self-test and0
+The terminal count was 195 reads,1 deliberately rejected write self-test and 0
 forbidden host commands. Polling/timeout detection is not a hardware CD signal;
 removal during an open file or concurrent load is not covered by this empty-card
 scenario. The initial mount/root operations had already completed.
 
 The owner reinserted the same card; explicit app restart created fresh card/
 host/filesystem objects. Three app restarts each observed exFAT mount/root,
-scalar match and11 heartbeats without quiesce/watchdog:
+scalar match and 11 heartbeats without quiesce/watchdog:
 [restart results](../boards/evidence/jc1060-20261030-com3/s06-sd-reinsert-result.json).
 All runs retain the same geometry/root counts/initial-sector hash. These are
 three app startups following one physical reinsertion, not three physical
 removal cycles or a replacement-card identity test. The local counter restarts
-at1 after app reset; it is not a globally persistent media generation.
+at 1 after app reset; it is not a globally persistent media generation.
 
 The scalar regression build also passed, confirming the private FatFs config
 did not become a global SDK/product option. It was not flashed. Native minimum
@@ -124,7 +124,7 @@ did not become a global SDK/product option. It was not flashed. Native minimum
 
 ## Cold startup and remaining scope
 
-The owner left the same card inserted, removed the sole USB power for5–10s,
+The owner left the same card inserted, removed the sole USB power for 5–10 s,
 and reconnected without BOOT/RESET. The monitor missed the new startup/mount
 lines, so its direct `sd_match` marker parser correctly returned false.
 However, the raw stream contains one uptime drop and continuing new SD health
@@ -153,14 +153,14 @@ the empty card; no further peripheral owner was activated by this batch.
 ## Preservation and final checks
 
 The [SD evidence package index](../boards/readiness/jc1060-s06-sd-evidence-package-20261030.json)
-records a5,368,318-byte ZIP with91 entries and a matching secondary copy under
+records a5,368,318-byte ZIP with 91 entries and a matching secondary copy under
 BoardBackups. All member SHA-256 values and ZIP CRC were verified. Archive SHA:
 `a53297709a3a8a6675d2907130d44da4b967f2159279968b2a18c9e54e6e8822`.
 The package contains exact source/artifact/readonly-symbol/runtime snapshots
 and the pristine licensed FatFs sources; it contains no factory or SD card dump.
-Final checks:13 offline methods PASS, unit record validator PASS,191 local
+Final checks: 13 offline methods PASS, unit record validator PASS,191 local
 documentation links PASS before this final package link, whitespace diff PASS.
-The current application/shared Rust crate sources and native minimum302 were
+The current application/shared Rust crate sources and native minimum 302 were
 not modified. Current work remains local/uncommitted; no push or remote CI run.
 
 Reference: [Espressif SD protocol/host lifecycle](https://docs.espressif.com/projects/esp-idf/en/v6.1/esp32p4/api-reference/storage/sdmmc.html)

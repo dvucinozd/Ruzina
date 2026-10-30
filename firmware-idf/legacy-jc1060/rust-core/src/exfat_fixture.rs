@@ -118,8 +118,9 @@ pub async fn mount<'a, D: OwnedBlockDevice<Buffer = [u8; 512]>>(
         let Ok(boot) = parse_exfat_boot_sector(&buffer, range.geometry(512)) else {
             continue;
         };
-        // Do not accept a valid boot header belonging to a different partition.
-        if boot.partition_offset != candidate.first_lba {
+        // exFAT 3.1.4 defines zero as "ignore this field". A nonzero mismatch
+        // still rejects; all IO remains bounded by the actual partition extent.
+        if boot.partition_offset != 0 && boot.partition_offset != candidate.first_lba {
             return Err(Error::Boot);
         }
         let mut volume = ExFatAsyncVolume::new(

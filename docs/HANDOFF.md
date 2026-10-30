@@ -7,13 +7,20 @@ Active continuation branch: `ogranak/jc1060-c01-c02` in
 The primary `D:/AI/M1_PCB` checkout remains on main with its unrelated
 untracked files preserved. Publication of the legacy bring-up batch is tracked
 in the [publication checkpoint](reviews/2026-10-30-legacy-publication.md).
+Implementation `7518d83a47a68009919fe58a036ef22195d0bae3` is pushed in
+[draft PR #55](https://github.com/dvucinozd/Ruzina/pull/55). CodeRabbit reported
+two minor issues; the publication follow-up fixes numeric prose spacing and
+exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
+only, NOT_FLASHED. Actions budget prevented every remote job from starting;
+do not merge or claim green CI until budget is restored and the current PR head
+actually passes. This checkpoint does not change the current board image.
 
 **Current unit:** the read-only shared Rust partition/exFAT diagnostic is
-running on JC1060v1.3. Full fixture SHA/EOF/seeks, app restarts, open-file
+running on JC1060 v1.3. Full fixture SHA/EOF/seeks, app restarts, open-file
 removal/reinsert and owner-confirmed cold return are observed. Initial cold
 boot/reset-reason prefix was missed. Product media/load, UI/audio/USB-host/C6
 remain unwired. Next implementation: IDF product media/load owner with live
-lease checks and buffer-drain cancellation. Native minimum302 is unchanged.
+lease checks and buffer-drain cancellation. Native minimum 302 is unchanged.
 
 **Next-agent instructions (review 2026-10-30):** read the
 [legacy v1.3 review and step-by-step implementation plan](reviews/2026-10-30-jc1060-legacy-review-and-instructions.md).
@@ -37,35 +44,35 @@ static stripe colors/corners and cold return, with five-zone/named-bottom
 touch samples, three app restarts and one cold startup observed. Read its
 limits before continuing. The subsequent [read-only SD campaign](reviews/2026-10-30-legacy-s6-sd-readonly.md)
 then ran its own private read-only exFAT diagnostic on the device, with display
-inactive. The inserted64GB exFAT card mounted with0 root files/1 directory;
-one removal quiesced the owner, reinsertion plus3 app restarts remounted it,
+inactive. The inserted 64 GB exFAT card mounted with 0 root files/1 directory;
+one removal quiesced the owner, reinsertion plus 3 app restarts remounted it,
 and post-cold runtime SD reads were observed (startup prefix missed).
 The subsequent [known-file campaign](reviews/2026-10-30-legacy-s6-sd-file.md)
-now verifies the8MiB+513 nested UTF-8 fixture, SHA/EOF/10seek cases, active-file
-removal and reinsertion with3 app restarts. At that checkpoint firmware was the
+now verifies the 8 MiB + 513 nested UTF-8 fixture, SHA/EOF/10 seek cases, active-file
+removal and reinsertion with 3 app restarts. At that checkpoint firmware was the
 read-only file diagnostic; display was inactive. Rechecking all nine original raw timing
-records withdrew the printf-failure claim: wall_us is5123096..5131023, above IO.
+records withdrew the printf-failure claim: wall_us is 5123096..5131023, above IO.
 The [Rust media bridge protocol](reviews/2026-10-30-legacy-s6-rust-media-bridge.md)
 implements the owned-buffer client and queue with host cancellation/generation
 coverage. The subsequent [concrete IDF transport](reviews/2026-10-30-legacy-s6-idf-media-transport.md)
-subsequently ran a separate raw-block diagnostic on the board:35 first-boot
-passes plus3 app restarts with15 passes each match the known first-sector hash.
+subsequently ran a separate raw-block diagnostic on the board: 35 first-boot
+passes plus 3 app restarts with 15 passes each match the known first-sector hash.
 Display and all filesystems were inactive in that raw-only profile. One physical
 idle-status removal quiesced the owner/client with no late success; after owner
-reinsertion,3 app restarts each returned15 matching passes. Owner-confirmed cold
-return also has an uptime drop and15 matching passes2..16; native USB missed
+reinsertion, 3 app restarts each returned 15 matching passes. Owner-confirmed cold
+return also has an uptime drop and 15 matching passes 2..16; native USB missed
 the initial init/reset-reason prefix, so direct cold init remains NOT_CAPTURED.
 The raw campaign's monitor is closed. The subsequent
 [shared Rust partition/exFAT fixture profile](reviews/2026-10-30-legacy-s6-rust-exfat.md)
 now runs on the board: three first-boot full SHA/EOF/10-seek passes, then three
 app restarts each remounting and completing one full pass. It uses one Rust
 filesystem owner over the same IDF SD transport, with live lease checks around
-cached operations.27 local Rust tests include canceled mount/read drain/remount;
-76 shared-media regressions and20 tooling tests pass. The raw profile remains a
-recovery baseline. Physical open-file removal caused pass11 read timeout/error
-and owner/client quiesce with no late success; same-card reinsertion plus3 app
+cached operations. 27 local Rust tests include canceled mount/read drain/remount;
+76 shared-media regressions and 20 tooling tests pass. The raw profile remains a
+recovery baseline. Physical open-file removal caused pass 11 read timeout/error
+and owner/client quiesce with no late success; same-card reinsertion plus 3 app
 restarts each verified a full file again. Owner-confirmed cold return completed
-new pass1 SHA/EOF/10 seeks with an uptime drop and15 heartbeats; initial boot/
+new pass 1 SHA/EOF/10 seeks with an uptime drop and 15 heartbeats; initial boot/
 reset-reason prefix was missed. All monitors are closed. Current image is the
 Rust exFAT diagnostic, app SHA `ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267`.
 Next: IDF product media/load owner and catalog integration with live lease and

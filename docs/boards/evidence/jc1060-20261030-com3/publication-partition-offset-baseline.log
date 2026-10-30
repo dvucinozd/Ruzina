@@ -1,0 +1,23 @@
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/c/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.10s
+     Running unittests src/lib.rs (/home/daniel/.cache/m1-rust-review/legacy-media-bridge-host/debug/deps/ruzina_legacy_idf_core_probe-e730913e0bc87256)
+
+running 2 tests
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... FAILED
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+
+failures:
+
+---- exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent stdout ----
+
+thread 'exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent' (580) panicked at src/exfat_fixture/tests.rs:214:5:
+valid zero PartitionOffset was rejected: Some(Boot)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 27 filtered out; finished in 0.13s
+
+error: test failed, to rerun pass `--lib`

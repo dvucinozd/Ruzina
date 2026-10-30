@@ -34,7 +34,7 @@ package command that could accept an arbitrary stale archive.
 
 `tools/run_ram_probe.py` defaults to offline verification; it compares approved
 hash/length before transport access, validates chip/header/revision, segment
-overlaps/ranges and entrypoint, and passes immutable bytes to esptool5.6.0.
+overlaps/ranges and entrypoint, and passes immutable bytes to esptool 5.6.0.
 It requires an explicit execution/reset policy plus unit/backup inputs for
 hardware mode. No assert-based guards, flash/eFuse operations or unconditional
 cleanup resets remain. Port closing and terminal JSON recording include failure

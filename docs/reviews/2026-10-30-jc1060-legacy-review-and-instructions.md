@@ -183,7 +183,7 @@ Preuzmi potrebnu logiku iz vanjskog helpera, ali originalni dokaz sačuvaj.
    in-memory input ako esptool API to dopušta ili zaključanu privatnu kopiju
    čiji sadržaj i hash ostaju isti tijekom load-a. Ne pretpostavljaj API.
 4. Tek u eksplicitnom execute modu otvori uređaj; prije load-a provjeri
-   rev103/MAC i backup manifest s dostupnim punim kopijama. Port je parametar;
+   rev 103/MAC i backup manifest s dostupnim punim kopijama. Port je parametar;
    COM broj nije identitet. Nijedan helper ne smije pisati flash/eFuse.
 5. Izoliraj transport iza malog sučelja za mock. Zatvaranje porta osiguraj
    vanjskim `finally`, uključujući identitet/timeout/load/reset iznimke.
@@ -248,7 +248,7 @@ evidence direktorij. Nikad ne koristi postojeći `ram-run-2` za novu izvedbu.
 5. Kad C01 identitet/recovery/layout uvjeti budu zatvoreni, pripremi točan
    flash-backed scalar paket i programming plan. Ne flashaj iz ovog dokumenta
    bez te pripreme i važećeg korisničkog opsega rada. Postojeći factory
-   bootloader ne kombiniraj s IDF6.1 aplikacijom na pretpostavku.
+   bootloader ne kombiniraj s IDF 6.1 aplikacijom na pretpostavku.
 6. Prvi write prati readback/hash svih zapisanih raspona, zatim scalar pozivi,
    monotoni heartbeat i reset cause. Mjeri odvojeno power-on, aplikacijski
    restart, service USB reset i reconnect. Za USB reconnect zabilježi gubi

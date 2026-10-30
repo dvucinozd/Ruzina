@@ -1,6 +1,6 @@
 # S6 Rust read-only media bridge: protocol and owned-buffer client
 
-Date:2026-10-30. Scope: device-free continuation of the
+Date: 2026-10-30. Scope: device-free continuation of the
 [known-file SD campaign](2026-10-30-legacy-s6-sd-file.md).
 Status: host protocol/ownership tests and bare Rust target build observed;
 IDF transport, filesystem integration and physical bridge execution NOT_RUN.
@@ -9,7 +9,7 @@ This describes the frozen protocol-only snapshot; the subsequent
 implementation/build/runtime scope and evidence.
 No COM3 access, reset or flash write occurred in this batch. The board retains
 the previously verified read-only C/FatFs file diagnostic, not this bridge.
-Native minimum302 and the shared/native product sources remain unchanged.
+Native minimum 302 and the shared/native product sources remain unchanged.
 
 ## Implementation
 
@@ -25,10 +25,10 @@ panic behavior still calls IDF-owned `abort` without unwinding across C.
 
 `ReadQueue<B>` is a bounded single-slot state machine:
 Empty -> Queued -> Active -> Complete -> Empty. The worker takes ownership of
-the whole `ReadRequest<B>`, not a borrowed pointer. A read is limited to4096
-bytes,512-byte sectors and32-bit card sector counts. Geometry, overflow, range,
+the whole `ReadRequest<B>`, not a borrowed pointer. A read is limited to 4096
+bytes,512-byte sectors and 32-bit card sector counts. Geometry, overflow, range,
 exact buffer length and capacity are validated before admission. A request
-sequence is64-bit and refuses wrap. Tickets bind the request to its shared
+sequence is 64-bit and refuses wrap. Tickets bind the request to its shared
 media lease, hardware-owner handle, geometry and sequence. Runtime owner
 handles must be unique. Only the expected ticket can take a completion; a
 foreign worker completion is returned intact for owner fault/drain handling.
@@ -61,7 +61,7 @@ hardware-abort guarantee yet, and cancellation does not mean DMA has stopped.
 ## Validation
 
 The [host tests](../../firmware-idf/legacy-jc1060/rust-core/src/media_bridge/tests.rs)
-exercise19 scenarios with owned allocation identity/drop counters and controlled
+exercise 19 scenarios with owned allocation identity/drop counters and controlled
 polling. They cover invalid transfers/no submission, successful buffer return,
 driver errors/short reads, removal before submission/queued/active/after
 completion, pending-future/recovery/client drop, backpressure, wrong tickets,
@@ -72,9 +72,9 @@ tests cover completion and queued invalidation; eager completion before the
 first wait is also observed. This uses a single-threaded serialized host port,
 not a simulated dual-core FreeRTOS scheduler or physical DMA.
 
-Local checks:19 bridge tests and21 shared media tests (block6, IO4, session11)
+Local checks: 19 bridge tests and 21 shared media tests (block 6, IO 4, session 11)
 passed. Rustfmt, host test Clippy, target Clippy and release static-library
-build for `riscv32imafc-unknown-none-elf` passed with Rust1.95.0; warnings are
+build for `riscv32imafc-unknown-none-elf` passed with Rust 1.95.0; warnings are
 errors. Commands, source hashes, logs and artifact identity are preserved in
 the evidence index added below. A target static-library build type-checks this
 generic protocol; it does not prove a concrete IDF port, final bridge link or
@@ -88,10 +88,10 @@ not the source snapshot of that previously flashed package.
 
 The [offline evidence index](../boards/readiness/jc1060-s06-rust-media-bridge-offline-20261030.json)
 links the command results/logs and identifies the frozen source/artifact ZIP
-and independent secondary copy. Fresh scalar IDF6.1 package generation passed
+and independent secondary copy. Fresh scalar IDF 6.1 package generation passed
 without enabling the bridge feature; this is a regression of the existing
 scalar shell and Rust panic/link boundary, not an IDF bridge link. Its generated
-binaries were not flashed. The17 existing Python tooling tests, unit validator,
+binaries were not flashed. The 17 existing Python tooling tests, unit validator,
 documentation-link check and `git diff --check` also passed. Full product host/
 native gates were not repeated because their sources are unchanged.
 

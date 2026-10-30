@@ -1,0 +1,57 @@
+{
+  "status": "BLOCKED_ACTIONS_BUDGET_NO_JOB_STEPS_EXECUTED",
+  "head_sha": "7518d83a47a68009919fe58a036ef22195d0bae3",
+  "pr": "https://github.com/dvucinozd/Ruzina/pull/55",
+  "jobs": {
+    "124282485036": {
+      "name": "host",
+      "conclusion": "failure",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/dvucinozd/Ruzina/check-runs/124282485036",
+      "annotations": [
+        {
+          "level": "failure",
+          "message": "The job was not started because an Actions budget is preventing further use."
+        },
+        {
+          "level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\""
+        }
+      ]
+    },
+    "124282485305": {
+      "name": "media-bridge-host",
+      "conclusion": "failure",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/dvucinozd/Ruzina/check-runs/124282485305",
+      "annotations": [
+        {
+          "level": "failure",
+          "message": "The job was not started because an Actions budget is preventing further use."
+        },
+        {
+          "level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\""
+        }
+      ]
+    },
+    "124282637045": {
+      "name": "p4",
+      "conclusion": "failure",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/dvucinozd/Ruzina/check-runs/124282637045",
+      "annotations": [
+        {
+          "level": "failure",
+          "message": "The job was not started because an Actions budget is preventing further use."
+        },
+        {
+          "level": "notice",
+          "message": "\"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748\""
+        }
+      ]
+    }
+  },
+  "remote_ci_pass": false,
+  "merge_performed": false
+}

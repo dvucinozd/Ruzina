@@ -8,20 +8,24 @@ full fixture and bounded removal/reinsert/cold-return observations. Product
 media/load integration is the next gate. Publication/review/CI is recorded in
 the [publication checkpoint](reviews/2026-10-30-legacy-publication.md); historical
 uncommitted-source fields in runtime archives describe their build-time state.
+The publication follow-up accepts exFAT `PartitionOffset=0` with baseline-failing
+and mismatch regressions: 29 Rust tests pass. That source fix has a fresh IDF
+BUILD_ONLY package and was NOT_FLASHED. Draft PR #55 remains blocked by the
+Actions budget, which prevented remote jobs from executing; it is not green CI.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are
 observed on the isolated IDF diagnostic. The product media adapter remains
 unwired. Rechecking all nine original raw timing records withdrew the earlier
-printf-failure claim: wall time is about5.12million microseconds and exceeds IO.
+printf-failure claim: wall time is about 5.12 million microseconds and exceeds IO.
 Current file-image cold/reconnect evidence is not inherited. The
 [Rust read-only bridge protocol](reviews/2026-10-30-legacy-s6-rust-media-bridge.md)
-has19 host ownership/cancellation tests. Its [concrete IDF transport](reviews/2026-10-30-legacy-s6-idf-media-transport.md)
+has 19 host ownership/cancellation tests. Its [concrete IDF transport](reviews/2026-10-30-legacy-s6-idf-media-transport.md)
 adds a concurrent host FFI test and now runs on the unit as a raw-block
-diagnostic:35 first-boot passes plus3 app restarts with15 passes each match the
+diagnostic: 35 first-boot passes plus 3 app restarts with 15 passes each match the
 known sector hash. Physical idle removal quiesced without late success;
-same-card reinsertion plus3 app restarts each added15 matching passes. An
-owner-confirmed cold return has a captured uptime drop and15 later matching
+same-card reinsertion plus 3 app restarts each added 15 matching passes. An
+owner-confirmed cold return has a captured uptime drop and 15 later matching
 passes; initial init/reset-reason prefix was missed. Shared Rust filesystem
 integration was the next gate in that raw-only campaign. The subsequent
 [shared Rust exFAT profile](reviews/2026-10-30-legacy-s6-rust-exfat.md) now mounts
@@ -29,31 +33,31 @@ the physical card, opens the UTF-8 fixture and verifies full SHA/EOF/10 seeks:
 three first-boot passes plus three app restarts with one pass each. Host tests
 cover canceled filesystem mount/read with buffer drain and remount; the actual
 product load/executor path is still unwired. On this Rust exFAT image, open-file
-removal quiesced the owner/client without late success, reinsertion plus3 app
+removal quiesced the owner/client without late success, reinsertion plus 3 app
 restarts each reverified the file, and owner-confirmed cold return completed a
 new full pass (boot prefix missed). No product storage/audio qualification is
 implied; media/load owner integration is the next software gate.
 
 The latest [read-only SD/exFAT campaign](reviews/2026-10-30-legacy-s6-sd-readonly.md)
-mounted the64GB card and enumerated0 root files/1 directory; file-read testing
+mounted the 64 GB card and enumerated 0 root files/1 directory; file-read testing
 was unrun on that historical mount-only image and is covered by the later
 known-file profile above. It uses a separate SD-only diagnostic, temporarily
 replacing the display profile. Lifecycle results are recorded per scenario;
 the shared product media owner is not yet connected to this driver.
 
 S6 [display/touch diagnostic](reviews/2026-10-30-legacy-s6-display-touch.md)
-has observed New_Panel initialization and GT911 config1024x600, with operator
+has observed New_Panel initialization and GT911 config 1024x600, with operator
 confirmation of the static colors/corners. Touch/boot scenario outcomes are
 unit-specific; no product UI is active, and that display profile has no SD owner.
 
 S5 [memory/task evidence](reviews/2026-10-30-legacy-s5-memory-task.md) now
-records bounded PSRAM80MHz, scratch/allocator, C/Rust FP preemption and EQ
+records bounded PSRAM 80 MHz, scratch/allocator, C/Rust FP preemption and EQ
 measurements on the separate IDF backend. It does not promote product rows
-below to hardware PASS. Native302 target requirements remain unchanged.
+below to hardware PASS. Native 302 target requirements remain unchanged.
 
 Latest: the separate [S4 IDF diagnostic campaign](reviews/2026-10-30-legacy-s4-runtime.md)
 has written and readback-verified a scalar image, observed runtime heartbeats
-after operator power removal and passed three app restarts. Native revision302
+after operator power removal and passed three app restarts. Native revision 302
 and all product-peripheral hardware gates remain unchanged. Refer to the S4
 report for individual USB/reset/reconnect outcomes; the RAM reset failure below
 is historical evidence of that specific mode.

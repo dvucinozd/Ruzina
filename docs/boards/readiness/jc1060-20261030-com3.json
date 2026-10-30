@@ -315,5 +315,12 @@
       "cold_transition": "NOT_CAPTURED"
     },
     "run_snapshot_scope": "physical_power_cycle and factory_boot_seen_after_probe describe historical RAM run, not later recovery"
+  },
+  "publication": {
+    "implementation_commit": "7518d83a47a68009919fe58a036ef22195d0bae3",
+    "review_resolution": "../evidence/jc1060-20261030-com3/publication-review-resolution.json",
+    "runtime_scope": "Existing accepted image remains pre-review snapshot; PartitionOffset-zero fix locally verified/build-only and NOT_FLASHED",
+    "remote_ci": "BLOCKED_ACTIONS_BUDGET; no steps executed",
+    "pr": "https://github.com/dvucinozd/Ruzina/pull/55"
   }
 }

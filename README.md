@@ -16,7 +16,7 @@ has now programmed and readback-verified a flash-backed scalar image. It boots,
 reports monotonic heartbeats and passed three application restarts; reset and
 reconnect scenarios are recorded independently in that report.
 The separate [S5 memory/task probe](docs/reviews/2026-10-30-legacy-s5-memory-task.md)
-observed32MiB PSRAM at80MHz, bounded scratch/allocator checks, preempted C/Rust
+observed 32 MiB PSRAM at 80 MHz, bounded scratch/allocator checks, preempted C/Rust
 FP loops and the existing EQ benchmark. These are diagnostic measurements;
 DMA, full product timing and peripherals remain unqualified.
 The isolated [S6 display/touch diagnostic](docs/reviews/2026-10-30-legacy-s6-display-touch.md)
@@ -24,11 +24,11 @@ now initializes the New_Panel candidate and GT911. The owner confirmed the
 static color order/corners; touch coordinates and lifecycle are recorded in
 that report. It is not yet the product UI renderer.
 The separate [read-only SD/exFAT diagnostic](docs/reviews/2026-10-30-legacy-s6-sd-readonly.md)
-has mounted the owner's64GB card and enumerated its root without creating
+has mounted the owner's 64 GB card and enumerated its root without creating
 files. This diagnostic temporarily replaces the static display profile;
 file/audio streaming and product storage integration remain unqualified.
 The [known-file extension](docs/reviews/2026-10-30-legacy-s6-sd-file.md) now
-verifies an8MiB+513 UTF-8-path fixture byte-for-byte and by SHA-256, EOF and
+verifies an 8 MiB + 513 UTF-8-path fixture byte-for-byte and by SHA-256, EOF and
 boundary seeks, including active-read removal/reinsertion smoke. It is still
 a standalone diagnostic rather than a wired product media pipeline.
 The [read-only Rust media bridge protocol](docs/reviews/2026-10-30-legacy-s6-rust-media-bridge.md)

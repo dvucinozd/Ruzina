@@ -14,7 +14,7 @@ MAC/revision/flash identity. This narrows the earlier photo requirement for
 this scalar-only campaign; it does not close physical BSP/model qualification.
 
 The owner removed power, held BOOT, reconnected, then released BOOT. A no-reset
-ROM handshake confirmed revision103, the expected MAC, RDID0x184068, Secure Boot
+ROM handshake confirmed revision 103, the expected MAC, RDID0x184068, Secure Boot
 off, flash encryption off, and secure download off. The first helper invocation
 had an API-name error after identity/security reads; the corrected invocation
 used `esptool.cmds.attach_flash` and passed. Both raw attempts remain external.
@@ -43,7 +43,7 @@ Manifest SHA-256:
 See [exact sector/recovery plan](../boards/readiness/jc1060-s04-write-recovery-plan-20261030.json).
 
 Before writing, a second live no-reset identity/security check passed and
-each affected live sector matched the original backup. A standard esptool5.6.0
+each affected live sector matched the original backup. A standard esptool 5.6.0
 programmer stub wrote only the reviewed bootloader/table/app sectors, using
 keep/keep/keep header settings, no full erase, no force, no eFuse operations.
 Every written sector was read back and SHA-compared to its immutable payload:
@@ -67,12 +67,12 @@ before this action. Its early boot prefix may be missing due to USB enumeration.
 |---|---|---|
 | Physical power removal/reconnect | Owner confirms three cycles; runtime heartbeats after all three; early boot prefix not captured | [first capture](../boards/evidence/jc1060-20261030-com3/s04-cold-boot-result.json), [two repeats](../boards/evidence/jc1060-20261030-com3/s04-power-repeat-result.json) |
 | App restart via console R | 3/3 request marker, reset_reason3, scalar match, 11 heartbeats per run, no HP watchdog | [results](../boards/evidence/jc1060-20261030-com3/s04-app-restart-result.json) |
-| USB software ROM entry + normal reset after non-BOOT power-on | 3/3 reset_reason11, scalar match, 15 heartbeats per run, no HP watchdog | [run1](../boards/evidence/jc1060-20261030-com3/s04-usb-reset-1-result.json), [run2](../boards/evidence/jc1060-20261030-com3/s04-usb-reset-2-result.json), [run3](../boards/evidence/jc1060-20261030-com3/s04-usb-reset-3-result.json) |
+| USB software ROM entry + normal reset after non-BOOT power-on | 3/3 reset_reason11, scalar match, 15 heartbeats per run, no HP watchdog | [run 1](../boards/evidence/jc1060-20261030-com3/s04-usb-reset-1-result.json), [run 2](../boards/evidence/jc1060-20261030-com3/s04-usb-reset-2-result.json), [run 3](../boards/evidence/jc1060-20261030-com3/s04-usb-reset-3-result.json) |
 | Host serial close/open without DTR/RTS | 3/3 continuous increasing uptime; four heartbeats per session | [results](../boards/evidence/jc1060-20261030-com3/s04-session-reopen-result.json) |
 
 The repeat-power monitor reached its time limit after three heartbeats following
 the last reboot, rather than its desired five-heartbeat early-exit condition.
-The subsequent serial-session capture began at uptime17s, above that last
+The subsequent serial-session capture began at uptime 17 s, above that last
 heartbeat, and confirmed continuing operation. This combination supports the
 third cold-runtime smoke observation; it is not a captured complete cold boot
 log. Because USB is the sole supply, physical USB reconnect is a power cycle;
@@ -87,7 +87,7 @@ remains unsupported for regular bring-up, without a proven root-cause claim.
 The first scalar flash-backed boot/reset smoke gate is observed for this exact
 image only. Actual factory restoration, independent-power USB reconnect,
 physical PCB/module/panel markings, memory/FPU acceptance and long soak remain
-open. The native minimum is still302; native C02 remains incompatible with this
+open. The native minimum is still 302; native C02 remains incompatible with this
 unit. The device is left running the legacy scalar diagnostic, with its display
 and product peripherals inactive. Next: S5's separate memory/task profile, with
 the scalar profile retained as the recovery/debug baseline.
@@ -103,12 +103,12 @@ ZIP SHA-256: `b0573ac0b99ef01c07aac9e8c29f78e784dafce6cdfca637ad38209083a6f3db`.
 The secondary copy under the existing BoardBackups location matches.
 
 Nine offline tests and the unit validator PASS. Documentation links and diff
-whitespace checks PASS. Native app/crate sources and revision302 policy were
+whitespace checks PASS. Native app/crate sources and revision 302 policy were
 not edited. Remote CI, commit/push, full product tests and physical product
 qualification are not claimed by this campaign.
 
 References used for the tooling review:
 [esptool write/erase/header behavior](https://docs.espressif.com/projects/esptool/en/latest/esp32p4/esptool/basic-commands.html)
 and [P4 manual boot-mode selection](https://docs.espressif.com/projects/esptool/en/latest/esp32p4/advanced-topics/boot-mode-selection.html),
-alongside the installed esptool5.6.0 source. The actual board-specific manual
+alongside the installed esptool 5.6.0 source. The actual board-specific manual
 sequence above is supported by the operator action and no-reset handshake.

@@ -1,0 +1,26 @@
+{
+  "paths": [
+    ".github/workflows/legacy-idf.yml",
+    "docs/boards/readiness/jc1060-20261030-com3.json",
+    "docs/boards/readiness/jc1060-idf61-ram-package-20261030.json",
+    "docs/boards/readiness/jc1060-legacy-panel-sources-20261030.json",
+    "docs/boards/readiness/jc1060-s03-offline-builds-20261030.json",
+    "docs/boards/readiness/jc1060-s04-evidence-package-20261030.json",
+    "docs/boards/readiness/jc1060-s05-evidence-package-20261030.json",
+    "docs/boards/readiness/jc1060-s06-display-source-review-20261030.json",
+    "docs/boards/readiness/jc1060-s06-evidence-package-20261030.json",
+    "docs/boards/readiness/jc1060-s06-idf-media-transport-evidence-20261030.json",
+    "docs/boards/readiness/jc1060-s06-rust-exfat-evidence-20261030.json",
+    "docs/boards/readiness/jc1060-s06-rust-media-bridge-offline-20261030.json",
+    "docs/boards/readiness/jc1060-s06-sd-evidence-package-20261030.json",
+    "docs/boards/readiness/jc1060-s06-sd-file-evidence-package-20261030.json",
+    "docs/reviews/2026-10-30-legacy-s0-s4-execution.md",
+    "firmware-idf/legacy-jc1060/main/new_panel_commands.h",
+    "firmware-idf/legacy-jc1060/tools/build_legacy.ps1",
+    "firmware-idf/legacy-jc1060/tools/build_legacy.py",
+    "firmware-idf/legacy-jc1060/tools/prepare_flash_plan.py",
+    "firmware-rust/tools/check_docs.py"
+  ],
+  "raw_evidence_exact": true,
+  "scope": "Code/docs Git LF normalization only; build-time bytes remain in accepted archives"
+}
