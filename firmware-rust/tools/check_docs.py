@@ -13,7 +13,8 @@ def main():
     checked = 0
     errors = []
     for file in files:
-        if any(part in file.relative_to(ROOT).parts for part in ("target", "build")):
+        # Vendored upstream trees keep their own README links byte-identical.
+        if any(part in file.relative_to(ROOT).parts for part in ("target", "build", "third_party")):
             continue
         for destination in re.findall(r"\]\(([^)]+)\)", file.read_text(encoding="utf-8")):
             destination = destination.strip().strip("<>")

@@ -149,6 +149,8 @@ def main():
     # Only the USB host diagnostic may enable and link the USB Host Library.
     if ('CONFIG_RUZINA_USB_HOST_ENUM=y' in config) != (args.variant == 'usb-host'):
         raise ValueError('USB host profile mismatch')
+    if args.variant == 'usb-host' and 'CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096' not in config:
+        raise ValueError('USB host control buffer too small for audio-class configurations')
     from esptool.bin_image import LoadFirmwareImage
     binary = output / 'build/ruzina_legacy_probe.bin'
     data = binary.read_bytes()
