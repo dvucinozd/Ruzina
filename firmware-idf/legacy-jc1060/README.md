@@ -323,3 +323,24 @@ owner's stopped state. On JC1060 with the 25-track export, the screen and
 the load ran together across the boot, app restarts, removal, reinsertion and
 a cold return. PSRAM was lower only by the framebuffer, and passes were about
 2 % slower. See the [device run](../../docs/reviews/2026-10-31-legacy-load-display.md#device-run-2026-10-31-owner-present).
+## `usb-host` profile (USB host enumeration diagnostic)
+
+`usb-host` (`CONFIG_RUZINA_USB_HOST_ENUM`) is an isolated, flash-backed
+diagnostic for the HS (UTMI) Type-C port. It has no SD, display or PSRAM, and
+the CMake guard and its test enforce that.
+
+It installs the vendored USB Host Library (`third_party/esp-usb-1.6.0`, see
+`third_party/esp-usb-NOTICE.md`) and logs each attached device:
+- `usb_attach`: address, speed, VID/PID, class, configuration, max power,
+  manufacturer and product;
+- every `usb_iad`, `usb_iface` and `usb_ep` descriptor;
+- a `usb_config_walk` summary of the configuration descriptor.
+
+Each detach is logged as `usb_detach`. The diagnostic claims no interface and
+starts no transfer.
+
+The board's VBUS is hard-wired to `USB5V_IN`. The topology and the test-safety
+rules are in `docs/boards/JC1060_USB_TOPOLOGY.md`. The build tool checks two
+things:
+- this variant links the library and none of the SD or display sources;
+- no other variant defines `usb_host_install`.

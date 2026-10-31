@@ -95,6 +95,13 @@ void app_main(void)
         printf("sd_result=INIT_FAILED\nreadiness=NOT_QUALIFIED\n");
     }
 #endif
+#if CONFIG_RUZINA_USB_HOST_ENUM
+    extern esp_err_t ruzina_usb_host_enum_start(void);
+    esp_err_t usb_err = ruzina_usb_host_enum_start();
+    if (usb_err != ESP_OK) {
+        printf("usb_host=INIT_FAILED error=%s\n", esp_err_to_name(usb_err));
+    }
+#endif
 #if CONFIG_RUZINA_LOAD_DISPLAY
     /* Panel first, so the screen shows the mount; the load runs without it. */
     extern esp_err_t ruzina_load_display_start(void);

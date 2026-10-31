@@ -44,7 +44,7 @@ def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--idf', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display'], required=True)
+    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'usb-host'], required=True)
     parser.add_argument('--wsl', help='Optional WSL distribution for Rust only')
     parser.add_argument('--cargo-home')
     parser.add_argument('--rustup-home')
@@ -111,6 +111,8 @@ def main():
         defaults += [APP / 'sdkconfig.sd-bridge.defaults']
     elif args.variant == 'sd-rust-exfat':
         defaults += [APP / 'sdkconfig.sd-rust-exfat.defaults']
+    elif args.variant == 'usb-host':
+        defaults += [APP / 'sdkconfig.usb-host.defaults']
     elif args.variant in ('sd-rust-load', 'sd-rust-load-display'):
         defaults += [APP / 'sdkconfig.sd-rust-load.defaults']
         if args.variant == 'sd-rust-load-display':
@@ -121,6 +123,9 @@ def main():
             defaults += [APP / 'sdkconfig.sd-file.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'
+    # Offline build: vendored components only; the component manager would
+    # otherwise resolve their manifests and write dependencies.lock here.
+    os.environ['IDF_COMPONENT_MANAGER'] = '0'
     command = [sys.executable, idf / 'tools/idf.py', '-C', APP, '-B', output / 'build',
                '-DSDKCONFIG=' + (output / 'sdkconfig').as_posix(),
                '-DSDKCONFIG_DEFAULTS=' + ';'.join(x.as_posix() for x in defaults),
@@ -141,6 +146,9 @@ def main():
                          'CONFIG_SPIRAM_BOOT_INIT=y', 'CONFIG_RUZINA_SD_RUST_LOAD=y'):
             if required not in config:
                 raise ValueError('Wrong load profile: ' + required)
+    # Only the USB host diagnostic may enable and link the USB Host Library.
+    if ('CONFIG_RUZINA_USB_HOST_ENUM=y' in config) != (args.variant == 'usb-host'):
+        raise ValueError('USB host profile mismatch')
     from esptool.bin_image import LoadFirmwareImage
     binary = output / 'build/ruzina_legacy_probe.bin'
     data = binary.read_bytes()
@@ -163,6 +171,13 @@ def main():
     # (with Cargo's hash suffix) are forbidden here.
     if any(x in links for x in ('--no-warn-mismatch', 'libesp_hal-', 'libesp_rtos-')):
         raise ValueError('Forbidden linker flag/startup')
+    if args.variant == 'usb-host':
+        if 'usb_host_enum.c.obj' not in mapping or 'libusb.a' not in mapping.replace('\\', '/'):
+            raise ValueError('USB host diagnostic or library not linked')
+        if any(x in mapping for x in ('sd_bridge.c.obj', 'load_display.c.obj', 'display_touch.c.obj')):
+            raise ValueError('USB host diagnostic must stay isolated')
+    elif 'usb_host_install' in run(['riscv32-esp-elf-nm', '--defined-only', elf]):
+        raise ValueError('USB Host Library linked outside the USB host profile')
     if sources() != initial_sources:
         raise ValueError('Sources changed during build')
     artifacts = [binary, elf, mapfile, output / 'sdkconfig', archive,
