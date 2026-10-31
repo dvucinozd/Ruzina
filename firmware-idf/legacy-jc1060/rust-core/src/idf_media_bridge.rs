@@ -369,6 +369,15 @@ pub extern "C" fn ruzina_legacy_exfat_run() -> i32 {
 #[cfg(feature = "idf-media-load")]
 unsafe extern "C" {
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+    /// Lends UTF-8 bytes for the duration of the call; C copies a bounded
+    /// prefix for the status display and keeps no pointer.
+    fn ruzina_bridge_load_title(
+        index: u32,
+        artist: *const u8,
+        artist_len: u32,
+        title: *const u8,
+        title_len: u32,
+    );
 }
 
 /// Load-path telemetry events; values are scalars only.
@@ -461,6 +470,21 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
             snapshot.len(),
         );
         report(pass, load_event::CATALOG, tracks as u32);
+        if pass == 1 {
+            for (index, track) in (0..tracks).filter_map(|i| snapshot.get(i).map(|t| (i, t))) {
+                let (artist, title) = (track.artist.as_str(), track.title.as_str());
+                // SAFETY: both slices outlive the call; C copies and keeps no pointer.
+                unsafe {
+                    ruzina_bridge_load_title(
+                        index as u32,
+                        artist.as_ptr(),
+                        artist.len() as u32,
+                        title.as_ptr(),
+                        title.len() as u32,
+                    )
+                };
+            }
+        }
         if let Some(playlists) = probe.playlists {
             report(pass, load_event::PLAYLISTS, playlists.nodes);
         }

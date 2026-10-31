@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-sd-rust-load-display-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4, caps-only PSRAM and New_Panel DSI/LDO3/backlight (no touch); no audio/USB-host owner",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "2f1df6215d6a908226452f14491331d7d020d677abd1e0d8533e934942a16c04",
+  "plan_sha256": "64e21688f03d96a6953afe95e5b2b0e9fdbfe95c88d9e467ee573edd2a2218e6",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "b0dd9b42ba5345ddb28b2402c2d8c880c3341f048d8ecfe19dbe46b3cf206be0"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 397312,
+      "sha256": "7efb9a48da8a69aaa9380add275328b5fef2c626110ff192c69442c64b9d5e89"
+    }
+  ],
+  "programmer_log_sha256": "11e8c44d4d49f59a5d1f2a4d7762aa63415b8487cb9dc4909a445467917b7e58"
+}

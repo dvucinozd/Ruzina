@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "status": "FLASHED_DEVICE_RUN_PASS_NOT_QUALIFIED",
+  "variant": "sd-rust-load-display",
+  "local_package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-load-display-build-1",
+  "local_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-load-display-write-plan",
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-sd-rust-load-display-device-20261031.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-load-display-device-20261031\\jc1060-idf61-sd-rust-load-display-device-20261031.zip",
+  "archive_sha256": "0377cfab3960e51400d9149e1b310d0bf4f0af36d72a538d85ad9351c3179324",
+  "archive_bytes": 6480284,
+  "members": 41,
+  "app_sha256": "2f1df6215d6a908226452f14491331d7d020d677abd1e0d8533e934942a16c04",
+  "app_bytes": 393232,
+  "manifest_sha256": "7f3528495f34d1a1cf8bd3e90c2626caf69ff6e43144ff91f91c1a3bf1acf17b",
+  "source_commit": "f8f10bb9f8a28d256e50570cb6ca292b01b66035",
+  "dirty_diff_sha256": "35b553de370aac4c66bb009a576d2d53685ff43ca7dd84f40322daa175f47f71",
+  "dirty_status": "M .github/workflows/legacy-idf.yml\n M firmware-idf/legacy-jc1060/README.md\n M firmware-idf/legacy-jc1060/main/CMakeLists.txt\n M firmware-idf/legacy-jc1060/main/Kconfig.projbuild\n M firmware-idf/legacy-jc1060/main/display_touch.c\n M firmware-idf/legacy-jc1060/main/probe.c\n M firmware-idf/legacy-jc1060/main/sd_bridge.c\n M firmware-idf/legacy-jc1060/rust-core/src/idf_media_bridge.rs\n M firmware-idf/legacy-jc1060/rust-core/src/idf_media_bridge/tests.rs\n M firmware-idf/legacy-jc1060/tools/build_legacy.ps1\n M firmware-idf/legacy-jc1060/tools/build_legacy.py\n M firmware-idf/legacy-jc1060/tools/check_config.cmake\n M firmware-idf/legacy-jc1060/tools/prepare_flash_plan.py\n M firmware-idf/legacy-jc1060/tools/tests/test_config.py\n?? firmware-idf/legacy-jc1060/main/FONT_LICENSE.txt\n?? firmware-idf/legacy-jc1060/main/font24.h\n?? firmware-idf/legacy-jc1060/main/load_display.c\n?? firmware-idf/legacy-jc1060/sdkconfig.load-display.defaults\n?? firmware-idf/legacy-jc1060/tools/make_font.py",
+  "plan_sha256": "64e21688f03d96a6953afe95e5b2b0e9fdbfe95c88d9e467ee573edd2a2218e6",
+  "predecessor_plan_sha256": "191c73aaefdd339d88ff1f273466151f6eb7802691d12584c2cfe52ebf9126f7",
+  "previous_image_app_sha256": "893c09bac1dd1f2ac9c6413e29bd3fc3d2516313786fa7a90ef59cd4d636f532",
+  "captures": [
+    "s06-load-display-flash",
+    "s06-load-display-first-boot",
+    "s06-load-display-app-restarts",
+    "s06-load-display-removal",
+    "s06-load-display-reinsert",
+    "s06-load-display-cold"
+  ],
+  "contains_factory_dump": false,
+  "contains_sd_dump": false,
+  "release": false,
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH"
+}

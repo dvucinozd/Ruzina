@@ -53,13 +53,40 @@ void ruzina_bridge_fs_report(uint32_t pass, uint32_t event, uint32_t value)
 /* Load events: 1 mounted, 2 catalog tracks, 3 playlist nodes, 4 track
  * index<<8|outcome (0 analysis, 1 none, 2 source error, 3 stale), 5 pass
  * tracks with analysis, 6 failure stage<<8|code. Rust heap is PSRAM-only. */
+#if CONFIG_RUZINA_LOAD_DISPLAY
+extern void ruzina_load_display_event(uint32_t pass, uint32_t event, uint32_t value, uint32_t stack_free,
+                                      uint32_t psram_free, uint32_t psram_min);
+extern void ruzina_load_display_title(uint32_t index, const uint8_t *artist, uint32_t artist_len,
+                                      const uint8_t *title, uint32_t title_len);
+extern void ruzina_load_display_note(const char *note);
+#define LOAD_NOTE(text) ruzina_load_display_note(text)
+#else
+#define LOAD_NOTE(text) ((void)0)
+#endif
+
 void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
 {
+    unsigned stack=(unsigned)uxTaskGetStackHighWaterMark(NULL);
+    unsigned free_now=(unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    unsigned free_min=(unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
     printf("rust_load pass=%" PRIu32 " event=%" PRIu32 " value=%" PRIu32 " stack_free=%u psram_free=%u psram_min=%u\n",
-           pass,event,value,(unsigned)uxTaskGetStackHighWaterMark(NULL),
-           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
-           (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM));
+           pass,event,value,stack,free_now,free_min);
     fflush(stdout);
+#if CONFIG_RUZINA_LOAD_DISPLAY
+    ruzina_load_display_event(pass,event,value,stack,free_now,free_min);
+#endif
+}
+
+/* Rust lends UTF-8 bytes for the duration of this call only; the display
+ * copies a bounded prefix. Without the display profile it is a no-op. */
+void ruzina_bridge_load_title(uint32_t index, const uint8_t *artist, uint32_t artist_len,
+                              const uint8_t *title, uint32_t title_len)
+{
+#if CONFIG_RUZINA_LOAD_DISPLAY
+    ruzina_load_display_title(index,artist,artist_len,title,title_len);
+#else
+    (void)index;(void)artist;(void)artist_len;(void)title;(void)title_len;
+#endif
 }
 
 static esp_err_t readonly_transaction(int slot, sdmmc_command_t *command)
@@ -91,6 +118,7 @@ static void client(void *unused)
     ruzina_bridge_notify_worker();
     printf("rust_sd_client=STOPPED result=%" PRId32 " pending_drain=OWNER\n",result);
     fflush(stdout);
+    LOAD_NOTE("Load stopped");
     vTaskSuspend(NULL);
 }
 
@@ -177,6 +205,7 @@ finish:
     printf("rust_sd_owner=QUIESCED error=%s reads=%" PRIu32 " denied_commands=%" PRIu32 " reinsert=APP_RESTART_REQUIRED\n",
            esp_err_to_name(err),reads,denied_commands);
     fflush(stdout);
+    LOAD_NOTE("SD stopped - insert card and restart");
     /* Keep task handle valid for any outstanding static notification. */
     vTaskSuspend(NULL);
 }

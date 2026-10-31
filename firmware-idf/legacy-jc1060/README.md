@@ -278,3 +278,38 @@ This is a diagnostic, not a qualified product path. The stack-fixed image ran
 on JC1060 with one real export (25 tracks): every track loaded analysis, PSRAM
 stayed flat, and removal, reinsertion and cold return were clean. See the
 [device run](../../docs/reviews/2026-10-31-legacy-sd-rust-load-profile.md#first-device-run-2026-10-31-owner-present).
+
+## `sd-rust-load-display` profile
+
+`sd-rust-load-display` (`CONFIG_RUZINA_LOAD_DISPLAY`) is the `sd-rust-load`
+profile plus a status screen on the New_Panel. `display_touch.c` now exposes
+`ruzina_panel_start()`, the same DSI, LDO3, reset, init-table and DPI bring-up
+that the `display-touch` diagnostic uses. The panel starts with a dark frame
+before the SD owner. Touch is not initialized, and the profile excludes the
+touch diagnostic.
+
+`load_display.c` draws the screen with a 12x24 bitmap font: `font24.h`, a
+subset (U+0020..U+017F) of Terminus Font under SIL OFL 1.1. See
+`main/FONT_LICENSE.txt`; `tools/make_font.py` regenerates the subset. The screen
+shows:
+- the pass, track count, tracks with analysis and playlist count;
+- free and minimum PSRAM, the client stack and the owner state;
+- up to 42 tracks in two columns, as "artist - title". A colored mark shows
+  each track's pass-1 outcome: green analysis, yellow none, red source error
+  or stale, grey pending.
+
+Data flow:
+- The load telemetry callback and the new `ruzina_bridge_load_title` copy
+  scalars and a bounded UTF-8 prefix into a shared status block, under a short
+  critical section. Rust lends the title bytes only for the duration of the
+  call.
+- A priority-1 task on core 0 alone draws into the scanned-out framebuffer.
+  It redraws only changed 24-pixel row bands and writes each band back from
+  cache.
+
+Expect tearing during a redraw. The CPU now writes to the active frame, which
+the `display-touch` gate did not cover. Without a card, the screen shows the
+owner's stopped state. On JC1060 with the 25-track export, the screen and
+the load ran together across the boot, app restarts, removal, reinsertion and
+a cold return. PSRAM was lower only by the framebuffer, and passes were about
+2 % slower. See the [device run](../../docs/reviews/2026-10-31-legacy-load-display.md#device-run-2026-10-31-owner-present).

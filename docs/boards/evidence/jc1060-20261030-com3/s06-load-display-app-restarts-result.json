@@ -1,0 +1,313 @@
+{
+  "scenario": "s06-load-display-app-restarts",
+  "mode": "restart",
+  "app_sha256": "2f1df6215d6a908226452f14491331d7d020d677abd1e0d8533e934942a16c04",
+  "runs": [
+    {
+      "run": 1,
+      "elapsed_s": 25.177,
+      "bytes": 36146,
+      "sha256": "32d461ccfe8cc4acf2cc78fb38e2b914765027a42464905ea4170755eefa9cd5",
+      "initialized": true,
+      "psram": {
+        "bytes": 33554432,
+        "free_at_start": 32322132
+      },
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "catalog_tracks": [
+        [
+          1,
+          25
+        ],
+        [
+          2,
+          25
+        ],
+        [
+          3,
+          25
+        ],
+        [
+          4,
+          25
+        ],
+        [
+          5,
+          25
+        ]
+      ],
+      "playlist_nodes": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      "pass1_outcomes": {
+        "analysis": 25
+      },
+      "pass1_non_analysis": [],
+      "passes": [
+        {
+          "pass_": 1,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 2,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 3,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 4,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 5,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        }
+      ],
+      "failures": [],
+      "min_client_stack_free": 13344,
+      "min_psram_free": 29220288,
+      "heartbeats": 23,
+      "client_stopped": [],
+      "quiesced": false,
+      "fatal": [],
+      "physical_power_cycle": false
+    },
+    {
+      "run": 2,
+      "elapsed_s": 25.082,
+      "bytes": 36146,
+      "sha256": "9cb704209eb55e5f49521ffbdccf45f914c387c3b58019b90eb35c86ee03154d",
+      "initialized": true,
+      "psram": {
+        "bytes": 33554432,
+        "free_at_start": 32322132
+      },
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "catalog_tracks": [
+        [
+          1,
+          25
+        ],
+        [
+          2,
+          25
+        ],
+        [
+          3,
+          25
+        ],
+        [
+          4,
+          25
+        ],
+        [
+          5,
+          25
+        ]
+      ],
+      "playlist_nodes": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      "pass1_outcomes": {
+        "analysis": 25
+      },
+      "pass1_non_analysis": [],
+      "passes": [
+        {
+          "pass_": 1,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 2,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 3,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 4,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 5,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        }
+      ],
+      "failures": [],
+      "min_client_stack_free": 13312,
+      "min_psram_free": 29220288,
+      "heartbeats": 23,
+      "client_stopped": [],
+      "quiesced": false,
+      "fatal": [],
+      "physical_power_cycle": false
+    },
+    {
+      "run": 3,
+      "elapsed_s": 25.074,
+      "bytes": 36146,
+      "sha256": "0fcb0a99ab363a1e27335b5d046c98805fc9298bfa3977fac00ca7a37886fddd",
+      "initialized": true,
+      "psram": {
+        "bytes": 33554432,
+        "free_at_start": 32322132
+      },
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "catalog_tracks": [
+        [
+          1,
+          25
+        ],
+        [
+          2,
+          25
+        ],
+        [
+          3,
+          25
+        ],
+        [
+          4,
+          25
+        ],
+        [
+          5,
+          25
+        ]
+      ],
+      "playlist_nodes": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          5,
+          1
+        ]
+      ],
+      "pass1_outcomes": {
+        "analysis": 25
+      },
+      "pass1_non_analysis": [],
+      "passes": [
+        {
+          "pass_": 1,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 2,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 3,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 4,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        },
+        {
+          "pass_": 5,
+          "tracks_with_analysis": 25,
+          "psram_free": 29704748,
+          "psram_min": 29220288
+        }
+      ],
+      "failures": [],
+      "min_client_stack_free": 13312,
+      "min_psram_free": 29220288,
+      "heartbeats": 23,
+      "client_stopped": [],
+      "quiesced": false,
+      "fatal": [],
+      "physical_power_cycle": false
+    }
+  ]
+}

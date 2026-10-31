@@ -44,7 +44,7 @@ def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--idf', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load'], required=True)
+    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display'], required=True)
     parser.add_argument('--wsl', help='Optional WSL distribution for Rust only')
     parser.add_argument('--cargo-home')
     parser.add_argument('--rustup-home')
@@ -95,7 +95,7 @@ def main():
         common += ['--features', 'idf-media-bridge']
     elif args.variant == 'sd-rust-exfat':
         common += ['--features', 'idf-exfat-fixture']
-    elif args.variant == 'sd-rust-load':
+    elif args.variant in ('sd-rust-load', 'sd-rust-load-display'):
         common += ['--features', 'idf-media-load']
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *common]))
@@ -111,8 +111,10 @@ def main():
         defaults += [APP / 'sdkconfig.sd-bridge.defaults']
     elif args.variant == 'sd-rust-exfat':
         defaults += [APP / 'sdkconfig.sd-rust-exfat.defaults']
-    elif args.variant == 'sd-rust-load':
+    elif args.variant in ('sd-rust-load', 'sd-rust-load-display'):
         defaults += [APP / 'sdkconfig.sd-rust-load.defaults']
+        if args.variant == 'sd-rust-load-display':
+            defaults += [APP / 'sdkconfig.load-display.defaults']
     elif args.variant in ('sd-readonly', 'sd-file-readonly'):
         defaults += [APP / 'sdkconfig.sd.defaults']
         if args.variant == 'sd-file-readonly':
@@ -133,7 +135,7 @@ def main():
         for required in ('CONFIG_SPIRAM_SPEED=80', 'CONFIG_SPIRAM_USE_CAPS_ALLOC=y', 'CONFIG_RUZINA_MEMORY_TASK=y'):
             if required not in config:
                 raise ValueError('Wrong memory profile: ' + required)
-    if args.variant == 'sd-rust-load':
+    if args.variant in ('sd-rust-load', 'sd-rust-load-display'):
         # The Rust allocator takes every allocation from caps-allocated PSRAM.
         for required in ('CONFIG_SPIRAM=y', 'CONFIG_SPIRAM_SPEED=80', 'CONFIG_SPIRAM_USE_CAPS_ALLOC=y',
                          'CONFIG_SPIRAM_BOOT_INIT=y', 'CONFIG_RUZINA_SD_RUST_LOAD=y'):
@@ -167,22 +169,26 @@ def main():
                  output / 'build/bootloader/bootloader.bin',
                  output / 'build/partition_table/partition-table.bin',
                  output / 'build/flasher_args.json']
-    if args.variant in ('sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load'):
+    if args.variant in ('sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display'):
         symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
         forbidden = {'f_write', 'f_mkfs', 'f_unlink', 'f_rename', 'sdmmc_write_sectors', 'sdmmc_erase_sectors'}
         if forbidden.intersection(line.split()[-1] for line in symbols.splitlines() if line.split()) or 'libfatfs.a' in mapping:
             raise ValueError('Read/write filesystem or SD write/erase API linked')
         (output / 'readonly-symbols.log').write_text(symbols)
-        if args.variant in ('sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load'):
+        if args.variant in ('sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display'):
             if 'CONFIG_RUZINA_SD_RUST_BRIDGE=y' not in config or any(x in config for x in ('CONFIG_RUZINA_SD_READONLY=y', 'CONFIG_RUZINA_SD_FIXTURE=y')):
                 raise ValueError('Wrong exclusive Rust bridge configuration')
-            required_symbol={'sd-rust-exfat': 'ruzina_legacy_exfat_run', 'sd-rust-load': 'ruzina_legacy_load_run'}.get(args.variant, 'ruzina_legacy_bridge_run')
+            required_symbol={'sd-rust-exfat': 'ruzina_legacy_exfat_run', 'sd-rust-load': 'ruzina_legacy_load_run', 'sd-rust-load-display': 'ruzina_legacy_load_run'}.get(args.variant, 'ruzina_legacy_bridge_run')
             if required_symbol not in symbols or 'sd_bridge.c.obj' not in mapping or any(x in symbols.split() for x in ('f_open', 'f_mount')):
                 raise ValueError('Missing Rust bridge or unexpected filesystem linked')
             if ('CONFIG_RUZINA_SD_RUST_EXFAT=y' in config) != (args.variant == 'sd-rust-exfat'):
                 raise ValueError('Rust exFAT profile/feature mismatch')
-            if ('CONFIG_RUZINA_SD_RUST_LOAD=y' in config) != (args.variant == 'sd-rust-load'):
+            if ('CONFIG_RUZINA_SD_RUST_LOAD=y' in config) != (args.variant in ('sd-rust-load', 'sd-rust-load-display')):
                 raise ValueError('Rust load profile/feature mismatch')
+            if ('CONFIG_RUZINA_LOAD_DISPLAY=y' in config) != (args.variant == 'sd-rust-load-display') or (
+                    args.variant == 'sd-rust-load-display' and ('load_display.c.obj' not in mapping
+                                                                or 'CONFIG_RUZINA_DISPLAY_TOUCH=y' in config)):
+                raise ValueError('Load display profile mismatch')
             from stack_frames import oversized_rust_frames
             oversized = oversized_rust_frames(run(['riscv32-esp-elf-objdump', '-d', '--no-show-raw-insn', elf]))
             if oversized:

@@ -28,3 +28,8 @@ config RUZINA_SD_RUST_LOAD
     bool "Import export.pdb and preflight every track through shared Rust media load"
     depends on RUZINA_SD_RUST_BRIDGE && SPIRAM && !RUZINA_SD_RUST_EXFAT
     default n
+
+config RUZINA_LOAD_DISPLAY
+    bool "Show the media load status on the New_Panel display (no touch)"
+    depends on RUZINA_SD_RUST_LOAD && !RUZINA_DISPLAY_TOUCH
+    default n

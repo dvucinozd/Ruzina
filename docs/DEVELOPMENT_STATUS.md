@@ -26,7 +26,9 @@ The [`sd-rust-load` profile](reviews/2026-10-31-legacy-sd-rust-load-profile.md)
 runs catalog import and load preflight on the IDF SD bridge. Its stack-fixed
 image ran on JC1060 with one real 25-track export: 25/25 tracks loaded
 analysis in every pass, with flat PSRAM and clean removal, reinsertion and
-cold return. It is a diagnostic, not qualified.
+cold return. It is a diagnostic, not qualified. The
+[`sd-rust-load-display`](reviews/2026-10-31-legacy-load-display.md) variant adds
+a status screen with the track list and passed the same device runs.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are
