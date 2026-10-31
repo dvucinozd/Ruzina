@@ -95,6 +95,13 @@ void app_main(void)
         printf("sd_result=INIT_FAILED\nreadiness=NOT_QUALIFIED\n");
     }
 #endif
+#if CONFIG_RUZINA_LOAD_DISPLAY
+    /* Panel first, so the screen shows the mount; the load runs without it. */
+    extern esp_err_t ruzina_load_display_start(void);
+    if (ruzina_load_display_start() != ESP_OK) {
+        printf("load_display=INIT_FAILED\n");
+    }
+#endif
 #if CONFIG_RUZINA_SD_RUST_BRIDGE
     extern esp_err_t ruzina_sd_bridge_start(void);
     if (ruzina_sd_bridge_start() != ESP_OK) {

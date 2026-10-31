@@ -1,0 +1,231 @@
+#include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
+#include "esp_cache.h"
+#include "esp_err.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "font24.h"
+
+/* Status screen for the sd-rust-load profile. The SD client and owner only
+ * copy scalars and bounded title bytes into `shared` under a short critical
+ * section; this low-priority task alone draws into the scanned-out
+ * framebuffer, row by row, and writes each changed row back from cache. */
+esp_err_t ruzina_panel_start(void (*fill)(uint16_t *frame), uint16_t **frame_out);
+
+#define WIDTH 1024
+#define HEIGHT 600
+#define COLS (WIDTH / 2 / FONT24_WIDTH)
+#define TRACK_TOP 4
+#define TRACK_ROWS (HEIGHT / FONT24_HEIGHT - TRACK_TOP)
+#define MAX_TRACKS (2 * TRACK_ROWS)
+#define TEXT_BYTES 96
+
+enum { BACKGROUND = 0x0000, FOREGROUND = 0xffff, DIM = 0x8410, ACCENT = 0xfd20,
+       OK_COLOR = 0x07e0, NONE_COLOR = 0xffe0, ERROR_COLOR = 0xf800 };
+
+typedef struct {
+    uint32_t version, pass, tracks, playlists, loaded, psram_free, psram_min, stack_free;
+    bool failed;
+    uint32_t failure;       /* stage << 8 | code */
+    char note[TEXT_BYTES];  /* owner state */
+    int8_t outcome[MAX_TRACKS];
+    char title[MAX_TRACKS][TEXT_BYTES];
+} status_t;
+
+static portMUX_TYPE lock = portMUX_INITIALIZER_UNLOCKED;
+static status_t shared, drawn;
+static uint16_t *frame;
+static bool ready;
+
+static void dark(uint16_t *fb) { memset(fb, 0, WIDTH * HEIGHT * 2); }
+
+static unsigned glyph(uint32_t cp)
+{
+    unsigned lo = 0, hi = FONT24_GLYPHS;
+    while (lo < hi) {
+        unsigned mid = (lo + hi) / 2;
+        if (font24_points[mid] == cp) return mid;
+        if (font24_points[mid] < cp) lo = mid + 1; else hi = mid;
+    }
+    return glyph('?');
+}
+
+/* Decodes one UTF-8 scalar; malformed input yields '?' and advances a byte. */
+static uint32_t next(const char **s)
+{
+    const uint8_t *p = (const uint8_t *)*s;
+    uint32_t cp = '?';
+    unsigned n = 1;
+    if (p[0] < 0x80) cp = p[0];
+    else if ((p[0] & 0xe0) == 0xc0 && (p[1] & 0xc0) == 0x80) { cp = (p[0] & 31u) << 6 | (p[1] & 63u); n = 2; }
+    else if ((p[0] & 0xf0) == 0xe0 && (p[1] & 0xc0) == 0x80 && (p[2] & 0xc0) == 0x80) {
+        cp = (p[0] & 15u) << 12 | (p[1] & 63u) << 6 | (p[2] & 63u); n = 3;
+    }
+    *s += n;
+    return cp;
+}
+
+static void text(unsigned x, unsigned y, unsigned cols, uint16_t color, const char *s)
+{
+    for (unsigned c = 0; c < cols && *s; ++c, x += FONT24_WIDTH) {
+        const uint8_t *bits = font24_bits[glyph(next(&s))];
+        for (unsigned row = 0; row < FONT24_HEIGHT; ++row) {
+            unsigned line = bits[2 * row] << 8 | bits[2 * row + 1];
+            uint16_t *px = frame + (y + row) * WIDTH + x;
+            for (unsigned col = 0; col < FONT24_WIDTH; ++col)
+                if (line & (0x8000u >> col)) px[col] = color;
+        }
+    }
+}
+
+/* Clears, draws and writes back one full-width 24-pixel row band. */
+static void band(unsigned row, void (*paint)(unsigned y, const status_t *), const status_t *s)
+{
+    unsigned y = row * FONT24_HEIGHT;
+    uint16_t *start = frame + y * WIDTH;
+    memset(start, 0, WIDTH * FONT24_HEIGHT * 2);
+    paint(y, s);
+    esp_cache_msync(start, WIDTH * FONT24_HEIGHT * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+}
+
+static void paint_header(unsigned y, const status_t *s)
+{
+    (void)s;
+    text(12, y, 80, ACCENT, "RUZINA  sd-rust-load  JC1060 v1.3  read-only SD");
+}
+
+static void paint_counts(unsigned y, const status_t *s)
+{
+    char line[2 * TEXT_BYTES];
+    snprintf(line, sizeof(line), "Pass %" PRIu32 "   Tracks %" PRIu32 "   Analysis %" PRIu32 "/%" PRIu32
+             "   Playlists %" PRIu32, s->pass, s->tracks, s->loaded, s->tracks, s->playlists);
+    text(12, y, 84, FOREGROUND, line);
+}
+
+static void paint_memory(unsigned y, const status_t *s)
+{
+    char line[2 * TEXT_BYTES];
+    if (s->failed)
+        snprintf(line, sizeof(line), "FAILED stage %" PRIu32 " code %" PRIu32 "   %s",
+                 s->failure >> 8, s->failure & 255, s->note);
+    else
+        snprintf(line, sizeof(line), "PSRAM free %" PRIu32 " KiB  min %" PRIu32 " KiB   stack %" PRIu32 " B   %s",
+                 s->psram_free / 1024, s->psram_min / 1024, s->stack_free, s->note);
+    text(12, y, 84, s->failed ? ERROR_COLOR : DIM, line);
+}
+
+static void paint_tracks(unsigned y, const status_t *s)
+{
+    unsigned row = y / FONT24_HEIGHT - TRACK_TOP;
+    for (unsigned half = 0; half < 2; ++half) {
+        unsigned index = half * TRACK_ROWS + row, x = half * (WIDTH / 2) + 12;
+        if (index >= s->tracks || index >= MAX_TRACKS) continue;
+        static const uint16_t marks[] = {OK_COLOR, NONE_COLOR, ERROR_COLOR, ERROR_COLOR};
+        int8_t outcome = s->outcome[index];
+        uint16_t mark = outcome < 0 ? DIM : marks[outcome & 3];
+        for (unsigned py = 6; py < 18; ++py)
+            for (unsigned px = 0; px < 12; ++px) frame[(y + py) * WIDTH + x + px] = mark;
+        char label[8];
+        snprintf(label, sizeof(label), "%2u", index + 1);
+        text(x + 18, y, 2, DIM, label);
+        text(x + 54, y, COLS - 6, s->title[index][0] ? FOREGROUND : DIM,
+             s->title[index][0] ? s->title[index] : "...");
+    }
+}
+
+static void ui_task(void *unused)
+{
+    (void)unused;
+    static status_t now;
+    drawn.version = UINT32_MAX;
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(250));
+        portENTER_CRITICAL(&lock);
+        bool changed = shared.version != drawn.version;
+        if (changed) now = shared;
+        portEXIT_CRITICAL(&lock);
+        if (!changed) continue;
+        bool first = drawn.version == UINT32_MAX;
+        if (first) band(0, paint_header, &now);
+        if (first || now.pass != drawn.pass || now.tracks != drawn.tracks || now.loaded != drawn.loaded
+                || now.playlists != drawn.playlists)
+            band(1, paint_counts, &now);
+        if (first || now.psram_free != drawn.psram_free || now.psram_min != drawn.psram_min
+                || now.stack_free != drawn.stack_free || now.failed != drawn.failed
+                || strcmp(now.note, drawn.note))
+            band(2, paint_memory, &now);
+        for (unsigned row = 0; row < TRACK_ROWS; ++row) {
+            bool dirty = first || now.tracks != drawn.tracks;
+            for (unsigned half = 0; half < 2 && !dirty; ++half) {
+                unsigned i = half * TRACK_ROWS + row;
+                dirty = now.outcome[i] != drawn.outcome[i] || strcmp(now.title[i], drawn.title[i]);
+            }
+            if (dirty) band(TRACK_TOP + row, paint_tracks, &now);
+        }
+        drawn = now;
+    }
+}
+
+esp_err_t ruzina_load_display_start(void)
+{
+    memset(shared.outcome, -1, sizeof(shared.outcome));
+    esp_err_t err = ruzina_panel_start(dark, &frame);
+    if (err != ESP_OK) return err;
+    if (xTaskCreatePinnedToCore(ui_task, "load_ui", 4096, NULL, 1, NULL, 0) != pdPASS) return ESP_ERR_NO_MEM;
+    ready = true;
+    printf("S6_LOAD_DISPLAY rows=%u columns=2 font=terminus12x24 max_tracks=%u\n", TRACK_ROWS, MAX_TRACKS);
+    return ESP_OK;
+}
+
+/* Load telemetry events (see sd_bridge.c): 1 mounted, 2 catalog, 3 playlists,
+ * 4 track index<<8|outcome, 5 pass, 6 failure stage<<8|code. */
+void ruzina_load_display_event(uint32_t pass, uint32_t event, uint32_t value, uint32_t stack_free,
+                               uint32_t psram_free, uint32_t psram_min)
+{
+    if (!ready) return;
+    char note[TEXT_BYTES];
+    if (event == 1) snprintf(note, sizeof(note), "SD mounted LBA %" PRIu32, value);
+    portENTER_CRITICAL(&lock);
+    shared.pass = pass; shared.stack_free = stack_free;
+    shared.psram_free = psram_free; shared.psram_min = psram_min;
+    switch (event) {
+        case 1: memcpy(shared.note, note, sizeof(note)); break;
+        case 2: shared.tracks = value; break;
+        case 3: shared.playlists = value; break;
+        case 4: if ((value >> 8) < MAX_TRACKS) shared.outcome[value >> 8] = (int8_t)(value & 3); break;
+        case 5: shared.loaded = value; break;
+        case 6: shared.failed = true; shared.failure = value; break;
+        default: break;
+    }
+    shared.version++;
+    portEXIT_CRITICAL(&lock);
+}
+
+/* Copies at most TEXT_BYTES-1 bytes; the caller's buffer is not retained. */
+void ruzina_load_display_title(uint32_t index, const uint8_t *artist, uint32_t artist_len,
+                               const uint8_t *title, uint32_t title_len)
+{
+    if (!ready || index >= MAX_TRACKS) return;
+    char line[TEXT_BYTES];
+    size_t n = 0;
+    for (uint32_t i = 0; i < artist_len && n < sizeof(line) - 1; ++i) line[n++] = (char)artist[i];
+    if (artist_len && n < sizeof(line) - 3) { line[n++] = ' '; line[n++] = '-'; line[n++] = ' '; }
+    for (uint32_t i = 0; i < title_len && n < sizeof(line) - 1; ++i) line[n++] = (char)title[i];
+    line[n] = 0;
+    portENTER_CRITICAL(&lock);
+    memcpy(shared.title[index], line, n + 1);
+    shared.version++;
+    portEXIT_CRITICAL(&lock);
+}
+
+void ruzina_load_display_note(const char *note)
+{
+    if (!ready) return;
+    char copy[TEXT_BYTES];
+    snprintf(copy, sizeof(copy), "%s", note);
+    portENTER_CRITICAL(&lock);
+    memcpy(shared.note, copy, sizeof(copy));
+    shared.version++;
+    portEXIT_CRITICAL(&lock);
+}
