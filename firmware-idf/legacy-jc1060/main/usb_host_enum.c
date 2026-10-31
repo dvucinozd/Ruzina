@@ -27,12 +27,41 @@ extern int32_t ruzina_legacy_midi_bind(uint16_t vid, uint16_t pid);
 extern void ruzina_legacy_midi_unbind(void);
 extern int32_t ruzina_legacy_midi_ingest(const uint8_t *bytes, uint32_t len);
 extern void ruzina_legacy_midi_totals(uint32_t *out);
+extern void ruzina_legacy_midi_lamp(int32_t on);
+extern uint32_t ruzina_legacy_midi_take_out(uint8_t *out, uint32_t capacity);
+extern uint32_t ruzina_legacy_midi_out_overflow(void);
 
-static usb_transfer_t *midi_in;
+static usb_transfer_t *midi_in, *midi_out;
 static uint8_t midi_interface = 0xff;
-static bool midi_in_busy;
+static bool midi_in_busy, midi_out_busy;
 static TickType_t midi_retry_at; /* 0: none; else tick to resubmit after an error */
-static uint32_t midi_transfers, midi_events, midi_errors;
+static TickType_t lamp_off_at;   /* 0: none; else tick to clear the lamp test */
+static uint32_t midi_transfers, midi_events, midi_errors, out_transfers, out_bytes, out_errors;
+
+/* Sends the next queued USB-MIDI packets when no Bulk-OUT is in flight. */
+static void midi_flush(void)
+{
+    if (!midi_out || midi_out_busy || !device || gone) return;
+    uint32_t bytes = ruzina_legacy_midi_take_out(midi_out->data_buffer, (uint32_t)midi_out->data_buffer_size);
+    if (!bytes) return;
+    midi_out->num_bytes = (int)bytes;
+    if (usb_host_transfer_submit(midi_out) == ESP_OK) midi_out_busy = true;
+    else out_errors++;
+}
+
+static void midi_out_done(usb_transfer_t *transfer)
+{
+    midi_out_busy = false;
+    if (transfer->status == USB_TRANSFER_STATUS_COMPLETED) {
+        out_transfers++;
+        out_bytes += (uint32_t)transfer->actual_num_bytes;
+    } else if (transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
+            && transfer->status != USB_TRANSFER_STATUS_CANCELED) {
+        out_errors++;
+        printf("midi_out status=%d\n", transfer->status);
+    }
+    midi_flush();
+}
 
 void ruzina_bridge_midi_event(uint32_t deck, uint32_t control, uint32_t kind, int32_t value, uint32_t max,
                               const uint8_t *name, uint32_t name_len)
@@ -50,6 +79,7 @@ static void midi_in_done(usb_transfer_t *transfer)
         if (transfer->actual_num_bytes > 0
                 && ruzina_legacy_midi_ingest(transfer->data_buffer, (uint32_t)transfer->actual_num_bytes) < 0)
             midi_errors++;
+        midi_flush(); /* LED echo for the events just delivered */
     } else if (transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
             && transfer->status != USB_TRANSFER_STATUS_CANCELED) {
         /* An unplug completes the pending IN with an error before the gone
@@ -72,6 +102,12 @@ static void midi_in_done(usb_transfer_t *transfer)
  * the device went away meanwhile. Runs on the client task. */
 static void midi_retry(void)
 {
+    if (lamp_off_at && (int32_t)(xTaskGetTickCount() - lamp_off_at) >= 0) {
+        lamp_off_at = 0;
+        ruzina_legacy_midi_lamp(0);
+        printf("midi_lamp on=0\n");
+    }
+    midi_flush();
     if (!midi_retry_at || (int32_t)(xTaskGetTickCount() - midi_retry_at) < 0) return;
     midi_retry_at = 0;
     if (device && !gone && midi_in && !midi_in_busy && usb_host_transfer_submit(midi_in) == ESP_OK)
@@ -106,8 +142,20 @@ static void midi_start(const usb_device_desc_t *dev, const usb_config_desc_t *co
         err = usb_host_transfer_submit(midi_in);
         midi_in_busy = err == ESP_OK;
     }
-    printf("usb_midi profile=%" PRId32 " interface=%u in=%02x out=%02x mps=%u claim=%s\n",
-           bound, midi_interface, in, out, mps, esp_err_to_name(err));
+    /* Bulk-OUT on the same interface carries the LED echo and lamp test. */
+    esp_err_t out_err = ESP_ERR_NOT_FOUND;
+    if (err == ESP_OK && out) out_err = usb_host_transfer_alloc(mps, 0, &midi_out);
+    if (out_err == ESP_OK) {
+        midi_out->device_handle = device;
+        midi_out->bEndpointAddress = out;
+        midi_out->callback = midi_out_done;
+        ruzina_legacy_midi_lamp(1);
+        lamp_off_at = xTaskGetTickCount() + pdMS_TO_TICKS(1500);
+        if (!lamp_off_at) lamp_off_at = 1;
+        midi_flush();
+    }
+    printf("usb_midi profile=%" PRId32 " interface=%u in=%02x out=%02x mps=%u claim=%s out=%s lamp_ms=1500\n",
+           bound, midi_interface, in, out, mps, esp_err_to_name(err), esp_err_to_name(out_err));
     fflush(stdout);
 }
 
@@ -119,23 +167,29 @@ static void midi_stop(void)
         ruzina_legacy_midi_unbind();
         return;
     }
-    for (int i = 0; midi_in_busy && i < 50; ++i) {
+    for (int i = 0; (midi_in_busy || midi_out_busy) && i < 50; ++i) {
         usb_host_client_handle_events(client, pdMS_TO_TICKS(10));
     }
-    midi_retry_at = 0;
+    midi_retry_at = lamp_off_at = 0;
     uint32_t totals[8];
     ruzina_legacy_midi_totals(totals);
+    uint32_t overflow = ruzina_legacy_midi_out_overflow();
     ruzina_legacy_midi_unbind();
     esp_err_t release = usb_host_interface_release(client, device, midi_interface);
     esp_err_t freed = midi_in_busy ? ESP_ERR_INVALID_STATE : usb_host_transfer_free(midi_in);
+    esp_err_t out_freed = !midi_out ? ESP_OK : midi_out_busy ? ESP_ERR_INVALID_STATE : usb_host_transfer_free(midi_out);
     printf("usb_midi_stop transfers=%" PRIu32 " events=%" PRIu32 " errors=%" PRIu32 " packets=%" PRIu32
            " decoded=%" PRIu32 " scheduled=%" PRIu32 " dropped=%" PRIu32 " unmapped=%" PRIu32
-           " non_voice=%" PRIu32 " other_cable=%" PRIu32 " semantic_errors=%" PRIu32 " release=%s free=%s\n",
+           " non_voice=%" PRIu32 " other_cable=%" PRIu32 " semantic_errors=%" PRIu32
+           " out_transfers=%" PRIu32 " out_bytes=%" PRIu32 " out_errors=%" PRIu32 " out_overflow=%" PRIu32
+           " release=%s free=%s out_free=%s\n",
            midi_transfers, midi_events, midi_errors, totals[0], totals[1], totals[2], totals[3], totals[4],
-           totals[5], totals[6], totals[7], esp_err_to_name(release), esp_err_to_name(freed));
+           totals[5], totals[6], totals[7], out_transfers, out_bytes, out_errors, overflow,
+           esp_err_to_name(release), esp_err_to_name(freed), esp_err_to_name(out_freed));
     if (freed == ESP_OK) midi_in = NULL;
+    if (out_freed == ESP_OK) midi_out = NULL;
     midi_interface = 0xff;
-    midi_transfers = midi_events = midi_errors = 0;
+    midi_transfers = midi_events = midi_errors = out_transfers = out_bytes = out_errors = 0;
 }
 #endif
 

@@ -4,11 +4,23 @@
 //! [`ruzina_legacy_midi_ingest`] for the duration of the call. Every function
 //! here runs only on the C USB client task, which serializes access to the
 //! single session.
+//!
+//! Output is a diagnostic echo, not product LED state: a lamp test lights or
+//! clears every profile output, Play toggles its deck's Play LED and the Play
+//! LED follows that latch, and the Cue LED follows the held Cue button. LED
+//! updates go through the profile's output map into USB-MIDI event packets,
+//! which C takes with [`ruzina_legacy_midi_take_out`] for one Bulk-OUT.
 use core::cell::UnsafeCell;
 use core::fmt::Write;
-use ruzina_controller_core::{ControlEvent, ControlValue, DeckId};
-use ruzina_controller_profile::Profile;
+use ruzina_controller_core::{
+    ControlEvent, ControlValue, DeckId, LedState, LedUpdate, SemanticControl, SemanticLedId,
+};
+use ruzina_controller_profile::{OutputKind, Profile};
 use ruzina_controller_session::{ControllerSession, SessionDelivery, UsbMidiBatchReport};
+
+/// USB-MIDI packets queued for Bulk-OUT; the FLX4 lamp test alone exceeds
+/// one 512-byte transfer, so C drains the queue across several.
+const OUT_PACKETS: usize = 256;
 
 /// The owner's controller: the M2.5 golden DDJ-FLX4 profile (S3CP v2).
 const FLX4_PROFILE: &[u8] = include_bytes!(
@@ -29,6 +41,67 @@ struct State {
     session: ControllerSession,
     profile: Option<Profile<'static>>,
     totals: UsbMidiBatchReport,
+    /// Play latch per deck for the echo.
+    playing: [bool; 2],
+    out: [[u8; 4]; OUT_PACKETS],
+    out_len: usize,
+    /// Packets that did not fit the queue.
+    out_overflow: u32,
+}
+
+impl State {
+    fn push_out(&mut self, message: [u8; 3]) {
+        if self.out_len == OUT_PACKETS {
+            self.out_overflow = self.out_overflow.saturating_add(1);
+            return;
+        }
+        // Cable 0; the code index number is the channel-voice status nibble.
+        self.out[self.out_len] = [message[0] >> 4, message[0], message[1], message[2]];
+        self.out_len += 1;
+    }
+
+    fn led(&mut self, led: SemanticLedId, deck: Option<DeckId>, on: bool) {
+        let state = if on { LedState::On } else { LedState::Off };
+        if let Some(message) = self
+            .profile
+            .and_then(|p| p.map_led_update(LedUpdate { led, deck, state }))
+        {
+            self.push_out(message);
+        }
+    }
+
+    /// Lights or clears every output in the profile.
+    fn lamp(&mut self, on: bool) {
+        let Some(profile) = self.profile else { return };
+        for index in 0..profile.output_count() {
+            let Some(entry) = profile.output(index) else {
+                continue;
+            };
+            let value = match (entry.kind, on) {
+                (OutputKind::NoteOnOff, true) => entry.on_value,
+                (OutputKind::NoteOnOff, false) => entry.off_value,
+                (OutputKind::CcValue, true) => 0x7f,
+                (OutputKind::CcValue, false) => 0,
+            };
+            self.push_out([entry.status, entry.data1, value]);
+        }
+    }
+
+    fn echo(&mut self, event: &ControlEvent) {
+        let ControlValue::Pressed(pressed) = event.value else {
+            return;
+        };
+        let Some(deck) = event.deck else { return };
+        let slot = usize::from(deck == DeckId::Two);
+        match event.control {
+            SemanticControl::Play if pressed => {
+                self.playing[slot] = !self.playing[slot];
+                self.led(SemanticLedId::PLAY, Some(deck), self.playing[slot]);
+            }
+            SemanticControl::Cue => self.led(SemanticLedId::CUE, Some(deck), pressed),
+            _ => {}
+        }
+    }
 }
 
 struct Shared(UnsafeCell<State>);
@@ -50,6 +123,10 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
         unsupported_cable: 0,
         semantic_errors: 0,
     },
+    playing: [false; 2],
+    out: [[0; 4]; OUT_PACKETS],
+    out_len: 0,
+    out_overflow: 0,
 }));
 
 fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
@@ -127,9 +204,48 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         state.session.reset_profile_state();
         state.session.set_connected(true);
         state.totals = UsbMidiBatchReport::default();
+        state.playing = [false; 2];
+        state.out_len = 0;
+        state.out_overflow = 0;
         drain(state);
         i32::from(state.profile.is_some())
     })
+}
+
+/// Queue a lamp test: every profile output lit (`on` != 0) or cleared.
+#[cfg(feature = "idf-controller-midi")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_midi_lamp(on: i32) {
+    with(|state| state.lamp(on != 0));
+}
+
+/// Move up to `capacity` bytes of queued USB-MIDI packets into `out` for one
+/// Bulk-OUT; packets that do not fit stay queued. Returns the bytes written.
+///
+/// # Safety
+/// `out` must be valid for `capacity` writes for the duration of the call.
+#[cfg(feature = "idf-controller-midi")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_midi_take_out(out: *mut u8, capacity: u32) -> u32 {
+    if out.is_null() {
+        return 0;
+    }
+    with(|state| {
+        let count = state.out_len.min(capacity as usize / 4);
+        // SAFETY: `count * 4 <= capacity` writable bytes; the queue is a
+        // contiguous array of 4-byte packets.
+        unsafe { core::ptr::copy_nonoverlapping(state.out.as_ptr().cast::<u8>(), out, count * 4) };
+        state.out.copy_within(count..state.out_len, 0);
+        state.out_len -= count;
+        (count * 4) as u32
+    })
+}
+
+/// Packets dropped because the output queue was full.
+#[cfg(feature = "idf-controller-midi")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_midi_out_overflow() -> u32 {
+    with(|state| state.out_overflow)
 }
 
 /// End the controller connection; pending events are retired.
@@ -219,6 +335,7 @@ fn drain(state: &mut State) -> i32 {
                     name.len as u32,
                 )
             };
+            state.echo(&event);
             delivered += 1;
         }
         state.session.complete_delivery(true);

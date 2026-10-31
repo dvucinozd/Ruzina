@@ -128,3 +128,42 @@ disconnected and the FLX4 on bus power, C-to-C on the HS port. Records are in
 Tempo sliders, EQ, filter, master and headphone level did not appear in this
 capture, so they remain unverified on the device. There is still no MIDI out (LEDs, init SysEx), and
 no product state consumes the events yet.
+
+## LED output (MIDI out), build only
+
+The next step closes the loop to the controller. No product LED state exists
+yet, so the output is a diagnostic echo through the profile's output map.
+
+- **Rust:**
+  - A 256-packet USB-MIDI out queue. Each packet is cable 0, with the CIN set
+    to the status nibble.
+  - `ruzina_legacy_midi_lamp(on)` queues every profile output: on or off
+    values for notes, 127 or 0 for CC. On the FLX4 that is 129 packets, more
+    than one 512-byte transfer.
+  - The echo: each Play press toggles that deck's Play LED through
+    `map_led_update`, and the Cue LED follows the held Cue button.
+  - `ruzina_legacy_midi_take_out(buf, cap)` hands whole packets to C and keeps
+    the rest queued. `ruzina_legacy_midi_out_overflow()` counts packets lost
+    to a full queue.
+- **C:**
+  - One Bulk-OUT transfer on the MIDI interface's OUT endpoint (`0x03`,
+    512 bytes).
+  - `midi_flush` submits whenever nothing is in flight: after each ingest,
+    after each OUT completion and on every client-loop pass.
+  - On claim, a 1.5 s lamp test runs (`midi_lamp on=0` when it clears).
+  - Detach waits for both transfers, then frees them. `usb_midi_stop` adds
+    `out_transfers`, `out_bytes`, `out_errors` and `out_overflow`.
+- **Host test:**
+  - Both decks' Play LEDs latch on, and a second press turns deck 1's off.
+  - The Cue LED is on while Cue is held and off on release.
+  - The lamp test yields 129 packets across a 16-byte and two 512-byte takes,
+    every one with a valid CIN, and nothing overflows.
+- **Build:** `BUILD_PACKAGE_PASS`, app `34d8fe44…` (242048 bytes). The
+  offline plan is `cf7549e5…`, with the flashed `ed2d9b6b…` image as its
+  predecessor.
+
+Device acceptance:
+- On attach, every FLX4 LED lights for about 1.5 s and then clears.
+- Each Play press toggles that deck's Play LED.
+- The Cue LED is lit only while Cue is held.
+- `usb_midi_stop` reports `out_errors=0` and `out_overflow=0`.
