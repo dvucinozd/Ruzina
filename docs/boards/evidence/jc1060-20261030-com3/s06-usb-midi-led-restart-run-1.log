@@ -1,0 +1,159 @@
+restart_request=OPERATOR_CONSOLE_R
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0xc (SW_CPU_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff0165c
+Core1 Saved PC:0x4ff03b06
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (23) boot: ESP-IDF v6.1 2nd stage bootloader
+I (23) boot: compile time Oct 31 2026 21:23:32
+I (23) boot: Multicore bootloader
+I (24) boot: chip revision: v1.3
+I (24) boot: efuse block revision: v0.3
+I (25) boot.esp32p4: SPI Speed      : 40MHz
+I (25) boot.esp32p4: SPI Mode       : DIO
+I (25) boot.esp32p4: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (26) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (27) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (27) boot:  2 factory          factory app      00 00 00010000 00100000
+I (28) boot: End of partition table
+I (29) esp_image: segment 0: paddr=00010020 vaddr=40020020 size=0e3d0h ( 58320) map
+I (42) esp_image: segment 1: paddr=0001e3f8 vaddr=30100000 size=000b4h (   180) load
+I (43) esp_image: segment 2: paddr=0001e4b4 vaddr=4ff00000 size=01b64h (  7012) load
+I (45) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=1da40h (121408) map
+I (70) esp_image: segment 4: paddr=0003da68 vaddr=4ff01b64 size=0977ch ( 38780) load
+I (80) esp_image: segment 5: paddr=000471ec vaddr=4ff0b300 size=03fbch ( 16316) load
+I (87) boot: Loaded app from partition at offset 0x10000
+I (87) boot: Disabling RNG early entropy source...
+I (90) cpu_start: Multicore app
+I (100) cpu_start: Pro cpu start user code
+I (100) cpu_start: cpu freq: 360000000 Hz
+I (100) app_init: Application information:
+I (100) app_init: Project name:     ruzina_legacy_probe
+I (100) app_init: App version:      0.1.0-legacy-eval
+I (101) app_init: Compile time:     Oct 31 2026 21:22:25
+I (101) app_init: ELF file SHA256:  5887c2b2e...
+I (101) app_init: ESP-IDF:          v6.1
+I (102) efuse_init: Min chip rev:     v1.0
+I (102) efuse_init: Max chip rev:     v1.99 
+I (103) efuse_init: Chip rev:         v1.3
+I (103) heap_init: Initializing. RAM available for dynamic allocation:
+I (103) heap_init: At 4FF10CA0 len 0002A320 (168 KiB): RETENT_RAM
+I (104) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (104) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (104) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (104) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+W (106) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (106) spi_flash: detected chip: generic
+I (106) spi_flash: flash io: dio
+I (107) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (108) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (110) sleep_clock: System sleep clock ICG setting initialization
+I (111) main_task: Started on CPU0
+I (111) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=3
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+S6_USB_HOST port=HS phy=UTMI claim=MIDI_STREAMING vbus=HARDWIRED_USB5V_IN client_stack=8192
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+usb_attach n=1 address=1 speed=HIGH usb=0200 vid=2b73 pid=0045 class=00/00/00 mps0=64 configs=1 config=1 total=451 interfaces=7 max_power_ma=500 manufacturer="AlphaTheta Corporation" product="DDJ-FLX4"
+usb_iad first=0 count=3 class=01/00/00
+usb_iface number=0 alt=0 endpoints=0 class=01/01/00
+usb_iface number=1 alt=0 endpoints=0 class=01/02/00
+usb_iface number=1 alt=1 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=576 interval=4
+usb_iface number=1 alt=2 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=384 interval=4
+usb_iface number=2 alt=0 endpoints=0 class=01/02/00
+usb_iface number=2 alt=1 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=288 interval=4
+usb_iface number=2 alt=2 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=192 interval=4
+usb_iad first=3 count=2 class=01/00/00
+usb_iface number=3 alt=0 endpoints=0 class=01/01/00
+usb_iface number=4 alt=0 endpoints=2 class=01/03/00
+usb_ep address=82 attributes=02 mps=512 interval=0
+usb_ep address=03 attributes=02 mps=512 interval=0
+usb_iad first=5 count=1 class=03/00/00
+usb_iface number=5 alt=0 endpoints=2 class=03/00/00
+usb_ep address=05 attributes=03 mps=64 interval=4
+usb_ep address=84 attributes=03 mps=64 interval=4
+usb_iad first=6 count=1 class=ff/f0/00
+usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00
+usb_ep address=86 attributes=02 mps=512 interval=0
+usb_ep address=07 attributes=02 mps=512 interval=0
+usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1
+usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK out=ESP_OK lamp_ms=1500
+midi_in status=1 retry_ms=100
+midi_out status=1 hold_ms=100
+usb_midi_stop transfers=0 events=0 errors=1 packets=0 decoded=0 scheduled=0 dropped=0 unmapped=0 non_voice=0 other_cable=0 semantic_errors=0 out_transfers=0 out_bytes=0 out_errors=1 out_overflow=0 release=ESP_OK free=ESP_OK out_free=ESP_OK
+usb_host all_free=1
+usb_detach n=1
+heartbeat=1 uptime_us=1031588
+usb_attach n=2 address=2 speed=HIGH usb=0200 vid=2b73 pid=0045 class=00/00/00 mps0=64 configs=1 config=1 total=451 interfaces=7 max_power_ma=500 manufacturer="AlphaTheta Corporation" product="DDJ-FLX4"
+usb_iad first=0 count=3 class=01/00/00
+usb_iface number=0 alt=0 endpoints=0 class=01/01/00
+usb_iface number=1 alt=0 endpoints=0 class=01/02/00
+usb_iface number=1 alt=1 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=576 interval=4
+usb_iface number=1 alt=2 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=384 interval=4
+usb_iface number=2 alt=0 endpoints=0 class=01/02/00
+usb_iface number=2 alt=1 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=288 interval=4
+usb_iface number=2 alt=2 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=192 interval=4
+usb_iad first=3 count=2 class=01/00/00
+usb_iface number=3 alt=0 endpoints=0 class=01/01/00
+usb_iface number=4 alt=0 endpoints=2 class=01/03/00
+usb_ep address=82 attributes=02 mps=512 interval=0
+usb_ep address=03 attributes=02 mps=512 interval=0
+usb_iad first=5 count=1 class=03/00/00
+usb_iface number=5 alt=0 endpoints=2 class=03/00/00
+usb_ep address=05 attributes=03 mps=64 interval=4
+usb_ep address=84 attributes=03 mps=64 interval=4
+usb_iad first=6 count=1 class=ff/f0/00
+usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00
+usb_ep address=86 attributes=02 mps=512 interval=0
+usb_ep address=07 attributes=02 mps=512 interval=0
+usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1
+usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK out=ESP_OK lamp_ms=1500
+heartbeat=2 uptime_us=2031588
+midi_lamp on=0
+heartbeat=3 uptime_us=3031588
+heartbeat=4 uptime_us=4031588
+heartbeat=5 uptime_us=5031588
+heartbeat=6 uptime_us=6031588
+heartbeat=7 uptime_us=7031588
+heartbeat=8 uptime_us=8031588
+heartbeat=9 uptime_us=9031588
+heartbeat=10 uptime_us=10031588
+heartbeat=11 uptime_us=11031588
+heartbeat=12 uptime_us=12031588
+heartbeat=13 uptime_us=13031588
+heartbeat=14 uptime_us=14031588
+heartbeat=15 uptime_us=15031588
+heartbeat=16 uptime_us=16031588
+heartbeat=17 uptime_us=17031588
+heartbeat=18 uptime_us=18031588
+heartbeat=19 uptime_us=19031588
+heartbeat=20 uptime_us=20031588
+heartbeat=21 uptime_us=21031588
+heartbeat=22 uptime_us=22031588
+heartbeat=23 uptime_us=23031588
+heartbeat=24 uptime_us=24031588

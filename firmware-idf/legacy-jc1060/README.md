@@ -363,6 +363,7 @@ On the transfer side:
   client stack. The build tool rejects any Rust frame over 2 KiB in this
   variant.
 
-There is no MIDI out yet. On JC1060 the FLX4's buttons, faders, crossfader
+Bulk-OUT carries a diagnostic LED output: a 1.5 s lamp test of every profile
+output on claim, Play toggling its LED and the Cue LED following the hold. On JC1060 the FLX4's buttons, faders, crossfader
 and jogs reached the session with 0 drops
 ([device run](../../docs/reviews/2026-10-31-legacy-usb-midi.md#device-run-2026-10-31-owner-present)).

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "FLASHED_DEVICE_RUN_PASS_NOT_QUALIFIED",
+  "variant": "usb-midi",
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-usb-midi-led-device-20261031.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-usb-midi-led-device-20261031\\jc1060-idf61-usb-midi-led-device-20261031.zip",
+  "archive_sha256": "7760d75eef5547424f800fca296fb943f01a97ae4c3e1a7aa346cc55b702fc4f",
+  "archive_bytes": 10275513,
+  "members": 54,
+  "app_sha256": "e698907b9d88d904893f2c031e3c7de29651e7c5a741156447525eb5821a0904",
+  "app_bytes": 242128,
+  "manifest_sha256": "4a6317ffdd7610cb303a92fb53af5b2b75196eb34a383083b7b2d00e269677f6",
+  "source_commit": "d15801af523e4fd6316de7ce832054d4c98c993f",
+  "dirty_diff_sha256": "51480b14477f3dc02c98d0bdfba2cc12411e39269558727618119ba85a71896b",
+  "plan_sha256": "8ef6755ce0168a7ab5200343aac7c0e28caf7227a11ae406517e8727942c4ae6",
+  "predecessor_plan_sha256": "cf7549e5a83039a8c953efc2090d00d669c710772b12dc7b253b7fc2a02aa736",
+  "superseded_images": [
+    {
+      "app_sha256": "34d8fe44c2d6baa1aa6c7c69d7946bad85b56a12c936e269c32b183ead86884f",
+      "plan_sha256": "cf7549e5a83039a8c953efc2090d00d669c710772b12dc7b253b7fc2a02aa736",
+      "outcome": "LEDs passed; an OUT error after a restart resubmitted at once and logged an Enqueue URB error"
+    }
+  ],
+  "device": {
+    "model": "Pioneer DDJ-FLX4",
+    "vid": "2b73",
+    "pid": "0045",
+    "power": "bus from PC via FS port, battery disconnected"
+  },
+  "captures": [
+    "s06-usb-midi-led-flash",
+    "s06-usb-midi-led",
+    "s06-usb-midi-led-2-flash",
+    "s06-usb-midi-led-boot",
+    "s06-usb-midi-led-restart"
+  ],
+  "contains_factory_dump": false,
+  "contains_sd_dump": false,
+  "release": false,
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH"
+}

@@ -129,7 +129,7 @@ Tempo sliders, EQ, filter, master and headphone level did not appear in this
 capture, so they remain unverified on the device. There is still no MIDI out (LEDs, init SysEx), and
 no product state consumes the events yet.
 
-## LED output (MIDI out), build only
+## LED output (MIDI out)
 
 The next step closes the loop to the controller. No product LED state exists
 yet, so the output is a diagnostic echo through the profile's output map.
@@ -167,3 +167,34 @@ Device acceptance:
 - Each Play press toggles that deck's Play LED.
 - The Cue LED is lit only while Cue is held.
 - `usb_midi_stop` reports `out_errors=0` and `out_overflow=0`.
+
+### LED device run (2026-10-31, owner present)
+
+Records are in `docs/boards/evidence/jc1060-20261030-com3/s06-usb-midi-led*`,
+indexed by the
+[device index](../boards/readiness/jc1060-s06-usb-midi-led-device-20261031.json).
+
+1. **First image.** `34d8fe44…` (plan `cf7549e5…`), FLX4 attached through
+   boot.
+   - The first session hit the known after-boot IN error. That session also
+     showed an OUT error that resubmitted at once and logged `Enqueue URB
+     error`.
+   - The FLX4 re-enumerated. The second session claimed `out=ESP_OK` and ran
+     the lamp test (`midi_lamp on=0` after 1.5 s).
+   - The owner confirmed the lamp test, Play toggling its LED and the Cue LED
+     following the hold.
+   - That session logged 65 events with 0 dropped, plus 11 OUT transfers and
+     1064 bytes: both 129-packet lamp passes plus the echo. It had
+     `out_errors=0`, `out_overflow=0`, and on detach `release`, `free` and
+     `out_free` were all `ESP_OK`.
+2. **Fix and image `e698907b…`** (plan `8ef6755c…`). An OUT error now holds
+   further sends for 100 ms, as the IN side does.
+   - **Fresh plug, then boot:** the FLX4 attached and claimed, and the lamp
+     test ran, with no error.
+   - **App restart with the session active:** this reproduced the after-boot
+     case. It logged `midi_in status=1 retry_ms=100` and `midi_out status=1
+     hold_ms=100`, then a clean stop and detach, re-enumeration, a claim and
+     the lamp test. No `Enqueue URB error` appeared.
+
+After a host restart, the FLX4 always ends its first session with one error
+and re-enumerates once. The host now handles that without noise.

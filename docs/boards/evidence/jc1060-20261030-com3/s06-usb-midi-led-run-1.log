@@ -1,0 +1,651 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff100f2
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (11) boot: ESP-IDF v6.1 2nd stage bootloader
+I (12) boot: compile time Oct 31 2026 21:14:00
+I (12) boot: Multicore bootloader
+I (13) boot: chip revision: v1.3
+I (13) boot: efuse block revision: v0.3
+I (13) boot.esp32p4: SPI Speed      : 40MHz
+I (14) boot.esp32p4: SPI Mode       : DIO
+I (14) boot.esp32p4: SPI Flash Size : 16MB
+I (14) boot: Enabling RNG early entropy source...
+I (15) boot: Partition Table:
+I (15) boot: ## Label            Usage          Type ST Offset   Length
+I (16) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (16) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (17) boot:  2 factory          factory app      00 00 00010000 00100000
+I (18) boot: End of partition table
+I (18) esp_image: segment 0: paddr=00010020 vaddr=40020020 size=0e3c8h ( 58312) map
+I (31) esp_image: segment 1: paddr=0001e3f0 vaddr=30100000 size=000b4h (   180) load
+I (32) esp_image: segment 2: paddr=0001e4ac vaddr=4ff00000 size=01b6ch (  7020) load
+I (35) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=1d9f4h (121332) map
+I (60) esp_image: segment 4: paddr=0003da1c vaddr=4ff01b6c size=09774h ( 38772) load
+I (69) esp_image: segment 5: paddr=00047198 vaddr=4ff0b300 size=03fbch ( 16316) load
+I (77) boot: Loaded app from partition at offset 0x10000
+I (77) boot: Disabling RNG early entropy source...
+I (80) cpu_start: Multicore app
+I (90) cpu_start: Pro cpu start user code
+I (90) cpu_start: cpu freq: 360000000 Hz
+I (90) app_init: Application information:
+I (90) app_init: Project name:     ruzina_legacy_probe
+I (90) app_init: App version:      0.1.0-legacy-eval
+I (91) app_init: Compile time:     Oct 31 2026 21:12:56
+I (91) app_init: ELF file SHA256:  40f3e3731...
+I (91) app_init: ESP-IDF:          v6.1
+I (92) efuse_init: Min chip rev:     v1.0
+I (92) efuse_init: Max chip rev:     v1.99 
+I (92) efuse_init: Chip rev:         v1.3
+I (93) heap_init: Initializing. RAM available for dynamic allocation:
+I (93) heap_init: At 4FF10CA0 len 0002A320 (168 KiB): RETENT_RAM
+I (94) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (94) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (94) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (95) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+W (96) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (97) spi_flash: detected chip: generic
+I (97) spi_flash: flash io: dio
+I (98) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (98) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (100) sleep_clock: System sleep clock ICG setting initialization
+I (102) main_task: Started on CPU0
+I (102) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=11
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+S6_USB_HOST port=HS phy=UTMI claim=MIDI_STREAMING vbus=HARDWIRED_USB5V_IN client_stack=8192
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+usb_attach n=1 address=1 speed=HIGH usb=0200 vid=2b73 pid=0045 class=00/00/00 mps0=64 configs=1 config=1 total=451 interfaces=7 max_power_ma=500 manufacturer="AlphaTheta Corporation" product="DDJ-FLX4"
+usb_iad first=0 count=3 class=01/00/00
+usb_iface number=0 alt=0 endpoints=0 class=01/01/00
+usb_iface number=1 alt=0 endpoints=0 class=01/02/00
+usb_iface number=1 alt=1 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=576 interval=4
+usb_iface number=1 alt=2 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=384 interval=4
+usb_iface number=2 alt=0 endpoints=0 class=01/02/00
+usb_iface number=2 alt=1 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=288 interval=4
+usb_iface number=2 alt=2 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=192 interval=4
+usb_iad first=3 count=2 class=01/00/00
+usb_iface number=3 alt=0 endpoints=0 class=01/01/00
+usb_iface number=4 alt=0 endpoints=2 class=01/03/00
+usb_ep address=82 attributes=02 mps=512 interval=0
+usb_ep address=03 attributes=02 mps=512 interval=0
+usb_iad first=5 count=1 class=03/00/00
+usb_iface number=5 alt=0 endpoints=2 class=03/00/00
+usb_ep address=05 attributes=03 mps=64 interval=4
+usb_ep address=84 attributes=03 mps=64 interval=4
+usb_iad first=6 count=1 class=ff/f0/00
+usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00
+usb_ep address=86 attributes=02 mps=512 interval=0
+usb_ep address=07 attributes=02 mps=512 interval=0
+usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1
+usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK out=ESP_OK lamp_ms=1500
+midi_in status=1 retry_ms=100
+midi_out status=1
+E (682) USB HOST: Enqueue URB error: ESP_ERR_INVALID_STATE
+usb_midi_stop transfers=0 events=0 errors=1 packets=0 decoded=0 scheduled=0 dropped=0 unmapped=0 non_voice=0 other_cable=0 semantic_errors=0 out_transfers=0 out_bytes=0 out_errors=2 out_overflow=0 release=ESP_OK free=ESP_OK out_free=ESP_OK
+usb_host all_free=1
+usb_detach n=1
+heartbeat=1 uptime_us=1031638
+usb_attach n=2 address=2 speed=HIGH usb=0200 vid=2b73 pid=0045 class=00/00/00 mps0=64 configs=1 config=1 total=451 interfaces=7 max_power_ma=500 manufacturer="AlphaTheta Corporation" product="DDJ-FLX4"
+usb_iad first=0 count=3 class=01/00/00
+usb_iface number=0 alt=0 endpoints=0 class=01/01/00
+usb_iface number=1 alt=0 endpoints=0 class=01/02/00
+usb_iface number=1 alt=1 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=576 interval=4
+usb_iface number=1 alt=2 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=384 interval=4
+usb_iface number=2 alt=0 endpoints=0 class=01/02/00
+usb_iface number=2 alt=1 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=288 interval=4
+usb_iface number=2 alt=2 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=192 interval=4
+usb_iad first=3 count=2 class=01/00/00
+usb_iface number=3 alt=0 endpoints=0 class=01/01/00
+usb_iface number=4 alt=0 endpoints=2 class=01/03/00
+usb_ep address=82 attributes=02 mps=512 interval=0
+usb_ep address=03 attributes=02 mps=512 interval=0
+usb_iad first=5 count=1 class=03/00/00
+usb_iface number=5 alt=0 endpoints=2 class=03/00/00
+usb_ep address=05 attributes=03 mps=64 interval=4
+usb_ep address=84 attributes=03 mps=64 interval=4
+usb_iad first=6 count=1 class=ff/f0/00
+usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00
+usb_ep address=86 attributes=02 mps=512 interval=0
+usb_ep address=07 attributes=02 mps=512 interval=0
+usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1
+usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK out=ESP_OK lamp_ms=1500
+heartbeat=2 uptime_us=2031638
+midi_lamp on=0
+heartbeat=3 uptime_us=3031638
+heartbeat=4 uptime_us=4031651
+heartbeat=5 uptime_us=5031651
+heartbeat=6 uptime_us=6031651
+heartbeat=7 uptime_us=7031651
+heartbeat=8 uptime_us=8031651
+heartbeat=9 uptime_us=9031651
+heartbeat=10 uptime_us=10031651
+heartbeat=11 uptime_us=11031651
+heartbeat=12 uptime_us=12031651
+heartbeat=13 uptime_us=13031651
+heartbeat=14 uptime_us=14031651
+heartbeat=15 uptime_us=15031651
+heartbeat=16 uptime_us=16031651
+heartbeat=17 uptime_us=17031651
+heartbeat=18 uptime_us=18031651
+heartbeat=19 uptime_us=19031651
+heartbeat=20 uptime_us=20031651
+heartbeat=21 uptime_us=21031651
+heartbeat=22 uptime_us=22031651
+heartbeat=23 uptime_us=23031651
+heartbeat=24 uptime_us=24031651
+heartbeat=25 uptime_us=25031651
+heartbeat=26 uptime_us=26031651
+heartbeat=27 uptime_us=27031651
+heartbeat=28 uptime_us=28031651
+heartbeat=29 uptime_us=29031651
+heartbeat=30 uptime_us=30031651
+heartbeat=31 uptime_us=31031651
+heartbeat=32 uptime_us=32031651
+heartbeat=33 uptime_us=33031651
+heartbeat=34 uptime_us=34031651
+heartbeat=35 uptime_us=35031651
+heartbeat=36 uptime_us=36031651
+heartbeat=37 uptime_us=37031651
+heartbeat=38 uptime_us=38031651
+heartbeat=39 uptime_us=39031651
+heartbeat=40 uptime_us=40031651
+heartbeat=41 uptime_us=41031651
+heartbeat=42 uptime_us=42031651
+heartbeat=43 uptime_us=43031651
+heartbeat=44 uptime_us=44031651
+heartbeat=45 uptime_us=45031651
+heartbeat=46 uptime_us=46031651
+heartbeat=47 uptime_us=47031651
+heartbeat=48 uptime_us=48031651
+heartbeat=49 uptime_us=49031651
+heartbeat=50 uptime_us=50031651
+heartbeat=51 uptime_us=51031651
+heartbeat=52 uptime_us=52031651
+heartbeat=53 uptime_us=53031651
+heartbeat=54 uptime_us=54031651
+heartbeat=55 uptime_us=55031651
+heartbeat=56 uptime_us=56031651
+heartbeat=57 uptime_us=57031651
+heartbeat=58 uptime_us=58031651
+heartbeat=59 uptime_us=59031651
+heartbeat=60 uptime_us=60031651
+heartbeat=61 uptime_us=61031651
+heartbeat=62 uptime_us=62031651
+heartbeat=63 uptime_us=63031651
+heartbeat=64 uptime_us=64031651
+heartbeat=65 uptime_us=65031651
+heartbeat=66 uptime_us=66031651
+heartbeat=67 uptime_us=67031651
+heartbeat=68 uptime_us=68031651
+heartbeat=69 uptime_us=69031651
+heartbeat=70 uptime_us=70031651
+heartbeat=71 uptime_us=71031651
+heartbeat=72 uptime_us=72031651
+heartbeat=73 uptime_us=73031651
+heartbeat=74 uptime_us=74031651
+heartbeat=75 uptime_us=75031651
+heartbeat=76 uptime_us=76031651
+heartbeat=77 uptime_us=77031651
+heartbeat=78 uptime_us=78031651
+heartbeat=79 uptime_us=79031651
+heartbeat=80 uptime_us=80031651
+heartbeat=81 uptime_us=81031651
+heartbeat=82 uptime_us=82031651
+heartbeat=83 uptime_us=83031651
+heartbeat=84 uptime_us=84031651
+heartbeat=85 uptime_us=85031651
+heartbeat=86 uptime_us=86031651
+heartbeat=87 uptime_us=87031651
+heartbeat=88 uptime_us=88031651
+heartbeat=89 uptime_us=89031651
+heartbeat=90 uptime_us=90031651
+heartbeat=91 uptime_us=91031651
+heartbeat=92 uptime_us=92031651
+heartbeat=93 uptime_us=93031651
+heartbeat=94 uptime_us=94031651
+heartbeat=95 uptime_us=95031651
+heartbeat=96 uptime_us=96031651
+heartbeat=97 uptime_us=97031651
+heartbeat=98 uptime_us=98031651
+heartbeat=99 uptime_us=99031651
+heartbeat=100 uptime_us=100031651
+heartbeat=101 uptime_us=101031651
+heartbeat=102 uptime_us=102031651
+heartbeat=103 uptime_us=103031651
+heartbeat=104 uptime_us=104031651
+heartbeat=105 uptime_us=105031651
+heartbeat=106 uptime_us=106031651
+heartbeat=107 uptime_us=107031651
+heartbeat=108 uptime_us=108031651
+heartbeat=109 uptime_us=109031651
+heartbeat=110 uptime_us=110031651
+heartbeat=111 uptime_us=111031651
+heartbeat=112 uptime_us=112031651
+heartbeat=113 uptime_us=113031651
+heartbeat=114 uptime_us=114031651
+heartbeat=115 uptime_us=115031651
+heartbeat=116 uptime_us=116031651
+heartbeat=117 uptime_us=117031651
+heartbeat=118 uptime_us=118031651
+heartbeat=119 uptime_us=119031651
+heartbeat=120 uptime_us=120031651
+heartbeat=121 uptime_us=121031651
+heartbeat=122 uptime_us=122031651
+heartbeat=123 uptime_us=123031651
+heartbeat=124 uptime_us=124031651
+heartbeat=125 uptime_us=125031651
+heartbeat=126 uptime_us=126031651
+heartbeat=127 uptime_us=127031651
+heartbeat=128 uptime_us=128031651
+heartbeat=129 uptime_us=129031651
+heartbeat=130 uptime_us=130031651
+heartbeat=131 uptime_us=131031651
+heartbeat=132 uptime_us=132031651
+heartbeat=133 uptime_us=133031651
+heartbeat=134 uptime_us=134031651
+heartbeat=135 uptime_us=135031651
+heartbeat=136 uptime_us=136031651
+heartbeat=137 uptime_us=137031651
+heartbeat=138 uptime_us=138031651
+heartbeat=139 uptime_us=139031651
+heartbeat=140 uptime_us=140031651
+heartbeat=141 uptime_us=141031651
+heartbeat=142 uptime_us=142031651
+heartbeat=143 uptime_us=143031651
+heartbeat=144 uptime_us=144031651
+heartbeat=145 uptime_us=145031651
+heartbeat=146 uptime_us=146031651
+heartbeat=147 uptime_us=147031651
+heartbeat=148 uptime_us=148031651
+heartbeat=149 uptime_us=149031651
+heartbeat=150 uptime_us=150031651
+heartbeat=151 uptime_us=151031651
+heartbeat=152 uptime_us=152031651
+heartbeat=153 uptime_us=153031651
+heartbeat=154 uptime_us=154031651
+heartbeat=155 uptime_us=155031651
+heartbeat=156 uptime_us=156031651
+heartbeat=157 uptime_us=157031651
+heartbeat=158 uptime_us=158031651
+heartbeat=159 uptime_us=159031651
+heartbeat=160 uptime_us=160031651
+heartbeat=161 uptime_us=161031651
+heartbeat=162 uptime_us=162031651
+heartbeat=163 uptime_us=163031651
+heartbeat=164 uptime_us=164031651
+heartbeat=165 uptime_us=165031651
+heartbeat=166 uptime_us=166031651
+heartbeat=167 uptime_us=167031651
+heartbeat=168 uptime_us=168031651
+heartbeat=169 uptime_us=169031651
+heartbeat=170 uptime_us=170031651
+heartbeat=171 uptime_us=171031651
+heartbeat=172 uptime_us=172031651
+heartbeat=173 uptime_us=173031651
+heartbeat=174 uptime_us=174031651
+heartbeat=175 uptime_us=175031651
+heartbeat=176 uptime_us=176031651
+heartbeat=177 uptime_us=177031651
+heartbeat=178 uptime_us=178031651
+heartbeat=179 uptime_us=179031651
+heartbeat=180 uptime_us=180031651
+heartbeat=181 uptime_us=181031651
+heartbeat=182 uptime_us=182031651
+heartbeat=183 uptime_us=183031651
+heartbeat=184 uptime_us=184031651
+heartbeat=185 uptime_us=185031651
+heartbeat=186 uptime_us=186031651
+heartbeat=187 uptime_us=187031651
+heartbeat=188 uptime_us=188031651
+heartbeat=189 uptime_us=189031651
+heartbeat=190 uptime_us=190031651
+heartbeat=191 uptime_us=191031651
+heartbeat=192 uptime_us=192031651
+heartbeat=193 uptime_us=193031651
+heartbeat=194 uptime_us=194031651
+heartbeat=195 uptime_us=195031651
+heartbeat=196 uptime_us=196031651
+heartbeat=197 uptime_us=197031651
+heartbeat=198 uptime_us=198031651
+heartbeat=199 uptime_us=199031651
+heartbeat=200 uptime_us=200031651
+heartbeat=201 uptime_us=201031651
+heartbeat=202 uptime_us=202031651
+heartbeat=203 uptime_us=203031651
+heartbeat=204 uptime_us=204031651
+heartbeat=205 uptime_us=205031651
+heartbeat=206 uptime_us=206031651
+heartbeat=207 uptime_us=207031651
+heartbeat=208 uptime_us=208031651
+heartbeat=209 uptime_us=209031651
+heartbeat=210 uptime_us=210031651
+heartbeat=211 uptime_us=211031651
+heartbeat=212 uptime_us=212031651
+heartbeat=213 uptime_us=213031651
+midi_event deck=1 control=JogTouch(4) kind=1 value=1 max=1
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=-1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogTouch(4) kind=1 value=0 max=1
+midi_event deck=1 control=JogBend(3) kind=2 value=1 max=0
+midi_event deck=1 control=JogBend(3) kind=2 value=1 max=0
+heartbeat=214 uptime_us=214031638
+heartbeat=215 uptime_us=215031638
+heartbeat=216 uptime_us=216031638
+heartbeat=217 uptime_us=217031638
+heartbeat=218 uptime_us=218031638
+heartbeat=219 uptime_us=219031638
+heartbeat=220 uptime_us=220031638
+heartbeat=221 uptime_us=221031638
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+heartbeat=222 uptime_us=222031638
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=223 uptime_us=223031638
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=224 uptime_us=224031638
+heartbeat=225 uptime_us=225031638
+heartbeat=226 uptime_us=226031638
+midi_event deck=0 control=SmartCfx(45) kind=1 value=1 max=1
+heartbeat=227 uptime_us=227031638
+midi_event deck=0 control=SmartCfx(45) kind=1 value=0 max=1
+heartbeat=228 uptime_us=228031638
+midi_event deck=1 control=Sync(8) kind=1 value=1 max=1
+midi_event deck=1 control=Sync(8) kind=1 value=0 max=1
+midi_event deck=1 control=Sync(8) kind=1 value=1 max=1
+midi_event deck=1 control=Sync(8) kind=1 value=0 max=1
+heartbeat=229 uptime_us=229031651
+heartbeat=230 uptime_us=230031651
+midi_event deck=2 control=Sync(8) kind=1 value=1 max=1
+midi_event deck=2 control=Sync(8) kind=1 value=0 max=1
+heartbeat=231 uptime_us=231031638
+heartbeat=232 uptime_us=232031638
+heartbeat=233 uptime_us=233031638
+heartbeat=234 uptime_us=234031638
+heartbeat=235 uptime_us=235031638
+heartbeat=236 uptime_us=236031638
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+heartbeat=237 uptime_us=237031651
+heartbeat=238 uptime_us=238031651
+heartbeat=239 uptime_us=239031651
+heartbeat=240 uptime_us=240031651
+heartbeat=241 uptime_us=241031651
+heartbeat=242 uptime_us=242031651
+heartbeat=243 uptime_us=243031651
+heartbeat=244 uptime_us=244031651
+heartbeat=245 uptime_us=245031651
+heartbeat=246 uptime_us=246031651
+heartbeat=247 uptime_us=247031651
+heartbeat=248 uptime_us=248031651
+heartbeat=249 uptime_us=249031651
+heartbeat=250 uptime_us=250031651
+midi_in status=1 retry_ms=100
+usb_midi_stop transfers=62 events=65 errors=1 packets=65 decoded=65 scheduled=65 dropped=0 unmapped=0 non_voice=0 other_cable=0 semantic_errors=0 out_transfers=11 out_bytes=1064 out_errors=0 out_overflow=0 release=ESP_OK free=ESP_OK out_free=ESP_OK
+usb_host all_free=1
+usb_detach n=2
+heartbeat=251 uptime_us=251031638
+heartbeat=252 uptime_us=252031638
+heartbeat=253 uptime_us=253031638
+heartbeat=254 uptime_us=254031638
+heartbeat=255 uptime_us=255031638
+heartbeat=256 uptime_us=256031638
+heartbeat=257 uptime_us=257031638
+heartbeat=258 uptime_us=258031638
+heartbeat=259 uptime_us=259031638
+heartbeat=260 uptime_us=260031638
+heartbeat=261 uptime_us=261031638
+heartbeat=262 uptime_us=262031638
+heartbeat=263 uptime_us=263031638
+heartbeat=264 uptime_us=264031638
+heartbeat=265 uptime_us=265031638
+heartbeat=266 uptime_us=266031638
+heartbeat=267 uptime_us=267031638
+heartbeat=268 uptime_us=268031638
+heartbeat=269 uptime_us=269031638
+heartbeat=270 uptime_us=270031638
+heartbeat=271 uptime_us=271031638
+heartbeat=272 uptime_us=272031638
+heartbeat=273 uptime_us=273031638
+heartbeat=274 uptime_us=274031638
+heartbeat=275 uptime_us=275031638
+heartbeat=276 uptime_us=276031638
+heartbeat=277 uptime_us=277031638
+heartbeat=278 uptime_us=278031638
+heartbeat=279 uptime_us=279031638
+heartbeat=280 uptime_us=280031638
+heartbeat=281 uptime_us=281031638
+heartbeat=282 uptime_us=282031638
+heartbeat=283 uptime_us=283031638
+heartbeat=284 uptime_us=284031638
+heartbeat=285 uptime_us=285031638
+heartbeat=286 uptime_us=286031638
+heartbeat=287 uptime_us=287031638
+heartbeat=288 uptime_us=288031638
+heartbeat=289 uptime_us=289031638
+heartbeat=290 uptime_us=290031638
+heartbeat=291 uptime_us=291031638
+heartbeat=292 uptime_us=292031638
+heartbeat=293 uptime_us=293031638
+heartbeat=294 uptime_us=294031638
+heartbeat=295 uptime_us=295031638
+heartbeat=296 uptime_us=296031638
+heartbeat=297 uptime_us=297031638
+heartbeat=298 uptime_us=298031638
+heartbeat=299 uptime_us=299031638
+heartbeat=300 uptime_us=300031638
+heartbeat=301 uptime_us=301031638
+heartbeat=302 uptime_us=302031638
+heartbeat=303 uptime_us=303031638
+heartbeat=304 uptime_us=304031638
+heartbeat=305 uptime_us=305031638
+heartbeat=306 uptime_us=306031638
+heartbeat=307 uptime_us=307031638
+heartbeat=308 uptime_us=308031638
+heartbeat=309 uptime_us=309031638
+heartbeat=310 uptime_us=310031638
+heartbeat=311 uptime_us=311031638
+heartbeat=312 uptime_us=312031638
+heartbeat=313 uptime_us=313031638
+heartbeat=314 uptime_us=314031638
+heartbeat=315 uptime_us=315031638
+heartbeat=316 uptime_us=316031638
+heartbeat=317 uptime_us=317031638
+heartbeat=318 uptime_us=318031638
+heartbeat=319 uptime_us=319031638
+heartbeat=320 uptime_us=320031638
+heartbeat=321 uptime_us=321031638
+heartbeat=322 uptime_us=322031638
+heartbeat=323 uptime_us=323031638
+heartbeat=324 uptime_us=324031638
+heartbeat=325 uptime_us=325031638
+heartbeat=326 uptime_us=326031638
+heartbeat=327 uptime_us=327031638
+heartbeat=328 uptime_us=328031638
+heartbeat=329 uptime_us=329031638
+heartbeat=330 uptime_us=330031638
+heartbeat=331 uptime_us=331031638
+heartbeat=332 uptime_us=332031638
+heartbeat=333 uptime_us=333031638
+heartbeat=334 uptime_us=334031638
+heartbeat=335 uptime_us=335031638
+heartbeat=336 uptime_us=336031638
+heartbeat=337 uptime_us=337031638
+heartbeat=338 uptime_us=338031638
+heartbeat=339 uptime_us=339031638
+heartbeat=340 uptime_us=340031638
+heartbeat=341 uptime_us=341031638
+heartbeat=342 uptime_us=342031638
+heartbeat=343 uptime_us=343031638
+heartbeat=344 uptime_us=344031638
+heartbeat=345 uptime_us=345031638
+heartbeat=346 uptime_us=346031638
+heartbeat=347 uptime_us=347031638
+heartbeat=348 uptime_us=348031638
+heartbeat=349 uptime_us=349031638
+heartbeat=350 uptime_us=350031638
+heartbeat=351 uptime_us=351031638
+heartbeat=352 uptime_us=352031638
+heartbeat=353 uptime_us=353031638
+heartbeat=354 uptime_us=354031638
+heartbeat=355 uptime_us=355031638
+heartbeat=356 uptime_us=356031638
+heartbeat=357 uptime_us=357031638
+heartbeat=358 uptime_us=358031638
+heartbeat=359 uptime_us=359031638
+heartbeat=360 uptime_us=360031638
+heartbeat=361 uptime_us=361031638
+heartbeat=362 uptime_us=362031638
+heartbeat=363 uptime_us=363031638
+heartbeat=364 uptime_us=364031638
+heartbeat=365 uptime_us=365031638
+heartbeat=366 uptime_us=366031638
+heartbeat=367 uptime_us=367031638
+heartbeat=368 uptime_us=368031638
+heartbeat=369 uptime_us=369031638
+heartbeat=370 uptime_us=370031638
+heartbeat=371 uptime_us=371031638
+heartbeat=372 uptime_us=372031638
+heartbeat=373 uptime_us=373031638
+heartbeat=374 uptime_us=374031638
+heartbeat=375 uptime_us=375031638
+heartbeat=376 uptime_us=376031638
+heartbeat=377 uptime_us=377031638
+heartbeat=378 uptime_us=378031638
+heartbeat=379 uptime_us=379031638
+heartbeat=380 uptime_us=380031638
+heartbeat=381 uptime_us=381031638
+heartbeat=382 uptime_us=382031638
+heartbeat=383 uptime_us=383031638
+heartbeat=384 uptime_us=384031638
+heartbeat=385 uptime_us=385031638
+heartbeat=386 uptime_us=386031638
+heartbeat=387 uptime_us=387031638
+heartbeat=388 uptime_us=388031638
+heartbeat=389 uptime_us=389031638
+heartbeat=390 uptime_us=390031638
+heartbeat=391 uptime_us=391031638
+heartbeat=392 uptime_us=392031638
+heartbeat=393 uptime_us=393031638
+heartbeat=394 uptime_us=394031638
+heartbeat=395 uptime_us=395031638
+heartbeat=396 uptime_us=396031638
+heartbeat=397 uptime_us=397031638
+heartbeat=398 uptime_us=398031638
+heartbeat=399 uptime_us=399031638
+heartbeat=400 uptime_us=400031638
+heartbeat=401 uptime_us=401031638
+heartbeat=402 uptime_us=402031638
+heartbeat=403 uptime_us=403031638
+heartbeat=404 uptime_us=404031638
+heartbeat=405 uptime_us=405031638
+heartbeat=406 uptime_us=406031638
+heartbeat=407 uptime_us=407031638
+heartbeat=408 uptime_us=408031638
+heartbeat=409 uptime_us=409031638
+heartbeat=410 uptime_us=410031638
+heartbeat=411 uptime_us=411031638
+heartbeat=412 uptime_us=412031638
+heartbeat=413 uptime_us=413031638
+heartbeat=414 uptime_us=414031638
+heartbeat=415 uptime_us=415031638
+heartbeat=416 uptime_us=416031638
+heartbeat=417 uptime_us=417031638
+heartbeat=418 uptime_us=418031638
+heartbeat=419 uptime_us=419031638
+heartbeat=420 uptime_us=420031638
+heartbeat=421 uptime_us=421031638
+heartbeat=422 uptime_us=422031638
+heartbeat=423 uptime_us=423031638
+heartbeat=424 uptime_us=424031638
+heartbeat=425 uptime_us=425031638
+heartbeat=426 uptime_us=426031638
+heartbeat=427 uptime_us=427031638
+heartbeat=428 uptime_us=428031638
+heartbeat=429 uptime_us=429031638
+heartbeat=430 uptime_us=430031638
+heartbeat=431 uptime_us=431031638
+heartbeat=432 uptime_us=432031638
+heartbeat=433 uptime_us=433031638
+heartbeat=434 uptime_us=434031638
+heartbeat=435 uptime_us=435031638
+heartbeat=436 uptime_us=436031638
+heartbeat=437 uptime_us=437031638
+heartbeat=438 uptime_us=438031638
+heartbeat=439 uptime_us=439031638
+heartbeat=440 uptime_us=440031638
+heartbeat=441 uptime_us=441031638
+heartbeat=442 uptime_us=442031638
+heartbeat=443 uptime_us=443031638
+heartbeat=444 uptime_us=444031638
+heartbeat=445 uptime_us=445031638
+heartbeat=446 uptime_us=446031638
+heartbeat=447 uptime_us=447031638

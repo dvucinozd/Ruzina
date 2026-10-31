@@ -1,0 +1,103 @@
+{
+  "scenario": "s06-usb-midi-led-restart",
+  "mode": "restart",
+  "app_sha256": "e698907b9d88d904893f2c031e3c7de29651e7c5a741156447525eb5821a0904",
+  "bytes": 7984,
+  "sha256": "498fa35b06f9cfe337596636735c2be95507c9d1f9026dbfa1a1e89172fbe93d",
+  "host_started": true,
+  "init_failed": false,
+  "attaches": [
+    {
+      "n": "1",
+      "address": "1",
+      "speed": "HIGH",
+      "usb": "0200",
+      "vid": "2b73",
+      "pid": "0045",
+      "class": "00/00/00",
+      "mps0": "64",
+      "configs": "1",
+      "config": "1",
+      "total": "451",
+      "interfaces": "7",
+      "max_power_ma": "500",
+      "manufacturer": "\"AlphaTheta Corporation\"",
+      "product": "\"DDJ-FLX4\""
+    },
+    {
+      "n": "2",
+      "address": "2",
+      "speed": "HIGH",
+      "usb": "0200",
+      "vid": "2b73",
+      "pid": "0045",
+      "class": "00/00/00",
+      "mps0": "64",
+      "configs": "1",
+      "config": "1",
+      "total": "451",
+      "interfaces": "7",
+      "max_power_ma": "500",
+      "manufacturer": "\"AlphaTheta Corporation\"",
+      "product": "\"DDJ-FLX4\""
+    }
+  ],
+  "interfaces": [
+    "usb_iface number=0 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=1 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=1 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=1 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=2 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=3 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=4 alt=0 endpoints=2 class=01/03/00\r",
+    "usb_iface number=5 alt=0 endpoints=2 class=03/00/00\r",
+    "usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00\r",
+    "usb_iface number=0 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=1 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=1 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=1 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=2 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=3 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=4 alt=0 endpoints=2 class=01/03/00\r",
+    "usb_iface number=5 alt=0 endpoints=2 class=03/00/00\r",
+    "usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00\r"
+  ],
+  "endpoints": 20,
+  "iads": [
+    "usb_iad first=0 count=3 class=01/00/00\r",
+    "usb_iad first=3 count=2 class=01/00/00\r",
+    "usb_iad first=5 count=1 class=03/00/00\r",
+    "usb_iad first=6 count=1 class=ff/f0/00\r",
+    "usb_iad first=0 count=3 class=01/00/00\r",
+    "usb_iad first=3 count=2 class=01/00/00\r",
+    "usb_iad first=5 count=1 class=03/00/00\r",
+    "usb_iad first=6 count=1 class=ff/f0/00\r"
+  ],
+  "config_walks": [
+    "usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1\r",
+    "usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1\r"
+  ],
+  "attach_errors": [],
+  "detaches": 1,
+  "resets": [
+    "3"
+  ],
+  "heartbeats": 24,
+  "midi_bind": [
+    "usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK out=ESP_OK lamp_ms=1500\r",
+    "usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK out=ESP_OK lamp_ms=1500\r"
+  ],
+  "midi_stop": [
+    "usb_midi_stop transfers=0 events=0 errors=1 packets=0 decoded=0 scheduled=0 dropped=0 unmapped=0 non_voice=0 other_cable=0 semantic_errors=0 out_transfers=0 out_bytes=0 out_errors=1 out_overflow=0 release=ESP_OK free=ESP_OK out_free=ESP_OK\r"
+  ],
+  "midi_events": 0,
+  "midi_controls": [],
+  "midi_in_errors": [
+    "midi_in status=1 retry_ms=100\r"
+  ],
+  "fatal": []
+}

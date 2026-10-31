@@ -36,12 +36,17 @@ static uint8_t midi_interface = 0xff;
 static bool midi_in_busy, midi_out_busy;
 static TickType_t midi_retry_at; /* 0: none; else tick to resubmit after an error */
 static TickType_t lamp_off_at;   /* 0: none; else tick to clear the lamp test */
+static TickType_t out_hold_until; /* 0: none; else no Bulk-OUT before this tick */
 static uint32_t midi_transfers, midi_events, midi_errors, out_transfers, out_bytes, out_errors;
 
 /* Sends the next queued USB-MIDI packets when no Bulk-OUT is in flight. */
 static void midi_flush(void)
 {
     if (!midi_out || midi_out_busy || !device || gone) return;
+    if (out_hold_until) {
+        if ((int32_t)(xTaskGetTickCount() - out_hold_until) < 0) return;
+        out_hold_until = 0;
+    }
     uint32_t bytes = ruzina_legacy_midi_take_out(midi_out->data_buffer, (uint32_t)midi_out->data_buffer_size);
     if (!bytes) return;
     midi_out->num_bytes = (int)bytes;
@@ -57,8 +62,13 @@ static void midi_out_done(usb_transfer_t *transfer)
         out_bytes += (uint32_t)transfer->actual_num_bytes;
     } else if (transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
             && transfer->status != USB_TRANSFER_STATUS_CANCELED) {
+        /* As for IN: an unplug fails the OUT before the gone event, so hold
+         * further sends for a grace period instead of resubmitting at once. */
         out_errors++;
-        printf("midi_out status=%d\n", transfer->status);
+        printf("midi_out status=%d hold_ms=100\n", transfer->status);
+        out_hold_until = xTaskGetTickCount() + pdMS_TO_TICKS(100);
+        if (!out_hold_until) out_hold_until = 1;
+        return;
     }
     midi_flush();
 }
@@ -170,7 +180,7 @@ static void midi_stop(void)
     for (int i = 0; (midi_in_busy || midi_out_busy) && i < 50; ++i) {
         usb_host_client_handle_events(client, pdMS_TO_TICKS(10));
     }
-    midi_retry_at = lamp_off_at = 0;
+    midi_retry_at = lamp_off_at = out_hold_until = 0;
     uint32_t totals[8];
     ruzina_legacy_midi_totals(totals);
     uint32_t overflow = ruzina_legacy_midi_out_overflow();
