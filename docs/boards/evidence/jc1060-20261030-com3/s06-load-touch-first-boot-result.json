@@ -1,0 +1,44 @@
+{
+  "scenario": "s06-load-touch-first-boot",
+  "mode": "boot",
+  "app_sha256": "2e866f61e48cfd28d75ac9ea91d6ce5bbaeb90c97a7206b71b7b6fcdb08cdd2c",
+  "operator": "ROM boot; owner tapped several tracks incl. rapid taps and confirmed highlight, facts and waveform on screen",
+  "log_bytes": 44792,
+  "log_sha256": "853025f74fea2a0a82e268bc2fa9a965610c00ab30fd047679281f9f5a24f25e",
+  "pre_cycle": null,
+  "mounted_partition_lbas": [
+    2048
+  ],
+  "catalog_tracks": [
+    25
+  ],
+  "playlist_nodes": [
+    1
+  ],
+  "pass_numbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "tracks_with_analysis": [
+    25
+  ],
+  "track_outcomes": {
+    "0": 25
+  },
+  "psram_free_after_pass": [
+    29703604
+  ],
+  "psram_min": [
+    29219144
+  ],
+  "min_client_stack_free": 10588,
+  "failures": [],
+  "owner_quiesced": [],
+  "client_stopped": [],
+  "fatal": [],
+  "sd_writes_denied_or_attempted": 0
+}

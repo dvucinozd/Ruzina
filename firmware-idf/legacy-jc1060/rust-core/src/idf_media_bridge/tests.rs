@@ -79,6 +79,22 @@ extern "C" fn ruzina_bridge_load_title(
     _title_len: u32,
 ) {
 }
+#[cfg(feature = "idf-media-load")]
+#[unsafe(no_mangle)]
+#[allow(clippy::too_many_arguments)]
+extern "C" fn ruzina_bridge_load_detail(
+    _index: u32,
+    _bpm_x100: u32,
+    _duration_ms: u32,
+    _key: *const u8,
+    _key_len: u32,
+    _beats: u32,
+    _cues: u32,
+    _memory_cues: u32,
+    _peaks: *const u8,
+    _peaks_len: u32,
+) {
+}
 
 #[repr(align(4))]
 struct Bounce([u8; 512]);

@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-sd-rust-load-touch-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4, caps-only PSRAM and New_Panel DSI/LDO3/backlight and GT911 polling on I2C0; no audio/USB-host owner",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "2e866f61e48cfd28d75ac9ea91d6ce5bbaeb90c97a7206b71b7b6fcdb08cdd2c",
+  "plan_sha256": "8881509f2c8d082129849d9044c7baf9cfb00d798d6f89dfc85115f6815e1381",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "4c1d32bcfebdf400b3c8415039543f2a6bc0dd08b55be14dbe0f0b101cef59ab"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 417792,
+      "sha256": "508fb307188dfdcfe1207c6aa3ab88ff9dba9f535330a9bea2827c308cf82c0f"
+    }
+  ],
+  "programmer_log_sha256": "7637a6f522b60e2c06ac6534d9edf76631e0910214de03ca257aa825b64d0aea"
+}

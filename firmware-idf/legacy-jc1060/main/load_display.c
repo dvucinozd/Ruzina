@@ -7,28 +7,48 @@
 #include "freertos/task.h"
 #include "font24.h"
 
-/* Status screen for the sd-rust-load profile. The SD client and owner only
- * copy scalars and bounded title bytes into `shared` under a short critical
- * section; this low-priority task alone draws into the scanned-out
- * framebuffer, row by row, and writes each changed row back from cache. */
+/* Status screen for the sd-rust-load profile. The SD client, owner and touch
+ * task only copy scalars and bounded bytes into `shared` under a short
+ * critical section; the UI task alone draws into the scanned-out framebuffer,
+ * row by row, and writes each changed row back from cache. */
 esp_err_t ruzina_panel_start(void (*fill)(uint16_t *frame), uint16_t **frame_out);
+esp_err_t ruzina_touch_start(void);
+unsigned ruzina_touch_poll(unsigned *raw_x, unsigned *raw_y, unsigned *x, unsigned *y, uint32_t *errors);
+/* Rust: asks the load task to preflight a track out of turn and report it. */
+extern void ruzina_legacy_load_select(uint32_t index);
 
 #define WIDTH 1024
 #define HEIGHT 600
 #define COLS (WIDTH / 2 / FONT24_WIDTH)
+#define BANDS (HEIGHT / FONT24_HEIGHT)
 #define TRACK_TOP 4
-#define TRACK_ROWS (HEIGHT / FONT24_HEIGHT - TRACK_TOP)
+#define DETAIL_BANDS 4
+#define TRACK_ROWS (BANDS - TRACK_TOP - DETAIL_BANDS)
+#define DETAIL_TOP (TRACK_TOP + TRACK_ROWS)
 #define MAX_TRACKS (2 * TRACK_ROWS)
 #define TEXT_BYTES 96
+#define PEAKS 400
+#define WAVE_LEFT 12
+#define WAVE_WIDTH 1000
 
 enum { BACKGROUND = 0x0000, FOREGROUND = 0xffff, DIM = 0x8410, ACCENT = 0xfd20,
-       OK_COLOR = 0x07e0, NONE_COLOR = 0xffe0, ERROR_COLOR = 0xf800 };
+       OK_COLOR = 0x07e0, NONE_COLOR = 0xffe0, ERROR_COLOR = 0xf800,
+       SELECTED = 0x2124, WAVE = 0x5d1f, WAVE_PEAK = 0xffff };
+
+typedef struct {
+    uint32_t index, bpm_x100, duration_ms, beats, cues, memory, peaks_len;
+    char key[16];
+    uint8_t peaks[PEAKS];
+} detail_t;
 
 typedef struct {
     uint32_t version, pass, tracks, playlists, loaded, psram_free, psram_min, stack_free;
     bool failed;
     uint32_t failure;       /* stage << 8 | code */
     char note[TEXT_BYTES];  /* owner state */
+    int32_t selected;       /* -1 none */
+    uint32_t detail_version;
+    detail_t detail;
     int8_t outcome[MAX_TRACKS];
     char title[MAX_TRACKS][TEXT_BYTES];
 } status_t;
@@ -79,6 +99,12 @@ static void text(unsigned x, unsigned y, unsigned cols, uint16_t color, const ch
     }
 }
 
+static void fill(unsigned x, unsigned y, unsigned w, unsigned h, uint16_t color)
+{
+    for (unsigned row = y; row < y + h; ++row)
+        for (unsigned col = x; col < x + w; ++col) frame[row * WIDTH + col] = color;
+}
+
 /* Clears, draws and writes back one full-width 24-pixel row band. */
 static void band(unsigned row, void (*paint)(unsigned y, const status_t *), const status_t *s)
 {
@@ -92,7 +118,7 @@ static void band(unsigned row, void (*paint)(unsigned y, const status_t *), cons
 static void paint_header(unsigned y, const status_t *s)
 {
     (void)s;
-    text(12, y, 80, ACCENT, "RUZINA  sd-rust-load  JC1060 v1.3  read-only SD");
+    text(12, y, 80, ACCENT, "RUZINA  sd-rust-load  JC1060 v1.3  read-only SD  tap a track");
 }
 
 static void paint_counts(unsigned y, const status_t *s)
@@ -121,11 +147,10 @@ static void paint_tracks(unsigned y, const status_t *s)
     for (unsigned half = 0; half < 2; ++half) {
         unsigned index = half * TRACK_ROWS + row, x = half * (WIDTH / 2) + 12;
         if (index >= s->tracks || index >= MAX_TRACKS) continue;
+        if ((int32_t)index == s->selected) fill(half * (WIDTH / 2), y, WIDTH / 2, FONT24_HEIGHT, SELECTED);
         static const uint16_t marks[] = {OK_COLOR, NONE_COLOR, ERROR_COLOR, ERROR_COLOR};
         int8_t outcome = s->outcome[index];
-        uint16_t mark = outcome < 0 ? DIM : marks[outcome & 3];
-        for (unsigned py = 6; py < 18; ++py)
-            for (unsigned px = 0; px < 12; ++px) frame[(y + py) * WIDTH + x + px] = mark;
+        fill(x, y + 6, 12, 12, outcome < 0 ? DIM : marks[outcome & 3]);
         char label[8];
         snprintf(label, sizeof(label), "%2u", index + 1);
         text(x + 18, y, 2, DIM, label);
@@ -134,13 +159,76 @@ static void paint_tracks(unsigned y, const status_t *s)
     }
 }
 
+static bool detail_ready(const status_t *s)
+{
+    return s->selected >= 0 && s->detail_version && s->detail.index == (uint32_t)s->selected;
+}
+
+static void paint_selected(unsigned y, const status_t *s)
+{
+    char line[2 * TEXT_BYTES];
+    if (s->selected < 0) {
+        text(12, y, 84, DIM, "Tap a track to show its analysis");
+        return;
+    }
+    snprintf(line, sizeof(line), "%2" PRId32 "  %s", s->selected + 1, s->title[s->selected]);
+    text(12, y, 84, ACCENT, line);
+}
+
+static void paint_facts(unsigned y, const status_t *s)
+{
+    char line[2 * TEXT_BYTES];
+    if (s->selected < 0) return;
+    if (!detail_ready(s)) {
+        text(12, y, 84, DIM, "Loading analysis...");
+        return;
+    }
+    const detail_t *d = &s->detail;
+    unsigned seconds = d->duration_ms / 1000;
+    snprintf(line, sizeof(line), "BPM %" PRIu32 ".%02" PRIu32 "   Key %s   %u:%02u   Beats %" PRIu32
+             "   Hot cues %" PRIu32 "   Memory %" PRIu32 "%s",
+             d->bpm_x100 / 100, d->bpm_x100 % 100, d->key[0] ? d->key : "-", seconds / 60, seconds % 60,
+             d->beats, d->cues, d->memory, d->peaks_len ? "" : "   (no analysis)");
+    text(12, y, 84, FOREGROUND, line);
+}
+
+/* The preview is mirrored around the line between the last two bands. */
+static void paint_wave(unsigned y, const status_t *s, bool upper)
+{
+    if (!detail_ready(s) || !s->detail.peaks_len) return;
+    const detail_t *d = &s->detail;
+    for (unsigned x = 0; x < WAVE_WIDTH; ++x) {
+        unsigned peak = d->peaks[x * d->peaks_len / WAVE_WIDTH];
+        unsigned height = peak * (FONT24_HEIGHT - 1) / 255;
+        uint16_t color = peak > 220 ? WAVE_PEAK : WAVE;
+        for (unsigned h = 0; h <= height; ++h) {
+            unsigned py = upper ? y + FONT24_HEIGHT - 1 - h : y + h;
+            frame[py * WIDTH + WAVE_LEFT + x] = color;
+        }
+    }
+}
+static void paint_wave_upper(unsigned y, const status_t *s) { paint_wave(y, s, true); }
+static void paint_wave_lower(unsigned y, const status_t *s) { paint_wave(y, s, false); }
+
+static bool row_dirty(unsigned row, const status_t *now)
+{
+    for (unsigned half = 0; half < 2; ++half) {
+        unsigned i = half * TRACK_ROWS + row;
+        bool was = drawn.selected == (int32_t)i, is = now->selected == (int32_t)i;
+        if (was != is || now->outcome[i] != drawn.outcome[i] || strcmp(now->title[i], drawn.title[i]))
+            return true;
+    }
+    return false;
+}
+
 static void ui_task(void *unused)
 {
     (void)unused;
     static status_t now;
     drawn.version = UINT32_MAX;
+    drawn.selected = -1;
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(100));
         portENTER_CRITICAL(&lock);
         bool changed = shared.version != drawn.version;
         if (changed) now = shared;
@@ -155,26 +243,68 @@ static void ui_task(void *unused)
                 || now.stack_free != drawn.stack_free || now.failed != drawn.failed
                 || strcmp(now.note, drawn.note))
             band(2, paint_memory, &now);
-        for (unsigned row = 0; row < TRACK_ROWS; ++row) {
-            bool dirty = first || now.tracks != drawn.tracks;
-            for (unsigned half = 0; half < 2 && !dirty; ++half) {
-                unsigned i = half * TRACK_ROWS + row;
-                dirty = now.outcome[i] != drawn.outcome[i] || strcmp(now.title[i], drawn.title[i]);
-            }
-            if (dirty) band(TRACK_TOP + row, paint_tracks, &now);
+        for (unsigned row = 0; row < TRACK_ROWS; ++row)
+            if (first || now.tracks != drawn.tracks || row_dirty(row, &now))
+                band(TRACK_TOP + row, paint_tracks, &now);
+        bool selection = first || now.selected != drawn.selected
+            || (now.selected >= 0 && strcmp(now.title[now.selected], drawn.title[now.selected]));
+        bool detail = selection || now.detail_version != drawn.detail_version;
+        if (selection) band(DETAIL_TOP, paint_selected, &now);
+        if (detail) {
+            band(DETAIL_TOP + 1, paint_facts, &now);
+            band(DETAIL_TOP + 2, paint_wave_upper, &now);
+            band(DETAIL_TOP + 3, paint_wave_lower, &now);
         }
         drawn = now;
+    }
+}
+
+/* Maps a press on a track row to its catalog index, or -1. */
+static int32_t hit(unsigned x, unsigned y, uint32_t tracks)
+{
+    unsigned row = y / FONT24_HEIGHT;
+    if (row < TRACK_TOP || row >= DETAIL_TOP) return -1;
+    unsigned index = (x >= WIDTH / 2 ? TRACK_ROWS : 0) + row - TRACK_TOP;
+    return index < tracks && index < MAX_TRACKS ? (int32_t)index : -1;
+}
+
+static void touch_task(void *unused)
+{
+    (void)unused;
+    uint32_t errors = 0, presses = 0;
+    bool down = false;
+    for (;;) {
+        unsigned raw_x, raw_y, x, y;
+        bool pressed = ruzina_touch_poll(&raw_x, &raw_y, &x, &y, &errors) > 0;
+        if (pressed && !down) {
+            portENTER_CRITICAL(&lock);
+            int32_t index = hit(x, y, shared.tracks);
+            if (index >= 0) { shared.selected = index; shared.version++; }
+            portEXIT_CRITICAL(&lock);
+            printf("load_touch press=%" PRIu32 " mapped=%u,%u index=%" PRId32 " errors=%" PRIu32 "\n",
+                   ++presses, x, y, index, errors);
+            if (index >= 0) ruzina_legacy_load_select((uint32_t)index);
+        }
+        down = pressed;
+        vTaskDelay(pdMS_TO_TICKS(40));
     }
 }
 
 esp_err_t ruzina_load_display_start(void)
 {
     memset(shared.outcome, -1, sizeof(shared.outcome));
+    shared.selected = -1;
     esp_err_t err = ruzina_panel_start(dark, &frame);
     if (err != ESP_OK) return err;
     if (xTaskCreatePinnedToCore(ui_task, "load_ui", 4096, NULL, 1, NULL, 0) != pdPASS) return ESP_ERR_NO_MEM;
     ready = true;
-    printf("S6_LOAD_DISPLAY rows=%u columns=2 font=terminus12x24 max_tracks=%u\n", TRACK_ROWS, MAX_TRACKS);
+    printf("S6_LOAD_DISPLAY rows=%u columns=2 font=terminus12x24 max_tracks=%u detail_bands=%u\n",
+           TRACK_ROWS, MAX_TRACKS, DETAIL_BANDS);
+    /* The screen still reports status when touch is absent. */
+    err = ruzina_touch_start();
+    if (err != ESP_OK) printf("load_touch=INIT_FAILED error=%s\n", esp_err_to_name(err));
+    else if (xTaskCreatePinnedToCore(touch_task, "load_touch", 3072, NULL, 1, NULL, 0) != pdPASS)
+        printf("load_touch=TASK_FAILED\n");
     return ESP_OK;
 }
 
@@ -215,6 +345,26 @@ void ruzina_load_display_title(uint32_t index, const uint8_t *artist, uint32_t a
     line[n] = 0;
     portENTER_CRITICAL(&lock);
     memcpy(shared.title[index], line, n + 1);
+    shared.version++;
+    portEXIT_CRITICAL(&lock);
+}
+
+/* Copies the selected track's detail; key and peaks are not retained. */
+void ruzina_load_display_detail(uint32_t index, uint32_t bpm_x100, uint32_t duration_ms, const uint8_t *key,
+                                uint32_t key_len, uint32_t beats, uint32_t cues, uint32_t memory,
+                                const uint8_t *peaks, uint32_t peaks_len)
+{
+    if (!ready) return;
+    static detail_t d;
+    d.index = index; d.bpm_x100 = bpm_x100; d.duration_ms = duration_ms;
+    d.beats = beats; d.cues = cues; d.memory = memory;
+    d.peaks_len = peaks_len < PEAKS ? peaks_len : PEAKS;
+    size_t n = key_len < sizeof(d.key) - 1 ? key_len : sizeof(d.key) - 1;
+    memcpy(d.key, key, n); d.key[n] = 0;
+    memcpy(d.peaks, peaks, d.peaks_len);
+    portENTER_CRITICAL(&lock);
+    shared.detail = d;
+    shared.detail_version++;
     shared.version++;
     portEXIT_CRITICAL(&lock);
 }

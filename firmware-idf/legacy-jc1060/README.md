@@ -285,8 +285,8 @@ stayed flat, and removal, reinsertion and cold return were clean. See the
 profile plus a status screen on the New_Panel. `display_touch.c` now exposes
 `ruzina_panel_start()`, the same DSI, LDO3, reset, init-table and DPI bring-up
 that the `display-touch` diagnostic uses. The panel starts with a dark frame
-before the SD owner. Touch is not initialized, and the profile excludes the
-touch diagnostic.
+before the SD owner. The GT911 touch controller is polled through the shared`nruzina_touch_start()` and `ruzina_touch_poll()`, which the touch diagnostic
+also uses; the profile still excludes that diagnostic.
 
 `load_display.c` draws the screen with a 12x24 bitmap font: `font24.h`, a
 subset (U+0020..U+017F) of Terminus Font under SIL OFL 1.1. See
@@ -294,9 +294,19 @@ subset (U+0020..U+017F) of Terminus Font under SIL OFL 1.1. See
 shows:
 - the pass, track count, tracks with analysis and playlist count;
 - free and minimum PSRAM, the client stack and the owner state;
-- up to 42 tracks in two columns, as "artist - title". A colored mark shows
+- up to 34 tracks in two columns, as "artist - title". A colored mark shows
   each track's pass-1 outcome: green analysis, yellow none, red source error
-  or stale, grey pending.
+  or stale, grey pending;
+- a detail panel for the tapped track: BPM, key, duration, beat, hot-cue and
+  memory-cue counts, and its PWAV preview drawn as a mirrored waveform.
+
+A tap on a track row highlights it and calls the Rust
+`ruzina_legacy_load_select`. At its next track boundary, the load task
+preflights that track out of turn and calls `ruzina_bridge_load_detail`. That
+call carries the catalog fields, the analysis counts and up to 400 preview
+peaks, lent for the call only. C logs a `load_detail` line with an FNV digest of
+the peaks and copies the detail for the screen. Each press is logged as
+`load_touch`.
 
 Data flow:
 - The load telemetry callback and the new `ruzina_bridge_load_title` copy

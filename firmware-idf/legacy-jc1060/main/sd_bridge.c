@@ -59,6 +59,9 @@ extern void ruzina_load_display_event(uint32_t pass, uint32_t event, uint32_t va
 extern void ruzina_load_display_title(uint32_t index, const uint8_t *artist, uint32_t artist_len,
                                       const uint8_t *title, uint32_t title_len);
 extern void ruzina_load_display_note(const char *note);
+extern void ruzina_load_display_detail(uint32_t index, uint32_t bpm_x100, uint32_t duration_ms, const uint8_t *key,
+                                       uint32_t key_len, uint32_t beats, uint32_t cues, uint32_t memory,
+                                       const uint8_t *peaks, uint32_t peaks_len);
 #define LOAD_NOTE(text) ruzina_load_display_note(text)
 #else
 #define LOAD_NOTE(text) ((void)0)
@@ -86,6 +89,24 @@ void ruzina_bridge_load_title(uint32_t index, const uint8_t *artist, uint32_t ar
     ruzina_load_display_title(index,artist,artist_len,title,title_len);
 #else
     (void)index;(void)artist;(void)artist_len;(void)title;(void)title_len;
+#endif
+}
+
+/* The selected track's detail (lent bytes, call duration only). The peak
+ * digest lets a capture compare the preview without logging all 400 bytes. */
+void ruzina_bridge_load_detail(uint32_t index, uint32_t bpm_x100, uint32_t duration_ms, const uint8_t *key,
+                               uint32_t key_len, uint32_t beats, uint32_t cues, uint32_t memory,
+                               const uint8_t *peaks, uint32_t peaks_len)
+{
+    uint32_t digest=2166136261u;
+    for(uint32_t i=0;i<peaks_len;++i) digest=(digest^peaks[i])*16777619u;
+    printf("load_detail index=%" PRIu32 " bpm_x100=%" PRIu32 " duration_ms=%" PRIu32 " key=%.*s beats=%" PRIu32
+           " cues=%" PRIu32 " memory=%" PRIu32 " peaks=%" PRIu32 " peak_fnv=%08" PRIx32 " stack_free=%u\n",
+           index,bpm_x100,duration_ms,(int)key_len,(const char *)key,beats,cues,memory,peaks_len,digest,
+           (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    fflush(stdout);
+#if CONFIG_RUZINA_LOAD_DISPLAY
+    ruzina_load_display_detail(index,bpm_x100,duration_ms,key,key_len,beats,cues,memory,peaks,peaks_len);
 #endif
 }
 

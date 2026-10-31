@@ -92,3 +92,90 @@ USB re-enumeration.
 Still open:
 - Tearing and flicker were not measured beyond the owner's visual check.
 - Touch, interaction and track selection are not part of this profile.
+
+## Touch selection and track detail
+
+This follow-up adds the first interaction to the same `sd-rust-load-display`
+profile.
+
+- **Touch:** the GT911 code in `display_touch.c` is split into
+  `ruzina_touch_start()` and `ruzina_touch_poll()`. The touch diagnostic uses
+  them with unchanged output. The load profile polls every 40 ms on core 0 and
+  logs each press as `load_touch press= mapped= index= errors=`.
+- **Selection:**
+  - A press on a track row highlights it and calls the Rust
+    `ruzina_legacy_load_select`. That export only stores an atomic index and
+    an "owed" flag.
+  - At its next track boundary, the load task preflights the selected track
+    out of turn. It does not count that run as a pass track. A stale outcome
+    still stops the run.
+  - The task then calls `ruzina_bridge_load_detail` with the catalog BPM,
+    duration and key, the beat, hot-cue and memory-cue counts, and up to 400
+    PWAV preview peaks. All bytes are lent for the call only.
+- **Screen:** the track list shrinks to 17 rows per column (34 tracks), making
+  room for a 4-band detail panel:
+  - the selected title;
+  - a facts line;
+  - the preview, drawn as a 1000-pixel mirrored waveform.
+
+  C logs `load_detail ... peak_fnv=` so a capture can compare the preview
+  without the full array.
+
+Local evidence:
+- 39 core tests, host and target clippy, and 23 tooling tests pass.
+- `sd-rust-load-display` returns `BUILD_PACKAGE_PASS` with no C warnings. The
+  app is 415696 bytes, SHA-256
+  `2e866f61e48cfd28d75ac9ea91d6ce5bbaeb90c97a7206b71b7b6fcdb08cdd2c`.
+- `display-touch` still returns `BUILD_PACKAGE_PASS`.
+- The flash plan is `8881509f…`, with the flashed display image (`64e21688…`)
+  as its predecessor and a chain of 11 plans. It writes `0x2000`, `0x8000` and
+  `0x10000..0x76000`.
+
+Device acceptance:
+- A tap selects and highlights a row.
+- Within about a track's preflight, the facts and waveform appear.
+- The `load_detail` counts and peak digest agree with the host
+  `analysis_inspect` of that track.
+- Passes stay 25/25 with stable PSRAM.
+- Repeated taps never stall the load.
+
+### Device run (2026-10-31, owner present)
+
+The image `2e866f61…` was flashed with plan `8881509f…`:
+- the identity, security and RDID checks passed;
+- the predecessor sectors matched;
+- readback matched.
+
+Records are in `docs/boards/evidence/jc1060-20261030-com3/s06-load-touch-*`,
+indexed by the
+[device index](../boards/readiness/jc1060-s06-sd-rust-load-touch-device-20261031.json).
+
+Results:
+- **Boot:** `S6_TOUCH_ID address=0x5d config_size=1024x600` was reported next
+  to `S6_LOAD_DISPLAY rows=17 columns=2 max_tracks=34`.
+- **Taps:** the owner tapped single tracks and then several in quick
+  succession, and confirmed on screen the highlight, the facts line and the
+  waveform for each selected track.
+  - 9 presses were logged. Each mapped to the expected row index, including
+    the right column (`mapped=726,150 index=19`), with 0 I2C errors.
+  - 6 `load_detail` reports followed. Taps that came before the next track
+    boundary collapsed into the latest selection, as designed.
+- **Host comparison:** all 6 details match the host import of the PC copy of
+  the export:
+  - catalog BPM, duration and key;
+  - the `analysis_inspect` beat, hot-cue and memory-cue counts;
+  - 400 preview columns, with the FNV digest of the device peaks equal to the
+    digest of the host-parsed PWAV bytes.
+
+  The comparison script and its output are kept outside the repository in
+  `rb-export-compare-20261031`, because the output lists track titles.
+- **Passes:** 6 passes during the taps, then 3 after an app restart, all at
+  25/25 with no failure or fault. Touch re-initialized after the restart.
+- **PSRAM:** the minimum is 29219144 bytes, 1144 bytes below the display-only
+  image.
+- **Stack:** the client stack minimum dropped from 13312 to 10588 free bytes.
+  The out-of-turn preflight closure and the 400-byte peak buffer account for
+  this, and it stays within the 24 KiB frame guard.
+
+This run did not repeat removal, reinsertion or the cold return. The display
+run covered those, and this change does not touch the SD or load lifecycle.

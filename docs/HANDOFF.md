@@ -15,10 +15,11 @@ exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
 only, NOT_FLASHED. This merge does not change the current board image.
 
 **Current unit (2026-10-31):** JC1060 v1.3 runs the `sd-rust-load-display`
-diagnostic, image `2f1df621…`. It reads the owner's exFAT card (a 25-track
-Rekordbox export) on the read-only SD bridge, imports the catalog and
-preflights every track, and shows the status and track list on the panel.
-Touch, audio, USB host and C6 remain unwired. The earlier exFAT fixture
+diagnostic with touch selection, image `2e866f61…`. It reads the owner's
+exFAT card (a 25-track Rekordbox export) on the read-only SD bridge, imports
+the catalog and preflights every track, and shows the status and track list
+on the panel. A tap shows the track's BPM, key, cue counts and preview
+waveform, matching the host import. Audio, USB host and C6 remain unwired. The earlier exFAT fixture
 diagnostic is a retained predecessor in the flash-plan chain. The Library load preflight is now the shared
 `ruzina-media-load` crate, used by native firmware and, host-tested, by the IDF
 core over its exFAT volume ([media/load preflight](reviews/2026-10-30-legacy-s6-media-load-preflight.md)).
