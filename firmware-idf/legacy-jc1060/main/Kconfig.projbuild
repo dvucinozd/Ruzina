@@ -30,6 +30,6 @@ config RUZINA_SD_RUST_LOAD
     default n
 
 config RUZINA_LOAD_DISPLAY
-    bool "Show the media load status on the New_Panel display (no touch)"
+    bool "Show the media load status on the New_Panel, with touch track selection"
     depends on RUZINA_SD_RUST_LOAD && !RUZINA_DISPLAY_TOUCH
     default n

@@ -378,7 +378,44 @@ unsafe extern "C" {
         title: *const u8,
         title_len: u32,
     );
+    /// The selected track's catalog fields and analysis summary, with its
+    /// preview peaks (0..255, one per PWAV column). Bytes are lent for the
+    /// call only; zero counts and no peaks mean no analysis was loaded.
+    fn ruzina_bridge_load_detail(
+        index: u32,
+        bpm_x100: u32,
+        duration_ms: u32,
+        key: *const u8,
+        key_len: u32,
+        beats: u32,
+        cues: u32,
+        memory_cues: u32,
+        peaks: *const u8,
+        peaks_len: u32,
+    );
 }
+
+/// The track the display selected (`u32::MAX` none) and whether its detail is
+/// still owed. Written by the C touch task, read by the load client task.
+#[cfg(feature = "idf-media-load")]
+static LOAD_SELECTED: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(u32::MAX);
+#[cfg(feature = "idf-media-load")]
+static LOAD_DETAIL_OWED: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
+/// Select a catalog track for the detail view. The load task preflights it
+/// out of turn at its next track boundary and reports the detail once.
+#[cfg(feature = "idf-media-load")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_load_select(index: u32) {
+    use core::sync::atomic::Ordering;
+    LOAD_SELECTED.store(index, Ordering::Relaxed);
+    LOAD_DETAIL_OWED.store(true, Ordering::Release);
+}
+
+/// Preview peaks reported per selected track; PWAV previews hold 400 columns.
+#[cfg(feature = "idf-media-load")]
+const DETAIL_PEAKS: usize = 400;
 
 /// Load-path telemetry events; values are scalars only.
 #[cfg(feature = "idf-media-load")]
@@ -494,35 +531,82 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                     snapshot.lease() == candidate.lease && snapshot.revision() == candidate.revision
                 })
         };
-        let mut loaded = 0u32;
-        for index in 0..tracks {
-            let Some(track) = stage
+        // One track's preflight; `detail` also reports the selected-track view.
+        // Returns the outcome, or `None` when the catalog snapshot is gone.
+        let mut run = |index: usize, detail: bool| -> Option<u32> {
+            let track = stage
                 .current()
-                .and_then(|snapshot| snapshot.get(index).copied())
-            else {
-                report(pass, load_event::FAILED, 4 << 8);
-                return -6;
-            };
+                .and_then(|snapshot| snapshot.get(index).copied())?;
             let candidate = CatalogLoadCandidate {
                 publication,
                 index: index as u16,
                 track,
             };
-            let outcome = match block_on(Box::pin(preflight(
+            let prepared = block_on(Box::pin(preflight(
                 &mut volume,
                 candidate,
                 pass,
                 &current,
                 &published,
-            ))) {
-                Ok(prepared) if prepared.publication.is_some() => {
-                    loaded += 1;
-                    0
+            )));
+            if detail && prepared.is_ok() {
+                let view = prepared
+                    .as_ref()
+                    .ok()
+                    .and_then(|p| p.publication.as_ref())
+                    .map(|publication| publication.view());
+                let mut peaks = [0u8; DETAIL_PEAKS];
+                let (mut beats, mut cues, mut memory, mut columns) = (0, 0, 0, 0);
+                if let Some(view) = &view {
+                    beats = view.beat_grid().map_or(0, |grid| grid.beats().len());
+                    (cues, memory) = (view.cues().len(), view.memory_cues().len());
+                    for (peak, column) in peaks.iter_mut().zip(view.preview()) {
+                        *peak = (column.peak >> 8) as u8;
+                        columns += 1;
+                    }
                 }
+                let key = track.key.as_str();
+                // SAFETY: `key` and `peaks` outlive the call; C copies and
+                // keeps no pointer. All other arguments are scalars.
+                unsafe {
+                    ruzina_bridge_load_detail(
+                        index as u32,
+                        track.bpm_x100,
+                        track.duration_ms,
+                        key.as_ptr(),
+                        key.len() as u32,
+                        beats as u32,
+                        cues as u32,
+                        memory as u32,
+                        peaks.as_ptr(),
+                        columns,
+                    )
+                };
+            }
+            Some(match prepared {
+                Ok(prepared) if prepared.publication.is_some() => 0,
                 Ok(_) => 1,
                 Err(Error::Source) => 2,
                 Err(Error::Stale) => 3,
+            })
+        };
+        let mut loaded = 0u32;
+        for index in 0..tracks {
+            use core::sync::atomic::Ordering;
+            // A selection is served out of turn, before the next track.
+            if LOAD_DETAIL_OWED.swap(false, Ordering::Acquire) {
+                let selected = LOAD_SELECTED.load(Ordering::Relaxed) as usize;
+                if selected < tracks && run(selected, true) == Some(3) {
+                    report(pass, load_event::TRACK, (selected as u32) << 8 | 3);
+                    report(pass, load_event::FAILED, 4 << 8);
+                    return -6;
+                }
+            }
+            let Some(outcome) = run(index, false) else {
+                report(pass, load_event::FAILED, 4 << 8);
+                return -6;
             };
+            loaded += u32::from(outcome == 0);
             if pass == 1 || outcome == 3 {
                 report(pass, load_event::TRACK, (index as u32) << 8 | outcome);
             }

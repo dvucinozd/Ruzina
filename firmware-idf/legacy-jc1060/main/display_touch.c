@@ -84,7 +84,7 @@ fail:
 #undef TRY
 }
 
-#if CONFIG_RUZINA_DISPLAY_TOUCH
+/* GT911 polling over I2C0 (GPIO7/8); the reset and IRQ lines stay untouched. */
 static i2c_master_bus_handle_t i2c;
 static i2c_master_dev_handle_t touch;
 static uint16_t touch_width, touch_height;
@@ -95,34 +95,72 @@ static esp_err_t read_touch(uint16_t reg, uint8_t *data, size_t size)
     return i2c_master_transmit_receive(touch, address, 2, data, size, 100);
 }
 
+/* Finds the controller, checks its ID and reads the current RAM config size. */
+esp_err_t ruzina_touch_start(void)
+{
+    esp_err_t err;
+#define TRY(call) do { err = (call); if (err != ESP_OK) return err; } while (0)
+    i2c_master_bus_config_t wire = {.i2c_port=0, .sda_io_num=7, .scl_io_num=8,
+        .clk_source=I2C_CLK_SRC_DEFAULT, .glitch_ignore_cnt=7, .flags.enable_internal_pullup=true};
+    TRY(i2c_new_master_bus(&wire, &i2c));
+    uint16_t address = 0;
+    if (i2c_master_probe(i2c, 0x5d, 100) == ESP_OK) address=0x5d;
+    else if (i2c_master_probe(i2c, 0x14, 100) == ESP_OK) address=0x14;
+    if (!address) return ESP_ERR_NOT_FOUND;
+    i2c_device_config_t dev = {.dev_addr_length=I2C_ADDR_BIT_LEN_7, .device_address=address, .scl_speed_hz=100000};
+    TRY(i2c_master_bus_add_device(i2c, &dev, &touch));
+    uint8_t id[4], dimensions[4];
+    TRY(read_touch(0x8140, id, sizeof(id)));
+    if (memcmp(id, "911", 3) != 0) return ESP_ERR_INVALID_RESPONSE;
+    TRY(read_touch(0x8048, dimensions, sizeof(dimensions)));
+    touch_width=dimensions[0] | dimensions[1]<<8; touch_height=dimensions[2] | dimensions[3]<<8;
+    if (touch_width<2 || touch_height<2 || touch_width>4096 || touch_height>4096) return ESP_ERR_INVALID_RESPONSE;
+    printf("S6_TOUCH_ID address=0x%02x id=%02x%02x%02x%02x config_size=%ux%u mode=POLLING reset_irq=UNTOUCHED\n",
+           address,id[0],id[1],id[2],id[3],touch_width,touch_height);
+    return ESP_OK;
+#undef TRY
+}
+
+/* One poll: returns the reported point count (0..5) with the first point in
+ * raw and panel coordinates, and adds failed transfers to `errors`. */
+unsigned ruzina_touch_poll(unsigned *raw_x, unsigned *raw_y, unsigned *x, unsigned *y, uint32_t *errors)
+{
+    uint8_t status;
+    unsigned count = 0;
+    esp_err_t err = read_touch(0x814e, &status, 1);
+    if (err == ESP_OK && (status & 0x80)) {
+        count = status & 15;
+        uint8_t points[40];
+        if (count > 5) { (*errors)++; count = 0; }
+        if (count && read_touch(0x814f, points, count * 8) == ESP_OK) {
+            *raw_x = points[1] | points[2] << 8;
+            *raw_y = points[3] | points[4] << 8;
+            /* Input dimensions come from the chip's current RAM config,
+             * never assumed from a stale 800x480 BSP calibration message. */
+            *x = *raw_x * 1023u / (touch_width - 1u);
+            *y = *raw_y * 599u / (touch_height - 1u);
+            if (*x > 1023) *x = 1023;
+            if (*y > 599) *y = 599;
+        } else if (count) { (*errors)++; count = 0; }
+        /* Acknowledge only the ready status byte, never persistent config. */
+        const uint8_t clear[] = {0x81, 0x4e, 0};
+        if (i2c_master_transmit(touch, clear, sizeof(clear), 100) != ESP_OK) (*errors)++;
+    } else if (err != ESP_OK) (*errors)++;
+    return count;
+}
+
+#if CONFIG_RUZINA_DISPLAY_TOUCH
 static void touch_task(void *unused)
 {
     (void)unused;
     uint32_t samples = 0, errors = 0;
     int64_t report = 0;
     for (;;) {
-        uint8_t status;
-        esp_err_t err = read_touch(0x814e, &status, 1);
-        if (err == ESP_OK && (status & 0x80)) {
-            unsigned count = status & 15;
-            uint8_t points[40];
-            if (count > 5) { errors++; count = 0; }
-            if (count && read_touch(0x814f, points, count * 8) == ESP_OK) {
-                unsigned x = points[1] | points[2] << 8;
-                unsigned y = points[3] | points[4] << 8;
-                /* Input dimensions come from the chip's current RAM config,
-                 * never assumed from a stale 800x480 BSP calibration message. */
-                unsigned mapped_x = x * 1023u / (touch_width - 1u);
-                unsigned mapped_y = y * 599u / (touch_height - 1u);
-                if (mapped_x > 1023) mapped_x = 1023;
-                if (mapped_y > 599) mapped_y = 599;
-                printf("touch_sample=%" PRIu32 " count=%u raw=%u,%u mapped=%u,%u\n",
-                       ++samples, count, x, y, mapped_x, mapped_y);
-            } else if (count) errors++;
-            /* Acknowledge only the ready status byte, never persistent config. */
-            const uint8_t clear[] = {0x81, 0x4e, 0};
-            if (i2c_master_transmit(touch, clear, sizeof(clear), 100) != ESP_OK) errors++;
-        } else if (err != ESP_OK) errors++;
+        unsigned x, y, mapped_x, mapped_y;
+        unsigned count = ruzina_touch_poll(&x, &y, &mapped_x, &mapped_y, &errors);
+        if (count)
+            printf("touch_sample=%" PRIu32 " count=%u raw=%u,%u mapped=%u,%u\n",
+                   ++samples, count, x, y, mapped_x, mapped_y);
         if (esp_timer_get_time() - report > 5000000) {
             printf("touch_health samples=%" PRIu32 " errors=%" PRIu32 "\n", samples, errors);
             report = esp_timer_get_time();
@@ -152,23 +190,7 @@ esp_err_t ruzina_display_touch_start(void)
     err = ruzina_panel_start(stripes, &fb);
     if (err != ESP_OK) return err;
 
-    i2c_master_bus_config_t wire = {.i2c_port=0, .sda_io_num=7, .scl_io_num=8,
-        .clk_source=I2C_CLK_SRC_DEFAULT, .glitch_ignore_cnt=7, .flags.enable_internal_pullup=true};
-    TRY(i2c_new_master_bus(&wire, &i2c));
-    uint16_t address = 0;
-    if (i2c_master_probe(i2c, 0x5d, 100) == ESP_OK) address=0x5d;
-    else if (i2c_master_probe(i2c, 0x14, 100) == ESP_OK) address=0x14;
-    if (!address) { err=ESP_ERR_NOT_FOUND; goto fail; }
-    i2c_device_config_t dev = {.dev_addr_length=I2C_ADDR_BIT_LEN_7, .device_address=address, .scl_speed_hz=100000};
-    TRY(i2c_master_bus_add_device(i2c, &dev, &touch));
-    uint8_t id[4], dimensions[4];
-    TRY(read_touch(0x8140, id, sizeof(id)));
-    if (memcmp(id, "911", 3) != 0) { err=ESP_ERR_INVALID_RESPONSE; goto fail; }
-    TRY(read_touch(0x8048, dimensions, sizeof(dimensions)));
-    touch_width=dimensions[0] | dimensions[1]<<8; touch_height=dimensions[2] | dimensions[3]<<8;
-    if (touch_width<2 || touch_height<2 || touch_width>4096 || touch_height>4096) {err=ESP_ERR_INVALID_RESPONSE;goto fail;}
-    printf("S6_TOUCH_ID address=0x%02x id=%02x%02x%02x%02x config_size=%ux%u mode=POLLING reset_irq=UNTOUCHED\n",
-           address,id[0],id[1],id[2],id[3],touch_width,touch_height);
+    TRY(ruzina_touch_start());
     if (xTaskCreate(touch_task,"s6_touch",4096,NULL,1,NULL)!=pdPASS) {err=ESP_ERR_NO_MEM;goto fail;}
     printf("s6_readiness=AWAITING_OPERATOR_COLORS_CORNERS_AND_TOUCH\n");
     return ESP_OK;
