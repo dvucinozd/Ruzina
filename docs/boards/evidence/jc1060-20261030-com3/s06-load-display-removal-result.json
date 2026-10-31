@@ -1,0 +1,56 @@
+{
+  "scenario": "s06-load-display-removal",
+  "mode": "passive",
+  "app_sha256": "2f1df6215d6a908226452f14491331d7d020d677abd1e0d8533e934942a16c04",
+  "operator": "Owner removed the SD card mid-run without power-off, screen running",
+  "log_bytes": 34499,
+  "log_sha256": "5474e7878a845b5085878d3643140358aa7d4debd82a725525640bcbbbd23fc7",
+  "pre_cycle": null,
+  "mounted_partition_lbas": [],
+  "catalog_tracks": [
+    25
+  ],
+  "playlist_nodes": [
+    1
+  ],
+  "pass_numbers": [
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "tracks_with_analysis": [
+    25
+  ],
+  "track_outcomes": {
+    "3": 1
+  },
+  "psram_free_after_pass": [
+    29704748
+  ],
+  "psram_min": [
+    29220288
+  ],
+  "min_client_stack_free": 13312,
+  "failures": [
+    {
+      "pass_": 15,
+      "stage": 4,
+      "code": 0
+    }
+  ],
+  "owner_quiesced": [
+    {
+      "error": "ESP_ERR_TIMEOUT",
+      "reads": 104477,
+      "denied_commands": 0
+    }
+  ],
+  "client_stopped": [
+    -6
+  ],
+  "fatal": [],
+  "sd_writes_denied_or_attempted": 0
+}

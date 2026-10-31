@@ -1,0 +1,46 @@
+{
+  "scenario": "s06-load-display-cold",
+  "mode": "cold",
+  "app_sha256": "2f1df6215d6a908226452f14491331d7d020d677abd1e0d8533e934942a16c04",
+  "operator": "Owner disconnected sole USB power 5-10 s and reconnected without BOOT/RESET, SD inserted; owner confirmed the screen lit again; monitor sent no reset or command",
+  "log_bytes": 25784,
+  "log_sha256": "a6201bf9d375e41c3e3dc264e839f0b86830965c748be8397745ebc3a1597b0f",
+  "pre_cycle": {
+    "last_pass": 9,
+    "boot_banner_seen": false,
+    "bootloader_seen": false,
+    "psram_init_line": true
+  },
+  "mounted_partition_lbas": [
+    2048
+  ],
+  "catalog_tracks": [
+    25
+  ],
+  "playlist_nodes": [
+    1
+  ],
+  "pass_numbers": [
+    1,
+    2,
+    3
+  ],
+  "tracks_with_analysis": [
+    25
+  ],
+  "track_outcomes": {
+    "0": 25
+  },
+  "psram_free_after_pass": [
+    29704748
+  ],
+  "psram_min": [
+    29220288
+  ],
+  "min_client_stack_free": 13312,
+  "failures": [],
+  "owner_quiesced": [],
+  "client_stopped": [],
+  "fatal": [],
+  "sd_writes_denied_or_attempted": 0
+}

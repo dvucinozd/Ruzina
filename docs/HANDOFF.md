@@ -14,11 +14,12 @@ reported two minor issues; the merged follow-up fixes numeric prose spacing and
 exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
 only, NOT_FLASHED. This merge does not change the current board image.
 
-**Current unit:** the read-only shared Rust partition/exFAT diagnostic is
-running on JC1060 v1.3. Full fixture SHA/EOF/seeks, app restarts, open-file
-removal/reinsert and owner-confirmed cold return are observed. Initial cold
-boot/reset-reason prefix was missed. Product media/load, UI/audio/USB-host/C6
-remain unwired. The Library load preflight is now the shared
+**Current unit (2026-10-31):** JC1060 v1.3 runs the `sd-rust-load-display`
+diagnostic, image `2f1df621…`. It reads the owner's exFAT card (a 25-track
+Rekordbox export) on the read-only SD bridge, imports the catalog and
+preflights every track, and shows the status and track list on the panel.
+Touch, audio, USB host and C6 remain unwired. The earlier exFAT fixture
+diagnostic is a retained predecessor in the flash-plan chain. The Library load preflight is now the shared
 `ruzina-media-load` crate, used by native firmware and, host-tested, by the IDF
 core over its exFAT volume ([media/load preflight](reviews/2026-10-30-legacy-s6-media-load-preflight.md)).
 An IDF PSRAM allocator now gives it a target build (`idf-media-load`).
@@ -36,7 +37,12 @@ Its first image overflowed the client stack, because by-value page buffers made
 a 168 KiB poll frame. With the fix, it ran on JC1060 with one real
 25-track export: every track loaded analysis, PSRAM stayed flat, and removal,
 reinsertion and cold return were clean. The build tool now rejects Rust frames
-over 24 KiB.
+over 24 KiB. The export's PDB and ANLZ also match the M2.5 parser.
+
+The [`sd-rust-load-display` profile](reviews/2026-10-31-legacy-load-display.md)
+adds a status screen on the New_Panel, without touch: counts, PSRAM and the
+track list with outcome marks. It passed the same device runs, and its image
+`2f1df621…` is now on JC1060.
 
 **Next-agent instructions (review 2026-10-30):** read the
 [legacy v1.3 review and step-by-step implementation plan](reviews/2026-10-30-jc1060-legacy-review-and-instructions.md).

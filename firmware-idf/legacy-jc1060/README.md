@@ -309,4 +309,7 @@ Data flow:
 
 Expect tearing during a redraw. The CPU now writes to the active frame, which
 the `display-touch` gate did not cover. Without a card, the screen shows the
-owner's stopped state. Build-only until its own device run.
+owner's stopped state. On JC1060 with the 25-track export, the screen and
+the load ran together across the boot, app restarts, removal, reinsertion and
+a cold return. PSRAM was lower only by the framebuffer, and passes were about
+2 % slower. See the [device run](../../docs/reviews/2026-10-31-legacy-load-display.md#device-run-2026-10-31-owner-present).
