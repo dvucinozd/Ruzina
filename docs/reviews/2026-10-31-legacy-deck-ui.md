@@ -1,7 +1,7 @@
 # JC1060 `deck-ui`: the controller drives the library screen
 
-Date: 2026-10-31. Branch: from main `697dacc` (after PR #67). Build only: no
-device run yet. Native minimum 302 and APTA unchanged.
+Date: 2026-10-31. Branch: from main `697dacc` (after PR #67). The device
+run, with the owner present, is at the end. Native minimum 302 and APTA unchanged.
 
 ## What it adds
 
@@ -78,3 +78,48 @@ Accept the run when:
 - The touch selection still works.
 - The PSRAM and stack telemetry stay comparable to the separate profiles.
 - There is no fault and no USB or SD error.
+
+
+## Device run (2026-10-31, owner present)
+
+The image `fe91eade…` (plan `07381298…`) was flashed:
+- the identity, security and RDID checks passed;
+- the predecessor sectors matched;
+- readback matched.
+
+Records are in `docs/boards/evidence/jc1060-20261030-com3/s06-deck-ui-*`,
+indexed by the
+[device index](../boards/readiness/jc1060-s06-deck-ui-device-20261031.json).
+The setup was the PC on the FS port only, the battery disconnected, the
+25-track card inserted and the FLX4 on bus power on the HS port.
+
+- **Start-up:** `S6_DISPLAY_INIT`, `S6_LOAD_DISPLAY`, `S6_TOUCH_ID`,
+  `S6_USB_HOST claim=MIDI_STREAMING` and `S6_RUST_LOAD` were all reported in
+  one boot.
+  - The FLX4's first session ended with the known one-time IN/OUT error after
+    boot, with the retry and hold applied.
+  - The second session claimed MIDI and ran the lamp test.
+- **Owner check:** the owner confirmed that everything worked:
+  - the browse highlight moved, with the detail and waveform shown;
+  - browse press;
+  - Load deck 1 and Load deck 2 filled `D1` and `D2`;
+  - touch selection;
+  - the Play and Cue LED echo.
+- **Log:**
+  - 11 browse actions, 1 choose, and one load each on deck 1 and deck 2;
+  - 2 touch presses;
+  - 7 `load_detail` reports. All 7 match the host import of the PC copy of
+    the export: catalog BPM, duration and key, analysis counts, and the PWAV
+    peak digest. The comparison output lists titles, so it stays in the
+    local archive.
+- **Load:**
+  - 11 passes, each 25/25 with analysis, and no failure event.
+  - The PSRAM minimum stayed at 29217616 bytes, 2672 bytes below the
+    display-only profile, for the USB host.
+  - At least 10588 bytes of the SD client stack stayed free, the same as with
+    touch selection.
+  - There was no panic, SD error or USB error beyond the after-boot session.
+
+This is the first run of the SD, display and USB-host owners together on
+JC1060 v1.3. It is a diagnostic: the decks only record which track the
+controller loaded, and no audio or deck state machine is involved.
