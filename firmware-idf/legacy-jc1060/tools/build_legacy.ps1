@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Idf,
     [Parameter(Mandatory=$true)][string]$Output,
-    [Parameter(Mandatory=$true)][ValidateSet('pure-ram','flash-build-only','memory-task','display-touch','sd-readonly','sd-file-readonly','sd-rust-bridge','sd-rust-exfat','sd-rust-load','sd-rust-load-display','usb-host','usb-midi')][string]$Variant,
+    [Parameter(Mandatory=$true)][ValidateSet('pure-ram','flash-build-only','memory-task','display-touch','sd-readonly','sd-file-readonly','sd-rust-bridge','sd-rust-exfat','sd-rust-load','sd-rust-load-display','usb-host','usb-midi','deck-ui')][string]$Variant,
     [string]$Python='python',
     [string]$Wsl,
     [string]$CargoHome,

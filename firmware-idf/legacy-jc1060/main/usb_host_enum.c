@@ -73,6 +73,25 @@ static void midi_out_done(usb_transfer_t *transfer)
     midi_flush();
 }
 
+#if CONFIG_RUZINA_LOAD_DISPLAY
+extern void ruzina_load_display_browse(int32_t delta);
+extern void ruzina_load_display_choose(void);
+extern void ruzina_load_display_load(uint32_t deck);
+#endif
+
+/* Library UI actions from Rust: 1 browse by `value`, 2 choose, 3 load on
+ * `deck`. With the status screen they drive its selection; otherwise they
+ * are only logged. */
+void ruzina_bridge_midi_ui(uint32_t action, uint32_t deck, int32_t value)
+{
+    printf("midi_ui action=%" PRIu32 " deck=%" PRIu32 " value=%" PRId32 "\n", action, deck, value);
+#if CONFIG_RUZINA_LOAD_DISPLAY
+    if (action == 1) ruzina_load_display_browse(value);
+    else if (action == 2) ruzina_load_display_choose();
+    else if (action == 3) ruzina_load_display_load(deck);
+#endif
+}
+
 void ruzina_bridge_midi_event(uint32_t deck, uint32_t control, uint32_t kind, int32_t value, uint32_t max,
                               const uint8_t *name, uint32_t name_len)
 {

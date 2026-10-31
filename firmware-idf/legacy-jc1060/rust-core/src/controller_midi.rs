@@ -178,8 +178,39 @@ impl Write for Name {
     }
 }
 
+/// Library UI actions passed to C (see [`ui_action`]).
+pub(crate) mod ui {
+    /// Move the selection by `value` rows.
+    pub const BROWSE: u32 = 1;
+    /// Browse encoder press: choose the selected track.
+    pub const CHOOSE: u32 = 2;
+    /// Load the selected track on deck `deck`.
+    pub const LOAD: u32 = 3;
+}
+
+/// The library action a semantic event asks for: `(action, deck, value)`.
+pub(crate) fn ui_action(event: &ControlEvent) -> Option<(u32, u32, i32)> {
+    let deck = match event.deck {
+        None => 0,
+        Some(DeckId::One) => 1,
+        Some(DeckId::Two) => 2,
+    };
+    match (event.control, event.value) {
+        (SemanticControl::BrowseDelta, ControlValue::Relative(delta)) if delta != 0 => {
+            Some((ui::BROWSE, 0, i32::from(delta)))
+        }
+        (SemanticControl::BrowsePress, ControlValue::Pressed(true)) => Some((ui::CHOOSE, 0, 0)),
+        (SemanticControl::Load, ControlValue::Pressed(true)) if deck != 0 => {
+            Some((ui::LOAD, deck, 0))
+        }
+        _ => None,
+    }
+}
+
 #[cfg(feature = "idf-controller-midi")]
 unsafe extern "C" {
+    /// One library UI action (browse, choose, load); scalars only.
+    fn ruzina_bridge_midi_ui(action: u32, deck: u32, value: i32);
     /// One semantic event; `name` is lent for the call only.
     fn ruzina_bridge_midi_event(
         deck: u32,
@@ -336,6 +367,10 @@ fn drain(state: &mut State) -> i32 {
                 )
             };
             state.echo(&event);
+            if let Some((action, deck, value)) = ui_action(&event) {
+                // SAFETY: scalars only.
+                unsafe { ruzina_bridge_midi_ui(action, deck, value) };
+            }
             delivered += 1;
         }
         state.session.complete_delivery(true);

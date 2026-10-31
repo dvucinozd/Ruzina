@@ -27,9 +27,21 @@ endif()
 if(CONFIG_RUZINA_SD_RUST_LOAD AND (NOT CONFIG_RUZINA_SD_RUST_BRIDGE OR CONFIG_RUZINA_SD_RUST_EXFAT))
     message(FATAL_ERROR "Rust media load requires the Rust SD bridge owner and excludes the fixture run")
 endif()
-if(CONFIG_RUZINA_USB_HOST_ENUM AND (CONFIG_RUZINA_SD_READONLY OR CONFIG_RUZINA_SD_RUST_BRIDGE OR CONFIG_RUZINA_MEMORY_TASK
-        OR CONFIG_RUZINA_DISPLAY_TOUCH OR CONFIG_RUZINA_LOAD_DISPLAY OR CONFIG_APP_BUILD_TYPE_PURE_RAM_APP OR CONFIG_SPIRAM))
+# The deck UI is the one profile that combines owners: Rust SD load, the
+# status display with touch and the USB host with MIDI. Otherwise USB host
+# stays an isolated, flash-backed owner.
+set(ruzina_deck_ui OFF)
+if(CONFIG_RUZINA_USB_HOST_MIDI AND CONFIG_RUZINA_SD_RUST_LOAD AND CONFIG_RUZINA_LOAD_DISPLAY)
+    set(ruzina_deck_ui ON)
+endif()
+if(CONFIG_RUZINA_USB_HOST_ENUM AND NOT ruzina_deck_ui AND (CONFIG_RUZINA_SD_READONLY OR CONFIG_RUZINA_SD_RUST_BRIDGE
+        OR CONFIG_RUZINA_MEMORY_TASK OR CONFIG_RUZINA_DISPLAY_TOUCH OR CONFIG_RUZINA_LOAD_DISPLAY
+        OR CONFIG_APP_BUILD_TYPE_PURE_RAM_APP OR CONFIG_SPIRAM))
     message(FATAL_ERROR "USB host enumeration is an isolated flash-backed owner without SD, display or PSRAM")
+endif()
+if(ruzina_deck_ui AND (NOT CONFIG_RUZINA_USB_HOST_ENUM OR CONFIG_RUZINA_SD_READONLY OR CONFIG_RUZINA_MEMORY_TASK
+        OR CONFIG_RUZINA_DISPLAY_TOUCH OR CONFIG_APP_BUILD_TYPE_PURE_RAM_APP))
+    message(FATAL_ERROR "The deck UI combines only Rust SD load, the load display and USB-MIDI")
 endif()
 if(CONFIG_RUZINA_USB_HOST_MIDI AND NOT CONFIG_RUZINA_USB_HOST_ENUM)
     message(FATAL_ERROR "USB-MIDI requires the USB host diagnostic owner")

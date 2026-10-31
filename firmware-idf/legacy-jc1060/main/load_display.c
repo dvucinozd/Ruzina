@@ -47,6 +47,7 @@ typedef struct {
     uint32_t failure;       /* stage << 8 | code */
     char note[TEXT_BYTES];  /* owner state */
     int32_t selected;       /* -1 none */
+    int32_t deck_track[2];  /* track loaded on deck 1/2 by the controller; -1 none */
     uint32_t detail_version;
     detail_t detail;
     int8_t outcome[MAX_TRACKS];
@@ -115,10 +116,20 @@ static void band(unsigned row, void (*paint)(unsigned y, const status_t *), cons
     esp_cache_msync(start, WIDTH * FONT24_HEIGHT * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
 }
 
+/* Before any controller load: the profile banner. After one: what each deck
+ * holds, as chosen with the controller's Load buttons. */
 static void paint_header(unsigned y, const status_t *s)
 {
-    (void)s;
-    text(12, y, 80, ACCENT, "RUZINA  sd-rust-load  JC1060 v1.3  read-only SD  tap a track");
+    if (s->deck_track[0] < 0 && s->deck_track[1] < 0) {
+        text(12, y, 80, ACCENT, "RUZINA  sd-rust-load  JC1060 v1.3  read-only SD  tap or browse a track");
+        return;
+    }
+    for (unsigned deck = 0; deck < 2; ++deck) {
+        unsigned x = deck * (WIDTH / 2) + 12;
+        int32_t track = s->deck_track[deck];
+        text(x, y, 3, ACCENT, deck ? "D2" : "D1");
+        text(x + 36, y, COLS - 4, track >= 0 ? FOREGROUND : DIM, track >= 0 ? s->title[track] : "empty");
+    }
 }
 
 static void paint_counts(unsigned y, const status_t *s)
@@ -235,7 +246,8 @@ static void ui_task(void *unused)
         portEXIT_CRITICAL(&lock);
         if (!changed) continue;
         bool first = drawn.version == UINT32_MAX;
-        if (first) band(0, paint_header, &now);
+        if (first || now.deck_track[0] != drawn.deck_track[0] || now.deck_track[1] != drawn.deck_track[1])
+            band(0, paint_header, &now);
         if (first || now.pass != drawn.pass || now.tracks != drawn.tracks || now.loaded != drawn.loaded
                 || now.playlists != drawn.playlists)
             band(1, paint_counts, &now);
@@ -290,10 +302,52 @@ static void touch_task(void *unused)
     }
 }
 
+/* Controller browse: move the selection (clamped to the catalog) and ask the
+ * load task for its detail, exactly as a tap does. Runs on the USB task. */
+void ruzina_load_display_browse(int32_t delta)
+{
+    if (!ready) return;
+    portENTER_CRITICAL(&lock);
+    int32_t index = -1;
+    if (shared.tracks) {
+        int32_t last = (int32_t)(shared.tracks < MAX_TRACKS ? shared.tracks : MAX_TRACKS) - 1;
+        index = shared.selected < 0 ? 0 : shared.selected + delta;
+        if (index < 0) index = 0;
+        if (index > last) index = last;
+        shared.selected = index;
+        shared.version++;
+    }
+    portEXIT_CRITICAL(&lock);
+    if (index >= 0) ruzina_legacy_load_select((uint32_t)index);
+}
+
+/* Browse press: re-request the selected track's detail. */
+void ruzina_load_display_choose(void)
+{
+    if (!ready) return;
+    portENTER_CRITICAL(&lock);
+    int32_t index = shared.selected;
+    portEXIT_CRITICAL(&lock);
+    if (index >= 0) ruzina_legacy_load_select((uint32_t)index);
+}
+
+/* Load button: assign the selected track to deck 1 or 2 in the header. */
+void ruzina_load_display_load(uint32_t deck)
+{
+    if (!ready || deck < 1 || deck > 2) return;
+    portENTER_CRITICAL(&lock);
+    if (shared.selected >= 0) {
+        shared.deck_track[deck - 1] = shared.selected;
+        shared.version++;
+    }
+    portEXIT_CRITICAL(&lock);
+}
+
 esp_err_t ruzina_load_display_start(void)
 {
     memset(shared.outcome, -1, sizeof(shared.outcome));
     shared.selected = -1;
+    shared.deck_track[0] = shared.deck_track[1] = -1;
     esp_err_t err = ruzina_panel_start(dark, &frame);
     if (err != ESP_OK) return err;
     if (xTaskCreatePinnedToCore(ui_task, "load_ui", 4096, NULL, 1, NULL, 0) != pdPASS) return ESP_ERR_NO_MEM;
