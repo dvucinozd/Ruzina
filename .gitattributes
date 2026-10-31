@@ -2,3 +2,5 @@
 # trailing spaces emitted by the firmware/toolchain. Never normalize it.
 docs/boards/evidence/** -text -whitespace
 docs/boards/readiness/*write-recovery-plan*.json -text -whitespace
+# Vendored upstream sources stay byte-identical to their recorded archive.
+firmware-idf/legacy-jc1060/third_party/esp-usb-*/** -text -whitespace

@@ -1,0 +1,5 @@
+CONFIG_RUZINA_USB_HOST_ENUM=y
+# The DDJ-FLX4 configuration descriptor (audio + MIDI) exceeds the 256-byte
+# default; enumeration fails with "Configuration descriptor larger than control
+# transfer max length". UAC2 configurations commonly run to 1-2 KiB.
+CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096

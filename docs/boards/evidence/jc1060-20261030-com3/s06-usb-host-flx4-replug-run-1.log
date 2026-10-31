@@ -1,0 +1,85 @@
+heartbeat=49 uptime_us=49031600
+heartbeat=50 uptime_us=50031600
+heartbeat=51 uptime_us=51031600
+heartbeat=52 uptime_us=52031600
+heartbeat=53 uptime_us=53031600
+heartbeat=54 uptime_us=54031600
+heartbeat=55 uptime_us=55031600
+heartbeat=56 uptime_us=56031600
+heartbeat=57 uptime_us=57031600
+heartbeat=58 uptime_us=58031600
+heartbeat=59 uptime_us=59031600
+heartbeat=60 uptime_us=60031600
+heartbeat=61 uptime_us=61031600
+heartbeat=62 uptime_us=62031600
+heartbeat=63 uptime_us=63031600
+heartbeat=64 uptime_us=64031600
+heartbeat=65 uptime_us=65031600
+heartbeat=66 uptime_us=66031600
+heartbeat=67 uptime_us=67031600
+heartbeat=68 uptime_us=68031600
+heartbeat=69 uptime_us=69031600
+heartbeat=70 uptime_us=70031600
+heartbeat=71 uptime_us=71031600
+heartbeat=72 uptime_us=72031600
+heartbeat=73 uptime_us=73031600
+heartbeat=74 uptime_us=74031600
+heartbeat=75 uptime_us=75031600
+heartbeat=76 uptime_us=76031600
+heartbeat=77 uptime_us=77031600
+heartbeat=78 uptime_us=78031600
+heartbeat=79 uptime_us=79031600
+heartbeat=80 uptime_us=80031600
+heartbeat=81 uptime_us=81031600
+heartbeat=82 uptime_us=82031600
+heartbeat=83 uptime_us=83031600
+heartbeat=84 uptime_us=84031600
+heartbeat=85 uptime_us=85031600
+heartbeat=86 uptime_us=86031600
+heartbeat=87 uptime_us=87031600
+heartbeat=88 uptime_us=88031600
+heartbeat=89 uptime_us=89031600
+heartbeat=90 uptime_us=90031600
+heartbeat=91 uptime_us=91031600
+heartbeat=92 uptime_us=92031600
+heartbeat=93 uptime_us=93031600
+heartbeat=94 uptime_us=94031600
+heartbeat=95 uptime_us=95031600
+heartbeat=96 uptime_us=96031600
+heartbeat=97 uptime_us=97031600
+heartbeat=98 uptime_us=98031600
+heartbeat=99 uptime_us=99031600
+heartbeat=100 uptime_us=100031600
+heartbeat=101 uptime_us=101031600
+heartbeat=102 uptime_us=102031600
+heartbeat=103 uptime_us=103031600
+heartbeat=104 uptime_us=104031600
+usb_attach n=1 address=1 speed=HIGH usb=0200 vid=2b73 pid=0045 class=00/00/00 mps0=64 configs=1 config=1 total=451 interfaces=7 max_power_ma=500 manufacturer="AlphaTheta Corporation" product="DDJ-FLX4"
+usb_iad first=0 count=3 class=01/00/00
+usb_iface number=0 alt=0 endpoints=0 class=01/01/00
+usb_iface number=1 alt=0 endpoints=0 class=01/02/00
+usb_iface number=1 alt=1 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=576 interval=4
+usb_iface number=1 alt=2 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=384 interval=4
+usb_iface number=2 alt=0 endpoints=0 class=01/02/00
+usb_iface number=2 alt=1 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=288 interval=4
+usb_iface number=2 alt=2 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=192 interval=4
+usb_iad first=3 count=2 class=01/00/00
+usb_iface number=3 alt=0 endpoints=0 class=01/01/00
+usb_iface number=4 alt=0 endpoints=2 class=01/03/00
+usb_ep address=82 attributes=02 mps=512 interval=0
+usb_ep address=03 attributes=02 mps=512 interval=0
+usb_iad first=5 count=1 class=03/00/00
+usb_iface number=5 alt=0 endpoints=2 class=03/00/00
+usb_ep address=05 attributes=03 mps=64 interval=4
+usb_ep address=84 attributes=03 mps=64 interval=4
+usb_iad first=6 count=1 class=ff/f0/00
+usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00
+usb_ep address=86 attributes=02 mps=512 interval=0
+usb_ep address=07 attributes=02 mps=512 interval=0
+usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1
+heartbeat=105 uptime_us=105031600
+heartbeat=106 uptime_us=106031600

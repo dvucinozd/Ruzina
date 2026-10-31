@@ -114,6 +114,20 @@ class ConfigTests(unittest.TestCase):
             result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
             self.assertEqual(result.returncode==0,accepted,(override,result.stderr))
 
+    def test_usb_host_enum_is_isolated(self):
+        base=dict(IDF_TARGET='esp32p4',CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
+                  CONFIG_ESP32P4_REV_MIN_FULL='100',CONFIG_ESP32P4_REV_MAX_FULL='199',
+                  CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ='360',IDF_VERSION='6.1.0',
+                  CONFIG_RUZINA_USB_HOST_ENUM='ON')
+        guard=Path(__file__).resolve().parents[1]/'check_config.cmake'
+        cases=[({},True),({'CONFIG_RUZINA_SD_RUST_BRIDGE':'ON'},False),({'CONFIG_RUZINA_SD_READONLY':'ON'},False),
+               ({'CONFIG_RUZINA_DISPLAY_TOUCH':'ON'},False),({'CONFIG_RUZINA_LOAD_DISPLAY':'ON'},False),
+               ({'CONFIG_SPIRAM':'ON'},False),({'CONFIG_APP_BUILD_TYPE_PURE_RAM_APP':'ON'},False)]
+        for override,accepted in cases:
+            config=base|override
+            result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+            self.assertEqual(result.returncode==0,accepted,(override,result.stderr))
+
     def test_rust_exfat_requires_bridge(self):
         base=dict(IDF_TARGET='esp32p4',CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
                   CONFIG_ESP32P4_REV_MIN_FULL='100',CONFIG_ESP32P4_REV_MAX_FULL='199',

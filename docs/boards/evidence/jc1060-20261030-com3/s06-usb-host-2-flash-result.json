@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-usb-host-enum-ctrl4096-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application owns only the HS USB OTG/UTMI host (enumeration, no claims); no SD/display/audio owner; VBUS hard-wired to USB5V_IN",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "0133e42174d852774bf20ca3668b3df1fadc3995f6383ad24c569aebe58d3584",
+  "plan_sha256": "ed7ae4c0cae3bf590ec9e33fbb948e9c2ead3f3fd5cfbbb5aac511d1b159b208",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "f05e6fa328af69d553266be3b0cd8ca3f4e0069d940e6737bea6e7a54eb719bf"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 204800,
+      "sha256": "e4f490c885c936bdb1f9bd42d4dbf406ca9f712849a821c29abefb0f4bdfe1fa"
+    }
+  ],
+  "programmer_log_sha256": "112838cdda4cad34577f89cdbded7e9edc80d158277523b49388b89b58913d9f"
+}

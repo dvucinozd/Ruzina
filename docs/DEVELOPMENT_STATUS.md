@@ -30,7 +30,11 @@ cold return. It is a diagnostic, not qualified. The
 [`sd-rust-load-display`](reviews/2026-10-31-legacy-load-display.md) variant adds
 a status screen with the track list and passed the same device runs. Touch
 selection now shows each track's analysis detail and preview waveform, which
-matched the host import for every tapped track.
+matched the host import for every tapped track. The isolated
+[`usb-host`](reviews/2026-10-31-legacy-usb-host-enum.md) diagnostic enumerates
+the owner's DDJ-FLX4 at high speed on the HS port, with its UAC 4-channel
+playback, MIDI, HID and vendor interfaces, through three hot-plug cycles.
+Nothing claims those interfaces yet.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

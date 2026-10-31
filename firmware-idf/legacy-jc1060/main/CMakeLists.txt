@@ -1,6 +1,6 @@
 # PSRAM must be in the requirement graph before Kconfig expansion, even when
 # disabled: CONFIG-dependent REQUIRES would hide its configuration symbols.
-set(probe_requires esp_system esp_hw_support esp_timer esp_psram heap esp_mm esp_lcd esp_driver_gpio esp_driver_ledc esp_driver_i2c sdmmc esp_driver_sdmmc mbedtls)
+set(probe_requires esp_system esp_hw_support esp_timer esp_psram heap esp_mm esp_lcd esp_driver_gpio esp_driver_ledc esp_driver_i2c sdmmc esp_driver_sdmmc mbedtls usb)
 if(NOT CONFIG_APP_BUILD_TYPE_PURE_RAM_APP)
     list(APPEND probe_requires spi_flash)
 endif()
@@ -13,6 +13,9 @@ if(CONFIG_RUZINA_DISPLAY_TOUCH OR CONFIG_RUZINA_LOAD_DISPLAY)
 endif()
 if(CONFIG_RUZINA_LOAD_DISPLAY)
     list(APPEND probe_sources load_display.c)
+endif()
+if(CONFIG_RUZINA_USB_HOST_ENUM)
+    list(APPEND probe_sources usb_host_enum.c)
 endif()
 set(probe_includes ".")
 if(CONFIG_RUZINA_SD_READONLY)

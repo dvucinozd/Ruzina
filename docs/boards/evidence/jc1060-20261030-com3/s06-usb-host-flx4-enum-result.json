@@ -1,0 +1,21 @@
+{
+  "scenario": "s06-usb-host-flx4-enum",
+  "mode": "boot",
+  "app_sha256": "0133e42174d852774bf20ca3668b3df1fadc3995f6383ad24c569aebe58d3584",
+  "bytes": 8192,
+  "sha256": "cbda538dcbea8afacc526d894934c1cf0af40eea723eb7eeb7ad5b0b1e0f7f62",
+  "host_started": true,
+  "init_failed": false,
+  "attaches": [],
+  "interfaces": [],
+  "endpoints": 0,
+  "iads": [],
+  "config_walks": [],
+  "attach_errors": [],
+  "detaches": 0,
+  "resets": [
+    "11"
+  ],
+  "heartbeats": 140,
+  "fatal": []
+}
