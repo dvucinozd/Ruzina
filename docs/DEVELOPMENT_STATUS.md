@@ -40,6 +40,9 @@ the board: buttons, faders, crossfader and jogs, with 0 drops. Its Bulk-OUT
 drives a diagnostic LED echo and lamp test. The combined
 [`deck-ui`](reviews/2026-10-31-legacy-deck-ui.md) runs SD load, the screen and
 the FLX4 together on the board: browse and load drive the library screen.
+[`deck-audio`](reviews/2026-11-01-legacy-deck-audio.md) adds the first audible
+output: a UAC1 tone on the FLX4 headphone channels, 48 s with 0 isochronous
+errors.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

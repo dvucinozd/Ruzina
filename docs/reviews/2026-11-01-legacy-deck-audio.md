@@ -1,7 +1,7 @@
 # JC1060 `deck-audio`: first USB audio to the FLX4 headphones
 
-Date: 2026-11-01. Branch: from main `5121121` (after PR #68). Build only: no
-device run yet. Native minimum 302 and APTA unchanged.
+Date: 2026-11-01. Branch: from main `5121121` (after PR #68). The device
+run, with the owner present, is at the end. Native minimum 302 and APTA unchanged.
 
 ## What it adds
 
@@ -32,8 +32,9 @@ the tone goes to FLX4 channels 3/4, which the FLX4 profile lists as
     interface at the chosen alternate.
   - It sends `SET_INTERFACE` through `usb_host_transfer_submit_control`, then
     `SET_CUR` when the endpoint advertises frequency control.
-  - It then keeps three isochronous OUT transfers of eight 1 ms packets in
-    flight on endpoint `0x01`, refilling each completion.
+  - It then keeps four isochronous OUT transfers of six 1 ms packets in flight
+    on endpoint `0x01`, refilling each completion. (Eight packets per
+    transfer failed on the device; see below.)
   - It counts transfer and per-packet errors, logs `usb_uac_stats` every 5 s,
     and on detach waits for every transfer, frees them, releases the
     interface and logs `usb_uac_stop`.
@@ -81,3 +82,47 @@ Accept the run when:
 - `usb_uac_stats` shows no `iso_errors` or `packet_errors`.
 - The screen, browse and load still work.
 - A detach logs `usb_uac_stop freed=YES release=ESP_OK`.
+
+
+## Device run (2026-11-01, owner present)
+
+Setup:
+- The PC on the FS port only, with the battery disconnected.
+- The 25-track card inserted.
+- The FLX4 on bus power on the HS port, with headphones on the FLX4.
+
+Records are in `docs/boards/evidence/jc1060-20261030-com3/s06-deck-audio-*`,
+indexed by the
+[device index](../boards/readiness/jc1060-s06-deck-audio-device-20261101.json).
+
+1. **First image.** `716b2f0d…` (plan `7ee86812…`) flashed with a matching
+   readback.
+   - The format choice and claim worked: `usb_uac interface=1 alt=2 ep=01
+     mps=384 channels=4 bytes=2 rate=48000 freq_control=1 claim=ESP_OK`.
+   - The `SET_INTERFACE` and `SET_CUR` chain completed.
+   - Every isochronous submit then failed with `Enqueue URB error:
+     ESP_ERR_INVALID_SIZE`, giving `stream=PARTIAL transfers=0`.
+   - Cause: at high speed a 1 ms `bInterval` is 8 microframes, and esp-usb's
+     `check_xfer_size` allows at most `XFER_LIST_LEN_ISOC −
+     XFER_LIST_ISOC_MARGIN = 61` microframes per isochronous transfer. Eight
+     packets need 64.
+   - Nothing else failed: the screen, load and MIDI ran on, and detach freed
+     everything.
+2. **Fix and image `840befe9…`** (plan `b0e17fdb…`). Four transfers of six
+   packets: 48 microframes each, with 24 ms still queued.
+   - It logged `usb_uac stream=STARTED transfers=4 packets_per_transfer=6`.
+   - The FLX4's stale first session after boot streamed 30 transfers, then
+     stopped cleanly when the controller re-enumerated.
+   - The second session streamed continuously.
+   - **Owner check:** the owner confirmed the tone was correct, with deck 1
+     Play in the left ear and deck 2 Play in the right. There were 3 Play
+     presses per deck.
+   - **Telemetry:** `usb_uac_stats` every 6 s up to 8000 transfers, which is
+     48024 packets, 2305152 frames and 48 s at 48 kHz, with 13470 tone
+     packets. `iso_errors=0` and `packet_errors=0` throughout.
+   - **Load:** 11 passes ran alongside, each 25/25, with a PSRAM minimum of
+     29216864 bytes, 752 bytes below `deck-ui`.
+
+This is the first audible output of the project on JC1060. It is the
+diagnostic tone only, with no deck engine, decoding or MAIN route, and the
+headphone level does not apply.

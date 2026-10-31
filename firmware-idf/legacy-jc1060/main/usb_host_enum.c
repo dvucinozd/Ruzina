@@ -229,9 +229,12 @@ extern uint32_t ruzina_legacy_uac_control(uint32_t step, uint8_t *out);
 extern uint32_t ruzina_legacy_uac_fill(uint8_t *buffer, uint32_t capacity, uint32_t *sizes, uint32_t packets);
 extern void ruzina_legacy_uac_stats(uint32_t *out);
 
-/* Three isochronous OUT transfers of eight 1 ms packets keep 24 ms queued. */
-#define UAC_TRANSFERS 3
-#define UAC_PACKETS 8
+/* Four isochronous OUT transfers of six 1 ms packets keep 24 ms queued. At
+ * high speed a 1 ms bInterval is 8 microframes, and esp-usb fits at most
+ * (64 - 3) microframes per ISOC transfer, so 7 packets is the hard ceiling:
+ * 8 failed on the board with ESP_ERR_INVALID_SIZE. */
+#define UAC_TRANSFERS 4
+#define UAC_PACKETS 6
 enum { UAC_OFF = -1, UAC_SET_ALT, UAC_SET_RATE, UAC_STREAMING };
 static usb_transfer_t *uac_ctrl, *uac_iso[UAC_TRANSFERS];
 static bool uac_ctrl_busy, uac_iso_busy[UAC_TRANSFERS];
@@ -267,7 +270,7 @@ static void uac_iso_done(usb_transfer_t *transfer)
     if (uac_step == UAC_STREAMING && device && !gone && transfer->status == USB_TRANSFER_STATUS_COMPLETED
             && uac_refill(transfer) && usb_host_transfer_submit(transfer) == ESP_OK)
         uac_iso_busy[index] = true;
-    if (uac_completed && uac_completed % 625 == 0) { /* every 5 s */
+    if (uac_completed && uac_completed % 1000 == 0) { /* every 6 s */
         uint32_t stats[3];
         ruzina_legacy_uac_stats(stats);
         printf("usb_uac_stats transfers=%" PRIu32 " packets=%" PRIu32 " frames=%" PRIu32 " tone_packets=%" PRIu32

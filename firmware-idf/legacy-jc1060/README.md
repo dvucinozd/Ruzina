@@ -395,8 +395,10 @@ FLX4 that is AudioStreaming interface 1, alternate 2: 4 channels, 16-bit,
 
 C then claims that interface. It sends `SET_INTERFACE` and, when the
 endpoint supports it, `SET_CUR` 48 kHz, with the request bytes built by
-`ruzina_uac::stream::ControlRequest`. It keeps three isochronous OUT
-transfers of eight 1 ms packets queued on endpoint `0x01`. Each completion is
+`ruzina_uac::stream::ControlRequest`. It keeps four isochronous OUT
+transfers of six 1 ms packets queued on endpoint `0x01`. esp-usb fits at most
+(64 − 3) high-speed microframes per transfer, so eight 1 ms packets do not
+fit. Each completion is
 refilled through `ruzina_legacy_uac_fill`, which uses `ruzina_uac`'s
 `Cadence` and `pack`.
 
