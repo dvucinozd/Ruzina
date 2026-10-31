@@ -2,7 +2,8 @@
 
 Date: 2026-10-31. Branch: `ogranak/jc1060-sd-rust-load`, from main
 `dbfecf36d372eb1bf1924643af2b00dc2f69d86b` (after PRs #57, #58 and #59).
-No COM3 access, flash or device run. Native minimum 302 and APTA unchanged.
+The build sections below had no device access. The first device run, with
+its stack fix, is at the end. Native minimum 302 and APTA unchanged.
 
 ## What it adds
 
@@ -17,7 +18,7 @@ read-only Rust SD bridge:
 
 Each phase reports scalar telemetry, with free and minimum PSRAM. Profile
 details and event codes are in the
-[legacy README](../../firmware-idf/legacy-jc1060/README.md#sd-rust-load-profile-build-only).
+[legacy README](../../firmware-idf/legacy-jc1060/README.md#sd-rust-load-profile).
 
 - Rust: `media_load::volume_identity` and the `ruzina_legacy_load_run` export
   (feature `idf-media-load`). The export reuses the existing bridge, mount,
@@ -88,19 +89,83 @@ Operator gates that remain open:
 - a live identity and security recheck;
 - reset telemetry.
 
-## Next: first device run (needs the owner)
+## First device run (2026-10-31, owner present)
 
-The device run needs:
-- the CI-built package for the exact head;
-- a flash plan that replays the existing predecessor chain;
-- a card with a real Rekordbox export.
+PR #60 merged as `a0da6a6`; its CI passed all 11 jobs after the Actions limit
+was raised. The owner was at the board for every physical step. Records are in
+[`docs/boards/evidence/jc1060-20261030-com3`](../boards/evidence/jc1060-20261030-com3/)
+(`s06-rust-load-*`), indexed by the
+[device index](../boards/readiness/jc1060-s06-sd-rust-load-device-20261031.json).
 
-Acceptance:
-- catalog count matching the export;
-- per-track outcomes, with ANLZ results compared against the earlier
-  189-track comparison;
-- PSRAM minimum stable across passes;
-- removal and reinsertion with app restarts;
-- cold return.
+### The first image overflowed its stack
 
-Display, audio, USB host and C6 stay outside this profile.
+The planned image (`62118365…`) was flashed with the reviewed plan:
+- the identity, security and RDID checks passed;
+- the predecessor sectors matched;
+- readback matched
+  ([result](../boards/evidence/jc1060-20261030-com3/s06-rust-load-flash-result.json)).
+
+With no card it booted and quiesced on `ESP_ERR_TIMEOUT`. With the card,
+`sd_rust_client` hit a **Stack protection fault** right after
+`S6_RUST_LOAD`, before the mount event
+([capture](../boards/evidence/jc1060-20261030-com3/s06-rust-load-stack-overflow-run-1.log)).
+
+The ELF showed why. The prologue of `ruzina_legacy_load_run` reserves 85344
+bytes on a 49136-byte stack. The poll function of `probe_export_pdb` needs
+171968 bytes, and `scan_optional_name_table` needs 46592. The IDF caller passed
+the 4 KiB page buffer by value. That buffer moves through every nested
+`(file, buffer, result)` return and `await`, and LLVM does not overlap those
+temporaries. Host tests cannot see this, because host threads have megabytes of
+stack. The native firmware is not affected: its `Usb0LibraryFiles` buffer is a
+`&'static mut [u8]`.
+
+Fix (uncommitted at the time of the run):
+- `media_load::import_catalog` passes a `Box<[u8]>` page buffer from the PSRAM
+  heap.
+- `ruzina_legacy_load_run` keeps the import and preflight futures in
+  `Box::pin`.
+
+The largest Rust frames are now 16048 bytes (the import poll), 15504 bytes and
+10800 bytes (the run). The app shrank from 489232 to 349056 bytes.
+
+`tools/stack_frames.py` reads each function's prologue from the linked ELF.
+`build_legacy.py` now rejects every Rust-bridge variant that has a Rust frame
+over 24 KiB. On the first ELF it reports all three oversized frames.
+
+### Stack-fixed image
+
+The new image is `893c09ba…`. It was built from `a0da6a6` plus the fix, with
+the dirty diff recorded. The flash plan is `191c73aa…`, with the first image as
+its predecessor and a chain of 9 plans. Flashing passed the same checks with a
+matching readback
+([result](../boards/evidence/jc1060-20261030-com3/s06-rust-load-fix-flash-result.json)).
+
+The card is the owner's exFAT card with a new Rekordbox export, mounted at LBA
+2048. Results:
+
+| Run | Result |
+|---|---|
+| [ROM boot](../boards/evidence/jc1060-20261030-com3/s06-rust-load-first-boot-result.json) | 2 passes; catalog 25 tracks, 1 playlist node; all 25 tracks with analysis |
+| [3 app restarts](../boards/evidence/jc1060-20261030-com3/s06-rust-load-app-restarts-result.json) | 10 passes each, 25/25 every pass |
+| [Removal mid-run](../boards/evidence/jc1060-20261030-com3/s06-rust-load-removal-result.json) | passes 15–18 at 25/25, then pass 19 failed at import (stage 3); owner `QUIESCED`, client `STOPPED -8`, 0 denied commands, no fault |
+| [Same-card reinsertion, 3 app restarts](../boards/evidence/jc1060-20261030-com3/s06-rust-load-reinsert-result.json) | fresh mount, 5 passes each at 25/25 |
+| [Cold return](../boards/evidence/jc1060-20261030-com3/s06-rust-load-cold-result.json) | USB power removed for 5–10 s, no BOOT/RESET; `reset_reason=1`, uptime restarted, 18 new passes at 25/25 |
+
+Across every run:
+- After each pass, free PSRAM is 30933660 bytes and the PSRAM minimum is
+  30449200 bytes. Both stayed identical in all passes, including those after
+  reinsertion and the cold return.
+- At least 13312 bytes of the client stack stayed free.
+- No SD command was denied, because none was attempted.
+- There was no panic or watchdog event.
+
+As in the exFAT cold run, the ROM and bootloader output was missed during USB
+re-enumeration.
+
+Still open:
+- The owner should confirm that the export holds 25 tracks and one playlist
+  node.
+- ANLZ content for this export has not been compared with the M2.5 parser.
+  The 189-track comparison was a different export.
+- Only one card has been run. Display, audio, USB host and C6 stay outside this
+  profile.

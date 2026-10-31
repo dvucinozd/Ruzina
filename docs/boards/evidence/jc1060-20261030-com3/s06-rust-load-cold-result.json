@@ -1,0 +1,61 @@
+{
+  "scenario": "s06-rust-load-cold",
+  "mode": "cold",
+  "app_sha256": "893c09bac1dd1f2ac9c6413e29bd3fc3d2516313786fa7a90ef59cd4d636f532",
+  "operator": "Owner disconnected sole USB power 5-10 s and reconnected without BOOT/RESET, SD inserted (confirmed in chat); monitor sent no reset or command",
+  "log_bytes": 225447,
+  "log_sha256": "40fd056910ac5ab9dd72638e2240206009eea58f4639ccc5df99f2a5c02e66fe",
+  "pre_cycle": {
+    "last_pass": 30,
+    "boot_banner_seen": false,
+    "bootloader_seen": false,
+    "psram_init_line": true
+  },
+  "mounted_partition_lbas": [
+    2048
+  ],
+  "catalog_tracks": [
+    25
+  ],
+  "playlist_nodes": [
+    1
+  ],
+  "pass_numbers": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "tracks_with_analysis": [
+    25
+  ],
+  "track_outcomes": {
+    "0": 25
+  },
+  "psram_free_after_pass": [
+    30933660
+  ],
+  "psram_min": [
+    30449200
+  ],
+  "min_client_stack_free": 13344,
+  "failures": [],
+  "owner_quiesced": [],
+  "client_stopped": [],
+  "fatal": [],
+  "sd_writes_denied_or_attempted": 0
+}

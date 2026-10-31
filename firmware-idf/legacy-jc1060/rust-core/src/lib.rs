@@ -3,6 +3,9 @@
 #[cfg(test)]
 extern crate std;
 
+#[cfg(feature = "media-load")]
+extern crate alloc;
+
 #[cfg(feature = "media-bridge")]
 pub mod media_bridge;
 

@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-sd-rust-load-stack-fix-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application uses reviewed SDMMC/LDO4 and caps-only PSRAM; no display/audio/USB-host owner",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "893c09bac1dd1f2ac9c6413e29bd3fc3d2516313786fa7a90ef59cd4d636f532",
+  "plan_sha256": "191c73aaefdd339d88ff1f273466151f6eb7802691d12584c2cfe52ebf9126f7",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "d4070f0a80eca520b0098494399b179c559ae013ac12e9537d129ad624d40fa8"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 352256,
+      "sha256": "4bd24f1f3c803b820610184a002ad6bae97fb7e7c6fa7683bff502d6cda16d34"
+    }
+  ],
+  "programmer_log_sha256": "ca830bb7f44f40b5bae09df5be2115d92f01a7d65768e57c9b4080b8e7af6790"
+}

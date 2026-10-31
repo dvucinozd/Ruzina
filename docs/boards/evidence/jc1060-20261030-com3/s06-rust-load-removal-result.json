@@ -1,0 +1,51 @@
+{
+  "scenario": "s06-rust-load-removal",
+  "mode": "passive",
+  "app_sha256": "893c09bac1dd1f2ac9c6413e29bd3fc3d2516313786fa7a90ef59cd4d636f532",
+  "operator": "Owner removed the SD card mid-run without power-off (confirmed in chat)",
+  "log_bytes": 21475,
+  "log_sha256": "1f771bbe587c2d65496852af98ee19d380d8665ad6e18813ee4b9dc2c95a1305",
+  "mounted_partition_lbas": [],
+  "catalog_tracks": [
+    25
+  ],
+  "playlist_nodes": [
+    1
+  ],
+  "pass_numbers": [
+    15,
+    16,
+    17,
+    18
+  ],
+  "tracks_with_analysis": [
+    25
+  ],
+  "track_outcomes": {},
+  "psram_free_after_pass": [
+    30933660
+  ],
+  "psram_min": [
+    30449200
+  ],
+  "min_client_stack_free": 13312,
+  "failures": [
+    {
+      "pass_": 19,
+      "stage": 3,
+      "code": 0
+    }
+  ],
+  "owner_quiesced": [
+    {
+      "error": "ESP_FAIL",
+      "reads": 126848,
+      "denied_commands": 0
+    }
+  ],
+  "client_stopped": [
+    -8
+  ],
+  "fatal": [],
+  "sd_writes_denied_or_attempted": 0
+}

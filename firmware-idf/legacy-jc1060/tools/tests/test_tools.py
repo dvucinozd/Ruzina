@@ -15,6 +15,32 @@ REPO = Path(__file__).resolve().parents[4]
 
 
 class Tests(unittest.TestCase):
+    def test_stack_frames(self):
+        from stack_frames import frame_sizes, oversized_rust_frames
+        text = '\n'.join([
+            '400427f0 <ruzina_legacy_load_run>:',
+            '400427f0:\taddi\tsp,sp,-256',
+            '4004280c:\tlui\ta0,0x15',
+            '4004280e:\taddi\ta0,a0,-928 # 14c60 <x>',
+            '40042812:\tsub\tsp,sp,a0',
+            '40042816:\taddi\tsp,sp,-4096',
+            '40050000 <_ZN5small4poll17h0E>:',
+            '40050000:\taddi\tsp,sp,-48',
+            '40050002:\tret',
+            '40050004:\taddi\tsp,sp,-99999',
+            '40060000 <soc_regions>:',
+            '40060000:\tlui\ta1,0xfffff',
+            '40060004:\tsub\tsp,sp,a1',
+            '40070000 <_ZN3big7inlined17h1E>:',
+            '40070000:\tlui\tt0,0x8',
+            '40070004:\tsub\tsp,sp,t0',
+        ])
+        self.assertEqual(frame_sizes(text), {'ruzina_legacy_load_run': 85344,
+                                             '_ZN5small4poll17h0E': 48,
+                                             '_ZN3big7inlined17h1E': 32768})
+        self.assertEqual(oversized_rust_frames(text), {'ruzina_legacy_load_run': 85344,
+                                                       '_ZN3big7inlined17h1E': 32768})
+
     def test_ranges(self):
         ram.validate_segments(0x4ff00000, [(0x4ff00000, 32), (0x30100000, 16)])
         for entry, segments in [(0x4ff00000, [(0x4ff00000, 0)]),

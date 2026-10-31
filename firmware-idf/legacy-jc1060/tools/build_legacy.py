@@ -183,6 +183,10 @@ def main():
                 raise ValueError('Rust exFAT profile/feature mismatch')
             if ('CONFIG_RUZINA_SD_RUST_LOAD=y' in config) != (args.variant == 'sd-rust-load'):
                 raise ValueError('Rust load profile/feature mismatch')
+            from stack_frames import oversized_rust_frames
+            oversized = oversized_rust_frames(run(['riscv32-esp-elf-objdump', '-d', '--no-show-raw-insn', elf]))
+            if oversized:
+                raise ValueError('Rust stack frame over task budget: ' + repr(oversized))
     manifest = dict(schema=1, variant=args.variant, sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],
                     idf_commit=PIN, submodules=subs, versions=versions, sources=initial_sources,

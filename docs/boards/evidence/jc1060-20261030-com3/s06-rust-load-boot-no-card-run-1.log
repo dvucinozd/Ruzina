@@ -1,0 +1,225 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff1012c
+Core1 Saved PC:0x4fc058dc
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (11) boot: ESP-IDF v6.1 2nd stage bootloader
+I (12) boot: compile time Oct 31 2026 11:32:30
+I (12) boot: Multicore bootloader
+I (13) boot: chip revision: v1.3
+I (13) boot: efuse block revision: v0.3
+I (13) boot.esp32p4: SPI Speed      : 40MHz
+I (14) boot.esp32p4: SPI Mode       : DIO
+I (14) boot.esp32p4: SPI Flash Size : 16MB
+I (14) boot: Enabling RNG early entropy source...
+I (15) boot: Partition Table:
+I (15) boot: ## Label            Usage          Type ST Offset   Length
+I (16) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (16) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (17) boot:  2 factory          factory app      00 00 00010000 00100000
+I (18) boot: End of partition table
+I (18) esp_image: segment 0: paddr=00010020 vaddr=40060020 size=0e228h ( 57896) map
+I (31) esp_image: segment 1: paddr=0001e250 vaddr=30100000 size=000b4h (   180) load
+I (32) esp_image: segment 2: paddr=0001e30c vaddr=4ff00000 size=01d0ch (  7436) load
+I (35) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=599c4h (367044) map
+I (107) esp_image: segment 4: paddr=000799ec vaddr=4ff01d0c size=0a7b4h ( 42932) load
+I (117) esp_image: segment 5: paddr=000841a8 vaddr=4ff0c500 size=03544h ( 13636) load
+I (124) boot: Loaded app from partition at offset 0x10000
+I (125) boot: Disabling RNG early entropy source...
+I (128) hex_psram: vendor id    : 0x0d (AP)
+I (129) hex_psram: Latency      : 0x01 (Fixed)
+I (129) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (129) hex_psram: dev id       : 0x03 (generation 4)
+I (130) hex_psram: density      : 0x07 (256 Mbit)
+I (130) hex_psram: good-die     : 0x06 (Pass)
+I (130) hex_psram: SRF          : 0x02 (Slow Refresh)
+I (131) hex_psram: BurstType    : 0x00 ( Wrap)
+I (131) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (131) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (132) hex_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (132) hex_psram: DriveStrength: 0x00 (1/1)
+I (132) MSPI Timing: Enter psram timing tuning
+I (304) esp_psram: Found 32MB PSRAM device
+I (304) esp_psram: Speed: 80MHz
+I (308) hex_psram: psram CS IO is dedicated
+I (308) cpu_start: Multicore app
+I (1576) esp_psram: SPI SRAM memory test OK
+I (1585) cpu_start: Pro cpu start user code
+I (1585) cpu_start: cpu freq: 360000000 Hz
+I (1586) app_init: Application information:
+I (1586) app_init: Project name:     ruzina_legacy_probe
+I (1586) app_init: App version:      0.1.0-legacy-eval
+I (1586) app_init: Compile time:     Oct 31 2026 11:31:26
+I (1586) app_init: ELF file SHA256:  9361a5ffb...
+I (1587) app_init: ESP-IDF:          v6.1
+I (1587) efuse_init: Min chip rev:     v1.0
+I (1587) efuse_init: Max chip rev:     v1.99 
+I (1587) efuse_init: Chip rev:         v1.3
+I (1588) heap_init: Initializing. RAM available for dynamic allocation:
+I (1588) heap_init: At 4FF11360 len 00029C60 (167 KiB): RETENT_RAM
+I (1588) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (1589) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (1589) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (1589) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (1590) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator
+W (1591) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (1592) spi_flash: detected chip: generic
+I (1592) spi_flash: flash io: dio
+I (1592) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1593) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1595) sleep_clock: System sleep clock ICG setting initialization
+I (1596) main_task: Started on CPU0
+I (1596) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=11
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+I (1596) SD_HOST: src_freq_hz: 160000000
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+E (1626) sdmmc_common: sdmmc_init_ocr: send_op_cond (1) returned 0x107
+rust_sd_owner=QUIESCED error=ESP_ERR_TIMEOUT reads=0 denied_commands=0 reinsert=APP_RESTART_REQUIRED
+heartbeat=1 uptime_us=1002053
+heartbeat=2 uptime_us=2002052
+heartbeat=3 uptime_us=3002052
+heartbeat=4 uptime_us=4002052
+heartbeat=5 uptime_us=5002052
+heartbeat=6 uptime_us=6002052
+heartbeat=7 uptime_us=7002052
+heartbeat=8 uptime_us=8002052
+heartbeat=9 uptime_us=9002052
+heartbeat=10 uptime_us=10002052
+heartbeat=11 uptime_us=11002052
+heartbeat=12 uptime_us=12002052
+heartbeat=13 uptime_us=13002052
+heartbeat=14 uptime_us=14002052
+heartbeat=15 uptime_us=15002052
+heartbeat=16 uptime_us=16002052
+heartbeat=17 uptime_us=17002052
+heartbeat=18 uptime_us=18002052
+heartbeat=19 uptime_us=19002052
+heartbeat=20 uptime_us=20002052
+heartbeat=21 uptime_us=21002052
+heartbeat=22 uptime_us=22002052
+heartbeat=23 uptime_us=23002052
+heartbeat=24 uptime_us=24002052
+heartbeat=25 uptime_us=25002052
+heartbeat=26 uptime_us=26002052
+heartbeat=27 uptime_us=27002052
+heartbeat=28 uptime_us=28002052
+heartbeat=29 uptime_us=29002052
+heartbeat=30 uptime_us=30002052
+heartbeat=31 uptime_us=31002052
+heartbeat=32 uptime_us=32002052
+heartbeat=33 uptime_us=33002052
+heartbeat=34 uptime_us=34002052
+heartbeat=35 uptime_us=35002052
+heartbeat=36 uptime_us=36002052
+heartbeat=37 uptime_us=37002052
+heartbeat=38 uptime_us=38002052
+heartbeat=39 uptime_us=39002052
+heartbeat=40 uptime_us=40002052
+heartbeat=41 uptime_us=41002052
+heartbeat=42 uptime_us=42002052
+heartbeat=43 uptime_us=43002052
+heartbeat=44 uptime_us=44002052
+heartbeat=45 uptime_us=45002052
+heartbeat=46 uptime_us=46002052
+heartbeat=47 uptime_us=47002052
+heartbeat=48 uptime_us=48002052
+heartbeat=49 uptime_us=49002052
+heartbeat=50 uptime_us=50002052
+heartbeat=51 uptime_us=51002052
+heartbeat=52 uptime_us=52002052
+heartbeat=53 uptime_us=53002052
+heartbeat=54 uptime_us=54002052
+heartbeat=55 uptime_us=55002052
+heartbeat=56 uptime_us=56002052
+heartbeat=57 uptime_us=57002052
+heartbeat=58 uptime_us=58002052
+heartbeat=59 uptime_us=59002052
+heartbeat=60 uptime_us=60002052
+heartbeat=61 uptime_us=61002052
+heartbeat=62 uptime_us=62002052
+heartbeat=63 uptime_us=63002052
+heartbeat=64 uptime_us=64002052
+heartbeat=65 uptime_us=65002052
+heartbeat=66 uptime_us=66002052
+heartbeat=67 uptime_us=67002052
+heartbeat=68 uptime_us=68002052
+heartbeat=69 uptime_us=69002052
+heartbeat=70 uptime_us=70002052
+heartbeat=71 uptime_us=71002052
+heartbeat=72 uptime_us=72002052
+heartbeat=73 uptime_us=73002052
+heartbeat=74 uptime_us=74002052
+heartbeat=75 uptime_us=75002052
+heartbeat=76 uptime_us=76002052
+heartbeat=77 uptime_us=77002052
+heartbeat=78 uptime_us=78002052
+heartbeat=79 uptime_us=79002052
+heartbeat=80 uptime_us=80002052
+heartbeat=81 uptime_us=81002052
+heartbeat=82 uptime_us=82002052
+heartbeat=83 uptime_us=83002052
+heartbeat=84 uptime_us=84002052
+heartbeat=85 uptime_us=85002052
+heartbeat=86 uptime_us=86002052
+heartbeat=87 uptime_us=87002052
+heartbeat=88 uptime_us=88002052
+heartbeat=89 uptime_us=89002052
+heartbeat=90 uptime_us=90002052
+heartbeat=91 uptime_us=91002052
+heartbeat=92 uptime_us=92002052
+heartbeat=93 uptime_us=93002052
+heartbeat=94 uptime_us=94002052
+heartbeat=95 uptime_us=95002052
+heartbeat=96 uptime_us=96002052
+heartbeat=97 uptime_us=97002052
+heartbeat=98 uptime_us=98002052
+heartbeat=99 uptime_us=99002052
+heartbeat=100 uptime_us=100002052
+heartbeat=101 uptime_us=101002052
+heartbeat=102 uptime_us=102002052
+heartbeat=103 uptime_us=103002052
+heartbeat=104 uptime_us=104002052
+heartbeat=105 uptime_us=105002052
+heartbeat=106 uptime_us=106002052
+heartbeat=107 uptime_us=107002052
+heartbeat=108 uptime_us=108002052
+heartbeat=109 uptime_us=109002052
+heartbeat=110 uptime_us=110002052
+heartbeat=111 uptime_us=111002052
+heartbeat=112 uptime_us=112002052
+heartbeat=113 uptime_us=113002052
+heartbeat=114 uptime_us=114002052
+heartbeat=115 uptime_us=115002052
+heartbeat=116 uptime_us=116002052
+heartbeat=117 uptime_us=117002052
+heartbeat=118 uptime_us=118002052
+heartbeat=119 uptime_us=119002052
+heartbeat=120 uptime_us=120002052
+heartbeat=121 uptime_us=121002052
+heartbeat=122 uptime_us=122002052
+heartbeat=123 uptime_us=123002052
+heartbeat=124 uptime_us=124002052
+heartbeat=125 uptime_us=125002052
+heartbeat=126 uptime_us=126002052
+heartbeat=127 uptime_us=127002052
+heartbeat=128 uptime_us=128002052
+heartbeat=129 uptime_us=129002052
+heartbeat=130 uptime_us=130002052
+heartbeat=131 uptime_us=131002052
+heartbeat=132 uptime_us=132002052
+heartbeat=133 uptime_us=133002052
