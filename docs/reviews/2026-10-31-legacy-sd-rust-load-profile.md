@@ -162,10 +162,11 @@ Across every run:
 As in the exFAT cold run, the ROM and bootloader output was missed during USB
 re-enumeration.
 
+The owner confirmed that the export holds 25 tracks, which matches the
+catalog count. The single playlist node was not separately confirmed.
+
 Still open:
-- The owner should confirm that the export holds 25 tracks and one playlist
-  node.
 - ANLZ content for this export has not been compared with the M2.5 parser.
   The 189-track comparison was a different export.
-- Only one card has been run. Display, audio, USB host and C6 stay outside this
-  profile.
+- Only one card has been run. The owner deferred other cards for now.
+- Display, audio, USB host and C6 stay outside this profile.
