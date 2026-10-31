@@ -47,11 +47,46 @@ Local, in WSL with Rust 1.95.0:
 - 19 tooling tests pass in WSL, including the new guard test with 7 cases.
   The remaining 2 need esptool, which WSL does not have.
 
-The full IDF image was not built locally. This machine has no ESP-IDF 6.1
-Python environment (`idf6.1_py3.11_env`). The legacy CI matrix builds the
-variant with the pinned IDF and its guards; read that run for this head.
-The C changes were checked against the pinned IDF headers
-(`esp_psram_is_initialized`, `esp_psram_get_size`) but are not compiled here.
+Full IDF build, local: the pinned IDF v6.1 checkout and its recorded Python
+environment under `D:\BoardEvidence\JC1060-20261030-COM3	oolchain` were used
+(esptool 5.6.0, CMake 4.0.3, GCC esp-15.2.0, Rust 1.95.0 in WSL). With them:
+- all 21 tooling tests pass;
+- `build_legacy.py --variant sd-rust-load` returns `BUILD_PACKAGE_PASS` from
+  clean commit `2487e70b6dad33a550f7a96aaf5b5ead44d213f2`. This covers the
+  PSRAM config checks, the linked `ruzina_legacy_load_run`, no FatFs and no
+  SD write or erase symbols.
+
+The app is 489232 bytes, SHA-256
+`62118365262a5d7e668e1025bb03f6fa574cd7adeb996fc8f16346b48f59c60e`, and fits
+the 1 MiB factory partition. The image includes the earlier exFAT
+`PartitionOffset=0` fix.
+
+Remote CI on PR #60 did not run. GitHub refused every job with "an Actions
+budget is preventing further use", so no step executed. That is
+NOT_RUN, not a failure or a pass.
+
+## Offline flash plan (no device access)
+
+`prepare_flash_plan.py` produced `OFFLINE_REVIEWED_OPERATOR_GATES_OPEN`:
+- **Plan:** `D:\BoardEvidence\JC1060-20261030-COM3\s06-rust-load-write-plan`,
+  plan SHA-256 `fce1261c55a5a2e268fd4059e9cb5a032a79c24f3362e1b20ac055a382f6b81a`.
+  It is recorded byte-for-byte in the
+  [plan snapshot](../boards/readiness/jc1060-s06-sd-rust-load-write-recovery-plan-20261031.json).
+- **Predecessor:** the flashed exFAT diagnostic, plan `e2d25655…`, app
+  `ec6b7f0f…`, which had a matching readback. The full chain of 8 plans is
+  replayed. Changed-sector restore targets that diagnostic; all 4 factory
+  backup copies were reverified for a full restore.
+- **Writes:** bootloader `0x2000`, partition table `0x8000` (identical to the
+  current one) and app `0x10000..0x88000`.
+- **Archive:** the package and plan are archived with a secondary copy, as
+  listed in the [build index](../boards/readiness/jc1060-s06-sd-rust-load-build-20261031.json)
+  (`add4c8fe…`, 19 members, CRC, member hashes and secondary copy verified).
+
+Operator gates that remain open:
+- physical connector and power;
+- manual ROM entry;
+- a live identity and security recheck;
+- reset telemetry.
 
 ## Next: first device run (needs the owner)
 

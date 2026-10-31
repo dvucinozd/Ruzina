@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "status": "BUILD_ONLY_PLAN_READY_NOT_FLASHED",
+  "variant": "sd-rust-load",
+  "local_package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-load-build-1",
+  "local_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-load-write-plan",
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-sd-rust-load-20261031.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-rust-load-20261031\\jc1060-idf61-sd-rust-load-20261031.zip",
+  "archive_sha256": "add4c8fe39bddc9ef235345fbebbada886182e929273feec58ad425ae60c952d",
+  "archive_bytes": 6058070,
+  "members": 19,
+  "app_sha256": "62118365262a5d7e668e1025bb03f6fa574cd7adeb996fc8f16346b48f59c60e",
+  "app_bytes": 489232,
+  "manifest_sha256": "c5ef82abb07603943f9d396adc5f225e0d37ae9483f22fd1cc06f1cbe643ce38",
+  "source_commit": "2487e70b6dad33a550f7a96aaf5b5ead44d213f2",
+  "dirty_status": "",
+  "plan_sha256": "fce1261c55a5a2e268fd4059e9cb5a032a79c24f3362e1b20ac055a382f6b81a",
+  "predecessor_plan_sha256": "e2d2565581002013b85d4bb5325874c5a17d850458d488d762add7ba41ddb3c3",
+  "predecessor_image": {
+    "app_sha256": "ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267",
+    "plan": "s06-rust-exfat-write-plan"
+  },
+  "offline_tool_tests": 21,
+  "device_access": false,
+  "flashed": false,
+  "physical_runtime": "NOT_RUN",
+  "remote_ci": "BLOCKED_ACTIONS_BUDGET; no job steps executed on PR #60",
+  "contains_factory_dump": false,
+  "contains_sd_dump": false,
+  "release": false,
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH"
+}
