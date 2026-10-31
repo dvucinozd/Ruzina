@@ -1,0 +1,361 @@
+rust_sd_owner reads=102960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=103920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104000 denied_commands=0 stack_free=5352
+heartbeat=68 uptime_us=68002278
+rust_sd_owner reads=104080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=104960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105680 denied_commands=0 stack_free=5352
+rust_load pass=15 event=5 value=25 stack_free=13312 psram_free=30933660 psram_min=30449200
+heartbeat=69 uptime_us=69002213
+heartbeat=70 uptime_us=70002210
+rust_sd_owner reads=105760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=105920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=106960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=107920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108000 denied_commands=0 stack_free=5352
+heartbeat=71 uptime_us=71002210
+rust_sd_owner reads=108080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108480 denied_commands=0 stack_free=5352
+rust_load pass=16 event=2 value=25 stack_free=13312 psram_free=30933660 psram_min=30449200
+rust_load pass=16 event=3 value=1 stack_free=13312 psram_free=30933660 psram_min=30449200
+rust_sd_owner reads=108560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=108960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=109920 denied_commands=0 stack_free=5352
+heartbeat=72 uptime_us=72002214
+rust_sd_owner reads=110000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=110960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111600 denied_commands=0 stack_free=5352
+heartbeat=73 uptime_us=73002214
+rust_sd_owner reads=111680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=111920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112720 denied_commands=0 stack_free=5352
+rust_load pass=16 event=5 value=25 stack_free=13312 psram_free=30933660 psram_min=30449200
+heartbeat=74 uptime_us=74002213
+rust_sd_owner reads=112800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=112960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113520 denied_commands=0 stack_free=5352
+heartbeat=75 uptime_us=75002230
+rust_sd_owner reads=113600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=113920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=114960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115520 denied_commands=0 stack_free=5352
+rust_load pass=17 event=2 value=25 stack_free=13312 psram_free=30933660 psram_min=30449200
+rust_load pass=17 event=3 value=1 stack_free=13312 psram_free=30933660 psram_min=30449200
+rust_sd_owner reads=115600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=115840 denied_commands=0 stack_free=5352
+heartbeat=76 uptime_us=76002239
+rust_sd_owner reads=115920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=116960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117520 denied_commands=0 stack_free=5352
+heartbeat=77 uptime_us=77002214
+rust_sd_owner reads=117600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=117920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=118960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119280 denied_commands=0 stack_free=5352
+heartbeat=78 uptime_us=78002214
+rust_sd_owner reads=119360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119760 denied_commands=0 stack_free=5352
+rust_load pass=17 event=5 value=25 stack_free=13312 psram_free=30933660 psram_min=30449200
+heartbeat=79 uptime_us=79002213
+rust_sd_owner reads=119840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=119920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=120960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121440 denied_commands=0 stack_free=5352
+heartbeat=80 uptime_us=80002210
+rust_sd_owner reads=121520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=121920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122560 denied_commands=0 stack_free=5352
+rust_load pass=18 event=2 value=25 stack_free=13312 psram_free=30933660 psram_min=30449200
+rust_load pass=18 event=3 value=1 stack_free=13312 psram_free=30933660 psram_min=30449200
+rust_sd_owner reads=122640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=122960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123200 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123440 denied_commands=0 stack_free=5352
+heartbeat=81 uptime_us=81002218
+rust_sd_owner reads=123520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=123920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124800 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124880 denied_commands=0 stack_free=5352
+rust_sd_owner reads=124960 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125040 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125120 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125200 denied_commands=0 stack_free=5352
+heartbeat=82 uptime_us=82002233
+rust_sd_owner reads=125280 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125360 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125440 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125520 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125600 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125680 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125760 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125840 denied_commands=0 stack_free=5352
+rust_sd_owner reads=125920 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126000 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126080 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126160 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126240 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126320 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126400 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126480 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126560 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126640 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126720 denied_commands=0 stack_free=5352
+rust_sd_owner reads=126800 denied_commands=0 stack_free=5352
+rust_load pass=18 event=5 value=25 stack_free=13312 psram_free=30933660 psram_min=30449200
+heartbeat=83 uptime_us=83002213
+heartbeat=84 uptime_us=84043476
+E (86520) sdmmc_req: sdmmc_host_do_transaction(24): failed to do SD transaction
+E (86520) sdmmc_cmd: sdmmc_read_sectors_dma: sdmmc_send_cmd returned 0xffffffff, failed to get status (0x107)
+rust_sd_owner=QUIESCED error=ESP_FAIL reads=126848 denied_commands=0 reinsert=APP_RESTART_REQUIRED
+rust_load pass=19 event=6 value=768 stack_free=13312 psram_free=30934484 psram_min=30449200
+rust_sd_client=STOPPED result=-8 pending_drain=OWNER
+heartbeat=85 uptime_us=85042209
+heartbeat=86 uptime_us=86042209
+heartbeat=87 uptime_us=87042209
+heartbeat=88 uptime_us=88042209
+heartbeat=89 uptime_us=89042209
+heartbeat=90 uptime_us=90042209
+heartbeat=91 uptime_us=91042209
+heartbeat=92 uptime_us=92042209
+heartbeat=93 uptime_us=93042209
+heartbeat=94 uptime_us=94042209
+heartbeat=95 uptime_us=95042209
+heartbeat=96 uptime_us=96042209
+heartbeat=97 uptime_us=97042209
+heartbeat=98 uptime_us=98042209
+heartbeat=99 uptime_us=99042209
+heartbeat=100 uptime_us=100042209
+heartbeat=101 uptime_us=101042209
+heartbeat=102 uptime_us=102042209
+heartbeat=103 uptime_us=103042209
+heartbeat=104 uptime_us=104042209
+heartbeat=105 uptime_us=105042209
+heartbeat=106 uptime_us=106042209
+heartbeat=107 uptime_us=107042209
+heartbeat=108 uptime_us=108042209
+heartbeat=109 uptime_us=109042209
+heartbeat=110 uptime_us=110042209
+heartbeat=111 uptime_us=111042209
+heartbeat=112 uptime_us=112042209
+heartbeat=113 uptime_us=113042209
+heartbeat=114 uptime_us=114042209

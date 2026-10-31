@@ -22,8 +22,11 @@ The Rekordbox catalog import is shared too
 firmware runs it, and the IDF core imports `export.pdb` from its exFAT volume
 in host tests.
 
-The build-only [`sd-rust-load` profile](reviews/2026-10-31-legacy-sd-rust-load-profile.md)
-runs catalog import and load preflight on the IDF SD bridge; it is NOT_FLASHED.
+The [`sd-rust-load` profile](reviews/2026-10-31-legacy-sd-rust-load-profile.md)
+runs catalog import and load preflight on the IDF SD bridge. Its stack-fixed
+image ran on JC1060 with one real 25-track export: 25/25 tracks loaded
+analysis in every pass, with flat PSRAM and clean removal, reinsertion and
+cold return. It is a diagnostic, not qualified.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

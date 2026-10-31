@@ -1,0 +1,67 @@
+{
+  "scenario": "s06-rust-load-first-boot",
+  "mode": "boot",
+  "app_sha256": "893c09bac1dd1f2ac9c6413e29bd3fc3d2516313786fa7a90ef59cd4d636f532",
+  "runs": [
+    {
+      "run": 1,
+      "elapsed_s": 10.128,
+      "bytes": 18413,
+      "sha256": "06ff8e1ad0839b163955a8d8829b6cfde0543b689e58689056964329d827293c",
+      "initialized": true,
+      "psram": {
+        "bytes": 33554432,
+        "free_at_start": 33551044
+      },
+      "mounted_partition_lbas": [
+        2048
+      ],
+      "catalog_tracks": [
+        [
+          1,
+          25
+        ],
+        [
+          2,
+          25
+        ]
+      ],
+      "playlist_nodes": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      "pass1_outcomes": {
+        "analysis": 25
+      },
+      "pass1_non_analysis": [],
+      "passes": [
+        {
+          "pass_": 1,
+          "tracks_with_analysis": 25,
+          "psram_free": 30933660,
+          "psram_min": 30449200
+        },
+        {
+          "pass_": 2,
+          "tracks_with_analysis": 25,
+          "psram_free": 30933660,
+          "psram_min": 30449200
+        }
+      ],
+      "failures": [],
+      "min_client_stack_free": 13360,
+      "min_psram_free": 30449200,
+      "heartbeats": 8,
+      "client_stopped": [],
+      "quiesced": false,
+      "fatal": [],
+      "physical_power_cycle": false
+    }
+  ]
+}

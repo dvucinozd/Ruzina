@@ -5,10 +5,11 @@
 //! filesystem operation, cache hits included. The caller keeps the catalog,
 //! the deck's load gate and the final commit. Analysis publication allocates;
 //! the `idf-media-load` target form takes those allocations from the IDF PSRAM
-//! heap (`idf_alloc`). No IDF profile selects it yet.
+//! heap (`idf_alloc`); the `sd-rust-load` profile selects it.
 #![forbid(unsafe_code)]
 
 use crate::exfat_fixture::Volume;
+use alloc::{boxed::Box, vec};
 use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
 use ruzina_media_fs::{AsyncFileSystem, LeaseBound};
 use ruzina_media_identity::{VolumeIdentity, derive_exfat_volume_identity};
@@ -94,15 +95,11 @@ pub async fn import_catalog<D: OwnedBlockDevice<Buffer = [u8; 512]>>(
 ) -> Result<PdbProbe, CatalogImportError<D>> {
     let lease = volume.lease();
     let mut files = FsCatalogFiles::new(volume, is_current);
-    let (_, result) = probe_export_pdb(
-        &mut files,
-        lease,
-        volume_identity,
-        [0u8; 4096],
-        names,
-        stage,
-    )
-    .await;
+    // The page buffer moves through every nested read by value; boxed, each
+    // move is a pointer instead of 4 KiB of stack temporaries per await.
+    let buffer: Box<[u8]> = vec![0u8; 4096].into_boxed_slice();
+    let (_, result) =
+        probe_export_pdb(&mut files, lease, volume_identity, buffer, names, stage).await;
     result
 }
 

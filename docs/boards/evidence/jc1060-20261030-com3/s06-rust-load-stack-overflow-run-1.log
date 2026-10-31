@@ -1,0 +1,94 @@
+I (1588) esp_psram: SPI SRAM memory test OK
+I (1598) cpu_start: Pro cpu start user code
+I (1598) cpu_start: cpu freq: 360000000 Hz
+I (1598) app_init: Application information:
+I (1598) app_init: Project name:     ruzina_legacy_probe
+I (1598) app_init: App version:      0.1.0-legacy-eval
+I (1599) app_init: Compile time:     Oct 31 2026 11:31:26
+I (1599) app_init: ELF file SHA256:  9361a5ffb...
+I (1599) app_init: ESP-IDF:          v6.1
+I (1599) efuse_init: Min chip rev:     v1.0
+I (1599) efuse_init: Max chip rev:     v1.99 
+I (1600) efuse_init: Chip rev:         v1.3
+I (1600) heap_init: Initializing. RAM available for dynamic allocation:
+I (1600) heap_init: At 4FF11360 len 00029C60 (167 KiB): RETENT_RAM
+I (1601) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (1601) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (1601) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (1601) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (1602) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator
+W (1603) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (1604) spi_flash: detected chip: generic
+I (1604) spi_flash: flash io: dio
+I (1605) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (1606) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (1607) sleep_clock: System sleep clock ICG setting initialization
+I (1609) main_task: Started on CPU0
+I (1609) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=4
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+I (1609) SD_HOST: src_freq_hz: 160000000
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+restart_request=OPERATOR_CONSOLE_R
+S6_RUST_SD_BRIDGE sectors=124735488 sector_bytes=512 max_khz=10000 width=4 ldo=4 bounce_bytes=512 readonly=1
+S6_RUST_LOAD psram_bytes=33554432 psram_free=33551044
+Guru Meditation Error: Core  1 panic'ed (Stack protection fault). 
+
+Detected in task "sd_rust_client" at 0x40042812
+Stack pointer: 0x4ff37910
+Stack bounds: 0x4ff406f0 - 0x4ff4c6e0
+
+
+Core  1 register dump:
+MEPC    : 0x4000940e  RA      : 0x4004281e  SP      : 0x4ff37910  GP      : 0x4ff0cd00  
+TP      : 0x4ff4c6b0  T0      : 0x00000000  T1      : 0x00000000  T2      : 0x00000000  
+S0/FP   : 0x00000000  S1      : 0x00000000  A0      : 0x00014c60  A1      : 0xffffffff  
+A2      : 0x00000000  A3      : 0x7f000000  A4      : 0x00000004  A5      : 0x4ff11000  
+A6      : 0x00000000  A7      : 0x00000000  S2      : 0x00000000  S3      : 0x00000000  
+S4      : 0x00000000  S5      : 0x00000000  S6      : 0x00000000  S7      : 0x00000000  
+S8      : 0x00000000  S9      : 0x00000000  S10     : 0x00000000  S11     : 0x00000000  
+T3      : 0x00000000  T4      : 0x00000000  T5      : 0x00000000  T6      : 0x00000000  
+MSTATUS : 0x00011880  MTVEC   : 0x4ff00003  MCAUSE  : 0x0000001b  MTVAL   : 0x00000000  
+MHARTID : 0x00000001  
+
+Stack memory:
+4ff37910: 0xb8100246 0xabf4ba8c 0x450bb324 0x8f80ad42 0xee57e170 0x7f8ec751 0xaa9ed3d3 0xcf11bea2
+4ff37930: 0x78c37587 0x65047667 0x59760e81 0xf0933ded 0xf734f304 0xcc35de69 0x04aacd95 0xb068a2bf
+4ff37950: 0xa99c3baa 0x52294ea2 0x53342198 0x140bc86c 0xeacf9fb5 0x23fde0dd 0x2a3dffa3 0x436f6792
+4ff37970: 0x2bc9f983 0x0ccf069a 0xe4bbb4f1 0x5dc764e0 0x9dd4f95d 0xf7f9d4fb 0xfb5f21f6 0xae450a4c
+4ff37990: 0x65fa0a7f 0xb061ebfc 0x5fcb7eb6 0x6a1f43ea 0x913bf7f0 0x5652603b 0x5d3c4f9a 0xa92216d3
+4ff379b0: 0x39d7281b 0xd545dc49 0x8299821c 0xe7b00c03 0x6ff3fdcb 0x5e8ae446 0x7a09a638 0x0b493b93
+4ff379d0: 0x82041cb2 0xd9f14d7c 0xbcbd49ed 0xb2720c17 0x71c70061 0x326ab4a8 0xeb138001 0x01a78aa8
+4ff379f0: 0x166501ad 0x179d6ac8 0xc98c0f4c 0x4212a15e 0x67bebe15 0x65be1ce6 0x71abd665 0x52801aca
+4ff37a10: 0x250e09ab 0xf902f4cb 0xde5da2c4 0xc201ed72 0xf09759e5 0xbc5c9dca 0x4a7c2cc5 0xcbbd0b8e
+4ff37a30: 0x3611332c 0x89ae58f9 0x8ede1fa8 0xdce2a366 0x4a9462c5 0xc08410e3 0xacee04fa 0x506810be
+4ff37a50: 0x11005023 0xf6d7199e 0xe66af443 0x6041b99c 0xbbab2e4d 0xdebf559d 0x705777c0 0x7a5f29ee
+4ff37a70: 0x1d254735 0x1668597c 0x85cde7df 0xc5f6717e 0xda4f4b82 0x95becddd 0xb92b04e1 0xdff20ad4
+4ff37a90: 0x43ca5775 0xdfd2bbb3 0xfd598857 0xe6b972cd 0x63cdb8f3 0xb700d15e 0x12973484 0x50a2ec5b
+4ff37ab0: 0x0bfaf2ac 0x74bef12e 0x85f2ec6b 0xe031a672 0xaecf44c6 0xed0be874 0xc742322d 0xccb74aaf
+4ff37ad0: 0x8f416fbf 0xe0239e3e 0xe8deba6b 0x31f3c7f7 0x602d437f 0xbda922a9 0x14e03ee5 0x553918e8
+4ff37af0: 0x55e87906 0xccc27cf6 0x74b7fae9 0xb830894e 0x4f04a44b 0x405b64e6 0xf81951f8 0x812b180b
+4ff37b10: 0x609a2477 0x4ae5788a 0xa134f09e 0x17b802d9 0x975c2902 0xa3fedb6c 0xc6f09d9a 0x669e62df
+4ff37b30: 0x56792361 0x6f5f370c 0xdc665ee7 0x4c9d527b 0xb101533a 0x0fffae7c 0x8473743a 0x1c029c07
+4ff37b50: 0x992503f0 0xa558ce30 0x36edccbd 0x0f7e76a6 0x5fce48ca 0x7e4be2f7 0x78c9f4e7 0xc27a5152
+4ff37b70: 0xcb7e1485 0x367ed3c0 0x277ca3b8 0x6f7759b5 0x9c68a3ab 0x7cb7ec1b 0x08bf0b6f 0x54f4ab91
+4ff37b90: 0xb193423e 0x7d233b0e 0xad78e76e 0x3b2c151d 0x50a1a7f0 0x47cb37e1 0xcd9e4050 0x2091a79b
+4ff37bb0: 0xff64490b 0x406ced1f 0x3145a883 0x26461781 0x47a62633 0x9a4aa817 0x2abe22dd 0x5ecc9d1a
+4ff37bd0: 0x2af2fc6a 0x4d2686dc 0xddf99b61 0xaeb7145d 0x1e1dde92 0x30a0c02f 0x109f1930 0x8df01b27
+4ff37bf0: 0x26c62649 0xcef1778a 0x6e80c040 0x8ee8bb82 0x3cf1306f 0x05512740 0x098102bf 0xa2498151
+4ff37c10: 0x255bf0e0 0x862a27ed 0x2d688188 0xe203b779 0xd375c0b5 0xbcfeb2df 0x0f4febce 0x24b7b0a7
+4ff37c30: 0x2a24125a 0x9a0dcd6b 0x8bdd733c 0x5bc6acff 0x2c9185a8 0x61041683 0xcaa540e4 0x3b795f99
+4ff37c50: 0x9ceb3f6c 0x5db7d1b5 0xb9eaf41b 0xf040292a 0x7dfac62d 0x890fd23b 0xe2183f32 0x48757f87
+4ff37c70: 0xbd69ec85 0xebf8f7ba 0x6ec7b1fb 0xb60b2f76 0x3bc7bdd7 0x8cb9987a 0xf86f97cd 0xd3a11cb8
+4ff37c90: 0x3fcae665 0x3cdf33f6 0x5b08eb93 0x86bef6b5 0x1c09278c 0x9b04197c 0xa0a011a7 0xc17a731e
+4ff37cb0: 0x3346d209 0x1a64c97c 0x742f4d38 0xec811428 0x5cf98305 0x9059be28 0xe43d2c01 0x4d3bb051
+4ff37cd0: 0x1afc8606 0x3eb92ae5 0xb8932ca5 0xa546f3d5 0xa32803

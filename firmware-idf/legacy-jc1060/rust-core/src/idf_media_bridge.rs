@@ -395,6 +395,7 @@ mod load_event {
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_load_run() -> i32 {
     use crate::media_load::{Error, import_catalog, preflight, volume_identity};
+    use alloc::boxed::Box;
     use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
     use ruzina_media_load::pdb::{PdbNameStage, VecCatalogStage};
 
@@ -431,13 +432,16 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
     for pass in 1..=u32::MAX {
         stage.prepare_generation(binding.lease);
         names.clear();
-        let probe = match block_on(import_catalog(
+        // The import and preflight futures hold owned read buffers across
+        // awaits (tens of KiB). They live in the PSRAM heap, as the native
+        // tasks keep theirs in static memory, not on the 48 KiB task stack.
+        let probe = match block_on(Box::pin(import_catalog(
             &mut volume,
             identity,
             &current,
             &mut names,
             &mut stage,
-        )) {
+        ))) {
             Ok(probe) => probe,
             Err(_) => {
                 stage.invalidate(binding.lease);
@@ -480,13 +484,13 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                 index: index as u16,
                 track,
             };
-            let outcome = match block_on(preflight(
+            let outcome = match block_on(Box::pin(preflight(
                 &mut volume,
                 candidate,
                 pass,
                 &current,
                 &published,
-            )) {
+            ))) {
                 Ok(prepared) if prepared.publication.is_some() => {
                     loaded += 1;
                     0

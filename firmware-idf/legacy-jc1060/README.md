@@ -235,7 +235,7 @@ a PDB page read and publishes nothing. The volume identity is still a test
 value; a device profile must derive it from the exFAT volume.
 
 
-## `sd-rust-load` profile (build only)
+## `sd-rust-load` profile
 
 The opt-in `sd-rust-load` variant (`CONFIG_RUZINA_SD_RUST_LOAD`, Rust
 `idf-media-load`) runs the shared media load path on the read-only Rust SD
@@ -269,6 +269,12 @@ Track outcomes are 0 for analysis loaded, 1 for no analysis, 2 for a source
 error and 3 for stale. Failure stages are 1 mount, 2 allocation, 3 import and
 4 stale.
 
-This is a build-only diagnostic. The image has not been flashed, and its
-physical acceptance is a separate exact-image campaign. That campaign needs a
-card holding a real Rekordbox export.
+The page buffer and the import and preflight futures live in the PSRAM heap.
+Passed by value, they made one poll frame 168 KiB and overflowed the task
+stack on the board. The build tool rejects any Rust frame over 24 KiB
+(`tools/stack_frames.py`).
+
+This is a diagnostic, not a qualified product path. The stack-fixed image ran
+on JC1060 with one real export (25 tracks): every track loaded analysis, PSRAM
+stayed flat, and removal, reinsertion and cold return were clean. See the
+[device run](../../docs/reviews/2026-10-31-legacy-sd-rust-load-profile.md#first-device-run-2026-10-31-owner-present).

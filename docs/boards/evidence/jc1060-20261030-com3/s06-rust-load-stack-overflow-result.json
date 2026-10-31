@@ -1,0 +1,35 @@
+{
+  "scenario": "s06-rust-load-first-boot",
+  "mode": "restart",
+  "app_sha256": "62118365262a5d7e668e1025bb03f6fa574cd7adeb996fc8f16346b48f59c60e",
+  "runs": [
+    {
+      "run": 1,
+      "elapsed_s": 1.026,
+      "bytes": 6258,
+      "sha256": "8032bf04789a3da8e4e1ecf0fa510d692fbd2dc09d42e3777409773ad3b46d6b",
+      "initialized": true,
+      "psram": {
+        "bytes": 33554432,
+        "free_at_start": 33551044
+      },
+      "mounted_partition_lbas": [],
+      "catalog_tracks": [],
+      "playlist_nodes": [],
+      "pass1_outcomes": {},
+      "pass1_non_analysis": [],
+      "passes": [],
+      "failures": [],
+      "min_client_stack_free": null,
+      "min_psram_free": null,
+      "heartbeats": 0,
+      "client_stopped": [],
+      "quiesced": false,
+      "fatal": [
+        "Guru Meditation",
+        "Stack protection fault"
+      ],
+      "physical_power_cycle": false
+    }
+  ]
+}
