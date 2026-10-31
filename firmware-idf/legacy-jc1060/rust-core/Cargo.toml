@@ -23,6 +23,7 @@ ruzina-media-identity = { path = "../../../firmware-rust/crates/ruzina-media-ide
 ruzina-controller-core = { path = "../../../firmware-rust/crates/ruzina-controller-core", optional = true }
 ruzina-controller-profile = { path = "../../../firmware-rust/crates/ruzina-controller-profile", optional = true }
 ruzina-controller-session = { path = "../../../firmware-rust/crates/ruzina-controller-session", optional = true }
+ruzina-uac = { path = "../../../firmware-rust/crates/ruzina-uac", optional = true }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
 
 [features]
@@ -46,6 +47,9 @@ controller-midi = [
 ]
 # USB-MIDI from the IDF USB host diagnostic into the semantic session.
 idf-controller-midi = ["controller-midi"]
+controller-audio = ["controller-midi", "dep:ruzina-uac", "dep:ruzina-audio-dsp"]
+# UAC1 headphone tone to the controller over the IDF USB host.
+idf-controller-audio = ["idf-controller-midi", "controller-audio"]
 
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }

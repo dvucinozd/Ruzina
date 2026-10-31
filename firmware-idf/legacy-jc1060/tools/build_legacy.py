@@ -44,7 +44,7 @@ def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--idf', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'usb-host', 'usb-midi', 'deck-ui'], required=True)
+    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'usb-host', 'usb-midi', 'deck-ui', 'deck-audio'], required=True)
     parser.add_argument('--wsl', help='Optional WSL distribution for Rust only')
     parser.add_argument('--cargo-home')
     parser.add_argument('--rustup-home')
@@ -101,6 +101,8 @@ def main():
         common += ['--features', 'idf-controller-midi']
     elif args.variant == 'deck-ui':
         common += ['--features', 'idf-media-load idf-controller-midi']
+    elif args.variant == 'deck-audio':
+        common += ['--features', 'idf-media-load idf-controller-audio']
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -119,12 +121,14 @@ def main():
         defaults += [APP / 'sdkconfig.usb-host.defaults']
         if args.variant == 'usb-midi':
             defaults += [APP / 'sdkconfig.usb-midi.defaults']
-    elif args.variant in ('sd-rust-load', 'sd-rust-load-display', 'deck-ui'):
+    elif args.variant in ('sd-rust-load', 'sd-rust-load-display', 'deck-ui', 'deck-audio'):
         defaults += [APP / 'sdkconfig.sd-rust-load.defaults']
-        if args.variant in ('sd-rust-load-display', 'deck-ui'):
+        if args.variant in ('sd-rust-load-display', 'deck-ui', 'deck-audio'):
             defaults += [APP / 'sdkconfig.load-display.defaults']
-        if args.variant == 'deck-ui':
+        if args.variant in ('deck-ui', 'deck-audio'):
             defaults += [APP / 'sdkconfig.deck-ui.defaults']
+        if args.variant == 'deck-audio':
+            defaults += [APP / 'sdkconfig.deck-audio.defaults']
     elif args.variant in ('sd-readonly', 'sd-file-readonly'):
         defaults += [APP / 'sdkconfig.sd.defaults']
         if args.variant == 'sd-file-readonly':
@@ -148,18 +152,20 @@ def main():
         for required in ('CONFIG_SPIRAM_SPEED=80', 'CONFIG_SPIRAM_USE_CAPS_ALLOC=y', 'CONFIG_RUZINA_MEMORY_TASK=y'):
             if required not in config:
                 raise ValueError('Wrong memory profile: ' + required)
-    if args.variant in ('sd-rust-load', 'sd-rust-load-display', 'deck-ui'):
+    if args.variant in ('sd-rust-load', 'sd-rust-load-display', 'deck-ui', 'deck-audio'):
         # The Rust allocator takes every allocation from caps-allocated PSRAM.
         for required in ('CONFIG_SPIRAM=y', 'CONFIG_SPIRAM_SPEED=80', 'CONFIG_SPIRAM_USE_CAPS_ALLOC=y',
                          'CONFIG_SPIRAM_BOOT_INIT=y', 'CONFIG_RUZINA_SD_RUST_LOAD=y'):
             if required not in config:
                 raise ValueError('Wrong load profile: ' + required)
     # Only the USB host diagnostic may enable and link the USB Host Library.
-    usb_variant = args.variant in ('usb-host', 'usb-midi', 'deck-ui')
+    usb_variant = args.variant in ('usb-host', 'usb-midi', 'deck-ui', 'deck-audio')
     if ('CONFIG_RUZINA_USB_HOST_ENUM=y' in config) != usb_variant:
         raise ValueError('USB host profile mismatch')
-    if ('CONFIG_RUZINA_USB_HOST_MIDI=y' in config) != (args.variant in ('usb-midi', 'deck-ui')):
+    if ('CONFIG_RUZINA_USB_HOST_MIDI=y' in config) != (args.variant in ('usb-midi', 'deck-ui', 'deck-audio')):
         raise ValueError('USB-MIDI profile mismatch')
+    if ('CONFIG_RUZINA_USB_HOST_UAC=y' in config) != (args.variant == 'deck-audio'):
+        raise ValueError('UAC profile mismatch')
     if usb_variant and 'CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096' not in config:
         raise ValueError('USB host control buffer too small for audio-class configurations')
     from esptool.bin_image import LoadFirmwareImage
@@ -199,18 +205,21 @@ def main():
             raise ValueError('USB host diagnostic or library not linked')
         if any(x in mapping for x in ('sd_bridge.c.obj', 'load_display.c.obj', 'display_touch.c.obj')):
             raise ValueError('USB host diagnostic must stay isolated')
-    elif args.variant == 'deck-ui':
+    elif args.variant in ('deck-ui', 'deck-audio'):
         # The one combined profile: SD load, status display and USB-MIDI.
         symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
         if any(x not in symbols for x in ('ruzina_legacy_midi_ingest', 'ruzina_legacy_load_run', 'usb_host_install')):
             raise ValueError('Deck UI must link the Rust load run, the MIDI session and the USB host')
+        if args.variant == 'deck-audio' and 'ruzina_legacy_uac_fill' not in symbols:
+            raise ValueError('Deck audio must link the Rust UAC packer')
         if any(x not in mapping for x in ('usb_host_enum.c.obj', 'load_display.c.obj', 'sd_bridge.c.obj')):
             raise ValueError('Deck UI owner sources missing')
         # MIDI exports run on the 8 KiB USB client task (the SD client has
         # its own 48 KiB stack); keep their frames within 2 KiB.
         from stack_frames import frame_sizes
         frames = frame_sizes(run(['riscv32-esp-elf-objdump', '-d', '--no-show-raw-insn', elf]))
-        midi = {k: v for k, v in frames.items() if k.startswith('ruzina_legacy_midi') and v > 2048}
+        midi = {k: v for k, v in frames.items()
+                if k.startswith(('ruzina_legacy_midi', 'ruzina_legacy_uac')) and v > 2048}
         if midi:
             raise ValueError('MIDI frame over the USB client task budget: ' + repr(midi))
     elif 'usb_host_install' in run(['riscv32-esp-elf-nm', '--defined-only', elf]):
@@ -221,24 +230,24 @@ def main():
                  output / 'build/bootloader/bootloader.bin',
                  output / 'build/partition_table/partition-table.bin',
                  output / 'build/flasher_args.json']
-    if args.variant in ('sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'deck-ui'):
+    if args.variant in ('sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'deck-ui', 'deck-audio'):
         symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
         forbidden = {'f_write', 'f_mkfs', 'f_unlink', 'f_rename', 'sdmmc_write_sectors', 'sdmmc_erase_sectors'}
         if forbidden.intersection(line.split()[-1] for line in symbols.splitlines() if line.split()) or 'libfatfs.a' in mapping:
             raise ValueError('Read/write filesystem or SD write/erase API linked')
         (output / 'readonly-symbols.log').write_text(symbols)
-        if args.variant in ('sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'deck-ui'):
+        if args.variant in ('sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'deck-ui', 'deck-audio'):
             if 'CONFIG_RUZINA_SD_RUST_BRIDGE=y' not in config or any(x in config for x in ('CONFIG_RUZINA_SD_READONLY=y', 'CONFIG_RUZINA_SD_FIXTURE=y')):
                 raise ValueError('Wrong exclusive Rust bridge configuration')
-            required_symbol={'sd-rust-exfat': 'ruzina_legacy_exfat_run', 'sd-rust-load': 'ruzina_legacy_load_run', 'sd-rust-load-display': 'ruzina_legacy_load_run', 'deck-ui': 'ruzina_legacy_load_run'}.get(args.variant, 'ruzina_legacy_bridge_run')
+            required_symbol={'sd-rust-exfat': 'ruzina_legacy_exfat_run', 'sd-rust-load': 'ruzina_legacy_load_run', 'sd-rust-load-display': 'ruzina_legacy_load_run', 'deck-ui': 'ruzina_legacy_load_run', 'deck-audio': 'ruzina_legacy_load_run'}.get(args.variant, 'ruzina_legacy_bridge_run')
             if required_symbol not in symbols or 'sd_bridge.c.obj' not in mapping or any(x in symbols.split() for x in ('f_open', 'f_mount')):
                 raise ValueError('Missing Rust bridge or unexpected filesystem linked')
             if ('CONFIG_RUZINA_SD_RUST_EXFAT=y' in config) != (args.variant == 'sd-rust-exfat'):
                 raise ValueError('Rust exFAT profile/feature mismatch')
-            if ('CONFIG_RUZINA_SD_RUST_LOAD=y' in config) != (args.variant in ('sd-rust-load', 'sd-rust-load-display', 'deck-ui')):
+            if ('CONFIG_RUZINA_SD_RUST_LOAD=y' in config) != (args.variant in ('sd-rust-load', 'sd-rust-load-display', 'deck-ui', 'deck-audio')):
                 raise ValueError('Rust load profile/feature mismatch')
-            if ('CONFIG_RUZINA_LOAD_DISPLAY=y' in config) != (args.variant in ('sd-rust-load-display', 'deck-ui')) or (
-                    args.variant in ('sd-rust-load-display', 'deck-ui') and ('load_display.c.obj' not in mapping
+            if ('CONFIG_RUZINA_LOAD_DISPLAY=y' in config) != (args.variant in ('sd-rust-load-display', 'deck-ui', 'deck-audio')) or (
+                    args.variant in ('sd-rust-load-display', 'deck-ui', 'deck-audio') and ('load_display.c.obj' not in mapping
                                                                 or 'CONFIG_RUZINA_DISPLAY_TOUCH=y' in config)):
                 raise ValueError('Load display profile mismatch')
             from stack_frames import oversized_rust_frames

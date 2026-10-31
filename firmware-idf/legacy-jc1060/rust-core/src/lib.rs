@@ -24,6 +24,9 @@ mod idf_alloc;
 #[cfg(feature = "controller-midi")]
 mod controller_midi;
 
+#[cfg(feature = "controller-audio")]
+mod controller_audio;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]

@@ -157,6 +157,7 @@ dependencies = [
  "ruzina-media-load",
  "ruzina-media-partition",
  "ruzina-media-session",
+ "ruzina-uac",
  "sha2",
 ]
 
@@ -243,6 +244,13 @@ version = "0.1.0"
 dependencies = [
  "ruzina-core",
  "ruzina-media-session",
+]
+
+[[package]]
+name = "ruzina-uac"
+version = "0.1.0"
+dependencies = [
+ "ruzina-audio-dsp",
 ]
 
 [[package]]
