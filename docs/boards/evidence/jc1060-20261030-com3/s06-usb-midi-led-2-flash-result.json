@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-usb-midi-led-out-hold-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application owns only the HS USB OTG/UTMI host (claims only the USB-MIDI streaming interface, Bulk-IN and LED Bulk-OUT); no SD/display/audio owner; VBUS hard-wired to USB5V_IN",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "e698907b9d88d904893f2c031e3c7de29651e7c5a741156447525eb5821a0904",
+  "plan_sha256": "8ef6755ce0168a7ab5200343aac7c0e28caf7227a11ae406517e8727942c4ae6",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "9995db6845ac83688c016bf5c407963966bacbe0c53f89ec1d6caa5f62f535f9"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 245760,
+      "sha256": "ee3f7fa643dd0f76c16fa37f8cbdd61cadfbf9798df5fc263ccbfb10e631c1ee"
+    }
+  ],
+  "programmer_log_sha256": "ccf90ab6219279f267c7d44b8511c63c77a8e2f190b66879c41fcb7b3a2adf1c"
+}
