@@ -34,7 +34,10 @@ matched the host import for every tapped track. The isolated
 [`usb-host`](reviews/2026-10-31-legacy-usb-host-enum.md) diagnostic enumerates
 the owner's DDJ-FLX4 at high speed on the HS port, with its UAC 4-channel
 playback, MIDI, HID and vendor interfaces, through three hot-plug cycles.
-Nothing claims those interfaces yet.
+[`usb-midi`](reviews/2026-10-31-legacy-usb-midi.md) claims its MIDI
+interface and runs the FLX4 profile through the shared controller session on
+the board: buttons, faders, crossfader and jogs, with 0 drops. There is no
+MIDI out, and no consumer of the semantic events yet.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

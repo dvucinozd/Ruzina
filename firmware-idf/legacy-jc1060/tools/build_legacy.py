@@ -184,10 +184,13 @@ def main():
         if args.variant == 'usb-midi' and 'ruzina_legacy_midi_ingest' not in run(['riscv32-esp-elf-nm', '--defined-only', elf]):
             raise ValueError('Rust USB-MIDI session not linked')
         if args.variant == 'usb-midi':
+            # The Rust MIDI calls run on the 8 KiB USB client task; a lazily
+            # built session once put a 5.4 KiB frame there and overflowed it.
             from stack_frames import oversized_rust_frames
-            oversized = oversized_rust_frames(run(['riscv32-esp-elf-objdump', '-d', '--no-show-raw-insn', elf]))
+            oversized = oversized_rust_frames(run(['riscv32-esp-elf-objdump', '-d', '--no-show-raw-insn', elf]),
+                                              limit=2048)
             if oversized:
-                raise ValueError('Rust stack frame over task budget: ' + repr(oversized))
+                raise ValueError('Rust frame over the USB client task budget: ' + repr(oversized))
         if 'usb_host_enum.c.obj' not in mapping or 'libusb.a' not in mapping.replace('\\', '/'):
             raise ValueError('USB host diagnostic or library not linked')
         if any(x in mapping for x in ('sd_bridge.c.obj', 'load_display.c.obj', 'display_touch.c.obj')):

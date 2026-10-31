@@ -31,6 +31,7 @@ extern void ruzina_legacy_midi_totals(uint32_t *out);
 static usb_transfer_t *midi_in;
 static uint8_t midi_interface = 0xff;
 static bool midi_in_busy;
+static TickType_t midi_retry_at; /* 0: none; else tick to resubmit after an error */
 static uint32_t midi_transfers, midi_events, midi_errors;
 
 void ruzina_bridge_midi_event(uint32_t deck, uint32_t control, uint32_t kind, int32_t value, uint32_t max,
@@ -51,14 +52,30 @@ static void midi_in_done(usb_transfer_t *transfer)
             midi_errors++;
     } else if (transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
             && transfer->status != USB_TRANSFER_STATUS_CANCELED) {
+        /* An unplug completes the pending IN with an error before the gone
+         * event; retry from the client task after a grace period instead. */
         midi_errors++;
-        printf("midi_in status=%d\n", transfer->status);
+        printf("midi_in status=%d retry_ms=100\n", transfer->status);
+        midi_retry_at = xTaskGetTickCount() + pdMS_TO_TICKS(100);
+        if (!midi_retry_at) midi_retry_at = 1;
+        fflush(stdout);
+        return;
     }
     /* Keep exactly one Bulk-IN outstanding while the device stays open. */
-    if (device && !gone && transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
+    if (device && !gone && transfer->status == USB_TRANSFER_STATUS_COMPLETED
             && usb_host_transfer_submit(transfer) == ESP_OK)
         midi_in_busy = true;
     fflush(stdout);
+}
+
+/* Resubmits the IN transfer once an error's grace period has passed, unless
+ * the device went away meanwhile. Runs on the client task. */
+static void midi_retry(void)
+{
+    if (!midi_retry_at || (int32_t)(xTaskGetTickCount() - midi_retry_at) < 0) return;
+    midi_retry_at = 0;
+    if (device && !gone && midi_in && !midi_in_busy && usb_host_transfer_submit(midi_in) == ESP_OK)
+        midi_in_busy = true;
 }
 
 /* Claims the first MIDI streaming interface (class 01/03) that has a Bulk-IN
@@ -105,6 +122,7 @@ static void midi_stop(void)
     for (int i = 0; midi_in_busy && i < 50; ++i) {
         usb_host_client_handle_events(client, pdMS_TO_TICKS(10));
     }
+    midi_retry_at = 0;
     uint32_t totals[8];
     ruzina_legacy_midi_totals(totals);
     ruzina_legacy_midi_unbind();
@@ -208,7 +226,12 @@ static void client_task(void *unused)
     };
     ESP_ERROR_CHECK(usb_host_client_register(&config, &client));
     for (;;) {
+#if CONFIG_RUZINA_USB_HOST_MIDI
+        /* Bounded wait so an error retry can run without a new event. */
+        usb_host_client_handle_events(client, pdMS_TO_TICKS(50));
+#else
         usb_host_client_handle_events(client, portMAX_DELAY);
+#endif
         if (pending_address) {
             uint8_t address = pending_address;
             pending_address = 0;
@@ -224,6 +247,9 @@ static void client_task(void *unused)
             printf("usb_detach n=%" PRIu32 "\n", ++detaches);
             fflush(stdout);
         }
+#if CONFIG_RUZINA_USB_HOST_MIDI
+        midi_retry();
+#endif
     }
 }
 
@@ -234,9 +260,13 @@ esp_err_t ruzina_usb_host_enum_start(void)
     esp_err_t err = usb_host_install(&host);
     if (err != ESP_OK) return err;
     if (xTaskCreatePinnedToCore(lib_task, "usb_lib", 4096, NULL, 5, NULL, 0) != pdPASS ||
-        xTaskCreatePinnedToCore(client_task, "usb_client", 4096, NULL, 4, NULL, 0) != pdPASS)
+        xTaskCreatePinnedToCore(client_task, "usb_client", 8192, NULL, 4, NULL, 0) != pdPASS)
         return ESP_ERR_NO_MEM;
-    printf("S6_USB_HOST port=HS phy=UTMI claim=NONE vbus=HARDWIRED_USB5V_IN\n");
+#if CONFIG_RUZINA_USB_HOST_MIDI
+    printf("S6_USB_HOST port=HS phy=UTMI claim=MIDI_STREAMING vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
+#else
+    printf("S6_USB_HOST port=HS phy=UTMI claim=NONE vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
+#endif
     fflush(stdout);
     return ESP_OK;
 }

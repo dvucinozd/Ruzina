@@ -31,20 +31,30 @@ struct State {
     totals: UsbMidiBatchReport,
 }
 
-struct Shared(UnsafeCell<Option<State>>);
+struct Shared(UnsafeCell<State>);
 // SAFETY: only the C USB client task calls the exports below (module contract),
 // so the cell is never accessed concurrently.
 unsafe impl Sync for Shared {}
-static STATE: Shared = Shared(UnsafeCell::new(None));
+// Built at compile time: the session (~4 KiB) must never be constructed on the
+// 8 KiB USB client task stack, which a lazy initializer did on the device.
+static STATE: Shared = Shared(UnsafeCell::new(State {
+    session: ControllerSession::new(),
+    profile: None,
+    totals: UsbMidiBatchReport {
+        packets: 0,
+        decoded: 0,
+        scheduled: 0,
+        dropped: 0,
+        no_mapping: 0,
+        ignored_non_channel_voice: 0,
+        unsupported_cable: 0,
+        semantic_errors: 0,
+    },
+}));
 
 fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
     // SAFETY: single caller task (see `Shared`); no reference escapes `f`.
-    let slot = unsafe { &mut *STATE.0.get() };
-    f(slot.get_or_insert_with(|| State {
-        session: ControllerSession::new(),
-        profile: None,
-        totals: UsbMidiBatchReport::default(),
-    }))
+    f(unsafe { &mut *STATE.0.get() })
 }
 
 /// `(deck, kind, value, max)` scalars for one semantic event.

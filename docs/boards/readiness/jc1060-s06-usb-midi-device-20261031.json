@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "status": "FLASHED_DEVICE_RUN_PASS_NOT_QUALIFIED",
+  "variant": "usb-midi",
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-usb-midi-device-20261031.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-usb-midi-device-20261031\\jc1060-idf61-usb-midi-device-20261031.zip",
+  "archive_sha256": "58e6d328804898049cc59be12570a2930568c15643b5f7c36548705730ab4a0d",
+  "archive_bytes": 15379613,
+  "members": 82,
+  "app_sha256": "ed2d9b6bc618df99c43ede708a10d19659002ae0b3c8c8acde8c3f02826c59a8",
+  "app_bytes": 239008,
+  "manifest_sha256": "57f3163c16cdf33c5c23b9a66853f82ea7126469f78220efa7a4758b2362a1c3",
+  "source_commit": "6177d4bf11dee72a4afd0cd077eebabd01edbe11",
+  "dirty_diff_sha256": "36f6e2e0f38079ef2d16011c2c4ceb5ad2d7b38ea2d1a878992e33f11c9786cc",
+  "plan_sha256": "fec51cfba20489b387741d2be5aa7a776fca7976da96e2c651e57ee1c052c747",
+  "predecessor_plan_sha256": "634538a8ee2c381a7a2aadbb50239070ef2ae89036db21cb90158ab95d622c49",
+  "superseded_images": [
+    {
+      "app_sha256": "72b6e03daff3cf12be81f0f1af50a8cd081969455919f9a8a653545e31157f6d",
+      "plan_sha256": "a6ba74be546984fac88a952757cfb8238a28c62eea249ec07394e5f59c2b1d60",
+      "outcome": "Stack protection fault in usb_client (4 KiB): lazily built ControllerSession gave 5.4 KiB Rust frames"
+    },
+    {
+      "app_sha256": "4ff552ce972f271403b2e9edf296d589eacf6a43815238f58f2a65b74da8fa77",
+      "plan_sha256": "634538a8ee2c381a7a2aadbb50239070ef2ae89036db21cb90158ab95d622c49",
+      "outcome": "Passed buttons; an unplug error resubmitted at once and logged an Enqueue URB error"
+    }
+  ],
+  "device": {
+    "model": "Pioneer DDJ-FLX4",
+    "vid": "2b73",
+    "pid": "0045",
+    "power": "bus from PC via FS port, battery disconnected"
+  },
+  "captures": [
+    "s06-usb-midi-flash",
+    "s06-usb-midi-controls",
+    "s06-usb-midi-2-flash",
+    "s06-usb-midi-controls-2",
+    "s06-usb-midi-controls-2b",
+    "s06-usb-midi-controls-3",
+    "s06-usb-midi-3-flash",
+    "s06-usb-midi-continuous-stalled-reader",
+    "s06-usb-midi-continuous"
+  ],
+  "contains_factory_dump": false,
+  "contains_sd_dump": false,
+  "release": false,
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH"
+}

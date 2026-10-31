@@ -1,7 +1,7 @@
 # JC1060 `usb-midi`: DDJ-FLX4 controls into the Rust session
 
-Date: 2026-10-31. Branch: from main `e466f5f` (after PR #65). Build only: no
-device run yet. Native minimum 302 and APTA unchanged.
+Date: 2026-10-31. Branch: from main `e466f5f` (after PR #65). The device
+run, with the owner present, is at the end. Native minimum 302 and APTA unchanged.
 
 ## What it adds
 
@@ -73,3 +73,58 @@ Accept the run when:
 - A detach logs `usb_midi_stop` with `release=ESP_OK free=ESP_OK`, and a
   re-attach rebinds.
 - There is no fault, reset or `midi_in` error.
+
+
+## Device run (2026-10-31, owner present)
+
+Same setup as for `usb-host`: the PC on the FS port only, the battery
+disconnected and the FLX4 on bus power, C-to-C on the HS port. Records are in
+`docs/boards/evidence/jc1060-20261030-com3/s06-usb-midi-*`, indexed by the
+[device index](../boards/readiness/jc1060-s06-usb-midi-device-20261031.json).
+
+1. **First image: stack fault at bind.** `72b6e03d…` (plan `a6ba74be…`)
+   enumerated the FLX4, then hit a **Stack protection fault** in `usb_client`
+   (4 KiB) inside `ruzina_legacy_midi_bind`.
+   - Cause: the lazy `get_or_insert_with` built the whole `ControllerSession`
+     (4288 bytes) on the stack, which gave every export a 5.4 KiB frame.
+   - Fix: the static is now initialized at compile time
+     (`ControllerSession::new` is `const`), and the exports' frames are
+     negligible. The client task stack is 8 KiB.
+   - The build tool now rejects any Rust frame over 2 KiB in `usb-midi`.
+2. **Second image: buttons.** `4ff552ce…` (plan `634538a8…`) logged
+   `usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK`.
+   - Two sessions with one replug: Play and Cue on both decks plus
+     BrowsePress, each pressed and released, gave 20 `midi_event` lines and
+     10 packets per session.
+   - All packets decoded and mapped, with 0 dropped and 0 semantic errors.
+     Both detaches gave `release=ESP_OK free=ESP_OK`.
+   - The monitor's boot mode read 4 KiB blocks with no timeout and lost one
+     capture's claim line. The monitor now polls, and the lost reader output
+     is kept as `continuous-stalled-reader`.
+   - On unplug, the pending IN transfer completed with an error before the
+     gone event. The immediate resubmit made the IDF log `Enqueue URB error`.
+3. **Third image: error retry.** `ed2d9b6b…` (plan `fec51cfb…`) no longer
+   resubmits on an error. It retries from the client task after 100 ms, and
+   only if the device is still present; the client wait is bounded to 50 ms.
+   - **Restart session:** after an app restart, the FLX4's first session
+     ended with one IN error, then a clean stop and detach, and the controller
+     re-enumerated on its own.
+   - **Continuous controls on the re-enumerated session:**
+
+     | Control | Events | Values |
+     |---|---|---|
+     | Crossfader | 171 | 0..16383, full 14-bit range |
+     | ChannelVolume deck 1 | 282 | 0..16383 |
+     | ChannelVolume deck 2 | 212 | 0..16383 |
+     | JogScratch deck 1 | 620 | relative −3..+2 |
+     | JogScratch deck 2 | 683 | relative −3..+2 |
+     | JogBend deck 1 | 13 | relative |
+     | JogTouch decks 1 and 2 | on and off | — |
+
+   - **Totals:** 2650 packets; 2647 scheduled; 0 dropped; 3 unmapped; 0
+     semantic errors; release and free `ESP_OK`. No `Enqueue URB` error
+     appeared.
+
+Tempo sliders, EQ, filter, master and headphone level did not appear in this
+capture, so they remain unverified on the device. There is still no MIDI out (LEDs, init SysEx), and
+no product state consumes the events yet.
