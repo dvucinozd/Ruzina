@@ -3,9 +3,9 @@
 //! The shared `ruzina-media-load` preflight (audio stat, ANLZ DAT/EXT, source
 //! cues) runs through `FsLoadFiles`, which checks the live lease around every
 //! filesystem operation, cache hits included. The caller keeps the catalog,
-//! the deck's load gate and the final commit. Host-tested only: analysis
-//! publication allocates and this staticlib has no global allocator yet, so no
-//! IDF profile selects this feature.
+//! the deck's load gate and the final commit. Analysis publication allocates;
+//! the `idf-media-load` target form takes those allocations from the IDF PSRAM
+//! heap (`idf_alloc`). No IDF profile selects it yet.
 #![forbid(unsafe_code)]
 
 use crate::exfat_fixture::Volume;

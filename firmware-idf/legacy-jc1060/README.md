@@ -203,13 +203,21 @@ live lease and catalog publication around every filesystem operation, cache
 hits included. `media_load::preflight` returns analysis only if both are still
 current after the last read; the caller rechecks them at its own commit.
 
-The catalog, the deck's load gate and the commit stay with the caller. Analysis
-publication allocates, and this staticlib has no global allocator yet, so no
-IDF profile selects `media-load` and it has no target build. Host tests use a
-real exFAT image read through `ReadQueue`/`ReadClient`: removal during an
-analysis read, cancellation followed by drain and a reload under a new lease,
-and a warm volume cache after removal.
+The catalog, the deck's load gate and the commit stay with the caller. Host
+tests use a real exFAT image read through `ReadQueue`/`ReadClient`: removal
+during an analysis read, cancellation followed by drain and a reload under a
+new lease, and a warm volume cache after removal.
+
+Analysis publication allocates. The target form `idf-media-load` registers a
+global allocator (`idf_alloc`) that takes every Rust allocation from the IDF
+PSRAM heap (`MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT`) with the layout's alignment,
+following ADR-008. There is no internal-RAM fallback: a profile that selects
+it must initialize PSRAM for capability allocation, as the memory profile does,
+or every allocation fails and the panic handler aborts. These buffers are
+CPU-only; no DMA or cache coherency is claimed. No IDF profile selects
+`idf-media-load` yet, and the allocator has not run on the device.
 
 ```sh
-cargo +1.95.0 test --locked --manifest-path firmware-idf/legacy-jc1060/rust-core/Cargo.toml --features idf-exfat-fixture,media-load
+cargo +1.95.0 test --locked --manifest-path firmware-idf/legacy-jc1060/rust-core/Cargo.toml --features idf-media-load
+cargo +1.95.0 build --locked --release --manifest-path firmware-idf/legacy-jc1060/rust-core/Cargo.toml --features idf-media-load --target riscv32imafc-unknown-none-elf
 ```
