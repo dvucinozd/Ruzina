@@ -44,7 +44,7 @@ def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--idf', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'usb-host'], required=True)
+    parser.add_argument('--variant', choices=['pure-ram', 'flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'usb-host', 'usb-midi'], required=True)
     parser.add_argument('--wsl', help='Optional WSL distribution for Rust only')
     parser.add_argument('--cargo-home')
     parser.add_argument('--rustup-home')
@@ -97,6 +97,8 @@ def main():
         common += ['--features', 'idf-exfat-fixture']
     elif args.variant in ('sd-rust-load', 'sd-rust-load-display'):
         common += ['--features', 'idf-media-load']
+    elif args.variant == 'usb-midi':
+        common += ['--features', 'idf-controller-midi']
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -111,8 +113,10 @@ def main():
         defaults += [APP / 'sdkconfig.sd-bridge.defaults']
     elif args.variant == 'sd-rust-exfat':
         defaults += [APP / 'sdkconfig.sd-rust-exfat.defaults']
-    elif args.variant == 'usb-host':
+    elif args.variant in ('usb-host', 'usb-midi'):
         defaults += [APP / 'sdkconfig.usb-host.defaults']
+        if args.variant == 'usb-midi':
+            defaults += [APP / 'sdkconfig.usb-midi.defaults']
     elif args.variant in ('sd-rust-load', 'sd-rust-load-display'):
         defaults += [APP / 'sdkconfig.sd-rust-load.defaults']
         if args.variant == 'sd-rust-load-display':
@@ -147,9 +151,12 @@ def main():
             if required not in config:
                 raise ValueError('Wrong load profile: ' + required)
     # Only the USB host diagnostic may enable and link the USB Host Library.
-    if ('CONFIG_RUZINA_USB_HOST_ENUM=y' in config) != (args.variant == 'usb-host'):
+    usb_variant = args.variant in ('usb-host', 'usb-midi')
+    if ('CONFIG_RUZINA_USB_HOST_ENUM=y' in config) != usb_variant:
         raise ValueError('USB host profile mismatch')
-    if args.variant == 'usb-host' and 'CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096' not in config:
+    if ('CONFIG_RUZINA_USB_HOST_MIDI=y' in config) != (args.variant == 'usb-midi'):
+        raise ValueError('USB-MIDI profile mismatch')
+    if usb_variant and 'CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE=4096' not in config:
         raise ValueError('USB host control buffer too small for audio-class configurations')
     from esptool.bin_image import LoadFirmwareImage
     binary = output / 'build/ruzina_legacy_probe.bin'
@@ -173,7 +180,14 @@ def main():
     # (with Cargo's hash suffix) are forbidden here.
     if any(x in links for x in ('--no-warn-mismatch', 'libesp_hal-', 'libesp_rtos-')):
         raise ValueError('Forbidden linker flag/startup')
-    if args.variant == 'usb-host':
+    if args.variant in ('usb-host', 'usb-midi'):
+        if args.variant == 'usb-midi' and 'ruzina_legacy_midi_ingest' not in run(['riscv32-esp-elf-nm', '--defined-only', elf]):
+            raise ValueError('Rust USB-MIDI session not linked')
+        if args.variant == 'usb-midi':
+            from stack_frames import oversized_rust_frames
+            oversized = oversized_rust_frames(run(['riscv32-esp-elf-objdump', '-d', '--no-show-raw-insn', elf]))
+            if oversized:
+                raise ValueError('Rust stack frame over task budget: ' + repr(oversized))
         if 'usb_host_enum.c.obj' not in mapping or 'libusb.a' not in mapping.replace('\\', '/'):
             raise ValueError('USB host diagnostic or library not linked')
         if any(x in mapping for x in ('sd_bridge.c.obj', 'load_display.c.obj', 'display_touch.c.obj')):

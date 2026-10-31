@@ -82,11 +82,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzina-control-scheduler"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+]
+
+[[package]]
 name = "ruzina-controller-core"
 version = "0.1.0"
 dependencies = [
  "ruzina-core",
 ]
+
+[[package]]
+name = "ruzina-controller-profile"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+]
+
+[[package]]
+name = "ruzina-controller-session"
+version = "0.1.0"
+dependencies = [
+ "ruzina-control-scheduler",
+ "ruzina-controller-core",
+ "ruzina-controller-profile",
+ "ruzina-controller-usb",
+]
+
+[[package]]
+name = "ruzina-controller-usb"
+version = "0.1.0"
 
 [[package]]
 name = "ruzina-core"
@@ -115,6 +143,9 @@ name = "ruzina-legacy-idf-core-probe"
 version = "0.1.0"
 dependencies = [
  "ruzina-audio-dsp",
+ "ruzina-controller-core",
+ "ruzina-controller-profile",
+ "ruzina-controller-session",
  "ruzina-core",
  "ruzina-deck",
  "ruzina-media-block",

@@ -72,7 +72,7 @@ def prepare(package, unit_path, output, predecessor_plan=None, ancestor_plans=()
     package, unit_path, output = map(Path, (package, unit_path, output))
     manifest_path = package / 'manifest.json'
     manifest = json.loads(manifest_path.read_text())
-    if manifest['variant'] not in ('flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'usb-host') or manifest['idf_commit'] != 'fff9895c82d744c7237be8847347bdd1b07c6643':
+    if manifest['variant'] not in ('flash-build-only', 'memory-task', 'display-touch', 'sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'usb-host', 'usb-midi') or manifest['idf_commit'] != 'fff9895c82d744c7237be8847347bdd1b07c6643':
         raise ValueError('Wrong diagnostic package')
     unit = json.loads(unit_path.read_text())
     if unit['observed']['chip_revision'] != 103 or unit['observed']['base_mac'] != 'e8:f6:0a:e7:22:1d':
