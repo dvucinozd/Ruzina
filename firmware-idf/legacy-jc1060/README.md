@@ -367,3 +367,21 @@ Bulk-OUT carries a diagnostic LED output: a 1.5 s lamp test of every profile
 output on claim, Play toggling its LED and the Cue LED following the hold. On JC1060 the FLX4's buttons, faders, crossfader
 and jogs reached the session with 0 drops
 ([device run](../../docs/reviews/2026-10-31-legacy-usb-midi.md#device-run-2026-10-31-owner-present)).
+## `deck-ui` profile
+
+`deck-ui` is the one profile that combines owners: the Rust SD load, the
+status screen with touch, and the USB host with FLX4 MIDI and LEDs. Its
+defaults are `sd-rust-load`, `load-display` and `deck-ui`, and Rust builds
+with `idf-media-load` and `idf-controller-midi` together.
+
+Rust turns the semantic events into library actions
+(`ruzina_bridge_midi_ui`):
+- the browse encoder moves the screen's selection and requests the track's
+  detail, exactly as a tap does;
+- the browse press re-requests it;
+- Load on deck 1 or 2 shows the selected track as `D1` or `D2` in the header.
+
+The CMake guard allows the USB host beside SD and the display only in this
+full combination. The build tool checks all three owners and limits the MIDI
+exports to 2 KiB frames. See
+[deck UI](../../docs/reviews/2026-10-31-legacy-deck-ui.md).

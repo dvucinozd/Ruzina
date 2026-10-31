@@ -37,7 +37,9 @@ playback, MIDI, HID and vendor interfaces, through three hot-plug cycles.
 [`usb-midi`](reviews/2026-10-31-legacy-usb-midi.md) claims its MIDI
 interface and runs the FLX4 profile through the shared controller session on
 the board: buttons, faders, crossfader and jogs, with 0 drops. Its Bulk-OUT
-drives a diagnostic LED echo and lamp test. Nothing consumes the semantic events yet.
+drives a diagnostic LED echo and lamp test. The combined
+[`deck-ui`](reviews/2026-10-31-legacy-deck-ui.md) runs SD load, the screen and
+the FLX4 together on the board: browse and load drive the library screen.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

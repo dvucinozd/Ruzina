@@ -9,6 +9,12 @@ use std::vec::Vec;
 type Delivered = (u32, u32, u32, i32, String);
 
 static EVENTS: Mutex<Vec<Delivered>> = Mutex::new(Vec::new());
+static UI: Mutex<Vec<(u32, u32, i32)>> = Mutex::new(Vec::new());
+
+#[unsafe(no_mangle)]
+extern "C" fn ruzina_bridge_midi_ui(action: u32, deck: u32, value: i32) {
+    UI.lock().unwrap().push((action, deck, value));
+}
 
 #[unsafe(no_mangle)]
 extern "C" fn ruzina_bridge_midi_event(
@@ -113,6 +119,29 @@ fn flx4_play_presses_reach_the_semantic_session() {
     unsafe { ruzina_legacy_midi_totals(totals.as_mut_ptr()) };
     assert_eq!(totals[0], 6);
     assert_eq!(totals[1], 6);
+
+    // Library UI: browse encoder +1 and -1 (CC 0xB6 0x40, two's complement),
+    // browse press (0x96 0x41) and load deck 1 / deck 2 (0x96 0x46 / 0x47).
+    UI.lock().unwrap().clear();
+    ingest(&[
+        0x0b, 0xb6, 0x40, 0x01, //
+        0x0b, 0xb6, 0x40, 0x7f, //
+        0x09, 0x96, 0x41, 0x7f, //
+        0x09, 0x96, 0x41, 0x00, //
+        0x09, 0x96, 0x46, 0x7f, //
+        0x09, 0x96, 0x47, 0x7f,
+    ]);
+    let actions = UI.lock().unwrap().clone();
+    assert_eq!(
+        actions,
+        [
+            (ui::BROWSE, 0, 1),
+            (ui::BROWSE, 0, -1),
+            (ui::CHOOSE, 0, 0),
+            (ui::LOAD, 1, 0),
+            (ui::LOAD, 2, 0),
+        ]
+    );
 
     ruzina_legacy_midi_unbind();
     assert_eq!(ingest(&[0x09, 0x90, 0x0b, 0x7f]), -1);

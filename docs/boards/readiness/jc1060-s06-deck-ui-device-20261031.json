@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "status": "FLASHED_DEVICE_RUN_PASS_NOT_QUALIFIED",
+  "variant": "deck-ui",
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-deck-ui-device-20261031.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-deck-ui-device-20261031\\jc1060-idf61-deck-ui-device-20261031.zip",
+  "archive_sha256": "5483b90e631cde6e9c76e87889cb1ba193dd7e4b2925c39c3db918504730b30c",
+  "archive_bytes": 7062862,
+  "members": 28,
+  "app_sha256": "fe91eade13fd3b12e72d94849594c2582aeb0897d7ce92339c4d5f72879a1d1f",
+  "app_bytes": 501376,
+  "manifest_sha256": "2ac95e80c53097ae1570e37e6c9f1c68c0de346043111b960f536a391164060e",
+  "source_commit": "697dacc39706eb07fa266c87b66cf621c08cca29",
+  "dirty_diff_sha256": "1d07cd95ef1473ec9d8bfdeca4ca7a22ef638b1ed0eb7dd3e8083883927a1542",
+  "plan_sha256": "07381298b2707fb35c7390fb37bf3d15939858512a9ff2eeb3b780a8f2aaec91",
+  "predecessor_plan_sha256": "8ef6755ce0168a7ab5200343aac7c0e28caf7227a11ae406517e8727942c4ae6",
+  "superseded_images": [],
+  "device": {
+    "model": "Pioneer DDJ-FLX4",
+    "vid": "2b73",
+    "pid": "0045",
+    "power": "bus from PC via FS port, battery disconnected"
+  },
+  "captures": [
+    "s06-deck-ui-flash",
+    "s06-deck-ui-run"
+  ],
+  "contains_factory_dump": false,
+  "contains_sd_dump": false,
+  "release": false,
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH"
+}

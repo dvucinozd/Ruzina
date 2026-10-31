@@ -14,8 +14,12 @@ reported two minor issues; the merged follow-up fixes numeric prose spacing and
 exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
 only, NOT_FLASHED. This merge does not change the current board image.
 
-**Current unit (2026-10-31):** JC1060 v1.3 runs the isolated `usb-midi`
-diagnostic with LED output, image `e698907b…`. The owner's DDJ-FLX4 enumerates on the HS port
+**Current unit (2026-10-31):** JC1060 v1.3 runs the combined `deck-ui`
+diagnostic, image `fe91eade…`: SD load with the status screen and touch, plus
+the FLX4. Its browse moves the library selection and its Load buttons fill
+`D1` and `D2` ([deck UI](reviews/2026-10-31-legacy-deck-ui.md)). Before that,
+the board ran the isolated `usb-midi` diagnostic with LED output, image
+`e698907b…`. The owner's DDJ-FLX4 enumerates on the HS port
 ([USB host](reviews/2026-10-31-legacy-usb-host-enum.md),
 [topology](boards/JC1060_USB_TOPOLOGY.md)). Its USB-MIDI reaches the shared
 Rust controller session with the FLX4 profile: buttons, faders, crossfader and
