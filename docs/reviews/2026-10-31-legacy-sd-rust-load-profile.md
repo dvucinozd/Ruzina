@@ -165,8 +165,36 @@ re-enumeration.
 The owner confirmed that the export holds 25 tracks, which matches the
 catalog count. The single playlist node was not separately confirmed.
 
+### Comparison with the M2.5 parser
+
+The owner provided a PC copy of the same export, which was read without
+writing. The comparison followed the 2026-10-24 method:
+- **Rust:** the `export_inspect` and `analysis_inspect` examples of
+  `ruzina-rekordbox`.
+- **M2.5:** the donor `rekordbox_pdb.c`/`rekordbox_anlz.c` from
+  `Pajoniiir-shared-p4-core` `20f1c3f0`, built with gcc in standalone mode.
+  Small C drivers print the same TSV lines and FNV hashes as the Rust examples.
+- The drivers and the output are kept outside the repository in
+  `D:\BoardEvidence\JC1060-20261030-COM3\rb-export-compare-20261031`.
+
+PDB results:
+- Both sides find the same 25 track ids.
+- Title, artist, key, BPM, duration, ANLZ path and artwork (22 of 25 covered)
+  match.
+- The playlist tree matches: one node, `test`, with the same 6 entries.
+- The album differs for 18 tracks. As before, Rust resolves the album table
+  and M2.5 drops it.
+- The audio path differs for one track, 18. Its path is 142 bytes; M2.5
+  returns it empty and Rust returns the existing file. ASCII strings over 126
+  bytes use the long DeviceSQL form, which the donor appears not to decode.
+  The board loaded this track with analysis.
+
+ANLZ results: all 25 tracks match on every field, with the EXT applied:
+- beat count and beat-grid hash;
+- PWAV preview and PWV3 detail, by length and by hash;
+- hot cues and memory cues, by count and by hash;
+- PWV4 color-preview count.
+
 Still open:
-- ANLZ content for this export has not been compared with the M2.5 parser.
-  The 189-track comparison was a different export.
 - Only one card has been run. The owner deferred other cards for now.
 - Display, audio, USB host and C6 stay outside this profile.
