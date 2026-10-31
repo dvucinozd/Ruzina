@@ -234,3 +234,41 @@ passes its track through the load preflight. Another removes the card during
 a PDB page read and publishes nothing. The volume identity is still a test
 value; a device profile must derive it from the exFAT volume.
 
+
+## `sd-rust-load` profile (build only)
+
+The opt-in `sd-rust-load` variant (`CONFIG_RUZINA_SD_RUST_LOAD`, Rust
+`idf-media-load`) runs the shared media load path on the read-only Rust SD
+bridge. The client task, on a 49152-byte stack, does the following:
+
+1. Mounts the exFAT volume.
+2. Derives the volume identity as the native USB0 owner does.
+3. Imports `PIONEER/rekordbox/export.pdb`.
+4. Runs the load preflight (audio stat, ANLZ DAT/EXT) for every track.
+5. Repeats steps 3 and 4 once a second.
+
+Every SD write command stays denied. Rust allocations come from caps-allocated
+PSRAM, and the profile initializes PSRAM like the memory profile: 80 MHz, boot
+init, caps-only, no XiP. The client refuses to start if PSRAM is not
+initialized. The CMake guard and the build tool reject the variant without
+these settings, or together with the fixture run.
+
+Telemetry lines are `rust_load pass=N event=E value=V stack_free=…
+psram_free=… psram_min=…`. The events are:
+
+| Event | Value |
+|---|---|
+| 1 | Partition first LBA |
+| 2 | Catalog track count |
+| 3 | Playlist nodes |
+| 4 | `index << 8 \| outcome` per track; printed on pass 1, or when stale |
+| 5 | Tracks loaded with analysis in this pass |
+| 6 | Failure, `stage << 8 \| code` |
+
+Track outcomes are 0 for analysis loaded, 1 for no analysis, 2 for a source
+error and 3 for stale. Failure stages are 1 mount, 2 allocation, 3 import and
+4 stale.
+
+This is a build-only diagnostic. The image has not been flashed, and its
+physical acceptance is a separate exact-image campaign. That campaign needs a
+card holding a real Rekordbox export.

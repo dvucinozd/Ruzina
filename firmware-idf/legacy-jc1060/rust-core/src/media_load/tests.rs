@@ -446,3 +446,23 @@ fn warm_volume_cache_cannot_serve_a_load_after_removal() {
     assert_eq!(load(&mut volume).err(), Some(Error::Stale));
     assert_eq!(port.0.borrow().reads, reads, "no IO after removal");
 }
+
+#[test]
+fn volume_identity_uses_the_native_exfat_derivation() {
+    let (port, binding, mut client, _) = setup();
+    let current = || port.is_current(binding);
+    let volume = ready(mount(&mut client, binding.lease, &current))
+        .ok()
+        .unwrap();
+    let boot = volume.boot_info();
+    assert_eq!(
+        volume_identity(&volume),
+        ruzina_media_identity::derive_exfat_volume_identity(
+            boot.volume_serial,
+            512,
+            1,
+            boot.volume_length,
+            1,
+        )
+    );
+}

@@ -4,6 +4,7 @@
 #include "sdkconfig.h"
 #include "driver/sdmmc_host.h"
 #include "esp_heap_caps.h"
+#include "esp_psram.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdmmc_cmd.h"
@@ -15,7 +16,9 @@ extern int32_t ruzina_legacy_bridge_take(uint32_t *first, uint32_t *count);
 extern int32_t ruzina_legacy_bridge_complete(int32_t status, const uint8_t *data, uint32_t bytes);
 extern int32_t ruzina_legacy_bridge_invalidate(void);
 extern int32_t ruzina_legacy_bridge_run(void);
-#if CONFIG_RUZINA_SD_RUST_EXFAT
+#if CONFIG_RUZINA_SD_RUST_LOAD
+extern int32_t ruzina_legacy_load_run(void);
+#elif CONFIG_RUZINA_SD_RUST_EXFAT
 extern int32_t ruzina_legacy_exfat_run(void);
 #endif
 
@@ -47,6 +50,18 @@ void ruzina_bridge_fs_report(uint32_t pass, uint32_t event, uint32_t value)
     printf("\n");fflush(stdout);
 }
 
+/* Load events: 1 mounted, 2 catalog tracks, 3 playlist nodes, 4 track
+ * index<<8|outcome (0 analysis, 1 none, 2 source error, 3 stale), 5 pass
+ * tracks with analysis, 6 failure stage<<8|code. Rust heap is PSRAM-only. */
+void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
+{
+    printf("rust_load pass=%" PRIu32 " event=%" PRIu32 " value=%" PRIu32 " stack_free=%u psram_free=%u psram_min=%u\n",
+           pass,event,value,(unsigned)uxTaskGetStackHighWaterMark(NULL),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+           (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM));
+    fflush(stdout);
+}
+
 static esp_err_t readonly_transaction(int slot, sdmmc_command_t *command)
 {
     switch (command->opcode) {
@@ -64,7 +79,9 @@ static void client(void *unused)
     /* Register on this task before any Rust waker can target it. The task stays
      * allocated after completion so static RawWakers never reference freed TCBs. */
     client_task=xTaskGetCurrentTaskHandle();
-#if CONFIG_RUZINA_SD_RUST_EXFAT
+#if CONFIG_RUZINA_SD_RUST_LOAD
+    int32_t result=ruzina_legacy_load_run();
+#elif CONFIG_RUZINA_SD_RUST_EXFAT
     int32_t result=ruzina_legacy_exfat_run();
 #else
     int32_t result=ruzina_legacy_bridge_run();
@@ -109,7 +126,13 @@ static void owner(void *unused)
     if(ruzina_legacy_bridge_init(card.csd.capacity)!=0) {err=ESP_ERR_INVALID_STATE;goto finish;}
     printf("S6_RUST_SD_BRIDGE sectors=%" PRIu32 " sector_bytes=512 max_khz=10000 width=4 ldo=4 bounce_bytes=512 readonly=1\n",
            (uint32_t)card.csd.capacity);
-#if CONFIG_RUZINA_SD_RUST_EXFAT
+#if CONFIG_RUZINA_SD_RUST_LOAD
+    /* The Rust allocator has no internal fallback: refuse to start without PSRAM. */
+    if(!esp_psram_is_initialized()) {err=ESP_ERR_INVALID_STATE;goto finish;}
+    printf("S6_RUST_LOAD psram_bytes=%u psram_free=%u\n",(unsigned)esp_psram_get_size(),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    const uint32_t client_stack=49152;
+#elif CONFIG_RUZINA_SD_RUST_EXFAT
     const uint32_t client_stack=32768;
 #else
     const uint32_t client_stack=16384;

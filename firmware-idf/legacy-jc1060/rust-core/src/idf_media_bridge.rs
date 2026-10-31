@@ -365,3 +365,152 @@ pub extern "C" fn ruzina_legacy_exfat_run() -> i32 {
     }
     0
 }
+
+#[cfg(feature = "idf-media-load")]
+unsafe extern "C" {
+    fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+}
+
+/// Load-path telemetry events; values are scalars only.
+#[cfg(feature = "idf-media-load")]
+mod load_event {
+    /// Mounted; value is the partition's first LBA.
+    pub const MOUNTED: u32 = 1;
+    /// Catalog published; value is the track count.
+    pub const CATALOG: u32 = 2;
+    /// Playlist nodes published with that catalog.
+    pub const PLAYLISTS: u32 = 3;
+    /// One track's preflight; value is `index << 8 | outcome`.
+    pub const TRACK: u32 = 4;
+    /// Pass complete; value is the number of tracks loaded with analysis.
+    pub const PASS: u32 = 5;
+    /// Failure; value is the stage (1 mount, 2 allocation, 3 import, 4 stale).
+    pub const FAILED: u32 = 6;
+}
+
+/// Mount, import `export.pdb` and preflight every catalog track, repeatedly.
+/// Track outcomes: 0 analysis loaded, 1 no analysis, 2 source error, 3 stale.
+/// Read-only: the SD owner denies every write command.
+#[cfg(feature = "idf-media-load")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_load_run() -> i32 {
+    use crate::media_load::{Error, import_catalog, preflight, volume_identity};
+    use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
+    use ruzina_media_load::pdb::{PdbNameStage, VecCatalogStage};
+
+    // SAFETY: diagnostic telemetry passes three u32 POD values only.
+    let report = |pass, event, value| unsafe { ruzina_bridge_load_report(pass, event, value) };
+    let Some(binding) = with_state(|state| state.as_ref().map(|s| s.binding)) else {
+        return -1;
+    };
+    let current = || Port.is_current(binding);
+    let mut client = ReadClient::new(Port, binding);
+    let mut volume = match block_on(crate::exfat_fixture::mount(
+        &mut client,
+        binding.lease,
+        &current,
+    )) {
+        Ok(volume) => volume,
+        Err(error) => {
+            report(0, load_event::FAILED, 1 << 8 | error as u32);
+            return -4;
+        }
+    };
+    report(
+        0,
+        load_event::MOUNTED,
+        volume.device().range().first_block() as u32,
+    );
+    let identity = volume_identity(&volume);
+    // Capacity is reserved once, in PSRAM, before any page is read.
+    let (Ok(mut names), Ok(mut stage)) = (PdbNameStage::try_new(), VecCatalogStage::try_new())
+    else {
+        report(0, load_event::FAILED, 2 << 8);
+        return -7;
+    };
+    for pass in 1..=u32::MAX {
+        stage.prepare_generation(binding.lease);
+        names.clear();
+        let probe = match block_on(import_catalog(
+            &mut volume,
+            identity,
+            &current,
+            &mut names,
+            &mut stage,
+        )) {
+            Ok(probe) => probe,
+            Err(_) => {
+                stage.invalidate(binding.lease);
+                report(pass, load_event::FAILED, 3 << 8);
+                return -8;
+            }
+        };
+        let Some(snapshot) = stage.current() else {
+            report(pass, load_event::FAILED, 3 << 8);
+            return -8;
+        };
+        let (publication, tracks) = (
+            CatalogPublicationId {
+                lease: snapshot.lease(),
+                revision: snapshot.revision(),
+            },
+            snapshot.len(),
+        );
+        report(pass, load_event::CATALOG, tracks as u32);
+        if let Some(playlists) = probe.playlists {
+            report(pass, load_event::PLAYLISTS, playlists.nodes);
+        }
+        let published = |candidate: CatalogPublicationId| {
+            candidate == publication
+                && stage.current().is_some_and(|snapshot| {
+                    snapshot.lease() == candidate.lease && snapshot.revision() == candidate.revision
+                })
+        };
+        let mut loaded = 0u32;
+        for index in 0..tracks {
+            let Some(track) = stage
+                .current()
+                .and_then(|snapshot| snapshot.get(index).copied())
+            else {
+                report(pass, load_event::FAILED, 4 << 8);
+                return -6;
+            };
+            let candidate = CatalogLoadCandidate {
+                publication,
+                index: index as u16,
+                track,
+            };
+            let outcome = match block_on(preflight(
+                &mut volume,
+                candidate,
+                pass,
+                &current,
+                &published,
+            )) {
+                Ok(prepared) if prepared.publication.is_some() => {
+                    loaded += 1;
+                    0
+                }
+                Ok(_) => 1,
+                Err(Error::Source) => 2,
+                Err(Error::Stale) => 3,
+            };
+            if pass == 1 || outcome == 3 {
+                report(pass, load_event::TRACK, (index as u32) << 8 | outcome);
+            }
+            if outcome == 3 {
+                report(pass, load_event::FAILED, 4 << 8);
+                return -6;
+            }
+            // SAFETY: dedicated task only; yield one tick between tracks.
+            unsafe { ruzina_bridge_fixture_yield() };
+        }
+        report(pass, load_event::PASS, loaded);
+        if !current() {
+            return -6;
+        }
+        // SAFETY: task-only cooperative delay between passes.
+        unsafe { ruzina_bridge_delay() };
+    }
+    0
+}

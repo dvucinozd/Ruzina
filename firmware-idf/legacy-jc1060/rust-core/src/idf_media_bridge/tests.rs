@@ -66,6 +66,9 @@ extern "C" fn ruzina_bridge_fs_report(_pass: u32, _event: u32, _value: u32) {}
 extern "C" fn ruzina_bridge_fixture_yield() {
     thread::yield_now();
 }
+#[cfg(feature = "idf-media-load")]
+#[unsafe(no_mangle)]
+extern "C" fn ruzina_bridge_load_report(_pass: u32, _event: u32, _value: u32) {}
 
 #[repr(align(4))]
 struct Bounce([u8; 512]);
