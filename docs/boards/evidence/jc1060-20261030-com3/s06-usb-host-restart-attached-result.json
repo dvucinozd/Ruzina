@@ -1,0 +1,21 @@
+{
+  "scenario": "s06-usb-host-restart-attached",
+  "mode": "restart",
+  "app_sha256": "2f0c0ab796f81f5eea60ae600ffc8523dde2f8c0d7ceb6aac914ed37260817ec",
+  "bytes": 4945,
+  "sha256": "9834bf4bbb763f903cb5924bb1b41bdc341e6b200164e6248ff793dd26de3e82",
+  "host_started": true,
+  "init_failed": false,
+  "attaches": [],
+  "interfaces": [],
+  "endpoints": 0,
+  "iads": [],
+  "config_walks": [],
+  "attach_errors": [],
+  "detaches": 0,
+  "resets": [
+    "3"
+  ],
+  "heartbeats": 39,
+  "fatal": []
+}

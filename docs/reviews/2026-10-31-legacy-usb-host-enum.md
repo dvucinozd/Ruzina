@@ -1,7 +1,7 @@
 # JC1060 `usb-host` enumeration diagnostic
 
-Date: 2026-10-31. Branch: from main `926e905` (after PR #64). Build only: no
-device run yet. Native minimum 302 and APTA unchanged.
+Date: 2026-10-31. Branch: from main `926e905` (after PR #64). The device
+run, with the owner present, is at the end. Native minimum 302 and APTA unchanged.
 
 ## Topology first
 
@@ -78,3 +78,57 @@ Accept the run when:
   interfaces and endpoints, and a complete configuration walk.
 - Unplugging gives `usb_detach`, and replugging enumerates again, three times.
 - There is no brownout, reset or fault, and the heartbeat continues.
+
+
+## Device run (2026-10-31, owner present)
+
+Setup:
+- The board was powered only from the PC on the FS (COM3) port, with the
+  battery disconnected.
+- The owner's DDJ-FLX4 was on bus power, connected C-to-C to the HS port.
+
+Records are in `docs/boards/evidence/jc1060-20261030-com3/s06-usb-host-*`,
+indexed by the
+[device index](../boards/readiness/jc1060-s06-usb-host-device-20261031.json).
+
+1. **First image.** `2f0c0ab7…` (plan `60403d54…`) flashed with a matching
+   readback, and `S6_USB_HOST` started. The owner then power-cycled the board,
+   and the heartbeat restart in the capture is that cycle. After an app
+   restart with the FLX4 attached, the library reached enumeration and failed
+   with `ENUM: Configuration descriptor larger than control transfer max
+   length`.
+2. **Fix.** `CONFIG_USB_HOST_CONTROL_TRANSFER_MAX_SIZE` went from 256 to 4096,
+   and the build tool now requires it for `usb-host`. Image `0133e421…`
+   (plan `ed7ae4c0…`, predecessor `60403d54…`) flashed with a matching
+   readback.
+3. **Stuck controller.** After the failed attempt, the FLX4 did not re-attach
+   across a ROM boot or an app restart: there was no attach and no error. One
+   cable replug enumerated it.
+4. **Enumeration.**
+   - The device: `usb_attach address=1 speed=HIGH vid=2b73 pid=0045
+     total=451 interfaces=7 max_power_ma=500`, manufacturer "AlphaTheta
+     Corporation", product "DDJ-FLX4". The configuration walk completed with
+     11 interfaces including alternates, 10 endpoints and 25 class-specific
+     descriptors.
+   - **Audio:** the IAD 0..2 audio function has its playback endpoint at
+     isochronous synchronous `0x01`. Alt 1 is 576 B per 1 ms (4 ch × 24-bit
+     × 48 kHz); alt 2 is 384 B (4 ch × 16-bit). Capture is `0x81`, 288 or
+     192 B (2 ch).
+   - **MIDI:** streaming on interface 4 uses bulk `0x82` in and `0x03` out,
+     512 B.
+   - **Other interfaces:** HID on interface 5 with interrupt `0x84`/`0x05`,
+     and a vendor interface 6 with bulk `0x86`/`0x07`.
+5. **Hot-plug.** 3 detach/attach cycles each logged `usb_detach` and then a
+   new attach at addresses 2, 3 and 4. Each was high speed with the same
+   451-byte configuration and a complete walk. There were 0 errors and no
+   fault, and the heartbeat stayed continuous from 141 to 275, so nothing
+   reset on attach.
+
+The FLX4's 4-channel playback interface carries MAIN and the headphone pair,
+which is the controller headphone route the product requires. The next step
+is claiming the MIDI interface, then UAC playback on alt 1 or 2.
+
+Not covered:
+- the FLX4's power-only port and its backfeed measurement;
+- current measurement;
+- a cold boot with the controller attached.

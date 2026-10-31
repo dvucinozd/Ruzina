@@ -1,0 +1,128 @@
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x17 (CHIP_USB_UART_RESET),boot:0xc (SPI_FAST_FLASH_BOOT)
+Core0 Saved PC:0x4ff10106
+Core1 Saved PC:0x4fc058e0
+SPI mode:DIO, clock div:2
+load:0x4ff33ce0,len:0x15d4
+load:0x4ff28ed0,len:0xf1c
+load:0x4ff2bbd0,len:0x35b8
+entry 0x4ff28eda
+I (11) boot: ESP-IDF v6.1 2nd stage bootloader
+I (12) boot: compile time Oct 31 2026 20:03:16
+I (12) boot: Multicore bootloader
+I (13) boot: chip revision: v1.3
+I (13) boot: efuse block revision: v0.3
+I (14) boot.esp32p4: SPI Speed      : 40MHz
+I (14) boot.esp32p4: SPI Mode       : DIO
+I (14) boot.esp32p4: SPI Flash Size : 16MB
+I (15) boot: Enabling RNG early entropy source...
+I (15) boot: Partition Table:
+I (15) boot: ## Label            Usage          Type ST Offset   Length
+I (16) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (16) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (17) boot:  2 factory          factory app      00 00 00010000 00100000
+I (18) boot: End of partition table
+I (19) esp_image: segment 0: paddr=00010020 vaddr=40020020 size=0add0h ( 44496) map
+I (29) esp_image: segment 1: paddr=0001adf8 vaddr=30100000 size=000b4h (   180) load
+I (30) esp_image: segment 2: paddr=0001aeb4 vaddr=4ff00000 size=05164h ( 20836) load
+I (36) esp_image: segment 3: paddr=00020020 vaddr=40000020 size=18ab8h (101048) map
+I (57) esp_image: segment 4: paddr=00038ae0 vaddr=4ff05164 size=0604ch ( 24652) load
+I (64) esp_image: segment 5: paddr=0003eb34 vaddr=4ff0b200 size=026c4h (  9924) load
+I (70) boot: Loaded app from partition at offset 0x10000
+I (70) boot: Disabling RNG early entropy source...
+I (73) cpu_start: Multicore app
+I (83) cpu_start: Pro cpu start user code
+I (83) cpu_start: cpu freq: 360000000 Hz
+I (83) app_init: Application information:
+I (83) app_init: Project name:     ruzina_legacy_probe
+I (84) app_init: App version:      0.1.0-legacy-eval
+I (84) app_init: Compile time:     Oct 31 2026 20:02:51
+I (84) app_init: ELF file SHA256:  2097a9515...
+I (84) app_init: ESP-IDF:          v6.1
+I (84) efuse_init: Min chip rev:     v1.0
+I (85) efuse_init: Max chip rev:     v1.99 
+I (85) efuse_init: Chip rev:         v1.3
+I (85) heap_init: Initializing. RAM available for dynamic allocation:
+I (86) heap_init: At 4FF0F280 len 0002BD40 (175 KiB): RETENT_RAM
+I (86) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (86) heap_init: At 4FF40000 len 00060000 (384 KiB): RAM
+I (86) heap_init: At 50108080 len 00007F80 (31 KiB): RTCRAM
+I (87) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+W (88) spi_flash: Detected boya flash chip but using generic driver. For optimal functionality, enable `SPI_FLASH_SUPPORT_BOYA_CHIP` in menuconfig
+I (89) spi_flash: detected chip: generic
+I (89) spi_flash: flash io: dio
+I (90) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (90) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (92) sleep_clock: System sleep clock ICG setting initialization
+I (94) main_task: Started on CPU0
+I (94) main_task: Calling app_main()
+RUZINA_LEGACY_IDF_PROBE_V1
+chip_revision=103
+reset_reason=11
+pitch_raw=0 pitch_centipercent=1000
+pitch_raw=8192 pitch_centipercent=0
+pitch_raw=16383 pitch_centipercent=-999
+pitch_raw=65535 pitch_centipercent=-999
+flash_bytes=16777216
+result=SCALAR_RUST_CALLS_MATCH
+readiness=NOT_QUALIFIED
+S6_USB_HOST port=HS phy=UTMI claim=NONE vbus=HARDWIRED_USB5V_IN
+execution=FLASH_BACKED
+restart_command=UPPERCASE_R
+heartbeat=1 uptime_us=1031724
+heartbeat=2 uptime_us=2031717
+heartbeat=3 uptime_us=3031717
+heartbeat=4 uptime_us=4031717
+heartbeat=5 uptime_us=5031717
+heartbeat=6 uptime_us=6031717
+heartbeat=7 uptime_us=7031717
+heartbeat=8 uptime_us=8031717
+heartbeat=9 uptime_us=9031717
+heartbeat=10 uptime_us=10031717
+heartbeat=11 uptime_us=11031717
+heartbeat=12 uptime_us=12031717
+heartbeat=13 uptime_us=13031717
+heartbeat=14 uptime_us=14031717
+heartbeat=15 uptime_us=15031717
+heartbeat=16 uptime_us=16031717
+heartbeat=17 uptime_us=17031717
+heartbeat=18 uptime_us=18031717
+heartbeat=2 uptime_us=2030913
+heartbeat=3 uptime_us=3030913
+heartbeat=4 uptime_us=4030913
+heartbeat=5 uptime_us=5030913
+heartbeat=6 uptime_us=6030913
+heartbeat=7 uptime_us=7030913
+heartbeat=8 uptime_us=8030913
+heartbeat=9 uptime_us=9030913
+heartbeat=10 uptime_us=10030913
+heartbeat=11 uptime_us=11030913
+heartbeat=12 uptime_us=12030913
+heartbeat=13 uptime_us=13030913
+heartbeat=14 uptime_us=14030913
+heartbeat=15 uptime_us=15030913
+heartbeat=16 uptime_us=16030913
+heartbeat=17 uptime_us=17030913
+heartbeat=18 uptime_us=18030913
+heartbeat=19 uptime_us=19030913
+heartbeat=20 uptime_us=20030913
+heartbeat=21 uptime_us=21030913
+heartbeat=22 uptime_us=22030913
+heartbeat=23 uptime_us=23030913
+heartbeat=24 uptime_us=24030913
+heartbeat=25 uptime_us=25030913
+heartbeat=26 uptime_us=26030913
+heartbeat=27 uptime_us=27030913
+heartbeat=28 uptime_us=28030913
+heartbeat=29 uptime_us=29030913
+heartbeat=30 uptime_us=30030913
+heartbeat=31 uptime_us=31030913
+heartbeat=32 uptime_us=32030913
+heartbeat=33 uptime_us=33030913
+heartbeat=34 uptime_us=34030913
+heartbeat=35 uptime_us=35030913
+heartbeat=36 uptime_us=36030913
+heartbeat=37 uptime_us=37030913
+heartbeat=38 uptime_us=38030913
+heartbeat=39 uptime_us=39030913

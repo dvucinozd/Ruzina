@@ -14,8 +14,13 @@ reported two minor issues; the merged follow-up fixes numeric prose spacing and
 exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
 only, NOT_FLASHED. This merge does not change the current board image.
 
-**Current unit (2026-10-31):** JC1060 v1.3 runs the `sd-rust-load-display`
-diagnostic with touch selection, image `2e866f61…`. It reads the owner's
+**Current unit (2026-10-31):** JC1060 v1.3 runs the isolated `usb-host`
+enumeration diagnostic, image `0133e421…`. The owner's DDJ-FLX4 enumerates
+on the HS port and survives hot-plug
+([USB host](reviews/2026-10-31-legacy-usb-host-enum.md),
+[topology](boards/JC1060_USB_TOPOLOGY.md)). Before it, the board ran the
+`sd-rust-load-display` diagnostic with touch selection, image `2e866f61…`,
+which is now the predecessor in the plan chain. It reads the owner's
 exFAT card (a 25-track Rekordbox export) on the read-only SD bridge, imports
 the catalog and preflights every track, and shows the status and track list
 on the panel. A tap shows the track's BPM, key, cue counts and preview

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "FLASHED_DEVICE_RUN_PASS_NOT_QUALIFIED",
+  "variant": "usb-host",
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-usb-host-device-20261031.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-usb-host-device-20261031\\jc1060-idf61-usb-host-device-20261031.zip",
+  "archive_sha256": "3bf0d897295a056244fbcdcc34434dd843e095a45392aebbc4fd84f0f21e4ca8",
+  "archive_bytes": 12513169,
+  "members": 83,
+  "app_sha256": "0133e42174d852774bf20ca3668b3df1fadc3995f6383ad24c569aebe58d3584",
+  "app_bytes": 201248,
+  "manifest_sha256": "3ea101fb15f741f16abc7ef3d00e8d1ea1370d762b3f23ab6a1449aa4c885005",
+  "source_commit": "bd4dcc167ee0f0be48f1320d6ec576fe2da32b85",
+  "dirty_diff_sha256": "3f776f31521122386ccf1de7bbd394c2dff61b559161a3f42b7751626f9449d4",
+  "plan_sha256": "ed7ae4c0cae3bf590ec9e33fbb948e9c2ead3f3fd5cfbbb5aac511d1b159b208",
+  "predecessor_plan_sha256": "60403d54574ba8e8c2b191c821c7569d2050c6837ff17d3a0498f7f755ed8ab3",
+  "superseded_image": {
+    "app_sha256": "2f0c0ab796f81f5eea60ae600ffc8523dde2f8c0d7ceb6aac914ed37260817ec",
+    "plan_sha256": "60403d54574ba8e8c2b191c821c7569d2050c6837ff17d3a0498f7f755ed8ab3",
+    "outcome": "Enumeration failed: configuration descriptor larger than the 256-byte control buffer"
+  },
+  "vendored_usb_archive_sha256": "dad8417428e553efbd886dad0397b84069352114c8eb21c102eb19b3ee26e4d7",
+  "device": {
+    "model": "Pioneer DDJ-FLX4",
+    "vid": "2b73",
+    "pid": "0045",
+    "speed": "HIGH",
+    "config_total": 451,
+    "interfaces": 7,
+    "alt_settings": 11,
+    "endpoints": 10,
+    "power": "bus from PC via FS port, battery disconnected"
+  },
+  "captures": [
+    "s06-usb-host-flash",
+    "s06-usb-host-first-attach",
+    "s06-usb-host-restart-attached",
+    "s06-usb-host-2-flash",
+    "s06-usb-host-flx4-enum",
+    "s06-usb-host-flx4-enum-r1",
+    "s06-usb-host-flx4-replug",
+    "s06-usb-host-flx4-hotplug"
+  ],
+  "contains_factory_dump": false,
+  "contains_sd_dump": false,
+  "release": false,
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH"
+}

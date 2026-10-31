@@ -83,6 +83,10 @@ data port's VBUS. If it does, a charger on the FLX4 would backfeed through the
 board into the PC, and that setup is not used. The first run uses bus power
 from the PC only, with the battery disconnected.
 
+That run (2026-10-31) enumerated the FLX4 at high speed with C-to-C and no Rp.
+It then passed three hot-plug cycles with no reset on attach. See the
+[enumeration review](../reviews/2026-10-31-legacy-usb-host-enum.md#device-run-2026-10-31-owner-present).
+
 ## Test-safety rules for the first host run (owner-applied)
 
 - Power the board only from the PC on the FS (COM3) port. Nothing that can
