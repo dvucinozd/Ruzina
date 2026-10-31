@@ -23,3 +23,8 @@ config RUZINA_SD_RUST_EXFAT
     bool "Verify fixture through shared Rust partition/exFAT reader"
     depends on RUZINA_SD_RUST_BRIDGE
     default n
+
+config RUZINA_SD_RUST_LOAD
+    bool "Import export.pdb and preflight every track through shared Rust media load"
+    depends on RUZINA_SD_RUST_BRIDGE && SPIRAM && !RUZINA_SD_RUST_EXFAT
+    default n

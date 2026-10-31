@@ -11,7 +11,7 @@
 use crate::exfat_fixture::Volume;
 use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
 use ruzina_media_fs::{AsyncFileSystem, LeaseBound};
-use ruzina_media_identity::VolumeIdentity;
+use ruzina_media_identity::{VolumeIdentity, derive_exfat_volume_identity};
 use ruzina_media_io::OwnedBlockDevice;
 use ruzina_media_load::pdb::{
     FsCatalogError, FsCatalogFiles, ImportError, PdbNameStage, PdbProbe, VecCatalogStage,
@@ -61,6 +61,21 @@ pub async fn preflight<D: OwnedBlockDevice<Buffer = [u8; 512]>>(
         return Err(Error::Stale);
     }
     Ok(prepared)
+}
+
+/// The mounted volume's identity, derived as the native USB0 owner derives it
+/// (`ruzina.volume.exfat.v1`), so track ids match across platforms.
+pub fn volume_identity<D: OwnedBlockDevice<Buffer = [u8; 512]>>(
+    volume: &Volume<D>,
+) -> VolumeIdentity {
+    let boot = volume.boot_info();
+    derive_exfat_volume_identity(
+        boot.volume_serial,
+        boot.bytes_per_sector,
+        boot.sectors_per_cluster,
+        boot.volume_length,
+        volume.device().range().first_block(),
+    )
 }
 
 pub type CatalogImportError<D> = ImportError<FsCatalogError<<Volume<D> as AsyncFileSystem>::Error>>;

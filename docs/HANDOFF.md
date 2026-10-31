@@ -29,6 +29,11 @@ Next implementation: shared PDB catalog import, then a separate opt-in profile. 
 `import_catalog` over the exFAT volume
 ([shared catalog import](reviews/2026-10-31-shared-pdb-catalog-import.md)).
 
+A build-only `sd-rust-load` IDF profile now runs that import and the load
+preflight on the read-only SD bridge with a PSRAM heap
+([profile](reviews/2026-10-31-legacy-sd-rust-load-profile.md)); its first device
+run needs the owner and a card with a real export.
+
 **Next-agent instructions (review 2026-10-30):** read the
 [legacy v1.3 review and step-by-step implementation plan](reviews/2026-10-30-jc1060-legacy-review-and-instructions.md).
 S0–S3 implementation is recorded in the

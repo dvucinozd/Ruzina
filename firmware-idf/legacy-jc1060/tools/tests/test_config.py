@@ -83,6 +83,22 @@ class ConfigTests(unittest.TestCase):
             result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
             self.assertEqual(result.returncode==0,not bool(override),result.stderr)
 
+    def test_rust_load_requires_bridge_caps_psram_and_no_fixture(self):
+        psram=dict(CONFIG_SPIRAM='ON',CONFIG_SPIRAM_SPEED='80',CONFIG_SPIRAM_USE_CAPS_ALLOC='ON')
+        base=dict(IDF_TARGET='esp32p4',CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
+                  CONFIG_ESP32P4_REV_MIN_FULL='100',CONFIG_ESP32P4_REV_MAX_FULL='199',
+                  CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ='360',IDF_VERSION='6.1.0',
+                  CONFIG_RUZINA_SD_RUST_BRIDGE='ON',CONFIG_RUZINA_SD_RUST_LOAD='ON')|psram
+        guard=Path(__file__).resolve().parents[1]/'check_config.cmake'
+        cases=[({},True),({'CONFIG_RUZINA_SD_RUST_BRIDGE':'OFF'},False),
+               ({'CONFIG_RUZINA_SD_RUST_EXFAT':'ON'},False),({'CONFIG_SPIRAM':'OFF'},False),
+               ({'CONFIG_SPIRAM_USE_CAPS_ALLOC':'OFF'},False),({'CONFIG_SPIRAM_XIP_FROM_PSRAM':'ON'},False),
+               ({'CONFIG_RUZINA_SD_RUST_LOAD':'OFF'},False)]
+        for override,accepted in cases:
+            config=base|override
+            result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+            self.assertEqual(result.returncode==0,accepted,(override,result.stderr))
+
     def test_rust_exfat_requires_bridge(self):
         base=dict(IDF_TARGET='esp32p4',CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
                   CONFIG_ESP32P4_REV_MIN_FULL='100',CONFIG_ESP32P4_REV_MAX_FULL='199',
