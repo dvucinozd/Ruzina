@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-usb-midi-retry-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application owns only the HS USB OTG/UTMI host (claims only the USB-MIDI streaming interface, Bulk-IN); no SD/display/audio owner; VBUS hard-wired to USB5V_IN",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "ed2d9b6bc618df99c43ede708a10d19659002ae0b3c8c8acde8c3f02826c59a8",
+  "plan_sha256": "fec51cfba20489b387741d2be5aa7a776fca7976da96e2c651e57ee1c052c747",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "43b41284342d13980f06b36e031e16eefc6602d134dc54b8f4f38546546f45f7"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 241664,
+      "sha256": "2875f6a20a93df91ba755d046bd15bceb3e94501aebf1edce1cbb3ee79c57f13"
+    }
+  ],
+  "programmer_log_sha256": "3f1a514beb5c12f40d0017c2945ccd810ace6a225a2f9b45b809d0bc81f2491b"
+}

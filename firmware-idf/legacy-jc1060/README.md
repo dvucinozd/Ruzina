@@ -344,3 +344,25 @@ rules are in `docs/boards/JC1060_USB_TOPOLOGY.md`. The build tool checks two
 things:
 - this variant links the library and none of the SD or display sources;
 - no other variant defines `usb_host_install`.
+## `usb-midi` profile
+
+`usb-midi` (`CONFIG_RUZINA_USB_HOST_MIDI`, Rust `idf-controller-midi`) extends
+`usb-host`. It claims the first USB-MIDI streaming interface and keeps one
+Bulk-IN transfer outstanding. Each payload is lent to the Rust semantic
+controller session (`rust-core/src/controller_midi.rs`), which embeds the M2.5
+golden DDJ-FLX4 S3CP profile.
+
+Every delivered event is logged as `midi_event deck= control=Name(n) kind=
+value= max=`, where kind is 1 pressed, 2 relative, 3 absolute, 4 pad, 5 deck
+action or 6 beat-FX target. On detach, `usb_midi_stop` logs the totals.
+
+On the transfer side:
+- An IN error is retried from the client task after 100 ms, only while the
+  device is still present.
+- The session static is built at compile time, so it never lands on the 8 KiB
+  client stack. The build tool rejects any Rust frame over 2 KiB in this
+  variant.
+
+There is no MIDI out yet. On JC1060 the FLX4's buttons, faders, crossfader
+and jogs reached the session with 0 drops
+([device run](../../docs/reviews/2026-10-31-legacy-usb-midi.md#device-run-2026-10-31-owner-present)).

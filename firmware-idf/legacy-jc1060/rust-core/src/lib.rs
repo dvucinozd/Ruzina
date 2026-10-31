@@ -21,6 +21,9 @@ pub mod media_load;
 #[cfg(feature = "idf-media-load")]
 mod idf_alloc;
 
+#[cfg(feature = "controller-midi")]
+mod controller_midi;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]

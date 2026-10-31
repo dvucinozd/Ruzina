@@ -122,7 +122,9 @@ class ConfigTests(unittest.TestCase):
         guard=Path(__file__).resolve().parents[1]/'check_config.cmake'
         cases=[({},True),({'CONFIG_RUZINA_SD_RUST_BRIDGE':'ON'},False),({'CONFIG_RUZINA_SD_READONLY':'ON'},False),
                ({'CONFIG_RUZINA_DISPLAY_TOUCH':'ON'},False),({'CONFIG_RUZINA_LOAD_DISPLAY':'ON'},False),
-               ({'CONFIG_SPIRAM':'ON'},False),({'CONFIG_APP_BUILD_TYPE_PURE_RAM_APP':'ON'},False)]
+               ({'CONFIG_SPIRAM':'ON'},False),({'CONFIG_APP_BUILD_TYPE_PURE_RAM_APP':'ON'},False),
+               ({'CONFIG_RUZINA_USB_HOST_MIDI':'ON'},True),
+               ({'CONFIG_RUZINA_USB_HOST_MIDI':'ON','CONFIG_RUZINA_USB_HOST_ENUM':'OFF'},False)]
         for override,accepted in cases:
             config=base|override
             result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)

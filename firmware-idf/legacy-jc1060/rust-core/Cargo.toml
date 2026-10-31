@@ -20,6 +20,9 @@ ruzina-media-fs = { path = "../../../firmware-rust/crates/ruzina-media-fs", opti
 ruzina-media-catalog = { path = "../../../firmware-rust/crates/ruzina-media-catalog", optional = true }
 ruzina-media-load = { path = "../../../firmware-rust/crates/ruzina-media-load", optional = true }
 ruzina-media-identity = { path = "../../../firmware-rust/crates/ruzina-media-identity", optional = true }
+ruzina-controller-core = { path = "../../../firmware-rust/crates/ruzina-controller-core", optional = true }
+ruzina-controller-profile = { path = "../../../firmware-rust/crates/ruzina-controller-profile", optional = true }
+ruzina-controller-session = { path = "../../../firmware-rust/crates/ruzina-controller-session", optional = true }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
 
 [features]
@@ -36,6 +39,13 @@ media-load = [
 ]
 # Target form: Rust allocations come from the IDF PSRAM heap (idf_alloc).
 idf-media-load = ["idf-exfat-fixture", "media-load"]
+controller-midi = [
+    "dep:ruzina-controller-core",
+    "dep:ruzina-controller-profile",
+    "dep:ruzina-controller-session",
+]
+# USB-MIDI from the IDF USB host diagnostic into the semantic session.
+idf-controller-midi = ["controller-midi"]
 
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }

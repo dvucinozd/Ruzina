@@ -1,0 +1,138 @@
+{
+  "scenario": "s06-usb-midi-continuous",
+  "mode": "restart",
+  "app_sha256": "ed2d9b6bc618df99c43ede708a10d19659002ae0b3c8c8acde8c3f02826c59a8",
+  "bytes": 140984,
+  "sha256": "6c034fa62737b3851d4ead5266550ee5246dfa7d9457d48430fdcc9c99d9acd5",
+  "host_started": true,
+  "init_failed": false,
+  "attaches": [
+    {
+      "n": "1",
+      "address": "1",
+      "speed": "HIGH",
+      "usb": "0200",
+      "vid": "2b73",
+      "pid": "0045",
+      "class": "00/00/00",
+      "mps0": "64",
+      "configs": "1",
+      "config": "1",
+      "total": "451",
+      "interfaces": "7",
+      "max_power_ma": "500",
+      "manufacturer": "\"AlphaTheta Corporation\"",
+      "product": "\"DDJ-FLX4\""
+    },
+    {
+      "n": "2",
+      "address": "2",
+      "speed": "HIGH",
+      "usb": "0200",
+      "vid": "2b73",
+      "pid": "0045",
+      "class": "00/00/00",
+      "mps0": "64",
+      "configs": "1",
+      "config": "1",
+      "total": "451",
+      "interfaces": "7",
+      "max_power_ma": "500",
+      "manufacturer": "\"AlphaTheta Corporation\"",
+      "product": "\"DDJ-FLX4\""
+    }
+  ],
+  "interfaces": [
+    "usb_iface number=0 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=1 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=1 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=1 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=2 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=3 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=4 alt=0 endpoints=2 class=01/03/00\r",
+    "usb_iface number=5 alt=0 endpoints=2 class=03/00/00\r",
+    "usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00\r",
+    "usb_iface number=0 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=1 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=1 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=1 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=0 endpoints=0 class=01/02/00\r",
+    "usb_iface number=2 alt=1 endpoints=1 class=01/02/00\r",
+    "usb_iface number=2 alt=2 endpoints=1 class=01/02/00\r",
+    "usb_iface number=3 alt=0 endpoints=0 class=01/01/00\r",
+    "usb_iface number=4 alt=0 endpoints=2 class=01/03/00\r",
+    "usb_iface number=5 alt=0 endpoints=2 class=03/00/00\r",
+    "usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00\r"
+  ],
+  "endpoints": 20,
+  "iads": [
+    "usb_iad first=0 count=3 class=01/00/00\r",
+    "usb_iad first=3 count=2 class=01/00/00\r",
+    "usb_iad first=5 count=1 class=03/00/00\r",
+    "usb_iad first=6 count=1 class=ff/f0/00\r",
+    "usb_iad first=0 count=3 class=01/00/00\r",
+    "usb_iad first=3 count=2 class=01/00/00\r",
+    "usb_iad first=5 count=1 class=03/00/00\r",
+    "usb_iad first=6 count=1 class=ff/f0/00\r"
+  ],
+  "config_walks": [
+    "usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1\r",
+    "usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1\r"
+  ],
+  "attach_errors": [],
+  "detaches": 2,
+  "resets": [
+    "3"
+  ],
+  "heartbeats": 86,
+  "midi_bind": [
+    "usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK\r",
+    "usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK\r"
+  ],
+  "midi_stop": [
+    "usb_midi_stop transfers=0 events=0 errors=1 packets=0 decoded=0 scheduled=0 dropped=0 unmapped=0 non_voice=0 other_cable=0 semantic_errors=0 release=ESP_OK free=ESP_OK\r",
+    "usb_midi_stop transfers=1945 events=1985 errors=1 packets=2650 decoded=2650 scheduled=2647 dropped=0 unmapped=3 non_voice=0 other_cable=0 semantic_errors=0 release=ESP_OK free=ESP_OK\r"
+  ],
+  "midi_events": 1985,
+  "midi_controls": [
+    [
+      "0",
+      "Crossfader"
+    ],
+    [
+      "1",
+      "ChannelVolume"
+    ],
+    [
+      "1",
+      "JogBend"
+    ],
+    [
+      "1",
+      "JogScratch"
+    ],
+    [
+      "1",
+      "JogTouch"
+    ],
+    [
+      "2",
+      "ChannelVolume"
+    ],
+    [
+      "2",
+      "JogScratch"
+    ],
+    [
+      "2",
+      "JogTouch"
+    ]
+  ],
+  "midi_in_errors": [
+    "midi_in status=1 retry_ms=100\r",
+    "midi_in status=1 retry_ms=100\r"
+  ],
+  "fatal": []
+}

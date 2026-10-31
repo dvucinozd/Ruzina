@@ -1,0 +1,122 @@
+heartbeat=80 uptime_us=80031711
+heartbeat=81 uptime_us=81031711
+heartbeat=82 uptime_us=82031711
+heartbeat=83 uptime_us=83031711
+heartbeat=84 uptime_us=84031711
+heartbeat=85 uptime_us=85031711
+heartbeat=86 uptime_us=86031711
+heartbeat=87 uptime_us=87031711
+heartbeat=88 uptime_us=88031711
+heartbeat=89 uptime_us=89031711
+heartbeat=90 uptime_us=90031711
+heartbeat=91 uptime_us=91031711
+heartbeat=92 uptime_us=92031711
+heartbeat=93 uptime_us=93031711
+heartbeat=94 uptime_us=94031711
+heartbeat=95 uptime_us=95031711
+heartbeat=96 uptime_us=96031711
+heartbeat=97 uptime_us=97031711
+heartbeat=98 uptime_us=98031711
+heartbeat=99 uptime_us=99031711
+heartbeat=100 uptime_us=100031711
+heartbeat=101 uptime_us=101031711
+heartbeat=102 uptime_us=102031711
+heartbeat=103 uptime_us=103031711
+heartbeat=104 uptime_us=104031711
+heartbeat=105 uptime_us=105031711
+heartbeat=106 uptime_us=106031711
+heartbeat=107 uptime_us=107031711
+heartbeat=108 uptime_us=108031711
+heartbeat=109 uptime_us=109031711
+heartbeat=110 uptime_us=110031711
+heartbeat=111 uptime_us=111031711
+heartbeat=112 uptime_us=112031711
+heartbeat=113 uptime_us=113031711
+heartbeat=114 uptime_us=114031711
+midi_event deck=0 control=BrowsePress(41) kind=1 value=1 max=1
+heartbeat=115 uptime_us=115031711
+midi_event deck=0 control=BrowsePress(41) kind=1 value=0 max=1
+heartbeat=116 uptime_us=116031711
+heartbeat=117 uptime_us=117031711
+heartbeat=118 uptime_us=118031711
+heartbeat=119 uptime_us=119031711
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+heartbeat=120 uptime_us=120031711
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=121 uptime_us=121031711
+midi_event deck=2 control=Cue(1) kind=1 value=1 max=1
+midi_event deck=2 control=Cue(1) kind=1 value=0 max=1
+midi_event deck=2 control=Play(0) kind=1 value=1 max=1
+heartbeat=122 uptime_us=122031711
+midi_event deck=2 control=Play(0) kind=1 value=0 max=1
+heartbeat=123 uptime_us=123031711
+heartbeat=124 uptime_us=124031711
+heartbeat=125 uptime_us=125031711
+midi_in status=1
+E (125290) USB HOST: Enqueue URB error: ESP_ERR_INVALID_STATE
+usb_midi_stop transfers=10 events=10 errors=1 packets=10 decoded=10 scheduled=10 dropped=0 unmapped=0 non_voice=0 other_cable=0 semantic_errors=0 release=ESP_OK free=ESP_OK
+usb_host all_free=1
+usb_detach n=1
+heartbeat=126 uptime_us=126031711
+heartbeat=127 uptime_us=127031711
+heartbeat=128 uptime_us=128031711
+heartbeat=129 uptime_us=129031711
+heartbeat=130 uptime_us=130031711
+heartbeat=131 uptime_us=131031711
+heartbeat=132 uptime_us=132031711
+heartbeat=133 uptime_us=133031711
+usb_attach n=2 address=2 speed=HIGH usb=0200 vid=2b73 pid=0045 class=00/00/00 mps0=64 configs=1 config=1 total=451 interfaces=7 max_power_ma=500 manufacturer="AlphaTheta Corporation" product="DDJ-FLX4"
+usb_iad first=0 count=3 class=01/00/00
+usb_iface number=0 alt=0 endpoints=0 class=01/01/00
+usb_iface number=1 alt=0 endpoints=0 class=01/02/00
+usb_iface number=1 alt=1 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=576 interval=4
+usb_iface number=1 alt=2 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=384 interval=4
+usb_iface number=2 alt=0 endpoints=0 class=01/02/00
+usb_iface number=2 alt=1 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=288 interval=4
+usb_iface number=2 alt=2 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=192 interval=4
+usb_iad first=3 count=2 class=01/00/00
+usb_iface number=3 alt=0 endpoints=0 class=01/01/00
+usb_iface number=4 alt=0 endpoints=2 class=01/03/00
+usb_ep address=82 attributes=02 mps=512 interval=0
+usb_ep address=03 attributes=02 mps=512 interval=0
+usb_iad first=5 count=1 class=03/00/00
+usb_iface number=5 alt=0 endpoints=2 class=03/00/00
+usb_ep address=05 attributes=03 mps=64 interval=4
+usb_ep address=84 attributes=03 mps=64 interval=4
+usb_iad first=6 count=1 class=ff/f0/00
+usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00
+usb_ep address=86 attributes=02 mps=512 interval=0
+usb_ep address=07 attributes=02 mps=512 interval=0
+usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1
+usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK
+heartbeat=134 uptime_us=134031711
+heartbeat=135 uptime_us=135031711
+heartbeat=136 uptime_us=136031711
+heartbeat=137 uptime_us=137031711
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=138 uptime_us=138031710
+midi_event deck=2 control=Cue(1) kind=1 value=1 max=1
+midi_event deck=2 control=Cue(1) kind=1 value=0 max=1
+midi_event deck=2 control=Play(0) kind=1 value=1 max=1
+heartbeat=139 uptime_us=139031711
+midi_event deck=2 control=Play(0) kind=1 value=0 max=1
+heartbeat=140 uptime_us=140031711
+midi_event deck=0 control=BrowsePress(41) kind=1 value=1 max=1
+midi_event deck=0 control=BrowsePress(41) kind=1 value=0 max=1
+heartbeat=141 uptime_us=141031711
+heartbeat=142 uptime_us=142031711
+midi_in status=1
+E (142770) USB HOST: Enqueue URB error: ESP_ERR_INVALID_STATE
+usb_midi_stop transfers=10 events=10 errors=1 packets=10 decoded=10 scheduled=10 dropped=0 unmapped=0 non_voice=0 other_cable=0 semantic_errors=0 release=ESP_OK free=ESP_OK
+usb_host all_free=1
+usb_detach n=2
+heartbeat=143 uptime_us=143031711
