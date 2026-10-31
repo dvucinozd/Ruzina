@@ -21,8 +21,8 @@ boot/reset-reason prefix was missed. Product media/load, UI/audio/USB-host/C6
 remain unwired. The Library load preflight is now the shared
 `ruzina-media-load` crate, used by native firmware and, host-tested, by the IDF
 core over its exFAT volume ([media/load preflight](reviews/2026-10-30-legacy-s6-media-load-preflight.md)).
-Next implementation: an IDF-backed allocator for that feature, then shared PDB
-catalog import and a separate opt-in profile. Native minimum 302 is unchanged.
+An IDF PSRAM allocator now gives it a target build (`idf-media-load`).
+Next implementation: shared PDB catalog import, then a separate opt-in profile. Native minimum 302 is unchanged.
 
 **2026-10-31:** the `export.pdb` catalog import is shared as well
 (`ruzina_media_load::pdb`), with native firmware on it and a host-tested IDF
