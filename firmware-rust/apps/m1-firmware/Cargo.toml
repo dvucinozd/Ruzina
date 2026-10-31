@@ -33,7 +33,7 @@ hotcue-flash-storage = ["dep:esp-storage"]
 # End-to-end Library browse/load ownership: published PSRAM catalog + USB0
 # filesystem clients + USB1 semantic controls + durable Hot Cue flash owner.
 library-deck-load = [
-    "dep:ruzina-media-load",
+    "ruzina-media-load/preflight",
     "ruzina-rekordbox/analysis",
     "ruzina-track-analysis/owned",
     "usb0-hardware-bringup",
@@ -60,7 +60,7 @@ apta-usb0-bringup = ["render-graph-bringup", "dep:ruzina-apta-adapter", "dep:lib
 sdmmc-profile-storage-bringup = []
 # Compile-verified PSRAM allocator boundary for large retained library/UI storage.
 # This does not claim DMA/cache coherency or hardware qualification.
-p4-psram-storage = ["dep:esp-alloc", "dep:allocator-api2"]
+p4-psram-storage = ["dep:esp-alloc", "dep:allocator-api2", "ruzina-media-load/alloc"]
 
 [dependencies]
 critical-section = { version = "=1.2.0", optional = true }
@@ -101,7 +101,7 @@ ruzina-media-fat32 = { path = "../../crates/ruzina-media-fat32" }
 ruzina-media-fs = { path = "../../crates/ruzina-media-fs" }
 ruzina-media-identity = { path = "../../crates/ruzina-media-identity" }
 ruzina-media-io = { path = "../../crates/ruzina-media-io" }
-ruzina-media-load = { path = "../../crates/ruzina-media-load", optional = true }
+ruzina-media-load = { path = "../../crates/ruzina-media-load", default-features = false }
 ruzina-media-partition = { path = "../../crates/ruzina-media-partition" }
 ruzina-media-session = { path = "../../crates/ruzina-media-session" }
 ruzina-media-usb-msc = { path = "../../crates/ruzina-media-usb-msc" }

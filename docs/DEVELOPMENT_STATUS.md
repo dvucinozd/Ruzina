@@ -17,6 +17,11 @@ limit, PR #55 head `00294d18cd59ba5afcd6aaa4b9dcba8465c895b2` passed host,
 native P4, all eight legacy IDF profiles and the media-bridge host job, and was
 merged.
 
+The Rekordbox catalog import is shared too
+([catalog import](reviews/2026-10-31-shared-pdb-catalog-import.md)): native
+firmware runs it, and the IDF core imports `export.pdb` from its exFAT volume
+in host tests.
+
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are
 observed on the isolated IDF diagnostic. The product media adapter remains

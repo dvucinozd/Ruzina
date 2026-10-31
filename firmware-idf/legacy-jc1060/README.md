@@ -221,3 +221,16 @@ CPU-only; no DMA or cache coherency is claimed. No IDF profile selects
 cargo +1.95.0 test --locked --manifest-path firmware-idf/legacy-jc1060/rust-core/Cargo.toml --features idf-media-load
 cargo +1.95.0 build --locked --release --manifest-path firmware-idf/legacy-jc1060/rust-core/Cargo.toml --features idf-media-load --target riscv32imafc-unknown-none-elf
 ```
+
+## Shared catalog import (host-tested)
+
+`media_load::import_catalog` (feature `media-load`) imports
+`PIONEER/rekordbox/export.pdb` from the mounted exFAT volume through the shared
+`ruzina_media_load::pdb` import, which native firmware also uses. Tracks, name
+tables and playlists go to a `VecCatalogStage`, which publishes catalog and
+playlists together or not at all. `FsCatalogFiles` checks the live lease
+around every read. A host test imports a catalog from a real exFAT image and
+passes its track through the load preflight. Another removes the card during
+a PDB page read and publishes nothing. The volume identity is still a test
+value; a device profile must derive it from the exFAT volume.
+

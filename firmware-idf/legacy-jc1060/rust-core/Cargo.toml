@@ -19,6 +19,7 @@ ruzina-media-exfat = { path = "../../../firmware-rust/crates/ruzina-media-exfat"
 ruzina-media-fs = { path = "../../../firmware-rust/crates/ruzina-media-fs", optional = true }
 ruzina-media-catalog = { path = "../../../firmware-rust/crates/ruzina-media-catalog", optional = true }
 ruzina-media-load = { path = "../../../firmware-rust/crates/ruzina-media-load", optional = true }
+ruzina-media-identity = { path = "../../../firmware-rust/crates/ruzina-media-identity", optional = true }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
 
 [features]
@@ -27,7 +28,12 @@ media-bridge = ["dep:ruzina-media-block", "dep:ruzina-media-io", "dep:ruzina-med
 idf-media-bridge = ["media-bridge"]
 exfat-fixture = ["media-bridge", "dep:ruzina-media-partition", "dep:ruzina-media-exfat", "dep:ruzina-media-fs", "dep:sha2"]
 idf-exfat-fixture = ["idf-media-bridge", "exfat-fixture"]
-media-load = ["exfat-fixture", "dep:ruzina-media-catalog", "dep:ruzina-media-load"]
+media-load = [
+    "exfat-fixture",
+    "dep:ruzina-media-catalog",
+    "dep:ruzina-media-identity",
+    "dep:ruzina-media-load",
+]
 # Target form: Rust allocations come from the IDF PSRAM heap (idf_alloc).
 idf-media-load = ["idf-exfat-fixture", "media-load"]
 

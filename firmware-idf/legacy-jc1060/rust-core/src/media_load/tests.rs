@@ -22,31 +22,83 @@ const ANLZ: &str = "/ANLZ0000.DAT";
 struct Card {
     bytes: Vec<u8>,
     dat_lba: u64,
+    pdb_tracks_lba: u64,
 }
 
-/// Root directory holding a two-cluster audio file and the DAT/EXT pair, each
-/// a contiguous (NoFatChain) cluster run.
+fn put_le16(data: &mut [u8], offset: usize, value: u16) {
+    data[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+}
+
+fn put_le32(data: &mut [u8], offset: usize, value: u32) {
+    data[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+}
+
+fn put_short_devicesql(data: &mut [u8], offset: usize, text: &[u8]) {
+    data[offset] = (((text.len() + 1) as u8) << 1) | 1;
+    data[offset + 1..offset + 1 + text.len()].copy_from_slice(text);
+}
+
+/// A two-page `export.pdb`: the header and one track table page holding the
+/// audio file and analysis path of this card.
+fn export_pdb() -> Vec<u8> {
+    let mut pdb = vec![0u8; 1024];
+    put_le32(&mut pdb, 4, 512);
+    put_le32(&mut pdb, 8, 1);
+    put_le32(&mut pdb, 0x1c + 8, 1);
+    put_le32(&mut pdb, 0x1c + 12, 1);
+    let page = &mut pdb[512..];
+    put_le32(page, 0x0c, u32::MAX);
+    put_le32(page, 0x18, 1);
+    put_le16(page, 506, 0);
+    put_le16(page, 508, 1);
+    let row = 0x28;
+    put_le16(page, row, 0x0024);
+    put_le32(page, row + 0x38, 12_000);
+    put_le32(page, row + 0x48, 7);
+    put_le16(page, row + 0x54, 1);
+    for (slot, offset, text) in [
+        (14usize, 0x90u16, ANLZ.as_bytes()),
+        (17, 0xb0, b"Exported".as_slice()),
+        (20, 0xc0, AUDIO.as_bytes()),
+    ] {
+        put_le16(page, row + 0x5e + slot * 2, offset);
+        put_short_devicesql(page, row + usize::from(offset), text);
+    }
+    pdb
+}
+
+/// Root directory holding a two-cluster audio file, the DAT/EXT pair and
+/// `PIONEER/rekordbox/export.pdb`, each a contiguous (NoFatChain) run.
 fn card() -> Card {
     let files: [(&str, Vec<u8>); 3] = [
         ("track.wav", vec![0x52; 600]),
         ("ANLZ0000.DAT", DAT.to_vec()),
         ("ANLZ0000.EXT", EXT.to_vec()),
     ];
+    let pdb = export_pdb();
     let data_clusters: u32 = files
         .iter()
         .map(|(_, bytes)| (bytes.len() as u32).div_ceil(512))
         .sum();
-    let (mut bytes, heap) = formatted(1 + data_clusters + 10);
+    let (mut bytes, heap) = formatted(1 + data_clusters + 2 + 2 + 10);
     let lba = |cluster: u32| (1 + heap + cluster - 2) as usize;
-    let root = lba(2) * 512;
-    let mut entry = 0;
+    let put = |bytes: &mut Vec<u8>, dir: u32, entry: &mut usize, set: Vec<[u8; 32]>| {
+        let base = lba(dir) * 512;
+        for item in set {
+            bytes[base + *entry * 32..base + (*entry + 1) * 32].copy_from_slice(&item);
+            *entry += 1;
+        }
+    };
+    let mut root_entry = 0;
     let mut cluster = 3;
     let mut dat_lba = 0;
     for (name, data) in &files {
-        for set in entries(name, cluster, data.len() as u64, false) {
-            bytes[root + entry * 32..root + (entry + 1) * 32].copy_from_slice(&set);
-            entry += 1;
-        }
+        put(
+            &mut bytes,
+            2,
+            &mut root_entry,
+            entries(name, cluster, data.len() as u64, false),
+        );
         let start = lba(cluster) * 512;
         bytes[start..start + data.len()].copy_from_slice(data);
         if *name == "ANLZ0000.DAT" {
@@ -54,7 +106,32 @@ fn card() -> Card {
         }
         cluster += (data.len() as u32).div_ceil(512);
     }
-    Card { bytes, dat_lba }
+    let (pioneer, rekordbox, export) = (cluster, cluster + 1, cluster + 2);
+    put(
+        &mut bytes,
+        2,
+        &mut root_entry,
+        entries("PIONEER", pioneer, 512, true),
+    );
+    put(
+        &mut bytes,
+        pioneer,
+        &mut 0,
+        entries("rekordbox", rekordbox, 512, true),
+    );
+    put(
+        &mut bytes,
+        rekordbox,
+        &mut 0,
+        entries("export.pdb", export, pdb.len() as u64, false),
+    );
+    let start = lba(export) * 512;
+    bytes[start..start + pdb.len()].copy_from_slice(&pdb);
+    Card {
+        bytes,
+        dat_lba,
+        pdb_tracks_lba: lba(export + 1) as u64,
+    }
 }
 
 fn text<const N: usize>(value: &str) -> CatalogText<N> {
@@ -85,6 +162,93 @@ fn setup() -> (Port, Binding, ReadClient<Port>, u64) {
     let card = card();
     let (port, binding, client) = setup_with(card.bytes);
     (port, binding, client, card.dat_lba)
+}
+
+fn import_stage() -> (PdbNameStage<VecNameMap>, VecCatalogStage) {
+    (
+        PdbNameStage::try_new().unwrap(),
+        VecCatalogStage::try_new().unwrap(),
+    )
+}
+
+#[test]
+fn catalog_import_then_preflight_loads_the_exported_track() {
+    let (port, binding, mut client, _) = setup();
+    let current = || port.is_current(binding);
+    let mut volume = ready(mount(&mut client, binding.lease, &current))
+        .ok()
+        .unwrap();
+    let (mut names, mut stage) = import_stage();
+    stage.prepare_generation(binding.lease);
+    let identity = VolumeIdentity([0x31; 32]);
+    let probe = ready(import_catalog(
+        &mut volume,
+        identity,
+        &current,
+        &mut names,
+        &mut stage,
+    ))
+    .unwrap();
+    assert_eq!(probe.tracks_layout.unwrap().track_rows, 1);
+
+    let snapshot = stage.current().unwrap();
+    let track = *snapshot.get(0).unwrap();
+    assert_eq!(track.title.as_str(), "Exported");
+    assert_eq!(track.audio_path.as_str(), AUDIO);
+    assert_eq!(track.analysis_path.as_str(), ANLZ);
+    let candidate = CatalogLoadCandidate {
+        publication: CatalogPublicationId {
+            lease: snapshot.lease(),
+            revision: snapshot.revision(),
+        },
+        index: 0,
+        track,
+    };
+    let published = |publication: CatalogPublicationId| {
+        stage.current().is_some_and(|snapshot| {
+            snapshot.lease() == publication.lease && snapshot.revision() == publication.revision
+        })
+    };
+    let prepared = ready(preflight(&mut volume, candidate, 1, &current, &published))
+        .ok()
+        .unwrap();
+    assert!(prepared.source_cues_available);
+    assert_eq!(
+        prepared.publication.unwrap().identity().track,
+        track.track_id
+    );
+}
+
+#[test]
+fn removal_during_catalog_import_publishes_nothing() {
+    let card = card();
+    let (port, binding, mut client) = setup_with(card.bytes);
+    let current = || port.is_current(binding);
+    let mut volume = ready(mount(&mut client, binding.lease, &current))
+        .ok()
+        .unwrap();
+    let (mut names, mut stage) = import_stage();
+    stage.prepare_generation(binding.lease);
+    port.0.borrow_mut().paused = Some(card.pdb_tracks_lba);
+    let result = {
+        let mut importing = Box::pin(import_catalog(
+            &mut volume,
+            VolumeIdentity([0x31; 32]),
+            &current,
+            &mut names,
+            &mut stage,
+        ));
+        let mut cx = Context::from_waker(Waker::noop());
+        assert!(importing.as_mut().poll(&mut cx).is_pending());
+        port.0.borrow_mut().queue.invalidate();
+        port.0.borrow_mut().paused = None;
+        match importing.as_mut().poll(&mut cx) {
+            core::task::Poll::Ready(result) => result,
+            core::task::Poll::Pending => panic!("a stale completion must resolve the read"),
+        }
+    };
+    assert!(matches!(result, Err(ImportError::Io(_))));
+    assert!(stage.current().is_none());
 }
 
 #[test]

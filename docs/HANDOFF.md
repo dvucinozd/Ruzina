@@ -24,6 +24,11 @@ core over its exFAT volume ([media/load preflight](reviews/2026-10-30-legacy-s6-
 An IDF PSRAM allocator now gives it a target build (`idf-media-load`).
 Next implementation: shared PDB catalog import, then a separate opt-in profile. Native minimum 302 is unchanged.
 
+**2026-10-31:** the `export.pdb` catalog import is shared as well
+(`ruzina_media_load::pdb`), with native firmware on it and a host-tested IDF
+`import_catalog` over the exFAT volume
+([shared catalog import](reviews/2026-10-31-shared-pdb-catalog-import.md)).
+
 **Next-agent instructions (review 2026-10-30):** read the
 [legacy v1.3 review and step-by-step implementation plan](reviews/2026-10-30-jc1060-legacy-review-and-instructions.md).
 S0–S3 implementation is recorded in the

@@ -10,7 +10,13 @@
 
 use crate::exfat_fixture::Volume;
 use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
+use ruzina_media_fs::{AsyncFileSystem, LeaseBound};
+use ruzina_media_identity::VolumeIdentity;
 use ruzina_media_io::OwnedBlockDevice;
+use ruzina_media_load::pdb::{
+    FsCatalogError, FsCatalogFiles, ImportError, PdbNameStage, PdbProbe, VecCatalogStage,
+    VecNameMap, probe_export_pdb,
+};
 use ruzina_media_load::{
     ANLZ_READ_BYTES, FsLoadFiles, LoadFiles, SourceAnalysis, load_source_analysis,
     validate_audio_source,
@@ -55,6 +61,34 @@ pub async fn preflight<D: OwnedBlockDevice<Buffer = [u8; 512]>>(
         return Err(Error::Stale);
     }
     Ok(prepared)
+}
+
+pub type CatalogImportError<D> = ImportError<FsCatalogError<<Volume<D> as AsyncFileSystem>::Error>>;
+
+/// Import `export.pdb` from the volume into `stage` under the volume's lease,
+/// with the lease checked around every read. A failed or stale import
+/// publishes nothing; `stage` keeps no partial catalog. The caller prepares
+/// the stage for the lease and clears `names` first, and invalidates the
+/// stage when the lease ends.
+pub async fn import_catalog<D: OwnedBlockDevice<Buffer = [u8; 512]>>(
+    volume: &mut Volume<D>,
+    volume_identity: VolumeIdentity,
+    is_current: &impl Fn() -> bool,
+    names: &mut PdbNameStage<VecNameMap>,
+    stage: &mut VecCatalogStage,
+) -> Result<PdbProbe, CatalogImportError<D>> {
+    let lease = volume.lease();
+    let mut files = FsCatalogFiles::new(volume, is_current);
+    let (_, result) = probe_export_pdb(
+        &mut files,
+        lease,
+        volume_identity,
+        [0u8; 4096],
+        names,
+        stage,
+    )
+    .await;
+    result
 }
 
 #[cfg(test)]

@@ -3843,6 +3843,7 @@ dependencies = [
  "ruzina-hot-cues",
  "ruzina-media-catalog",
  "ruzina-media-fs",
+ "ruzina-media-identity",
  "ruzina-media-session",
  "ruzina-rekordbox",
  "ruzina-track-analysis",
