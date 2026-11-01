@@ -32,6 +32,9 @@ booted the candidate but failed its registered timing gate (`fill_max_us=12260`,
 limit 6000 us), despite idle underruns 0/0. The exact accepted deck-play image
 was restored; cold boot, normal sound, Pause and CUE are confirmed again.
 
+The [phase diagnostic](docs/reviews/2026-11-01-uac-timing-execution.md) now has
+passing host tests, CodeRabbit 0 issues, 19/19 CI jobs, four clean local packages
+and registered recovery plans. It has not been measured on the board yet.
 Next: follow the [UAC timing measurement plan](docs/reviews/2026-11-01-uac-timing-follow-up.md)
 to separate startup/recovery prefill from streaming callback cost before
 resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.

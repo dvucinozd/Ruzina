@@ -1,0 +1,8 @@
+{
+  "status": "CRC_CONTENT_AND_SECONDARY_SHA256_PASS",
+  "files": 88,
+  "bytes": 28025880,
+  "sha256": "5218dfe7c55a23fd1303b883d5e126346742eabe97cc73336a41bf2c27bc5244",
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-timing-20261101\\clean-build-diagnostic-5c579e6.zip",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\uac-timing-20261101\\clean-build-diagnostic-5c579e6.zip"
+}

@@ -3,6 +3,7 @@
 Date: 2026-11-01. Implements steps 1–2 and the phase-diagnostic preparation of
 the [follow-up plan](2026-11-01-uac-timing-follow-up.md). Status at source
 publication: HOST_VALIDATED / CLEAN_BUILD_AND_DEVICE_MEASUREMENT_PENDING.
+The later clean-build checkpoint below supersedes that initial publication status.
 
 The board remains on accepted s07 app `95d45203...`; no device access has taken
 place in this instrumentation batch. Native minimum revision 302, accepted gain,
@@ -48,8 +49,10 @@ correctly yields a recovery-phase first sample if a retry succeeds.
   as environment errors; logs are retained and are not represented as passes.
 - Manual diff review covered explicit phase call sites, ownership, unchanged
   recovery behavior, no callback allocation/formatting, snapshot bounds and
-  cumulative/reconnect semantics. No new CodeRabbit result is claimed: the
-  previously used plugin/skill is unavailable in this session.
+  cumulative/reconnect semantics. The plugin was initially unavailable; after
+  it became available, the committed 16-file diff passed CodeRabbit with
+  **0 issues**, exit 0. The first default all-files run failed `too_many_files`
+  (475 versus 150); its log remains separate from the passing committed run.
 
 Primary logs: `D:/BoardEvidence/JC1060-20261030-COM3/uac-timing-20261101/`.
 `offline-checks.log` is the passing WSL run; `windows-tools.log` is the passing
@@ -71,3 +74,51 @@ pinned Windows run. Initial environment logs are named explicitly.
 4. If the diagnostic remains experimental or exceeds the registered bound,
    restore s07 and verify normal operation before stopping. Keep operator
    acceptance separate from host/build and phase telemetry.
+
+## Clean published diagnostic checkpoint
+
+Source commit `5c579e6e287362af36924f30919d6d0ea911ad59` is pushed on
+`ogranak/jc1060-uac-fill-timing`, [PR #74](https://github.com/dvucinozd/Ruzina/pull/74),
+stacked on #73. Local and remote SHA were checked equal. Both workflows passed:
+[host foundation #529](https://github.com/dvucinozd/Ruzina/actions/runs/41337405604)
+and [legacy IDF #52](https://github.com/dvucinozd/Ruzina/actions/runs/41337405803),
+19/19 jobs including all 17 IDF variants. No merge was performed.
+
+Four local packages were freshly built from that clean published tree. Each
+manifest records that exact commit and empty dirty status. All 270 source hashes
+and all 32 artifact hashes were checked against their files.
+
+| Variant | Bytes | App SHA-256 |
+|---|---:|---|
+| deck-audio | 510512 | `ac4508efd988c94f261b772252bc6e9eb9d19ada2366658f56c681d938717627` |
+| deck-play | 774208 | `5ab984c1fb48392c37077693c4412255d27fa8c9828627cc7015865e6532a621` |
+| deck-mix | 796016 | `dcbaa4648448a07938253f174016cc0550ddfd2aff8c4f26bc97363fdf0956eb` |
+| deck-engine | 817344 | `d4a577493512df5988927ac4dc765e0e796861f2ff3c9e0e1dbad55455d10902` |
+
+The deck-engine direct-call stack estimates remain UAC fill 3120 bytes and
+load 73616 bytes. They pass existing limits and exclude indirect calls; they
+are not runtime high-water measurements.
+
+All 27 current predecessor plans were replayed and checked for payload/restore
+hashes and preserved tails. All four factory backup copies passed again. The
+expected full current restored-s07 state is SHA-256
+`c11aa1f7a8ff8121888f9d7a70d247a447f381bb2d07b63ebd8cf7f69633f76f`.
+This full state differs from the original historical s07 full flash because
+larger later images left preserved bytes outside its written range.
+
+- [Diagnostic plan](../boards/readiness/jc1060-uac-timing-write-recovery-plan-20261101.json):
+  `bfef28135fb73f522893d58209cbda40d55e21f3b092efa620b383125dba3335`.
+- [Ancestry-aware s07 return plan](../boards/readiness/jc1060-uac-timing-return-s07-plan-20261101.json):
+  `4312e199ea36a2ef4262f3b5999397be7d9a4b5c57c6e4be3fc7a04b0b040a84`.
+- [Registration](evidence/2026-11-01-uac-timing/diagnostic-registration.json),
+  package manifests, CI metadata and raw review logs are retained together.
+- Verified binary archive and secondary-copy hashes are in the
+  [archive index](evidence/2026-11-01-uac-timing/clean-build-diagnostic-archive.json).
+
+Status: **BUILD_ONLY / NOT_FLASHED / PHASE_MEASUREMENT_NOT_RUN** at this
+checkpoint. Run only a diagnostic cold boot/idle, preserving the aggregate
+>=6000 us rejection bound; do not start playback or change gain. Fresh physical
+identity/topology, manual ROM entry, live security/RDID and complete current
+flash equality are still required. After measurement, return to s07 through
+the new plan and verify normal sound and controls before ending an unsuccessful
+experimental session. A later run must record its own outcomes separately.
