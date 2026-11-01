@@ -5,7 +5,7 @@ extern crate std;
 
 /// Tests that drive the process-wide deck rings, commands and controller
 /// session take this lock, so they never interleave.
-#[cfg(test)]
+#[cfg(all(test, feature = "controller-midi"))]
 static DECK_TESTS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[cfg(feature = "media-load")]
