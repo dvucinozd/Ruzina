@@ -135,3 +135,19 @@ criterion, and restore/verify s07 before exit if the experiment fails or remains
 unqualified. Stage layout: word 0 total Rust wall us, 1 validity faults, 2 packet
 attempts, 3 render-block calls, 4–11 exclusive times in enum order, 12–19 segment
 counts in that same order. `partition_valid=0` forbids time attribution claims.
+
+## Later device execution and exit
+
+The [device record](2026-11-01-uac-callback-profiling-device.md) supersedes the
+registration-only state above. The guarded exact candidate was measured in
+cold and separate steady idle windows. Two coherent records took 13087/13039
+us, with valid exclusive partitions and zero observed scheduler switch deltas.
+The aggregate >=6000 us criterion fails. IRQ/cache/observer costs and runtime
+hook-liveness remain open; no priority or DSP fix is justified yet.
+
+Exact accepted s07 was restored through the registered plan, all written spans
+passed readback, and cold boot matched the expected ELF. A separate playback
+capture records 993312 frames, zero underruns and USB errors; the owner confirms
+normal sound in both ears, Pause and CUE. All monitors are closed. Future plans
+need 31 predecessors. The [cause follow-up](2026-11-01-uac-callback-cause-follow-up.md)
+is PLAN_ONLY and has not been implemented.

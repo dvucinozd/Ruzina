@@ -38,8 +38,14 @@ now measured the outlier: initial prefill maximum 1844 us, callback maximum
 substage/preemption cause is not established. The s07 image was restored and
 cold-booted; normal sound, Pause and CUE were confirmed again, with zero captured
 underruns/USB errors. All monitors are closed.
-Next: follow the [UAC timing measurement plan](docs/reviews/2026-11-01-uac-timing-follow-up.md)
-and [callback profiling plan](docs/reviews/2026-11-01-uac-callback-profiling-plan.md)
+The later [callback substage run](docs/reviews/2026-11-01-uac-callback-profiling-device.md)
+captured valid exclusive records at 13087/13039 us. The worst record includes
+6523 us graph and 3725 us PCM packing wall time, with zero observed scheduler
+switch deltas. IRQ/cache/observer effects and runtime hook-liveness remain open;
+these numbers do not establish pure CPU cost or a fix. A separate 9000-callback
+steady window adds no threshold crossings. S07 is restored and owner-confirmed
+again, with zero captured underruns/USB errors; all monitors are closed.
+Next: follow the [cause experiment plan](docs/reviews/2026-11-01-uac-callback-cause-follow-up.md)
 before resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.
 Source cues/analysis, loops, scratch, keylock and FX wiring, product
 UI/settings, C6 networking and OTA remain separate subsequent development work.

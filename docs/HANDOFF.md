@@ -1,10 +1,20 @@
 # Rust M2.5 development handoff
 
 Latest continuation: `ogranak/jc1060-uac-callback-profile`, [PR #75](https://github.com/dvucinozd/Ruzina/pull/75).
-Read [callback profiling execution](reviews/2026-11-01-uac-callback-profiling-execution.md)
+Read the [callback device record](reviews/2026-11-01-uac-callback-profiling-device.md)
 first: source `8a9fe16` has CodeRabbit 0 issues, 20/20 CI jobs and clean normal/
-profile packages with registered 29-plan recovery ancestry. Target substage and
-scheduler measurements are NOT_RUN at registration; s07 remains installed.
+profile packages. Two retained cold callbacks took 13087/13039 us; their valid
+exclusive partitions report zero observed scheduler deltas. Wall time still
+includes IRQ/cache/observer effects, and runtime hook-liveness calibration is
+open. The aggregate >=6000 us gate fails; there is no timing fix yet. A separate
+steady window adds 9000 callbacks without new threshold crossings. Exact s07
+was restored/readback and cold-boot verified; the owner confirmed normal sound,
+Pause and CUE, with zero captured underruns/USB errors. All monitors are closed.
+Future plans require **31 predecessors**, reconstructed full SHA-256
+`817c75491f1c6f3b8e482b576ce44cec43693458d540685ede6adae392123e8d`.
+Next is the [cause experiment plan](reviews/2026-11-01-uac-callback-cause-follow-up.md)
+(PLAN_ONLY): calibrate switch counters, then distinguish IRQ/cache/compute
+effects before choosing a fix. No priority, gain or native-minimum change.
 The older sections below describe prior checkpoints, not new device evidence.
 
 Updated 2026-11-01. Continue from `D:/AI/M1_PCB`, branch
