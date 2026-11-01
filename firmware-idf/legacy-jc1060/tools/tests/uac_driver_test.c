@@ -6,8 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "uac_recovery.h"
-#define CONFIG_RUZINA_DECK_MIX 0
-#define CONFIG_RUZINA_DECK_PLAY 0
+#ifndef UAC_TEST_TIMING
+#define UAC_TEST_TIMING 0
+#endif
+#define CONFIG_RUZINA_DECK_MIX UAC_TEST_TIMING
+#define CONFIG_RUZINA_DECK_PLAY UAC_TEST_TIMING
+#define CONFIG_RUZINA_DECK_ENGINE UAC_TEST_TIMING
 #define ESP_OK 0
 #define USB_TRANSFER_STATUS_COMPLETED 0
 #define USB_TRANSFER_STATUS_NO_DEVICE 1
@@ -29,6 +33,16 @@ static bool gone;
 static int alloc_fail_after=-1, submit_failures, fill_failures, endpoint_error;
 static int allocations, frees, submitted, live, flushes, clears;
 static bool hold_callbacks;
+#if UAC_TEST_TIMING
+static int64_t mock_time, fill_duration=200;
+static uint32_t fill_calls;
+static const uint32_t *fill_sequence;
+static unsigned fill_sequence_count, fill_sequence_pos;
+int64_t esp_timer_get_time(void) { return mock_time; }
+static void sequence(const uint32_t *values, unsigned count) {
+    fill_sequence=values; fill_sequence_count=count; fill_sequence_pos=0;
+}
+#endif
 static usb_transfer_t *owned[16];
 static const char *esp_err_to_name(int e) { return e ? "FAIL" : "OK"; }
 static int usb_host_transfer_alloc(int bytes,int packets,usb_transfer_t **out) {
@@ -82,16 +96,99 @@ int32_t ruzina_legacy_uac_select(const uint8_t *c,uint32_t l,int32_t h,uint32_t 
 }
 uint32_t ruzina_legacy_uac_control(uint32_t step,uint8_t *out) { (void)step;out[0]=0;return 8; }
 uint32_t ruzina_legacy_uac_fill(uint8_t *b,uint32_t c,uint32_t *sizes,uint32_t packets) {
+#if UAC_TEST_TIMING
+    mock_time += fill_sequence_pos < fill_sequence_count ? fill_sequence[fill_sequence_pos++] : fill_duration;
+    ++fill_calls;
+#endif
     (void)b;(void)c;if(fill_failures){--fill_failures;return 0;}for(unsigned i=0;i<packets;++i)sizes[i]=384;return packets*384;
 }
 void ruzina_legacy_uac_stats(uint32_t *out) { memset(out,0,3*sizeof(*out)); }
+#if UAC_TEST_TIMING
+void ruzina_legacy_mix_stats(uint32_t *out) { memset(out,0,8*sizeof(*out)); }
+void ruzina_legacy_play_diagnostics(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
+void ruzina_legacy_engine_status(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
+void ruzina_legacy_engine_counters(uint32_t *out) { memset(out,0,2*sizeof(*out)); }
+#endif
 static void start(void) {
     usb_config_desc_t config={0};gone=false;device=1;
     uac_start(&config,USB_SPEED_HIGH); assert(uac_ctrl_busy);
     complete(uac_ctrl,USB_TRANSFER_STATUS_COMPLETED);
 }
 static void stop(void) { gone=true;assert(uac_stop());assert(live==0);assert(frees==allocations);gone=false; }
+#if UAC_TEST_TIMING
+static void timing_phases(void) {
+    const uint32_t initial[]={12260,200,3000,3001}; sequence(initial,4);
+    start(); assert(live==4);
+    const uac_fill_phase_stats_t *p=&uac_fill_timing.phase[UAC_FILL_INITIAL_PREFILL];
+    assert(p->count==4 && p->first_us==12260 && p->max_us==12260);
+    assert(!p->first_after_iso_submit && !p->max_after_iso_submit);
+    assert(p->gt_3000==2 && p->ge_6000==1 && p->failures==0);
+    assert(uac_fill_timing.first_connection_us==12260);
+    assert(uac_fill_timing.first_connection_phase==UAC_FILL_INITIAL_PREFILL);
+    assert(!uac_fill_timing.first_connection_after_iso_submit);
+    assert(uac_fill_timing.phase[UAC_FILL_RECOVERY_PREFILL].count==0);
+    assert(uac_fill_timing.phase[UAC_FILL_CALLBACK].count==0);
+    assert(uac_fill_max_us==12260);
+    fill_duration=6000; complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    fill_failures=1; fill_duration=6001; complete(uac_iso[1],USB_TRANSFER_STATUS_COMPLETED);
+    p=&uac_fill_timing.phase[UAC_FILL_CALLBACK];
+    assert(p->count==2 && p->first_us==6000 && p->max_us==6001);
+    assert(p->first_after_iso_submit && p->max_after_iso_submit);
+    assert(p->gt_3000==2 && p->ge_6000==2 && p->failures==1);
+    assert(uac_fill_max_us==12260);
+    assert(uac_health.state==UAC_HEALTH_RECOVERING);
+    uac_recover_poll(); usb_host_client_handle_events(1,0);
+    const uint32_t recovery[]={5999,6000,3000,0}; sequence(recovery,4);
+    uac_recover_poll(); assert(live==4);
+    p=&uac_fill_timing.phase[UAC_FILL_RECOVERY_PREFILL];
+    assert(p->count==4 && p->first_us==5999 && p->max_us==6000);
+    assert(p->first_after_iso_submit && p->max_after_iso_submit);
+    assert(p->gt_3000==2 && p->ge_6000==1 && p->failures==0);
+    assert(uac_fill_timing.first_connection_us==12260);
+    uac_report_pending=true; uac_report();
+    uac_log_snapshot_t sample; assert(xQueueReceive(uac_log_queue,&sample,0)==1);
+    assert(sample.fill_max_us==12260 && sample.generation==uac_generation);
+    assert(sample.timing.phase[UAC_FILL_CALLBACK].failures==1);
+    assert(sample.timing.phase[UAC_FILL_RECOVERY_PREFILL].count==4);
+    uint32_t prior_generation=uac_generation; stop();
+    fill_duration=55; start(); assert(uac_generation==prior_generation+1);
+    assert(uac_fill_timing.first_connection_us==55);
+    assert(!uac_fill_timing.first_connection_after_iso_submit);
+    assert(uac_fill_timing.phase[UAC_FILL_INITIAL_PREFILL].count==8);
+    assert(uac_fill_timing.phase[UAC_FILL_INITIAL_PREFILL].first_us==12260);
+    assert(uac_fill_max_us==12260); stop();
+    // Allocation failure before the first fill: the first connection sample
+    // is a recovery prefill with no audio submission in this connection yet.
+    alloc_fail_after=2; start(); assert(live==0);
+    assert(!uac_fill_timing.first_connection_seen);
+    alloc_fail_after=-1; uac_recover_poll(); uac_recover_poll(); assert(live==4);
+    assert(uac_fill_timing.first_connection_phase==UAC_FILL_RECOVERY_PREFILL);
+    assert(!uac_fill_timing.first_connection_after_iso_submit);
+    uint32_t classified=0;
+    for(unsigned i=0;i<UAC_FILL_PHASE_COUNT;++i) classified+=uac_fill_timing.phase[i].count;
+    assert(classified==fill_calls);
+    // An old callback produces no timing sample in a new session.
+    uac_context_t stale={uac_generation-1,0}; usb_transfer_t fake={.context=&stale};
+    uint32_t before=fill_calls; uac_iso_done(&fake); assert(fill_calls==before);
+    // Telemetry must not wrap after a very long blocked call or counter limit.
+    fill_duration=(int64_t)UINT32_MAX+42; complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    assert(uac_fill_max_us==UINT32_MAX);
+    assert(uac_fill_timing.phase[UAC_FILL_CALLBACK].max_us==UINT32_MAX);
+    stop(); fill_duration=200;
+    uac_fill_timing_t saturated={0};
+    saturated.phase[UAC_FILL_CALLBACK]=(uac_fill_phase_stats_t){.count=UINT32_MAX,.gt_3000=UINT32_MAX,.ge_6000=UINT32_MAX,.failures=UINT32_MAX};
+    uac_timing_record(&saturated,UAC_FILL_CALLBACK,7000,true,true);
+    p=&saturated.phase[UAC_FILL_CALLBACK];
+    assert(p->count==UINT32_MAX && p->gt_3000==UINT32_MAX && p->ge_6000==UINT32_MAX && p->failures==UINT32_MAX);
+    assert(p->max_us==7000);
+    // Leave the original fault campaign's independent counters untouched.
+    flushes=clears=0; uac_log_drops=0;
+}
+#endif
 int main(void) {
+#if UAC_TEST_TIMING
+    timing_phases();
+#endif
     start();assert(live==4);
     uac_report_pending=true;uac_report();assert(log_waiting==1);
     uac_report_pending=true;uac_report();assert(uac_log_drops==1);

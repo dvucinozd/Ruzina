@@ -2,6 +2,8 @@
 
 Status: PLAN_ONLY / TARGET_CAUSE_UNPROVEN. Do not lower native minimum revision 302, change accepted gain, or reuse physical acceptance across images. The observed unit is legacy rev103. Read the [campaign result](2026-11-01-review-fix-device-results.md) first.
 
+Implementation progress is tracked in the separate [execution record](2026-11-01-uac-timing-execution.md). This original plan and the failed candidate's evidence remain the acceptance baseline.
+
 ## Evidence and limits
 
 Candidate app `0d4d07fa...` booted with the expected ELF prefix `babdee193`, mounted the 25-track export and started the four-transfer UAC stream. The first recorded idle statistics and the following three snapshots all reported `fill_max_us=12260`; underruns stayed 0/0 and transfer/packet/submit errors stayed zero. This exceeds the registered campaign rejection bound of 6000 us. Playback cases were not attempted.
