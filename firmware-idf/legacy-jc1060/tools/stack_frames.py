@@ -6,6 +6,7 @@ stack guard only reports that on the device. This reads each function's
 prologue (`addi sp,sp,-N`, or `lui`/`addi` into a register then
 `sub sp,sp,reg`) up to the first branch, call or return.
 """
+import functools
 import re
 
 # One Rust frame above this cannot be a plain local; it is an inlined future
@@ -44,3 +45,31 @@ def frame_sizes(disassembly):
 def oversized_rust_frames(disassembly, limit=RUST_FRAME_LIMIT):
     return {name: size for name, size in frame_sizes(disassembly).items()
             if size > limit and name.startswith(('_ZN', 'ruzina_'))}
+
+
+def deepest_stack(disassembly, root):
+    """Worst-case stack of `root`: its frame plus the deepest chain of direct
+    calls (`jal`/`jalr` with a symbol, and tail `j`). Indirect calls through
+    pointers are not followed and recursion is cut, so this is an estimate
+    that only grows the frames already measured; it returns (bytes, path)."""
+    sizes, calls, func = frame_sizes(disassembly), {}, None
+    for line in disassembly.splitlines():
+        header = re.match(r'^[0-9a-f]+ <(.+)>:$', line)
+        if header:
+            func = header[1]
+            calls.setdefault(func, set())
+            continue
+        target = re.search(r'\t(?:jalr?|j)\s.*<([^>+]+)>', line)
+        if func and target and target[1] != func:
+            calls[func].add(target[1])
+
+    @functools.lru_cache(None)
+    def walk(name, depth):
+        best = (0, ())
+        if depth < 64:
+            for callee in calls.get(name, ()):
+                best = max(best, walk(callee, depth + 1))
+        return sizes.get(name, 0) + best[0], (name,) + best[1]
+
+    total, path = walk(root, 0)
+    return total, list(path)

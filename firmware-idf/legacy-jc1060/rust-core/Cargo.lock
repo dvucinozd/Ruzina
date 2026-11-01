@@ -12,6 +12,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bytemuck"
+version = "1.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797"
+
+[[package]]
 name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -75,10 +81,73 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
+name = "nanoaudio-core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22ff788a8aae291c8eba3697cacac1666b86cdb702bd342b41b4c5d58baeffb5"
+
+[[package]]
+name = "nanoaudio-flac"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea8197dcb88a39a49d4bdf666dcaaf26177cd1e8c50186dbcd1e6bf5d919e0c8"
+dependencies = [
+ "nanoaudio-core",
+ "wide",
+]
+
+[[package]]
+name = "nanoaudio-mp3"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214"
+dependencies = [
+ "nanoaudio-core",
+ "nanomp3-core",
+]
+
+[[package]]
+name = "nanomp3-core"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c"
+
+[[package]]
 name = "ruzina-audio-dsp"
 version = "0.1.0"
 dependencies = [
  "libm",
+]
+
+[[package]]
+name = "ruzina-audio-keylock"
+version = "0.1.0"
+dependencies = [
+ "libm",
+ "ruzina-audio-dsp",
+]
+
+[[package]]
+name = "ruzina-audio-runtime"
+version = "0.1.0"
+dependencies = [
+ "libm",
+ "nanoaudio-core",
+ "nanoaudio-flac",
+ "nanoaudio-mp3",
+ "ruzina-audio-dsp",
+ "ruzina-audio-keylock",
+ "ruzina-audio-scratch",
+ "ruzina-controller-core",
+ "ruzina-deck",
+ "ruzina-mixer",
+]
+
+[[package]]
+name = "ruzina-audio-scratch"
+version = "0.1.0"
+dependencies = [
+ "ruzina-audio-dsp",
 ]
 
 [[package]]
@@ -143,6 +212,7 @@ name = "ruzina-legacy-idf-core-probe"
 version = "0.1.0"
 dependencies = [
  "ruzina-audio-dsp",
+ "ruzina-audio-runtime",
  "ruzina-controller-core",
  "ruzina-controller-profile",
  "ruzina-controller-session",
@@ -230,6 +300,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzina-mixer"
+version = "0.1.0"
+dependencies = [
+ "ruzina-audio-dsp",
+ "ruzina-controller-core",
+]
+
+[[package]]
 name = "ruzina-rekordbox"
 version = "0.1.0"
 dependencies = [
@@ -254,6 +332,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "safe_arch"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42c6efa15875e6ecb39ca61fb0b0c1a40b84fac5a5ffe71eef7d1000c8eb3f5f"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "sha2"
 version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -275,3 +362,13 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "wide"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d920ac99c3c8edce110cb8d07dbb324d6d026011dce85b1e9355b70f0adacc4f"
+dependencies = [
+ "bytemuck",
+ "safe_arch",
+]

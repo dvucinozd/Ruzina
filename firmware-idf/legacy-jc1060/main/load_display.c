@@ -16,6 +16,10 @@ esp_err_t ruzina_touch_start(void);
 unsigned ruzina_touch_poll(unsigned *raw_x, unsigned *raw_y, unsigned *x, unsigned *y, uint32_t *errors);
 /* Rust: asks the load task to preflight a track out of turn and report it. */
 extern void ruzina_legacy_load_select(uint32_t index);
+#if CONFIG_RUZINA_DECK_PLAY
+/* Rust (deck_play.rs): queue the track for the deck 1 decoder. */
+extern void ruzina_legacy_play_load(uint32_t deck, uint32_t index);
+#endif
 
 #define WIDTH 1024
 #define HEIGHT 600
@@ -331,16 +335,21 @@ void ruzina_load_display_choose(void)
     if (index >= 0) ruzina_legacy_load_select((uint32_t)index);
 }
 
-/* Load button: assign the selected track to deck 1 or 2 in the header. */
+/* Load button: assign the selected track to deck 1 or 2 in the header;
+ * with deck playback, deck 1 also starts decoding it (paused). */
 void ruzina_load_display_load(uint32_t deck)
 {
     if (!ready || deck < 1 || deck > 2) return;
     portENTER_CRITICAL(&lock);
-    if (shared.selected >= 0) {
-        shared.deck_track[deck - 1] = shared.selected;
+    int32_t index = shared.selected;
+    if (index >= 0) {
+        shared.deck_track[deck - 1] = index;
         shared.version++;
     }
     portEXIT_CRITICAL(&lock);
+#if CONFIG_RUZINA_DECK_PLAY
+    if (index >= 0) ruzina_legacy_play_load(deck, (uint32_t)index);
+#endif
 }
 
 esp_err_t ruzina_load_display_start(void)

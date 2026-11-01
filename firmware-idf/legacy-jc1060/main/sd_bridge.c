@@ -78,6 +78,21 @@ void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
 #if CONFIG_RUZINA_LOAD_DISPLAY
     ruzina_load_display_event(pass,event,value,stack,free_now,free_min);
 #endif
+#if CONFIG_RUZINA_DECK_PLAY
+    /* Deck 1 playback: 7 ready index<<8|codec, 8 rate, 9 failed index<<8|stage,
+     * 10 ended index<<8|faulted. The note is the display's status line. */
+    static const char *const codecs[] = {"?", "WAV", "MP3", "FLAC"};
+    static uint32_t codec;
+    char note[64];
+    switch (event) {
+        case 7: codec = (value & 255) < 4 ? (value & 255) : 0; return;
+        case 8: snprintf(note, sizeof(note), "D1 %s %" PRIu32 " Hz - press Play", codecs[codec], value); break;
+        case 9: snprintf(note, sizeof(note), "D1 load failed, stage %" PRIu32, value & 255); break;
+        case 10: snprintf(note, sizeof(note), "%s", (value & 1) ? "D1 read/decode fault" : "D1 track ended"); break;
+        default: return;
+    }
+    LOAD_NOTE(note);
+#endif
 }
 
 /* Rust lends UTF-8 bytes for the duration of this call only; the display
@@ -178,9 +193,16 @@ static void owner(void *unused)
 #if CONFIG_RUZINA_SD_RUST_LOAD
     /* The Rust allocator has no internal fallback: refuse to start without PSRAM. */
     if(!esp_psram_is_initialized()) {err=ESP_ERR_INVALID_STATE;goto finish;}
-    printf("S6_RUST_LOAD psram_bytes=%u psram_free=%u\n",(unsigned)esp_psram_get_size(),
-           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    printf("S6_RUST_LOAD psram_bytes=%u psram_free=%u internal_free=%u\n",(unsigned)esp_psram_get_size(),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+#if CONFIG_RUZINA_DECK_PLAY
+    /* The deck 1 decoder runs on this task: nanomp3 builds its 24 KiB state
+     * by value, several frames under the load run (build: load-run-stack.log). */
+    const uint32_t client_stack=98304;
+#else
     const uint32_t client_stack=49152;
+#endif
 #elif CONFIG_RUZINA_SD_RUST_EXFAT
     const uint32_t client_stack=32768;
 #else

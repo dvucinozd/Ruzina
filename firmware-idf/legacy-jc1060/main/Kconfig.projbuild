@@ -43,6 +43,11 @@ config RUZINA_USB_HOST_UAC
     depends on RUZINA_USB_HOST_MIDI
     default n
 
+config RUZINA_DECK_PLAY
+    bool "Play deck 1's loaded track from the card to the controller headphones"
+    depends on RUZINA_USB_HOST_UAC && RUZINA_LOAD_DISPLAY
+    default n
+
 config RUZINA_LOAD_DISPLAY
     bool "Show the media load status on the New_Panel, with touch track selection"
     depends on RUZINA_SD_RUST_LOAD && !RUZINA_DISPLAY_TOUCH

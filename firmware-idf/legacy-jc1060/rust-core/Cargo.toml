@@ -24,6 +24,7 @@ ruzina-controller-core = { path = "../../../firmware-rust/crates/ruzina-controll
 ruzina-controller-profile = { path = "../../../firmware-rust/crates/ruzina-controller-profile", optional = true }
 ruzina-controller-session = { path = "../../../firmware-rust/crates/ruzina-controller-session", optional = true }
 ruzina-uac = { path = "../../../firmware-rust/crates/ruzina-uac", optional = true }
+ruzina-audio-runtime = { path = "../../../firmware-rust/crates/ruzina-audio-runtime", optional = true }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
 
 [features]
@@ -50,6 +51,9 @@ idf-controller-midi = ["controller-midi"]
 controller-audio = ["controller-midi", "dep:ruzina-uac", "dep:ruzina-audio-dsp"]
 # UAC1 headphone tone to the controller over the IDF USB host.
 idf-controller-audio = ["idf-controller-midi", "controller-audio"]
+deck-play = ["controller-audio", "media-load", "dep:ruzina-audio-runtime"]
+# Deck 1 decoded from the card to the controller headphones over UAC1.
+idf-deck-play = ["idf-controller-audio", "idf-media-load", "deck-play"]
 
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }

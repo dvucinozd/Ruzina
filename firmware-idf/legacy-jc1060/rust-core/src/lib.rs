@@ -27,6 +27,9 @@ mod controller_midi;
 #[cfg(feature = "controller-audio")]
 mod controller_audio;
 
+#[cfg(feature = "deck-play")]
+mod deck_play;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]
