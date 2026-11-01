@@ -3,6 +3,11 @@
 #[cfg(test)]
 extern crate std;
 
+/// Tests that drive the process-wide deck rings, commands and controller
+/// session take this lock, so they never interleave.
+#[cfg(test)]
+static DECK_TESTS: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(feature = "media-load")]
 extern crate alloc;
 
@@ -32,6 +37,9 @@ mod deck_play;
 
 #[cfg(feature = "deck-mix")]
 mod deck_mix;
+
+#[cfg(feature = "deck-engine")]
+mod deck_engine;
 
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.

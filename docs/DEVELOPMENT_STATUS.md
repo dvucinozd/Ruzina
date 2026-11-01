@@ -51,6 +51,9 @@ owner's ear with 0 underruns.
 the product render graph and mixer. MAIN goes to the FLX4's MASTER output
 and the PFL/master mix to the headphones. It is built and host-tested; the
 device run is pending.
+[`deck-engine`](reviews/2026-11-01-legacy-deck-engine.md) hands transport to
+the product deck engine: CDJ CUE, seeks into the decoder, positions, pitch,
+jog and local hot cues. It is built and host-tested, on top of `deck-mix`.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

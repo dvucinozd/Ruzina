@@ -29,6 +29,7 @@ const HEADPHONE_CEILING: f32 = 0.25;
 const START_LEVEL: u16 = MIXER_CONTROL_MAX / 4;
 
 /// Tempo fader range, as the deck's default (+-10 %).
+#[cfg(not(feature = "deck-engine"))]
 const TEMPO_RANGE_PERCENT: u16 = 10;
 
 pub(crate) struct Mix {
@@ -45,6 +46,9 @@ pub(crate) struct Mix {
     /// Blocks in which a playing deck ran dry before its track ended.
     underruns: [u32; 2],
     limited: u32,
+    /// With `deck-engine`, the product deck engine owns playback and pitch.
+    #[cfg(feature = "deck-engine")]
+    engine: crate::deck_engine::Engine,
 }
 
 impl Mix {
@@ -60,7 +64,14 @@ impl Mix {
             rendered: 0,
             underruns: [0; 2],
             limited: 0,
+            #[cfg(feature = "deck-engine")]
+            engine: crate::deck_engine::Engine::new(),
         }
+    }
+
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn engine(&mut self) -> &mut crate::deck_engine::Engine {
+        &mut self.engine
     }
 
     fn start(&mut self) {
@@ -83,9 +94,13 @@ impl Mix {
         }
     }
 
-    /// One controller event into the mixer (and the Tempo faders).
+    /// One controller event into the mixer, and into the deck engine with
+    /// `deck-engine` (else the Tempo faders set the pitch directly).
     pub(crate) fn control(&mut self, event: &ControlEvent) {
         self.start();
+        #[cfg(feature = "deck-engine")]
+        self.engine.control(event);
+        #[cfg(not(feature = "deck-engine"))]
         if let (SemanticControl::Tempo, Some(deck), ControlValue::Absolute { value, .. }) =
             (event.control, event.deck, event.value)
         {
@@ -129,6 +144,9 @@ impl Mix {
         control
     }
 
+    /// Renders the next block; with `deck-engine`, the engine's playback
+    /// replaces `playing`.
+    #[cfg_attr(feature = "deck-engine", allow(unused_variables))]
     fn render(&mut self, playing: [bool; 2]) {
         let graph = self.graph.get_or_insert_with(FixedRateRenderGraph::new);
         for (deck, reader) in self.readers.iter_mut().enumerate() {
@@ -136,6 +154,12 @@ impl Mix {
                 graph.reset_deck(deck);
             }
         }
+        #[cfg(feature = "deck-engine")]
+        let playing = {
+            let (playing, pitch) = self.engine.transport();
+            self.pitch = pitch;
+            playing
+        };
         let control = self.render_control(playing);
         let graph = self.graph.as_mut().expect("graph built above");
         let readers = &mut self.readers;
@@ -153,6 +177,9 @@ impl Mix {
             .wrapping_add(u32::from(report.rendered_frames));
         self.limited = self.limited.wrapping_add(report.limiter.limited_samples);
         self.position = 0;
+        #[cfg(feature = "deck-engine")]
+        self.engine
+            .progress(&self.readers, u32::from(report.rendered_frames));
     }
 
     /// Fills one packet of MAIN and headphone frames; silent unless the
@@ -223,6 +250,22 @@ pub unsafe extern "C" fn ruzina_legacy_mix_stats(out: *mut u32) {
     }
     let values = with(|mix| mix.stats());
     // SAFETY: the caller provides eight writable u32 slots.
+    unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
+}
+
+/// Writes the deck engine's unexecuted effects and refused loads to
+/// `out[0..2]`.
+///
+/// # Safety
+/// `out` must be valid for two `u32` writes. USB client task only.
+#[cfg(feature = "idf-deck-engine")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_engine_counters(out: *mut u32) {
+    if out.is_null() {
+        return;
+    }
+    let values = with(|mix| mix.engine().counters());
+    // SAFETY: the caller provides two writable u32 slots.
     unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
 }
 

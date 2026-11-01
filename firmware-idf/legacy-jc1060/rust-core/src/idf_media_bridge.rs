@@ -626,6 +626,13 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         // serves selections and decodes deck 1 instead of re-reading the card.
         #[cfg(feature = "idf-deck-play")]
         return serve_decks(
+            |index| {
+                stage.current().and_then(|snapshot| {
+                    snapshot
+                        .get(index as usize)
+                        .map(|t| (t.track_id.0, t.bpm_x100))
+                })
+            },
             pass,
             &mut volume,
             &current,
@@ -714,6 +721,9 @@ mod play_event {
     pub const FAILED: u32 = 9;
     /// The track ended; value is `deck << 24 | index << 8 | faulted`.
     pub const ENDED: u32 = 10;
+    /// A seek reopened the track; value is `deck << 24 | failed << 23 | ms`
+    /// (ms capped at 23 bits).
+    pub const SEEKED: u32 = 11;
 }
 
 /// After the first pass: serve detail selections and the deck producers
@@ -721,7 +731,9 @@ mod play_event {
 /// (with `deck-mix`) is allocated at its first Load. Returns only on a lost
 /// lease or allocation failure.
 #[cfg(feature = "idf-deck-play")]
+#[cfg_attr(not(feature = "idf-deck-engine"), allow(unused_variables))]
 fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<str>>(
+    track: impl Fn(u32) -> Option<([u8; 16], u32)>,
     pass: u32,
     volume: &mut crate::exfat_fixture::Volume<D>,
     current: &C,
@@ -769,6 +781,17 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
             let (worked, event) = producer.poll(&mut files, &RINGS[deck], &COMMANDS[deck], &path);
             busy |= worked;
             let tag = (deck as u32) << 24;
+            // The deck engine commits what its producer loaded.
+            #[cfg(feature = "idf-deck-engine")]
+            if let Some(Event::Ready { index, .. } | Event::Failed { index, .. }) = event {
+                let (track_id, bpm_x100) = track(index).unwrap_or(([0; 16], 0));
+                crate::deck_engine::LOADED[deck].post(crate::deck_engine::LoadedTrack {
+                    ready: matches!(event, Some(Event::Ready { .. })),
+                    index,
+                    bpm_x100,
+                    track_id,
+                });
+            }
             match event {
                 Some(Event::Ready { index, codec, rate }) => {
                     report(play_event::READY, tag | index << 8 | codec);
@@ -777,6 +800,12 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
                 Some(Event::Failed { index, stage }) => {
                     report(play_event::FAILED, tag | index << 8 | stage)
                 }
+                Some(Event::Seeked {
+                    position_ms, ok, ..
+                }) => report(
+                    play_event::SEEKED,
+                    tag | u32::from(!ok) << 23 | position_ms.min(0x7f_ffff),
+                ),
                 Some(Event::Ended { index, faulted }) => {
                     report(play_event::ENDED, tag | index << 8 | u32::from(faulted))
                 }

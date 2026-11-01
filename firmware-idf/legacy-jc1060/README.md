@@ -458,3 +458,27 @@ and mixes them with the product's own render graph.
   8 KiB USB client task (`uac-fill-stack.log`).
 
 See [deck mix](../../docs/reviews/2026-11-01-legacy-deck-mix.md).
+
+## `deck-engine` profile
+
+`deck-engine` (`CONFIG_RUZINA_DECK_ENGINE`, Rust `idf-deck-engine`) is
+`deck-mix` with the product deck engine, `ruzina-deck`'s `DeckProductState`,
+in charge of transport.
+
+- **Controls.** Every controller event reaches the engine. It handles Play
+  and CDJ CUE (return, set, preview), the Tempo faders, and the jog: scrub
+  while paused, bend while playing. The Hot Cue pads set and recall local hot
+  cues.
+- **Effects.** Playback and pause gate the render, and seeks reopen the
+  deck's decoder at the target (`StreamChange::SeekMilliseconds`).
+- **Feedback to the engine.** The renderer reports each deck's position back
+  to the engine. A loaded track is committed with `commit_track_load` once its
+  producer has decoded it.
+- **Load lock.** Load is refused while the deck plays.
+- **Feedback to the owner.** The Play LEDs follow the engine. The screen
+  header shows `> m:ss` or `| m:ss` per deck, and the log adds
+  `deck_engine_stats`.
+- **Not yet executed.** Scratch, loops, pad FX and beat FX effects are
+  counted only.
+
+See [deck engine](../../docs/reviews/2026-11-01-legacy-deck-engine.md).

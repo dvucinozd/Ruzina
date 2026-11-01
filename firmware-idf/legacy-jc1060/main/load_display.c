@@ -20,6 +20,11 @@ extern void ruzina_legacy_load_select(uint32_t index);
 /* Rust (deck_play.rs): queue the track for the deck 1 decoder. */
 extern void ruzina_legacy_play_load(uint32_t deck, uint32_t index);
 #endif
+#if CONFIG_RUZINA_DECK_ENGINE
+/* Rust (deck_engine.rs): position ms and flags (1 loaded, 2 playing) per
+ * deck, published atomically for this task. */
+extern void ruzina_legacy_engine_status(uint32_t *out);
+#endif
 
 #define WIDTH 1024
 #define HEIGHT 600
@@ -52,6 +57,7 @@ typedef struct {
     char note[TEXT_BYTES];  /* owner state */
     int32_t selected;       /* -1 none */
     int32_t deck_track[2];  /* track loaded on deck 1/2 by the controller; -1 none */
+    uint32_t deck_seconds[2], deck_flags[2]; /* deck engine position and flags */
     uint32_t detail_version;
     detail_t detail;
     int8_t outcome[MAX_TRACKS];
@@ -132,7 +138,17 @@ static void paint_header(unsigned y, const status_t *s)
         unsigned x = deck * (WIDTH / 2) + 12;
         int32_t track = s->deck_track[deck];
         text(x, y, 3, ACCENT, deck ? "D2" : "D1");
+#if CONFIG_RUZINA_DECK_ENGINE
+        /* "> m:ss" playing, "| m:ss" paused, then the title. */
+        char clock[16];
+        snprintf(clock, sizeof(clock), "%s%2" PRIu32 ":%02" PRIu32, (s->deck_flags[deck] & 2) ? ">" : "|",
+                 s->deck_seconds[deck] / 60 % 100, s->deck_seconds[deck] % 60);
+        text(x + 36, y, 7, (s->deck_flags[deck] & 2) ? ACCENT : FOREGROUND, clock);
+        text(x + 36 + 8 * FONT24_WIDTH, y, COLS - 12, track >= 0 ? FOREGROUND : DIM,
+             track >= 0 ? s->title[track] : "empty");
+#else
         text(x + 36, y, COLS - 4, track >= 0 ? FOREGROUND : DIM, track >= 0 ? s->title[track] : "empty");
+#endif
     }
 }
 
@@ -244,13 +260,29 @@ static void ui_task(void *unused)
     drawn.selected = -1;
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(100));
+#if CONFIG_RUZINA_DECK_ENGINE
+        uint32_t engine[4];
+        ruzina_legacy_engine_status(engine);
+#endif
         portENTER_CRITICAL(&lock);
+#if CONFIG_RUZINA_DECK_ENGINE
+        for (unsigned deck = 0; deck < 2; ++deck) {
+            uint32_t seconds = engine[2 * deck] / 1000, flags = engine[2 * deck + 1];
+            if (shared.deck_seconds[deck] != seconds || shared.deck_flags[deck] != flags) {
+                shared.deck_seconds[deck] = seconds;
+                shared.deck_flags[deck] = flags;
+                shared.version++;
+            }
+        }
+#endif
         bool changed = shared.version != drawn.version;
         if (changed) now = shared;
         portEXIT_CRITICAL(&lock);
         if (!changed) continue;
         bool first = drawn.version == UINT32_MAX;
-        if (first || now.deck_track[0] != drawn.deck_track[0] || now.deck_track[1] != drawn.deck_track[1])
+        if (first || now.deck_track[0] != drawn.deck_track[0] || now.deck_track[1] != drawn.deck_track[1]
+                || memcmp(now.deck_seconds, drawn.deck_seconds, sizeof(now.deck_seconds))
+                || memcmp(now.deck_flags, drawn.deck_flags, sizeof(now.deck_flags)))
             band(0, paint_header, &now);
         if (first || now.pass != drawn.pass || now.tracks != drawn.tracks || now.loaded != drawn.loaded
                 || now.playlists != drawn.playlists)

@@ -1,3 +1,5 @@
+// With the deck engine, playback is the engine's (see `deck_engine` tests).
+#![cfg(not(feature = "deck-engine"))]
 use super::*;
 use crate::deck_play::attach_ring;
 use std::vec::Vec;
@@ -50,7 +52,9 @@ fn near(samples: &[i16], expected: i16) -> bool {
 // One test: the deck rings are process-wide statics, as on the device.
 #[test]
 fn two_decks_mix_through_the_product_graph() {
-    assert!(attach_ring(0) && attach_ring(1));
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
     let mut mix = Mix::new();
     // Nothing loaded: silence even while playing.
     let (main, headphones) = run(&mut mix, 4, [true, true]);

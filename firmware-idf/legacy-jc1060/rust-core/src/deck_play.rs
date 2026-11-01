@@ -18,7 +18,7 @@ use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicU32, Ordering};
 use ruzina_audio_dsp::{PcmFrame, ResamplerState};
 use ruzina_audio_runtime::decode::{
     AudioCodec, DecodeAction, DecoderStorage, ENCODED_BUFFER_BYTES, MP3_CHECKPOINTS,
-    Mp3CheckpointStorage, SOURCE_READ_BYTES, SourceDecoder,
+    Mp3CheckpointStorage, SOURCE_READ_BYTES, SourceDecoder, StreamChange,
 };
 use ruzina_audio_runtime::pcm_stream::{PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock};
 use ruzina_audio_runtime::wav::{
@@ -54,6 +54,8 @@ pub(crate) struct Ring {
     start: AtomicU32,
     /// The current epoch's source rate; 0 holds the consumer silent.
     rate: AtomicU32,
+    /// The source frame the current epoch starts at (a seek's target).
+    origin: AtomicU32,
     /// The epoch whose source has delivered its last frame.
     ended: AtomicU32,
 }
@@ -67,8 +69,15 @@ impl Ring {
             epoch: AtomicU32::new(0),
             start: AtomicU32::new(0),
             rate: AtomicU32::new(0),
+            origin: AtomicU32::new(0),
             ended: AtomicU32::new(0),
         }
+    }
+
+    /// The current epoch, as the producer last opened it.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn epoch(&self) -> u32 {
+        self.epoch.load(Ordering::Acquire)
     }
 
     /// Hands the ring its storage once; later calls keep the first.
@@ -120,9 +129,15 @@ impl Ring {
     /// Producer: starts a new source at `rate` (0 silences the consumer);
     /// frames pushed before this call are never played.
     pub(crate) fn restart(&self, rate: u32) {
+        self.restart_at(rate, 0);
+    }
+
+    /// As `restart`, for a source whose first frame is `origin`.
+    pub(crate) fn restart_at(&self, rate: u32, origin: u32) {
         self.start
             .store(self.head.load(Ordering::Relaxed), Ordering::Relaxed);
         self.rate.store(rate, Ordering::Relaxed);
+        self.origin.store(origin, Ordering::Relaxed);
         self.epoch.fetch_add(1, Ordering::Release);
     }
 
@@ -139,6 +154,8 @@ pub(crate) struct Reader {
     epoch: u32,
     tail: u32,
     rate: u32,
+    /// The epoch's first source frame plus the frames taken since.
+    position: u32,
 }
 
 impl Reader {
@@ -147,6 +164,7 @@ impl Reader {
             epoch: 0,
             tail: 0,
             rate: 0,
+            position: 0,
         }
     }
 
@@ -159,6 +177,7 @@ impl Reader {
         self.epoch = epoch;
         self.tail = ring.start.load(Ordering::Relaxed);
         self.rate = ring.rate.load(Ordering::Relaxed);
+        self.position = ring.origin.load(Ordering::Relaxed);
         ring.tail.store(self.tail, Ordering::Release);
         true
     }
@@ -172,6 +191,7 @@ impl Reader {
         // until `tail` passes them.
         let frame = unsafe { ring.slot(self.tail)?.read() };
         self.tail = self.tail.wrapping_add(1);
+        self.position = self.position.wrapping_add(1);
         Some(frame)
     }
 
@@ -188,6 +208,21 @@ impl Reader {
     #[cfg_attr(not(feature = "deck-mix"), allow(dead_code))]
     pub(crate) const fn rate(&self) -> u32 {
         self.rate
+    }
+
+    /// The epoch this reader follows.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) const fn epoch(&self) -> u32 {
+        self.epoch
+    }
+
+    /// Source position of the next frame, in milliseconds; 0 without a rate.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn position_ms(&self) -> u32 {
+        if self.rate == 0 {
+            return 0;
+        }
+        (u64::from(self.position) * 1000 / u64::from(self.rate)) as u32
     }
 
     pub(crate) fn buffered(&self, ring: &Ring) -> u32 {
@@ -215,6 +250,13 @@ pub(crate) enum Event {
     Failed { index: u32, stage: u32 },
     /// The track pushed its last frame (faulted: a decode or read failure).
     Ended { index: u32, faulted: bool },
+    /// A seek reopened the track at `position_ms` (ok: its first block
+    /// decoded; otherwise the track ended as faulted).
+    Seeked {
+        index: u32,
+        position_ms: u32,
+        ok: bool,
+    },
 }
 
 fn codec_number(codec: AudioCodec) -> u32 {
@@ -445,7 +487,7 @@ impl<File> Producer<File> {
                     let rate = block.sample_rate_hz;
                     source.ended = block.eof;
                     if prime {
-                        ring.restart(rate);
+                        ring.restart_at(rate, block.first_frame as u32);
                     }
                     if !deliver(ring, &block) {
                         source.pending = Some(Box::new(block));
@@ -459,8 +501,41 @@ impl<File> Producer<File> {
         (!prime).then_some(0)
     }
 
-    /// One producer turn: serves a pending Load or Cue, else tops up the
-    /// ring. Returns whether it did work and what to report.
+    /// Moves the loaded track to `position_ms` and decodes its first block
+    /// there into a new ring epoch; the old epoch plays on until then.
+    pub(crate) fn seek<F: SourceFiles<File = File>>(
+        &mut self,
+        files: &mut F,
+        ring: &Ring,
+        position_ms: u32,
+    ) -> Option<Event> {
+        let source = self.source.as_mut()?;
+        let index = source.index;
+        self.generation = self.generation.wrapping_add(1).max(1);
+        let mut checkpoints = self.checkpoints.each_mut().map(|slot| &mut **slot);
+        let changed = source.stream.change(
+            &mut self.storage,
+            &mut checkpoints,
+            &mut self.encoded,
+            self.generation,
+            StreamChange::SeekMilliseconds(position_ms),
+        );
+        source.pending = None;
+        source.ended = false;
+        let ok = changed && self.decode(files, ring, PRIME_ACTIONS, true).is_some();
+        if !ok && let Some(source) = self.source.as_mut() {
+            source.ended = true;
+            ring.end();
+        }
+        Some(Event::Seeked {
+            index,
+            position_ms,
+            ok,
+        })
+    }
+
+    /// One producer turn: serves a pending Load, Cue or seek, else tops up
+    /// the ring. Returns whether it did work and what to report.
     pub(crate) fn poll<F: SourceFiles<File = File>, P: AsRef<str>>(
         &mut self,
         files: &mut F,
@@ -475,11 +550,16 @@ impl<File> Producer<File> {
             (load, _) => Some(load - 1),
         };
         if let Some(index) = index {
+            commands.take_seek();
             let path = path(index);
             return (
                 true,
                 Some(self.load(files, ring, index, path.as_ref().map(AsRef::as_ref))),
             );
+        }
+        if let Some(position_ms) = commands.take_seek() {
+            let event = self.seek(files, ring, position_ms);
+            return (event.is_some(), event);
         }
         let Some(source) = &self.source else {
             return (false, None);
@@ -507,6 +587,8 @@ pub(crate) struct Commands {
     load: AtomicU32,
     /// Return deck 1 to the start of its track.
     cue: AtomicBool,
+    /// Seek target in milliseconds + 1; 0 none. A newer seek replaces it.
+    seek: AtomicU32,
 }
 
 impl Commands {
@@ -514,13 +596,28 @@ impl Commands {
         Self {
             load: AtomicU32::new(0),
             cue: AtomicBool::new(false),
+            seek: AtomicU32::new(0),
         }
+    }
+
+    /// Move the loaded track to `position_ms` (from the deck engine).
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn seek(&self, position_ms: u32) {
+        self.seek
+            .store(position_ms.saturating_add(1), Ordering::Release);
+    }
+
+    pub(crate) fn take_seek(&self) -> Option<u32> {
+        self.seek.swap(0, Ordering::Acquire).checked_sub(1)
     }
 
     pub(crate) fn load(&self, index: u32) {
         self.load.store(index.saturating_add(1), Ordering::Release);
     }
 
+    /// Restart deck 1 from its beginning (without the deck engine, which
+    /// seeks to its cue point instead).
+    #[cfg_attr(feature = "deck-engine", allow(dead_code))]
     pub(crate) fn cue(&self) {
         self.cue.store(true, Ordering::Release);
     }
