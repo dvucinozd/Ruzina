@@ -101,28 +101,30 @@ impl State {
             return;
         };
         let Some(deck) = event.deck else { return };
+        #[cfg_attr(feature = "deck-engine", allow(unused_variables))]
         let slot = usize::from(deck == DeckId::Two);
         match event.control {
+            #[cfg(not(feature = "deck-engine"))]
             SemanticControl::Play if pressed => {
                 self.playing[slot] = !self.playing[slot];
                 self.led(SemanticLedId::PLAY, Some(deck), self.playing[slot]);
             }
             SemanticControl::Cue => {
-                #[cfg(feature = "deck-play")]
+                #[cfg(all(feature = "deck-play", not(feature = "deck-engine")))]
                 if pressed {
                     self.stop(deck, slot);
                     crate::deck_play::COMMANDS[slot].cue();
                 }
                 self.led(SemanticLedId::CUE, Some(deck), pressed);
             }
-            #[cfg(feature = "deck-play")]
+            #[cfg(all(feature = "deck-play", not(feature = "deck-engine")))]
             SemanticControl::Load if pressed => self.stop(deck, slot),
             _ => {}
         }
     }
 }
 
-#[cfg(feature = "deck-play")]
+#[cfg(all(feature = "deck-play", not(feature = "deck-engine")))]
 impl State {
     /// Pauses a deck: its Play latch and LED go off.
     fn stop(&mut self, deck: DeckId, slot: usize) {
@@ -168,6 +170,33 @@ fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
 #[cfg_attr(not(feature = "controller-audio"), allow(dead_code))]
 pub(crate) fn playing() -> [bool; 2] {
     with(|state| state.playing)
+}
+
+#[cfg(feature = "deck-engine")]
+impl State {
+    /// The Play LEDs follow the deck engine's confirmed playback.
+    fn sync_play_leds(&mut self) {
+        let playing = crate::deck_mix::with(|mix| mix.engine().playing());
+        for (slot, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
+            if self.playing[slot] != playing[slot] {
+                self.playing[slot] = playing[slot];
+                self.led(SemanticLedId::PLAY, Some(deck), playing[slot]);
+            }
+        }
+    }
+}
+
+/// Brings the Play LEDs up to date with the deck engine (a track that
+/// played out stops without a controller event). USB client task, before
+/// the periodic Bulk-OUT flush.
+#[cfg(feature = "idf-deck-engine")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_midi_refresh() {
+    with(|state| {
+        if state.profile.is_some() {
+            state.sync_play_leds();
+        }
+    });
 }
 
 #[cfg(feature = "deck-play")]
@@ -412,9 +441,22 @@ fn drain(state: &mut State) -> i32 {
             state.echo(&event);
             #[cfg(feature = "deck-mix")]
             crate::deck_mix::with(|mix| mix.control(&event));
+            #[cfg(feature = "deck-engine")]
+            state.sync_play_leds();
             if let Some((action, deck, value)) = ui_action(&event) {
-                // SAFETY: scalars only.
-                unsafe { ruzina_bridge_midi_ui(action, deck, value) };
+                // With the deck engine, Load waits for its load admission.
+                #[cfg(feature = "deck-engine")]
+                let allowed = action != ui::LOAD
+                    || crate::deck_mix::with(|mix| {
+                        let id = if deck == 2 { DeckId::Two } else { DeckId::One };
+                        mix.engine().load_allowed(id)
+                    });
+                #[cfg(not(feature = "deck-engine"))]
+                let allowed = true;
+                if allowed {
+                    // SAFETY: scalars only.
+                    unsafe { ruzina_bridge_midi_ui(action, deck, value) };
+                }
             }
             delivered += 1;
         }

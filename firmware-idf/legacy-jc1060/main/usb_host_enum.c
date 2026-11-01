@@ -30,6 +30,10 @@ extern void ruzina_legacy_midi_totals(uint32_t *out);
 extern void ruzina_legacy_midi_lamp(int32_t on);
 extern uint32_t ruzina_legacy_midi_take_out(uint8_t *out, uint32_t capacity);
 extern uint32_t ruzina_legacy_midi_out_overflow(void);
+#if CONFIG_RUZINA_DECK_ENGINE
+/* Rust (controller_midi.rs): Play LEDs follow the deck engine's playback. */
+extern void ruzina_legacy_midi_refresh(void);
+#endif
 
 static usb_transfer_t *midi_in, *midi_out;
 static uint8_t midi_interface = 0xff;
@@ -136,6 +140,9 @@ static void midi_retry(void)
         ruzina_legacy_midi_lamp(0);
         printf("midi_lamp on=0\n");
     }
+#if CONFIG_RUZINA_DECK_ENGINE
+    ruzina_legacy_midi_refresh(); /* a track that played out turns its Play LED off */
+#endif
     midi_flush();
     if (!midi_retry_at || (int32_t)(xTaskGetTickCount() - midi_retry_at) < 0) return;
     midi_retry_at = 0;
@@ -233,6 +240,12 @@ extern void ruzina_legacy_uac_stats(uint32_t *out);
 /* Rust (deck_mix.rs): rendered frames, underrun blocks per deck, buffered
  * frames and rate per deck, limited MAIN samples. */
 extern void ruzina_legacy_mix_stats(uint32_t *out);
+#if CONFIG_RUZINA_DECK_ENGINE
+/* Rust (deck_engine.rs, deck_mix.rs): position ms and flags per deck;
+ * unexecuted effects and refused loads. */
+extern void ruzina_legacy_engine_status(uint32_t *out);
+extern void ruzina_legacy_engine_counters(uint32_t *out);
+#endif
 /* Longest Rust fill of one transfer (six 1 ms packets of both decks). */
 static uint32_t uac_fill_max_us;
 #elif CONFIG_RUZINA_DECK_PLAY
@@ -300,6 +313,14 @@ static void uac_iso_done(usb_transfer_t *transfer)
         printf("deck_mix_stats rendered=%" PRIu32 " underruns=%" PRIu32 "/%" PRIu32 " buffered=%" PRIu32 "/%" PRIu32
                " rate=%" PRIu32 "/%" PRIu32 " limited=%" PRIu32 " fill_max_us=%" PRIu32 "\n",
                mix[0], mix[1], mix[2], mix[3], mix[4], mix[5], mix[6], mix[7], uac_fill_max_us);
+#if CONFIG_RUZINA_DECK_ENGINE
+        uint32_t engine[4], counters[2];
+        ruzina_legacy_engine_status(engine);
+        ruzina_legacy_engine_counters(counters);
+        printf("deck_engine_stats d1_ms=%" PRIu32 " d1_flags=%" PRIu32 " d2_ms=%" PRIu32 " d2_flags=%" PRIu32
+               " unsupported=%" PRIu32 " refused_loads=%" PRIu32 "\n",
+               engine[0], engine[1], engine[2], engine[3], counters[0], counters[1]);
+#endif
 #elif CONFIG_RUZINA_DECK_PLAY
         uint32_t play[4];
         ruzina_legacy_play_stats(play);

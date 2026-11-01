@@ -218,6 +218,7 @@ dependencies = [
  "ruzina-controller-session",
  "ruzina-core",
  "ruzina-deck",
+ "ruzina-hot-cues",
  "ruzina-media-block",
  "ruzina-media-catalog",
  "ruzina-media-exfat",

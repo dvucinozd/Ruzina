@@ -327,6 +327,68 @@ fn output_gain_follows_the_headphone_level() {
 }
 
 #[test]
+fn a_seek_reopens_the_track_at_its_position() {
+    let (ring, commands) = (ring(), Commands::new());
+    let mut files = Memory::new(&[WAV, LONG_ID3]);
+    let mut producer = Producer::new();
+    let mut reader = Reader::new();
+    // WAV: frame-exact. 100 ms at 48 kHz is frame 4800.
+    commands.load(0);
+    run(&mut producer, &mut files, ring, &commands);
+    commands.seek(100);
+    let events = run(&mut producer, &mut files, ring, &commands);
+    assert_eq!(
+        events[0],
+        Event::Seeked {
+            index: 0,
+            position_ms: 100,
+            ok: true
+        }
+    );
+    reader.sync(ring);
+    assert_eq!(reader.position_ms(), 100);
+    assert_eq!(drain(&mut reader, ring), wav_pcm()[4_800..]);
+    assert_eq!(reader.position_ms(), 250);
+    // A seek after the end revives the track.
+    commands.seek(0);
+    run(&mut producer, &mut files, ring, &commands);
+    assert_eq!(drain(&mut reader, ring), wav_pcm());
+    // MP3 behind an ID3 tag: forward, then back past the start, each epoch
+    // starting at its target.
+    commands.load(1);
+    run(&mut producer, &mut files, ring, &commands);
+    for target in [6_000, 1_000, 7_900] {
+        reader.sync(ring);
+        commands.seek(target);
+        let events = run(&mut producer, &mut files, ring, &commands);
+        assert!(
+            matches!(events[0], Event::Seeked { ok: true, .. }),
+            "{events:?}"
+        );
+        reader.sync(ring);
+        assert_eq!(reader.position_ms(), target);
+        // The full ring held the first block back until the reader followed.
+        run(&mut producer, &mut files, ring, &commands);
+        assert!(reader.pop(ring).is_some());
+    }
+    // Two seeks before the producer runs: the newer wins.
+    commands.seek(2_000);
+    commands.seek(3_000);
+    let events = run(&mut producer, &mut files, ring, &commands);
+    assert!(matches!(
+        events[0],
+        Event::Seeked {
+            position_ms: 3_000,
+            ..
+        }
+    ));
+    // Without a track there is nothing to seek.
+    let mut idle = Producer::new();
+    commands.seek(10);
+    assert_eq!(idle.poll(&mut files, ring, &commands, path), (false, None));
+}
+
+#[test]
 fn ring_keeps_its_first_storage() {
     let ring = ring();
     let other = std::vec![PcmFrame::default(); RING_FRAMES as usize].into_boxed_slice();
