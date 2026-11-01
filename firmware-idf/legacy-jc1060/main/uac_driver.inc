@@ -43,6 +43,15 @@ static uint32_t uac_completed, uac_iso_errors, uac_packet_errors, uac_ctrl_error
 static uint32_t uac_submit_errors, uac_generation;
 static uac_recovery_t uac_health;
 static bool uac_report_pending;
+static uint32_t uac_log_drops;
+#if CONFIG_RUZINA_UAC_PROFILE
+#include "uac_profile_record.h"
+extern void ruzina_legacy_uac_profile_begin(void);
+extern uint32_t ruzina_legacy_uac_profile_end(uint32_t *out,uint32_t len);
+static uac_profile_record_t uac_profile_worst, uac_profile_over;
+static uint32_t uac_profile_ordinal;
+static bool uac_profile_seen, uac_profile_over_seen;
+#endif
 typedef struct { uint32_t generation; unsigned slot; } uac_context_t;
 static uac_context_t uac_context[UAC_TRANSFERS], uac_control_context;
 static void uac_start_stream(enum uac_fill_phase phase);
@@ -50,6 +59,18 @@ static void uac_start_stream(enum uac_fill_phase phase);
 static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
 {
     uint32_t sizes[UAC_PACKETS];
+#if CONFIG_RUZINA_UAC_PROFILE
+    if (phase==UAC_FILL_CALLBACK) uac_timing_increment(&uac_profile_ordinal);
+    uac_profile_record_t profile={.generation=uac_generation,.phase=(uint32_t)phase,
+        .ordinal=phase==UAC_FILL_CALLBACK ? uac_profile_ordinal : 0,
+        .uptime_us=(uint32_t)esp_timer_get_time(),.health=(uint32_t)uac_health.state,
+        .catalog=ruzina_uac_catalog_phase(),.log_drops=uac_log_drops};
+    for (unsigned i=0;i<UAC_TRANSFERS;++i) if (uac_iso_busy[i]) profile.pool_mask |= 1u<<i;
+    ruzina_legacy_engine_status(profile.flags);
+    bool bound=ruzina_uac_sched_bind(xTaskGetCurrentTaskHandle());
+    ruzina_legacy_uac_profile_begin();
+    uac_sched_stamp_t sched_before=ruzina_uac_sched_stamp();
+#endif
 #if CONFIG_RUZINA_DECK_MIX
     int64_t start = esp_timer_get_time();
 #endif
@@ -58,6 +79,17 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
 #if CONFIG_RUZINA_DECK_MIX
     int64_t elapsed = esp_timer_get_time() - start;
     uint32_t took = elapsed > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed;
+#if CONFIG_RUZINA_UAC_PROFILE
+    uac_sched_stamp_t sched_after=ruzina_uac_sched_stamp();
+    profile.whole_us=took;
+    profile.rust_valid=ruzina_legacy_uac_profile_end(profile.rust,UAC_PROFILE_WORDS)==UAC_PROFILE_WORDS;
+    uac_profile_schedule(&profile,sched_before,sched_after);
+    profile.sched_valid &= bound;
+    if (phase==UAC_FILL_CALLBACK) {
+        if (!uac_profile_seen || took>uac_profile_worst.whole_us) { uac_profile_worst=profile;uac_profile_seen=true; }
+        if (took>=6000) { uac_profile_over=profile;uac_profile_over_seen=true; }
+    }
+#endif
     if (took > uac_fill_max_us) uac_fill_max_us = took;
     uac_timing_record(&uac_fill_timing,phase,took,uac_any_iso_submitted,!bytes);
 #else
@@ -109,6 +141,10 @@ typedef struct {
     uint32_t mix[8], fill_max_us;
     uint32_t generation;
     uac_fill_timing_t timing;
+#if CONFIG_RUZINA_UAC_PROFILE
+    uac_profile_record_t worst, over;
+    bool profile_seen, over_seen;
+#endif
 #if CONFIG_RUZINA_DECK_ENGINE
     uint32_t engine[4], counters[2];
 #endif
@@ -117,7 +153,26 @@ typedef struct {
 #endif
 } uac_log_snapshot_t;
 static QueueHandle_t uac_log_queue;
-static uint32_t uac_log_drops;
+
+#if CONFIG_RUZINA_UAC_PROFILE
+static void uac_log_profile(const char *name,const uac_profile_record_t *r,bool seen) {
+    uint64_t attributed=0;
+    for (unsigned i=0;i<8;++i) attributed+=r->rust[4+i];
+    bool partition=r->rust_valid && !r->rust[1] && attributed==r->rust[0] && r->rust[0]<=r->whole_us;
+    printf("uac_profile kind=%s seen=%u gen=%" PRIu32 " ordinal=%" PRIu32 " uptime_us=%" PRIu32
+           " phase=%" PRIu32 " busy=%" PRIu32 " health=%" PRIu32 " catalog=%" PRIu32
+           " d1_flags=%" PRIu32 " d2_flags=%" PRIu32 " drops=%" PRIu32 " whole_us=%" PRIu32
+           " rust_us=%" PRIu32 " partition_valid=%u outer_us=%" PRIu32 " packets=%" PRIu32 " blocks=%" PRIu32
+           " sched_valid=%" PRIu32 " sched_window_us=%" PRIu32 " away_us=%" PRIu32 " switches=%" PRIu32 "\n",
+           name,(unsigned)seen,r->generation,r->ordinal,r->uptime_us,r->phase,r->pool_mask,r->health,r->catalog,
+           r->flags[1],r->flags[3],r->log_drops,r->whole_us,r->rust[0],(unsigned)partition,
+           partition?r->whole_us-r->rust[0]:0,r->rust[2],r->rust[3],r->sched_valid,r->sched_window_us,r->sched_away_us,r->sched_switches);
+    static const char *const stages[8]={"init","transport","control","graph","progress","copy","pack","other"};
+    for(unsigned i=0;i<8;++i)
+        printf("uac_profile_stage kind=%s gen=%" PRIu32 " ordinal=%" PRIu32 " stage=%s us=%" PRIu32 " segments=%" PRIu32 "\n",
+               name,r->generation,r->ordinal,stages[i],r->rust[4+i],r->rust[12+i]);
+}
+#endif
 
 static void uac_log_task(void *unused)
 {
@@ -150,6 +205,11 @@ static void uac_log_task(void *unused)
                    phase_names[i],sample.generation,p->count,p->first_us,(unsigned)p->first_after_iso_submit,
                    p->max_us,(unsigned)p->max_after_iso_submit,p->gt_3000,p->ge_6000,p->failures);
         }
+#if CONFIG_RUZINA_UAC_PROFILE
+        uac_log_profile("worst",&sample.worst,sample.profile_seen);
+        uac_log_profile("latest_over",&sample.over,sample.over_seen);
+        printf("uac_profile_logger stack_free=%u\n",(unsigned)uxTaskGetStackHighWaterMark(NULL));
+#endif
 #if CONFIG_RUZINA_DECK_ENGINE
         printf("deck_engine_stats d1_ms=%" PRIu32 " d1_flags=%" PRIu32 " d2_ms=%" PRIu32 " d2_flags=%" PRIu32
                " unsupported=%" PRIu32 " refused_loads=%" PRIu32 "\n",
@@ -169,13 +229,16 @@ static void uac_report(void)
     uac_log_snapshot_t sample={.completed=uac_completed,.iso_errors=uac_iso_errors,
         .packet_errors=uac_packet_errors,.submit_errors=uac_submit_errors};
     ruzina_legacy_uac_stats(sample.stats);
-    sample.log_drops=uac_log_drops;
 #if CONFIG_RUZINA_DECK_PLAY
     ruzina_legacy_play_diagnostics(sample.diagnostics);
 #endif
 #if CONFIG_RUZINA_DECK_MIX
     ruzina_legacy_mix_stats(sample.mix); sample.fill_max_us=uac_fill_max_us;
     sample.generation=uac_generation; sample.timing=uac_fill_timing;
+#if CONFIG_RUZINA_UAC_PROFILE
+    sample.worst=uac_profile_worst;sample.over=uac_profile_over;
+    sample.profile_seen=uac_profile_seen;sample.over_seen=uac_profile_over_seen;
+#endif
 #if CONFIG_RUZINA_DECK_ENGINE
     ruzina_legacy_engine_status(sample.engine);ruzina_legacy_engine_counters(sample.counters);
 #endif
@@ -183,6 +246,7 @@ static void uac_report(void)
     ruzina_legacy_play_stats(sample.play);
 #endif
     if (!uac_log_queue || uxQueueMessagesWaiting(uac_log_queue)) uac_log_drops++;
+    sample.log_drops=uac_log_drops;
     if (uac_log_queue) (void)xQueueOverwrite(uac_log_queue,&sample);
 }
 
@@ -281,6 +345,10 @@ static void uac_ctrl_done(usb_transfer_t *transfer)
 
 static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
 {
+#if CONFIG_RUZINA_UAC_PROFILE
+    printf("uac_profile_resources snapshot_bytes=%u record_bytes=%u stage_words=%u logger_stack=3072\n",
+           (unsigned)sizeof(uac_log_snapshot_t),(unsigned)sizeof(uac_profile_record_t),UAC_PROFILE_WORDS);
+#endif
     if (!uac_log_queue) {
         uac_log_queue=xQueueCreate(1,sizeof(uac_log_snapshot_t));
         if (uac_log_queue && xTaskCreatePinnedToCore(uac_log_task,"uac_log",3072,NULL,1,NULL,0)!=pdPASS) {
@@ -292,6 +360,9 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
         return;
     }
     uac_generation++; if (!uac_generation) uac_generation=1;
+#if CONFIG_RUZINA_UAC_PROFILE
+    uac_profile_ordinal=0;
+#endif
 #if CONFIG_RUZINA_DECK_MIX
     uac_timing_connection_begin(&uac_fill_timing); uac_any_iso_submitted=false;
 #endif

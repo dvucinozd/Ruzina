@@ -64,6 +64,10 @@ deck-engine = ["deck-mix", "dep:ruzina-hot-cues", "dep:ruzina-core"]
 # The product deck engine (ruzina-deck) owns transport: CUE, seek, pitch, jog.
 idf-deck-engine = ["idf-deck-mix", "deck-engine"]
 
+# Explicit diagnostic only. Normal deck-engine has no substage clock calls.
+uac-profile = ["deck-engine"]
+idf-uac-profile = ["idf-deck-engine", "uac-profile"]
+
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }
 

@@ -31,7 +31,9 @@ jobs:
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-deck-mix --tests -- -D warnings
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-deck-engine
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-deck-engine --tests -- -D warnings
-          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi" "idf-media-load idf-controller-audio" idf-deck-play idf-deck-mix idf-deck-engine; do
+          cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-uac-profile
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-uac-profile --tests -- -D warnings
+          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi" "idf-media-load idf-controller-audio" idf-deck-play idf-deck-mix idf-deck-engine idf-uac-profile; do
             cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf -- -D warnings
             cargo +1.95.0 build --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf
           done
@@ -40,6 +42,11 @@ jobs:
     strategy:
       matrix:
         variant: [pure-ram, flash-build-only, memory-task, display-touch, sd-readonly, sd-file-readonly, sd-rust-bridge, sd-rust-exfat, sd-rust-load, sd-rust-load-display, usb-host, usb-midi, deck-ui, deck-audio, deck-play, deck-mix, deck-engine]
+        profile: [false]
+        include:
+          - variant: deck-engine
+            profile: true
+    name: legacy (${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }})
     steps:
       - uses: actions/checkout@v4
       - name: Rust
@@ -58,10 +65,10 @@ jobs:
           . "$RUNNER_TEMP/idf/export.sh"
           python firmware-rust/tools/check_docs.py
           python -m unittest discover -s firmware-idf/legacy-jc1060/tools/tests -v
-          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
+          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' ${{ matrix.profile && '--uac-profile' || '' }} --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: legacy-${{ matrix.variant }}-BUILD-ONLY
+          name: legacy-${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}-BUILD-ONLY
           path: |
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/manifest.json
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/*build.log

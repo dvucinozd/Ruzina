@@ -5,6 +5,9 @@ if(NOT CONFIG_APP_BUILD_TYPE_PURE_RAM_APP)
     list(APPEND probe_requires spi_flash)
 endif()
 set(probe_sources probe.c)
+if(CONFIG_RUZINA_UAC_PROFILE)
+    list(APPEND probe_sources uac_profile_sched.c)
+endif()
 if(CONFIG_RUZINA_MEMORY_TASK)
     list(APPEND probe_sources memory_task.c)
 endif()
@@ -37,6 +40,13 @@ if(CONFIG_RUZINA_SD_RUST_BRIDGE)
     list(APPEND probe_sources sd_bridge.c)
 endif()
 idf_component_register(SRCS ${probe_sources} INCLUDE_DIRS ${probe_includes} REQUIRES ${probe_requires})
+
+if(CONFIG_RUZINA_UAC_PROFILE)
+    idf_component_get_property(profile_freertos freertos COMPONENT_LIB)
+    target_compile_options(${profile_freertos} PRIVATE
+        "$<$<COMPILE_LANGUAGE:C>:-include>"
+        "$<$<COMPILE_LANGUAGE:C>:${CMAKE_CURRENT_LIST_DIR}/uac_profile_hooks.h>")
+endif()
 
 if(NOT DEFINED RUZINA_RUST_ARCHIVE OR NOT EXISTS "${RUZINA_RUST_ARCHIVE}")
     message(FATAL_ERROR "Build rust-core first and set RUZINA_RUST_ARCHIVE to its exact archive")

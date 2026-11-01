@@ -207,6 +207,60 @@ struct LoadFixture {
     bpm_x100: u32,
     track_id: [u8; 16],
 }
+
+#[cfg(feature = "idf-uac-profile")]
+#[test]
+fn profiled_render_matches_unarmed_pcm_across_blocks_and_partial_blocks() {
+    use crate::uac_profile;
+    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let run_case = |profile: bool| {
+        SEEK_REQUESTS[0].take();
+        SEEK_RESULTS[0].take();
+        let mut mix = Mix::new();
+        serve(0);
+        post_load(
+            &mut mix,
+            LoadFixture {
+                ready: true,
+                index: 3,
+                bpm_x100: 12800,
+                track_id: [7; 16],
+            },
+        );
+        run(&mut mix, 3);
+        press(&mut mix, SemanticControl::Play, true);
+        let mut all = std::vec::Vec::new();
+        let mut seen_blocks = 0;
+        for _ in 0..12 {
+            if profile {
+                uac_profile::begin();
+            }
+            {
+                let _fill = uac_profile::fill_scope();
+                for _ in 0..6 {
+                    let (mut main, mut hp) = ([PcmFrame::default(); 48], [PcmFrame::default(); 48]);
+                    mix.fill(&mut main, &mut hp, 48000, [false, false]);
+                    all.extend(main);
+                    all.extend(hp);
+                }
+            }
+            if profile {
+                let mut stats = [0; 20];
+                assert_eq!(unsafe { uac_profile::end(stats.as_mut_ptr(), 20) }, 20);
+                assert_eq!(stats[1], 0);
+                seen_blocks += stats[3];
+            }
+        }
+        press(&mut mix, SemanticControl::Play, true);
+        (all, seen_blocks)
+    };
+    let plain = run_case(false);
+    let profiled = run_case(true);
+    assert_eq!(plain.0, profiled.0);
+    assert!(profiled.1 > 12);
+}
 fn post_load(mix: &mut Mix, fixture: LoadFixture) {
     use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
     if mix.engine().lease.is_none() {

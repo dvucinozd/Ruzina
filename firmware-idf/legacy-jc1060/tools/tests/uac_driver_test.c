@@ -12,6 +12,10 @@
 #define CONFIG_RUZINA_DECK_MIX UAC_TEST_TIMING
 #define CONFIG_RUZINA_DECK_PLAY UAC_TEST_TIMING
 #define CONFIG_RUZINA_DECK_ENGINE UAC_TEST_TIMING
+#ifndef UAC_TEST_PROFILE
+#define UAC_TEST_PROFILE 0
+#endif
+#define CONFIG_RUZINA_UAC_PROFILE UAC_TEST_PROFILE
 #define ESP_OK 0
 #define USB_TRANSFER_STATUS_COMPLETED 0
 #define USB_TRANSFER_STATUS_NO_DEVICE 1
@@ -33,6 +37,10 @@ static bool gone;
 static int alloc_fail_after=-1, submit_failures, fill_failures, endpoint_error;
 static int allocations, frees, submitted, live, flushes, clears;
 static bool hold_callbacks;
+#if UAC_TEST_PROFILE
+static const void *xTaskGetCurrentTaskHandle(void) { return (void *)1; }
+static unsigned uxTaskGetStackHighWaterMark(const void *task) { (void)task;return 3072; }
+#endif
 #if UAC_TEST_TIMING
 static int64_t mock_time, fill_duration=200;
 static uint32_t fill_calls;
@@ -82,7 +90,7 @@ typedef void *QueueHandle_t;
 #define pdTRUE 1
 #define pdPASS 1
 #define portMAX_DELAY -1
-static unsigned char log_storage[256];
+static unsigned char log_storage[1024];
 static unsigned log_size, log_waiting;
 static QueueHandle_t xQueueCreate(unsigned count,unsigned bytes){assert(count==1 && bytes<=sizeof(log_storage));log_size=bytes;return log_storage;}
 static int xQueueReceive(QueueHandle_t q,void *out,int wait){(void)q;(void)wait;if(!log_waiting)return 0;memcpy(out,log_storage,log_size);log_waiting=0;return 1;}
@@ -108,6 +116,16 @@ void ruzina_legacy_mix_stats(uint32_t *out) { memset(out,0,8*sizeof(*out)); }
 void ruzina_legacy_play_diagnostics(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
 void ruzina_legacy_engine_status(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
 void ruzina_legacy_engine_counters(uint32_t *out) { memset(out,0,2*sizeof(*out)); }
+#endif
+#if UAC_TEST_PROFILE
+static unsigned profile_begin_count,profile_end_count;
+static int64_t profile_start;
+void ruzina_legacy_uac_profile_begin(void) { profile_begin_count++;profile_start=mock_time; }
+uint32_t ruzina_legacy_uac_profile_end(uint32_t *out,uint32_t len) {
+    assert(len==UAC_PROFILE_WORDS); profile_end_count++;memset(out,0,len*sizeof(*out));
+    out[0]=(uint32_t)(mock_time-profile_start);out[2]=6;out[3]=2;out[4+7]=out[0];out[12+7]=1;
+    return len;
+}
 #endif
 static void start(void) {
     usb_config_desc_t config={0};gone=false;device=1;
@@ -181,6 +199,11 @@ static void timing_phases(void) {
     p=&saturated.phase[UAC_FILL_CALLBACK];
     assert(p->count==UINT32_MAX && p->gt_3000==UINT32_MAX && p->ge_6000==UINT32_MAX && p->failures==UINT32_MAX);
     assert(p->max_us==7000);
+#if UAC_TEST_PROFILE
+    assert(profile_begin_count==profile_end_count && profile_begin_count==fill_calls);
+    assert(uac_profile_worst.phase==UAC_FILL_CALLBACK && uac_profile_worst.rust_valid);
+    assert(uac_profile_worst.generation==uac_generation && uac_profile_over_seen);
+#endif
     // Leave the original fault campaign's independent counters untouched.
     flushes=clears=0; uac_log_drops=0;
 }
@@ -193,6 +216,18 @@ int main(void) {
     uac_report_pending=true;uac_report();assert(log_waiting==1);
     uac_report_pending=true;uac_report();assert(uac_log_drops==1);
     uac_log_snapshot_t snapshot;assert(xQueueReceive(uac_log_queue,&snapshot,0)==1);
+#if UAC_TEST_PROFILE
+    assert(snapshot.log_drops==1);
+    assert(snapshot.profile_seen && snapshot.worst.rust_valid);
+    assert(snapshot.worst.generation<=snapshot.generation);
+    // Pure interval arithmetic handles wrap and rejects incoherent samples.
+    uac_profile_record_t interval={0};
+    uac_profile_schedule(&interval,(uac_sched_stamp_t){.away_us=UINT32_MAX-9,.switches=UINT32_MAX,.wall_us=UINT32_MAX-29,.valid=true},
+                        (uac_sched_stamp_t){.away_us=10,.switches=0,.wall_us=30,.valid=true});
+    assert(interval.sched_valid && interval.sched_away_us==20 && interval.sched_switches==1 && interval.sched_window_us==60);
+    uac_profile_schedule(&interval,(uac_sched_stamp_t){.valid=false},(uac_sched_stamp_t){.valid=true});
+    assert(!interval.sched_valid);
+#endif
     assert(!uac_report_pending);assert(uac_health.state==UAC_HEALTH_STREAMING);
     complete(uac_iso[0],9);assert(uac_health.state==UAC_HEALTH_RECOVERING);
     uac_recover_poll();assert(flushes==1);assert(live==3);

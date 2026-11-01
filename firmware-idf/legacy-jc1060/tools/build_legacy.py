@@ -48,7 +48,10 @@ def main():
     parser.add_argument('--wsl', help='Optional WSL distribution for Rust only')
     parser.add_argument('--cargo-home')
     parser.add_argument('--rustup-home')
+    parser.add_argument('--uac-profile', action='store_true', help='Explicit deck-engine-only callback profiling diagnostic')
     args = parser.parse_args()
+    if args.uac_profile and args.variant != 'deck-engine':
+        raise ValueError('UAC profiling is an explicit deck-engine diagnostic only')
     idf = args.idf.resolve()
     output = args.output.resolve()
     if output.exists():
@@ -108,7 +111,7 @@ def main():
     elif args.variant == 'deck-mix':
         common += ['--features', 'idf-deck-mix']
     elif args.variant == 'deck-engine':
-        common += ['--features', 'idf-deck-engine']
+        common += ['--features', 'idf-uac-profile' if args.uac_profile else 'idf-deck-engine']
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -145,6 +148,8 @@ def main():
         defaults += [APP / 'sdkconfig.sd.defaults']
         if args.variant == 'sd-file-readonly':
             defaults += [APP / 'sdkconfig.sd-file.defaults']
+    if args.uac_profile:
+        defaults += [APP / 'sdkconfig.uac-profile.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'
     # Offline build: vendored components only; the component manager would
@@ -156,6 +161,8 @@ def main():
                '-DRUZINA_RUST_ARCHIVE=' + archive.as_posix(), 'build']
     (output / 'idf-build.log').write_text(run(command))
     config = (output / 'sdkconfig').read_text()
+    if ('CONFIG_RUZINA_UAC_PROFILE=y' in config) != args.uac_profile:
+        raise ValueError('UAC profiling configuration mismatch')
     for required in ('CONFIG_ESP32P4_REV_MIN_FULL=100', 'CONFIG_ESP32P4_REV_MAX_FULL=199',
                      'CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=360'):
         if required not in config:
@@ -200,6 +207,15 @@ def main():
     if 'ruzina_legacy_pitch_centipercent' not in mapping or 'ilp32f/libgcc.a' not in mapping.replace('\\', '/'):
         raise ValueError('Missing Rust symbol or matching runtime in map')
     elf = output / 'build/ruzina_legacy_probe.elf'
+    profile_symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
+    for symbol in ('ruzina_legacy_uac_profile_begin', 'ruzina_legacy_uac_profile_end',
+                   'ruzina_uac_switched_in', 'ruzina_uac_switched_out'):
+        if (symbol in profile_symbols) != args.uac_profile:
+            raise ValueError('Profiling symbol/default isolation mismatch: ' + symbol)
+    if args.uac_profile:
+        tasks_disassembly = run(['riscv32-esp-elf-objdump', '-dr', output / 'build/esp-idf/freertos/CMakeFiles/__idf_freertos.dir/FreeRTOS-Kernel/tasks.c.obj'])
+        if any(s not in tasks_disassembly for s in ('ruzina_uac_switched_in', 'ruzina_uac_switched_out')):
+            raise ValueError('FreeRTOS task switch hooks are not actually compiled into the kernel')
     abi = run(['riscv32-esp-elf-readelf', '-h', elf])
     if 'single-float ABI' not in abi:
         raise ValueError('Wrong linked ELF ABI')
@@ -299,7 +315,7 @@ def main():
                 (output / 'load-run-stack.log').write_text(f'{depth}\n' + '\n'.join(path) + '\n')
                 if depth > 90112:
                     raise ValueError(f'Load run call chain needs {depth} bytes of the 96 KiB SD client stack')
-    manifest = dict(schema=1, variant=args.variant, sha256=sha(binary), bytes=len(data),
+    manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],
                     idf_commit=PIN, submodules=subs, versions=versions, sources=initial_sources,
                     fatfs_sources={name: sha(idf / 'components/fatfs/src' / name) for name in ('ff.c','ff.h','ffunicode.c','diskio.h')} if args.variant in ('sd-readonly', 'sd-file-readonly') else {},

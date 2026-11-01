@@ -13,6 +13,7 @@
 //!   first moves, instead of the product's full scale.
 //! - The headphone output keeps a fixed -12 dB ceiling.
 use crate::deck_play::{RINGS, Reader};
+use crate::uac_profile::{self, Stage};
 use core::cell::UnsafeCell;
 use ruzina_audio_dsp::PcmFrame;
 use ruzina_audio_runtime::render::{
@@ -152,7 +153,10 @@ impl Mix {
     /// replaces `playing`.
     #[cfg_attr(feature = "deck-engine", allow(unused_variables))]
     fn render(&mut self, playing: [bool; 2]) {
+        let _profile = uac_profile::scope(Stage::Init);
+        uac_profile::block();
         let graph = self.graph.get_or_insert_with(FixedRateRenderGraph::new);
+        uac_profile::stage(Stage::Transport);
         for (deck, reader) in self.readers.iter_mut().enumerate() {
             if reader.sync(&RINGS[deck]) {
                 graph.reset_deck(deck);
@@ -164,12 +168,15 @@ impl Mix {
             self.pitch = pitch;
             playing
         };
+        uac_profile::stage(Stage::Control);
         let control = self.render_control(playing);
         let graph = self.graph.as_mut().expect("graph built above");
         let readers = &mut self.readers;
+        uac_profile::stage(Stage::Graph);
         let report = graph.render_block(control, &mut self.block, |deck| {
             readers[deck].pop(&RINGS[deck])
         });
+        uac_profile::stage(Stage::Progress);
         for (deck, reader) in readers.iter().enumerate() {
             reader.commit(&RINGS[deck]);
             if playing[deck] {
@@ -211,7 +218,9 @@ impl Mix {
         device_rate: u32,
         playing: [bool; 2],
     ) {
+        let _profile = uac_profile::scope(Stage::Init);
         self.start();
+        uac_profile::stage(Stage::Transport);
         #[cfg(feature = "deck-engine")]
         self.tick();
         if crate::media_signal::muted() {
@@ -236,6 +245,7 @@ impl Mix {
             headphones.fill(PcmFrame::default());
             return;
         }
+        uac_profile::stage(Stage::Copy);
         for (main, headphones) in main.iter_mut().zip(headphones.iter_mut()) {
             if self.position >= RENDER_BLOCK_FRAMES {
                 self.render(playing);

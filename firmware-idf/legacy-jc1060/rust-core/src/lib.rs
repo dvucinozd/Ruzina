@@ -32,6 +32,9 @@ mod controller_midi;
 #[cfg(feature = "controller-audio")]
 mod controller_audio;
 
+#[cfg(feature = "controller-audio")]
+mod uac_profile;
+
 #[cfg(feature = "deck-play")]
 mod deck_play;
 

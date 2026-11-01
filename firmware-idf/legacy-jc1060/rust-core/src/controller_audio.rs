@@ -179,6 +179,7 @@ pub unsafe extern "C" fn ruzina_legacy_uac_fill(
     sizes: *mut u32,
     packets: u32,
 ) -> u32 {
+    let _fill_profile = crate::uac_profile::fill_scope();
     if buffer.is_null() || sizes.is_null() {
         return 0;
     }
@@ -244,8 +245,10 @@ fn fill_from(
     let mut main = [PcmFrame::default(); MAX_FRAMES + 1];
     let mut pcm = [PcmFrame::default(); MAX_FRAMES + 1];
     for size in sizes.iter_mut() {
+        crate::uac_profile::packet();
         let frames = state.cadence.next_frames();
         let audible = source(state, &mut main[..frames], &mut pcm[..frames]);
+        let _profile = crate::uac_profile::scope(crate::uac_profile::Stage::Pack);
         let Ok(written) = pack(
             &mut out[offset..],
             format,

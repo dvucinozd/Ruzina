@@ -1,6 +1,8 @@
 # Next experiment: locate UAC callback refill latency
 
 Status: PLAN_ONLY / NOT_IMPLEMENTED. Follows the measured [phase diagnostic](2026-11-01-uac-timing-device-results.md).
+The subsequent [implementation record](2026-11-01-uac-callback-profiling-execution.md)
+tracks progress and later gates separately from this original plan.
 Do not change priorities, gains, DSP behavior or native minimum 302 to make a
 timer pass. Keep the aggregate >=6000 us campaign bound and the original failures.
 
