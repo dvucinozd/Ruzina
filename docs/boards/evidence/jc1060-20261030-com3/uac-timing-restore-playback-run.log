@@ -1,0 +1,158 @@
+heartbeat=48 uptime_us=48372321
+usb_uac_stats transfers=8000 packets=48024 frames=2305152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_play_stats played=0 underruns=0 buffered=0 rate=0
+heartbeat=49 uptime_us=49372321
+heartbeat=50 uptime_us=50372321
+heartbeat=51 uptime_us=51372321
+heartbeat=52 uptime_us=52372321
+heartbeat=53 uptime_us=53372321
+heartbeat=54 uptime_us=54372321
+usb_uac_stats transfers=9000 packets=54024 frames=2593152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_play_stats played=0 underruns=0 buffered=0 rate=0
+heartbeat=55 uptime_us=55372321
+heartbeat=56 uptime_us=56372321
+heartbeat=57 uptime_us=57372321
+heartbeat=58 uptime_us=58372321
+heartbeat=59 uptime_us=59372321
+heartbeat=60 uptime_us=60372321
+usb_uac_stats transfers=10000 packets=60024 frames=2881152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_play_stats played=0 underruns=0 buffered=0 rate=0
+heartbeat=61 uptime_us=61372321
+heartbeat=62 uptime_us=62372321
+heartbeat=63 uptime_us=63372321
+heartbeat=64 uptime_us=64372321
+heartbeat=65 uptime_us=65372321
+heartbeat=66 uptime_us=66372321
+usb_uac_stats transfers=11000 packets=66024 frames=3169152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_play_stats played=0 underruns=0 buffered=0 rate=0
+heartbeat=67 uptime_us=67372321
+midi_event deck=1 control=JogBend(3) kind=2 value=-1 max=0
+midi_event deck=1 control=JogBend(3) kind=2 value=-1 max=0
+midi_event deck=1 control=JogBend(3) kind=2 value=-1 max=0
+midi_event deck=1 control=JogBend(3) kind=2 value=-1 max=0
+midi_event deck=1 control=JogBend(3) kind=2 value=-1 max=0
+midi_event deck=1 control=JogBend(3) kind=2 value=-1 max=0
+heartbeat=68 uptime_us=68372321
+heartbeat=69 uptime_us=69372321
+heartbeat=70 uptime_us=70372321
+midi_event deck=1 control=JogTouch(4) kind=1 value=1 max=1
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogScratch(2) kind=2 value=1 max=0
+midi_event deck=1 control=JogTouch(4) kind=1 value=0 max=1
+midi_event deck=1 control=JogBend(3) kind=2 value=1 max=0
+heartbeat=71 uptime_us=71372321
+midi_event deck=0 control=BrowsePress(41) kind=1 value=1 max=1
+midi_ui action=2 deck=0 value=0
+heartbeat=72 uptime_us=72372321
+midi_event deck=0 control=BrowsePress(41) kind=1 value=0 max=1
+usb_uac_stats transfers=12000 packets=72024 frames=3457152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_play_stats played=0 underruns=0 buffered=0 rate=0
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7120 denied_commands=0 stack_free=5224
+load_detail index=0 bpm_x100=12000 duration_ms=29000 key=Ab beats=60 cues=0 memory=0 peaks=400 peak_fnv=49da89cf stack_free=59084
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7200 denied_commands=0 stack_free=5224
+load_detail index=1 bpm_x100=11992 duration_ms=132000 key=B beats=266 cues=0 memory=0 peaks=400 peak_fnv=573d9142 stack_free=59084
+heartbeat=73 uptime_us=73372336
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7280 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7360 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7440 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7520 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7600 denied_commands=0 stack_free=5224
+load_detail index=2 bpm_x100=10837 duration_ms=728000 key=C beats=1315 cues=0 memory=0 peaks=400 peak_fnv=e3208c8d stack_free=59084
+heartbeat=74 uptime_us=74372336
+heartbeat=75 uptime_us=75372321
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7680 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7760 denied_commands=0 stack_free=5224
+load_detail index=3 bpm_x100=8995 duration_ms=279000 key=Ebm beats=418 cues=1 memory=0 peaks=400 peak_fnv=e3973102 stack_free=59084
+heartbeat=76 uptime_us=76372336
+midi_event deck=1 control=Load(40) kind=1 value=1 max=1
+midi_ui action=3 deck=1 value=0
+rust_load pass=1 event=7 value=770 stack_free=31444 psram_free=29117064 psram_min=28635568
+rust_load pass=1 event=8 value=44100 stack_free=31444 psram_free=29117064 psram_min=28635568
+midi_event deck=1 control=Load(40) kind=1 value=0 max=1
+rust_sd_owner reads=7840 denied_commands=0 stack_free=5224
+heartbeat=77 uptime_us=77372333
+heartbeat=78 uptime_us=78372337
+usb_uac_stats transfers=13000 packets=78024 frames=3745152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_play_stats played=0 underruns=0 buffered=65327 rate=44100
+heartbeat=79 uptime_us=79372321
+heartbeat=80 uptime_us=80372321
+heartbeat=81 uptime_us=81372321
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+rust_sd_owner reads=7920 denied_commands=0 stack_free=5224
+heartbeat=82 uptime_us=82372338
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+rust_sd_owner reads=8000 denied_commands=0 stack_free=5224
+heartbeat=83 uptime_us=83372339
+heartbeat=84 uptime_us=84372337
+rust_sd_owner reads=8080 denied_commands=0 stack_free=5224
+usb_uac_stats transfers=14000 packets=84024 frames=4033152 tone_packets=2526 iso_errors=0 packet_errors=0
+deck_play_stats played=121248 underruns=0 buffered=64779 rate=44100
+heartbeat=85 uptime_us=85372338
+rust_sd_owner reads=8160 denied_commands=0 stack_free=5224
+heartbeat=86 uptime_us=86372337
+rust_sd_owner reads=8240 denied_commands=0 stack_free=5224
+heartbeat=87 uptime_us=87372336
+rust_sd_owner reads=8320 denied_commands=0 stack_free=5224
+heartbeat=88 uptime_us=88372337
+rust_sd_owner reads=8400 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+heartbeat=89 uptime_us=89372337
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+rust_sd_owner reads=8480 denied_commands=0 stack_free=5224
+rust_load pass=1 event=7 value=770 stack_free=31444 psram_free=29117064 psram_min=28635568
+rust_load pass=1 event=8 value=44100 stack_free=31444 psram_free=29117064 psram_min=28635568
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+heartbeat=90 uptime_us=90372334
+rust_sd_owner reads=8560 denied_commands=0 stack_free=5224
+usb_uac_stats transfers=15000 packets=90024 frames=4321152 tone_packets=7104 iso_errors=0 packet_errors=0
+deck_play_stats played=340992 underruns=0 buffered=46127 rate=44100
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=91 uptime_us=91372337
+rust_sd_owner reads=8640 denied_commands=0 stack_free=5224
+heartbeat=92 uptime_us=92372341
+rust_sd_owner reads=8720 denied_commands=0 stack_free=5224
+heartbeat=93 uptime_us=93372336
+rust_sd_owner reads=8800 denied_commands=0 stack_free=5224
+heartbeat=94 uptime_us=94372339
+rust_sd_owner reads=8880 denied_commands=0 stack_free=5224
+heartbeat=95 uptime_us=95372336
+rust_sd_owner reads=8960 denied_commands=0 stack_free=5224
+heartbeat=96 uptime_us=96372338
+rust_sd_owner reads=9040 denied_commands=0 stack_free=5224
+usb_uac_stats transfers=16000 packets=96024 frames=4609152 tone_packets=12918 iso_errors=0 packet_errors=0
+deck_play_stats played=620064 underruns=0 buffered=64930 rate=44100
+heartbeat=97 uptime_us=97372337
+rust_sd_owner reads=9120 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=98 uptime_us=98372340
+heartbeat=99 uptime_us=99372321
+heartbeat=100 uptime_us=100372321
+heartbeat=101 uptime_us=101372321
+heartbeat=102 uptime_us=102372321
+usb_uac_stats transfers=17000 packets=102024 frames=4897152 tone_packets=14064 iso_errors=0 packet_errors=0
+deck_play_stats played=675072 underruns=0 buffered=65464 rate=44100
+heartbeat=103 uptime_us=103372321
+heartbeat=104 uptime_us=104372321
+heartbeat=105 uptime_us=105372321
+heartbeat=106 uptime_us=106372321
+heartbeat=107 uptime_us=107372321
+heartbeat=108 uptime_us=108372321
+usb_uac_stats transfers=18000 packets=108024 frames=5185152 tone_packets=14064 iso_errors=0 packet_errors=0
+deck_play_stats played=675072 underruns=0 buffered=65464 rate=44100
+heartbeat=109 uptime_us=109372321
+heartbeat=110 uptime_us=110372321
+heartbeat=111 uptime_us=111372321
+heartbeat=112 uptime_us=112372321

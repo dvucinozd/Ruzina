@@ -2,6 +2,7 @@
 # trailing spaces emitted by the firmware/toolchain. Never normalize it.
 docs/boards/evidence/** -text -whitespace
 docs/boards/readiness/*write-recovery-plan*.json -text -whitespace
+docs/boards/readiness/jc1060-uac-timing-return-s07-plan-20261101.json -text -whitespace
 # Preserve raw review evidence and the hashes recorded in its manifests.
 docs/reviews/evidence/2026-11-01-code-review/** -text -whitespace
 docs/reviews/evidence/2026-11-01-review-fixes/** -text -whitespace

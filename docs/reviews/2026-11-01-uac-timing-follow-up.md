@@ -4,6 +4,11 @@ Status: PLAN_ONLY / TARGET_CAUSE_UNPROVEN. Do not lower native minimum revision 
 
 Implementation progress is tracked in the separate [execution record](2026-11-01-uac-timing-execution.md). This original plan and the failed candidate's evidence remain the acceptance baseline.
 
+The later [phase measurement](2026-11-01-uac-timing-device-results.md) localized
+the instrumented image's outlier to callback refills. The next bounded step is
+the [callback substage/preemption plan](2026-11-01-uac-callback-profiling-plan.md),
+which remains unimplemented until a separately registered experiment.
+
 ## Evidence and limits
 
 Candidate app `0d4d07fa...` booted with the expected ELF prefix `babdee193`, mounted the 25-track export and started the four-transfer UAC stream. The first recorded idle statistics and the following three snapshots all reported `fill_max_us=12260`; underruns stayed 0/0 and transfer/packet/submit errors stayed zero. This exceeds the registered campaign rejection bound of 6000 us. Playback cases were not attempted.

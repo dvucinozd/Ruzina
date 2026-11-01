@@ -122,3 +122,20 @@ identity/topology, manual ROM entry, live security/RDID and complete current
 flash equality are still required. After measurement, return to s07 through
 the new plan and verify normal sound and controls before ending an unsuccessful
 experimental session. A later run must record its own outcomes separately.
+
+## Subsequent phase measurement
+
+The owner-assisted [device run](2026-11-01-uac-timing-device-results.md) later
+booted this exact image and localized the measured 10373 us maximum to callback
+refill (three >=6000 us samples among 6000 callbacks). Initial prefill maximum
+was 1844 us; recovery had no samples. The registered aggregate criterion failed.
+The above NOT_FLASHED/NOT_RUN status is the historical clean-build checkpoint,
+not the later device outcome. No source optimization has been made.
+
+Registration head `1265b07` also passed 19/19 CI jobs:
+[host #530](https://github.com/dvucinozd/Ruzina/actions/runs/41353947606) and
+[legacy #53](https://github.com/dvucinozd/Ruzina/actions/runs/41353947651).
+The s07 recovery exit is complete: full predecessor match, written-sector
+readback, cold boot and operator-confirmed normal playback with zero captured
+underruns/USB errors. All monitors are closed. The next implementation is the
+[bounded callback profiling plan](2026-11-01-uac-callback-profiling-plan.md).

@@ -2,9 +2,9 @@
 
 Updated 2026-11-01. Development has two distinct backends. Native requires
 ESP32-P4 >=302. The arrived JC1060 is v1.3/103 and uses pinned IDF 6.1 with
-shared Rust. The active repair branch is `ogranak/jc1060-review-fixes`, based on
-`b35dcd39f4c1ddb9f4b253d6af89110ee68a2335`; fetched main was
-`bd52402160af27a3e234f7647d703a847644817b`.
+shared Rust. Active continuation is `ogranak/jc1060-uac-fill-timing`, clean
+diagnostic source `5c579e6e287362af36924f30919d6d0ea911ad59`, stacked on the
+repair branch through PR #74 -> #73 -> #72 -> #71. These PRs remain unmerged.
 
 | Component | Current evidence | Next gate |
 |---|---|---|
@@ -13,7 +13,7 @@ shared Rust. The active repair branch is `ogranak/jc1060-review-fixes`, based on
 | Legacy deck-play | Accepted record: app `95d45203...`, FLX4 headphones, deck 1 FLAC/MP3/WAV; 90 s rendered audio in 15 min USB stream capture | No transfer of this acceptance to newer images |
 | Legacy deck-mix/deck-engine | Host/build implementation; s08/s09 history reconciled; no inherited two-deck acceptance | [Measure startup versus recurring UAC cost](reviews/2026-11-01-uac-timing-follow-up.md) |
 | Review repairs A–H / campaign I | Offline validation complete; published PR #73 passed 19/19 CI jobs; exact candidate booted but I01 timing criterion failed at 12260 us | Candidate rejected for this campaign; s07 restored/readback and cold boot verified, normal playback owner-confirmed with zero captured underruns; I02–I13 NOT_RUN |
-| UAC phase diagnostic | [PR #74 execution](reviews/2026-11-01-uac-timing-execution.md): explicit phase telemetry, actual-driver tests, CodeRabbit 0 issues, 19/19 CI and four clean packages | Registered cold boot/idle measurement NOT_RUN; no target cause or improvement claimed |
+| UAC phase diagnostic | [Measured](reviews/2026-11-01-uac-timing-device-results.md): prefill max 1844 us, callback max 10373 us, 3/6000 callbacks >=6000 us; zero idle underruns/USB errors | Timing criterion FAIL; s07 restored/cold boot and normal playback confirmed, monitors closed; next is bounded callback substage/preemption profiling |
 | Native >=302 firmware | Separate compile-only backend on this unit | Compatible silicon and independent hardware gates |
 | JC8012 | Separate BSP/source work | Independent arrival/recovery/peripheral/audio qualification |
 | External audio | [Future PCM5122/TLV320 plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md), including separate I2C and candidate JP1 map | Physical pin/power/module confirmation, drivers and listening/timing campaign |
