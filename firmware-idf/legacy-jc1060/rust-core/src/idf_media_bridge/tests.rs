@@ -101,6 +101,19 @@ struct Bounce([u8; 512]);
 
 #[test]
 fn concrete_ffi_worker_client_and_fault_boundaries() {
+    #[cfg(feature = "deck-play")]
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    #[cfg(feature = "deck-play")]
+    struct ResetSignal;
+    #[cfg(feature = "deck-play")]
+    impl Drop for ResetSignal {
+        fn drop(&mut self) {
+            crate::media_signal::reset();
+        }
+    }
+    #[cfg(feature = "deck-play")]
+    let _reset = ResetSignal;
+
     assert_eq!(ruzina_legacy_bridge_init(0), -2);
     assert_eq!(ruzina_legacy_bridge_init(100), 0);
     assert_eq!(ruzina_legacy_bridge_init(100), -1);
@@ -174,4 +187,9 @@ fn concrete_ffi_worker_client_and_fault_boundaries() {
         assert!(state.as_ref().unwrap().active.is_none());
         assert!(state.as_ref().unwrap().queue.can_deinitialize());
     });
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn esp_timer_get_time() -> i64 {
+    0
 }

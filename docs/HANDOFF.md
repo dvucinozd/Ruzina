@@ -1,158 +1,67 @@
 # Rust M2.5 development handoff
 
-Updated: 2026-10-30. [PR #55](https://github.com/dvucinozd/Ruzina/pull/55)
-merged the legacy JC1060 bring-up batch to main at
-`46728b2a3779d125b50aadae908b293adaafa25a` (PR head
-`00294d18cd59ba5afcd6aaa4b9dcba8465c895b2`). Before the merge, that exact head
-passed host, native P4, all eight legacy IDF profiles and the isolated Rust
-media-bridge host job. Start the next batch on a new branch from current main;
-the `ogranak/jc1060-c01-c02` worktree at
-`C:/Users/Daniel/.codex/worktrees/m1-guition-bsp/M1_PCB` holds only merged work.
-Publication and review are recorded in the
-[publication checkpoint](reviews/2026-10-30-legacy-publication.md). CodeRabbit
-reported two minor issues; the merged follow-up fixes numeric prose spacing and
-exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
-only, NOT_FLASHED. This merge does not change the current board image.
+Updated 2026-11-01. Continue from `D:/AI/M1_PCB`, branch
+`ogranak/jc1060-review-fixes`. Base is `b35dcd39f4c1ddb9f4b253d6af89110ee68a2335`;
+fetched main was `bd52402160af27a3e234f7647d703a847644817b`. Existing planning
+and review documents were already uncommitted when repairs began. Inspect Git
+status before staging; do not reset or sweep another agent's files.
 
-**Current unit (2026-11-01):** JC1060 v1.3 runs `deck-play`, image
-`95d45203…`. Deck 1 plays card tracks to the FLX4 headphones. They are
-decoded on the board by the shared audio runtime and resampled to 48 kHz. The
-owner confirmed FLAC, MP3 and WAV by ear, with Play, Cue and Headphone Level
-working and 0 underruns ([deck play](reviews/2026-11-01-legacy-deck-play.md)).
-It replaces the earlier `deck-audio` image `840befe9…`, which put a UAC1
-diagnostic tone on the same channels
-([deck audio](reviews/2026-11-01-legacy-deck-audio.md)). Both extend the
-combined `deck-ui` diagnostic (image `fe91eade…`): SD load
-with the status screen and touch, plus the FLX4. Its browse moves the library selection and its Load buttons fill
-`D1` and `D2` ([deck UI](reviews/2026-10-31-legacy-deck-ui.md)). Before that,
-the board ran the isolated `usb-midi` diagnostic with LED output, image
-`e698907b…`. The owner's DDJ-FLX4 enumerates on the HS port
-([USB host](reviews/2026-10-31-legacy-usb-host-enum.md),
-[topology](boards/JC1060_USB_TOPOLOGY.md)). Its USB-MIDI reaches the shared
-Rust controller session with the FLX4 profile: buttons, faders, crossfader and
-jogs, with 0 drops
-([USB-MIDI](reviews/2026-10-31-legacy-usb-midi.md)). Before it, the board ran the
-`sd-rust-load-display` diagnostic with touch selection, image `2e866f61…`,
-which is now the predecessor in the plan chain. It reads the owner's
-exFAT card (a 25-track Rekordbox export) on the read-only SD bridge, imports
-the catalog and preflights every track, and shows the status and track list
-on the panel. A tap shows the track's BPM, key, cue counts and preview
-waveform, matching the host import. Audio, USB host and C6 remain unwired. The earlier exFAT fixture
-diagnostic is a retained predecessor in the flash-plan chain. The Library load preflight is now the shared
-`ruzina-media-load` crate, used by native firmware and, host-tested, by the IDF
-core over its exFAT volume ([media/load preflight](reviews/2026-10-30-legacy-s6-media-load-preflight.md)).
-An IDF PSRAM allocator now gives it a target build (`idf-media-load`).
-Next implementation: shared PDB catalog import, then a separate opt-in profile. Native minimum 302 is unchanged.
+Read in order:
 
-**2026-10-31:** the `export.pdb` catalog import is shared as well
-(`ruzina_media_load::pdb`), with native firmware on it and a host-tested IDF
-`import_catalog` over the exFAT volume
-([shared catalog import](reviews/2026-10-31-shared-pdb-catalog-import.md)).
+1. [Repair execution log](reviews/2026-11-01-review-fix-execution.md): actual implementation, commands, logs, package hashes and remaining gates.
+2. [Detailed implementation plan](reviews/2026-11-01-review-fix-implementation-plan.md): steps A–H offline; I is later physical acceptance.
+3. [Review checkpoint](reviews/2026-11-01-code-review-and-next-steps.md): original defects and failure reproductions.
+4. [Current development status](DEVELOPMENT_STATUS.md): separate legacy/native completion levels.
 
-The `sd-rust-load` IDF profile runs that import and the load preflight on the
-read-only SD bridge with a PSRAM heap
-([profile and device run](reviews/2026-10-31-legacy-sd-rust-load-profile.md)).
-Its first image overflowed the client stack, because by-value page buffers made
-a 168 KiB poll frame. With the fix, it ran on JC1060 with one real
-25-track export: every track loaded analysis, PSRAM stayed flat, and removal,
-reinsertion and cold return were clean. The build tool now rejects Rust frames
-over 24 KiB. The export's PDB and ANLZ also match the M2.5 parser.
+Offline steps A–H are complete: 17/17 IDF packages, host/target tests and final
+CodeRabbit (0 issues) pass. The owner authorized publication on the repair branch; hardware status is NOT_FLASHED. Read the
+execution log for exact hashes and the prepared physical campaign.
 
-The [`sd-rust-load-display` profile](reviews/2026-10-31-legacy-load-display.md)
-adds a status screen on the New_Panel, without touch: counts, PSRAM and the
-track list with outcome marks. It passed the same device runs, and its image
-`2f1df621…` is now on JC1060.
+The offline repairs cover descriptor publication, transactional LOAD/PLAY,
+identified seek outcomes including EOF/failure, media revocation, USB recovery
+and bounded producer work. The execution log is the authority for which gates
+passed. Host/build success does not qualify the candidate on hardware.
 
-**Next-agent instructions (review 2026-10-30):** read the
-[legacy v1.3 review and step-by-step implementation plan](reviews/2026-10-30-jc1060-legacy-review-and-instructions.md).
-S0–S3 implementation is recorded in the
-[offline execution log](reviews/2026-10-30-legacy-s0-s4-execution.md): evidence
-reconciliation, fresh build/package tooling, guarded RAM loader and dedicated CI.
-The [S4 recovery/layout analysis](boards/JC1060_LEGACY_RECOVERY.md) uses only
-existing backups. Check the execution log for actual validation outcomes before
-hardware work. That S0–S3 batch did not access COM3.
-The subsequent [S4 runtime campaign](reviews/2026-10-30-legacy-s4-runtime.md)
-has programmed/readback-verified the legacy diagnostic, observed three owner
-power cycles, three app restarts, three normal USB resets and three serial
-session reopens. Use its scenario definitions/limits before continuing.
-S4 left that scalar diagnostic on the device; it is now a retained recovery baseline.
-S5 is now implemented and has first-boot, three app restarts and owner cold-boot evidence:
-[bounded PSRAM/task/FPU/EQ report](reviews/2026-10-30-legacy-s5-memory-task.md).
-S5 left its separate memory/task profile on the device; scalar S4 recovery sectors
-remain archived. The subsequent [S6 display/touch campaign](reviews/2026-10-30-legacy-s6-display-touch.md)
-ran its own New_Panel diagnostic on the device; the owner confirmed
-static stripe colors/corners and cold return, with five-zone/named-bottom
-touch samples, three app restarts and one cold startup observed. Read its
-limits before continuing. The subsequent [read-only SD campaign](reviews/2026-10-30-legacy-s6-sd-readonly.md)
-then ran its own private read-only exFAT diagnostic on the device, with display
-inactive. The inserted 64 GB exFAT card mounted with 0 root files/1 directory;
-one removal quiesced the owner, reinsertion plus 3 app restarts remounted it,
-and post-cold runtime SD reads were observed (startup prefix missed).
-The subsequent [known-file campaign](reviews/2026-10-30-legacy-s6-sd-file.md)
-now verifies the 8 MiB + 513 nested UTF-8 fixture, SHA/EOF/10 seek cases, active-file
-removal and reinsertion with 3 app restarts. At that checkpoint firmware was the
-read-only file diagnostic; display was inactive. Rechecking all nine original raw timing
-records withdrew the printf-failure claim: wall_us is 5123096..5131023, above IO.
-The [Rust media bridge protocol](reviews/2026-10-30-legacy-s6-rust-media-bridge.md)
-implements the owned-buffer client and queue with host cancellation/generation
-coverage. The subsequent [concrete IDF transport](reviews/2026-10-30-legacy-s6-idf-media-transport.md)
-subsequently ran a separate raw-block diagnostic on the board: 35 first-boot
-passes plus 3 app restarts with 15 passes each match the known first-sector hash.
-Display and all filesystems were inactive in that raw-only profile. One physical
-idle-status removal quiesced the owner/client with no late success; after owner
-reinsertion, 3 app restarts each returned 15 matching passes. Owner-confirmed cold
-return also has an uptime drop and 15 matching passes 2..16; native USB missed
-the initial init/reset-reason prefix, so direct cold init remains NOT_CAPTURED.
-The raw campaign's monitor is closed. The subsequent
-[shared Rust partition/exFAT fixture profile](reviews/2026-10-30-legacy-s6-rust-exfat.md)
-now runs on the board: three first-boot full SHA/EOF/10-seek passes, then three
-app restarts each remounting and completing one full pass. It uses one Rust
-filesystem owner over the same IDF SD transport, with live lease checks around
-cached operations. 27 local Rust tests include canceled mount/read drain/remount;
-76 shared-media regressions and 20 tooling tests pass. The raw profile remains a
-recovery baseline. Physical open-file removal caused pass 11 read timeout/error
-and owner/client quiesce with no late success; same-card reinsertion plus 3 app
-restarts each verified a full file again. Owner-confirmed cold return completed
-new pass 1 SHA/EOF/10 seeks with an uptime drop and 15 heartbeats; initial boot/
-reset-reason prefix was missed. All monitors are closed. Current image is the
-Rust exFAT diagnostic, app SHA `ec6b7f0f159c4f6d77cafcb692df84da046bfd2caa0151854c1df693a3f59267`.
-Next: IDF product media/load owner and catalog integration with live lease and
-buffer-drain cancellation gates. The diagnostic has not wired that product path.
-Full flash history is
-now mandatory in the upgrade planner; see that report's ancestry regression.
-USB host/audio/C6 remain inactive. S5's bounded results do not qualify these.
+## Device and publication boundary
 
-**Arrival blocker:** the received JC1060 on COM3 reads ESP32-P4 **v1.3 (103)**
-and 16 MiB flash. The native target requires 302 and esp-hal excludes pre-v3
-silicon. Do not flash its ready kits or reduce the revision gate. The owner
-selected a separate ESP-IDF assessment and then requested a newer IDF; the
-isolated experiment now targets stable **6.1**. Read the
-[unit evidence, feasibility assessment and ordered next gates](boards/JC1060_ARRIVAL_2026-10-30.md)
-before any hardware operation. Backup/recovery state is recorded there and in
-the unit JSON; legacy diagnostic programming is observed, while native C02
-remains blocked and unrun. Both independent
-16 MiB factory backups match and have verified secondary copies. A 6.1 / Rust
-pure-RAM probe executed scalar calls twice. The owner completed a full power
-disconnect; subsequent ROM RDID and factory boot logs passed, and the owner
-confirmed the factory demo before the later diagnostic flash. S5 is completed
-as a separate bounded diagnostic; the next adapter gate is described above. Soft reset
-after RAM execution produced repeated ROM HP watchdog resets; ROM flash-attach
-also failed before the power cycle. PURE_RAM remains unsupported; do not
-transfer the later flash-backed reset results to it or repeat RAM runs without
-an operator available for cold recovery. The owner reports
-New_Panel; both vendor BSP variants contain a stale
-EK79007 log label but call JD9165, so that label is not panel identity.
+Observed hardware: JC1060 NewPanel, ESP32-P4 v1.3/103. Native minimum remains
+302. Use only the separate IDF 6.1 backend for this unit. No COM3 access, flash,
+RAM execution or gain changes occurred in the repair batch.
 
-The reviewed A+B implementation is `cb70a425d691d0fd10ec097b263567fdefe70070`.
-See the [final review and C01/C02 preparation report](reviews/2026-10-27-publication-and-bringup.md)
-for CodeRabbit evidence, ready diagnostic kits and immutable package hashes.
-Read the [current status](DEVELOPMENT_STATUS.md),
-[implementation plan](reviews/2026-10-27-ruzina-fix-implementation-plan.md)
-and [execution log](reviews/2026-10-27-astra-implementation-log.md).
-Phase B host integrations and remaining gates are recorded in the
-[management log](reviews/2026-10-27-phase-b-log.md) and
-[HTTP contract](WEB_INTEGRATION_CONTRACT.md). Product OTA trust/slot configuration,
-permitted real fixtures, board runtime wiring and physical qualification remain open.
+Latest accepted playback evidence in the reviewed repository:
+[deck-play](reviews/2026-11-01-legacy-deck-play.md), app `95d45203...`, one-deck
+44.1 kHz FLAC/MP3/WAV through FLX4 headphones. External `s08`/`s09` evidence
+folders exist beyond that checkpoint. Reconcile them and the actual running
+image before any later device work. Do not restore an obsolete diagnostic by
+following a historical current-image paragraph.
+
+[PR #71](https://github.com/dvucinozd/Ruzina/pull/71) was deck-mix against main;
+[PR #72](https://github.com/dvucinozd/Ruzina/pull/72) was deck-engine stacked on
+#71. Refresh their state before any publication and merge in dependency order.
+The owner subsequently authorized a separate repair PR above #72 and CI on its
+published head. See the publication continuation in the execution log and the
+[remote repair branch](https://github.com/dvucinozd/Ruzina/tree/ogranak/jc1060-review-fixes).
+The merge/device campaign remains a subsequent gate.
+
+## Next physical campaign and later development
+
+Prepare the exact candidate, restore chain, backups and monitor before the
+operator-assisted campaign. Validate two-deck MAIN/PFL, CUE/seek/LOAD races,
+44.1/48 kHz sources, SD loss and USB reconnect with deadline, transfer, ring,
+heap and stack telemetry. Current SD reinsertion requires app restart.
+
+Then wire source cues/analysis and missing performance features in bounded
+batches, followed by product UI/settings, C6/networking and OTA. JC8012 needs
+its own qualification. APTA remains excluded from the product integration.
+
+[External audio plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md) records PCM5122 MAIN,
+optional TLV320DAC3100 headphones and independent Settings. Separate external
+I2C avoids the onboard ES8311/TLV320 address collision at `0x18`. Candidate
+pin mapping, wiring, drivers and qualification are still future work.
+
+For earlier legacy campaigns, use their dated `docs/reviews/2026-10-30-*` and
+`2026-10-31-*` reports and immutable evidence indexes. Their milestones are
+historical observations for named images, not current-image instructions.
 
 ## Historical handoff — 2026-10-24 and earlier
 

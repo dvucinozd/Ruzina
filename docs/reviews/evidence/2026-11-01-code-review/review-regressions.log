@@ -1,0 +1,47 @@
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/tmp/ruzina-review-20261101/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.61s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-fbcbaed0db275e30)
+
+running 4 tests
+test deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch ... FAILED
+test deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track ... FAILED
+test deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent ... FAILED
+test deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch ... FAILED
+
+failures:
+
+---- deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch stdout ----
+
+thread 'deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch' (7838) panicked at src/deck_engine/tests.rs:241:5:
+seek never resolves after producer failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track stdout ----
+
+thread 'deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track' (7839) panicked at src/deck_engine/tests.rs:224:5:
+late load completion unloaded the already playing deck
+
+---- deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent stdout ----
+
+thread 'deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent' (7840) panicked at src/deck_play/tests.rs:432:5:
+assertion `left == right` failed: epoch and origin came from different restarts
+  left: Some((1, 2))
+ right: None
+
+---- deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch stdout ----
+
+thread 'deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch' (7842) panicked at src/deck_play/tests.rs:412:5:
+assertion `left != right` failed: EOF seek produces no completion epoch: Some(Seeked { index: 0, position_ms: 250, ok: false })
+  left: 2
+ right: 2
+
+
+failures:
+    deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch
+    deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track
+    deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent
+    deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 52 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `--lib`

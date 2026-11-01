@@ -17,8 +17,9 @@
 //! committed with `commit_track_load` when its producer has decoded the
 //! first block, through the `LOADED` mailbox; Load is refused while the deck
 //! plays (the product's load lock).
-use crate::deck_play::{COMMANDS, RINGS, Reader};
-use core::sync::atomic::{AtomicU32, Ordering, fence};
+use crate::deck_play::{RINGS, Reader};
+use crate::deck_transport::{SEEK_REQUESTS, SEEK_RESULTS, SeekOutcome, SeekRequest};
+use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_audio_runtime::nudge::TempoNudge;
 use ruzina_audio_runtime::render::RENDER_SAMPLE_RATE_HZ;
 use ruzina_controller_core::{ControlEvent, DeckId};
@@ -32,80 +33,11 @@ fn index(deck: DeckId) -> usize {
     usize::from(deck == DeckId::Two)
 }
 
-/// What a deck's producer last loaded, from the SD load task to the engine.
-/// A sequence lock: the single writer makes `seq` odd while it writes.
-pub(crate) struct Loaded {
-    seq: AtomicU32,
-    /// Ready (1) or failed (2), catalog index, BPM x100, track id words.
-    words: [AtomicU32; 7],
-}
+use crate::deck_transport::{GATES, LOAD_REQUESTS, LOAD_RESULTS, LoadRequest, MEDIA};
+use ruzina_deck::{DeckClaim, LoadPermit};
+use ruzina_media_session::MediaLease;
 
-/// One published load.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct LoadedTrack {
-    pub(crate) ready: bool,
-    pub(crate) index: u32,
-    pub(crate) bpm_x100: u32,
-    pub(crate) track_id: [u8; 16],
-}
-
-impl Loaded {
-    pub(crate) const fn new() -> Self {
-        Self {
-            seq: AtomicU32::new(0),
-            words: [const { AtomicU32::new(0) }; 7],
-        }
-    }
-
-    /// SD load task only.
-    pub(crate) fn post(&self, track: LoadedTrack) {
-        let seq = self.seq.load(Ordering::Relaxed);
-        self.seq.store(seq.wrapping_add(1), Ordering::Relaxed);
-        fence(Ordering::Release);
-        let mut words = [
-            if track.ready { 1 } else { 2 },
-            track.index,
-            track.bpm_x100,
-            0,
-            0,
-            0,
-            0,
-        ];
-        for (word, bytes) in words[3..].iter_mut().zip(track.track_id.chunks_exact(4)) {
-            *word = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        }
-        for (slot, word) in self.words.iter().zip(words) {
-            slot.store(word, Ordering::Relaxed);
-        }
-        self.seq.store(seq.wrapping_add(2), Ordering::Release);
-    }
-
-    /// A load newer than `seen`, read whole; `None` while none or mid-write.
-    pub(crate) fn take(&self, seen: &mut u32) -> Option<LoadedTrack> {
-        let seq = self.seq.load(Ordering::Acquire);
-        if seq == *seen || seq % 2 == 1 {
-            return None;
-        }
-        let words: [u32; 7] = core::array::from_fn(|i| self.words[i].load(Ordering::Relaxed));
-        fence(Ordering::Acquire);
-        if self.seq.load(Ordering::Relaxed) != seq {
-            return None;
-        }
-        *seen = seq;
-        let mut track_id = [0u8; 16];
-        for (bytes, word) in track_id.chunks_exact_mut(4).zip(&words[3..]) {
-            bytes.copy_from_slice(&word.to_le_bytes());
-        }
-        Some(LoadedTrack {
-            ready: words[0] == 1,
-            index: words[1],
-            bpm_x100: words[2],
-            track_id,
-        })
-    }
-}
-
-pub(crate) static LOADED: [Loaded; 2] = [Loaded::new(), Loaded::new()];
+static TRACK_INDEX: [AtomicU32; 2] = [AtomicU32::new(u32::MAX), AtomicU32::new(u32::MAX)];
 
 /// Per-deck status for the display task: position in milliseconds, and
 /// flags (bit 0 loaded, bit 1 playing).
@@ -118,14 +50,21 @@ pub(crate) struct Engine {
     deck: DeckProductState,
     connected: bool,
     loaded: [bool; 2],
+    faulted: [bool; 2],
     /// The transport owner's confirmed playback, as the renderer runs it.
     playing: [bool; 2],
     pitch: [i16; 2],
     nudge: [TempoNudge; 2],
     /// The ring epoch when a seek was asked for; position reports wait for
     /// a newer one, so a stale position never overwrites the target.
-    seeking: [Option<u32>; 2],
-    seen: [u32; 2],
+    seeking: [Option<SeekRequest>; 2],
+    unsent_seek: [Option<SeekRequest>; 2],
+    seek_epoch: [Option<u32>; 2],
+    source: [Option<LoadRequest>; 2],
+    next_seek: u32,
+    revision: u32,
+    lease: Option<MediaLease>,
+    pending_load: [Option<LoadPermit>; 2],
     unsupported: u32,
     refused_loads: u32,
 }
@@ -136,11 +75,18 @@ impl Engine {
             deck: DeckProductState::new(),
             connected: false,
             loaded: [false; 2],
+            faulted: [false; 2],
             playing: [false; 2],
             pitch: [0; 2],
             nudge: [TempoNudge::new(), TempoNudge::new()],
             seeking: [None; 2],
-            seen: [0; 2],
+            unsent_seek: [None; 2],
+            seek_epoch: [None; 2],
+            source: [None; 2],
+            next_seek: 0,
+            revision: 0,
+            lease: None,
+            pending_load: [None; 2],
             unsupported: 0,
             refused_loads: 0,
         }
@@ -154,14 +100,55 @@ impl Engine {
                 self.apply(effects);
             }
         }
+        if let Some(deck) = event.deck
+            && matches!(
+                event.control,
+                ruzina_controller_core::SemanticControl::JogTouch
+            )
+            && event.value == ruzina_controller_core::ControlValue::Pressed(true)
+        {
+            match GATES[index(deck)].claim_for_transport() {
+                DeckClaim::Replacing => return,
+                DeckClaim::CancelledLoad => self.pending_load[index(deck)] = None,
+                DeckClaim::Free => {}
+            }
+        }
         let effects = self.deck.handle_control(*event);
         self.apply(effects);
     }
 
-    /// The product's load admission for `deck` (refused while it plays).
+    /// Admission and reservation run on the USB control task. Producer must
+    /// begin replacement with this exact permit before closing the old file.
+    pub(crate) fn request_load(&mut self, deck: DeckId, catalog_index: u32) -> bool {
+        self.transport();
+        let i = index(deck);
+        if self.deck.load_admission(deck).is_err() || self.pending_load[i].is_some() {
+            self.refused_loads = self.refused_loads.wrapping_add(1);
+            return false;
+        }
+        let Some(lease) = self.lease.filter(|l| crate::media_signal::current(*l)) else {
+            return false;
+        };
+        let Ok(permit) = GATES[i].reserve() else {
+            return false;
+        };
+        let request = LoadRequest {
+            lease,
+            permit,
+            index: catalog_index,
+        };
+        if LOAD_REQUESTS[i].put(request).is_err() {
+            GATES[i].finish(permit);
+            return false;
+        }
+        self.pending_load[i] = Some(permit);
+        true
+    }
+
+    #[cfg(test)]
     pub(crate) fn load_allowed(&mut self, deck: DeckId) -> bool {
         let allowed = self.deck.load_admission(deck).is_ok();
-        self.refused_loads = self.refused_loads.wrapping_add(u32::from(!allowed));
+        self.refused_loads += u32::from(!allowed);
         allowed
     }
 
@@ -174,7 +161,16 @@ impl Engine {
                     request_id,
                 } => {
                     let i = index(deck);
-                    let accepted = !playing || self.loaded[i];
+                    let claim = if playing {
+                        GATES[i].claim_for_transport()
+                    } else {
+                        DeckClaim::Free
+                    };
+                    if claim == DeckClaim::CancelledLoad {
+                        self.pending_load[i] = None;
+                    }
+                    let accepted = !playing
+                        || self.loaded[i] && !self.faulted[i] && claim != DeckClaim::Replacing;
                     if accepted {
                         self.playing[i] = playing;
                     }
@@ -184,9 +180,18 @@ impl Engine {
                 DeckEffect::Pause { deck } => self.playing[index(deck)] = false,
                 DeckEffect::Seek { deck, position_ms } => {
                     let i = index(deck);
-                    if self.loaded[i] {
-                        COMMANDS[i].seek(position_ms);
-                        self.seeking[i] = Some(RINGS[i].epoch());
+                    if let Some(source) = self.source[i] {
+                        self.next_seek = self.next_seek.wrapping_add(1).max(1);
+                        let request = SeekRequest {
+                            source,
+                            id: self.next_seek,
+                            target_ms: position_ms,
+                        };
+                        self.seeking[i] = Some(request);
+                        self.unsent_seek[i] = Some(request);
+                        self.seek_epoch[i] = None;
+                        self.revision = self.revision.wrapping_add(1);
+                        self.publish_seek(i);
                     }
                 }
                 DeckEffect::SetPitchCentipercent { deck, value } => {
@@ -201,27 +206,113 @@ impl Engine {
     /// Commits loads the producers published; returns each deck's playback
     /// and pitch (with the jog bend) for the next render block.
     pub(crate) fn transport(&mut self) -> ([bool; 2], [i16; 2]) {
+        if let Some(lease) = MEDIA.take() {
+            self.lease = Some(lease);
+        }
+        if self.lease.is_some_and(|l| !crate::media_signal::current(l)) {
+            for (i, deck) in DECKS.into_iter().enumerate() {
+                if let Some(permit) = self.pending_load[i].take() {
+                    GATES[i].finish(permit);
+                }
+                self.source[i] = None;
+                self.loaded[i] = false;
+                self.faulted[i] = false;
+                self.playing[i] = false;
+                self.seeking[i] = None;
+                self.unsent_seek[i] = None;
+                self.seek_epoch[i] = None;
+                self.nudge[i].clear();
+                self.deck.unload_track(deck);
+                TRACK_INDEX[i].store(u32::MAX, Ordering::Release);
+                STATUS[i][0].store(0, Ordering::Relaxed);
+                STATUS[i][1].store(0, Ordering::Relaxed);
+            }
+            self.lease = None;
+            self.revision = self.revision.wrapping_add(1);
+        }
         for deck in DECKS {
             let i = index(deck);
-            let Some(track) = LOADED[i].take(&mut self.seen[i]) else {
+            let Some(result) = LOAD_RESULTS[i].take() else {
                 continue;
             };
-            let id = MediaTrackId(track.track_id);
-            let committed = track.ready
+            if self.pending_load[i] != Some(result.request.permit)
+                || self.lease != Some(result.request.lease)
+            {
+                GATES[i].finish(result.request.permit);
+                continue;
+            }
+            let id = MediaTrackId(result.track_id);
+            let committed = result.ready
                 && self
                     .deck
-                    .commit_track_load(deck, id, track.bpm_x100, HotCueBank::empty(id), None)
+                    .commit_track_load(deck, id, result.bpm_x100, HotCueBank::empty(id), None)
                     .is_ok();
             if !committed {
                 self.deck.unload_track(deck);
             }
             self.loaded[i] = committed;
+            self.faulted[i] = false;
+            self.source[i] = committed.then_some(result.request);
+            self.revision = self.revision.wrapping_add(1);
             self.playing[i] = false;
             self.seeking[i] = None;
+            self.unsent_seek[i] = None;
+            self.seek_epoch[i] = None;
             self.nudge[i].clear();
+            TRACK_INDEX[i].store(
+                if committed {
+                    result.request.index
+                } else {
+                    u32::MAX
+                },
+                Ordering::Release,
+            );
+            self.pending_load[i] = None;
+            GATES[i].finish(result.request.permit);
+        }
+        for i in 0..2 {
+            self.publish_seek(i);
+            if let Some(result) = SEEK_RESULTS[i].take()
+                && self.seeking[i] == Some(result.request)
+                && self.source[i] == Some(result.request.source)
+            {
+                self.seeking[i] = None;
+                self.faulted[i] =
+                    matches!(result.outcome, SeekOutcome::Failed | SeekOutcome::Cancelled);
+                self.seek_epoch[i] = Some(result.epoch);
+                self.deck.set_position_ms(DECKS[i], result.position_ms);
+                if result.outcome != SeekOutcome::Ready {
+                    self.playing[i] = false;
+                    self.deck.finish_playback(DECKS[i], result.position_ms);
+                    self.seek_epoch[i] = None;
+                }
+                self.revision = self.revision.wrapping_add(1);
+            }
         }
         let pitch = core::array::from_fn(|i| self.nudge[i].apply_centipercent(self.pitch[i]));
-        (self.playing, pitch)
+        crate::media_signal::playback(self.playing, pitch);
+        (
+            core::array::from_fn(|i| self.playing[i] && self.seeking[i].is_none()),
+            pitch,
+        )
+    }
+
+    pub(crate) fn connection(&mut self, connected: bool) {
+        self.connected = connected;
+        for effects in self.deck.set_controller_connected(connected) {
+            self.apply(effects);
+        }
+    }
+
+    fn publish_seek(&mut self, i: usize) {
+        if let Some(request) = self.unsent_seek[i]
+            && SEEK_REQUESTS[i].put(request).is_ok()
+        {
+            self.unsent_seek[i] = None;
+        }
+    }
+    pub(crate) fn revision(&self) -> u32 {
+        self.revision
     }
 
     /// After a render block of `frames`: reports positions, decays the jog
@@ -231,11 +322,15 @@ impl Engine {
             let i = index(deck);
             let reader = &readers[i];
             self.nudge[i].advance(frames, RENDER_SAMPLE_RATE_HZ);
-            if self.seeking[i].is_some_and(|epoch| reader.epoch() != epoch) {
-                self.seeking[i] = None;
+            if self.seek_epoch[i] == Some(reader.epoch()) {
+                self.seek_epoch[i] = None;
             }
             let position_ms = reader.position_ms();
-            if self.loaded[i] && self.seeking[i].is_none() && reader.rate() != 0 {
+            if self.loaded[i]
+                && self.seeking[i].is_none()
+                && self.seek_epoch[i].is_none()
+                && reader.rate() != 0
+            {
                 self.deck.set_position_ms(deck, position_ms);
                 if self.playing[i] && reader.ended(&RINGS[i]) && reader.buffered(&RINGS[i]) == 0 {
                     self.deck.finish_playback(deck, position_ms);
@@ -288,3 +383,13 @@ pub unsafe extern "C" fn ruzina_legacy_engine_status(out: *mut u32) {
 
 #[cfg(test)]
 mod tests;
+
+/// Confirmed catalog index, or -1. Snapshot only; safe on the display task.
+#[cfg(feature = "idf-deck-engine")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_engine_track(deck: u32) -> i32 {
+    if !(1..=2).contains(&deck) {
+        return -1;
+    }
+    TRACK_INDEX[deck as usize - 1].load(Ordering::Acquire) as i32
+}

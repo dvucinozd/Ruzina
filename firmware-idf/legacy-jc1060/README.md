@@ -38,7 +38,7 @@ python -m unittest discover -s firmware-idf/legacy-jc1060/tools/tests -v
 python firmware-idf/legacy-jc1060/tools/validate_unit.py docs/boards/readiness/jc1060-20261030-com3.json
 ```
 
-Windows can use `tools/build_legacy.ps1` with IdF/Output/Variant/Python parameters
+Windows can use `tools/build_legacy.ps1` with Idf/Output/Variant/Python parameters
 or call Python directly. Optional `--wsl Ubuntu --cargo-home /linux/cache/cargo
 --rustup-home /linux/cache/rustup` selects WSL Rust; paths are translated by
 wslpath, while IDF uses Windows paths. All tools/build environment paths are
@@ -157,7 +157,7 @@ cargo +1.95.0 build --locked --release --manifest-path firmware-idf/legacy-jc106
 The separate `sd-rust-bridge` builder variant enables `idf-media-bridge` and
 `CONFIG_RUZINA_SD_RUST_BRIDGE`. It supplies a concrete IDF owner task on core 0
 and a diagnostic Rust client task on core 1. The C owner alone holds card/host/
-LDO4 and a512-byte internal DMA-capable bounce buffer. Rust retains its own
+LDO4 and a 512-byte internal DMA-capable bounce buffer. Rust retains its own
 owned 512-byte arrays and copies from the DMA-complete C buffer synchronously;
 no Rust request/future/layout or retained buffer pointer crosses C. State uses
 one shared IDF portMUX, with wake notifications delivered after unlocking.
@@ -177,7 +177,7 @@ filesystem path and asynchronous product executor remain subsequent work.
 
 `sd-rust-exfat` is a separate opt-in extension selecting the shared Rust
 partition/exFAT reader and pure-Rust SHA-256 for the same deterministic fixture.
-It retains the transport's one-sector C bounce buffer and uses a32768-byte
+It retains the transport's one-sector C bounce buffer and uses a 32768-byte
 diagnostic client stack. MBR/superfloppy and bounded GPT discovery reuse the
 shared partition parser; the chosen exFAT header/partition bounds and main boot
 checksum must validate. No C/FatFs mount, file handle or write API is involved.
@@ -285,7 +285,7 @@ stayed flat, and removal, reinsertion and cold return were clean. See the
 profile plus a status screen on the New_Panel. `display_touch.c` now exposes
 `ruzina_panel_start()`, the same DSI, LDO3, reset, init-table and DPI bring-up
 that the `display-touch` diagnostic uses. The panel starts with a dark frame
-before the SD owner. The GT911 touch controller is polled through the shared`nruzina_touch_start()` and `ruzina_touch_poll()`, which the touch diagnostic
+before the SD owner. The GT911 touch controller is polled through the shared `ruzina_touch_start()` and `ruzina_touch_poll()`, which the touch diagnostic
 also uses; the profile still excludes that diagnostic.
 
 `load_display.c` draws the screen with a 12x24 bitmap font: `font24.h`, a

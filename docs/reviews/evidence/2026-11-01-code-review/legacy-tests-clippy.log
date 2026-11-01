@@ -1,0 +1,147 @@
+   Compiling ruzina-core v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-core)
+   Compiling ruzina-media-block v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-block)
+   Compiling libm v0.2.16
+   Compiling version_check v0.9.5
+   Compiling typenum v1.20.1
+   Compiling bytemuck v1.25.2
+   Compiling nanoaudio-core v0.1.1
+   Compiling nanomp3-core v0.2.0
+   Compiling exfat-embedded v0.1.3
+   Compiling ruzina-controller-usb v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-usb)
+   Compiling cfg-if v1.0.5
+   Compiling cpufeatures v0.2.17
+   Compiling ruzina-media-partition v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-partition)
+   Compiling ruzina-controller-core v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-core)
+   Compiling ruzina-media-identity v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-identity)
+   Compiling ruzina-media-session v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-session)
+   Compiling ruzina-media-io v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-io)
+   Compiling safe_arch v1.2.0
+   Compiling ruzina-hot-cues v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-hot-cues)
+   Compiling ruzina-controller-profile v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-profile)
+   Compiling ruzina-track-analysis v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-track-analysis)
+   Compiling ruzina-media-fs v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-fs)
+   Compiling generic-array v0.14.7
+   Compiling ruzina-media-catalog v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-catalog)
+   Compiling ruzina-control-scheduler v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-control-scheduler)
+   Compiling nanoaudio-mp3 v0.1.1
+   Compiling ruzina-media-exfat v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-exfat)
+   Compiling ruzina-deck v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-deck)
+   Compiling wide v1.7.1
+   Compiling ruzina-controller-session v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-session)
+   Compiling ruzina-rekordbox v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-rekordbox)
+   Compiling ruzina-media-load v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-load)
+   Compiling ruzina-audio-dsp v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-dsp)
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling ruzina-mixer v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-mixer)
+   Compiling ruzina-audio-keylock v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-keylock)
+   Compiling ruzina-audio-scratch v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-scratch)
+   Compiling ruzina-uac v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-uac)
+   Compiling digest v0.10.7
+   Compiling sha2 v0.10.9
+   Compiling nanoaudio-flac v0.1.2
+   Compiling ruzina-audio-runtime v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-runtime)
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 43.40s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-716ab730735ada65)
+
+running 52 tests
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_engine::tests::the_load_mailbox_reads_only_whole_posts ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test deck_engine::tests::the_deck_engine_owns_transport ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 52 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.38s
+
+    Checking ruzina-core v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-core)
+    Checking ruzina-media-block v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-block)
+    Checking typenum v1.20.1
+    Checking bytemuck v1.25.2
+    Checking nanoaudio-core v0.1.1
+    Checking nanomp3-core v0.2.0
+    Checking exfat-embedded v0.1.3
+    Checking ruzina-controller-usb v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-usb)
+    Checking cpufeatures v0.2.17
+    Checking cfg-if v1.0.5
+    Checking ruzina-media-partition v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-partition)
+    Checking libm v0.2.16
+   Compiling generic-array v0.14.7
+    Checking ruzina-controller-core v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-core)
+    Checking ruzina-media-identity v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-identity)
+    Checking ruzina-media-session v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-session)
+    Checking ruzina-media-io v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-io)
+    Checking safe_arch v1.2.0
+    Checking nanoaudio-mp3 v0.1.1
+    Checking ruzina-track-analysis v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-track-analysis)
+    Checking ruzina-media-catalog v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-catalog)
+    Checking ruzina-media-fs v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-fs)
+    Checking ruzina-hot-cues v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-hot-cues)
+    Checking ruzina-control-scheduler v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-control-scheduler)
+    Checking ruzina-controller-profile v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-profile)
+    Checking ruzina-media-exfat v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-exfat)
+    Checking wide v1.7.1
+    Checking ruzina-deck v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-deck)
+    Checking ruzina-controller-session v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-controller-session)
+    Checking ruzina-audio-dsp v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-dsp)
+    Checking ruzina-rekordbox v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-rekordbox)
+    Checking ruzina-audio-keylock v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-keylock)
+    Checking ruzina-mixer v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-mixer)
+    Checking ruzina-audio-scratch v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-scratch)
+    Checking ruzina-uac v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-uac)
+    Checking block-buffer v0.10.4
+    Checking crypto-common v0.1.7
+    Checking digest v0.10.7
+    Checking ruzina-media-load v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-media-load)
+    Checking sha2 v0.10.9
+    Checking nanoaudio-flac v0.1.2
+    Checking ruzina-audio-runtime v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-runtime)
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 15.51s

@@ -169,7 +169,10 @@ fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
 /// The Play latch of decks 1 and 2 (the echo state). Same task as audio.
 #[cfg_attr(not(feature = "controller-audio"), allow(dead_code))]
 pub(crate) fn playing() -> [bool; 2] {
-    with(|state| state.playing)
+    let playing = with(|state| state.playing);
+    #[cfg(all(feature = "deck-play", not(feature = "deck-engine")))]
+    crate::media_signal::playback(playing, [0; 2]);
+    playing
 }
 
 #[cfg(feature = "deck-engine")]
@@ -192,6 +195,7 @@ impl State {
 #[cfg(feature = "idf-deck-engine")]
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_midi_refresh() {
+    crate::deck_mix::with(|mix| mix.tick());
     with(|state| {
         if state.profile.is_some() {
             state.sync_play_leds();
@@ -419,6 +423,13 @@ pub unsafe extern "C" fn ruzina_legacy_midi_totals(out: *mut u32) {
 fn drain(state: &mut State) -> i32 {
     let mut delivered = 0;
     while let Some(delivery) = state.session.next_delivery(state.profile.as_ref()) {
+        #[cfg(feature = "deck-engine")]
+        if let SessionDelivery::Connection(connection) = delivery {
+            crate::deck_mix::with(|mix| {
+                mix.engine()
+                    .connection(connection == ruzina_controller_session::ConnectionState::Connected)
+            });
+        }
         if let SessionDelivery::Control(event) = delivery {
             let (deck, kind, value, max) = encode(&event);
             let mut name = Name {
@@ -444,16 +455,7 @@ fn drain(state: &mut State) -> i32 {
             #[cfg(feature = "deck-engine")]
             state.sync_play_leds();
             if let Some((action, deck, value)) = ui_action(&event) {
-                // With the deck engine, Load waits for its load admission.
-                #[cfg(feature = "deck-engine")]
-                let allowed = action != ui::LOAD
-                    || crate::deck_mix::with(|mix| {
-                        let id = if deck == 2 { DeckId::Two } else { DeckId::One };
-                        mix.engine().load_allowed(id)
-                    });
-                #[cfg(not(feature = "deck-engine"))]
-                let allowed = true;
-                if allowed {
+                {
                     // SAFETY: scalars only.
                     unsafe { ruzina_bridge_midi_ui(action, deck, value) };
                 }

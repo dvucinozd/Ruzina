@@ -1,0 +1,79 @@
+--- a/firmware-idf/legacy-jc1060/rust-core/src/deck_engine/tests.rs
++++ b/firmware-idf/legacy-jc1060/rust-core/src/deck_engine/tests.rs
+@@ -207,3 +207,36 @@
+     mailbox.seq.fetch_add(1, Ordering::Relaxed); // a writer mid-post
+     assert_eq!(mailbox.take(&mut seen), None);
+ }
++
++// Review-only regressions: appended in an isolated copy, not the working tree.
++#[test]
++fn review_play_after_load_admission_must_preserve_loaded_track() {
++    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
++    let mut engine = Engine::new();
++    LOADED[0].post(LoadedTrack { ready: true, index: 0, bpm_x100: 12000, track_id: [1;16] });
++    engine.transport();
++    assert!(engine.load_allowed(DeckId::One));
++    // LOAD was admitted, but PLAY arrives before the producer publishes it.
++    engine.control(&event(SemanticControl::Play, ControlValue::Pressed(true)));
++    assert!(engine.playing()[0]);
++    LOADED[0].post(LoadedTrack { ready: true, index: 1, bpm_x100: 13000, track_id: [2;16] });
++    engine.transport();
++    assert!(engine.loaded[0], "late load completion unloaded the already playing deck");
++}
++
++#[test]
++fn review_failed_seek_must_not_wait_forever_for_new_epoch() {
++    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
++    let mut engine = Engine::new();
++    RINGS[0].restart_at(48000, 0);
++    LOADED[0].post(LoadedTrack { ready: true, index: 0, bpm_x100: 12000, track_id: [1;16] });
++    engine.transport();
++    engine.control(&event(SemanticControl::Play, ControlValue::Pressed(true)));
++    engine.apply(DeckEffects::one(DeckEffect::Seek { deck: DeckId::One, position_ms: 1000 }));
++    // Producer::seek's failure path ends the existing epoch. The bridge only logs it.
++    RINGS[0].end();
++    let mut readers = [Reader::new(), Reader::new()];
++    readers[0].sync(&RINGS[0]);
++    for _ in 0..100 { engine.progress(&readers, 128); }
++    assert!(engine.seeking[0].is_none(), "seek never resolves after producer failure");
++}
+--- a/firmware-idf/legacy-jc1060/rust-core/src/deck_play/tests.rs
++++ b/firmware-idf/legacy-jc1060/rust-core/src/deck_play/tests.rs
+@@ -397,3 +397,37 @@
+     assert!(!Ring::new().attach(Box::leak(short)));
+     assert!(!Ring::new().push(&[PcmFrame::default()]));
+ }
++
++#[test]
++fn review_seek_to_eof_must_publish_a_new_terminal_epoch() {
++    let (ring, commands) = (ring(), Commands::new());
++    let mut files = Memory::new(&[WAV]);
++    let mut producer = Producer::new();
++    commands.load(0);
++    run(&mut producer, &mut files, ring, &commands);
++    let old_epoch = ring.epoch();
++    commands.seek(250); // the exact end of the 250ms WAV fixture
++    let (_, event) = producer.poll(&mut files, ring, &commands, path);
++    assert!(matches!(event, Some(Event::Seeked { .. })), "{event:?}");
++    assert_ne!(ring.epoch(), old_epoch, "EOF seek produces no completion epoch: {event:?}");
++}
++
++#[test]
++fn review_ring_epoch_metadata_snapshot_is_coherent() {
++    let ring = ring();
++    let writer = std::thread::spawn(move || {
++        for origin in 1..=200_000 {
++            ring.restart_at(48_000, origin);
++        }
++    });
++    let mut reader = Reader::new();
++    let mut mismatch = None;
++    for _ in 0..200_000 {
++        if reader.sync(ring) && reader.position != reader.epoch {
++            mismatch = Some((reader.epoch, reader.position));
++            break;
++        }
++    }
++    writer.join().unwrap();
++    assert_eq!(mismatch, None, "epoch and origin came from different restarts");
++}

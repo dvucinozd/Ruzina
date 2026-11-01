@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "host_features": {
+    "idf-media-load": 39,
+    "idf-controller-audio": 2,
+    "idf-deck-play": 56,
+    "idf-deck-mix": 57,
+    "idf-deck-engine": 63
+  },
+  "selected_shared_tests": 338,
+  "target_features": [
+    "idf-exfat-fixture",
+    "idf-media-load",
+    "idf-controller-midi",
+    "idf-media-load idf-controller-midi",
+    "idf-media-load idf-controller-audio",
+    "idf-deck-play",
+    "idf-deck-mix",
+    "idf-deck-engine"
+  ],
+  "c_tests": 2,
+  "tooling_windows": {
+    "passed": 26,
+    "skipped": 2,
+    "skip_reason": "No Windows host C compiler; those two C cases passed separately on WSL"
+  },
+  "log_sha256": "bc6abe3a6f27d3f23e71e3def511d9b0e46ee131027f81b8ab567d7bac2d9c9a",
+  "source_map_sha256": "708d379fb01e46d9ec0ffd53c852e21b55d427f8cea9998a6f1559498837ddbc"
+}
