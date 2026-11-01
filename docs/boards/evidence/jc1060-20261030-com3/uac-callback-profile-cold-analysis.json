@@ -1,0 +1,180 @@
+{
+  "scenario": "profile-cold",
+  "status": "PARSED_DIAGNOSTIC_NOT_QUALIFIED",
+  "records": [
+    {
+      "record": {
+        "kind": "worst",
+        "seen": "1",
+        "gen": "1",
+        "ordinal": "709",
+        "uptime_us": "5022856",
+        "phase": "2",
+        "busy": "14",
+        "health": "2",
+        "catalog": "5",
+        "d1_flags": "0",
+        "d2_flags": "0",
+        "drops": "0",
+        "whole_us": "13087",
+        "rust_us": "12935",
+        "partition_valid": "1",
+        "outer_us": "152",
+        "packets": "6",
+        "blocks": "3",
+        "sched_valid": "1",
+        "sched_window_us": "13124",
+        "away_us": "0",
+        "switches": "0"
+      },
+      "stages": {
+        "init": {
+          "us": 137,
+          "segments": 9
+        },
+        "transport": {
+          "us": 826,
+          "segments": 9
+        },
+        "control": {
+          "us": 421,
+          "segments": 3
+        },
+        "graph": {
+          "us": 6523,
+          "segments": 3
+        },
+        "progress": {
+          "us": 342,
+          "segments": 3
+        },
+        "copy": {
+          "us": 486,
+          "segments": 9
+        },
+        "pack": {
+          "us": 3725,
+          "segments": 6
+        },
+        "other": {
+          "us": 475,
+          "segments": 13
+        }
+      },
+      "all_stages_present": true,
+      "partition_verified": true,
+      "outer_verified": true,
+      "scheduler_away_inside_whole_lower_us": 0,
+      "scheduler_away_inside_whole_upper_us": 0,
+      "scheduler_bound_note": "Bounds from the wider coherent scheduler window; not CPU or ISR-only time."
+    },
+    {
+      "record": {
+        "kind": "latest_over",
+        "seen": "1",
+        "gen": "1",
+        "ordinal": "710",
+        "uptime_us": "5037295",
+        "phase": "2",
+        "busy": "13",
+        "health": "2",
+        "catalog": "5",
+        "d1_flags": "0",
+        "d2_flags": "0",
+        "drops": "0",
+        "whole_us": "13039",
+        "rust_us": "12896",
+        "partition_valid": "1",
+        "outer_us": "143",
+        "packets": "6",
+        "blocks": "2",
+        "sched_valid": "1",
+        "sched_window_us": "13067",
+        "away_us": "0",
+        "switches": "0"
+      },
+      "stages": {
+        "init": {
+          "us": 161,
+          "segments": 8
+        },
+        "transport": {
+          "us": 1009,
+          "segments": 8
+        },
+        "control": {
+          "us": 1015,
+          "segments": 2
+        },
+        "graph": {
+          "us": 5289,
+          "segments": 2
+        },
+        "progress": {
+          "us": 204,
+          "segments": 2
+        },
+        "copy": {
+          "us": 881,
+          "segments": 8
+        },
+        "pack": {
+          "us": 3934,
+          "segments": 6
+        },
+        "other": {
+          "us": 403,
+          "segments": 13
+        }
+      },
+      "all_stages_present": true,
+      "partition_verified": true,
+      "outer_verified": true,
+      "scheduler_away_inside_whole_lower_us": 0,
+      "scheduler_away_inside_whole_upper_us": 0,
+      "scheduler_bound_note": "Bounds from the wider coherent scheduler window; not CPU or ISR-only time."
+    }
+  ],
+  "phase_final": {
+    "initial_prefill": {
+      "generation": "1",
+      "scope": "BOOT",
+      "count": "4",
+      "first_us": "2024",
+      "first_after_iso_submit": "0",
+      "max_us": "2024",
+      "max_after_iso_submit": "0",
+      "gt_3000": "0",
+      "ge_6000": "0",
+      "failures": "0"
+    },
+    "recovery_prefill": {
+      "generation": "1",
+      "scope": "BOOT",
+      "count": "0",
+      "first_us": "0",
+      "first_after_iso_submit": "0",
+      "max_us": "0",
+      "max_after_iso_submit": "0",
+      "gt_3000": "0",
+      "ge_6000": "0",
+      "failures": "0"
+    },
+    "callback": {
+      "generation": "1",
+      "scope": "BOOT",
+      "count": "5000",
+      "first_us": "989",
+      "first_after_iso_submit": "1",
+      "max_us": "13087",
+      "max_after_iso_submit": "1",
+      "gt_3000": "3",
+      "ge_6000": "2",
+      "failures": "0"
+    }
+  },
+  "expected_elf_seen": true,
+  "fatal_markers": [],
+  "aggregate_bound_us": 6000,
+  "policy": "No stage attribution if partition invalid; no scheduler inference if stamp/window invalid."
+}

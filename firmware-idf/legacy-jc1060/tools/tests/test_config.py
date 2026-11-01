@@ -4,6 +4,17 @@ import unittest
 
 
 class ConfigTests(unittest.TestCase):
+    def test_uac_profile_guards(self):
+        guard=Path(__file__).resolve().parents[1]/'check_config.cmake'
+        baseline=dict(IDF_TARGET='esp32p4',CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
+            CONFIG_ESP32P4_REV_MIN_FULL='100',CONFIG_ESP32P4_REV_MAX_FULL='199',
+            CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ='360',IDF_VERSION='6.1.0',CONFIG_RUZINA_UAC_PROFILE='ON')
+        for extra in ({},{'CONFIG_FREERTOS_SMP':'ON'},{'CONFIG_ESP_TRACE_ENABLE':'ON'}):
+            config={**baseline,**extra}
+            result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True,text=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('exclusive pinned non-SMP trace hooks',' '.join(result.stderr.split()))
+
     def test_guards(self):
         baseline = dict(IDF_TARGET='esp32p4', CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
                         CONFIG_ESP32P4_REV_MIN_FULL='100', CONFIG_ESP32P4_REV_MAX_FULL='199',

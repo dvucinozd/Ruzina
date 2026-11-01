@@ -2,6 +2,73 @@ use super::*;
 use std::vec;
 use std::vec::Vec;
 
+#[cfg(feature = "idf-uac-profile")]
+#[test]
+fn profiling_six_packet_fill_preserves_pcm_and_failed_exit() {
+    use crate::uac_profile::{self, Stage};
+    let selected = select(
+        &parse_playback_formats(&flx4_config()).unwrap(),
+        UsbSpeed::High,
+    )
+    .unwrap();
+    let make_state = || State {
+        selected: Some(selected),
+        cadence: Cadence::new(selected.rate),
+        map: Some(ChannelMap::new(4, Some(MAIN), Some(HEADPHONES)).unwrap()),
+        phase: 0,
+        packets: 0,
+        frames: 0,
+        toned_packets: 0,
+    };
+    let run = |enabled: bool, capacity: usize| {
+        let mut state = make_state();
+        let mut output = vec![0; capacity];
+        let mut sizes = [0; 6];
+        let mut ordinal = 0i16;
+        if enabled {
+            uac_profile::begin();
+        }
+        let bytes = {
+            let _fill = uac_profile::fill_scope();
+            fill_from(&mut state, &mut output, &mut sizes, |_, main, hp| {
+                let _graph = uac_profile::scope(Stage::Graph);
+                uac_profile::advance(7);
+                for (m, h) in main.iter_mut().zip(hp) {
+                    *m = PcmFrame {
+                        left: ordinal,
+                        right: -ordinal,
+                    };
+                    *h = PcmFrame {
+                        left: ordinal / 2,
+                        right: ordinal / 3,
+                    };
+                    ordinal += 1;
+                }
+                true
+            })
+        };
+        let mut stats = [0; 20];
+        if enabled {
+            assert_eq!(unsafe { uac_profile::end(stats.as_mut_ptr(), 20) }, 20);
+        }
+        (bytes, output, sizes, stats)
+    };
+    let plain = run(false, 6 * 384);
+    let profiled = run(true, 6 * 384);
+    assert_eq!(
+        (&plain.0, &plain.1, &plain.2),
+        (&profiled.0, &profiled.1, &profiled.2)
+    );
+    assert_eq!(profiled.0, 6 * 384);
+    assert_eq!(profiled.3[2], 6);
+    assert_eq!(profiled.3[4 + Stage::Graph as usize], 42);
+    assert_eq!(profiled.3[4..12].iter().sum::<u32>(), profiled.3[0]);
+    let fail = run(true, 384);
+    assert_eq!(fail.0, 0);
+    assert_eq!(fail.3[2], 2);
+    assert_eq!(fail.3[1], 0);
+}
+
 /// AS alternate as in the FLX4: Type I PCM, one 48 kHz rate, isochronous
 /// synchronous OUT endpoint 0x01 at a 1 ms high-speed interval.
 fn alternate(alternate: u8, bytes: u8, bits: u8, max_packet: u16) -> Vec<u8> {

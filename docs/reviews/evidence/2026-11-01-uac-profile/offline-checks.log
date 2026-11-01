@@ -1,0 +1,439 @@
+HOST_FEATURE=idf-media-load
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.71s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-bd0cbc7160506a42)
+
+running 39 tests
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.88s
+
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.58s
+HOST_FEATURE=idf-controller-audio
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.96s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-964df1f44e297164)
+
+running 2 tests
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.82s
+HOST_FEATURE=idf-deck-play
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.88s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-f7cf8274e50beb63)
+
+running 56 tests
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 56 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.96s
+
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.44s
+HOST_FEATURE=idf-deck-mix
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.14s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-6e40a1defcfc2ed2)
+
+running 57 tests
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_mix::tests::two_decks_mix_through_the_product_graph ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.81s
+
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.33s
+HOST_FEATURE=idf-deck-engine
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.95s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-716ab730735ada65)
+
+running 63 tests
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_transport::tests::slot_never_overwrites_an_unconsumed_item ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_transport::tests::slot_transfers_whole_values_between_threads ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test deck_engine::tests::the_deck_engine_owns_transport ... ok
+test deck_engine::tests::seek_receipts_finish_eof_failure_and_ignore_superseded_work ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_engine::tests::load_permit_protects_real_producer_and_rejects_late_results ... ok
+test deck_engine::tests::media_revocation_discards_cached_audio_and_late_receipts ... ok
+test deck_engine::tests::controller_disconnect_releases_a_cue_preview_without_resuming_it ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.88s
+
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.58s
+HOST_FEATURE=idf-uac-profile
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.63s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-db24cfc1cdca2380)
+
+running 68 tests
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test deck_engine::tests::controller_disconnect_releases_a_cue_preview_without_resuming_it ... ok
+test controller_audio::tests::profiling_six_packet_fill_preserves_pcm_and_failed_exit ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_transport::tests::slot_never_overwrites_an_unconsumed_item ... ok
+test deck_transport::tests::slot_transfers_whole_values_between_threads ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test deck_engine::tests::the_deck_engine_owns_transport ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_engine::tests::media_revocation_discards_cached_audio_and_late_receipts ... ok
+test deck_engine::tests::seek_receipts_finish_eof_failure_and_ignore_superseded_work ... ok
+test deck_engine::tests::profiled_render_matches_unarmed_pcm_across_blocks_and_partial_blocks ... ok
+test deck_engine::tests::load_permit_protects_real_producer_and_rejects_late_results ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test uac_profile::implementation::tests::clock_reversal_is_flagged_and_large_duration_clamps ... ok
+test uac_profile::implementation::tests::inactive_scopes_and_failed_early_exit_do_not_leak_state ... ok
+test uac_profile::implementation::tests::nested_scopes_partition_time_without_double_counting ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.92s
+
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.06s
+TARGET_FEATURE=idf-deck-engine
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `release` profile [optimized] target(s) in 3.21s
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `release` profile [optimized] target(s) in 5.05s
+TARGET_FEATURE=idf-uac-profile
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `release` profile [optimized] target(s) in 3.24s
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `release` profile [optimized] target(s) in 4.95s
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+test_actual_driver_fault_paths (test_uac_recovery.UacRecoveryTests.test_actual_driver_fault_paths) ... ok
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=3
+usb_uac_stop transfers=1 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=5
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=7
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+test_actual_driver_profile_context (test_uac_recovery.UacRecoveryTests.test_actual_driver_profile_context) ... ok
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=3
+usb_uac_stop transfers=1 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=5
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=7
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+test_actual_driver_timing_phases (test_uac_recovery.UacRecoveryTests.test_actual_driver_timing_phases) ... ok
+test_actual_scheduler_hooks (test_uac_recovery.UacRecoveryTests.test_actual_scheduler_hooks) ... ok
+test_production_recovery_policy (test_uac_recovery.UacRecoveryTests.test_production_recovery_policy) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.965s
+
+OK

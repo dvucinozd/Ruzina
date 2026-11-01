@@ -7,5 +7,6 @@ docs/boards/readiness/jc1060-uac-timing-return-s07-plan-20261101.json -text -whi
 docs/reviews/evidence/2026-11-01-code-review/** -text -whitespace
 docs/reviews/evidence/2026-11-01-review-fixes/** -text -whitespace
 docs/reviews/evidence/2026-11-01-uac-timing/** -text -whitespace
+docs/reviews/evidence/2026-11-01-uac-profile/** -text -whitespace
 # Vendored upstream sources stay byte-identical to their recorded archive.
 firmware-idf/legacy-jc1060/third_party/esp-usb-*/** -text -whitespace

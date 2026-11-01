@@ -62,3 +62,9 @@ config RUZINA_LOAD_DISPLAY
     bool "Show the media load status on the New_Panel, with touch track selection"
     depends on RUZINA_SD_RUST_LOAD && !RUZINA_DISPLAY_TOUCH
     default n
+
+config RUZINA_UAC_PROFILE
+    bool "Diagnostic UAC callback substages and scheduler trace intervals"
+    depends on RUZINA_DECK_ENGINE && !FREERTOS_SMP && !ESP_TRACE_ENABLE
+    select ESP_TIMER_IN_IRAM
+    default n

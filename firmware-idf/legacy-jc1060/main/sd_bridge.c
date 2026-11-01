@@ -69,6 +69,10 @@ extern void ruzina_load_display_detail(uint32_t index, uint32_t bpm_x100, uint32
 
 void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
 {
+#if CONFIG_RUZINA_UAC_PROFILE
+    extern void ruzina_uac_catalog_event(uint32_t event);
+    ruzina_uac_catalog_event(event);
+#endif
     unsigned stack=(unsigned)uxTaskGetStackHighWaterMark(NULL);
     unsigned free_now=(unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     unsigned free_min=(unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);

@@ -485,6 +485,23 @@ See [deck engine](../../docs/reviews/2026-11-01-legacy-deck-engine.md).
 
 ## UAC fill-phase diagnostics (`deck-mix` / `deck-engine`)
 
+For the later OFF-by-default substage/scheduler diagnostic, use
+`build_legacy.py --variant deck-engine --uac-profile` (PowerShell wrapper:
+`-Variant deck-engine -UacProfile`). It selects Rust `idf-uac-profile` and
+`CONFIG_RUZINA_UAC_PROFILE`; normal profiles do not contain substage clocks or
+scheduler hooks. Build verification rejects mismatched config/symbols and
+checks the actual compiled FreeRTOS switch hooks. Do not patch the IDF checkout.
+
+The profile retains the whole-fill/phase statistics below and adds coherent
+worst/latest-over-budget callback records, exclusive Rust stage durations and
+completed USB-task switch-out intervals. All formatting stays on the logger.
+Scheduler windows slightly bracket the original fill window; `away_us` is not
+task-only CPU time or a measurement of ISR time without a task switch. Check
+validity flags and do not double-count graph/source pulls or nested intervals.
+This measures a cause; it does not change priorities, gain or DSP, and it does
+not qualify a slow image. Read the [execution record](../../docs/reviews/2026-11-01-uac-callback-profiling-execution.md)
+for word layout, tests, exact packages and remaining physical gates.
+
 `fill_max_us` retains its boot-cumulative maximum across all fills, including
 prefill, recovery and failed fills. The diagnostic adds bounded, saturating
 per-phase counters without changing render/transport behavior or gain:

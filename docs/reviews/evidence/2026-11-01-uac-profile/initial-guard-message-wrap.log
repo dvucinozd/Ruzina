@@ -1,0 +1,46 @@
+test_deck_ui_combines_only_load_display_and_midi (test_config.ConfigTests.test_deck_ui_combines_only_load_display_and_midi) ... ok
+test_display_ownership (test_config.ConfigTests.test_display_ownership) ... ok
+test_file_fixture_requires_sd_owner (test_config.ConfigTests.test_file_fixture_requires_sd_owner) ... ok
+test_guards (test_config.ConfigTests.test_guards) ... ok
+test_load_display_requires_load_and_no_touch (test_config.ConfigTests.test_load_display_requires_load_and_no_touch) ... ok
+test_memory_profile (test_config.ConfigTests.test_memory_profile) ... ok
+test_rust_bridge_requires_exclusive_sd_owner (test_config.ConfigTests.test_rust_bridge_requires_exclusive_sd_owner) ... ok
+test_rust_exfat_requires_bridge (test_config.ConfigTests.test_rust_exfat_requires_bridge) ... ok
+test_rust_load_requires_bridge_caps_psram_and_no_fixture (test_config.ConfigTests.test_rust_load_requires_bridge_caps_psram_and_no_fixture) ... ok
+test_sd_readonly_owner (test_config.ConfigTests.test_sd_readonly_owner) ... ok
+test_uac_profile_guards (test_config.ConfigTests.test_uac_profile_guards) ... FAIL
+test_usb_host_enum_is_isolated (test_config.ConfigTests.test_usb_host_enum_is_isolated) ... ok
+test_history_preserves_tail_after_smaller_upgrade (test_flash_plan.FlashPlanTests.test_history_preserves_tail_after_smaller_upgrade) ... ok
+test_invalid_table (test_flash_plan.FlashPlanTests.test_invalid_table) ... ok
+test_valid_table (test_flash_plan.FlashPlanTests.test_valid_table) ... ok
+test_exact_reviewed_records (test_panel_table.PanelTableTests.test_exact_reviewed_records) ... ok
+test_fixed_fixture_and_no_overwrite (test_sd_fixture.FixtureTests.test_fixed_fixture_and_no_overwrite) ... ok
+test_host_and_device_names_and_digest_agree (test_sd_fixture.FixtureTests.test_host_and_device_names_and_digest_agree) ... ok
+test_rust_fixture_and_c_success_telemetry_agree (test_sd_fixture.FixtureTests.test_rust_fixture_and_c_success_telemetry_agree) ... ok
+test_deepest_stack (test_tools.Tests.test_deepest_stack) ... ok
+test_execute_failures_close_and_finalize (test_tools.Tests.test_execute_failures_close_and_finalize) ... ok
+test_ranges (test_tools.Tests.test_ranges) ... ok
+test_rejected_input_never_opens_transport (test_tools.Tests.test_rejected_input_never_opens_transport) ... ok
+test_stack_frames (test_tools.Tests.test_stack_frames) ... ok
+test_unit_record (test_tools.Tests.test_unit_record) ... ok
+test_wrong_hash_and_variant_under_optimization (test_tools.Tests.test_wrong_hash_and_variant_under_optimization) ... ok
+test_wrong_header (test_tools.Tests.test_wrong_header) ... ok
+test_actual_driver_fault_paths (test_uac_recovery.UacRecoveryTests.test_actual_driver_fault_paths) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_actual_driver_profile_context (test_uac_recovery.UacRecoveryTests.test_actual_driver_profile_context) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_actual_driver_timing_phases (test_uac_recovery.UacRecoveryTests.test_actual_driver_timing_phases) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_actual_scheduler_hooks (test_uac_recovery.UacRecoveryTests.test_actual_scheduler_hooks) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_production_recovery_policy (test_uac_recovery.UacRecoveryTests.test_production_recovery_policy) ... skipped 'Host C compiler required (run on Linux/WSL)'
+
+======================================================================
+FAIL: test_uac_profile_guards (test_config.ConfigTests.test_uac_profile_guards)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 16, in test_uac_profile_guards
+    self.assertIn('exclusive pinned non-SMP trace hooks',result.stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'exclusive pinned non-SMP trace hooks' not found in 'CMake Error at firmware-idf/legacy-jc1060/tools/check_config.cmake:56 (message):\n  UAC profiling requires the deck engine and exclusive pinned non-SMP trace\n  hooks\n\n\n'
+
+----------------------------------------------------------------------
+Ran 32 tests in 6.512s
+
+FAILED (failures=1, skipped=5)

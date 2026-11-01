@@ -5,12 +5,14 @@ param(
     [string]$Python='python',
     [string]$Wsl,
     [string]$CargoHome,
-    [string]$RustupHome
+    [string]$RustupHome,
+    [switch]$UacProfile
 )
 $ErrorActionPreference='Stop'
 $buildArgs=@("$PSScriptRoot/build_legacy.py",'--idf',$Idf,'--output',$Output,'--variant',$Variant)
 if($Wsl){$buildArgs+=@('--wsl',$Wsl)}
 if($CargoHome){$buildArgs+=@('--cargo-home',$CargoHome)}
 if($RustupHome){$buildArgs+=@('--rustup-home',$RustupHome)}
+if($UacProfile){$buildArgs+='--uac-profile'}
 & $Python @buildArgs
 exit $LASTEXITCODE
