@@ -1,0 +1,24 @@
+# UAC timing follow-up after the first repair-candidate device run
+
+Status: PLAN_ONLY / TARGET_CAUSE_UNPROVEN. Do not lower native minimum revision 302, change accepted gain, or reuse physical acceptance across images. The observed unit is legacy rev103. Read the [campaign result](2026-11-01-review-fix-device-results.md) first.
+
+## Evidence and limits
+
+Candidate app `0d4d07fa...` booted with the expected ELF prefix `babdee193`, mounted the 25-track export and started the four-transfer UAC stream. The first recorded idle statistics and the following three snapshots all reported `fill_max_us=12260`; underruns stayed 0/0 and transfer/packet/submit errors stayed zero. This exceeds the registered campaign rejection bound of 6000 us. Playback cases were not attempted.
+
+The current timer in `main/uac_driver.inc:uac_refill` encloses `ruzina_legacy_uac_fill` in every call. `uac_start_stream` uses it during initial/recovery pool preparation, and `uac_iso_done` uses it on callback refills. The single maximum cannot identify which phase produced the outlier. Consequently this is a campaign criterion failure, not proof that a specific streaming callback missed its actual USB deadline.
+
+`Mix::render` lazily initializes `FixedRateRenderGraph::new` inside the measured fill path. The graph constructs EQ/filter state for two decks. This is a source-confirmed candidate for startup cost, not a measured cause. USB client and SD owner both run at priority 4 on core 0, with 100 Hz scheduling in the measured configuration; preemption, I/O/interrupt load, cache state and per-block work also need to be distinguished. No source optimization is justified yet.
+
+## Ordered implementation
+
+1. Preserve this candidate's raw programmer/boot/cold logs and original aggregate maximum. Add bounded counters for initial prefill, recovery prefill and callback refills: count, maximum wall time, and exceedances of 3000/6000 us. Pass the phase explicitly from the two call sites; keep the existing all-call maximum. Measure first fill separately and record whether a transfer had already been submitted. Do not infer phase from a health flag that is already set before pool startup.
+2. Extend the existing actual-driver host C harness with a controllable timer. Drive cold start, successful callback, error/recovery and reconnect. Verify each timing sample reaches exactly one phase, all-call maximum stays intact, and recovery/drain behavior is unchanged. Exercise a slow initial sample and a slow callback separately. Run existing Rust feature tests/Clippy and UAC driver tests; a test that only matches source text is insufficient.
+3. Only if the phase data warrants it, add a bounded profiling build that separates graph initialization, transport/descriptor handling, render/control and PCM packing into non-overlapping intervals. Retain whole-fill wall time. Publish snapshots through the existing low-priority logger; no formatted output, allocation or unbounded history in the fill callback. Log explicit dropped snapshots. CPU/cycle counters alone must not be described as task-only execution time across preemption.
+4. Review, commit/push, clean-build and register the diagnostic package and complete current predecessor chain before another device run. The current predecessor after this campaign is the ancestry-aware restored s07 state, not historical s09 and not the failed candidate. Construct the new plan from the full chain through candidate and return-to-s07. Verify backups and both source/package identities again. No build-only manifest is a flash plan.
+5. Measure exact-image cold boot/idle first, then only proceed under a documented acceptance decision. Keep the existing campaign rejection result immutable. Any refined phase-specific criterion must be registered before a new run, with a reason tied to actual startup/streaming ownership; do not silently exclude expensive calls. If eager initialization is indicated, move the real initialization before the first transfer submission rather than merely moving or resetting the timer. Verify unchanged PCM, transport/media revocation and target whole-fill timing/stack/RAM.
+6. After timing is understood and an improved candidate passes its registered gate, resume I02–I13: distinct MAIN/PFL, controls/load/seek races, concurrent decoding, SD loss/return and USB reconnect. Fault injection without a supported target mechanism remains NOT_RUN. Restore and verify the known accepted image before stopping an unsuccessful experimental run.
+
+## Exit evidence
+
+Record exact source/app/ELF/plan hashes, phase counters with denominators, normal and worst wall times, first-versus-recurring sample context, transfer errors, ring coverage/producer gaps, stack/heap minima and operator listening acceptance separately. Host tests and changed helper-call counts do not establish a target timing improvement.

@@ -1,0 +1,41 @@
+{
+  "scenario": "campaign-i-cold-boot",
+  "mode": "PASSIVE_NO_RESET_NO_SERIAL_WRITE",
+  "bytes": 15025,
+  "duration_seconds": 66.0,
+  "log_sha256": "9c2387a045ed7611e4d8665e4f52aa07b22ddc62a404c81d3092a6e217e2d785",
+  "expected_app_sha256": "0d4d07fa79d2eef299575304ed11258d1d071d8bdace84f35d793b176d551d85",
+  "expected_elf_sha256": "babdee193eef1af50b18233e94b37ffeed4596b4ad7c923db2a9671937fd3245",
+  "boot_elf_prefixes": [
+    "babdee193"
+  ],
+  "expected_elf_seen": true,
+  "fatal_markers": [],
+  "reset_reasons": [
+    "1"
+  ],
+  "stream_started_count": 1,
+  "deck_mix_stats": [
+    "deck_mix_stats rendered=289152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=12260",
+    "deck_mix_stats rendered=577152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=12260",
+    "deck_mix_stats rendered=865152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=12260",
+    "deck_mix_stats rendered=1153152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=12260"
+  ],
+  "deck_engine_stats": [
+    "deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0",
+    "deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0",
+    "deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0",
+    "deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0"
+  ],
+  "usb_uac_stats": [
+    "usb_uac_stats transfers=1000 packets=6024 frames=289152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0",
+    "usb_uac_stats transfers=2000 packets=12024 frames=577152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0",
+    "usb_uac_stats transfers=3000 packets=18024 frames=865152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0",
+    "usb_uac_stats transfers=4000 packets=24024 frames=1153152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0"
+  ],
+  "producer_stats": [
+    "producer_stats max_gap_us=10004",
+    "producer_stats max_gap_us=10008"
+  ],
+  "physical_acceptance": "NOT_CAPTURED"
+}

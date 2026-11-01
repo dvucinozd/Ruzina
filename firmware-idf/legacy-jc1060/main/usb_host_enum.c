@@ -5,7 +5,9 @@
 #include "esp_intr_alloc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "usb/usb_host.h"
+#include "uac_recovery.h"
 
 /* Isolated USB host diagnostic on the HS (UTMI) port. It logs the device,
  * configuration, interface and endpoint descriptors of each attached device
@@ -197,15 +199,16 @@ static void midi_start(const usb_device_desc_t *dev, const usb_config_desc_t *co
 
 /* Releases the interface and frees the transfer once it is no longer in
  * flight (a gone device completes it with NO_DEVICE first). */
-static void midi_stop(void)
+static bool midi_stop(void)
 {
     if (midi_interface == 0xff) {
         ruzina_legacy_midi_unbind();
-        return;
+        return true;
     }
     for (int i = 0; (midi_in_busy || midi_out_busy) && i < 50; ++i) {
         usb_host_client_handle_events(client, pdMS_TO_TICKS(10));
     }
+    if (midi_in_busy || midi_out_busy) { printf("usb_midi drain=HELD\n"); return false; }
     midi_retry_at = lamp_off_at = out_hold_until = 0;
     uint32_t totals[8];
     ruzina_legacy_midi_totals(totals);
@@ -226,209 +229,12 @@ static void midi_stop(void)
     if (out_freed == ESP_OK) midi_out = NULL;
     midi_interface = 0xff;
     midi_transfers = midi_events = midi_errors = out_transfers = out_bytes = out_errors = 0;
+    return true;
 }
 #endif
 
 #if CONFIG_RUZINA_USB_HOST_UAC
-/* Rust (controller_audio.rs); every call runs on the client task. */
-extern int32_t ruzina_legacy_uac_select(const uint8_t *config, uint32_t len, int32_t high_speed, uint32_t *out);
-extern uint32_t ruzina_legacy_uac_control(uint32_t step, uint8_t *out);
-extern uint32_t ruzina_legacy_uac_fill(uint8_t *buffer, uint32_t capacity, uint32_t *sizes, uint32_t packets);
-extern void ruzina_legacy_uac_stats(uint32_t *out);
-#if CONFIG_RUZINA_DECK_MIX
-#include "esp_timer.h"
-/* Rust (deck_mix.rs): rendered frames, underrun blocks per deck, buffered
- * frames and rate per deck, limited MAIN samples. */
-extern void ruzina_legacy_mix_stats(uint32_t *out);
-#if CONFIG_RUZINA_DECK_ENGINE
-/* Rust (deck_engine.rs, deck_mix.rs): position ms and flags per deck;
- * unexecuted effects and refused loads. */
-extern void ruzina_legacy_engine_status(uint32_t *out);
-extern void ruzina_legacy_engine_counters(uint32_t *out);
-#endif
-/* Longest Rust fill of one transfer (six 1 ms packets of both decks). */
-static uint32_t uac_fill_max_us;
-#elif CONFIG_RUZINA_DECK_PLAY
-/* Rust (deck_play.rs): played frames, underrun packets, buffered frames, rate. */
-extern void ruzina_legacy_play_stats(uint32_t *out);
-#endif
-
-/* Four isochronous OUT transfers of six 1 ms packets keep 24 ms queued. At
- * high speed a 1 ms bInterval is 8 microframes, and esp-usb fits at most
- * (64 - 3) microframes per ISOC transfer, so 7 packets is the hard ceiling:
- * 8 failed on the board with ESP_ERR_INVALID_SIZE. */
-#define UAC_TRANSFERS 4
-#define UAC_PACKETS 6
-enum { UAC_OFF = -1, UAC_SET_ALT, UAC_SET_RATE, UAC_STREAMING };
-static usb_transfer_t *uac_ctrl, *uac_iso[UAC_TRANSFERS];
-static bool uac_ctrl_busy, uac_iso_busy[UAC_TRANSFERS];
-static uint8_t uac_interface = 0xff;
-static int uac_step = UAC_OFF;
-static uint32_t uac_info[8]; /* interface, alt, endpoint, mps, channels, bytes, rate, freq_control */
-static uint32_t uac_completed, uac_iso_errors, uac_packet_errors, uac_ctrl_errors, uac_fill_errors;
-
-static bool uac_refill(usb_transfer_t *transfer)
-{
-    uint32_t sizes[UAC_PACKETS];
-#if CONFIG_RUZINA_DECK_MIX
-    int64_t start = esp_timer_get_time();
-#endif
-    uint32_t bytes = ruzina_legacy_uac_fill(transfer->data_buffer, (uint32_t)transfer->data_buffer_size,
-                                            sizes, UAC_PACKETS);
-#if CONFIG_RUZINA_DECK_MIX
-    uint32_t took = (uint32_t)(esp_timer_get_time() - start);
-    if (took > uac_fill_max_us) uac_fill_max_us = took;
-#endif
-    if (!bytes) { uac_fill_errors++; return false; }
-    for (int i = 0; i < UAC_PACKETS; ++i) transfer->isoc_packet_desc[i].num_bytes = (int)sizes[i];
-    transfer->num_bytes = (int)bytes;
-    return true;
-}
-
-static void uac_iso_done(usb_transfer_t *transfer)
-{
-    int index = (int)(intptr_t)transfer->context;
-    uac_iso_busy[index] = false;
-    if (transfer->status == USB_TRANSFER_STATUS_COMPLETED) {
-        uac_completed++;
-        for (int i = 0; i < UAC_PACKETS; ++i)
-            if (transfer->isoc_packet_desc[i].status != USB_TRANSFER_STATUS_COMPLETED) uac_packet_errors++;
-    } else if (transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
-            && transfer->status != USB_TRANSFER_STATUS_CANCELED) {
-        uac_iso_errors++;
-    }
-    /* Keep the stream running: refill this transfer and queue it again. */
-    if (uac_step == UAC_STREAMING && device && !gone && transfer->status == USB_TRANSFER_STATUS_COMPLETED
-            && uac_refill(transfer) && usb_host_transfer_submit(transfer) == ESP_OK)
-        uac_iso_busy[index] = true;
-    if (uac_completed && uac_completed % 1000 == 0) { /* every 6 s */
-        uint32_t stats[3];
-        ruzina_legacy_uac_stats(stats);
-        printf("usb_uac_stats transfers=%" PRIu32 " packets=%" PRIu32 " frames=%" PRIu32 " tone_packets=%" PRIu32
-               " iso_errors=%" PRIu32 " packet_errors=%" PRIu32 "\n", uac_completed, stats[0], stats[1], stats[2],
-               uac_iso_errors, uac_packet_errors);
-#if CONFIG_RUZINA_DECK_MIX
-        uint32_t mix[8];
-        ruzina_legacy_mix_stats(mix);
-        printf("deck_mix_stats rendered=%" PRIu32 " underruns=%" PRIu32 "/%" PRIu32 " buffered=%" PRIu32 "/%" PRIu32
-               " rate=%" PRIu32 "/%" PRIu32 " limited=%" PRIu32 " fill_max_us=%" PRIu32 "\n",
-               mix[0], mix[1], mix[2], mix[3], mix[4], mix[5], mix[6], mix[7], uac_fill_max_us);
-#if CONFIG_RUZINA_DECK_ENGINE
-        uint32_t engine[4], counters[2];
-        ruzina_legacy_engine_status(engine);
-        ruzina_legacy_engine_counters(counters);
-        printf("deck_engine_stats d1_ms=%" PRIu32 " d1_flags=%" PRIu32 " d2_ms=%" PRIu32 " d2_flags=%" PRIu32
-               " unsupported=%" PRIu32 " refused_loads=%" PRIu32 "\n",
-               engine[0], engine[1], engine[2], engine[3], counters[0], counters[1]);
-#endif
-#elif CONFIG_RUZINA_DECK_PLAY
-        uint32_t play[4];
-        ruzina_legacy_play_stats(play);
-        printf("deck_play_stats played=%" PRIu32 " underruns=%" PRIu32 " buffered=%" PRIu32 " rate=%" PRIu32 "\n",
-               play[0], play[1], play[2], play[3]);
-#endif
-    }
-}
-
-static void uac_start_stream(void)
-{
-    uint32_t mps = uac_info[3];
-    int started = 0;
-    for (int i = 0; i < UAC_TRANSFERS; ++i) {
-        if (usb_host_transfer_alloc(UAC_PACKETS * mps, UAC_PACKETS, &uac_iso[i]) != ESP_OK) break;
-        uac_iso[i]->device_handle = device;
-        uac_iso[i]->bEndpointAddress = (uint8_t)uac_info[2];
-        uac_iso[i]->callback = uac_iso_done;
-        uac_iso[i]->context = (void *)(intptr_t)i;
-        if (uac_refill(uac_iso[i]) && usb_host_transfer_submit(uac_iso[i]) == ESP_OK) {
-            uac_iso_busy[i] = true;
-            started++;
-        }
-    }
-    printf("usb_uac stream=%s transfers=%d packets_per_transfer=%d\n",
-           started == UAC_TRANSFERS ? "STARTED" : "PARTIAL", started, UAC_PACKETS);
-}
-
-static void uac_send(uint32_t step)
-{
-    uint32_t len = ruzina_legacy_uac_control(step, uac_ctrl->data_buffer);
-    uac_ctrl->num_bytes = (int)len;
-    uac_ctrl->device_handle = device;
-    uac_ctrl->bEndpointAddress = 0;
-    if (len && usb_host_transfer_submit_control(client, uac_ctrl) == ESP_OK) uac_ctrl_busy = true;
-    else { uac_ctrl_errors++; uac_step = UAC_OFF; }
-}
-
-/* SET_INTERFACE, then SET_CUR 48 kHz when the endpoint takes it, then stream. */
-static void uac_ctrl_done(usb_transfer_t *transfer)
-{
-    uac_ctrl_busy = false;
-    if (transfer->status != USB_TRANSFER_STATUS_COMPLETED) {
-        uac_ctrl_errors++;
-        printf("usb_uac_control step=%d status=%d\n", uac_step, transfer->status);
-        uac_step = UAC_OFF;
-        return;
-    }
-    if (uac_step == UAC_SET_ALT && uac_info[7]) {
-        uac_step = UAC_SET_RATE;
-        uac_send(1);
-        return;
-    }
-    if (uac_step == UAC_SET_ALT || uac_step == UAC_SET_RATE) {
-        uac_step = UAC_STREAMING;
-        uac_start_stream();
-    }
-}
-
-static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
-{
-    if (!ruzina_legacy_uac_select((const uint8_t *)config, config->wTotalLength, speed == USB_SPEED_HIGH, uac_info)) {
-        printf("usb_uac select=NONE\n");
-        return;
-    }
-    uac_interface = (uint8_t)uac_info[0];
-    esp_err_t err = usb_host_interface_claim(client, device, uac_interface, (uint8_t)uac_info[1]);
-    if (err == ESP_OK) err = usb_host_transfer_alloc(64, 0, &uac_ctrl);
-    if (err == ESP_OK) {
-        uac_ctrl->callback = uac_ctrl_done;
-        uac_step = UAC_SET_ALT;
-        uac_send(0);
-    }
-    printf("usb_uac interface=%" PRIu32 " alt=%" PRIu32 " ep=%02" PRIx32 " mps=%" PRIu32 " channels=%" PRIu32
-           " bytes=%" PRIu32 " rate=%" PRIu32 " freq_control=%" PRIu32 " headphones=3/4 claim=%s\n",
-           uac_info[0], uac_info[1], uac_info[2], uac_info[3], uac_info[4], uac_info[5], uac_info[6], uac_info[7],
-           esp_err_to_name(err));
-    fflush(stdout);
-}
-
-/* Waits for every audio transfer to leave the host, then frees and releases. */
-static void uac_stop(void)
-{
-    if (uac_interface == 0xff) return;
-    uac_step = UAC_OFF;
-    for (int i = 0; i < 50; ++i) {
-        bool busy = uac_ctrl_busy;
-        for (int t = 0; t < UAC_TRANSFERS; ++t) busy |= uac_iso_busy[t];
-        if (!busy) break;
-        usb_host_client_handle_events(client, pdMS_TO_TICKS(10));
-    }
-    uint32_t stats[3];
-    ruzina_legacy_uac_stats(stats);
-    bool busy = uac_ctrl_busy;
-    for (int t = 0; t < UAC_TRANSFERS; ++t) busy |= uac_iso_busy[t];
-    if (!busy) {
-        for (int t = 0; t < UAC_TRANSFERS; ++t)
-            if (uac_iso[t]) { usb_host_transfer_free(uac_iso[t]); uac_iso[t] = NULL; }
-        if (uac_ctrl) { usb_host_transfer_free(uac_ctrl); uac_ctrl = NULL; }
-    }
-    esp_err_t release = usb_host_interface_release(client, device, uac_interface);
-    printf("usb_uac_stop transfers=%" PRIu32 " packets=%" PRIu32 " frames=%" PRIu32 " tone_packets=%" PRIu32
-           " iso_errors=%" PRIu32 " packet_errors=%" PRIu32 " control_errors=%" PRIu32 " fill_errors=%" PRIu32
-           " freed=%s release=%s\n", uac_completed, stats[0], stats[1], stats[2], uac_iso_errors, uac_packet_errors,
-           uac_ctrl_errors, uac_fill_errors, busy ? "NO_STILL_BUSY" : "YES", esp_err_to_name(release));
-    uac_interface = 0xff;
-    uac_completed = uac_iso_errors = uac_packet_errors = uac_ctrl_errors = uac_fill_errors = 0;
-}
+#include "uac_driver.inc"
 #endif
 
 static void lib_task(void *unused)
@@ -534,10 +340,10 @@ static void client_task(void *unused)
         }
         if (gone && device) {
 #if CONFIG_RUZINA_USB_HOST_UAC
-            uac_stop();
+            if (!uac_stop()) continue;
 #endif
 #if CONFIG_RUZINA_USB_HOST_MIDI
-            midi_stop();
+            if (!midi_stop()) continue;
 #endif
             gone = false;
             usb_host_device_close(client, device);
@@ -545,6 +351,10 @@ static void client_task(void *unused)
             printf("usb_detach n=%" PRIu32 "\n", ++detaches);
             fflush(stdout);
         }
+#if CONFIG_RUZINA_USB_HOST_UAC
+        uac_recover_poll();
+        uac_report();
+#endif
 #if CONFIG_RUZINA_USB_HOST_MIDI
         midi_retry();
 #endif

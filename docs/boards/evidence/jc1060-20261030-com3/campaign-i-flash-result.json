@@ -1,0 +1,10 @@
+{
+  "status": "FAILED_STOP_AND_INSPECT",
+  "app_sha256": "0d4d07fa79d2eef299575304ed11258d1d071d8bdace84f35d793b176d551d85",
+  "plan_sha256": "18022505a4821fda7c4ce55be749bcc8e9eab9bb57c4e590b76631a5380cbc92",
+  "flash_write_attempted": false,
+  "efuse_write": false,
+  "reset_requested": false,
+  "error": "",
+  "programmer_log_sha256": "93ca39cc90467ec360e3523070317164c79fea7ac833b10cd8c47e4e8c36574d"
+}

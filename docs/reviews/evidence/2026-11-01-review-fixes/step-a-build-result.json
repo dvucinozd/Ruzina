@@ -1,0 +1,22 @@
+{
+  "status": "BUILD_PACKAGE_PASS_NOT_FLASHED",
+  "variant": "deck-engine",
+  "app_sha256": "663e99902f8e5415e797af19acb3072dce121658458271aae789cdb6a93988b7",
+  "app_bytes": 808256,
+  "source_commit": "b35dcd39f4c1ddb9f4b253d6af89110ee68a2335",
+  "manifest_path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\step-a-deck-engine-build-3\\manifest.json",
+  "manifest_sha256": "4215fa46023c250f25b515f995a6bb22be739ff6f278c800624c3f8cb4e919b1",
+  "uac_fill_stack_estimate": 3104,
+  "load_run_stack_estimate": 73008,
+  "hardware_access": false,
+  "files": [
+    {
+      "path": "firmware-idf/legacy-jc1060/rust-core/src/deck_play.rs",
+      "sha256": "4a83796e200fdc18886280f8b42a5b4eb0eaf393d3d847f29fa473a501ca0902"
+    },
+    {
+      "path": "firmware-idf/legacy-jc1060/rust-core/src/deck_play/tests.rs",
+      "sha256": "8cb0e8c000d544aae15d9db7df36aeb9c161a64cd4d827130ceb20fee1a14c38"
+    }
+  ]
+}

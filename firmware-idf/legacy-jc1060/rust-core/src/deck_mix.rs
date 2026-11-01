@@ -49,6 +49,8 @@ pub(crate) struct Mix {
     /// With `deck-engine`, the product deck engine owns playback and pitch.
     #[cfg(feature = "deck-engine")]
     engine: crate::deck_engine::Engine,
+    #[cfg(feature = "deck-engine")]
+    engine_revision: u32,
 }
 
 impl Mix {
@@ -66,6 +68,8 @@ impl Mix {
             limited: 0,
             #[cfg(feature = "deck-engine")]
             engine: crate::deck_engine::Engine::new(),
+            #[cfg(feature = "deck-engine")]
+            engine_revision: 0,
         }
     }
 
@@ -168,6 +172,9 @@ impl Mix {
         });
         for (deck, reader) in readers.iter().enumerate() {
             reader.commit(&RINGS[deck]);
+            if playing[deck] {
+                RINGS[deck].record_supply(self.pitch[deck]);
+            }
             if report.underflow_frames[deck] != 0 && !reader.ended(&RINGS[deck]) {
                 self.underruns[deck] = self.underruns[deck].wrapping_add(1);
             }
@@ -182,6 +189,19 @@ impl Mix {
             .progress(&self.readers, u32::from(report.rendered_frames));
     }
 
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn tick(&mut self) {
+        self.engine.transport();
+        if self.engine_revision != self.engine.revision() {
+            self.engine_revision = self.engine.revision();
+            self.position = RENDER_BLOCK_FRAMES;
+            if let Some(graph) = self.graph.as_mut() {
+                graph.reset_deck(0);
+                graph.reset_deck(1);
+            }
+        }
+    }
+
     /// Fills one packet of MAIN and headphone frames; silent unless the
     /// device runs at the render rate.
     pub(crate) fn fill(
@@ -192,6 +212,25 @@ impl Mix {
         playing: [bool; 2],
     ) {
         self.start();
+        #[cfg(feature = "deck-engine")]
+        self.tick();
+        if crate::media_signal::muted() {
+            // Clear in place: constructing a whole 2 KiB RenderOutputBlock
+            // temporary here exceeds the USB callback stack-chain budget.
+            self.block.main.fill(PcmFrame::default());
+            self.block.headphones.fill(PcmFrame::default());
+            for pfl in &mut self.block.pfl {
+                pfl.fill(PcmFrame::default());
+            }
+            self.position = RENDER_BLOCK_FRAMES;
+            if let Some(graph) = self.graph.as_mut() {
+                graph.reset_deck(0);
+                graph.reset_deck(1);
+            }
+            main.fill(PcmFrame::default());
+            headphones.fill(PcmFrame::default());
+            return;
+        }
         if device_rate != RENDER_SAMPLE_RATE_HZ {
             main.fill(PcmFrame::default());
             headphones.fill(PcmFrame::default());

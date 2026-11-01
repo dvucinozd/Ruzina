@@ -93,6 +93,8 @@ void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
         case 9: snprintf(note, sizeof(note), "D%" PRIu32 " load failed, stage %" PRIu32, deck + 1, low & 255); break;
         case 10: snprintf(note, sizeof(note), "D%" PRIu32 " %s", deck + 1,
                           (low & 1) ? "read/decode fault" : "track ended"); break;
+        case 12: snprintf(note,sizeof(note),"Detail pending - pause decks to view"); break;
+        case 13: printf("producer_stats max_gap_us=%" PRIu32 "\n",value); return;
         default: return;
     }
     LOAD_NOTE(note);
@@ -229,7 +231,7 @@ static void owner(void *unused)
         if(count!=1 || first>=card.csd.capacity) err=ESP_ERR_INVALID_ARG;
         else { reads++;err=sdmmc_read_sectors(&card,bounce,first,count); }
         /* sdmmc_read_sectors is synchronous: transfer has ended on return. Rust
-         * copies exactly512 bytes while holding its short state critical section. */
+         * copies exactly 512 bytes while holding its short state critical section. */
         int32_t completed=ruzina_legacy_bridge_complete(err,err==ESP_OK?bounce:NULL,err==ESP_OK?512:0);
         if(completed!=0) {err=ESP_ERR_INVALID_STATE;break;}
         if(err!=ESP_OK) break;

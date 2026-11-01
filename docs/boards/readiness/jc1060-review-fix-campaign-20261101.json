@@ -1,0 +1,379 @@
+{
+  "status": "CANDIDATE_I01_TIMING_FAIL_S07_RESTORED",
+  "candidate_app_sha256": "0d4d07fa79d2eef299575304ed11258d1d071d8bdace84f35d793b176d551d85",
+  "candidate_all_fill_max_us": 12260,
+  "registered_rejection_us": 6000,
+  "candidate_underruns": [
+    0,
+    0
+  ],
+  "candidate_playback": "NOT_RUN",
+  "cases": {
+    "I01": "FAIL_TIMING_BOOT_DISPLAY_OBSERVED",
+    "I02": "NOT_RUN",
+    "I03": "NOT_RUN",
+    "I04": "NOT_RUN",
+    "I05": "NOT_RUN",
+    "I06": "NOT_RUN",
+    "I07": "NOT_RUN",
+    "I08": "NOT_RUN",
+    "I09": "NOT_RUN",
+    "I10": "NOT_RUN",
+    "I11": "NOT_RUN",
+    "I12": "NOT_RUN",
+    "I13": "NOT_RUN"
+  },
+  "candidate_timing_phase": "UNRESOLVED_AGGREGATE_INCLUDES_PREFILL_AND_CALLBACK",
+  "current_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "current_boot": "VERIFIED",
+  "fresh_restore_listening": "OWNER_CONFIRMED_NORMAL_SOUND_BOTH_EARS_PAUSE_CUE",
+  "history_plans_before_candidate": 25,
+  "next_history_plans": 27,
+  "historical_reconciliation": {
+    "status": "OFFLINE_ANCESTRY_VERIFIED_LIVE_IDENTITY_OPEN",
+    "device_access": false,
+    "backup_copies_verified": 4,
+    "history": [
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s04-reviewed-telemetry-plan\\plan.json",
+        "sha256": "84fde618c4e630e68948ab6b12d3641a3796caeedf5c17ca4fb1742f4003dab6",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s05-write-recovery-plan\\plan.json",
+        "sha256": "566b3e6c58bb13f9729d94533bed10aab084b1eb4f14791e09cdcbffc5c00a06",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-write-recovery-plan\\plan.json",
+        "sha256": "4feabf5456f86a3a6143f766ab6d9d442b5ac0689129551ea450db023be84ad5",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-sd-write-recovery-plan\\plan.json",
+        "sha256": "d5e11135dfcb15001849f25e69aff7ddf19bc93985af633ce296eba662816f95",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-sd-file-reviewed-write-plan\\plan.json",
+        "sha256": "dadbb16b2dec7006839a5d93676f7d4fed051c1107ee8ad3b393854f5d2d7af5",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-sd-file-timing-write-plan\\plan.json",
+        "sha256": "adedf325eb2f6e5929b0966d0476933804b037e23d4a7927598feecadec8bd80",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-bridge-write-plan\\plan.json",
+        "sha256": "82585d0dfcf53bf0a9e1e1795922e1d1194b6f8f93b67288c95934ff053248d9",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-exfat-write-plan\\plan.json",
+        "sha256": "e2d2565581002013b85d4bb5325874c5a17d850458d488d762add7ba41ddb3c3",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-load-write-plan\\plan.json",
+        "sha256": "fce1261c55a5a2e268fd4059e9cb5a032a79c24f3362e1b20ac055a382f6b81a",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-load-fix-write-plan\\plan.json",
+        "sha256": "191c73aaefdd339d88ff1f273466151f6eb7802691d12584c2cfe52ebf9126f7",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-load-display-write-plan\\plan.json",
+        "sha256": "64e21688f03d96a6953afe95e5b2b0e9fdbfe95c88d9e467ee573edd2a2218e6",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-load-touch-write-plan\\plan.json",
+        "sha256": "8881509f2c8d082129849d9044c7baf9cfb00d798d6f89dfc85115f6815e1381",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-host-write-plan\\plan.json",
+        "sha256": "60403d54574ba8e8c2b191c821c7569d2050c6837ff17d3a0498f7f755ed8ab3",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-host-2-write-plan\\plan.json",
+        "sha256": "ed7ae4c0cae3bf590ec9e33fbb948e9c2ead3f3fd5cfbbb5aac511d1b159b208",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-write-plan\\plan.json",
+        "sha256": "a6ba74be546984fac88a952757cfb8238a28c62eea249ec07394e5f59c2b1d60",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-2-write-plan\\plan.json",
+        "sha256": "634538a8ee2c381a7a2aadbb50239070ef2ae89036db21cb90158ab95d622c49",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-3-write-plan\\plan.json",
+        "sha256": "fec51cfba20489b387741d2be5aa7a776fca7976da96e2c651e57ee1c052c747",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-led-write-plan\\plan.json",
+        "sha256": "cf7549e5a83039a8c953efc2090d00d669c710772b12dc7b253b7fc2a02aa736",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-led-2-write-plan\\plan.json",
+        "sha256": "8ef6755ce0168a7ab5200343aac7c0e28caf7227a11ae406517e8727942c4ae6",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-deck-ui-write-plan\\plan.json",
+        "sha256": "07381298b2707fb35c7390fb37bf3d15939858512a9ff2eeb3b780a8f2aaec91",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-deck-audio-write-plan\\plan.json",
+        "sha256": "7ee8681243b5c74849e682ba671c265a3007f27740dadaf9a9ca7e16f3d6b9a0",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-deck-audio-2-write-plan\\plan.json",
+        "sha256": "b0e17fdb09e69b6b5a98b00de9a677da7066b6472e9b61ba704a265a7ecdfb5c",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-write-plan\\plan.json",
+        "sha256": "6b3d32ad0a1827e1b773401a92fb413287445644972ac6412a4fdeba9a6f50b7",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s08-deck-mix-write-plan\\plan.json",
+        "sha256": "cfb7211d4da1cbdfa4fc13f237f89a08cde9e69e55288a2e3d709b858f7a9d45",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      },
+      {
+        "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s09-deck-engine-write-plan\\plan.json",
+        "sha256": "478f6f96281c5d9bcf0d27c8f32b36652cb067c5cba9a6e14b46fb6e2808931a",
+        "writes": 3,
+        "restore_and_tail": "PASS"
+      }
+    ],
+    "captures": [
+      {
+        "stage": "s08-deck-mix",
+        "plan_sha256": "cfb7211d4da1cbdfa4fc13f237f89a08cde9e69e55288a2e3d709b858f7a9d45",
+        "app_sha256": "55820e840d428023ff2c5d43f601e1068356e109931137b0b22e853c9b6c1058",
+        "elf_sha256": "73531953e689a6378f5093e14542d5d01a916e1bacaeb062192801ef2f8e4fbf",
+        "manifest": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s08-deck-mix-build-1\\manifest.json",
+        "source_commit": "4540ec9ac7cc57b22de924d53855061f67a766fc",
+        "dirty_status": "",
+        "log_sha256": "5a33133ba7cc86a87eaefd3a41b1a2575bc649c7899728b3177afcf620668fc1",
+        "log_bytes": 99723,
+        "boot_elf_prefixes": [
+          "73531953e"
+        ],
+        "fill_max_us": 9682,
+        "underruns": [
+          [
+            0,
+            0
+          ]
+        ],
+        "fatal_markers": [],
+        "operator_listening_acceptance": "NOT_CAPTURED",
+        "last_recorded_deck_engine_stats": [],
+        "current_device_identity": "NOT_READ"
+      },
+      {
+        "stage": "s09-deck-engine",
+        "plan_sha256": "478f6f96281c5d9bcf0d27c8f32b36652cb067c5cba9a6e14b46fb6e2808931a",
+        "app_sha256": "e9eeae92bc2e29f0ce4ba929a38b661592f6edf88621c0ffc3e5dce34c727a5a",
+        "elf_sha256": "e6f0e11002febeebd9ea582d887f951aeb38005772f617bc53ea185e83ace8d3",
+        "manifest": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s09-deck-engine-build-1\\manifest.json",
+        "source_commit": "3a1dea542e137e6c1a034d43f3610cdf78c64f08",
+        "dirty_status": "",
+        "log_sha256": "e9e59ccdcd6ef0ef1b9ecdc338bf3ddfb4ae89ccccbd7eae2cc3225a664ae74f",
+        "log_bytes": 290073,
+        "boot_elf_prefixes": [
+          "e6f0e1100"
+        ],
+        "fill_max_us": 11175,
+        "underruns": [
+          [
+            7592,
+            0
+          ]
+        ],
+        "fatal_markers": [],
+        "operator_listening_acceptance": "NOT_CAPTURED",
+        "last_recorded_deck_engine_stats": [
+          "deck_engine_stats d1_ms=6881 d1_flags=1 d2_ms=0 d2_flags=0 unsupported=1838 refused_loads=2"
+        ],
+        "current_device_identity": "NOT_READ"
+      }
+    ],
+    "last_historical_plan_sha256": "478f6f96281c5d9bcf0d27c8f32b36652cb067c5cba9a6e14b46fb6e2808931a",
+    "candidate_app_sha256": "0d4d07fa79d2eef299575304ed11258d1d071d8bdace84f35d793b176d551d85",
+    "candidate_sources": 269,
+    "candidate_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\campaign-i-offline-plan\\plan.json",
+    "candidate_plan_sha256": "18022505a4821fda7c4ce55be749bcc8e9eab9bb57c4e590b76631a5380cbc92",
+    "physical_campaign": "NOT_RUN",
+    "installed_image": "NOT_READ",
+    "accepted_fallback": "s07 deck-play is last repository listening checkpoint; not automatically a direct rollback from s09",
+    "flash_gate": "Must match live identity/security and complete predecessor sectors; this plan assumes historical s09 ancestry only."
+  },
+  "captured_files": [
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/pre-campaign-passive-result.json",
+      "sha256": "22f93a2681a0d44fdcbf83434970486061f9efcf794f4d294ac8e2332126ef08",
+      "bytes": 300
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/pre-campaign-passive-run.log",
+      "sha256": "932ee65d54790bb600fa156776c4bc19302f4c0b35465bea30dc9fd024247390",
+      "bytes": 1601
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/live-predecessor-check-programmer.log",
+      "sha256": "4237fff9860514dd758f5cd789aa7208dc792c8af70957548d87933e652bbeea",
+      "bytes": 349
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/live-predecessor-check-result.json",
+      "sha256": "f0fc6aff3e35d85a6db1e203431f45e27b9e0e81644b03d8e001df63bcd7a50b",
+      "bytes": 1455
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-flash-programmer.log",
+      "sha256": "93ca39cc90467ec360e3523070317164c79fea7ac833b10cd8c47e4e8c36574d",
+      "bytes": 235
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-flash-result.json",
+      "sha256": "14f51973f00d978670acd118c0009395f0e84bf1a6cba541df3a5933fb24b2cd",
+      "bytes": 417
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-flash-r2-programmer.log",
+      "sha256": "c5d3d80fb43be158cba2b2125e14a148d1d337ecf5c2d823ad1c773040a19b92",
+      "bytes": 1612
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-flash-r2-result.json",
+      "sha256": "7a85c15b225ffbac7b2bfb73a91dbbf9ebb8aa0674e3e5b9b8a23396138730d5",
+      "bytes": 960
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-boot-idle-result.json",
+      "sha256": "b5b9da41ac33c9254700982712266eef6dfea945ab85e01e357338c2613a1b70",
+      "bytes": 658
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-boot-idle-run.log",
+      "sha256": "808f4a8492056e562b649297fe786a473430fe43ad4ccfda4134d3ad84def83e",
+      "bytes": 139
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-cold-boot-result.json",
+      "sha256": "820a858e10c4a74744401f36cd17554013555099393e905c89f921415d6aa488",
+      "bytes": 2107
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-cold-boot-run.log",
+      "sha256": "9c2387a045ed7611e4d8665e4f52aa07b22ddc62a404c81d3092a6e217e2d785",
+      "bytes": 15025
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-flash-programmer.log",
+      "sha256": "3c2d05c0bf6129bbb2f4c1d6240174de52b2210c69c3778cd4f3472990acbf28",
+      "bytes": 1612
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-flash-result.json",
+      "sha256": "84224d61114066d333e9b605c1931cf2400514c66d600ee556cc1e9457655878",
+      "bytes": 1001
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-cold-result.json",
+      "sha256": "9b0a1007bd73acc6d070903fecf1fda711d5f6525c380bdc582a3c1c23cf393e",
+      "bytes": 1171
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-cold-run.log",
+      "sha256": "7ac8fc4a8544b1acc9950e69111163cc357a6f8e69eff3ff9cd863607f61a188",
+      "bytes": 13887
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-playback-result.json",
+      "sha256": "1c60cefbe1afd1c4264d9c6f1500853789a80c5da481a64ddff27f8c2f6496b0",
+      "bytes": 4059
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-playback-run.log",
+      "sha256": "e9c8bbfa5c2354c0e204a46e5fcca0ae97ca54eded88a1c13a2bf36f94faf1c2",
+      "bytes": 11043
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-playback-2-result.json",
+      "sha256": "3fa06cd84a9f67068edd99717d36eaca267814c124fcfa2c0f95526868278d6f",
+      "bytes": 3895
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/campaign-i-return-s07-playback-2-run.log",
+      "sha256": "d45e98f31f5b02d766537be5bae05dd1acd723c152a3958fd668151ee45585d8",
+      "bytes": 15904
+    }
+  ],
+  "operator_confirmation": {
+    "question": "Vraćeni deck-play je uredno bootao, a playback monitor je spreman. Učitaj na deck 1 poznatu pjesmu koja je ranije radila, pokreni je oko 20 sekundi pa provjeri Pause i CUE. Na dosadašnjoj glasnoći potvrdi čuješ li čist zvuk u oba uha i rade li komande kao prije.",
+    "answer": "sve je ok",
+    "scope": "RESTORED_S07_NORMAL_PLAYBACK_ONLY",
+    "date": "2026-11-01"
+  },
+  "restored_playback": {
+    "log_sha256": "d45e98f31f5b02d766537be5bae05dd1acd723c152a3958fd668151ee45585d8",
+    "played_frames": 751968,
+    "output_rate_hz": 48000,
+    "source_rates_hz": [
+      44100
+    ],
+    "underruns": 0,
+    "usb_iso_errors": 0,
+    "usb_packet_errors": 0,
+    "final_stats": {
+      "played": 751968,
+      "underruns": 0,
+      "buffered": 65281,
+      "rate": 44100
+    },
+    "note": "Short restore confirmation; no new two-deck/MAIN or soak qualification. Passive window has no boot line; preceding cold capture binds the image."
+  },
+  "serial_monitor": "CLOSED"
+}

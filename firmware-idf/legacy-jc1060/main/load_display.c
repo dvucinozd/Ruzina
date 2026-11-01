@@ -24,6 +24,7 @@ extern void ruzina_legacy_play_load(uint32_t deck, uint32_t index);
 /* Rust (deck_engine.rs): position ms and flags (1 loaded, 2 playing) per
  * deck, published atomically for this task. */
 extern void ruzina_legacy_engine_status(uint32_t *out);
+extern int32_t ruzina_legacy_engine_track(uint32_t deck);
 #endif
 
 #define WIDTH 1024
@@ -263,10 +264,14 @@ static void ui_task(void *unused)
 #if CONFIG_RUZINA_DECK_ENGINE
         uint32_t engine[4];
         ruzina_legacy_engine_status(engine);
+        int32_t confirmed[2] = {ruzina_legacy_engine_track(1), ruzina_legacy_engine_track(2)};
 #endif
         portENTER_CRITICAL(&lock);
 #if CONFIG_RUZINA_DECK_ENGINE
         for (unsigned deck = 0; deck < 2; ++deck) {
+            if (shared.deck_track[deck] != confirmed[deck]) {
+                shared.deck_track[deck] = confirmed[deck]; shared.version++;
+            }
             uint32_t seconds = engine[2 * deck] / 1000, flags = engine[2 * deck + 1];
             if (shared.deck_seconds[deck] != seconds || shared.deck_flags[deck] != flags) {
                 shared.deck_seconds[deck] = seconds;
@@ -375,7 +380,9 @@ void ruzina_load_display_load(uint32_t deck)
     portENTER_CRITICAL(&lock);
     int32_t index = shared.selected;
     if (index >= 0) {
+#if !CONFIG_RUZINA_DECK_ENGINE
         shared.deck_track[deck - 1] = index;
+#endif
         shared.version++;
     }
     portEXIT_CRITICAL(&lock);

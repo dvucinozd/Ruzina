@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-01",
+  "read_only": true,
+  "prs": [
+    {
+      "number": 71,
+      "state": "open",
+      "merged": false,
+      "head": "4540ec9ac7cc57b22de924d53855061f67a766fc",
+      "base": "bd52402160af27a3e234f7647d703a847644817b",
+      "base_branch": "main",
+      "url": "https://github.com/dvucinozd/Ruzina/pull/71"
+    },
+    {
+      "number": 72,
+      "state": "open",
+      "merged": false,
+      "head": "b35dcd39f4c1ddb9f4b253d6af89110ee68a2335",
+      "base": "4540ec9ac7cc57b22de924d53855061f67a766fc",
+      "base_branch": "ogranak/jc1060-deck-mix",
+      "url": "https://github.com/dvucinozd/Ruzina/pull/72"
+    }
+  ]
+}

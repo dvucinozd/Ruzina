@@ -22,8 +22,8 @@ use ruzina_audio_runtime::decode::{
 };
 use ruzina_audio_runtime::pcm_stream::{PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock};
 use ruzina_audio_runtime::wav::{
-    CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16SourceDescriptor,
-    parse_chunk_header, parse_pcm16_format, parse_riff_header,
+    CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16Format,
+    WavPcm16SourceDescriptor, parse_chunk_header, parse_pcm16_format, parse_riff_header,
 };
 
 /// Ring capacity in source frames: about 1.5 s at 44.1 kHz, 256 KiB of PSRAM.
@@ -31,10 +31,12 @@ pub(crate) const RING_FRAMES: u32 = 1 << 16;
 
 /// Decoder actions one prime may take before its first block (ID3 tags
 /// with artwork are read through 512 bytes at a time).
+#[cfg(all(test, feature = "deck-engine"))]
 const PRIME_ACTIONS: u32 = 8192;
 
 /// Decoder actions per producer poll, so a selection is served promptly.
-const POLL_ACTIONS: u32 = 64;
+const POLL_ACTIONS: u32 = 16;
+const POLL_BUDGET_US: u64 = 1000;
 
 /// Headphone gain at full Headphone Level, Q15 (-12 dBFS ceiling).
 /// The single-deck consumer below (`Output`, `render`, the gain) is unused
@@ -49,6 +51,10 @@ pub(crate) struct Ring {
     head: AtomicU32,
     /// Next slot the consumer reads; only the consumer stores it.
     tail: AtomicU32,
+    /// Single-writer descriptor sequence. All sequence and descriptor accesses
+    /// use SeqCst: a validated read cannot straddle any writer mutation in
+    /// the single total order. PCM slot ownership still uses head/tail.
+    descriptor_seq: AtomicU32,
     epoch: AtomicU32,
     /// Where the current epoch's frames begin.
     start: AtomicU32,
@@ -58,6 +64,8 @@ pub(crate) struct Ring {
     origin: AtomicU32,
     /// The epoch whose source has delivered its last frame.
     ended: AtomicU32,
+    low_supply_us: AtomicU32,
+    prime_max_us: AtomicU32,
 }
 
 impl Ring {
@@ -66,11 +74,14 @@ impl Ring {
             frames: AtomicPtr::new(core::ptr::null_mut()),
             head: AtomicU32::new(0),
             tail: AtomicU32::new(0),
+            descriptor_seq: AtomicU32::new(0),
             epoch: AtomicU32::new(0),
             start: AtomicU32::new(0),
             rate: AtomicU32::new(0),
             origin: AtomicU32::new(0),
             ended: AtomicU32::new(0),
+            low_supply_us: AtomicU32::new(u32::MAX),
+            prime_max_us: AtomicU32::new(0),
         }
     }
 
@@ -78,6 +89,23 @@ impl Ring {
     #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
     pub(crate) fn epoch(&self) -> u32 {
         self.epoch.load(Ordering::Acquire)
+    }
+
+    /// Producer-only receipt snapshot: no descriptor writer can overlap it.
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn seek_position(&self) -> (u32, u32, bool) {
+        let d = self
+            .snapshot()
+            .expect("single producer owns descriptor writes");
+        (
+            d.epoch,
+            if d.rate == 0 {
+                0
+            } else {
+                (u64::from(d.origin) * 1000 / u64::from(d.rate)) as u32
+            },
+            d.ended == d.epoch && self.head.load(Ordering::Acquire) == d.start,
+        )
     }
 
     /// Hands the ring its storage once; later calls keep the first.
@@ -107,6 +135,27 @@ impl Ring {
         RING_FRAMES - head.wrapping_sub(tail)
     }
 
+    pub(crate) fn supply_us(&self, pitch: i16) -> u64 {
+        let Some(d) = self.snapshot() else { return 0 };
+        if d.rate == 0 {
+            return 0;
+        }
+        let frames = self
+            .head
+            .load(Ordering::Acquire)
+            .wrapping_sub(self.tail.load(Ordering::Acquire))
+            .min(RING_FRAMES);
+        let speed = (10_000i32 + i32::from(pitch)).max(1) as u64;
+        u64::from(frames) * 1_000_000 * 10_000 / (u64::from(d.rate) * speed)
+    }
+
+    pub(crate) fn record_supply(&self, pitch: i16) {
+        self.low_supply_us.fetch_min(
+            self.supply_us(pitch).min(u64::from(u32::MAX)) as u32,
+            Ordering::Relaxed,
+        );
+    }
+
     /// Producer: appends all of `frames`, or nothing when they do not fit.
     pub(crate) fn push(&self, frames: &[PcmFrame]) -> bool {
         if frames.len() > self.free() as usize {
@@ -134,18 +183,56 @@ impl Ring {
 
     /// As `restart`, for a source whose first frame is `origin`.
     pub(crate) fn restart_at(&self, rate: u32, origin: u32) {
+        self.descriptor_seq.fetch_add(1, Ordering::SeqCst);
         self.start
-            .store(self.head.load(Ordering::Relaxed), Ordering::Relaxed);
-        self.rate.store(rate, Ordering::Relaxed);
-        self.origin.store(origin, Ordering::Relaxed);
-        self.epoch.fetch_add(1, Ordering::Release);
+            .store(self.head.load(Ordering::Relaxed), Ordering::SeqCst);
+        self.rate.store(rate, Ordering::SeqCst);
+        self.origin.store(origin, Ordering::SeqCst);
+        // Zero is reserved for "no source" and never matches a terminal epoch.
+        let epoch = self.epoch.load(Ordering::SeqCst).wrapping_add(1).max(1);
+        self.epoch.store(epoch, Ordering::SeqCst);
+        self.ended.store(0, Ordering::SeqCst);
+        self.descriptor_seq.fetch_add(1, Ordering::SeqCst);
     }
 
     /// Producer: the current source has pushed its last frame.
     pub(crate) fn end(&self) {
+        self.descriptor_seq.fetch_add(1, Ordering::SeqCst);
         self.ended
-            .store(self.epoch.load(Ordering::Relaxed), Ordering::Release);
+            .store(self.epoch.load(Ordering::SeqCst), Ordering::SeqCst);
+        self.descriptor_seq.fetch_add(1, Ordering::SeqCst);
     }
+
+    /// One bounded attempt. The producer may be preempted mid-publication;
+    /// the audio consumer must not spin waiting for that lower-priority task.
+    fn snapshot(&self) -> Option<Descriptor> {
+        self.snapshot_with(|| {})
+    }
+
+    fn snapshot_with(&self, after_fields: impl FnOnce()) -> Option<Descriptor> {
+        let seq = self.descriptor_seq.load(Ordering::SeqCst);
+        if !seq.is_multiple_of(2) {
+            return None;
+        }
+        let descriptor = Descriptor {
+            epoch: self.epoch.load(Ordering::SeqCst),
+            start: self.start.load(Ordering::SeqCst),
+            rate: self.rate.load(Ordering::SeqCst),
+            origin: self.origin.load(Ordering::SeqCst),
+            ended: self.ended.load(Ordering::SeqCst),
+        };
+        after_fields();
+        (self.descriptor_seq.load(Ordering::SeqCst) == seq).then_some(descriptor)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Descriptor {
+    epoch: u32,
+    start: u32,
+    rate: u32,
+    origin: u32,
+    ended: u32,
 }
 
 /// The consumer's view of the ring.
@@ -170,14 +257,16 @@ impl Reader {
 
     /// Follows a new epoch; returns true when the source changed.
     pub(crate) fn sync(&mut self, ring: &Ring) -> bool {
-        let epoch = ring.epoch.load(Ordering::Acquire);
-        if epoch == self.epoch {
+        let Some(descriptor) = ring.snapshot() else {
+            return false;
+        };
+        if descriptor.epoch == self.epoch {
             return false;
         }
-        self.epoch = epoch;
-        self.tail = ring.start.load(Ordering::Relaxed);
-        self.rate = ring.rate.load(Ordering::Relaxed);
-        self.position = ring.origin.load(Ordering::Relaxed);
+        self.epoch = descriptor.epoch;
+        self.tail = descriptor.start;
+        self.rate = descriptor.rate;
+        self.position = descriptor.origin;
         ring.tail.store(self.tail, Ordering::Release);
         true
     }
@@ -201,7 +290,8 @@ impl Reader {
     }
 
     pub(crate) fn ended(&self, ring: &Ring) -> bool {
-        ring.ended.load(Ordering::Acquire) == self.epoch
+        ring.snapshot()
+            .is_some_and(|d| d.epoch == self.epoch && d.ended == self.epoch && self.epoch != 0)
     }
 
     /// The current epoch's source rate; 0 while no source is ready.
@@ -239,6 +329,10 @@ pub(crate) trait SourceFiles {
     /// Reads up to `out.len()` bytes at `offset`; `None` is an I/O failure.
     fn read_at(&mut self, file: &mut Self::File, offset: u64, out: &mut [u8]) -> Option<usize>;
     fn close(&mut self, file: Self::File);
+    /// Monotonic clock; default zero disables only the elapsed-time budget.
+    fn now_us(&self) -> u64 {
+        0
+    }
 }
 
 /// What the producer reports; scalars only reach C.
@@ -296,6 +390,35 @@ pub(crate) struct Producer<File> {
     read: [u8; SOURCE_READ_BYTES],
     source: Option<Source<File>>,
     generation: u32,
+    prime: Option<PrimeJob>,
+    opening: Option<Opening<File>>,
+    prime_started_us: u64,
+}
+struct Opening<File> {
+    file: File,
+    index: u32,
+    len: u64,
+    phase: OpenPhase,
+}
+#[derive(Clone, Copy)]
+enum OpenPhase {
+    Header,
+    Chunk {
+        position: u64,
+        end: u64,
+        format: Option<WavPcm16Format>,
+    },
+    Format {
+        position: u64,
+        next: u64,
+        end: u64,
+    },
+}
+
+#[derive(Clone, Copy)]
+enum PrimeJob {
+    Load { index: u32, codec: u32 },
+    Seek { index: u32, position_ms: u32 },
 }
 
 /// Initial decoder state, built at compile time. Building it as a value
@@ -305,7 +428,10 @@ static INITIAL_STORAGE: DecoderStorage = DecoderStorage::new();
 static INITIAL_CHECKPOINT: Mp3CheckpointStorage = Mp3CheckpointStorage::new();
 
 /// A heap copy of `initial`, never a stack temporary.
-fn boxed_copy<T: Clone>(initial: &'static T) -> Box<T> {
+/// # Safety
+/// Only use for audited inline storage with no ownership or self references;
+/// a byte copy must be a valid independent value, including its destructor.
+unsafe fn boxed_copy<T>(initial: &'static T) -> Box<T> {
     let mut slot = Box::<T>::new_uninit();
     // SAFETY: the decoder states are plain arrays and counters that own no
     // heap or pointers, so a bitwise copy equals their derived `Clone`; the
@@ -319,16 +445,24 @@ fn boxed_copy<T: Clone>(initial: &'static T) -> Box<T> {
 impl<File> Producer<File> {
     pub(crate) fn new() -> Self {
         Self {
-            storage: boxed_copy(&INITIAL_STORAGE),
-            checkpoints: core::array::from_fn(|_| boxed_copy(&INITIAL_CHECKPOINT)),
+            // SAFETY: these concrete audited storage types contain only inline
+            // decoder arrays/scalars, with no owning pointers or destructors.
+            storage: unsafe { boxed_copy(&INITIAL_STORAGE) },
+            checkpoints: core::array::from_fn(|_| unsafe { boxed_copy(&INITIAL_CHECKPOINT) }),
             encoded: vec![0u8; ENCODED_BUFFER_BYTES].into_boxed_slice(),
             read: [0; SOURCE_READ_BYTES],
             source: None,
             generation: 0,
+            prime: None,
+            opening: None,
+            prime_started_us: 0,
         }
     }
 
     fn close<F: SourceFiles<File = File>>(&mut self, files: &mut F) {
+        if let Some(opening) = self.opening.take() {
+            files.close(opening.file);
+        }
         if let Some(source) = self.source.take() {
             files.close(source.file);
         }
@@ -336,101 +470,213 @@ impl<File> Producer<File> {
 
     /// Opens track `index` and decodes its first block into a new ring
     /// epoch. The ring is silenced first, so the old track stops at once.
-    pub(crate) fn load<F: SourceFiles<File = File>>(
+    pub(crate) fn begin_load<F: SourceFiles<File = File>>(
         &mut self,
         files: &mut F,
         ring: &Ring,
         index: u32,
         path: Option<&str>,
-    ) -> Event {
+    ) -> Option<Event> {
+        self.prime = None;
+        self.prime_started_us = files.now_us();
         self.close(files);
         ring.restart(0);
-        let failed = |stage| Event::Failed { index, stage };
+        let failed = |stage| Some(Event::Failed { index, stage });
         let Some(path) = path.filter(|path| !path.is_empty()) else {
             return failed(1);
         };
-        let Some(mut file) = files.open(path) else {
+        let Some(file) = files.open(path) else {
             return failed(2);
         };
-        let file_len = files.len(&file);
-        let Some(stream) = self.open_stream(files, &mut file, file_len) else {
-            files.close(file);
-            return failed(3);
-        };
-        let codec = codec_number(stream.1);
-        self.source = Some(Source {
+        let len = files.len(&file);
+        self.generation = self.generation.wrapping_add(1).max(1);
+        self.opening = Some(Opening {
             file,
             index,
-            stream: Box::new(stream.0),
-            pending: None,
-            ended: false,
+            len,
+            phase: OpenPhase::Header,
         });
-        match self.decode(files, ring, PRIME_ACTIONS, true) {
-            Some(rate) => Event::Ready { index, codec, rate },
+        None
+    }
+
+    pub(crate) fn poll_prime<F: SourceFiles<File = File>>(
+        &mut self,
+        files: &mut F,
+        ring: &Ring,
+    ) -> Option<Event> {
+        if self.opening.is_some() {
+            return self.poll_open(files);
+        }
+        let job = self.prime?;
+        match self.decode(files, ring, POLL_ACTIONS, true) {
+            Some(0) => None, // Budget exhausted, keep decoder state for next turn.
+            Some(rate) => {
+                ring.prime_max_us.fetch_max(
+                    files
+                        .now_us()
+                        .saturating_sub(self.prime_started_us)
+                        .min(u64::from(u32::MAX)) as u32,
+                    Ordering::Relaxed,
+                );
+                self.prime = None;
+                Some(match job {
+                    PrimeJob::Load { index, codec } => Event::Ready { index, codec, rate },
+                    PrimeJob::Seek { index, position_ms } => Event::Seeked {
+                        index,
+                        position_ms,
+                        ok: true,
+                    },
+                })
+            }
             None => {
-                self.close(files);
+                self.prime = None;
                 ring.restart(0);
-                failed(4)
+                ring.end();
+                Some(match job {
+                    PrimeJob::Load { index, .. } => {
+                        self.close(files);
+                        Event::Failed { index, stage: 4 }
+                    }
+                    PrimeJob::Seek { index, position_ms } => {
+                        if let Some(s) = self.source.as_mut() {
+                            s.ended = true;
+                        }
+                        Event::Seeked {
+                            index,
+                            position_ms,
+                            ok: false,
+                        }
+                    }
+                })
             }
         }
     }
 
-    fn open_stream<F: SourceFiles<File = File>>(
-        &mut self,
-        files: &mut F,
-        file: &mut File,
-        file_len: u64,
-    ) -> Option<(SourceDecoder, AudioCodec)> {
-        let head = files.read_at(file, 0, &mut self.read)?;
-        if head < RIFF_HEADER_BYTES {
-            return None;
-        }
-        self.generation = self.generation.wrapping_add(1).max(1);
-        let magic = &self.read[..4];
-        if magic == b"RIFF" {
-            let descriptor = self.wav_descriptor(files, file, file_len)?;
-            return SourceDecoder::wav(descriptor, file_len, self.generation)
-                .map(|stream| (stream, AudioCodec::WavPcm16));
-        }
-        let codec = if magic == b"fLaC" {
-            AudioCodec::Flac
-        } else if &magic[..3] == b"ID3" || magic[0] == 0xff && magic[1] & 0xe0 == 0xe0 {
-            AudioCodec::Mp3
-        } else {
-            return None;
+    pub(crate) fn priming(&self) -> bool {
+        self.prime.is_some() || self.opening.is_some()
+    }
+
+    /// One metadata read per turn, including long RIFF chunk chains.
+    fn poll_open<F: SourceFiles<File = File>>(&mut self, files: &mut F) -> Option<Event> {
+        let mut opening = self.opening.take()?;
+        let index = opening.index;
+        let offset = match opening.phase {
+            OpenPhase::Header => 0,
+            OpenPhase::Chunk { position, .. } | OpenPhase::Format { position, .. } => position,
         };
-        SourceDecoder::compressed(codec, file_len, self.generation, &mut self.storage)
-            .map(|stream| (stream, codec))
-    }
-
-    /// Walks the RIFF chunks to the PCM format and data chunk.
-    fn wav_descriptor<F: SourceFiles<File = File>>(
-        &mut self,
-        files: &mut F,
-        file: &mut File,
-        file_len: u64,
-    ) -> Option<WavPcm16SourceDescriptor> {
-        let riff_end = u64::from(parse_riff_header(&self.read[..RIFF_HEADER_BYTES]).ok()?) + 8;
-        if riff_end > file_len {
-            return None;
+        let result = files.read_at(&mut opening.file, offset, &mut self.read);
+        let mut stream = None;
+        let valid = (|| -> Option<()> {
+            let bytes = result?;
+            match opening.phase {
+                OpenPhase::Header => {
+                    if bytes < RIFF_HEADER_BYTES {
+                        return None;
+                    }
+                    let magic = &self.read[..4];
+                    if magic == b"RIFF" {
+                        let end =
+                            u64::from(parse_riff_header(&self.read[..RIFF_HEADER_BYTES]).ok()?) + 8;
+                        if end > opening.len {
+                            return None;
+                        }
+                        opening.phase = OpenPhase::Chunk {
+                            position: RIFF_HEADER_BYTES as u64,
+                            end,
+                            format: None,
+                        };
+                    } else {
+                        let codec = if magic == b"fLaC" {
+                            AudioCodec::Flac
+                        } else if &magic[..3] == b"ID3"
+                            || magic[0] == 0xff && magic[1] & 0xe0 == 0xe0
+                        {
+                            AudioCodec::Mp3
+                        } else {
+                            return None;
+                        };
+                        stream = Some((
+                            SourceDecoder::compressed(
+                                codec,
+                                opening.len,
+                                self.generation,
+                                &mut self.storage,
+                            )?,
+                            codec,
+                        ));
+                    }
+                }
+                OpenPhase::Chunk {
+                    position,
+                    end,
+                    format,
+                } => {
+                    if position + CHUNK_HEADER_BYTES as u64 > end {
+                        return None;
+                    }
+                    let chunk =
+                        parse_chunk_header(self.read.get(..CHUNK_HEADER_BYTES.min(bytes))?).ok()?;
+                    let data = position + CHUNK_HEADER_BYTES as u64;
+                    if data + u64::from(chunk.len) > end {
+                        return None;
+                    }
+                    let next = data + chunk.padded_len();
+                    if chunk.is_format() {
+                        if chunk.len < PCM_FORMAT_BYTES as u32 {
+                            return None;
+                        }
+                        opening.phase = OpenPhase::Format {
+                            position: data,
+                            next,
+                            end,
+                        };
+                    } else if chunk.is_data() {
+                        let desc =
+                            WavPcm16SourceDescriptor::new(format?, data, u64::from(chunk.len))
+                                .ok()?;
+                        stream = Some((
+                            SourceDecoder::wav(desc, opening.len, self.generation)?,
+                            AudioCodec::WavPcm16,
+                        ));
+                    } else {
+                        opening.phase = OpenPhase::Chunk {
+                            position: next,
+                            end,
+                            format,
+                        };
+                    }
+                }
+                OpenPhase::Format { next, end, .. } => {
+                    let format =
+                        parse_pcm16_format(self.read.get(..PCM_FORMAT_BYTES.min(bytes))?).ok()?;
+                    opening.phase = OpenPhase::Chunk {
+                        position: next,
+                        end,
+                        format: Some(format),
+                    };
+                }
+            }
+            Some(())
+        })()
+        .is_some();
+        if !valid {
+            files.close(opening.file);
+            return Some(Event::Failed { index, stage: 3 });
         }
-        let mut position = RIFF_HEADER_BYTES as u64;
-        let mut format = None;
-        while position + CHUNK_HEADER_BYTES as u64 <= riff_end {
-            let bytes = files.read_at(file, position, &mut self.read)?;
-            let chunk = parse_chunk_header(self.read.get(..CHUNK_HEADER_BYTES.min(bytes))?).ok()?;
-            let data = position + CHUNK_HEADER_BYTES as u64;
-            if data + u64::from(chunk.len) > riff_end {
-                return None;
-            }
-            if chunk.is_format() {
-                let bytes = files.read_at(file, data, &mut self.read)?;
-                format =
-                    Some(parse_pcm16_format(self.read.get(..PCM_FORMAT_BYTES.min(bytes))?).ok()?);
-            } else if chunk.is_data() {
-                return WavPcm16SourceDescriptor::new(format?, data, u64::from(chunk.len)).ok();
-            }
-            position = data + chunk.padded_len();
+        if let Some((stream, codec)) = stream {
+            self.source = Some(Source {
+                file: opening.file,
+                index,
+                stream: Box::new(stream),
+                pending: None,
+                ended: false,
+            });
+            self.prime = Some(PrimeJob::Load {
+                index,
+                codec: codec_number(codec),
+            });
+        } else {
+            self.opening = Some(opening);
         }
         None
     }
@@ -447,6 +693,7 @@ impl<File> Producer<File> {
         actions: u32,
         prime: bool,
     ) -> Option<u32> {
+        let started = files.now_us();
         let source = self.source.as_mut()?;
         if let Some(block) = source.pending.take()
             && !deliver(ring, &block)
@@ -454,7 +701,10 @@ impl<File> Producer<File> {
             source.pending = Some(block);
             return Some(0);
         }
-        for _ in 0..actions {
+        for action in 0..actions {
+            if action != 0 && files.now_us().saturating_sub(started) >= POLL_BUDGET_US {
+                break;
+            }
             if source.ended || !prime && ring.free() < PCM_STREAM_BLOCK_FRAMES as u32 {
                 break;
             }
@@ -479,7 +729,7 @@ impl<File> Producer<File> {
                 }
                 DecodeAction::Pending => {}
                 DecodeAction::Block(block) => {
-                    if block.faulted || prime && block.len == 0 {
+                    if block.faulted || prime && block.len == 0 && !block.eof {
                         source.ended = true;
                         ring.end();
                         return None;
@@ -498,17 +748,18 @@ impl<File> Producer<File> {
                 }
             }
         }
-        (!prime).then_some(0)
+        Some(0)
     }
 
     /// Moves the loaded track to `position_ms` and decodes its first block
     /// there into a new ring epoch; the old epoch plays on until then.
-    pub(crate) fn seek<F: SourceFiles<File = File>>(
+    pub(crate) fn begin_seek<F: SourceFiles<File = File>>(
         &mut self,
         files: &mut F,
         ring: &Ring,
         position_ms: u32,
     ) -> Option<Event> {
+        self.prime_started_us = files.now_us();
         let source = self.source.as_mut()?;
         let index = source.index;
         self.generation = self.generation.wrapping_add(1).max(1);
@@ -522,16 +773,41 @@ impl<File> Producer<File> {
         );
         source.pending = None;
         source.ended = false;
-        let ok = changed && self.decode(files, ring, PRIME_ACTIONS, true).is_some();
-        if !ok && let Some(source) = self.source.as_mut() {
+        if !changed {
             source.ended = true;
+            self.prime = None;
+            ring.restart(0);
             ring.end();
+            return Some(Event::Seeked {
+                index,
+                position_ms,
+                ok: false,
+            });
         }
-        Some(Event::Seeked {
-            index,
-            position_ms,
-            ok,
-        })
+        self.prime = Some(PrimeJob::Seek { index, position_ms });
+        let _ = files; // Further I/O occurs only in bounded poll_prime turns.
+        None
+    }
+
+    #[cfg(all(test, feature = "deck-engine"))]
+    pub(crate) fn seek<F: SourceFiles<File = File>>(
+        &mut self,
+        files: &mut F,
+        ring: &Ring,
+        position_ms: u32,
+    ) -> Option<Event> {
+        if let Some(event) = self.begin_seek(files, ring, position_ms) {
+            return Some(event);
+        }
+        if !self.priming() {
+            return None;
+        }
+        for _ in 0..PRIME_ACTIONS {
+            if let Some(event) = self.poll_prime(files, ring) {
+                return Some(event);
+            }
+        }
+        panic!("test seek never primed");
     }
 
     /// One producer turn: serves a pending Load, Cue or seek, else tops up
@@ -554,12 +830,15 @@ impl<File> Producer<File> {
             let path = path(index);
             return (
                 true,
-                Some(self.load(files, ring, index, path.as_ref().map(AsRef::as_ref))),
+                self.begin_load(files, ring, index, path.as_ref().map(AsRef::as_ref)),
             );
         }
         if let Some(position_ms) = commands.take_seek() {
-            let event = self.seek(files, ring, position_ms);
-            return (event.is_some(), event);
+            let event = self.begin_seek(files, ring, position_ms);
+            return (self.priming() || event.is_some(), event);
+        }
+        if self.priming() {
+            return (true, self.poll_prime(files, ring));
         }
         let Some(source) = &self.source else {
             return (false, None);
@@ -601,7 +880,7 @@ impl Commands {
     }
 
     /// Move the loaded track to `position_ms` (from the deck engine).
-    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    #[cfg(test)]
     pub(crate) fn seek(&self, position_ms: u32) {
         self.seek
             .store(position_ms.saturating_add(1), Ordering::Release);
@@ -611,6 +890,7 @@ impl Commands {
         self.seek.swap(0, Ordering::Acquire).checked_sub(1)
     }
 
+    #[cfg(any(test, not(feature = "deck-engine")))]
     pub(crate) fn load(&self, index: u32) {
         self.load.store(index.saturating_add(1), Ordering::Release);
     }
@@ -623,6 +903,7 @@ impl Commands {
     }
 
     /// A Load is waiting.
+    #[cfg_attr(feature = "deck-engine", allow(dead_code))]
     pub(crate) fn pending_load(&self) -> bool {
         self.load.load(Ordering::Acquire) != 0
     }
@@ -688,6 +969,7 @@ impl Output {
             };
         }
         reader.commit(ring);
+        ring.record_supply(0);
         if starved {
             self.resampler.silence_history();
             if !reader.ended(ring) {
@@ -728,6 +1010,11 @@ static OUTPUT: Shared = Shared(UnsafeCell::new(Output::new()));
 pub(crate) fn render(out: &mut [PcmFrame], device_rate: u32, playing: bool, gain_q15: u32) {
     // SAFETY: single caller task (see `Shared`); no reference escapes.
     let output = unsafe { &mut *OUTPUT.0.get() };
+    if crate::media_signal::muted() {
+        output.resampler.reset();
+        out.fill(PcmFrame::default());
+        return;
+    }
     output.render(&RINGS[0], out, device_rate, playing, gain_q15);
 }
 
@@ -746,6 +1033,18 @@ pub(crate) const DECKS: usize = if cfg!(feature = "deck-mix") { 2 } else { 1 };
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_play_load(deck: u32, index: u32) {
     if (1..=DECKS as u32).contains(&deck) {
+        #[cfg(feature = "deck-engine")]
+        crate::deck_mix::with(|mix| {
+            mix.engine().request_load(
+                if deck == 2 {
+                    ruzina_controller_core::DeckId::Two
+                } else {
+                    ruzina_controller_core::DeckId::One
+                },
+                index,
+            );
+        });
+        #[cfg(not(feature = "deck-engine"))]
         COMMANDS[deck as usize - 1].load(index);
     }
 }
@@ -773,5 +1072,25 @@ pub unsafe extern "C" fn ruzina_legacy_play_stats(out: *mut u32) {
     unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
 }
 
+/// Minimum buffered time while rendering and maximum prime duration, per deck.
+/// u32::MAX low-water means no active rendering sample has been recorded.
+/// # Safety
+/// `out` must be valid for four u32 writes; values are atomic snapshots.
+#[cfg(feature = "idf-deck-play")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_play_diagnostics(out: *mut u32) {
+    if out.is_null() {
+        return;
+    }
+    let values = [
+        RINGS[0].low_supply_us.load(Ordering::Relaxed),
+        RINGS[1].low_supply_us.load(Ordering::Relaxed),
+        RINGS[0].prime_max_us.load(Ordering::Relaxed),
+        RINGS[1].prime_max_us.load(Ordering::Relaxed),
+    ];
+    // SAFETY: caller lends four writable scalar slots.
+    unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, 4) };
+}
+
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

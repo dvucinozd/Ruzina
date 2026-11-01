@@ -1,0 +1,788 @@
+HOST_FEATURE=idf-media-load
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 43.35s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-bd0cbc7160506a42)
+
+running 39 tests
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 35.33s
+HOST_FEATURE=idf-controller-audio
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.76s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-964df1f44e297164)
+
+running 2 tests
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.54s
+HOST_FEATURE=idf-deck-play
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.29s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-f7cf8274e50beb63)
+
+running 56 tests
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 56 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.10s
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.04s
+HOST_FEATURE=idf-deck-mix
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.82s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-6e40a1defcfc2ed2)
+
+running 57 tests
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_mix::tests::two_decks_mix_through_the_product_graph ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.13s
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.97s
+HOST_FEATURE=idf-deck-engine
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.91s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-716ab730735ada65)
+
+running 63 tests
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test deck_engine::tests::load_permit_protects_real_producer_and_rejects_late_results ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_engine::tests::seek_receipts_finish_eof_failure_and_ignore_superseded_work ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_transport::tests::slot_never_overwrites_an_unconsumed_item ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test deck_transport::tests::slot_transfers_whole_values_between_threads ... ok
+test deck_engine::tests::the_deck_engine_owns_transport ... ok
+test deck_engine::tests::controller_disconnect_releases_a_cue_preview_without_resuming_it ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_engine::tests::media_revocation_discards_cached_audio_and_late_receipts ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+
+test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.02s
+
+    Blocking waiting for file lock on package cache
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.67s
+TARGET_FEATURE=idf-exfat-fixture
+    Finished `release` profile [optimized] target(s) in 1.90s
+    Finished `release` profile [optimized] target(s) in 1.78s
+TARGET_FEATURE=idf-media-load
+    Blocking waiting for file lock on package cache
+    Finished `release` profile [optimized] target(s) in 1.98s
+    Finished `release` profile [optimized] target(s) in 3.62s
+TARGET_FEATURE=idf-controller-midi
+    Finished `release` profile [optimized] target(s) in 1.74s
+    Finished `release` profile [optimized] target(s) in 1.93s
+TARGET_FEATURE=idf-media-load idf-controller-midi
+    Finished `release` profile [optimized] target(s) in 2.25s
+    Finished `release` profile [optimized] target(s) in 2.05s
+TARGET_FEATURE=idf-media-load idf-controller-audio
+    Finished `release` profile [optimized] target(s) in 2.34s
+    Finished `release` profile [optimized] target(s) in 2.34s
+TARGET_FEATURE=idf-deck-play
+    Finished `release` profile [optimized] target(s) in 2.41s
+    Finished `release` profile [optimized] target(s) in 2.71s
+TARGET_FEATURE=idf-deck-mix
+    Finished `release` profile [optimized] target(s) in 26.27s
+    Finished `release` profile [optimized] target(s) in 52.19s
+TARGET_FEATURE=idf-deck-engine
+    Finished `release` profile [optimized] target(s) in 21.77s
+    Finished `release` profile [optimized] target(s) in 5.40s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 19.29s
+     Running unittests src/lib.rs (firmware-rust/target/debug/deps/ruzina_audio_runtime-247bfe39ba26aa66)
+
+running 68 tests
+test history::tests::absolute_coordinates_near_u64_limit_are_checked_before_mutation ... ok
+test history::tests::wrapped_history_rejects_evicted_and_previous_generation_frames ... ok
+test index_scan::tests::retries_are_bounded_and_only_a_new_source_resets_disabled_work ... ok
+test nudge::tests::the_bend_rides_on_the_fader_pitch ... ok
+test mp3_index::tests::header_sizes_follow_the_layer_iii_tables_and_refuse_other_layers ... ok
+test main_change::tests::an_acknowledge_alone_is_never_a_ready_dac ... ok
+test main_change::tests::a_planned_dac_switch_fades_drains_rebinds_and_spares_headphones ... ok
+test nudge::tests::decay_matches_m25_per_elapsed_time_and_snaps_to_zero ... ok
+test main_change::tests::removal_under_play_is_bounded_and_late_completions_earn_nothing ... ok
+test main_change::tests::a_planned_switch_whose_old_buffers_never_return_is_revoked_at_the_deadline ... ok
+test mp3_index::tests::trailing_metadata_completes_but_junk_stops_without_duration ... ok
+test mp3_index::tests::audio_start_after_id3_is_honored ... ok
+test nudge::tests::ticks_bend_within_the_m25_limits ... ok
+test mp3_index::tests::tag_frames_set_the_kind_and_are_frame_zero ... ok
+test pcm_stream::tests::block_capacity_is_fail_closed ... ok
+test pcm_stream::tests::block_feed_preserves_contiguous_frame_coordinates ... ok
+test pcm_stream::tests::block_feed_rejects_stale_generation_and_discontinuity ... ok
+test pcm_stream::tests::congested_progress_coalesces_without_losing_terminal_state_or_crossing_generations ... ok
+test mp3_index::tests::walk_indexes_exact_offsets_and_decimates_when_full ... ok
+test pcm_stream::tests::eof_and_fault_stop_cursor_at_reported_position ... ok
+test pcm_stream::tests::frame_time_conversion_is_bounded_and_deterministic ... ok
+test pcm_stream::tests::latest_vinyl_position_can_rewind_without_stale_prefetched_eof ... ok
+test pcm_stream::tests::paused_track_replacement_adopts_only_the_active_source_without_play ... ok
+test pcm_stream::tests::seek_binding_accepts_only_new_generation ... ok
+test pcm_stream::tests::source_prepare_requires_exact_product_commit_and_invalidates_old_activation ... ok
+test pcm_stream::tests::stale_generation_never_advances_transport ... ok
+test pcm_stream::tests::stream_generation_skips_zero_on_wrap ... ok
+test pcm_stream::tests::transport_adopts_first_generation_and_advances_position ... ok
+test pcm_stream::tests::transport_progress_rejects_old_render_generation ... ok
+test render::tests::idle_graph_is_deterministic_silence ... ok
+test render::tests::master_limiter_is_main_only ... ok
+test render::tests::master_tempo_and_scratch_fail_closed_until_arbitration_stage_exists ... ok
+test render::tests::neutral_single_deck_reaches_main_after_resampler_priming ... ok
+test render::tests::pfl_tap_is_before_channel_post_gain ... ok
+test render::tests::reference_sink_digest_is_stable_for_same_render ... ok
+test render::tests::reset_deck_discards_underflow_and_previous_source_history ... ok
+test render::tests::source_rate_and_tempo_factor_are_explicit ... ok
+test render::tests::source_starvation_is_silence_and_counted_not_repeated_audio ... ok
+test render::tests::sub_unity_starvation_recovers_with_new_samples_and_preserves_other_deck ... ok
+test render::tests::sub_unity_starvation_stays_silent_on_main_and_pfl_across_blocks ... ok
+test routing::tests::a_44_1_khz_controller_stream_is_routable_through_the_converter ... ok
+test routing::tests::controller_loss_with_external_main_makes_headphones_unavailable ... ok
+test routing::tests::dac_loss_falls_back_to_controller_and_does_not_interrupt_headphones ... ok
+test routing::tests::dac_priority_changes_only_main_and_requires_prepared_acknowledgement ... ok
+test routing::tests::incoherent_controller_epochs_cannot_mix_old_main_with_new_headphones ... ok
+test routing::tests::midi_only_controller_does_not_create_headphones_and_no_outputs_means_mute ... ok
+test routing::tests::overlapping_or_invalid_main_map_cannot_send_main_audio_to_headphones ... ok
+test routing::tests::reconnect_and_fault_recovery_reject_superseded_preparation_and_old_packets ... ok
+test routing::tests::repeated_availability_does_not_restart_a_transition ... ok
+test routing::tests::separate_controller_interfaces_can_use_their_own_stereo_pairs ... ok
+test routing::tests::unsupported_format_or_uninitialized_epoch_is_not_a_ready_dac ... ok
+test tests::delay_is_one_shot_and_preserves_zero_feedback_contract ... ok
+test tests::disabled_or_zero_depth_state_disables_all_processors ... ok
+test tests::echo_maps_sqrt_wet_linear_feedback_and_both_target ... ok
+test tests::filter_target_is_per_deck_and_does_not_touch_time_or_flanger ... ok
+test tests::flanger_maps_period_and_linear_depth ... ok
+test tests::non_audio_deck_effects_are_ignored ... ok
+test tests::pad_fx_effect_maps_bank_pad_and_release_without_dsp_knowledge_in_deck ... ok
+test tests::released_depth_mapping_endpoints_are_exact ... ok
+test tests::released_mid_depth_mapping_matches_c_fixture_math ... ok
+test wav::tests::decoder_duplicates_mono_into_canonical_stereo ... ok
+test wav::tests::decoder_preserves_stereo_samples_across_split_reads ... ok
+test wav::tests::decoder_revalidates_public_format_values ... ok
+test wav::tests::misaligned_data_chunk_fails_before_decode ... ok
+test wav::tests::output_backpressure_leaves_unconsumed_input_with_no_hidden_allocation ... ok
+test wav::tests::parses_riff_and_chunk_padding_without_allocation ... ok
+test wav::tests::rejects_non_pcm_and_non_16_bit_sources ... ok
+test wav::tests::validates_pcm16_mono_and_stereo_format_contract ... ok
+
+test result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+     Running tests/canonical_source.rs (firmware-rust/target/debug/deps/canonical_source-236461e12c094278)
+
+running 17 tests
+test censor_reverse_stops_at_history_edge_and_resumes_the_canonical_cursor ... ok
+test paused_scratch_does_not_advance_slip_time_and_release_clears_motion ... ok
+test malformed_current_generation_faults_and_stale_input_cannot_clear_it ... ok
+test paused_prefetch_is_bounded_and_preserves_unconsumed_frames ... ok
+test a_new_gesture_resets_scratch_velocity_and_rejects_a_delayed_old_gesture ... ok
+test live_render_keeps_other_deck_and_pfl_independent_during_starvation_and_mode_changes ... ok
+test reset_and_old_blocks_cannot_leak_old_keylock_or_scratch_audio ... ok
+test scratch_prefetch_reference_shift_preserves_the_absolute_head ... ok
+test prefetch_and_terminal_block_do_not_publish_audible_progress_or_early_eof ... ok
+test scratch_at_eof_defers_completion_until_release ... ok
+test scratch_has_priority_over_keylock_while_canonical_timeline_advances_independently ... ok
+test uncommitted_stream_and_stale_product_control_cannot_render_new_pcm ... ok
+test starvation_is_silent_and_recovers_without_advancing_an_unread_source ... ok
+test unsupported_keylock_rates_fail_closed_instead_of_silently_clamping_tempo ... ok
+test expired_scratch_history_mutes_until_release_without_retargeting_a_ring_slot ... ok
+test live_master_tempo_preserves_tone_pitch_while_speed_changes_canonical_progress ... ok
+test live_keylock_survives_history_wrap_and_coordinate_rebase ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+     Running tests/codec_streams.rs (firmware-rust/target/debug/deps/codec_streams-272d034dce057dca)
+
+running 24 tests
+test decoder_storage_and_input_are_fixed_and_reusable_across_formats ... ok
+test io_failure_is_generation_bound_and_waiting_for_input_never_advances_pcm ... ok
+test background_index_failure_budget_preserves_playback_and_partial_index ... ok
+test full_scale_32bit_flac_preserves_polarity_and_saturates_pcm16_boundaries ... ok
+test lossless_stereo_and_mono_match_original_pcm_and_duplicate_mono ... ok
+test compressed_source_failure_clears_only_its_wet_history_while_other_deck_keeps_running ... ok
+test malformed_flac_crc_truncated_mp3_and_impossible_bounds_fail_closed ... ok
+test deep_flac_96khz_has_correct_frame_count_and_rounded_pcm16_conversion ... ok
+test shared_wav_contract_matches_existing_pcm_sample_order_and_eof ... ok
+test mixed_rate_mp3_flac_run_together_through_master_tempo_pfl_backpressure_and_receipts ... ok
+test id3_cover_art_is_skipped_by_length_even_when_it_contains_valid_mp3_audio ... ok
+test exact_end_seek_reports_eof_and_unknown_metadata_does_not_fake_a_length ... ok
+test mp3_without_xing_has_no_invented_length_and_seek_is_still_exact ... ok
+test mp3_cbr_vbr_and_mono_match_independent_ffmpeg_length_and_signal ... ok
+test replacing_mp3_flac_and_wav_reuses_dirty_context_without_old_audio_or_metadata ... ok
+test short_compressed_loop_is_cached_without_repeated_file_reads ... ok
+test compressed_loop_prefix_wrap_resize_exit_and_eof_keep_exact_media_coordinates ... ok
+test seek_is_sample_exact_for_vbr_gapless_and_flac_and_rejects_old_pcm ... ok
+test every_codec_is_invariant_under_single_byte_and_odd_short_reads ... ok
+test recent_mp3_seek_restores_checkpoint_samples_and_bounds_file_reads ... ok
+test late_mp3_loop_restores_exact_state_without_redecoding_the_track_prefix ... ok
+test untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration ... ok
+test partial_index_serves_covered_targets_and_falls_back_beyond_it ... ok
+test cold_mp3_seeks_use_the_frame_index_and_stay_sample_exact ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.11s
+
+     Running tests/fx_render.rs (firmware-rust/target/debug/deps/fx_render-3f8e792407e08262)
+
+running 12 tests
+test fx_storage_is_explicit_and_limited_without_render_time_allocation ... ok
+test delay_is_audible_at_exact_output_time_and_pfl_precedes_fader_and_master ... ok
+test pcm_loop_wraps_retain_delay_memory_and_do_not_turn_into_eof ... ok
+test canonical_source_fault_hard_mutes_effect_history ... ok
+test target_removal_stops_old_deck_effect_and_other_decks_pfl_is_independent ... ok
+test semantic_product_snapshot_drives_wet_pcm_and_controller_loss_releases_pad ... ok
+test disabled_channel_filter_gate_renders_like_a_centered_filter ... ok
+test disabled_rack_is_bit_identical_to_existing_eq_filter_and_mixer_path ... ok
+test source_epoch_generation_or_unloaded_binding_cannot_leak_echo_to_next_track ... ok
+test beat_filter_flanger_and_both_pad_filter_banks_change_real_pcm ... ok
+test pad_echo_snapshot_release_uses_held_pad_identity_and_never_restarts_tail ... ok
+test echo_release_rings_while_paused_then_expires_and_clear_kills_tail ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/headphone_mix.rs (firmware-rust/target/debug/deps/headphone_mix-f152a3746437e07a)
+
+running 11 tests
+test composed_monitor_pcm_survives_main_dac_switch_and_controller_detach_revokes_it ... ok
+test mono_cue_downmix_handles_opposite_stereo_polarity ... ok
+test midpoint_matches_c_monitor_fixture_and_level_scales_the_complete_mix ... ok
+test cue_is_summed_with_float_headroom_then_attenuated_before_pcm_conversion ... ok
+test starved_or_paused_deck_does_not_suppress_other_deck_cue ... ok
+test monitor_master_uses_limited_main_and_cue_overload_does_not_pollute_main_stats ... ok
+test default_monitor_is_stereo_master_and_headphone_controls_cannot_change_main ... ok
+test invalid_monitor_gains_fail_closed_and_finite_out_of_range_values_are_bounded ... ok
+test wet_echo_reaches_headphone_mix_with_main_fader_closed_and_clears_on_source_change ... ok
+test each_pfl_and_both_pfl_sum_before_fader_crossfader_and_master ... ok
+test headphone_only_canonical_playback_confirms_progress_after_the_last_packet ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/keylock_starvation.rs (firmware-rust/target/debug/deps/keylock_starvation-bd21d2fb81682673)
+
+running 1 test
+test master_tempo_starvation_and_fallback_never_rewind_the_consumer ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.68s
+
+     Running tests/loop_playback.rs (firmware-rust/target/debug/deps/loop_playback-86fb23a324136e59)
+
+running 12 tests
+test full_mono_block_keeps_the_extra_half_sample_after_an_initial_split_read ... ok
+test loop_validation_and_timeline_arithmetic_fail_closed ... ok
+test changed_loop_metadata_in_same_generation_faults_instead_of_reusing_history ... ok
+test failed_rewind_read_or_media_replacement_stops_only_its_generation ... ok
+test loop_exit_resize_seek_and_replacement_revoke_old_pcm_and_receipts ... ok
+test one_frame_loop_prefills_full_blocks_in_a_fixed_owner_budget ... ok
+test censor_and_paused_scratch_keep_loop_media_mapping_and_release_state ... ok
+test split_byte_reads_keep_carry_at_loop_end_and_output_capacity ... ok
+test two_looped_decks_publish_wrapped_position_only_after_completed_render ... ok
+test decoded_loop_samples_are_exact_across_partial_blocks_mono_and_stereo ... ok
+test keylock_and_pitch_use_continuous_loop_pcm_and_wrap_only_media_position ... ok
+test canonical_loop_longer_than_history_repeats_without_underflow_or_eof ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/playback_output.rs (firmware-rust/target/debug/deps/playback_output-e203cabc29b33fad)
+
+running 14 tests
+test malformed_source_fault_is_delivered_after_completion_even_without_a_rate ... ok
+test outstanding_driver_buffers_are_bounded_and_reset_revokes_all_tickets ... ok
+test out_of_order_duplicate_and_pre_reset_receipts_cannot_update_transport ... ok
+test old_completion_cannot_cross_an_owner_restart_with_identical_source_and_clock ... ok
+test congestion_coalesces_only_completed_snapshots_and_preserves_vinyl_rewind ... ok
+test canonical_eof_and_seek_replacement_follow_completed_pcm_not_prefetch ... ok
+test partial_packets_wait_for_the_last_output_frame_before_publishing_eof ... ok
+test source_replacement_revokes_both_mix_queues_permits_and_old_pending_eof ... ok
+test delayed_headphone_handover_does_not_rewind_past_the_last_main_checkpoint ... ok
+test sink_starvation_idle_and_pause_do_not_invent_source_progress ... ok
+test generation_replacement_keeps_other_decks_confirmed_position_and_rejects_bad_marks ... ok
+test main_loss_uses_controller_headphones_but_no_output_freezes_transport ... ok
+test secondary_headphones_never_double_count_main_progress ... ok
+test render_prefetch_and_driver_submission_do_not_publish_position_or_eof ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/sink_delivery.rs (firmware-rust/target/debug/deps/sink_delivery-d13b275ef596e98e)
+
+running 13 tests
+test inactive_headphones_never_receive_dac_pcm_and_tokens_cannot_cross_lanes ... ok
+test route_changes_returning_to_same_binding_still_revoke_old_pcm ... ok
+test fades_are_frame_driven_monotonic_and_detach_is_immediately_silent ... ok
+test source_reset_flushes_partial_pcm_and_keeps_new_stream_muted_until_primed ... ok
+test future_packets_do_not_hide_gaps_and_equal_end_callbacks_release_capacity ... ok
+test duplicate_callbacks_overlap_overflow_and_invalid_capacity_are_fail_closed ... ok
+test a_full_headphone_queue_still_accepts_new_main_pcm ... ok
+test active_starvation_recovers_without_replaying_pcm_and_idle_is_separate ... ok
+test blocked_main_does_not_block_headphones_and_invalid_packets_change_neither_queue ... ok
+test partial_usb_packets_and_block_callbacks_consume_the_same_pcm_once ... ok
+test dac_change_preserves_phones_but_discards_main_pcm_and_old_callbacks ... ok
+test faster_headphone_clock_reports_drift_symptoms_without_corrupting_main ... ok
+test ten_seconds_of_48_and_128_frame_consumers_preserve_cadence_and_pre_fader_pfl ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+     Running unittests src/lib.rs (firmware-rust/target/debug/deps/ruzina_controller_session-49657ba6ad8bcf7c)
+
+running 15 tests
+test tests::connection_delivery_remains_pending_until_sink_accepts_it ... ok
+test tests::detach_retires_controller_a_work_before_controller_b_attaches ... ok
+test tests::discrete_events_preserve_order ... ok
+test tests::dispatch_next_retries_buffered_control_after_backpressure ... ok
+test tests::held_state_retries_without_losing_latest_level ... ok
+test tests::high_rate_absolute_controls_keep_latest_value ... ok
+test tests::jog_deltas_accumulate_but_browse_deltas_remain_discrete ... ok
+test tests::buffered_downstream_failure_uses_retry_slot ... ok
+test tests::reconnect_snapshot_replays_cached_profile_state ... ok
+test tests::old_connection_completion_cannot_recreate_retry_or_advance_snapshot ... ok
+test tests::reconnect_cannot_hide_pending_disconnect ... ok
+test tests::usb_midi_event_fails_closed_for_nonzero_cable_and_non_channel_voice ... ok
+test tests::usb_midi_event_ingests_channel_voice_without_transport_leakage ... ok
+test tests::usb_midi_transfer_batches_packets_without_leaking_transport_framing ... ok
+test tests::usb_midi_transfer_rejects_partial_event_packet ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/lib.rs (firmware-rust/target/debug/deps/ruzina_deck-7c3f04ee8d441df8)
+
+running 89 tests
+test load_admission::tests::reservation_is_single_flight_and_released_by_its_own_permit ... ok
+test load_admission::tests::tokens_skip_zero_after_wrap ... ok
+test load_admission::tests::transport_claim_withdraws_reservation_before_replacement ... ok
+test load_admission::tests::stale_permit_cannot_take_a_newer_reservation ... ok
+test load_admission::tests::replacement_refuses_transport_claims_until_finished ... ok
+test tests::beat_fx_defaults_match_released_product_state ... ok
+test tests::beat_jump_release_events_do_not_seek_or_change_page ... ok
+test tests::beat_fx_effect_selector_cycles_without_none ... ok
+test tests::beat_fx_depth_scales_absolute_sources_to_seven_bit_domain ... ok
+test tests::beat_fx_beat_buttons_and_shifted_buttons_clamp_like_released_core ... ok
+test tests::a_scanned_length_learned_after_load_bounds_later_loops ... ok
+test tests::beat_fx_timing_uses_target_effective_bpm_and_released_caps ... ok
+test tests::beat_fx_target_depth_and_clear_reemit_for_state_replay ... ok
+test tests::beat_fx_target_depth_on_and_clear_emit_authoritative_commands ... ok
+test tests::beat_jump_pad_default_page_matches_released_sizes ... ok
+test tests::beat_jump_buttons_use_grid_and_preserve_playing_state ... ok
+test tests::beat_loop_pads_match_released_lengths ... ok
+test tests::beat_loop_uses_local_neutral_grid_spacing ... ok
+test tests::broker_lane_retry_does_not_advance_or_disturb_other_lanes ... ok
+test tests::deck_effect_queue_preserves_effect_order ... ok
+test tests::deck_effect_queue_rejects_multi_effect_delivery_atomically ... ok
+test tests::deck_effect_target_classification_is_explicit ... ok
+test tests::decks_track_pitch_independently ... ok
+test tests::decks_track_transport_independently ... ok
+test tests::deleting_imported_hot_cue_persists_tombstone_across_reload ... ok
+test tests::disconnect_clears_physical_hold_state_without_stopping_playback ... ok
+test tests::disconnect_releases_only_an_active_preview_and_track_reset_clears_cue_ownership ... ok
+test tests::effect_broker_reserves_all_lanes_before_committing_any_effect ... ok
+test tests::explicit_restore_drops_local_edits_and_tombstones_but_nothing_implicit_does ... ok
+test tests::failed_effect_completion_retains_exact_front_for_retry ... ok
+test tests::failed_playback_request_does_not_mark_deck_playing ... ok
+test tests::failed_track_load_identity_validation_preserves_previous_deck ... ok
+test tests::hot_cue_bank_rejects_wrong_track_identity ... ok
+test tests::hot_cue_release_edges_are_inert ... ok
+test tests::hot_cue_requires_loaded_track_identity ... ok
+test tests::hot_cue_sets_persists_and_recalls_by_media_track_id ... ok
+test tests::jog_modes_are_idempotent_per_deck_and_cdj_never_engages_scratch ... ok
+test tests::load_admission_follows_actual_and_pending_transport_state ... ok
+test tests::local_cue_refresh_validates_track_and_preserves_source_and_transport ... ok
+test tests::loop_adjust_in_uses_one_ms_per_jog_tick_and_clamps ... ok
+test tests::loop_adjust_out_uses_one_ms_per_jog_tick_and_clamps ... ok
+test tests::loop_adjust_requires_an_active_loop_and_toggles_mode ... ok
+test tests::loop_cue_recall_publishes_seek_and_loop_atomically_and_keeps_transport ... ok
+test tests::loop_halve_double_and_relative_size_match_released_final_state ... ok
+test tests::loop_in_out_sets_requested_deck_loop_from_product_position ... ok
+test tests::loop_release_edges_do_not_mutate_state ... ok
+test tests::loops_beyond_the_decoded_end_are_refused_without_changing_deck_state ... ok
+test tests::manual_pitch_disables_sync_state ... ok
+test tests::mismatched_pad_fx_release_does_not_clear_newer_active_pad ... ok
+test tests::missing_loop_drops_adjust_mode_before_jog ... ok
+test tests::only_pressed_beat_clear_changes_effect_memory_epoch ... ok
+test tests::pad_fx1_press_and_release_route_to_audio_without_transport_side_effects ... ok
+test tests::pad_fx2_routes_by_mode_even_when_shifted_flag_is_set ... ok
+test tests::pad_mode_behavior_matches_released_scope ... ok
+test tests::paused_cue_sets_the_point_then_previews_only_while_held ... ok
+test tests::persisted_loop_hot_cue_recalls_its_start_position ... ok
+test tests::pitch_mapping_matches_released_integer_contract ... ok
+test tests::play_during_preview_commits_and_cue_while_playing_returns ... ok
+test tests::preview_acknowledgements_after_release_or_failure_cannot_restart_it ... ok
+test tests::quantized_cue_snaps_to_the_nearest_beat_and_seeks_there ... ok
+test tests::quantized_loop_in_out_snaps_to_nearest_neutral_beat ... ok
+test tests::released_defaults_are_preserved ... ok
+test tests::reloop_exit_clears_and_restores_last_loop ... ok
+test tests::reloop_stop_clears_active_and_remembered_loop ... ok
+test tests::scratch_ownership_and_pending_pause_are_distinct_verdicts ... ok
+test tests::selected_sync_master_is_used_as_reference ... ok
+test tests::shifted_beat_jump_changes_global_size_page ... ok
+test tests::shifted_beat_loop_restores_previous_loop_on_release ... ok
+test tests::shifted_beat_loop_without_previous_loop_clears_on_release ... ok
+test tests::shifted_hot_cue_clears_slot_and_persists_bank ... ok
+test tests::stale_playback_completion_cannot_overwrite_newer_request ... ok
+test tests::stream_completion_stops_playback_and_commits_final_position ... ok
+test tests::sync_clamps_to_twenty_percent_safe_limit ... ok
+test tests::sync_master_marks_requested_deck_as_reference ... ok
+test tests::sync_matches_other_deck_bpm_and_can_exceed_selected_range ... ok
+test tests::sync_phase_aligns_with_provider_neutral_beatgrids ... ok
+test tests::sync_toggle_off_does_not_reapply_pitch ... ok
+test tests::sync_toggles_requested_deck_only ... ok
+test tests::sync_uses_other_decks_effective_bpm ... ok
+test tests::sync_without_both_beatgrids_keeps_phase_position_unchanged ... ok
+test tests::tempo_range_change_reapplies_current_pitch ... ok
+test tests::tempo_range_cycles_requested_deck_only ... ok
+test tests::tempo_range_release_does_not_cycle ... ok
+test tests::touch_release_reconnect_and_track_replacement_invalidate_scratch_gestures ... ok
+test tests::touched_scratch_jog_is_a_retryable_transport_effect_and_loop_adjust_keeps_priority ... ok
+test tests::track_load_commits_source_and_local_atomically ... ok
+test tests::unload_track_clears_track_lifecycle_without_losing_pitch_configuration ... ok
+test tests::unshifted_beat_loop_release_is_inert ... ok
+test tests::untouched_jog_nudges_while_playing_and_scrubs_while_paused ... ok
+
+test result: ok. 89 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests/rekordbox_consumers.rs (firmware-rust/target/debug/deps/rekordbox_consumers-e1aee31ad1b8e60b)
+
+running 5 tests
+test immutable_waveform_columns_feed_the_existing_rgb565_renderer ... ok
+test imported_cues_preserve_local_hot_cue_overrides_and_tombstones ... ok
+test reloading_and_detaching_drop_old_analysis_without_affecting_the_other_deck ... ok
+test imported_grids_drive_sync_phase_and_tempo_through_the_deck_consumer ... ok
+test beat_jump_and_quantized_loop_use_imported_beats_instead_of_fallback_bpm ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (firmware-rust/target/debug/deps/ruzina_media_load-01b0655fe293200a)
+
+running 7 tests
+test pdb::tests::first_page_probe_accepts_large_pdb_page_from_bounded_prefix ... ok
+test pdb::tests::first_page_probe_extracts_rekordbox_table_roots ... ok
+test pdb::tests::missing_export_or_tracks_table_fails_without_publishing ... ok
+test pdb::tests::duplicate_artist_ids_fail_the_import ... ok
+test pdb::tests::imports_tracks_names_and_playlists_into_one_publication ... ok
+test pdb::tests::a_new_generation_retires_the_previous_lease_and_invalidate_withdraws ... ok
+test pdb::tests::removal_mid_import_publishes_nothing_and_a_reinsert_imports_again ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/preflight.rs (firmware-rust/target/debug/deps/preflight-64c14d97e7e90d68)
+
+running 6 tests
+test audio_source_must_be_a_nonempty_regular_file_under_the_live_lease ... ok
+test missing_dat_yields_no_analysis_and_an_empty_source_bank ... ok
+test rejected_ext_keeps_the_dat_analysis ... ok
+test publication_withdrawn_mid_scan_publishes_nothing ... ok
+test imports_dat_and_ext_into_source_cues_and_analysis ... ok
+test removed_media_mid_scan_publishes_nothing ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (firmware-rust/target/debug/deps/ruzina_mixer-f3ae383eeb9e551b)
+
+running 14 tests
+test tests::channel_filter_follows_smart_cfx_unless_profile_declares_filter_always ... ok
+test tests::deck_absolute_controls_require_deck_identity ... ok
+test tests::defaults_match_released_mixer_baseline ... ok
+test tests::limiter_maps_nan_to_zero_without_polluting_stats ... ok
+test tests::main_limiter_preserves_normal_level_and_shapes_overload ... ok
+test tests::master_trim_is_clamped_and_rejects_nan_to_silence ... ok
+test tests::pfl_and_master_cue_toggle_only_on_press_edge ... ok
+test tests::pfl_path_ends_before_fader_crossfader_master_and_limiter ... ok
+test tests::released_gain_curves_are_preserved ... ok
+test tests::seven_bit_controls_scale_to_internal_fourteen_bit_domain ... ok
+test tests::smart_buttons_toggle_only_on_press_and_shift_variants_are_noops ... ok
+test tests::smart_cfx_only_changes_effective_filter_mapping ... ok
+test tests::smart_fader_squares_only_the_fading_out_crossfader_side ... ok
+test tests::stage_gains_keep_trim_separate_from_post_fader_path ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (firmware-rust/target/debug/deps/ruzina_uac-7eb77d9cf51072b6)
+
+running 27 tests
+test health::tests::a_stop_play_between_samples_starts_a_new_session ... ok
+test descriptor::tests::repeated_format_type_is_rejected_without_overflow ... ok
+test descriptor::tests::malformed_class_descriptors_are_errors ... ok
+test descriptor::tests::malformed_descriptors_refuse_every_format ... ok
+test descriptor::tests::high_speed_uac1_uses_interval_four_for_one_millisecond ... ok
+test descriptor::tests::every_truncated_configuration_is_rejected ... ok
+test descriptor::tests::unsupported_audio_yields_no_route ... ok
+test descriptor::tests::parses_and_prefers_48k_four_channel_formats ... ok
+test health::tests::idle_underflow_is_not_a_fault ... ok
+test packet::tests::main_calibration_never_touches_headphones ... ok
+test health::tests::one_prime_underflow_is_forgiven_only_after_recovery ... ok
+test health::tests::reconnect_forgives_prime_underflow_but_not_loss_drops_or_overflow ... ok
+test packet::tests::a_missing_stream_is_silence_never_the_other_mix ... ok
+test packet::tests::main_and_headphones_pack_once_at_unity_full_scale ... ok
+test packet::tests::maps_and_buffers_are_validated ... ok
+test resample::tests::dc_and_full_scale_pass_at_unity ... ok
+test resample::tests::arbitrary_blocks_are_bit_identical_to_one_pass ... ok
+test packet::tests::cadence_is_exact_per_second_at_both_rates ... ok
+test resample::tests::equal_rates_pass_through_and_bad_rates_are_refused ... ok
+test stream::tests::alt_zero_timeout_and_device_loss_still_wait_for_usb ... ok
+test stream::tests::configuration_and_transfer_faults_stop_without_leaking_ownership ... ok
+test stream::tests::ep0_timeout_never_frees_a_request_usb_still_owns ... ok
+test resample::tests::one_second_converts_exactly_without_drift ... ok
+test stream::tests::orderly_teardown_flushes_waits_sets_alt_zero_then_frees ... ok
+test stream::tests::setup_packets_match_uac1 ... ok
+test stream::tests::steady_stream_resubmits_and_credits_current_epoch_only ... ok
+test resample::tests::pulling_gives_exactly_each_packets_frames ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/sink_packets.rs (firmware-rust/target/debug/deps/sink_packets-fc888f50a0b7bb82)
+
+running 3 tests
+test unsupported_audio_keeps_midi_and_offers_no_stream ... ok
+test transfers_credit_receipts_only_for_the_current_epoch ... ok
+test a_44_1_khz_only_controller_streams_through_the_converter ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests ruzina_audio_runtime
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_controller_session
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_deck
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_media_load
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_mixer
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ruzina_uac
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+test_actual_driver_fault_paths (test_uac_recovery.UacRecoveryTests.test_actual_driver_fault_paths) ... usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+ok
+test_production_recovery_policy (test_uac_recovery.UacRecoveryTests.test_production_recovery_policy) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 1.294s
+
+OK

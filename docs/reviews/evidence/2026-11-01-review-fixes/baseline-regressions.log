@@ -1,0 +1,90 @@
+   Compiling ruzina-core v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-core)
+   Compiling ruzina-media-block v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-block)
+   Compiling libm v0.2.16
+   Compiling version_check v0.9.5
+   Compiling typenum v1.20.1
+   Compiling bytemuck v1.25.2
+   Compiling nanoaudio-core v0.1.1
+   Compiling nanomp3-core v0.2.0
+   Compiling cpufeatures v0.2.17
+   Compiling ruzina-controller-usb v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-controller-usb)
+   Compiling exfat-embedded v0.1.3
+   Compiling cfg-if v1.0.5
+   Compiling ruzina-media-partition v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-partition)
+   Compiling ruzina-controller-core v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-controller-core)
+   Compiling ruzina-media-identity v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-identity)
+   Compiling ruzina-media-session v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-session)
+   Compiling ruzina-media-io v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-io)
+   Compiling safe_arch v1.2.0
+   Compiling ruzina-hot-cues v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-hot-cues)
+   Compiling ruzina-track-analysis v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-track-analysis)
+   Compiling ruzina-media-catalog v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-catalog)
+   Compiling ruzina-media-fs v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-fs)
+   Compiling generic-array v0.14.7
+   Compiling nanoaudio-mp3 v0.1.1
+   Compiling ruzina-controller-profile v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-controller-profile)
+   Compiling ruzina-control-scheduler v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-control-scheduler)
+   Compiling ruzina-deck v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-deck)
+   Compiling ruzina-media-exfat v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-exfat)
+   Compiling wide v1.7.1
+   Compiling ruzina-controller-session v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-controller-session)
+   Compiling ruzina-rekordbox v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-rekordbox)
+   Compiling ruzina-media-load v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-media-load)
+   Compiling ruzina-audio-dsp v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-dsp)
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling digest v0.10.7
+   Compiling ruzina-audio-keylock v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-keylock)
+   Compiling ruzina-mixer v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-mixer)
+   Compiling ruzina-audio-scratch v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-scratch)
+   Compiling ruzina-uac v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-uac)
+   Compiling sha2 v0.10.9
+   Compiling nanoaudio-flac v0.1.2
+   Compiling ruzina-audio-runtime v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-runtime)
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 24.39s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-6cc85426fe57d1c3)
+
+running 4 tests
+test deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch ... FAILED
+test deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track ... FAILED
+test deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent ... FAILED
+test deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch ... FAILED
+
+failures:
+
+---- deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch stdout ----
+
+thread 'deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch' (1680) panicked at src/deck_engine/tests.rs:241:5:
+seek never resolves after producer failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track stdout ----
+
+thread 'deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track' (1681) panicked at src/deck_engine/tests.rs:224:5:
+late load completion unloaded the already playing deck
+
+---- deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent stdout ----
+
+thread 'deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent' (1682) panicked at src/deck_play/tests.rs:432:5:
+assertion `left == right` failed: epoch and origin came from different restarts
+  left: Some((1, 2))
+ right: None
+
+---- deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch stdout ----
+
+thread 'deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch' (1684) panicked at src/deck_play/tests.rs:412:5:
+assertion `left != right` failed: EOF seek produces no completion epoch: Some(Seeked { index: 0, position_ms: 250, ok: false })
+  left: 2
+ right: 2
+
+
+failures:
+    deck_engine::tests::review_failed_seek_must_not_wait_forever_for_new_epoch
+    deck_engine::tests::review_play_after_load_admission_must_preserve_loaded_track
+    deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent
+    deck_play::tests::review_seek_to_eof_must_publish_a_new_terminal_epoch
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 52 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `--lib`

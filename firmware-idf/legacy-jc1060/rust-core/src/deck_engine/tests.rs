@@ -1,6 +1,7 @@
 use super::*;
 use crate::deck_mix::Mix;
 use crate::deck_play::attach_ring;
+use crate::deck_transport::{LOAD_RESULTS, LoadResult};
 use ruzina_audio_dsp::PcmFrame;
 use ruzina_controller_core::{ControlValue, PadAction, PadMode, SemanticControl};
 use ruzina_deck::DeckState;
@@ -50,8 +51,8 @@ fn the_deck_engine_owns_transport() {
     attach_ring(0);
     attach_ring(1);
     let mut mix = Mix::new();
-    COMMANDS[0].take();
-    COMMANDS[0].take_seek();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
 
     // Play on an empty deck is refused.
     press(&mut mix, SemanticControl::Play, true);
@@ -60,12 +61,15 @@ fn the_deck_engine_owns_transport() {
 
     // A load commits once its producer has published it.
     serve(0);
-    LOADED[0].post(LoadedTrack {
-        ready: true,
-        index: 3,
-        bpm_x100: 12_800,
-        track_id: [7; 16],
-    });
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 3,
+            bpm_x100: 12_800,
+            track_id: [7; 16],
+        },
+    );
     run(&mut mix, 3); // at least one 128-frame block, where loads commit
     assert_eq!(deck(&mut mix).base_bpm_x100, 12_800);
     assert!(mix.engine().load_allowed(DeckId::One));
@@ -84,11 +88,12 @@ fn the_deck_engine_owns_transport() {
     // epoch arrives, the stale position is not reported.
     press(&mut mix, SemanticControl::Cue, true);
     press(&mut mix, SemanticControl::Cue, false);
-    assert_eq!(COMMANDS[0].take_seek(), Some(0));
+    assert_eq!(take_seek(), Some(0));
     assert_eq!(mix.engine().playing(), [false, false]);
     run(&mut mix, 5);
     assert_eq!(deck(&mut mix).position_ms, 0);
     serve(0);
+    acknowledge_seek(&mut mix);
     assert_eq!(run(&mut mix, 5), 0);
     assert_eq!(deck(&mut mix).position_ms, 0);
 
@@ -98,8 +103,9 @@ fn the_deck_engine_owns_transport() {
     assert_eq!(run(&mut mix, 50), 2_500);
     press(&mut mix, SemanticControl::Cue, false);
     assert_eq!(mix.engine().playing(), [false, false]);
-    assert_eq!(COMMANDS[0].take_seek(), Some(0));
+    assert_eq!(take_seek(), Some(0));
     serve(0);
+    acknowledge_seek(&mut mix);
     run(&mut mix, 2);
 
     // Play, then pause away from the cue: CUE stores a new cue point there
@@ -112,13 +118,14 @@ fn the_deck_engine_owns_transport() {
     press(&mut mix, SemanticControl::Cue, true);
     press(&mut mix, SemanticControl::Cue, false);
     assert_eq!(deck(&mut mix).cue_point_ms, paused);
-    assert_eq!(COMMANDS[0].take_seek(), None);
+    assert_eq!(take_seek(), None);
 
     // The jog scrubs while paused (a seek) and bends while playing.
     mix.control(&event(SemanticControl::JogBend, ControlValue::Relative(10)));
-    let target = COMMANDS[0].take_seek().expect("scrub seek");
+    let target = take_seek().expect("scrub seek");
     assert!(target > paused);
     serve(target);
+    acknowledge_seek(&mut mix);
     run(&mut mix, 2);
     assert!(near(deck(&mut mix).position_ms, target, 2));
     press(&mut mix, SemanticControl::Play, true);
@@ -159,8 +166,9 @@ fn the_deck_engine_owns_transport() {
     run(&mut mix, 50);
     mix.control(&pad(true));
     mix.control(&pad(false));
-    assert_eq!(COMMANDS[0].take_seek(), Some(stored));
+    assert_eq!(take_seek(), Some(stored));
     serve(stored);
+    acknowledge_seek(&mut mix);
     run(&mut mix, 2);
     assert!(near(deck(&mut mix).position_ms, stored, 3));
 
@@ -178,32 +186,350 @@ fn the_deck_engine_owns_transport() {
     assert_eq!(status[1], 1);
 
     // A failed load unloads the deck: Play is refused again.
-    LOADED[0].post(LoadedTrack {
-        ready: false,
-        index: 4,
-        bpm_x100: 0,
-        track_id: [8; 16],
-    });
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: false,
+            index: 4,
+            bpm_x100: 0,
+            track_id: [8; 16],
+        },
+    );
     run(&mut mix, 3); // at least one 128-frame block, where loads commit
     press(&mut mix, SemanticControl::Play, true);
     assert_eq!(mix.engine().playing(), [false, false]);
     assert_eq!(mix.engine().counters()[1], 1);
 }
 
+struct LoadFixture {
+    ready: bool,
+    index: u32,
+    bpm_x100: u32,
+    track_id: [u8; 16],
+}
+fn post_load(mix: &mut Mix, fixture: LoadFixture) {
+    use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+    if mix.engine().lease.is_none() {
+        let mut session = MediaSession::new();
+        let ConnectResult::Accepted(lease) = session.on_connect(MediaSourceId::new(7).unwrap())
+        else {
+            panic!()
+        };
+        crate::media_signal::activate(lease);
+        mix.engine().lease = Some(lease);
+    }
+    assert!(mix.engine().request_load(DeckId::One, fixture.index));
+    let request = LOAD_REQUESTS[0].take().unwrap();
+    GATES[0].begin_replacement(request.permit).unwrap();
+    LOAD_RESULTS[0]
+        .put(LoadResult {
+            request,
+            ready: fixture.ready,
+            bpm_x100: fixture.bpm_x100,
+            track_id: fixture.track_id,
+        })
+        .unwrap();
+}
+
 #[test]
-fn the_load_mailbox_reads_only_whole_posts() {
-    let mailbox = Loaded::new();
-    let mut seen = 0;
-    assert_eq!(mailbox.take(&mut seen), None);
-    let track = LoadedTrack {
-        ready: true,
-        index: 9,
-        bpm_x100: 17_400,
-        track_id: core::array::from_fn(|i| i as u8),
+fn load_permit_protects_real_producer_and_rejects_late_results() {
+    use crate::deck_play::{Event, Producer, tests::Memory};
+    use crate::deck_transport::guarded_load;
+    use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut session = MediaSession::new();
+    let ConnectResult::Accepted(lease) = session.on_connect(MediaSourceId::new(9).unwrap()) else {
+        panic!()
     };
-    mailbox.post(track);
-    assert_eq!(mailbox.take(&mut seen), Some(track));
-    assert_eq!(mailbox.take(&mut seen), None);
-    mailbox.seq.fetch_add(1, Ordering::Relaxed); // a writer mid-post
-    assert_eq!(mailbox.take(&mut seen), None);
+    const WAV: &[u8] = include_bytes!(
+        "../../../../../firmware-rust/crates/ruzina-audio-runtime/tests/fixtures/codecs/stereo.wav"
+    );
+    for (i, deck) in DECKS.into_iter().enumerate() {
+        // Retire any completed previous test state; never interleave globals.
+        LOAD_REQUESTS[i].take();
+        LOAD_RESULTS[i].take();
+        let mut engine = Engine::new();
+        crate::media_signal::activate(lease);
+        engine.lease = Some(lease);
+        attach_ring(i);
+        let mut producer = Producer::new();
+        let mut files = Memory::new(&[WAV]);
+        assert!(engine.request_load(deck, 0));
+        assert!(!engine.request_load(deck, 1));
+        let first = LOAD_REQUESTS[i].take().unwrap();
+        assert!(matches!(
+            guarded_load(i, first, lease, &mut producer, &mut files, Some("0")),
+            Some(Event::Ready { .. })
+        ));
+        LOAD_RESULTS[i]
+            .put(LoadResult {
+                request: first,
+                ready: true,
+                track_id: [1; 16],
+                bpm_x100: 12000,
+            })
+            .unwrap();
+        engine.transport();
+        assert!(engine.loaded[i]);
+        assert!(GATES[i].is_idle());
+        assert!(engine.request_load(deck, 1));
+        let canceled = LOAD_REQUESTS[i].take().unwrap();
+        let epoch = RINGS[i].epoch();
+        engine.control(&ControlEvent {
+            deck: Some(deck),
+            control: SemanticControl::Play,
+            value: ControlValue::Pressed(true),
+        });
+        assert!(engine.playing[i]);
+        assert_eq!(
+            guarded_load(i, canceled, lease, &mut producer, &mut files, None),
+            None
+        );
+        assert_eq!(RINGS[i].epoch(), epoch); // producer did not destroy the old source
+        LOAD_RESULTS[i]
+            .put(LoadResult {
+                request: canceled,
+                ready: false,
+                track_id: [2; 16],
+                bpm_x100: 0,
+            })
+            .unwrap();
+        engine.transport();
+        assert!(engine.loaded[i]);
+        assert!(engine.playing[i]);
+        engine.control(&ControlEvent {
+            deck: Some(deck),
+            control: SemanticControl::Play,
+            value: ControlValue::Pressed(true),
+        });
+        assert!(engine.request_load(deck, 1));
+        let replacing = LOAD_REQUESTS[i].take().unwrap();
+        GATES[i].begin_replacement(replacing.permit).unwrap();
+        engine.control(&ControlEvent {
+            deck: Some(deck),
+            control: SemanticControl::Play,
+            value: ControlValue::Pressed(true),
+        });
+        assert!(!engine.playing[i]);
+        LOAD_RESULTS[i]
+            .put(LoadResult {
+                request: replacing,
+                ready: false,
+                track_id: [2; 16],
+                bpm_x100: 0,
+            })
+            .unwrap();
+        engine.transport();
+        assert!(!engine.loaded[i]);
+        assert!(GATES[i].is_idle());
+        assert!(engine.request_load(deck, 0));
+        let last = LOAD_REQUESTS[i].take().unwrap();
+        GATES[i].finish(last.permit);
+    }
+}
+
+fn take_seek() -> Option<u32> {
+    // Inspect the engine's outbound request, keeping it for the simulated producer.
+    let request = SEEK_REQUESTS[0].take()?;
+    SEEK_REQUESTS[0].put(request).unwrap();
+    Some(request.target_ms)
+}
+fn acknowledge_seek(mix: &mut Mix) {
+    use crate::deck_transport::{SEEK_RESULTS, SeekResult};
+    let request = SEEK_REQUESTS[0].take().unwrap();
+    SEEK_RESULTS[0]
+        .put(SeekResult {
+            request,
+            outcome: SeekOutcome::Ready,
+            epoch: RINGS[0].epoch(),
+            position_ms: request.target_ms,
+        })
+        .unwrap();
+    mix.tick();
+}
+
+#[test]
+fn seek_receipts_finish_eof_failure_and_ignore_superseded_work() {
+    use crate::deck_play::{Producer, tests::Memory};
+    use crate::deck_transport::{SEEK_RESULTS, execute_seek, guarded_load};
+    use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut session = MediaSession::new();
+    let ConnectResult::Accepted(lease) = session.on_connect(MediaSourceId::new(10).unwrap()) else {
+        panic!()
+    };
+    const WAV: &[u8] = include_bytes!(
+        "../../../../../firmware-rust/crates/ruzina-audio-runtime/tests/fixtures/codecs/stereo.wav"
+    );
+    for (i, deck) in DECKS.into_iter().enumerate() {
+        LOAD_REQUESTS[i].take();
+        LOAD_RESULTS[i].take();
+        SEEK_REQUESTS[i].take();
+        SEEK_RESULTS[i].take();
+        let mut engine = Engine::new();
+        crate::media_signal::activate(lease);
+        engine.lease = Some(lease);
+        attach_ring(i);
+        let mut producer = Producer::new();
+        let mut files = Memory::new(&[WAV]);
+        assert!(engine.request_load(deck, 0));
+        let source = LOAD_REQUESTS[i].take().unwrap();
+        guarded_load(i, source, lease, &mut producer, &mut files, Some("0")).unwrap();
+        LOAD_RESULTS[i]
+            .put(LoadResult {
+                request: source,
+                ready: true,
+                track_id: [3; 16],
+                bpm_x100: 12000,
+            })
+            .unwrap();
+        engine.transport();
+        for (target, outcome, actual) in [
+            (100, SeekOutcome::Ready, 100),
+            (250, SeekOutcome::Eof, 250),
+            (999, SeekOutcome::Eof, 250),
+            (0, SeekOutcome::Ready, 0),
+        ] {
+            engine.apply(DeckEffects::one(DeckEffect::Seek {
+                deck,
+                position_ms: target,
+            }));
+            let request = SEEK_REQUESTS[i].take().unwrap();
+            let result = execute_seek(i, request, Some(source), &mut producer, &mut files);
+            assert_eq!(result.outcome, outcome);
+            assert_eq!(result.position_ms, actual);
+            // Producer can finish before the next control tick. No render needed.
+            SEEK_RESULTS[i].put(result).unwrap();
+            engine.transport();
+            assert!(engine.seeking[i].is_none());
+            assert_eq!(engine.deck.deck(deck).position_ms, actual);
+            if outcome == SeekOutcome::Eof {
+                assert!(!engine.playing[i]);
+            }
+        }
+        engine.apply(DeckEffects::one(DeckEffect::Seek {
+            deck,
+            position_ms: 50,
+        }));
+        let old = SEEK_REQUESTS[i].take().unwrap();
+        engine.apply(DeckEffects::one(DeckEffect::Seek {
+            deck,
+            position_ms: 125,
+        }));
+        let new = SEEK_REQUESTS[i].take().unwrap();
+        SEEK_RESULTS[i]
+            .put(execute_seek(
+                i,
+                old,
+                Some(source),
+                &mut producer,
+                &mut files,
+            ))
+            .unwrap();
+        engine.transport();
+        assert_eq!(engine.seeking[i], Some(new));
+        SEEK_RESULTS[i]
+            .put(execute_seek(i, new, None, &mut producer, &mut files))
+            .unwrap();
+        engine.transport();
+        assert!(engine.seeking[i].is_none());
+        assert!(!engine.playing[i]);
+        engine.apply(DeckEffects::one(DeckEffect::Seek {
+            deck,
+            position_ms: 0,
+        }));
+        let request = SEEK_REQUESTS[i].take().unwrap();
+        files.fail_reads_after = Some(0);
+        let failed = execute_seek(i, request, Some(source), &mut producer, &mut files);
+        assert_eq!(failed.outcome, SeekOutcome::Failed);
+        SEEK_RESULTS[i].put(failed).unwrap();
+        engine.transport();
+        assert!(engine.seeking[i].is_none());
+        assert!(!engine.playing[i]);
+        engine.control(&ControlEvent {
+            deck: Some(deck),
+            control: SemanticControl::Play,
+            value: ControlValue::Pressed(true),
+        });
+        assert!(
+            !engine.playing[i],
+            "faulted source must not accept silent PLAY"
+        );
+        assert!(engine.load_allowed(deck));
+    }
+}
+
+#[test]
+fn media_revocation_discards_cached_audio_and_late_receipts() {
+    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 0,
+            bpm_x100: 12000,
+            track_id: [5; 16],
+        },
+    );
+    serve(0);
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    assert_ne!(run(&mut mix, 5), 0); // block has unconsumed cached output
+    let old = mix.engine().source[0].unwrap();
+    mix.engine().apply(DeckEffects::one(DeckEffect::Seek {
+        deck: DeckId::One,
+        position_ms: 100,
+    }));
+    let seek = SEEK_REQUESTS[0].take().unwrap();
+    crate::media_signal::revoke();
+    assert_eq!(run(&mut mix, 1), 0);
+    assert_eq!(mix.engine().playing(), [false, false]);
+    assert!(mix.engine().source[0].is_none());
+    LOAD_RESULTS[0]
+        .put(LoadResult {
+            request: old,
+            ready: true,
+            track_id: [5; 16],
+            bpm_x100: 12000,
+        })
+        .unwrap();
+    crate::deck_transport::SEEK_RESULTS[0]
+        .put(crate::deck_transport::SeekResult {
+            request: seek,
+            outcome: SeekOutcome::Ready,
+            epoch: RINGS[0].epoch(),
+            position_ms: 100,
+        })
+        .unwrap();
+    mix.tick();
+    assert!(!mix.engine().loaded[0]);
+    assert!(!mix.engine().request_load(DeckId::One, 0));
+    assert_eq!(ruzina_legacy_engine_track(1), -1);
+    crate::media_signal::reset();
+}
+
+#[test]
+fn controller_disconnect_releases_a_cue_preview_without_resuming_it() {
+    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = Mix::new();
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 0,
+            bpm_x100: 12000,
+            track_id: [6; 16],
+        },
+    );
+    mix.tick();
+    press(&mut mix, SemanticControl::Cue, true);
+    assert!(mix.engine().playing()[0]);
+    mix.engine().connection(false);
+    assert!(!mix.engine().playing()[0]);
+    assert_eq!(SEEK_REQUESTS[0].take().unwrap().target_ms, 0);
+    mix.engine().connection(true);
+    assert!(!mix.engine().playing()[0]);
 }
