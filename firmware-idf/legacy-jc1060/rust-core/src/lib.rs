@@ -30,6 +30,9 @@ mod controller_audio;
 #[cfg(feature = "deck-play")]
 mod deck_play;
 
+#[cfg(feature = "deck-mix")]
+mod deck_mix;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]

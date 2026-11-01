@@ -432,3 +432,29 @@ with deck 1's track in place of the tone.
   chain under the load run (`load-run-stack.log`).
 
 See [deck play](../../docs/reviews/2026-11-01-legacy-deck-play.md).
+
+## `deck-mix` profile
+
+`deck-mix` (`CONFIG_RUZINA_DECK_MIX`, Rust `idf-deck-mix`) plays both decks
+and mixes them with the product's own render graph.
+
+- **Decoding.** The SD load task decodes deck 1 and deck 2, each into its own
+  PSRAM ring. Deck 2's decoder is allocated at its first Load.
+- **Render.** On the USB client task, `ruzina-audio-runtime`'s
+  `FixedRateRenderGraph` renders 128-frame blocks:
+  - per-deck resampling to 48 kHz, with the Tempo fader as pitch;
+  - trim, EQ and filter;
+  - the channel faders, crossfader, master gain and the MAIN limiter;
+  - the PFL and MAIN headphone mix.
+- **Controls.** The FLX4's mixer controls drive `ruzina-mixer`'s
+  `MixerState`, as on the native firmware.
+- **Outputs.** MAIN goes to FLX4 channels 1/2 (the MASTER output), and the
+  headphones to 3/4.
+- **Safety.** Master Volume and Headphone Level start at a quarter until each
+  knob moves, and the headphones keep a −12 dB ceiling.
+- **Telemetry.** The log adds `deck_mix_stats` with underruns and buffered
+  frames per deck, limited MAIN samples and `fill_max_us`.
+- **Stack.** The build checks the call chain under the UAC fill against the
+  8 KiB USB client task (`uac-fill-stack.log`).
+
+See [deck mix](../../docs/reviews/2026-11-01-legacy-deck-mix.md).

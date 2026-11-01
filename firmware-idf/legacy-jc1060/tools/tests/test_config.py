@@ -144,7 +144,9 @@ class ConfigTests(unittest.TestCase):
                ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_USB_HOST_MIDI':'OFF'},False),
                ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON'},True),
                ({'CONFIG_RUZINA_DECK_PLAY':'ON'},False),
-               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_LOAD_DISPLAY':'OFF'},False)]
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_LOAD_DISPLAY':'OFF'},False),
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_DECK_MIX':'ON'},True),
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_MIX':'ON'},False)]
         for override,accepted in cases:
             config=base|override
             result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)

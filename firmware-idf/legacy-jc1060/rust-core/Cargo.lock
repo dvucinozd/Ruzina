@@ -227,6 +227,7 @@ dependencies = [
  "ruzina-media-load",
  "ruzina-media-partition",
  "ruzina-media-session",
+ "ruzina-mixer",
  "ruzina-uac",
  "sha2",
 ]

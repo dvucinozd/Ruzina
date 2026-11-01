@@ -37,6 +37,9 @@ const PRIME_ACTIONS: u32 = 8192;
 const POLL_ACTIONS: u32 = 64;
 
 /// Headphone gain at full Headphone Level, Q15 (-12 dBFS ceiling).
+/// The single-deck consumer below (`Output`, `render`, the gain) is unused
+/// with `deck-mix`, whose render graph replaces it.
+#[cfg_attr(feature = "deck-mix", allow(dead_code))]
 const MAX_GAIN_Q15: u64 = 8192;
 
 /// Lock-free PCM ring between the SD load task and the USB client task.
@@ -179,6 +182,12 @@ impl Reader {
 
     pub(crate) fn ended(&self, ring: &Ring) -> bool {
         ring.ended.load(Ordering::Acquire) == self.epoch
+    }
+
+    /// The current epoch's source rate; 0 while no source is ready.
+    #[cfg_attr(not(feature = "deck-mix"), allow(dead_code))]
+    pub(crate) const fn rate(&self) -> u32 {
+        self.rate
     }
 
     pub(crate) fn buffered(&self, ring: &Ring) -> u32 {
@@ -516,6 +525,11 @@ impl Commands {
         self.cue.store(true, Ordering::Release);
     }
 
+    /// A Load is waiting.
+    pub(crate) fn pending_load(&self) -> bool {
+        self.load.load(Ordering::Acquire) != 0
+    }
+
     /// Takes the pending Load (index + 1, 0 none) and Cue.
     pub(crate) fn take(&self) -> (u32, bool) {
         (
@@ -526,6 +540,7 @@ impl Commands {
 }
 
 /// The consumer side: resampler, read position and counters.
+#[cfg_attr(feature = "deck-mix", allow(dead_code))]
 pub(crate) struct Output {
     reader: Reader,
     resampler: ResamplerState,
@@ -533,6 +548,7 @@ pub(crate) struct Output {
     underruns: u32,
 }
 
+#[cfg_attr(feature = "deck-mix", allow(dead_code))]
 impl Output {
     pub(crate) const fn new() -> Self {
         Self {
@@ -585,12 +601,14 @@ impl Output {
     }
 }
 
+#[cfg_attr(feature = "deck-mix", allow(dead_code))]
 fn scale(sample: i16, gain_q15: u32) -> i16 {
     ((i64::from(sample) * i64::from(gain_q15)) >> 15) as i16
 }
 
 /// Headphone gain from the Headphone Level knob, squared for an audio taper;
 /// a quarter turn until the knob first moves (-36 dBFS).
+#[cfg_attr(feature = "deck-mix", allow(dead_code))]
 pub(crate) fn headphone_gain_q15(level: Option<(u16, u16)>) -> u32 {
     let (value, max) = match level {
         Some((value, max)) if max != 0 => (u64::from(value.min(max)), u64::from(max)),
@@ -599,8 +617,9 @@ pub(crate) fn headphone_gain_q15(level: Option<(u16, u16)>) -> u32 {
     (MAX_GAIN_Q15 * value * value / (max * max)) as u32
 }
 
-pub(crate) static RING: Ring = Ring::new();
-pub(crate) static COMMANDS: Commands = Commands::new();
+/// One ring and one command slot per deck; `deck-play` uses deck 1 only.
+pub(crate) static RINGS: [Ring; 2] = [Ring::new(), Ring::new()];
+pub(crate) static COMMANDS: [Commands; 2] = [Commands::new(), Commands::new()];
 
 struct Shared(UnsafeCell<Output>);
 // SAFETY: only the C USB client task renders and reads the counters.
@@ -608,25 +627,29 @@ unsafe impl Sync for Shared {}
 static OUTPUT: Shared = Shared(UnsafeCell::new(Output::new()));
 
 /// Consumer entry for `controller_audio`, on the USB client task only.
+#[cfg_attr(feature = "deck-mix", allow(dead_code))]
 pub(crate) fn render(out: &mut [PcmFrame], device_rate: u32, playing: bool, gain_q15: u32) {
     // SAFETY: single caller task (see `Shared`); no reference escapes.
     let output = unsafe { &mut *OUTPUT.0.get() };
-    output.render(&RING, out, device_rate, playing, gain_q15);
+    output.render(&RINGS[0], out, device_rate, playing, gain_q15);
 }
 
-/// Allocates the ring storage once, in the PSRAM heap.
-pub(crate) fn attach_ring() -> bool {
+/// Allocates deck `deck`'s ring storage once, in the PSRAM heap.
+pub(crate) fn attach_ring(deck: usize) -> bool {
     let storage = vec![PcmFrame::default(); RING_FRAMES as usize].into_boxed_slice();
-    RING.attach(Box::leak(storage))
+    RINGS[deck].attach(Box::leak(storage))
 }
 
-/// Load the given catalog track on a deck (only deck 1 plays). Called by
-/// the display task when the controller's Load button assigns a track.
+/// Decks that decode: deck 1, and deck 2 with `deck-mix`.
+pub(crate) const DECKS: usize = if cfg!(feature = "deck-mix") { 2 } else { 1 };
+
+/// Load the given catalog track on deck 1 or 2 (1-based), when that deck
+/// decodes. Called by the display task when a Load button assigns a track.
 #[cfg(feature = "idf-deck-play")]
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_play_load(deck: u32, index: u32) {
-    if deck == 1 {
-        COMMANDS.load(index);
+    if (1..=DECKS as u32).contains(&deck) {
+        COMMANDS[deck as usize - 1].load(index);
     }
 }
 
@@ -646,7 +669,7 @@ pub unsafe extern "C" fn ruzina_legacy_play_stats(out: *mut u32) {
     let values = [
         output.played,
         output.underruns,
-        output.reader.buffered(&RING),
+        output.reader.buffered(&RINGS[0]),
         output.reader.rate,
     ];
     // SAFETY: the caller provides four writable u32 slots.

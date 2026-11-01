@@ -700,22 +700,26 @@ impl<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> crate::deck_play::So
     }
 }
 
-/// Deck playback telemetry, through the load report.
+/// Deck playback telemetry, through the load report. Values carry the deck
+/// (0 deck 1, 1 deck 2) in bits 24 and up.
 #[cfg(feature = "idf-deck-play")]
 mod play_event {
-    /// Deck 1 decodes a track; value is `index << 8 | codec` (1 WAV, 2 MP3, 3 FLAC).
+    /// A deck decodes a track; value is `deck << 24 | index << 8 | codec`
+    /// (1 WAV, 2 MP3, 3 FLAC).
     pub const READY: u32 = 7;
-    /// The track's source rate in Hz.
+    /// The track's source rate in Hz, `deck << 24 | rate`.
     pub const RATE: u32 = 8;
-    /// The track failed to load; value is `index << 8 | stage`
+    /// The track failed to load; value is `deck << 24 | index << 8 | stage`
     /// (1 path, 2 open, 3 format, 4 decode).
     pub const FAILED: u32 = 9;
-    /// The track ended; value is `index << 8 | faulted`.
+    /// The track ended; value is `deck << 24 | index << 8 | faulted`.
     pub const ENDED: u32 = 10;
 }
 
-/// After the first pass: serve detail selections and the deck 1 producer
-/// until the lease ends. Returns only on a lost lease or allocation failure.
+/// After the first pass: serve detail selections and the deck producers
+/// until the lease ends. Deck 1's producer exists from the start; deck 2's
+/// (with `deck-mix`) is allocated at its first Load. Returns only on a lost
+/// lease or allocation failure.
 #[cfg(feature = "idf-deck-play")]
 fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<str>>(
     pass: u32,
@@ -725,15 +729,16 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
     path: impl Fn(u32) -> Option<P>,
     tracks: usize,
 ) -> i32 {
-    use crate::deck_play::{COMMANDS, Event, Producer, RING, attach_ring};
+    use crate::deck_play::{COMMANDS, DECKS, Event, Producer, RINGS, attach_ring};
     use core::sync::atomic::Ordering;
     // SAFETY: diagnostic telemetry passes three u32 POD values only.
     let report = |event, value| unsafe { ruzina_bridge_load_report(pass, event, value) };
-    if !attach_ring() {
+    if !attach_ring(0) {
         report(load_event::FAILED, 2 << 8 | 1);
         return -7;
     }
-    let mut producer = Producer::new();
+    let mut producers: [Option<Producer<_>>; 2] = [Some(Producer::new()), None];
+    let mut deck_two_first = false;
     loop {
         if LOAD_DETAIL_OWED.swap(false, Ordering::Acquire) {
             let selected = LOAD_SELECTED.load(Ordering::Relaxed) as usize;
@@ -742,28 +747,49 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
                 return -6;
             }
         }
-        let mut files = VolumeFiles {
-            volume: &mut *volume,
-            current,
-        };
-        let (busy, event) = producer.poll(&mut files, &RING, &COMMANDS, &path);
-        match event {
-            Some(Event::Ready { index, codec, rate }) => {
-                report(play_event::READY, index << 8 | codec);
-                report(play_event::RATE, rate);
+        let mut busy = false;
+        // One poll per deck per turn, starting with the other deck each
+        // turn, so neither ring waits behind the other's reads.
+        let order = if deck_two_first { [1, 0] } else { [0, 1] };
+        for deck in order.into_iter().filter(|&deck| deck < DECKS) {
+            if producers[deck].is_none() && COMMANDS[deck].pending_load() {
+                if !attach_ring(deck) {
+                    report(load_event::FAILED, 2 << 8 | 1);
+                    return -7;
+                }
+                producers[deck] = Some(Producer::new());
             }
-            Some(Event::Failed { index, stage }) => report(play_event::FAILED, index << 8 | stage),
-            Some(Event::Ended { index, faulted }) => {
-                report(play_event::ENDED, index << 8 | u32::from(faulted))
+            let Some(producer) = producers[deck].as_mut() else {
+                continue;
+            };
+            let mut files = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            };
+            let (worked, event) = producer.poll(&mut files, &RINGS[deck], &COMMANDS[deck], &path);
+            busy |= worked;
+            let tag = (deck as u32) << 24;
+            match event {
+                Some(Event::Ready { index, codec, rate }) => {
+                    report(play_event::READY, tag | index << 8 | codec);
+                    report(play_event::RATE, tag | rate);
+                }
+                Some(Event::Failed { index, stage }) => {
+                    report(play_event::FAILED, tag | index << 8 | stage)
+                }
+                Some(Event::Ended { index, faulted }) => {
+                    report(play_event::ENDED, tag | index << 8 | u32::from(faulted))
+                }
+                None => {}
             }
-            None => {}
         }
+        deck_two_first = !deck_two_first;
         if !current() {
             report(load_event::FAILED, 4 << 8);
             return -6;
         }
         if !busy {
-            // SAFETY: dedicated task only; one tick while the ring is full.
+            // SAFETY: dedicated task only; one tick while the rings are full.
             unsafe { ruzina_bridge_fixture_yield() };
         }
     }
