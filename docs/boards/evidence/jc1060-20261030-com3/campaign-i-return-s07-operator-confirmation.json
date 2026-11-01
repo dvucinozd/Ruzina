@@ -1,0 +1,6 @@
+{
+  "question": "Vraćeni deck-play je uredno bootao, a playback monitor je spreman. Učitaj na deck 1 poznatu pjesmu koja je ranije radila, pokreni je oko 20 sekundi pa provjeri Pause i CUE. Na dosadašnjoj glasnoći potvrdi čuješ li čist zvuk u oba uha i rade li komande kao prije.",
+  "answer": "sve je ok",
+  "scope": "RESTORED_S07_NORMAL_PLAYBACK_ONLY",
+  "date": "2026-11-01"
+}

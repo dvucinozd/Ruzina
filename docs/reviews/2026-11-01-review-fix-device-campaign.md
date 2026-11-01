@@ -2,10 +2,12 @@
 
 Date: 2026-11-01. Status: PREPARED / NOT_RUN. This implements preparation for step I of the [repair plan](2026-11-01-review-fix-implementation-plan.md). It does not authorize or record a flash, COM3 read, listening test or physical acceptance.
 
+Subsequent owner-assisted execution is recorded separately in the [device results](2026-11-01-review-fix-device-results.md): I01 timing failed and s07 was restored. The preparation status above describes the original checkpoint, not the current installed image.
+
 ## Entry gates
 
 1. Finish the offline A–H execution record, including test/tool logs and a package manifest whose source hashes still match the checkout. Use the final verified package list, not the intermediate step-A package.
-2. Reconcile repository evidence with the newer external `s08-deck-mix-*` and `s09-deck-engine-*` captures. Record their exact app/plan/predecessor hashes, outcome limits and any operator acceptance. Directory existence alone proves none of these.
+2. Read the [s08/s09 reconciliation](2026-11-01-review-fix-history-reconciliation.md): offline ancestry is verified; historical captures have timing/underrun limits and no captured listening acceptance. Complete the live identity gate before any write.
 3. At the later device session, verify the actual running image and unit identity. This is the observed JC1060 NewPanel v1.3/103 backend; native minimum 302 remains unchanged. Do not inherit JC8012 or native-kit readiness.
 4. Check both whole-flash factory backups, secondary copies, physical BOOT/RESET recovery path and the current flash-plan ancestry using the existing recovery procedure. Preserve tail sectors from larger predecessor images. Do not guess that `deck-play` is still installed.
 5. Create a fresh flash plan for the chosen final `deck-engine` package with the actual current predecessor chain. Archive its SHA and the exact source diff; it is an uncommitted-source build until a later publication creates a matching commit. Build-only manifests are not flash plans.
@@ -43,4 +45,4 @@ Date: 2026-11-01. Status: PREPARED / NOT_RUN. This implements preparation for st
 
 Archive raw captures, scenario definitions, operator replies, app/package/plan/source hashes and structured per-case outcomes on the primary and secondary evidence storage. Historical logs and acceptance remain immutable. Use PASS / FAIL / NOT_RUN / NOT_CAPTURED distinctly.
 
-If the candidate is experimental or fails acceptance, restore the reconciled known accepted image through its recorded plan and verify its normal behavior. Close the monitor and state exactly which image remains installed. This runbook is preparation only; every physical case above is currently NOT_RUN for the repair candidate.
+If the candidate is experimental or fails acceptance, restore the reconciled known accepted image through its recorded plan and verify its normal behavior. Close the monitor and state exactly which image remains installed. This runbook is preparation only; every physical case above was NOT_RUN at preparation. Read the separate device results for later case outcomes.

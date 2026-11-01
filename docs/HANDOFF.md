@@ -14,8 +14,12 @@ Read in order:
 4. [Current development status](DEVELOPMENT_STATUS.md): separate legacy/native completion levels.
 
 Offline steps A–H are complete: 17/17 IDF packages, host/target tests and final
-CodeRabbit (0 issues) pass. The owner authorized publication on the repair branch; hardware status is NOT_FLASHED. Read the
-execution log for exact hashes and the prepared physical campaign.
+CodeRabbit (0 issues) pass. PR #73 published the repair source as `b454092` and
+passed 19/19 CI jobs. The later [device campaign](reviews/2026-11-01-review-fix-device-results.md)
+booted the exact candidate, failed the registered fill timing criterion and
+restored s07. Cold boot is verified; the owner confirmed normal sound, Pause
+and CUE again. The short capture has zero underruns and USB packet errors;
+all serial monitors are closed.
 
 The offline repairs cover descriptor publication, transactional LOAD/PLAY,
 identified seek outcomes including EOF/failure, media revocation, USB recovery
@@ -30,10 +34,10 @@ RAM execution or gain changes occurred in the repair batch.
 
 Latest accepted playback evidence in the reviewed repository:
 [deck-play](reviews/2026-11-01-legacy-deck-play.md), app `95d45203...`, one-deck
-44.1 kHz FLAC/MP3/WAV through FLX4 headphones. External `s08`/`s09` evidence
-folders exist beyond that checkpoint. Reconcile them and the actual running
-image before any later device work. Do not restore an obsolete diagnostic by
-following a historical current-image paragraph.
+44.1 kHz FLAC/MP3/WAV through FLX4 headphones. The [s08/s09 reconciliation](reviews/2026-11-01-review-fix-history-reconciliation.md)
+verified all 25 prior plans and a byte-exact 16 MiB live s09 predecessor. The
+campaign then wrote the repair candidate and returned to s07 through a new
+ancestry-aware plan. Future upgrades must include those two additional plans.
 
 [PR #71](https://github.com/dvucinozd/Ruzina/pull/71) was deck-mix against main;
 [PR #72](https://github.com/dvucinozd/Ruzina/pull/72) was deck-engine stacked on
@@ -41,12 +45,16 @@ following a historical current-image paragraph.
 The owner subsequently authorized a separate repair PR above #72 and CI on its
 published head. See the publication continuation in the execution log and the
 [remote repair branch](https://github.com/dvucinozd/Ruzina/tree/ogranak/jc1060-review-fixes).
-The merge/device campaign remains a subsequent gate.
+PR #73 remains unmerged. The subsequent device campaign result is separate from
+the published offline validation; passing CI does not close its timing gate.
 
 ## Next physical campaign and later development
 
-Prepare the exact candidate, restore chain, backups and monitor before the
-operator-assisted campaign. Validate two-deck MAIN/PFL, CUE/seek/LOAD races,
+Start with the [UAC timing follow-up](reviews/2026-11-01-uac-timing-follow-up.md):
+the candidate's aggregate maximum was 12260 us, above the registered 6000 us
+bound. Separate initial/recovery prefill from callback refills before choosing
+a fix; lazy graph initialization is a hypothesis, not a measured cause.
+After the timing gate passes on a new exact image, validate two-deck MAIN/PFL, CUE/seek/LOAD races,
 44.1/48 kHz sources, SD loss and USB reconnect with deadline, transfer, ring,
 heap and stack telemetry. Current SD reinsertion requires app restart.
 

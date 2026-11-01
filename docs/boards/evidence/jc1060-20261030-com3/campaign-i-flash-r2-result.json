@@ -1,0 +1,28 @@
+{
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "app_sha256": "0d4d07fa79d2eef299575304ed11258d1d071d8bdace84f35d793b176d551d85",
+  "plan_sha256": "18022505a4821fda7c4ce55be749bcc8e9eab9bb57c4e590b76631a5380cbc92",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "flash_rdid_hex": "0x184068",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "6d58d24666a0d34a36c04470401ded18c90d4cb9962fde5e1bbb9a93cec1de23"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 819200,
+      "sha256": "ec33ccc450c1b29b49885f4e68aff56945614cbd29528d7d51fe8f3e2bb6fb29"
+    }
+  ],
+  "programmer_log_sha256": "c5d3d80fb43be158cba2b2125e14a148d1d337ecf5c2d823ad1c773040a19b92"
+}

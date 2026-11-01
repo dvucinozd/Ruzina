@@ -245,3 +245,14 @@ publication handoff record its exact SHA/run outcomes. Historical offline
 manifests and archive hashes above are retained without rewriting build-time
 commit/dirty metadata. Git normalizes text line endings; CI validates the actual
 committed tree independently of Windows working-tree byte hashes.
+
+## Subsequent owner-assisted device campaign
+
+After publication and 19/19 successful CI jobs on `b454092`, the owner continued
+with the separate physical session. Read the [device results](2026-11-01-review-fix-device-results.md)
+for exact identity, failed I01 timing criterion, recovery and verified normal
+s07 playback. The earlier NOT_FLASHED/NOT_RUN entries above describe the offline
+checkpoint only. The candidate was later flashed and removed; it remains
+unqualified. All current production source hashes still match the reviewed
+269-file source set. The [timing follow-up](2026-11-01-uac-timing-follow-up.md)
+is the next development action.

@@ -1,0 +1,46 @@
+{
+  "mode": "MANUAL_ROM_READ_ONLY_NO_RESET",
+  "flash_written": false,
+  "efuse_written": false,
+  "expected_predecessor_plan_sha256": "478f6f96281c5d9bcf0d27c8f32b36652cb067c5cba9a6e14b46fb6e2808931a",
+  "status": "LIVE_S09_FULL_FLASH_IDENTITY_MATCH_ROM_HELD",
+  "chip": "ESP32-P4",
+  "revision": 103,
+  "mac": "e8:f6:0a:e7:22:1d",
+  "security": {
+    "flags": 0,
+    "flash_crypt_cnt": 0,
+    "key_purposes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      12
+    ],
+    "chip_id": 18,
+    "api_version": 2,
+    "parsed_flags": {
+      "SECURE_BOOT_EN": false,
+      "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+      "SECURE_DOWNLOAD_ENABLE": false,
+      "SECURE_BOOT_KEY_REVOKE0": false,
+      "SECURE_BOOT_KEY_REVOKE1": false,
+      "SECURE_BOOT_KEY_REVOKE2": false,
+      "SOFT_DIS_JTAG": false,
+      "HARD_DIS_JTAG": false,
+      "DIS_USB": false,
+      "DIS_DOWNLOAD_DCACHE": false,
+      "DIS_DOWNLOAD_ICACHE": false
+    }
+  },
+  "flash_rdid": 1589352,
+  "bytes": 16777216,
+  "readback_sha256": "e977c60cb72afddc1eddd8dc3ca925ba8bf1a6762d38cacd0e00c268a88cdb18",
+  "expected_sha256": "e977c60cb72afddc1eddd8dc3ca925ba8bf1a6762d38cacd0e00c268a88cdb18",
+  "full_history_match": true,
+  "different_sectors": [],
+  "app_sha256": "e9eeae92bc2e29f0ce4ba929a38b661592f6edf88621c0ffc3e5dce34c727a5a",
+  "programmer_log_sha256": "4237fff9860514dd758f5cd789aa7208dc792c8af70957548d87933e652bbeea"
+}

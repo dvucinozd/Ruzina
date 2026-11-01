@@ -15,9 +15,8 @@ The latest accepted playback record in this repository is
 [deck-play](docs/reviews/2026-11-01-legacy-deck-play.md): one deck reads the SD
 Rekordbox export and plays FLAC/MP3/WAV through the DDJ-FLX4 headphones, alongside
 the library display/touch and MIDI/LED control. This is bounded device evidence,
-not full product qualification. More recent external s08/s09 captures require
-reconciliation before choosing the next device image; no device identity was
-read during the current offline repairs.
+not full product qualification. The [s08/s09 recovery reconciliation](docs/reviews/2026-11-01-review-fix-history-reconciliation.md)
+now verifies the complete history and live 16 MiB predecessor image.
 
 `deck-mix` and `deck-engine` add two-deck MAIN/PFL, mixer processing and product
 transport. Their PRs #71/#72 were open at the reviewed base. The local
@@ -27,12 +26,16 @@ transactional LOAD, identified seek receipts, coherent ring descriptors, media
 revocation, USB recovery and incremental producer scheduling. Read the
 [execution log](docs/reviews/2026-11-01-review-fix-execution.md) for actual test
 and build results. Offline steps A–H are complete: all 17 IDF packages and the
-host/target checks pass; final CodeRabbit reports 0 issues. These repairs have
-no physical acceptance yet.
+host/target checks pass; final CodeRabbit reports 0 issues. Published [PR #73](https://github.com/dvucinozd/Ruzina/pull/73)
+passed 19/19 CI jobs. The [first device campaign](docs/reviews/2026-11-01-review-fix-device-results.md)
+booted the candidate but failed its registered timing gate (`fill_max_us=12260`,
+limit 6000 us), despite idle underruns 0/0. The exact accepted deck-play image
+was restored; cold boot, normal sound, Pause and CUE are confirmed again.
 
-Next: publish the reviewed changes when requested, then qualify the exact candidate on
-JC1060 with two decks, distinct MAIN/PFL, control races, media loss and USB
-reconnect. Source cues/analysis, loops, scratch, keylock and FX wiring, product
+Next: follow the [UAC timing measurement plan](docs/reviews/2026-11-01-uac-timing-follow-up.md)
+to separate startup/recovery prefill from streaming callback cost before
+resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.
+Source cues/analysis, loops, scratch, keylock and FX wiring, product
 UI/settings, C6 networking and OTA remain separate subsequent development work.
 See the [current status](docs/DEVELOPMENT_STATUS.md) and
 [handoff](docs/HANDOFF.md). Historical bring-up results retain their own

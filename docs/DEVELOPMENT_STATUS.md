@@ -11,17 +11,19 @@ shared Rust. The active repair branch is `ogranak/jc1060-review-fixes`, based on
 | Shared product logic | Rust host implementations for transport, media import, mixer/DSP and management contracts | Target adapter wiring and physical qualification per feature |
 | Legacy SD/library/display | 25-track real export, shared PDB/ANLZ preflight, NewPanel/touch and combined controller diagnostic observed | Broader fixtures and product UI |
 | Legacy deck-play | Accepted record: app `95d45203...`, FLX4 headphones, deck 1 FLAC/MP3/WAV; 90 s rendered audio in 15 min USB stream capture | No transfer of this acceptance to newer images |
-| Legacy deck-mix/deck-engine | Host/build implementation; PR #71/#72 open at reviewed checkpoint | Offline repair validation, review, exact-image device campaign |
-| Review repairs A–H | Complete offline: 17/17 IDF packages, host/target checks PASS, CodeRabbit 0 issues; [execution log](reviews/2026-11-01-review-fix-execution.md) | Owner authorized repair-branch publication and CI; prepared campaign I is NOT_RUN |
+| Legacy deck-mix/deck-engine | Host/build implementation; s08/s09 history reconciled; no inherited two-deck acceptance | [Measure startup versus recurring UAC cost](reviews/2026-11-01-uac-timing-follow-up.md) |
+| Review repairs A–H / campaign I | Offline validation complete; published PR #73 passed 19/19 CI jobs; exact candidate booted but I01 timing criterion failed at 12260 us | Candidate rejected for this campaign; s07 restored/readback and cold boot verified, normal playback owner-confirmed with zero captured underruns; I02–I13 NOT_RUN |
 | Native >=302 firmware | Separate compile-only backend on this unit | Compatible silicon and independent hardware gates |
 | JC8012 | Separate BSP/source work | Independent arrival/recovery/peripheral/audio qualification |
 | External audio | [Future PCM5122/TLV320 plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md), including separate I2C and candidate JP1 map | Physical pin/power/module confirmation, drivers and listening/timing campaign |
 | C6/Web/settings/OTA | Host/simulator contracts | Real network, durable settings and OTA trust/layout/rollback adapters |
 | APTA/recorder/Pro DJ Link | Separately scoped experimental/later work | No automatic product enablement or original APTA branch merge |
 
-The device was not contacted in the repair batch. External s08/s09 captures exist
-beyond the reviewed repository checkpoint; reconcile them before any subsequent
-flash rather than assuming the last repository-recorded image is still running.
+The offline repair batch did not contact the device. A subsequent owner-assisted
+[physical session](reviews/2026-11-01-review-fix-device-results.md) verified the live
+identity and full flash ancestry, tested the candidate and returned to s07 after
+the timing gate failed. Future plans must include both the candidate and return
+plan in the predecessor history; do not reuse the historical s09-only chain.
 Current tests/builds and open gates are in the
 [execution log](reviews/2026-11-01-review-fix-execution.md) and the
 [review](reviews/2026-11-01-code-review-and-next-steps.md).
