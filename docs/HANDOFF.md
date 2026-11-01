@@ -6,6 +6,17 @@ fetched main was `bd52402160af27a3e234f7647d703a847644817b`. Existing planning
 and review documents were already uncommitted when repairs began. Inspect Git
 status before staging; do not reset or sweep another agent's files.
 
+Current continuation is `ogranak/jc1060-uac-fill-timing`, source `5c579e6`,
+[PR #74](https://github.com/dvucinozd/Ruzina/pull/74) above #73. Read the
+[phase diagnostic execution](reviews/2026-11-01-uac-timing-execution.md) first:
+CodeRabbit 0 issues, 19/19 CI, four clean packages and registered plans are
+verified. The later [phase measurement](reviews/2026-11-01-uac-timing-device-results.md)
+found 10373 us in callbacks (3/6000 >=6000 us), versus 1844 us initial prefill.
+There is no timing fix yet. S07 has been restored/readback and cold-boot verified;
+normal sound, Pause and CUE were owner-confirmed with zero captured underruns
+and USB errors. All monitors are closed. Future flash plans need all 29
+predecessors, including this diagnostic and its return-to-s07 plan.
+
 Read in order:
 
 1. [Repair execution log](reviews/2026-11-01-review-fix-execution.md): actual implementation, commands, logs, package hashes and remaining gates.
@@ -50,10 +61,11 @@ the published offline validation; passing CI does not close its timing gate.
 
 ## Next physical campaign and later development
 
-Start with the [UAC timing follow-up](reviews/2026-11-01-uac-timing-follow-up.md):
-the candidate's aggregate maximum was 12260 us, above the registered 6000 us
-bound. Separate initial/recovery prefill from callback refills before choosing
-a fix; lazy graph initialization is a hypothesis, not a measured cause.
+Start with the [callback profiling plan](reviews/2026-11-01-uac-callback-profiling-plan.md):
+the original candidate's aggregate maximum was 12260 us; the instrumented image
+has a callback maximum of 10373 us, above the same registered 6000 us bound.
+The substage/preemption mechanism is unproven. Initial prefill was below 3000 us
+in the instrumented run; do not assume eager initialization will fix it.
 After the timing gate passes on a new exact image, validate two-deck MAIN/PFL, CUE/seek/LOAD races,
 44.1/48 kHz sources, SD loss and USB reconnect with deadline, transfer, ring,
 heap and stack telemetry. Current SD reinsertion requires app restart.

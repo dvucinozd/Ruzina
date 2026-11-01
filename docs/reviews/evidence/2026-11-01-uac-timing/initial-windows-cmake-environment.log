@@ -1,0 +1,376 @@
+test_deck_ui_combines_only_load_display_and_midi (test_config.ConfigTests.test_deck_ui_combines_only_load_display_and_midi) ... ERROR
+test_display_ownership (test_config.ConfigTests.test_display_ownership) ... ERROR
+test_file_fixture_requires_sd_owner (test_config.ConfigTests.test_file_fixture_requires_sd_owner) ... ERROR
+test_guards (test_config.ConfigTests.test_guards) ... ERROR
+test_load_display_requires_load_and_no_touch (test_config.ConfigTests.test_load_display_requires_load_and_no_touch) ... ERROR
+test_memory_profile (test_config.ConfigTests.test_memory_profile) ... ERROR
+test_rust_bridge_requires_exclusive_sd_owner (test_config.ConfigTests.test_rust_bridge_requires_exclusive_sd_owner) ... ERROR
+test_rust_exfat_requires_bridge (test_config.ConfigTests.test_rust_exfat_requires_bridge) ... ERROR
+test_rust_load_requires_bridge_caps_psram_and_no_fixture (test_config.ConfigTests.test_rust_load_requires_bridge_caps_psram_and_no_fixture) ... ERROR
+test_sd_readonly_owner (test_config.ConfigTests.test_sd_readonly_owner) ... ERROR
+test_usb_host_enum_is_isolated (test_config.ConfigTests.test_usb_host_enum_is_isolated) ... ERROR
+test_history_preserves_tail_after_smaller_upgrade (test_flash_plan.FlashPlanTests.test_history_preserves_tail_after_smaller_upgrade) ... ok
+test_invalid_table (test_flash_plan.FlashPlanTests.test_invalid_table) ... ok
+test_valid_table (test_flash_plan.FlashPlanTests.test_valid_table) ... ok
+test_exact_reviewed_records (test_panel_table.PanelTableTests.test_exact_reviewed_records) ... ok
+test_fixed_fixture_and_no_overwrite (test_sd_fixture.FixtureTests.test_fixed_fixture_and_no_overwrite) ... ok
+test_host_and_device_names_and_digest_agree (test_sd_fixture.FixtureTests.test_host_and_device_names_and_digest_agree) ... ok
+test_rust_fixture_and_c_success_telemetry_agree (test_sd_fixture.FixtureTests.test_rust_fixture_and_c_success_telemetry_agree) ... ok
+test_deepest_stack (test_tools.Tests.test_deepest_stack) ... ok
+test_execute_failures_close_and_finalize (test_tools.Tests.test_execute_failures_close_and_finalize) ... ok
+test_ranges (test_tools.Tests.test_ranges) ... ok
+test_rejected_input_never_opens_transport (test_tools.Tests.test_rejected_input_never_opens_transport) ... ok
+test_stack_frames (test_tools.Tests.test_stack_frames) ... ok
+test_unit_record (test_tools.Tests.test_unit_record) ... ok
+test_wrong_hash_and_variant_under_optimization (test_tools.Tests.test_wrong_hash_and_variant_under_optimization) ... ok
+test_wrong_header (test_tools.Tests.test_wrong_header) ... ok
+test_actual_driver_fault_paths (test_uac_recovery.UacRecoveryTests.test_actual_driver_fault_paths) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_actual_driver_timing_phases (test_uac_recovery.UacRecoveryTests.test_actual_driver_timing_phases) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_production_recovery_policy (test_uac_recovery.UacRecoveryTests.test_production_recovery_policy) ... skipped 'Host C compiler required (run on Linux/WSL)'
+
+======================================================================
+ERROR: test_deck_ui_combines_only_load_display_and_midi (test_config.ConfigTests.test_deck_ui_combines_only_load_display_and_midi)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 155, in test_deck_ui_combines_only_load_display_and_midi
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_display_ownership (test_config.ConfigTests.test_display_ownership)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 50, in test_display_ownership
+    result=subprocess.run(['cmake', *[f'-D{k}={v}' for k,v in config.items()], '-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_file_fixture_requires_sd_owner (test_config.ConfigTests.test_file_fixture_requires_sd_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 71, in test_file_fixture_requires_sd_owner
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_guards (test_config.ConfigTests.test_guards)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 21, in test_guards
+    result = subprocess.run(['cmake', *[f'-D{k}={v}' for k, v in config.items()],
+                             '-P', str(guard)], text=True, capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_load_display_requires_load_and_no_touch (test_config.ConfigTests.test_load_display_requires_load_and_no_touch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 114, in test_load_display_requires_load_and_no_touch
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_memory_profile (test_config.ConfigTests.test_memory_profile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 39, in test_memory_profile
+    result = subprocess.run(['cmake', *[f'-D{k}={v}' for k, v in config.items()], '-P', str(guard)], capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_rust_bridge_requires_exclusive_sd_owner (test_config.ConfigTests.test_rust_bridge_requires_exclusive_sd_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 83, in test_rust_bridge_requires_exclusive_sd_owner
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_rust_exfat_requires_bridge (test_config.ConfigTests.test_rust_exfat_requires_bridge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 165, in test_rust_exfat_requires_bridge
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_rust_load_requires_bridge_caps_psram_and_no_fixture (test_config.ConfigTests.test_rust_load_requires_bridge_caps_psram_and_no_fixture)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 99, in test_rust_load_requires_bridge_caps_psram_and_no_fixture
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_sd_readonly_owner (test_config.ConfigTests.test_sd_readonly_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 61, in test_sd_readonly_owner
+    result=subprocess.run(['cmake', *[f'-D{k}={v}' for k,v in config.items()], '-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_usb_host_enum_is_isolated (test_config.ConfigTests.test_usb_host_enum_is_isolated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 130, in test_usb_host_enum_is_isolated
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Daniel\AppData\Local\Programs\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+----------------------------------------------------------------------
+Ran 29 tests in 4.542s
+
+FAILED (errors=11, skipped=3)

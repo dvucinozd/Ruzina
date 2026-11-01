@@ -32,9 +32,15 @@ booted the candidate but failed its registered timing gate (`fill_max_us=12260`,
 limit 6000 us), despite idle underruns 0/0. The exact accepted deck-play image
 was restored; cold boot, normal sound, Pause and CUE are confirmed again.
 
+The [phase diagnostic](docs/reviews/2026-11-01-uac-timing-device-results.md) has
+now measured the outlier: initial prefill maximum 1844 us, callback maximum
+10373 us (3 of 6000 callbacks >=6000 us). The aggregate criterion still fails;
+substage/preemption cause is not established. The s07 image was restored and
+cold-booted; normal sound, Pause and CUE were confirmed again, with zero captured
+underruns/USB errors. All monitors are closed.
 Next: follow the [UAC timing measurement plan](docs/reviews/2026-11-01-uac-timing-follow-up.md)
-to separate startup/recovery prefill from streaming callback cost before
-resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.
+and [callback profiling plan](docs/reviews/2026-11-01-uac-callback-profiling-plan.md)
+before resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.
 Source cues/analysis, loops, scratch, keylock and FX wiring, product
 UI/settings, C6 networking and OTA remain separate subsequent development work.
 See the [current status](docs/DEVELOPMENT_STATUS.md) and

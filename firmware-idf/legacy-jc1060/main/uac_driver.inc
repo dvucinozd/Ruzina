@@ -1,3 +1,4 @@
+#include "uac_timing.h"
 /* Rust (controller_audio.rs); every call runs on the client task. */
 extern int32_t ruzina_legacy_uac_select(const uint8_t *config, uint32_t len, int32_t high_speed, uint32_t *out);
 extern uint32_t ruzina_legacy_uac_control(uint32_t step, uint8_t *out);
@@ -19,6 +20,8 @@ extern void ruzina_legacy_engine_counters(uint32_t *out);
 #endif
 /* Longest Rust fill of one transfer (six 1 ms packets of both decks). */
 static uint32_t uac_fill_max_us;
+static uac_fill_timing_t uac_fill_timing;
+static bool uac_any_iso_submitted;
 #elif CONFIG_RUZINA_DECK_PLAY
 /* Rust (deck_play.rs): played frames, underrun packets, buffered frames, rate. */
 extern void ruzina_legacy_play_stats(uint32_t *out);
@@ -42,9 +45,9 @@ static uac_recovery_t uac_health;
 static bool uac_report_pending;
 typedef struct { uint32_t generation; unsigned slot; } uac_context_t;
 static uac_context_t uac_context[UAC_TRANSFERS], uac_control_context;
-static void uac_start_stream(void);
+static void uac_start_stream(enum uac_fill_phase phase);
 
-static bool uac_refill(usb_transfer_t *transfer)
+static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
 {
     uint32_t sizes[UAC_PACKETS];
 #if CONFIG_RUZINA_DECK_MIX
@@ -53,8 +56,12 @@ static bool uac_refill(usb_transfer_t *transfer)
     uint32_t bytes = ruzina_legacy_uac_fill(transfer->data_buffer, (uint32_t)transfer->data_buffer_size,
                                             sizes, UAC_PACKETS);
 #if CONFIG_RUZINA_DECK_MIX
-    uint32_t took = (uint32_t)(esp_timer_get_time() - start);
+    int64_t elapsed = esp_timer_get_time() - start;
+    uint32_t took = elapsed > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed;
     if (took > uac_fill_max_us) uac_fill_max_us = took;
+    uac_timing_record(&uac_fill_timing,phase,took,uac_any_iso_submitted,!bytes);
+#else
+    (void)phase;
 #endif
     if (!bytes) { uac_fill_errors++; return false; }
     for (int i = 0; i < UAC_PACKETS; ++i) transfer->isoc_packet_desc[i].num_bytes = (int)sizes[i];
@@ -85,7 +92,7 @@ static void uac_iso_done(usb_transfer_t *transfer)
     }
     /* Keep the stream running: refill this transfer and queue it again. */
     if (uac_step == UAC_STREAMING && uac_health.state == UAC_HEALTH_STREAMING && device && !gone) {
-        if (!uac_refill(transfer)) uac_recovery_fault(&uac_health);
+        if (!uac_refill(transfer,UAC_FILL_CALLBACK)) uac_recovery_fault(&uac_health);
         else if (usb_host_transfer_submit(transfer) == ESP_OK) uac_iso_busy[index] = true;
         else { uac_submit_errors++; uac_recovery_fault(&uac_health); }
     }
@@ -100,6 +107,8 @@ typedef struct {
 #endif
 #if CONFIG_RUZINA_DECK_MIX
     uint32_t mix[8], fill_max_us;
+    uint32_t generation;
+    uac_fill_timing_t timing;
 #if CONFIG_RUZINA_DECK_ENGINE
     uint32_t engine[4], counters[2];
 #endif
@@ -128,6 +137,19 @@ static void uac_log_task(void *unused)
         printf("deck_mix_stats rendered=%" PRIu32 " underruns=%" PRIu32 "/%" PRIu32 " buffered=%" PRIu32 "/%" PRIu32
                " rate=%" PRIu32 "/%" PRIu32 " limited=%" PRIu32 " fill_max_us=%" PRIu32 "\n",
                sample.mix[0],sample.mix[1],sample.mix[2],sample.mix[3],sample.mix[4],sample.mix[5],sample.mix[6],sample.mix[7],sample.fill_max_us);
+        printf("uac_fill_first generation=%" PRIu32 " seen=%u phase=%u us=%" PRIu32 " after_iso_submit=%u\n",
+               sample.generation,(unsigned)sample.timing.first_connection_seen,
+               (unsigned)sample.timing.first_connection_phase,sample.timing.first_connection_us,
+               (unsigned)sample.timing.first_connection_after_iso_submit);
+        static const char *const phase_names[UAC_FILL_PHASE_COUNT]={"initial_prefill","recovery_prefill","callback"};
+        for (unsigned i=0;i<UAC_FILL_PHASE_COUNT;++i) {
+            const uac_fill_phase_stats_t *p=&sample.timing.phase[i];
+            printf("uac_fill_phase phase=%s generation=%" PRIu32 " scope=BOOT count=%" PRIu32
+                   " first_us=%" PRIu32 " first_after_iso_submit=%u max_us=%" PRIu32
+                   " max_after_iso_submit=%u gt_3000=%" PRIu32 " ge_6000=%" PRIu32 " failures=%" PRIu32 "\n",
+                   phase_names[i],sample.generation,p->count,p->first_us,(unsigned)p->first_after_iso_submit,
+                   p->max_us,(unsigned)p->max_after_iso_submit,p->gt_3000,p->ge_6000,p->failures);
+        }
 #if CONFIG_RUZINA_DECK_ENGINE
         printf("deck_engine_stats d1_ms=%" PRIu32 " d1_flags=%" PRIu32 " d2_ms=%" PRIu32 " d2_flags=%" PRIu32
                " unsupported=%" PRIu32 " refused_loads=%" PRIu32 "\n",
@@ -153,6 +175,7 @@ static void uac_report(void)
 #endif
 #if CONFIG_RUZINA_DECK_MIX
     ruzina_legacy_mix_stats(sample.mix); sample.fill_max_us=uac_fill_max_us;
+    sample.generation=uac_generation; sample.timing=uac_fill_timing;
 #if CONFIG_RUZINA_DECK_ENGINE
     ruzina_legacy_engine_status(sample.engine);ruzina_legacy_engine_counters(sample.counters);
 #endif
@@ -163,7 +186,7 @@ static void uac_report(void)
     if (uac_log_queue) (void)xQueueOverwrite(uac_log_queue,&sample);
 }
 
-static void uac_start_stream(void)
+static void uac_start_stream(enum uac_fill_phase phase)
 {
     uint32_t mps = uac_info[3];
     int started = 0;
@@ -179,11 +202,14 @@ static void uac_start_stream(void)
         uac_iso[i]->context = &uac_context[i];
     }
     for (unsigned i = 0; i < UAC_TRANSFERS; ++i) {
-        if (!uac_refill(uac_iso[i])) { uac_recovery_fault(&uac_health); break; }
+        if (!uac_refill(uac_iso[i],phase)) { uac_recovery_fault(&uac_health); break; }
         if (usb_host_transfer_submit(uac_iso[i]) != ESP_OK) {
             uac_submit_errors++; uac_recovery_fault(&uac_health); break;
         }
         uac_iso_busy[i] = true; started++;
+#if CONFIG_RUZINA_DECK_MIX
+        uac_any_iso_submitted=true;
+#endif
     }
     if (started == UAC_TRANSFERS) uac_health.state = UAC_HEALTH_STREAMING;
     printf("usb_uac stream=%s transfers=%d packets_per_transfer=%d generation=%" PRIu32 "\n",
@@ -213,7 +239,7 @@ static void uac_recover_poll(void)
     if (uac_recovery_retry(&uac_health, gone, uac_busy())) {
         if (usb_host_endpoint_clear(device, (uint8_t)uac_info[2]) != ESP_OK) {
             uac_health.state=UAC_HEALTH_FAULT_HELD;
-        } else uac_start_stream();
+        } else uac_start_stream(UAC_FILL_RECOVERY_PREFILL);
     }
     if (uac_health.state==UAC_HEALTH_FAULT_HELD)
         printf("usb_uac unavailable=FAULT_HELD attempts=%u submit_errors=%" PRIu32 "\n", uac_health.attempts, uac_submit_errors);
@@ -249,7 +275,7 @@ static void uac_ctrl_done(usb_transfer_t *transfer)
     }
     if (uac_step == UAC_SET_ALT || uac_step == UAC_SET_RATE) {
         uac_step = UAC_STREAMING;
-        uac_start_stream();
+        uac_start_stream(UAC_FILL_INITIAL_PREFILL);
     }
 }
 
@@ -266,6 +292,9 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
         return;
     }
     uac_generation++; if (!uac_generation) uac_generation=1;
+#if CONFIG_RUZINA_DECK_MIX
+    uac_timing_connection_begin(&uac_fill_timing); uac_any_iso_submitted=false;
+#endif
     uac_recovery_begin(&uac_health,uac_generation);
     uac_interface = (uint8_t)uac_info[0];
     esp_err_t err = usb_host_interface_claim(client, device, uac_interface, (uint8_t)uac_info[1]);

@@ -482,3 +482,32 @@ in charge of transport.
   counted only.
 
 See [deck engine](../../docs/reviews/2026-11-01-legacy-deck-engine.md).
+
+## UAC fill-phase diagnostics (`deck-mix` / `deck-engine`)
+
+`fill_max_us` retains its boot-cumulative maximum across all fills, including
+prefill, recovery and failed fills. The diagnostic adds bounded, saturating
+per-phase counters without changing render/transport behavior or gain:
+
+- `uac_fill_phase`: `initial_prefill`, `recovery_prefill` and `callback` each
+  report count, first and maximum wall time, failures, `gt_3000` (>3000 us) and
+  `ge_6000` (>=6000 us). Phase statistics and their first samples are cumulative
+  since boot (`scope=BOOT`), not reset by a reconnect.
+- `uac_fill_first`: first attempted fill in the current connection, tagged by
+  generation; phase numbers 0/1/2 map to the three names above. `seen=0` means
+  no fill has occurred in that connection (for example, allocation failed).
+- `after_iso_submit` flags mean an audio transfer had previously been
+  successfully submitted in that connection, not that it remains in flight.
+  EP0 control submissions do not set them. Maximum-context flags refer to the
+  first sample attaining that maximum.
+
+Measurements cover the same Rust fill call as the existing maximum and include
+preemption; they are not task-only CPU time. Failed fills are counted. Counts
+and elapsed durations clamp at `UINT32_MAX`. Snapshots use the existing one-slot
+queue and priority-1 logger; no formatting or allocation is added to callbacks.
+The three phase counts account for all measured fill attempts until saturation.
+
+This instrumentation diagnoses the [12260 us campaign result](../../docs/reviews/2026-11-01-review-fix-device-results.md).
+It does not establish a timing improvement or change the registered 6000 us
+rejection criterion. See the [follow-up execution](../../docs/reviews/2026-11-01-uac-timing-execution.md)
+before choosing a package or accessing the device.
