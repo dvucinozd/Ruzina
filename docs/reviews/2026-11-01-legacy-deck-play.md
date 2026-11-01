@@ -1,7 +1,7 @@
 # JC1060 `deck-play`: deck 1 plays card tracks to the FLX4 headphones
 
 Date: 2026-11-01. Branch: from main `1fe34ce` (after PR #69). The device
-run, with the owner present, is pending. Native minimum 302 and APTA unchanged.
+run, with the owner present, is at the end. Native minimum 302 and APTA unchanged.
 
 ## What it adds
 
@@ -133,3 +133,44 @@ Accept the run when:
   - The load events' `stack_free` stays above 8 KiB.
 - **Headphone Level** changes the volume.
 - The screen, browse, detail and LEDs still work.
+
+## Device run (2026-11-01, owner present)
+
+Setup, as for `deck-audio`:
+- The PC on the FS port only, with the battery disconnected.
+- The 25-track card inserted.
+- The FLX4 on bus power on the HS port, with headphones on the FLX4.
+
+Records are in `docs/boards/evidence/jc1060-20261030-com3/s07-deck-play-*`,
+indexed by the
+[device index](../boards/readiness/jc1060-s07-deck-play-device-20261101.json).
+
+1. **Flash.** Image `95d45203…` (plan `6b3d32ad…`, chain of 22 plans) was
+   flashed over the `deck-audio` image `840befe9…`, with a matching readback.
+2. **Boot.**
+   - `S6_RUST_LOAD … internal_free=537704`: the 96 KiB client task fits.
+   - The first pass loaded 25/25. The FLX4's stale first session ended and it
+     re-enumerated, as before, and the second session streamed.
+3. **Playback.** The owner loaded three tracks on deck 1, each at 44.1 kHz:
+   - catalog index 2 (FLAC), played, paused and Cued (event 7 again);
+   - index 5 (MP3);
+   - index 0 (WAV).
+
+   **Owner check:** everything was right: speed and pitch, clean sound in
+   both ears, Play, Cue and the Headphone Level.
+4. **Telemetry.**
+   - `deck_play_stats`: 4341600 frames played (90 s at 48 kHz) with
+     `underruns=0`. The ring stayed at 64203–65536 of 65536 frames while
+     playing, so the SD reads and the decoder keep it full.
+   - `usb_uac_stats`: 149000 transfers (894024 packets, about 15 min of
+     stream) with `iso_errors=0` and `packet_errors=0`.
+   - **Stack:** the load task's `stack_free` fell to 31444 bytes after the MP3
+     load, so it used about 66 KiB of the 96 KiB. That is close to the
+     71664-byte estimate, and more than the previous 48 KiB stack would have
+     held. The C SD owner task kept 5224 bytes free, as before.
+   - **PSRAM:** the minimum was 28632604 bytes free.
+   - No fault, reset or stack guard in the 15-minute capture; 544 MIDI events
+     and one detach.
+
+Not covered on the board: the two 48 kHz MP3 tracks, which play without
+resampling (host-tested), and deck 2, which this profile does not play.

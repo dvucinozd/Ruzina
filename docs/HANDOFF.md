@@ -14,11 +14,15 @@ reported two minor issues; the merged follow-up fixes numeric prose spacing and
 exFAT `PartitionOffset=0` handling with regressions. That code fix is build/test
 only, NOT_FLASHED. This merge does not change the current board image.
 
-**Current unit (2026-11-01):** JC1060 v1.3 runs `deck-audio`, image
-`840befe9…`. That is `deck-ui` plus a UAC1 diagnostic tone on the FLX4
-headphone channels: left for deck 1 Play and right for deck 2 Play, which the
-owner confirmed by ear ([deck audio](reviews/2026-11-01-legacy-deck-audio.md)).
-It extends the combined `deck-ui` diagnostic (image `fe91eade…`): SD load
+**Current unit (2026-11-01):** JC1060 v1.3 runs `deck-play`, image
+`95d45203…`. Deck 1 plays card tracks to the FLX4 headphones. They are
+decoded on the board by the shared audio runtime and resampled to 48 kHz. The
+owner confirmed FLAC, MP3 and WAV by ear, with Play, Cue and Headphone Level
+working and 0 underruns ([deck play](reviews/2026-11-01-legacy-deck-play.md)).
+It replaces the earlier `deck-audio` image `840befe9…`, which put a UAC1
+diagnostic tone on the same channels
+([deck audio](reviews/2026-11-01-legacy-deck-audio.md)). Both extend the
+combined `deck-ui` diagnostic (image `fe91eade…`): SD load
 with the status screen and touch, plus the FLX4. Its browse moves the library selection and its Load buttons fill
 `D1` and `D2` ([deck UI](reviews/2026-10-31-legacy-deck-ui.md)). Before that,
 the board ran the isolated `usb-midi` diagnostic with LED output, image

@@ -1,0 +1,29 @@
+{
+  "scenario": "s07-deck-play-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application owns SDMMC/LDO4 (read-only Rust load), caps-only PSRAM, New_Panel DSI/LDO3/backlight with GT911 polling, and the HS USB OTG/UTMI host (USB-MIDI streaming and UAC1 AudioStreaming playback of deck 1 decoded from SD); no SD/display/audio owner; VBUS hard-wired to USB5V_IN",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "plan_sha256": "6b3d32ad0a1827e1b773401a92fb413287445644972ac6412a4fdeba9a6f50b7",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 770048,
+      "sha256": "ee5e112bd00ab5085b087a41931792f5f403070a31df68e0d31f981e404214ad"
+    }
+  ],
+  "programmer_log_sha256": "7a80c199579cd48b21de96f07b7866eecd5318f29f1c37539419b9551f81253e"
+}
