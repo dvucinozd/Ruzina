@@ -228,7 +228,14 @@ extern int32_t ruzina_legacy_uac_select(const uint8_t *config, uint32_t len, int
 extern uint32_t ruzina_legacy_uac_control(uint32_t step, uint8_t *out);
 extern uint32_t ruzina_legacy_uac_fill(uint8_t *buffer, uint32_t capacity, uint32_t *sizes, uint32_t packets);
 extern void ruzina_legacy_uac_stats(uint32_t *out);
-#if CONFIG_RUZINA_DECK_PLAY
+#if CONFIG_RUZINA_DECK_MIX
+#include "esp_timer.h"
+/* Rust (deck_mix.rs): rendered frames, underrun blocks per deck, buffered
+ * frames and rate per deck, limited MAIN samples. */
+extern void ruzina_legacy_mix_stats(uint32_t *out);
+/* Longest Rust fill of one transfer (six 1 ms packets of both decks). */
+static uint32_t uac_fill_max_us;
+#elif CONFIG_RUZINA_DECK_PLAY
 /* Rust (deck_play.rs): played frames, underrun packets, buffered frames, rate. */
 extern void ruzina_legacy_play_stats(uint32_t *out);
 #endif
@@ -250,8 +257,15 @@ static uint32_t uac_completed, uac_iso_errors, uac_packet_errors, uac_ctrl_error
 static bool uac_refill(usb_transfer_t *transfer)
 {
     uint32_t sizes[UAC_PACKETS];
+#if CONFIG_RUZINA_DECK_MIX
+    int64_t start = esp_timer_get_time();
+#endif
     uint32_t bytes = ruzina_legacy_uac_fill(transfer->data_buffer, (uint32_t)transfer->data_buffer_size,
                                             sizes, UAC_PACKETS);
+#if CONFIG_RUZINA_DECK_MIX
+    uint32_t took = (uint32_t)(esp_timer_get_time() - start);
+    if (took > uac_fill_max_us) uac_fill_max_us = took;
+#endif
     if (!bytes) { uac_fill_errors++; return false; }
     for (int i = 0; i < UAC_PACKETS; ++i) transfer->isoc_packet_desc[i].num_bytes = (int)sizes[i];
     transfer->num_bytes = (int)bytes;
@@ -280,7 +294,13 @@ static void uac_iso_done(usb_transfer_t *transfer)
         printf("usb_uac_stats transfers=%" PRIu32 " packets=%" PRIu32 " frames=%" PRIu32 " tone_packets=%" PRIu32
                " iso_errors=%" PRIu32 " packet_errors=%" PRIu32 "\n", uac_completed, stats[0], stats[1], stats[2],
                uac_iso_errors, uac_packet_errors);
-#if CONFIG_RUZINA_DECK_PLAY
+#if CONFIG_RUZINA_DECK_MIX
+        uint32_t mix[8];
+        ruzina_legacy_mix_stats(mix);
+        printf("deck_mix_stats rendered=%" PRIu32 " underruns=%" PRIu32 "/%" PRIu32 " buffered=%" PRIu32 "/%" PRIu32
+               " rate=%" PRIu32 "/%" PRIu32 " limited=%" PRIu32 " fill_max_us=%" PRIu32 "\n",
+               mix[0], mix[1], mix[2], mix[3], mix[4], mix[5], mix[6], mix[7], uac_fill_max_us);
+#elif CONFIG_RUZINA_DECK_PLAY
         uint32_t play[4];
         ruzina_legacy_play_stats(play);
         printf("deck_play_stats played=%" PRIu32 " underruns=%" PRIu32 " buffered=%" PRIu32 " rate=%" PRIu32 "\n",

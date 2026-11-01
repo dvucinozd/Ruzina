@@ -147,16 +147,18 @@ fn flx4_play_presses_reach_the_semantic_session() {
     {
         use crate::deck_play::COMMANDS;
         // Load paused deck 2 above; deck 1 plays, then Cue pauses it and
-        // asks the producer to return to the start. Deck 2's Cue does not.
+        // asks the producer to return to the start; deck 2's Cue asks its own.
         assert_eq!(playing(), [false, false]);
-        COMMANDS.take();
+        COMMANDS[0].take();
+        COMMANDS[1].take();
         ingest(&[0x09, 0x90, 0x0b, 0x7f, 0x09, 0x91, 0x0c, 0x7f]);
         assert_eq!(playing(), [true, false]);
-        assert_eq!(COMMANDS.take(), (0, false));
+        assert_eq!(COMMANDS[0].take(), (0, false));
+        assert_eq!(COMMANDS[1].take(), (0, true));
         take_out(512);
         ingest(&[0x09, 0x90, 0x0c, 0x7f]);
         assert_eq!(playing(), [false, false]);
-        assert_eq!(COMMANDS.take(), (0, true));
+        assert_eq!(COMMANDS[0].take(), (0, true));
         assert!(take_out(512).iter().any(|p| p[1..] == [0x90, 0x0b, 0x00]));
         // Load on a playing deck pauses it too.
         ingest(&[0x09, 0x90, 0x0b, 0x7f, 0x09, 0x96, 0x46, 0x7f]);

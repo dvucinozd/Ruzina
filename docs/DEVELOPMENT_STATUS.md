@@ -47,6 +47,10 @@ errors.
 deck 1's track, decoded from the card by the shared audio runtime and
 resampled to 48 kHz. On the board, FLAC, MP3 and WAV tracks played to the
 owner's ear with 0 underruns.
+[`deck-mix`](reviews/2026-11-01-legacy-deck-mix.md) plays both decks through
+the product render graph and mixer. MAIN goes to the FLX4's MASTER output
+and the PFL/master mix to the headphones. It is built and host-tested; the
+device run is pending.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

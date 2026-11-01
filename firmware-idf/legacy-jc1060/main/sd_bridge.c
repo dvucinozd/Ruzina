@@ -79,16 +79,20 @@ void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
     ruzina_load_display_event(pass,event,value,stack,free_now,free_min);
 #endif
 #if CONFIG_RUZINA_DECK_PLAY
-    /* Deck 1 playback: 7 ready index<<8|codec, 8 rate, 9 failed index<<8|stage,
-     * 10 ended index<<8|faulted. The note is the display's status line. */
+    /* Deck playback, deck (0/1) in bits 24+: 7 ready index<<8|codec, 8 rate,
+     * 9 failed index<<8|stage, 10 ended index<<8|faulted. The note is the
+     * display's status line. */
     static const char *const codecs[] = {"?", "WAV", "MP3", "FLAC"};
-    static uint32_t codec;
+    static uint32_t codec[2];
+    const uint32_t deck = (value >> 24) & 1, low = value & 0xffffff;
     char note[64];
     switch (event) {
-        case 7: codec = (value & 255) < 4 ? (value & 255) : 0; return;
-        case 8: snprintf(note, sizeof(note), "D1 %s %" PRIu32 " Hz - press Play", codecs[codec], value); break;
-        case 9: snprintf(note, sizeof(note), "D1 load failed, stage %" PRIu32, value & 255); break;
-        case 10: snprintf(note, sizeof(note), "%s", (value & 1) ? "D1 read/decode fault" : "D1 track ended"); break;
+        case 7: codec[deck] = (low & 255) < 4 ? (low & 255) : 0; return;
+        case 8: snprintf(note, sizeof(note), "D%" PRIu32 " %s %" PRIu32 " Hz - press Play", deck + 1,
+                         codecs[codec[deck]], low); break;
+        case 9: snprintf(note, sizeof(note), "D%" PRIu32 " load failed, stage %" PRIu32, deck + 1, low & 255); break;
+        case 10: snprintf(note, sizeof(note), "D%" PRIu32 " %s", deck + 1,
+                          (low & 1) ? "read/decode fault" : "track ended"); break;
         default: return;
     }
     LOAD_NOTE(note);
@@ -197,7 +201,7 @@ static void owner(void *unused)
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 #if CONFIG_RUZINA_DECK_PLAY
-    /* The deck 1 decoder runs on this task: nanomp3 builds its 24 KiB state
+    /* The deck decoders run on this task: nanomp3 builds its 24 KiB state
      * by value, several frames under the load run (build: load-run-stack.log). */
     const uint32_t client_stack=98304;
 #else

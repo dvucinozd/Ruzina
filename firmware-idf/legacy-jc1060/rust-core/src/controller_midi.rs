@@ -111,9 +111,7 @@ impl State {
                 #[cfg(feature = "deck-play")]
                 if pressed {
                     self.stop(deck, slot);
-                    if slot == 0 {
-                        crate::deck_play::COMMANDS.cue();
-                    }
+                    crate::deck_play::COMMANDS[slot].cue();
                 }
                 self.led(SemanticLedId::CUE, Some(deck), pressed);
             }
@@ -173,6 +171,7 @@ pub(crate) fn playing() -> [bool; 2] {
 }
 
 #[cfg(feature = "deck-play")]
+#[cfg_attr(feature = "deck-mix", allow(dead_code))]
 pub(crate) fn headphone_level() -> Option<(u16, u16)> {
     with(|state| state.headphone)
 }
@@ -411,6 +410,8 @@ fn drain(state: &mut State) -> i32 {
                 )
             };
             state.echo(&event);
+            #[cfg(feature = "deck-mix")]
+            crate::deck_mix::with(|mix| mix.control(&event));
             if let Some((action, deck, value)) = ui_action(&event) {
                 // SAFETY: scalars only.
                 unsafe { ruzina_bridge_midi_ui(action, deck, value) };
