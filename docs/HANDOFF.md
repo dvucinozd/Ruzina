@@ -1,5 +1,12 @@
 # Rust M2.5 development handoff
 
+Latest continuation: `ogranak/jc1060-uac-callback-profile`, [PR #75](https://github.com/dvucinozd/Ruzina/pull/75).
+Read [callback profiling execution](reviews/2026-11-01-uac-callback-profiling-execution.md)
+first: source `8a9fe16` has CodeRabbit 0 issues, 20/20 CI jobs and clean normal/
+profile packages with registered 29-plan recovery ancestry. Target substage and
+scheduler measurements are NOT_RUN at registration; s07 remains installed.
+The older sections below describe prior checkpoints, not new device evidence.
+
 Updated 2026-11-01. Continue from `D:/AI/M1_PCB`, branch
 `ogranak/jc1060-review-fixes`. Base is `b35dcd39f4c1ddb9f4b253d6af89110ee68a2335`;
 fetched main was `bd52402160af27a3e234f7647d703a847644817b`. Existing planning

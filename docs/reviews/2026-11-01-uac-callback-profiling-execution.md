@@ -87,3 +87,51 @@ Primary evidence: `D:/BoardEvidence/JC1060-20261030-COM3/uac-profile-20261101/`.
 Pilot build, review, clean published builds and physical registration must be
 recorded below before any COM3 operation. A future plan must replay all 29
 current predecessors, and must include an ancestry-aware s07 fallback.
+
+## Reviewed clean-build registration
+
+Source `8a9fe16d48387b0a3cfbd461659696091b2aa89d` is pushed on
+`ogranak/jc1060-uac-callback-profile`, [PR #75](https://github.com/dvucinozd/Ruzina/pull/75)
+above #74. CodeRabbit reviewed the committed 36-file diff with **0 issues**, exit
+0. Local/remote SHA equality was checked. Both source-head workflows pass:
+[host #532](https://github.com/dvucinozd/Ruzina/actions/runs/41357949681) and
+[legacy #55](https://github.com/dvucinozd/Ruzina/actions/runs/41357949720),
+**20/20 jobs** including 17 normal IDF profiles and one explicit profiling build.
+
+Fresh normal and profiling packages record the same source commit and empty
+dirty status. All 277 source hashes and 16 artifact hashes passed verification.
+
+| Package | Bytes | App SHA-256 |
+|---|---:|---|
+| normal deck-engine | 817344 | `f42878fc953ee62f179d48a9a87faa7940e8e7769c3d9cd4defad5944dc30b46` |
+| explicit profile | 820432 | `46cb70ef201c4be12415931fc3330a186dadf48d0d435121432a1731dda5a4a2` |
+
+The profile contains verified task-switch hook calls; normal symbol-isolation
+checks pass. ELF size comparison adds 2870 text, 216 data and 338 BSS bytes
+(554 static RAM bytes). The snapshot grows from 208 to 516 bytes: 308 extra
+queue payload bytes plus the same RTOS control block. The logger stack remains
+3072 bytes and reports its high-water mark in the experiment. UAC Rust direct-
+call estimates are 3120 normal / 3104 profile bytes, load 73616 bytes; these
+exclude indirect and C/kernel frames and are not runtime stack qualification.
+No speed improvement is inferred from a stack estimate or compiler layout.
+
+All 29 current flash predecessors replay successfully, including restore
+hashes and preserved tails; four factory backup copies pass. The expected
+complete s07 predecessor is `3130901f09e304949556d582b46b3b8e417713600317bce755bb819b6f876a40`.
+
+- [Diagnostic plan](../boards/readiness/jc1060-uac-callback-profile-write-recovery-plan-20261101.json):
+  `370faa84843f2ecd14c686550f6f837238d67dedeb580f757cacf97e3d2f75b6`.
+- [Return-to-s07 plan](../boards/readiness/jc1060-uac-callback-profile-return-s07-write-recovery-plan-20261101.json):
+  `7dea4155234fd4e1328856f4fcb06ca3c4b7365514f516b1f41a2ac14e8e0441`.
+- [Registration](evidence/2026-11-01-uac-profile/diagnostic-registration.json),
+  manifests and raw review/CI metadata retain the exact clean-build identity.
+- [Archive index](evidence/2026-11-01-uac-profile/registration-archive.json):
+  61 files, CRC/content verification and identical secondary SHA-256.
+
+At registration: **NOT_FLASHED / DEVICE_PROFILING_NOT_RUN**. A later device
+session must independently verify identity/security/RDID and full predecessor
+equality, capture cold boot and steady idle only, retain the >=6000 us aggregate
+criterion, and restore/verify s07 before exit if the experiment fails or remains
+unqualified. Stage layout: word 0 total Rust wall us, 1 validity faults, 2 packet
+attempts, 3 render-block calls, 4–11 exclusive times in enum order, 12–19 segment
+counts in that same order. `partition_valid=0` forbids time attribution claims.
