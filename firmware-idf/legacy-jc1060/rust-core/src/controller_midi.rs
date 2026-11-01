@@ -7,7 +7,9 @@
 //!
 //! Output is a diagnostic echo, not product LED state: a lamp test lights or
 //! clears every profile output, Play toggles its deck's Play LED and the Play
-//! LED follows that latch, and the Cue LED follows the held Cue button. LED
+//! LED follows that latch, and the Cue LED follows the held Cue button. With
+//! `deck-play`, Cue and Load also clear deck 1's latch (Cue returns its track
+//! to the start) and the Headphone Level knob sets the headphone gain. LED
 //! updates go through the profile's output map into USB-MIDI event packets,
 //! which C takes with [`ruzina_legacy_midi_take_out`] for one Bulk-OUT.
 use core::cell::UnsafeCell;
@@ -43,6 +45,8 @@ struct State {
     totals: UsbMidiBatchReport,
     /// Play latch per deck for the echo.
     playing: [bool; 2],
+    /// Last Headphone Level position and its range; `None` until it moves.
+    headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
     out_len: usize,
     /// Packets that did not fit the queue.
@@ -88,6 +92,11 @@ impl State {
     }
 
     fn echo(&mut self, event: &ControlEvent) {
+        if let (SemanticControl::HeadphoneLevel, ControlValue::Absolute { value, max }) =
+            (event.control, event.value)
+        {
+            self.headphone = Some((value, max));
+        }
         let ControlValue::Pressed(pressed) = event.value else {
             return;
         };
@@ -98,8 +107,30 @@ impl State {
                 self.playing[slot] = !self.playing[slot];
                 self.led(SemanticLedId::PLAY, Some(deck), self.playing[slot]);
             }
-            SemanticControl::Cue => self.led(SemanticLedId::CUE, Some(deck), pressed),
+            SemanticControl::Cue => {
+                #[cfg(feature = "deck-play")]
+                if pressed {
+                    self.stop(deck, slot);
+                    if slot == 0 {
+                        crate::deck_play::COMMANDS.cue();
+                    }
+                }
+                self.led(SemanticLedId::CUE, Some(deck), pressed);
+            }
+            #[cfg(feature = "deck-play")]
+            SemanticControl::Load if pressed => self.stop(deck, slot),
             _ => {}
+        }
+    }
+}
+
+#[cfg(feature = "deck-play")]
+impl State {
+    /// Pauses a deck: its Play latch and LED go off.
+    fn stop(&mut self, deck: DeckId, slot: usize) {
+        if self.playing[slot] {
+            self.playing[slot] = false;
+            self.led(SemanticLedId::PLAY, Some(deck), false);
         }
     }
 }
@@ -124,6 +155,7 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
         semantic_errors: 0,
     },
     playing: [false; 2],
+    headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
     out_overflow: 0,
@@ -138,6 +170,11 @@ fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
 #[cfg_attr(not(feature = "controller-audio"), allow(dead_code))]
 pub(crate) fn playing() -> [bool; 2] {
     with(|state| state.playing)
+}
+
+#[cfg(feature = "deck-play")]
+pub(crate) fn headphone_level() -> Option<(u16, u16)> {
+    with(|state| state.headphone)
 }
 
 /// `(deck, kind, value, max)` scalars for one semantic event.
@@ -242,6 +279,7 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         state.session.set_connected(true);
         state.totals = UsbMidiBatchReport::default();
         state.playing = [false; 2];
+        state.headphone = None;
         state.out_len = 0;
         state.out_overflow = 0;
         drain(state);

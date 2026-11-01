@@ -41,6 +41,28 @@ class Tests(unittest.TestCase):
         self.assertEqual(oversized_rust_frames(text), {'ruzina_legacy_load_run': 85344,
                                                        '_ZN3big7inlined17h1E': 32768})
 
+    def test_deepest_stack(self):
+        from stack_frames import deepest_stack
+        text = '\n'.join([
+            '40000000 <root>:',
+            '40000000:\taddi\tsp,sp,-100',
+            '40000004:\tjal\t40000100 <small>',
+            '40000008:\tauipc\tra,0x0',
+            '4000000c:\tjalr\tra # 40000200 <deep>',
+            '40000100 <small>:',
+            '40000100:\taddi\tsp,sp,-10',
+            '40000104:\tret',
+            '40000200 <deep>:',
+            '40000200:\taddi\tsp,sp,-1000',
+            '40000204:\tjal\t40000200 <deep>',
+            '40000208:\tj\t40000300 <leaf>',
+            '40000300 <leaf>:',
+            '40000300:\taddi\tsp,sp,-20',
+            '40000304:\tret',
+        ])
+        self.assertEqual(deepest_stack(text, 'root'), (1120, ['root', 'deep', 'leaf']))
+        self.assertEqual(deepest_stack(text, 'small'), (10, ['small']))
+
     def test_ranges(self):
         ram.validate_segments(0x4ff00000, [(0x4ff00000, 32), (0x30100000, 16)])
         for entry, segments in [(0x4ff00000, [(0x4ff00000, 0)]),

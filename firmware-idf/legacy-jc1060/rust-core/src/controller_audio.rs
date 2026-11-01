@@ -7,7 +7,9 @@
 //!
 //! The source is a diagnostic tone, not the deck engine: a 1 kHz sine at
 //! -24 dBFS on the headphone pair, left while deck 1's Play latch is on and
-//! right while deck 2's is. MAIN stays silent (no MAIN route is qualified).
+//! right while deck 2's is. With `deck-play`, deck 1's decoded track
+//! (`deck_play`) replaces the tone on both headphone sides. MAIN stays silent
+//! (no MAIN route is qualified).
 use core::cell::UnsafeCell;
 use ruzina_audio_dsp::PcmFrame;
 use ruzina_uac::descriptor::{Selected, UsbSpeed, parse_playback_formats, select};
@@ -187,12 +189,41 @@ pub unsafe extern "C" fn ruzina_legacy_uac_fill(
         )
     };
     let [left, right] = crate::controller_midi::playing();
-    with(|state| fill(state, out, sizes, left, right))
+    #[cfg(not(feature = "deck-play"))]
+    return with(|state| fill(state, out, sizes, left, right));
+    #[cfg(feature = "deck-play")]
+    {
+        let _ = right;
+        let gain = crate::deck_play::headphone_gain_q15(crate::controller_midi::headphone_level());
+        with(|state| {
+            let rate = state.selected.map_or(0, |chosen| chosen.rate);
+            fill_from(state, out, sizes, |_, pcm| {
+                crate::deck_play::render(pcm, rate, left, gain);
+                left
+            })
+        })
+    }
 }
 
 /// Packs one 1 ms packet per entry of `sizes` into `out`, the tone on the
 /// enabled headphone sides; returns the total bytes, 0 on any error.
+#[cfg_attr(feature = "deck-play", allow(dead_code))]
 fn fill(state: &mut State, out: &mut [u8], sizes: &mut [u32], left: bool, right: bool) -> u32 {
+    fill_from(state, out, sizes, |state, pcm| {
+        tone(&mut state.phase, pcm.len(), left, right, pcm);
+        left || right
+    })
+}
+
+/// Packs one 1 ms packet per entry of `sizes` into `out` with headphone PCM
+/// from `source`, which reports whether the packet is audible; returns the
+/// total bytes, 0 on any error.
+fn fill_from(
+    state: &mut State,
+    out: &mut [u8],
+    sizes: &mut [u32],
+    mut source: impl FnMut(&mut State, &mut [PcmFrame]) -> bool,
+) -> u32 {
     let (Some(chosen), Some(map)) = (state.selected, state.map) else {
         return 0;
     };
@@ -203,7 +234,7 @@ fn fill(state: &mut State, out: &mut [u8], sizes: &mut [u32], left: bool, right:
     let mut pcm = [PcmFrame::default(); MAX_FRAMES + 1];
     for size in sizes.iter_mut() {
         let frames = state.cadence.next_frames();
-        tone(&mut state.phase, frames, left, right, &mut pcm);
+        let audible = source(state, &mut pcm[..frames]);
         let Ok(written) = pack(
             &mut out[offset..],
             format,
@@ -218,12 +249,13 @@ fn fill(state: &mut State, out: &mut [u8], sizes: &mut [u32], left: bool, right:
         offset += written;
         state.packets = state.packets.wrapping_add(1);
         state.frames += frames as u64;
-        state.toned_packets = state.toned_packets.wrapping_add(u32::from(left || right));
+        state.toned_packets = state.toned_packets.wrapping_add(u32::from(audible));
     }
     offset as u32
 }
 
-/// Writes packets, frames (low 32 bits) and packets carrying tone to `out[0..3]`.
+/// Writes packets, frames (low 32 bits) and audible packets (tone, or deck 1
+/// playing) to `out[0..3]`.
 ///
 /// # Safety
 /// `out` must be valid for three `u32` writes.

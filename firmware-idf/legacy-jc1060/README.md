@@ -407,3 +407,28 @@ the headphone pair (channels 3 and 4). It plays on the left while deck 1's
 Play latch is on and on the right while deck 2's is. MAIN stays silent. The
 log shows `usb_uac` (format and claim) and `usb_uac stream=`, then every 5 s
 `usb_uac_stats`, and `usb_uac_stop` on detach.
+
+## `deck-play` profile
+
+`deck-play` (`CONFIG_RUZINA_DECK_PLAY`, Rust `idf-deck-play`) is `deck-audio`
+with deck 1's track in place of the tone.
+
+- **Load and decode.** The controller's Load on deck 1 hands the selected
+  track to the SD load task. After its first pass, that task decodes the
+  track's audio file (MP3, FLAC or 16-bit WAV) with `ruzina-audio-runtime`'s
+  `SourceDecoder`, into a 65536-frame PSRAM ring.
+- **Playback.** The USB client task resamples the ring to 48 kHz with the
+  product's `ResamplerState` and plays it on both headphone channels while
+  deck 1's Play latch is on.
+- **Controls.**
+  - Cue pauses deck 1 and returns its track to the start.
+  - The Headphone Level knob sets the gain, from −36 dBFS before it first
+    moves up to −12 dBFS at full turn.
+- **Status.** The screen's status line shows the codec and rate. The log adds
+  `deck_play_stats` (played frames, underruns, buffered frames, rate) to the
+  UAC statistics.
+- **Stack.** The SD client task has 96 KiB here, because the MP3 decoder
+  builds 24 KiB values on the stack. The build checks the deepest direct call
+  chain under the load run (`load-run-stack.log`).
+
+See [deck play](../../docs/reviews/2026-11-01-legacy-deck-play.md).

@@ -475,6 +475,8 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         report(0, load_event::FAILED, 2 << 8);
         return -7;
     };
+    // With deck playback the first pass hands the task to `serve_decks`.
+    #[cfg_attr(feature = "idf-deck-play", allow(clippy::never_loop))]
     for pass in 1..=u32::MAX {
         stage.prepare_generation(binding.lease);
         names.clear();
@@ -533,7 +535,10 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         };
         // One track's preflight; `detail` also reports the selected-track view.
         // Returns the outcome, or `None` when the catalog snapshot is gone.
-        let mut run = |index: usize, detail: bool| -> Option<u32> {
+        let run = |volume: &mut crate::exfat_fixture::Volume<_>,
+                   index: usize,
+                   detail: bool|
+         -> Option<u32> {
             let track = stage
                 .current()
                 .and_then(|snapshot| snapshot.get(index).copied())?;
@@ -543,11 +548,7 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                 track,
             };
             let prepared = block_on(Box::pin(preflight(
-                &mut volume,
-                candidate,
-                pass,
-                &current,
-                &published,
+                volume, candidate, pass, &current, &published,
             )));
             if detail && prepared.is_ok() {
                 let view = prepared
@@ -596,13 +597,13 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
             // A selection is served out of turn, before the next track.
             if LOAD_DETAIL_OWED.swap(false, Ordering::Acquire) {
                 let selected = LOAD_SELECTED.load(Ordering::Relaxed) as usize;
-                if selected < tracks && run(selected, true) == Some(3) {
+                if selected < tracks && run(&mut volume, selected, true) == Some(3) {
                     report(pass, load_event::TRACK, (selected as u32) << 8 | 3);
                     report(pass, load_event::FAILED, 4 << 8);
                     return -6;
                 }
             }
-            let Some(outcome) = run(index, false) else {
+            let Some(outcome) = run(&mut volume, index, false) else {
                 report(pass, load_event::FAILED, 4 << 8);
                 return -6;
             };
@@ -621,8 +622,149 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         if !current() {
             return -6;
         }
+        // With deck playback the first pass is the only one: the task then
+        // serves selections and decodes deck 1 instead of re-reading the card.
+        #[cfg(feature = "idf-deck-play")]
+        return serve_decks(
+            pass,
+            &mut volume,
+            &current,
+            |volume, index| run(volume, index, true),
+            |index| {
+                stage
+                    .current()
+                    .and_then(|snapshot| snapshot.get(index as usize).map(|t| t.audio_path))
+                    .map(CatalogPath)
+            },
+            tracks,
+        );
         // SAFETY: task-only cooperative delay between passes.
-        unsafe { ruzina_bridge_delay() };
+        #[cfg(not(feature = "idf-deck-play"))]
+        unsafe {
+            ruzina_bridge_delay()
+        };
     }
     0
+}
+
+#[cfg(feature = "idf-deck-play")]
+struct CatalogPath(ruzina_media_catalog::CatalogText<{ ruzina_media_catalog::CATALOG_PATH_MAX }>);
+
+#[cfg(feature = "idf-deck-play")]
+impl AsRef<str> for CatalogPath {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+/// Deck audio files on the exFAT volume, each operation under the live lease.
+#[cfg(feature = "idf-deck-play")]
+struct VolumeFiles<'a, D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> {
+    volume: &'a mut crate::exfat_fixture::Volume<D>,
+    current: &'a C,
+}
+
+#[cfg(feature = "idf-deck-play")]
+impl<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> crate::deck_play::SourceFiles
+    for VolumeFiles<'_, D, C>
+{
+    type File = <crate::exfat_fixture::Volume<D> as ruzina_media_fs::AsyncFileSystem>::File;
+
+    fn open(&mut self, path: &str) -> Option<Self::File> {
+        use ruzina_media_fs::AsyncFileSystem;
+        if !(self.current)() {
+            return None;
+        }
+        block_on(self.volume.open_read(path)).ok()
+    }
+
+    fn len(&self, file: &Self::File) -> u64 {
+        ruzina_media_fs::FileHandle::len(file)
+    }
+
+    fn read_at(&mut self, file: &mut Self::File, offset: u64, out: &mut [u8]) -> Option<usize> {
+        use ruzina_media_fs::AsyncFileSystem;
+        if !(self.current)() {
+            return None;
+        }
+        let volume = &mut *self.volume;
+        block_on(async {
+            volume.seek_absolute(file, offset).await.ok()?;
+            volume.read(file, out).await.ok()
+        })
+    }
+
+    fn close(&mut self, file: Self::File) {
+        use ruzina_media_fs::AsyncFileSystem;
+        let _ = block_on(self.volume.close_file(file));
+    }
+}
+
+/// Deck playback telemetry, through the load report.
+#[cfg(feature = "idf-deck-play")]
+mod play_event {
+    /// Deck 1 decodes a track; value is `index << 8 | codec` (1 WAV, 2 MP3, 3 FLAC).
+    pub const READY: u32 = 7;
+    /// The track's source rate in Hz.
+    pub const RATE: u32 = 8;
+    /// The track failed to load; value is `index << 8 | stage`
+    /// (1 path, 2 open, 3 format, 4 decode).
+    pub const FAILED: u32 = 9;
+    /// The track ended; value is `index << 8 | faulted`.
+    pub const ENDED: u32 = 10;
+}
+
+/// After the first pass: serve detail selections and the deck 1 producer
+/// until the lease ends. Returns only on a lost lease or allocation failure.
+#[cfg(feature = "idf-deck-play")]
+fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<str>>(
+    pass: u32,
+    volume: &mut crate::exfat_fixture::Volume<D>,
+    current: &C,
+    detail: impl Fn(&mut crate::exfat_fixture::Volume<D>, usize) -> Option<u32>,
+    path: impl Fn(u32) -> Option<P>,
+    tracks: usize,
+) -> i32 {
+    use crate::deck_play::{COMMANDS, Event, Producer, RING, attach_ring};
+    use core::sync::atomic::Ordering;
+    // SAFETY: diagnostic telemetry passes three u32 POD values only.
+    let report = |event, value| unsafe { ruzina_bridge_load_report(pass, event, value) };
+    if !attach_ring() {
+        report(load_event::FAILED, 2 << 8 | 1);
+        return -7;
+    }
+    let mut producer = Producer::new();
+    loop {
+        if LOAD_DETAIL_OWED.swap(false, Ordering::Acquire) {
+            let selected = LOAD_SELECTED.load(Ordering::Relaxed) as usize;
+            if selected < tracks && detail(volume, selected) == Some(3) {
+                report(load_event::FAILED, 4 << 8);
+                return -6;
+            }
+        }
+        let mut files = VolumeFiles {
+            volume: &mut *volume,
+            current,
+        };
+        let (busy, event) = producer.poll(&mut files, &RING, &COMMANDS, &path);
+        match event {
+            Some(Event::Ready { index, codec, rate }) => {
+                report(play_event::READY, index << 8 | codec);
+                report(play_event::RATE, rate);
+            }
+            Some(Event::Failed { index, stage }) => report(play_event::FAILED, index << 8 | stage),
+            Some(Event::Ended { index, faulted }) => {
+                report(play_event::ENDED, index << 8 | u32::from(faulted))
+            }
+            None => {}
+        }
+        if !current() {
+            report(load_event::FAILED, 4 << 8);
+            return -6;
+        }
+        if !busy {
+            // SAFETY: dedicated task only; one tick while the ring is full.
+            unsafe { ruzina_bridge_fixture_yield() };
+        }
+    }
 }

@@ -43,6 +43,9 @@ the FLX4 together on the board: browse and load drive the library screen.
 [`deck-audio`](reviews/2026-11-01-legacy-deck-audio.md) adds the first audible
 output: a UAC1 tone on the FLX4 headphone channels, 48 s with 0 isochronous
 errors.
+[`deck-play`](reviews/2026-11-01-legacy-deck-play.md) replaces the tone with
+deck 1's track, decoded from the card by the shared audio runtime and
+resampled to 48 kHz. It is built and host-tested; the device run is pending.
 
 Latest [known-file SD evidence](reviews/2026-10-30-legacy-s6-sd-file.md): full
 fixture SHA/content/EOF/seek checks and active-read removal/reinsertion are

@@ -228,6 +228,10 @@ extern int32_t ruzina_legacy_uac_select(const uint8_t *config, uint32_t len, int
 extern uint32_t ruzina_legacy_uac_control(uint32_t step, uint8_t *out);
 extern uint32_t ruzina_legacy_uac_fill(uint8_t *buffer, uint32_t capacity, uint32_t *sizes, uint32_t packets);
 extern void ruzina_legacy_uac_stats(uint32_t *out);
+#if CONFIG_RUZINA_DECK_PLAY
+/* Rust (deck_play.rs): played frames, underrun packets, buffered frames, rate. */
+extern void ruzina_legacy_play_stats(uint32_t *out);
+#endif
 
 /* Four isochronous OUT transfers of six 1 ms packets keep 24 ms queued. At
  * high speed a 1 ms bInterval is 8 microframes, and esp-usb fits at most
@@ -276,6 +280,12 @@ static void uac_iso_done(usb_transfer_t *transfer)
         printf("usb_uac_stats transfers=%" PRIu32 " packets=%" PRIu32 " frames=%" PRIu32 " tone_packets=%" PRIu32
                " iso_errors=%" PRIu32 " packet_errors=%" PRIu32 "\n", uac_completed, stats[0], stats[1], stats[2],
                uac_iso_errors, uac_packet_errors);
+#if CONFIG_RUZINA_DECK_PLAY
+        uint32_t play[4];
+        ruzina_legacy_play_stats(play);
+        printf("deck_play_stats played=%" PRIu32 " underruns=%" PRIu32 " buffered=%" PRIu32 " rate=%" PRIu32 "\n",
+               play[0], play[1], play[2], play[3]);
+#endif
     }
 }
 
