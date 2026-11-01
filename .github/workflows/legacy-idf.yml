@@ -23,9 +23,9 @@ jobs:
           cargo +1.95.0 fmt --manifest-path "$manifest" -- --check
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-media-load
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-media-load --tests -- -D warnings
-          cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-controller-midi
-          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-controller-midi --tests -- -D warnings
-          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi"; do
+          cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-controller-audio
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-controller-audio --tests -- -D warnings
+          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi" "idf-media-load idf-controller-audio"; do
             cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf -- -D warnings
             cargo +1.95.0 build --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf
           done
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        variant: [pure-ram, flash-build-only, memory-task, display-touch, sd-readonly, sd-file-readonly, sd-rust-bridge, sd-rust-exfat, sd-rust-load, sd-rust-load-display, usb-host, usb-midi, deck-ui]
+        variant: [pure-ram, flash-build-only, memory-task, display-touch, sd-readonly, sd-file-readonly, sd-rust-bridge, sd-rust-exfat, sd-rust-load, sd-rust-load-display, usb-host, usb-midi, deck-ui, deck-audio]
     steps:
       - uses: actions/checkout@v4
       - name: Rust

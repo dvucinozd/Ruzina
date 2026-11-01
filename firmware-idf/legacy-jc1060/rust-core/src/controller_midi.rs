@@ -134,6 +134,12 @@ fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
     f(unsafe { &mut *STATE.0.get() })
 }
 
+/// The Play latch of decks 1 and 2 (the echo state). Same task as audio.
+#[cfg_attr(not(feature = "controller-audio"), allow(dead_code))]
+pub(crate) fn playing() -> [bool; 2] {
+    with(|state| state.playing)
+}
+
 /// `(deck, kind, value, max)` scalars for one semantic event.
 pub(crate) fn encode(event: &ControlEvent) -> (u32, u32, i32, u32) {
     let deck = match event.deck {

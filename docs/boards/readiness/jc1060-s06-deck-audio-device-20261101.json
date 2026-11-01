@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "FLASHED_DEVICE_RUN_PASS_NOT_QUALIFIED",
+  "variant": "deck-audio",
+  "local_archive": "D:\\BoardEvidence\\JC1060-20261030-COM3\\jc1060-idf61-deck-audio-device-20261101.zip",
+  "secondary_archive": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\s06-deck-audio-device-20261101\\jc1060-idf61-deck-audio-device-20261101.zip",
+  "archive_sha256": "d0af2baeed44429436b8d05f6c9b18b8e783baa3a39f4108dab786acd6231679",
+  "archive_bytes": 14413422,
+  "members": 51,
+  "app_sha256": "840befe97a410615367774a9c2d6487879a7b02b7e12743478932601d3e99480",
+  "app_bytes": 508992,
+  "manifest_sha256": "9ff9df6094ffe86ffeb5f6931dcfad679e3076ed87d6a08548950c58a5f9c047",
+  "source_commit": "9a8453e65f87705b1a1f311055fb77addc7aeaac",
+  "dirty_diff_sha256": "a5415aa5898da9e7f962ab7110bc38cc4514257ac0181dc79f412983e453795c",
+  "plan_sha256": "b0e17fdb09e69b6b5a98b00de9a677da7066b6472e9b61ba704a265a7ecdfb5c",
+  "predecessor_plan_sha256": "7ee8681243b5c74849e682ba671c265a3007f27740dadaf9a9ca7e16f3d6b9a0",
+  "superseded_images": [
+    {
+      "app_sha256": "716b2f0d17fa197ad89899060ec92ed844a8709653f78f8e4a20a73b6e7a445a",
+      "plan_sha256": "7ee8681243b5c74849e682ba671c265a3007f27740dadaf9a9ca7e16f3d6b9a0",
+      "outcome": "ISOC submit ESP_ERR_INVALID_SIZE: 8 x 1 ms packets exceed esp-usb (64 - 3) HS microframes"
+    }
+  ],
+  "device": {
+    "model": "Pioneer DDJ-FLX4",
+    "vid": "2b73",
+    "pid": "0045",
+    "power": "bus from PC via FS port, battery disconnected"
+  },
+  "captures": [
+    "s06-deck-audio-flash",
+    "s06-deck-audio-iso-size",
+    "s06-deck-audio-2-flash",
+    "s06-deck-audio-run"
+  ],
+  "contains_factory_dump": false,
+  "contains_sd_dump": false,
+  "release": false,
+  "verification": "ZIP_CRC_ALL_MEMBER_SHA256_SECONDARY_MATCH"
+}

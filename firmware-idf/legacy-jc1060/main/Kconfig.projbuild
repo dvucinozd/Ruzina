@@ -38,6 +38,11 @@ config RUZINA_USB_HOST_MIDI
     depends on RUZINA_USB_HOST_ENUM
     default n
 
+config RUZINA_USB_HOST_UAC
+    bool "Stream a diagnostic headphone tone to the controller over UAC1"
+    depends on RUZINA_USB_HOST_MIDI
+    default n
+
 config RUZINA_LOAD_DISPLAY
     bool "Show the media load status on the New_Panel, with touch track selection"
     depends on RUZINA_SD_RUST_LOAD && !RUZINA_DISPLAY_TOUCH

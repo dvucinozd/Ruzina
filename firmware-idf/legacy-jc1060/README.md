@@ -385,3 +385,25 @@ The CMake guard allows the USB host beside SD and the display only in this
 full combination. The build tool checks all three owners and limits the MIDI
 exports to 2 KiB frames. See
 [deck UI](../../docs/reviews/2026-10-31-legacy-deck-ui.md).
+## `deck-audio` profile
+
+`deck-audio` (`CONFIG_RUZINA_USB_HOST_UAC`, Rust `idf-controller-audio`) is
+`deck-ui` plus the first USB audio. After the MIDI claim, Rust picks the
+controller's playback format with `ruzina_uac::descriptor::select`. On the
+FLX4 that is AudioStreaming interface 1, alternate 2: 4 channels, 16-bit,
+48 kHz, 384 bytes per 1 ms.
+
+C then claims that interface. It sends `SET_INTERFACE` and, when the
+endpoint supports it, `SET_CUR` 48 kHz, with the request bytes built by
+`ruzina_uac::stream::ControlRequest`. It keeps four isochronous OUT
+transfers of six 1 ms packets queued on endpoint `0x01`. esp-usb fits at most
+(64 − 3) high-speed microframes per transfer, so eight 1 ms packets do not
+fit. Each completion is
+refilled through `ruzina_legacy_uac_fill`, which uses `ruzina_uac`'s
+`Cadence` and `pack`.
+
+The source is a diagnostic tone, not the deck engine: 1 kHz at −24 dBFS on
+the headphone pair (channels 3 and 4). It plays on the left while deck 1's
+Play latch is on and on the right while deck 2's is. MAIN stays silent. The
+log shows `usb_uac` (format and claim) and `usb_uac stream=`, then every 5 s
+`usb_uac_stats`, and `usb_uac_stop` on detach.

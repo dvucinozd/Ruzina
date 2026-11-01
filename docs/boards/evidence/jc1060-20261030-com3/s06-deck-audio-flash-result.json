@@ -1,0 +1,29 @@
+{
+  "scenario": "s06-deck-audio-upgrade",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "physical_identity_scope": "Programming stage only; observed P4v1.3/MAC; later application owns SDMMC/LDO4 (read-only Rust load), caps-only PSRAM, New_Panel DSI/LDO3/backlight with GT911 polling, and the HS USB OTG/UTMI host (USB-MIDI streaming and UAC1 AudioStreaming playback); no SD/display/audio owner; VBUS hard-wired to USB5V_IN",
+  "prewrite_complete_predecessor_sector_hashes": "MATCH",
+  "app_sha256": "716b2f0d17fa197ad89899060ec92ed844a8709653f78f8e4a20a73b6e7a445a",
+  "plan_sha256": "7ee8681243b5c74849e682ba671c265a3007f27740dadaf9a9ca7e16f3d6b9a0",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "caaf75c5ea33585e1c41883924550e8aa0850aa8dd30ed59905ae6ab40676061"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 512000,
+      "sha256": "9c0bb5f384bad968cb2dd9e1ed7ce6d82f5eda31a0264f683250c782ecb1acc3"
+    }
+  ],
+  "programmer_log_sha256": "8ee30794ff361b529011fb178e7f8db8cd6e7cadb75d84b8b594c930ae6dfd44"
+}
