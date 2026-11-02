@@ -6,6 +6,18 @@ import unittest
 
 class UacRecoveryTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which('cc'), 'Host C compiler required (run on Linux/WSL)')
+    def test_producer_service_wall_gaps_and_epoch_bounds(self):
+        app = pathlib.Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as directory:
+            exe=pathlib.Path(directory)/'producer-service-test'
+            subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-I',str(app/'main'),
+                            str(app/'tools/tests/producer_service_test.c'),'-o',str(exe)],check=True)
+            subprocess.run([str(exe)],check=True)
+
+    @unittest.skipUnless(shutil.which('cc'), 'Host C compiler required (run on Linux/WSL)')
+    def test_actual_driver_producer_profile(self):
+        self._run_driver(timing=True,producer=True)
+    @unittest.skipUnless(shutil.which('cc'), 'Host C compiler required (run on Linux/WSL)')
     def test_production_recovery_policy(self):
         app = pathlib.Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as directory:
@@ -47,7 +59,7 @@ class UacRecoveryTests(unittest.TestCase):
                             str(app / 'tools/tests/uac_profile_irq_test.c'), '-o', str(exe)], check=True)
             subprocess.run([str(exe)], check=True)
 
-    def _run_driver(self, timing, profile=False):
+    def _run_driver(self, timing, profile=False,producer=False):
         app = pathlib.Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as directory:
             exe = pathlib.Path(directory) / 'uac-driver-test'
@@ -56,7 +68,8 @@ class UacRecoveryTests(unittest.TestCase):
             (pathlib.Path(directory) / 'esp_heap_caps.h').write_text(
                 '#pragma once\n#define MALLOC_CAP_8BIT 4\n#define MALLOC_CAP_INTERNAL 2048\n#define MALLOC_CAP_SPIRAM 1024\n')
             subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
-                            f'-DUAC_TEST_TIMING={int(timing)}', f'-DUAC_TEST_PROFILE={int(profile)}', '-I', directory,
+                            f'-DUAC_TEST_TIMING={int(timing)}', f'-DUAC_TEST_PROFILE={int(profile)}',
+                            f'-DUAC_TEST_PRODUCER={int(producer)}', '-I', directory,
                             '-I', str(app / 'main'), str(app / 'tools/tests/uac_driver_test.c'),
                             *([str(app / 'main/uac_profile_sched.c'), str(app / 'main/uac_profile_irq.c'),
                                '-DUAC_PROFILE_TEST=1'] if profile else []),

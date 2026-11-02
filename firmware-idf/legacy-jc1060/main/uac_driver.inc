@@ -44,6 +44,11 @@ static int uac_step = UAC_OFF;
 static uint32_t uac_info[8]; /* interface, alt, endpoint, mps, channels, bytes, rate, freq_control */
 static uint32_t uac_completed, uac_iso_errors, uac_packet_errors, uac_ctrl_errors, uac_fill_errors;
 static uint32_t uac_submit_errors, uac_generation;
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+#include "producer_service.h"
+extern uint32_t ruzina_legacy_producer_profile_snapshot(uint32_t *out,uint32_t len);
+static producer_service_t producer_service;
+#endif
 static uac_recovery_t uac_health;
 static bool uac_report_pending;
 static uint32_t uac_log_drops;
@@ -142,6 +147,9 @@ static void uac_iso_done(usb_transfer_t *transfer)
 {
     const uac_context_t *context = transfer->context;
     if (!uac_recovery_current(&uac_health, context->generation)) return;
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+    producer_service_callback(&producer_service,(uint64_t)esp_timer_get_time());
+#endif
     unsigned index = context->slot;
     uac_iso_busy[index] = false;
     if (transfer->status==USB_TRANSFER_STATUS_NO_DEVICE) {
@@ -170,6 +178,10 @@ static void uac_iso_done(usb_transfer_t *transfer)
 
 /* Single latest snapshot: USB work never blocks on formatted serial output. */
 typedef struct {
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+    uint32_t producers[3*PRODUCER_PROFILE_WORDS],producer_mask;
+    producer_service_t service;
+#endif
     uint32_t completed, stats[3], iso_errors, packet_errors, submit_errors, log_drops;
 #if CONFIG_RUZINA_DECK_PLAY
     uint32_t diagnostics[4];
@@ -242,6 +254,41 @@ static void uac_log_task(void *unused)
     uac_log_snapshot_t sample;
     for (;;) {
         if (xQueueReceive(uac_log_queue, &sample, portMAX_DELAY) != pdTRUE) continue;
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+        static const char *const producer_stages[]={"poll","decode","step","read","push","decode_other"};
+        for(unsigned deck=0;deck<2;++deck) {
+            if(!(sample.producer_mask & (1u<<deck))) {
+                printf("producer_profile unavailable=1 deck=%u generation=%" PRIu32 "\n",deck+1,sample.generation);
+                continue;
+            }
+            const uint32_t *p=&sample.producers[deck*PRODUCER_PROFILE_WORDS];
+            printf("producer_profile deck=%u generation=%" PRIu32 " schema=%" PRIu32 " seq=%" PRIu32
+                   " uptime_us=%" PRIu64 " epoch=%" PRIu32 " index=%" PRIu32 " rate=%" PRIu32
+                   " playing=%" PRIu32 " pitch=%" PRId32 " supply_us=%" PRIu32 " busy=%" PRIu32
+                   " frames=%" PRIu32 " logical_read_bytes=%" PRIu32 " invalid=%" PRIu32 " saturated=%" PRIu32 " max_service_gap_us=%" PRIu32 "\n",
+                   deck+1,sample.generation,p[0],p[1],producer_profile_u64(p+2),p[4],p[5],p[6],p[7],(int32_t)p[8],p[9],
+                   p[10],p[11],p[12],p[13],p[14],p[15]);
+            for(unsigned stage=0;stage<6;++stage) {
+                const uint32_t *m=p+16+4*stage;
+                printf("producer_profile_stage deck=%u seq=%" PRIu32 " stage=%s calls=%" PRIu32 " total_us=%" PRIu64 " max_us=%" PRIu32 "\n",
+                       deck+1,p[1],producer_stages[stage],m[0],producer_profile_u64(m+1),m[3]);
+            }
+        }
+        if(sample.producer_mask & 4u) {
+            const uint32_t *p=sample.producers+2*PRODUCER_PROFILE_WORDS;
+            printf("producer_owner generation=%" PRIu32 " seq=%" PRIu32 " uptime_us=%" PRIu64 " turns=%" PRIu32
+                   " wall_us=%" PRIu64 " polls_us=%" PRIu64 " other_including_idle_us=%" PRIu64
+                   " max_turn_us=%" PRIu32 " invalid=%" PRIu32 " saturated=%" PRIu32 "\n",
+                   sample.generation,p[1],producer_profile_u64(p+2),p[16],producer_profile_u64(p+17),producer_profile_u64(p+21),
+                   producer_profile_u64(p+37),p[19],p[13],p[14]);
+        } else printf("producer_owner unavailable=1\n");
+        const producer_service_t *service=&sample.service;
+        const producer_service_metric_t *metrics[]={&service->handle,&service->tail,&service->callback_gap};
+        static const char *const names[]={"handle_events_wall","client_tail_wall","callback_entry_gap"};
+        for(unsigned i=0;i<3;++i) printf("producer_usb_service generation=%" PRIu32 " stage=%s count=%" PRIu32
+            " total_us=%" PRIu64 " max_us=%" PRIu32 " invalid=%" PRIu32 " saturated=%" PRIu32 "\n",
+            service->generation,names[i],metrics[i]->count,metrics[i]->total_us,metrics[i]->max_us,service->invalid,service->saturated);
+#endif
 #if CONFIG_RUZINA_DECK_PLAY
         printf("producer_water low_us=%" PRIu32 "/%" PRIu32 " prime_max_us=%" PRIu32 "/%" PRIu32 " log_drops=%" PRIu32 "\n",
             sample.diagnostics[0],sample.diagnostics[1],sample.diagnostics[2],sample.diagnostics[3],sample.log_drops);
@@ -315,6 +362,10 @@ static void uac_report(void)
     uac_log_snapshot_t sample={.completed=uac_completed,.iso_errors=uac_iso_errors,
         .packet_errors=uac_packet_errors,.submit_errors=uac_submit_errors};
     ruzina_legacy_uac_stats(sample.stats);
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+    sample.producer_mask=ruzina_legacy_producer_profile_snapshot(sample.producers,3*PRODUCER_PROFILE_WORDS);
+    sample.service=producer_service;
+#endif
 #if CONFIG_RUZINA_DECK_PLAY
     ruzina_legacy_play_diagnostics(sample.diagnostics);
 #endif
@@ -479,6 +530,9 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
 static void uac_begin_selected(void)
 {
     uac_generation++; if (!uac_generation) uac_generation=1;
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+    producer_service=(producer_service_t){.generation=uac_generation};
+#endif
 #if CONFIG_RUZINA_UAC_PROFILE
     uac_profile_ordinal=0;
 #endif

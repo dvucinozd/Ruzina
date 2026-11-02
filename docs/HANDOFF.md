@@ -1,5 +1,16 @@
 # Rust M2.5 development handoff
 
+Active source preparation: `ogranak/jc1060-source-supply-profile`; read the
+[producer/USB measurement contract](reviews/2026-11-03-source-supply-profile.md).
+Default-OFF producer profiling separates per-deck service/decode/read/step/push,
+owner remainder and USB client/service gaps. 75 diagnostic Rust tests plus
+Clippy, 70 normal Rust tests and eight actual C cases pass locally; Windows
+Python has41 PASS/eight explicit C skips, executed separately in WSL. Source
+review, exact CI and fresh normal/diagnostic packages are next. No new COM3
+access, registration or runtime acceptance. S07/history40/full7875f650 remain
+the installed baseline. Prior normal-result publication `fd466b3` CI is now
+success in both workflows (#564/#87). Device evidence below remains immutable.
+
 Current device state: read the [normal-engine rejection and next ordered work](reviews/2026-11-02-normal-engine-device.md).
 Cold/idle max 2397 us passes; each MP3 alone is owner-confirmed with no errors,
 but max 3214 us misses the headroom target. Two simultaneous MP3 sources drain

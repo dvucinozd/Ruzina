@@ -1,5 +1,11 @@
 # Current development status
 
+Active [source-supply diagnostic preparation](reviews/2026-11-03-source-supply-profile.md)
+adds explicit OFF-by-default producer/USB wall measurements, independently of
+render/IRQ profiling. Local host/target tests pass; exact review/CI and fresh
+builds are pending. No new flash/registration; installed s07/history40 and its
+accepted recovery are unchanged. Last normal-result publication CI passed.
+
 Latest [normal-engine physical result](reviews/2026-11-02-normal-engine-device.md):
 **two-deck REJECTED**, s07 restored/full-readback/cold/listening confirmed.
 Cold/idle passes at 2397 us; individual MP3 listening passes with max 3214 us

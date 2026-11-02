@@ -18,6 +18,15 @@ uint32_t ruzina_legacy_resources_state(void) { return resource_state; }
 #define UAC_TEST_PROFILE 0
 #endif
 #define CONFIG_RUZINA_UAC_PROFILE UAC_TEST_PROFILE
+#ifndef UAC_TEST_PRODUCER
+#define UAC_TEST_PRODUCER 0
+#endif
+#define CONFIG_RUZINA_PRODUCER_PROFILE UAC_TEST_PRODUCER
+#if UAC_TEST_PRODUCER
+uint32_t ruzina_legacy_producer_profile_snapshot(uint32_t *out,uint32_t len) {
+    assert(len==120);memset(out,0,len*sizeof(*out));out[0]=1;out[40]=1;out[80]=1;return 7;
+}
+#endif
 #define ESP_OK 0
 #define USB_TRANSFER_STATUS_COMPLETED 0
 #define USB_TRANSFER_STATUS_NO_DEVICE 1
@@ -192,6 +201,11 @@ static void timing_phases(void) {
     uac_log_snapshot_t sample; assert(xQueueReceive(uac_log_queue,&sample,0)==1);
     assert(sample.fill_max_us==12260 && sample.generation==uac_generation);
     assert(sample.usb_stack_free==3072); /* measured by client, not logger */
+#if UAC_TEST_PRODUCER
+    assert(sample.producer_mask==7 && sample.producers[0]==1 && sample.producers[80]==1);
+    assert(sample.service.generation==sample.generation);
+    assert(sample.service.callback_gap.count>0);
+#endif
     stack_value=1234; uac_log_resources(&sample);
     assert(heap_queries==old_heap_queries+6 && sample.usb_stack_free==3072);
     stack_value=3072;

@@ -71,6 +71,10 @@ pub(crate) struct Ring {
 }
 
 impl Ring {
+    #[cfg(feature = "producer-profile")]
+    pub(crate) fn profile_head(&self) -> u32 {
+        self.head.load(Ordering::Acquire)
+    }
     #[cfg(feature = "deck-engine")]
     pub(crate) fn has_storage(&self) -> bool {
         !self.frames.load(Ordering::Acquire).is_null()
@@ -391,6 +395,8 @@ fn deliver(ring: &Ring, block: &PcmStreamBlock) -> bool {
 
 /// Decoder state in the PSRAM heap; built once by the load task.
 pub(crate) struct Producer<File> {
+    #[cfg(feature = "producer-profile")]
+    pub(crate) profile: crate::producer_profile::Stats,
     storage: Box<DecoderStorage>,
     checkpoints: [Box<Mp3CheckpointStorage>; MP3_CHECKPOINTS],
     encoded: Box<[u8]>,
@@ -455,6 +461,8 @@ impl<File> Producer<File> {
     pub(crate) fn try_new() -> Option<Self> {
         use crate::deck_resources::{try_copy, try_zeros};
         Some(Self {
+            #[cfg(feature = "producer-profile")]
+            profile: crate::producer_profile::Stats::default(),
             // SAFETY: same audited inline, non-owning storage as new().
             storage: unsafe { try_copy(&INITIAL_STORAGE)? },
             checkpoints: [
@@ -475,6 +483,8 @@ impl<File> Producer<File> {
     #[cfg(any(test, not(feature = "deck-engine")))]
     pub(crate) fn new() -> Self {
         Self {
+            #[cfg(feature = "producer-profile")]
+            profile: crate::producer_profile::Stats::default(),
             // SAFETY: these concrete audited storage types contain only inline
             // decoder arrays/scalars, with no owning pointers or destructors.
             storage: unsafe { boxed_copy(&INITIAL_STORAGE) },
@@ -723,13 +733,35 @@ impl<File> Producer<File> {
         actions: u32,
         prime: bool,
     ) -> Option<u32> {
+        #[cfg(feature = "producer-profile")]
+        let (started, children) = (files.now_us(), self.profile.children());
+        let result = self.decode_inner(files, ring, actions, prime);
+        #[cfg(feature = "producer-profile")]
+        self.profile
+            .finish_decode(started, files.now_us(), children);
+        result
+    }
+
+    fn decode_inner<F: SourceFiles<File = File>>(
+        &mut self,
+        files: &mut F,
+        ring: &Ring,
+        actions: u32,
+        prime: bool,
+    ) -> Option<u32> {
         let started = files.now_us();
         let source = self.source.as_mut()?;
-        if let Some(block) = source.pending.take()
-            && !deliver(ring, &block)
-        {
-            source.pending = Some(block);
-            return Some(0);
+        if let Some(block) = source.pending.take() {
+            #[cfg(feature = "producer-profile")]
+            let before = files.now_us();
+            let delivered = deliver(ring, &block);
+            #[cfg(feature = "producer-profile")]
+            self.profile
+                .record(crate::producer_profile::PUSH, before, files.now_us());
+            if !delivered {
+                source.pending = Some(block);
+                return Some(0);
+            }
         }
         for action in 0..actions {
             if action != 0 && files.now_us().saturating_sub(started) >= POLL_BUDGET_US {
@@ -739,18 +771,29 @@ impl<File> Producer<File> {
                 break;
             }
             let mut checkpoints = self.checkpoints.each_mut().map(|slot| &mut **slot);
-            match source
+            #[cfg(feature = "producer-profile")]
+            let before = files.now_us();
+            let action = source
                 .stream
-                .step(&mut self.storage, &mut checkpoints, &mut self.encoded)
-            {
+                .step(&mut self.storage, &mut checkpoints, &mut self.encoded);
+            #[cfg(feature = "producer-profile")]
+            self.profile
+                .record(crate::producer_profile::STEP, before, files.now_us());
+            match action {
                 DecodeAction::Read { offset, maximum } => {
                     let read = &mut self.read[..maximum.min(SOURCE_READ_BYTES)];
-                    let provided =
-                        files
-                            .read_at(&mut source.file, offset, read)
-                            .is_some_and(|bytes| {
-                                source.stream.provide(&mut self.encoded, &read[..bytes])
-                            });
+                    #[cfg(feature = "producer-profile")]
+                    let before = files.now_us();
+                    let bytes = files.read_at(&mut source.file, offset, read);
+                    #[cfg(feature = "producer-profile")]
+                    {
+                        self.profile
+                            .record(crate::producer_profile::READ, before, files.now_us());
+                        self.profile.read_bytes(bytes.unwrap_or(0));
+                    }
+                    let provided = bytes.is_some_and(|bytes| {
+                        source.stream.provide(&mut self.encoded, &read[..bytes])
+                    });
                     if !provided {
                         source.ended = true;
                         ring.end();
@@ -769,7 +812,13 @@ impl<File> Producer<File> {
                     if prime {
                         ring.restart_at(rate, block.first_frame as u32);
                     }
-                    if !deliver(ring, &block) {
+                    #[cfg(feature = "producer-profile")]
+                    let before = files.now_us();
+                    let delivered = deliver(ring, &block);
+                    #[cfg(feature = "producer-profile")]
+                    self.profile
+                        .record(crate::producer_profile::PUSH, before, files.now_us());
+                    if !delivered {
                         source.pending = Some(Box::new(block));
                     }
                     if prime {
@@ -779,6 +828,42 @@ impl<File> Producer<File> {
             }
         }
         Some(0)
+    }
+
+    #[cfg(feature = "producer-profile")]
+    pub(crate) fn profile_poll(
+        &mut self,
+        ring: &Ring,
+        start: u64,
+        end: u64,
+        busy: bool,
+        head: u32,
+    ) {
+        self.profile
+            .poll(start, end, busy, ring.profile_head().wrapping_sub(head));
+    }
+
+    #[cfg(feature = "producer-profile")]
+    pub(crate) fn profile_publish(
+        &self,
+        deck: usize,
+        ring: &Ring,
+        now: u64,
+        playing: bool,
+        pitch: i16,
+    ) {
+        let mut words = self.profile.words();
+        words[2..10].copy_from_slice(&[
+            now as u32,
+            (now >> 32) as u32,
+            ring.epoch(),
+            self.source.as_ref().map_or(u32::MAX, |s| s.index),
+            ring.rate.load(Ordering::Acquire),
+            u32::from(playing),
+            i32::from(pitch) as u32,
+            ring.supply_us(pitch).min(u64::from(u32::MAX)) as u32,
+        ]);
+        crate::producer_profile::publish(deck, words);
     }
 
     /// Moves the loaded track to `position_ms` and decodes its first block

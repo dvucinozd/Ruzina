@@ -68,3 +68,8 @@ config RUZINA_UAC_PROFILE
     depends on RUZINA_DECK_ENGINE && !FREERTOS_SMP && !ESP_TRACE_ENABLE && !SECURE_ENABLE_TEE
     select ESP_TIMER_IN_IRAM
     default n
+
+config RUZINA_PRODUCER_PROFILE
+    bool "Diagnostic producer wall partitions and USB service observations"
+    depends on RUZINA_DECK_ENGINE && !RUZINA_UAC_PROFILE
+    default n

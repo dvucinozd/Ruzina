@@ -815,6 +815,10 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
     let mut last_turn_us = 0u64;
     let mut maximum_gap_us = 0u64;
     let mut turns = 0u32;
+    #[cfg(feature = "producer-profile")]
+    let mut last_profile_publish = 0u64;
+    #[cfg(feature = "producer-profile")]
+    let (mut owner_profile, mut owner_end) = (crate::producer_profile::Stats::default(), 0u64);
     loop {
         let now = VolumeFiles {
             volume: &mut *volume,
@@ -826,6 +830,8 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
         }
         last_turn_us = now;
         turns = turns.wrapping_add(1);
+        #[cfg(feature = "producer-profile")]
+        let mut poll_wall = 0u64;
         let playing = crate::media_signal::playing();
         if playing.into_iter().any(|p| p) && LOAD_DETAIL_OWED.load(Ordering::Acquire) {
             if !detail_deferred {
@@ -896,6 +902,8 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
                 volume: &mut *volume,
                 current,
             };
+            #[cfg(feature = "producer-profile")]
+            let (poll_start, poll_head) = (files.now_us(), RINGS[deck].profile_head());
             #[cfg(not(feature = "idf-deck-engine"))]
             let (worked, event) = producer.poll(&mut files, &RINGS[deck], &COMMANDS[deck], &path);
             #[cfg(feature = "idf-deck-engine")]
@@ -961,6 +969,12 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
             {
                 pending_seeks[deck] = Some(crate::deck_transport::seek_result(deck, request, ok));
             }
+            #[cfg(feature = "producer-profile")]
+            {
+                let poll_end = files.now_us();
+                producer.profile_poll(&RINGS[deck], poll_start, poll_end, worked, poll_head);
+                poll_wall = poll_wall.saturating_add(poll_end.saturating_sub(poll_start));
+            }
             busy |= worked;
             let tag = (deck as u32) << 24;
             match event {
@@ -984,6 +998,30 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
             }
         }
         deck_two_first = !deck_two_first;
+        #[cfg(feature = "producer-profile")]
+        if now.saturating_sub(last_profile_publish) >= 1_000_000 {
+            let published_at = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            }
+            .now_us();
+            for (deck, producer) in producers.iter().enumerate() {
+                if let Some(producer) = producer {
+                    producer.profile_publish(
+                        deck,
+                        &RINGS[deck],
+                        published_at,
+                        playing[deck],
+                        crate::media_signal::pitch()[deck],
+                    );
+                }
+            }
+            let mut owner_words = owner_profile.words();
+            owner_words[2] = owner_end as u32;
+            owner_words[3] = (owner_end >> 32) as u32;
+            crate::producer_profile::publish(2, owner_words);
+            last_profile_publish = now;
+        }
         if turns.is_multiple_of(1024) {
             report(13, maximum_gap_us.min(u64::from(u32::MAX)) as u32);
         }
@@ -994,6 +1032,15 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
         if !busy {
             // SAFETY: dedicated task only; one tick while the rings are full.
             unsafe { ruzina_bridge_fixture_yield() };
+        }
+        #[cfg(feature = "producer-profile")]
+        {
+            owner_end = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            }
+            .now_us();
+            owner_profile.owner_turn(now, owner_end, poll_wall);
         }
     }
 }

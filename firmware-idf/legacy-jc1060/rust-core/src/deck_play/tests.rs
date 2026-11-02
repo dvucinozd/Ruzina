@@ -18,6 +18,75 @@ const CBR: &[u8] = fixture!("cbr.mp3");
 const VBR_44K: &[u8] = fixture!("vbr.mp3");
 const LONG_ID3: &[u8] = fixture!("long-vbr.mp3");
 
+#[cfg(feature = "producer-profile")]
+#[test]
+fn source_profile_measures_slow_read_and_keeps_real_pcm_and_failure() {
+    struct Slow {
+        inner: Memory,
+        clock: core::cell::Cell<u64>,
+    }
+    impl SourceFiles for Slow {
+        type File = &'static [u8];
+        fn open(&mut self, path: &str) -> Option<Self::File> {
+            self.inner.open(path)
+        }
+        fn len(&self, file: &Self::File) -> u64 {
+            self.inner.len(file)
+        }
+        fn close(&mut self, file: Self::File) {
+            self.inner.close(file)
+        }
+        fn now_us(&self) -> u64 {
+            self.clock.get()
+        }
+        fn read_at(&mut self, file: &mut Self::File, offset: u64, out: &mut [u8]) -> Option<usize> {
+            self.clock.set(self.clock.get() + 5000);
+            self.inner.read_at(file, offset, out)
+        }
+    }
+    let (ring, commands) = (ring(), Commands::new());
+    let mut files = Slow {
+        inner: Memory::new(&[WAV]),
+        clock: core::cell::Cell::new(1),
+    };
+    let mut producer = Producer::new();
+    let mut reader = Reader::new();
+    commands.load(0);
+    let mut pcm = Vec::new();
+    for _ in 0..100_000 {
+        let start = files.now_us();
+        let head = ring.profile_head();
+        let (busy, _) = producer.poll(&mut files, ring, &commands, path);
+        producer.profile_poll(ring, start, files.now_us(), busy, head);
+        pcm.extend(drain(&mut reader, ring));
+        if !busy {
+            break;
+        }
+    }
+    assert_eq!(pcm, wav_pcm());
+    let words = producer.profile.words();
+    let total =
+        |stage: usize| u64::from(words[17 + stage * 4]) | (u64::from(words[18 + stage * 4]) << 32);
+    assert_eq!(total(1), (2..6).map(total).sum::<u64>());
+    assert!(total(3) >= 5000);
+    assert_eq!(words[19 + 3 * 4], 5000);
+    assert_eq!(words[11] as usize, pcm.len());
+    assert_eq!((words[13], words[14]), (0, 0));
+    files.inner.fail_reads_after = Some(files.inner.reads);
+    commands.load(0);
+    let mut failed = false;
+    for _ in 0..10 {
+        failed |= matches!(
+            producer.poll(&mut files, ring, &commands, path).1,
+            Some(Event::Failed { .. })
+        );
+        if failed {
+            break;
+        }
+    }
+    assert!(failed);
+}
+
 /// Tracks by catalog index, read from memory.
 pub(crate) struct Memory {
     files: Vec<&'static [u8]>,

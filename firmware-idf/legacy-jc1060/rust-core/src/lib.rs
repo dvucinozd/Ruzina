@@ -1,5 +1,8 @@
 #![no_std]
 
+#[cfg(all(feature = "producer-profile", feature = "uac-profile"))]
+compile_error!("Producer profiling and render/IRQ profiling require separate images");
+
 #[cfg(test)]
 extern crate std;
 
@@ -43,6 +46,9 @@ mod media_signal;
 
 #[cfg(feature = "deck-play")]
 mod producer_schedule;
+
+#[cfg(feature = "producer-profile")]
+mod producer_profile;
 
 #[cfg(feature = "deck-mix")]
 mod deck_mix;

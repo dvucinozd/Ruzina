@@ -4,6 +4,16 @@ import unittest
 
 
 class ConfigTests(unittest.TestCase):
+    def test_producer_profile_cli_rejects_wrong_or_combined_mode_before_idf(self):
+        import sys
+        builder=Path(__file__).resolve().parents[1]/'build_legacy.py'
+        for extra in (['--variant','deck-play'],['--variant','deck-engine','--uac-profile'],
+                      ['--variant','deck-engine','--uac-profile','--uac-pack-iram']):
+            result=subprocess.run([sys.executable,str(builder),'--idf','unused-idf','--output','unused-output',
+                                   '--producer-profile',*extra],capture_output=True,text=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('Producer profiling requires deck-engine',result.stderr)
+
     def test_uac_profile_guards(self):
         guard=Path(__file__).resolve().parents[1]/'check_config.cmake'
         baseline=dict(IDF_TARGET='esp32p4',CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
@@ -15,6 +25,12 @@ class ConfigTests(unittest.TestCase):
             CONFIG_SPIRAM='ON',CONFIG_SPIRAM_SPEED='80',CONFIG_SPIRAM_USE_CAPS_ALLOC='ON')
         good=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in baseline.items()],'-P',str(guard)],capture_output=True,text=True)
         self.assertEqual(good.returncode,0,good.stderr)
+        producer={**baseline,'CONFIG_RUZINA_UAC_PROFILE':'OFF','CONFIG_RUZINA_PRODUCER_PROFILE':'ON'}
+        for extra,accepted in (({},True),({'CONFIG_RUZINA_UAC_PROFILE':'ON'},False),
+                               ({'CONFIG_RUZINA_DECK_ENGINE':'OFF'},False)):
+            result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in {**producer,**extra}.items()],
+                                   '-P',str(guard)],capture_output=True,text=True)
+            self.assertEqual(result.returncode==0,accepted,(extra,result.stderr))
         for extra in ({'CONFIG_RUZINA_DECK_ENGINE':'OFF'},{'CONFIG_FREERTOS_SMP':'ON'},
                       {'CONFIG_ESP_TRACE_ENABLE':'ON'},{'CONFIG_SECURE_ENABLE_TEE':'ON'}):
             config={**baseline,**extra}

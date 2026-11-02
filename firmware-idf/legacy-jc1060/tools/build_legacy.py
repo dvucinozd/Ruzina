@@ -50,11 +50,14 @@ def main():
     parser.add_argument('--rustup-home')
     parser.add_argument('--uac-profile', action='store_true', help='Explicit deck-engine-only callback profiling diagnostic')
     parser.add_argument('--uac-pack-iram', action='store_true', help='Single-variable exact-symbol pack placement; requires --uac-profile')
+    parser.add_argument('--producer-profile', action='store_true', help='Separate deck-engine source-supply/USB service diagnostic')
     args = parser.parse_args()
     if args.uac_pack_iram and not args.uac_profile:
         raise ValueError('IRAM packetizer experiment requires explicit UAC profiling')
     if args.uac_profile and args.variant != 'deck-engine':
         raise ValueError('UAC profiling is an explicit deck-engine diagnostic only')
+    if args.producer_profile and (args.variant != 'deck-engine' or args.uac_profile or args.uac_pack_iram):
+        raise ValueError('Producer profiling requires deck-engine and excludes UAC/IRAM profiling')
     idf = args.idf.resolve()
     output = args.output.resolve()
     if output.exists():
@@ -114,7 +117,8 @@ def main():
     elif args.variant == 'deck-mix':
         common += ['--features', 'idf-deck-mix']
     elif args.variant == 'deck-engine':
-        common += ['--features', 'idf-uac-profile' if args.uac_profile else 'idf-deck-engine']
+        common += ['--features', 'idf-producer-profile' if args.producer_profile else
+                   ('idf-uac-profile' if args.uac_profile else 'idf-deck-engine')]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -163,6 +167,8 @@ def main():
             defaults += [APP / 'sdkconfig.sd-file.defaults']
     if args.uac_profile:
         defaults += [APP / 'sdkconfig.uac-profile.defaults']
+    if args.producer_profile:
+        defaults += [APP / 'sdkconfig.producer-profile.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'
     # Offline build: vendored components only; the component manager would
@@ -176,6 +182,8 @@ def main():
     config = (output / 'sdkconfig').read_text()
     if ('CONFIG_RUZINA_UAC_PROFILE=y' in config) != args.uac_profile:
         raise ValueError('UAC profiling configuration mismatch')
+    if ('CONFIG_RUZINA_PRODUCER_PROFILE=y' in config) != args.producer_profile:
+        raise ValueError('Producer profiling configuration mismatch')
     for required in ('CONFIG_ESP32P4_REV_MIN_FULL=100', 'CONFIG_ESP32P4_REV_MAX_FULL=199',
                      'CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=360'):
         if required not in config:
@@ -221,6 +229,8 @@ def main():
         raise ValueError('Missing Rust symbol or matching runtime in map')
     elf = output / 'build/ruzina_legacy_probe.elf'
     profile_symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
+    if ('ruzina_legacy_producer_profile_snapshot' in profile_symbols) != args.producer_profile:
+        raise ValueError('Producer profiling symbol/default isolation mismatch')
     if args.uac_profile:
         from pack_placement import verify
         placement = verify(run(['riscv32-esp-elf-objdump', '-t', elf]), args.uac_pack_iram)
@@ -347,7 +357,8 @@ def main():
                 (output / 'load-run-stack.log').write_text(f'{depth}\n' + '\n'.join(path) + '\n')
                 if depth > 90112:
                     raise ValueError(f'Load run call chain needs {depth} bytes of the 96 KiB SD client stack')
-    manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, uac_pack_iram=args.uac_pack_iram, sha256=sha(binary), bytes=len(data),
+    manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, uac_pack_iram=args.uac_pack_iram,
+                    producer_profile=args.producer_profile, sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],
                     idf_commit=PIN, submodules=subs, versions=versions, sources=initial_sources,
                     fatfs_sources={name: sha(idf / 'components/fatfs/src' / name) for name in ('ff.c','ff.h','ffunicode.c','diskio.h')} if args.variant in ('sd-readonly', 'sd-file-readonly') else {},

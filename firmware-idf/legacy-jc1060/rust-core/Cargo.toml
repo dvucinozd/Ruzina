@@ -68,6 +68,10 @@ idf-deck-engine = ["idf-deck-mix", "deck-engine"]
 uac-profile = ["deck-engine"]
 idf-uac-profile = ["idf-deck-engine", "uac-profile"]
 
+# Separate source-supply diagnostic; no render substage or IRQ profiling.
+producer-profile = ["deck-engine"]
+idf-producer-profile = ["idf-deck-engine", "producer-profile"]
+
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }
 

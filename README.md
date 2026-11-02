@@ -6,6 +6,11 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-02
 
+Continuation 2026-11-03: [source-supply/USB diagnostic preparation](docs/reviews/2026-11-03-source-supply-profile.md)
+adds default-OFF wall measurements to identify the dual-MP3 bottleneck.
+Host/target checks pass locally; review/CI/fresh builds are pending. No new
+device access or promotion; the accepted s07 remains installed.
+
 The observed JC1060 has ESP32-P4 **v1.3/103**, 16 MiB flash and 32 MiB PSRAM.
 It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
 Rust backend still requires revision **302** and must not be flashed to this unit.

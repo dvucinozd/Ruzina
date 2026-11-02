@@ -327,11 +327,19 @@ static void client_task(void *unused)
     };
     ESP_ERROR_CHECK(usb_host_client_register(&config, &client));
     for (;;) {
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+        uint32_t service_generation=uac_generation;
+        bool service_active=uac_health.state==UAC_HEALTH_STREAMING;
+        uint64_t service_start=(uint64_t)esp_timer_get_time();
+#endif
 #if CONFIG_RUZINA_USB_HOST_MIDI
         /* Bounded wait so an error retry can run without a new event. */
         usb_host_client_handle_events(client, pdMS_TO_TICKS(50));
 #else
         usb_host_client_handle_events(client, portMAX_DELAY);
+#endif
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+        uint64_t service_handled=(uint64_t)esp_timer_get_time();
 #endif
         if (pending_address) {
             uint8_t address = pending_address;
@@ -358,6 +366,10 @@ static void client_task(void *unused)
 #endif
 #if CONFIG_RUZINA_USB_HOST_MIDI
         midi_retry();
+#endif
+#if CONFIG_RUZINA_PRODUCER_PROFILE
+        producer_service_loop(&producer_service,service_generation,service_active,service_start,
+                              service_handled,(uint64_t)esp_timer_get_time());
 #endif
     }
 }
