@@ -1,5 +1,12 @@
 # Rust M2.5 development handoff
 
+Current next gate: `ogranak/jc1060-pack-placement` implements an explicit
+build-only packetizer IRAM alternative after the offline cache-counter audit.
+Read the [bounded experiment](reviews/2026-11-02-pack-placement-experiment.md).
+It includes the peer continuity repairs. Require a verified identical-archive/
+config control pair and fresh registration before device work. No COM3 access
+has occurred; the last accepted installed image is still s07.
+
 Current offline continuation: `ogranak/jc1060-peer-continuity-fixes`. Read the
 [peer continuity repair record](reviews/2026-11-02-peer-continuity-fixes.md).
 Per-deck revisions preserve the cached mixed suffix and reset only the changed

@@ -46,7 +46,10 @@ jobs:
         include:
           - variant: deck-engine
             profile: true
-    name: legacy (${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }})
+          - variant: deck-engine
+            profile: true
+            pack_iram: true
+    name: legacy (${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }})
     steps:
       - uses: actions/checkout@v4
       - name: Rust
@@ -65,10 +68,10 @@ jobs:
           . "$RUNNER_TEMP/idf/export.sh"
           python firmware-rust/tools/check_docs.py
           python -m unittest discover -s firmware-idf/legacy-jc1060/tools/tests -v
-          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' ${{ matrix.profile && '--uac-profile' || '' }} --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
+          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' ${{ matrix.profile && '--uac-profile' || '' }} ${{ matrix.pack_iram && '--uac-pack-iram' || '' }} --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: legacy-${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}-BUILD-ONLY
+          name: legacy-${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}-BUILD-ONLY
           path: |
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/manifest.json
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/*build.log

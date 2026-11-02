@@ -49,7 +49,10 @@ def main():
     parser.add_argument('--cargo-home')
     parser.add_argument('--rustup-home')
     parser.add_argument('--uac-profile', action='store_true', help='Explicit deck-engine-only callback profiling diagnostic')
+    parser.add_argument('--uac-pack-iram', action='store_true', help='Single-variable exact-symbol pack placement; requires --uac-profile')
     args = parser.parse_args()
+    if args.uac_pack_iram and not args.uac_profile:
+        raise ValueError('IRAM packetizer experiment requires explicit UAC profiling')
     if args.uac_profile and args.variant != 'deck-engine':
         raise ValueError('UAC profiling is an explicit deck-engine diagnostic only')
     idf = args.idf.resolve()
@@ -115,6 +118,16 @@ def main():
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
+    link_archive = archive
+    if args.uac_pack_iram:
+        from pack_placement import relocation_args, verify_relocation
+        link_archive = output / 'libruzina_pack_iram.a'
+        moves = relocation_args(run(['riscv32-esp-elf-objdump', '-t', archive]))
+        run(['riscv32-esp-elf-objcopy', *moves, archive, link_archive])
+        original_dump = run(['riscv32-esp-elf-objdump', '-dr', archive]).replace(str(archive), 'ARCHIVE')
+        placed_dump = run(['riscv32-esp-elf-objdump', '-dr', link_archive]).replace(str(link_archive), 'ARCHIVE')
+        verify_relocation(original_dump, placed_dump, moves)
+        (output / 'pack-relocation.json').write_text(json.dumps(moves, indent=2) + '\n')
     defaults = [APP / 'sdkconfig.defaults']
     if args.variant == 'pure-ram':
         defaults += [APP / 'sdkconfig.ram.defaults']
@@ -158,7 +171,7 @@ def main():
     command = [sys.executable, idf / 'tools/idf.py', '-C', APP, '-B', output / 'build',
                '-DSDKCONFIG=' + (output / 'sdkconfig').as_posix(),
                '-DSDKCONFIG_DEFAULTS=' + ';'.join(x.as_posix() for x in defaults),
-               '-DRUZINA_RUST_ARCHIVE=' + archive.as_posix(), 'build']
+               '-DRUZINA_RUST_ARCHIVE=' + link_archive.as_posix(), 'build']
     (output / 'idf-build.log').write_text(run(command))
     config = (output / 'sdkconfig').read_text()
     if ('CONFIG_RUZINA_UAC_PROFILE=y' in config) != args.uac_profile:
@@ -208,6 +221,12 @@ def main():
         raise ValueError('Missing Rust symbol or matching runtime in map')
     elf = output / 'build/ruzina_legacy_probe.elf'
     profile_symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
+    if args.uac_profile:
+        from pack_placement import verify
+        placement = verify(run(['riscv32-esp-elf-objdump', '-t', elf]), args.uac_pack_iram)
+        (output / 'pack-placement.json').write_text(json.dumps(placement, indent=2) + '\n')
+        (output / 'pack-disassembly.log').write_text('\n'.join(
+            run(['riscv32-esp-elf-objdump', '-d', '--disassemble=' + item['symbol'], elf]) for item in placement))
     for symbol in ('ruzina_legacy_uac_profile_begin', 'ruzina_legacy_uac_profile_end',
                    'ruzina_uac_switched_in', 'ruzina_uac_switched_out',
                    '__wrap__global_interrupt_handler', 'ruzina_uac_irq_stamp'):
@@ -290,6 +309,10 @@ def main():
                  output / 'build/bootloader/bootloader.bin',
                  output / 'build/partition_table/partition-table.bin',
                  output / 'build/flasher_args.json']
+    if args.uac_profile:
+        artifacts += [output / 'pack-placement.json', output / 'pack-disassembly.log']
+    if args.uac_pack_iram:
+        artifacts += [link_archive, output / 'pack-relocation.json']
     if args.variant in ('sd-readonly', 'sd-file-readonly', 'sd-rust-bridge', 'sd-rust-exfat', 'sd-rust-load', 'sd-rust-load-display', 'deck-ui', 'deck-audio', 'deck-play', 'deck-mix', 'deck-engine'):
         symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
         forbidden = {'f_write', 'f_mkfs', 'f_unlink', 'f_rename', 'sdmmc_write_sectors', 'sdmmc_erase_sectors'}
@@ -324,7 +347,7 @@ def main():
                 (output / 'load-run-stack.log').write_text(f'{depth}\n' + '\n'.join(path) + '\n')
                 if depth > 90112:
                     raise ValueError(f'Load run call chain needs {depth} bytes of the 96 KiB SD client stack')
-    manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, sha256=sha(binary), bytes=len(data),
+    manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, uac_pack_iram=args.uac_pack_iram, sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],
                     idf_commit=PIN, submodules=subs, versions=versions, sources=initial_sources,
                     fatfs_sources={name: sha(idf / 'components/fatfs/src' / name) for name in ('ff.c','ff.h','ffunicode.c','diskio.h')} if args.variant in ('sd-readonly', 'sd-file-readonly') else {},
