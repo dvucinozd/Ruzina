@@ -26,7 +26,11 @@ Select passive capture bounds explicitly: `--window cold --after-boot 45`
 `--window functional --after-boot 0 --seconds 180` (30-300 seconds permitted),
 or the registered `--window soak --after-boot 0 --seconds 1800`. Functional
 windows may be stopped using their `stop.request`; actual duration and the
-stop flag are recorded. Capture completion never grants case acceptance.
+stop flag are recorded. Initial port waiting never counts toward a capture;
+non-cold windows allow up to ten seconds to open the port, then require the full
+connected duration. A disconnect after the measurement begins invalidates it.
+Cold windows allow USB cycling before the matching ELF, then require 45
+uninterrupted seconds within their overall bound. Capture completion never grants case acceptance.
 Observe reserves and all-fill limits before advancing cases. Missing telemetry
 or an unavailable target fault injector is never PASS. Always return/readback/
 cold/listen s07 at campaign exit; preserve current full state and executed history.

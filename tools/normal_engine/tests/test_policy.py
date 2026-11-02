@@ -6,7 +6,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 import campaign
-from monitor import validate_window, capture_complete
+from monitor import validate_window, capture_complete, CaptureCoverage
 
 
 class NormalPolicyTests(unittest.TestCase):
@@ -49,6 +49,38 @@ class NormalPolicyTests(unittest.TestCase):
         self.assertFalse(capture_complete('functional',29.99,180,None,True))
         self.assertTrue(capture_complete('functional',30,180,None,True))
         self.assertFalse(capture_complete('functional',30,180,None,False))
+
+    def test_port_wait_never_counts_as_connected_idle(self):
+        capture=CaptureCoverage('idle',60,0)
+        self.assertFalse(capture.active(55))  # Missing port times out after ten seconds.
+        capture.opened(5)
+        self.assertTrue(capture.active(60))
+        self.assertEqual(capture.seconds(60),55)
+        self.assertFalse(capture_complete('idle',capture.seconds(60),60,None,False))
+        self.assertFalse(capture.active(65))
+        self.assertTrue(capture_complete('idle',capture.seconds(65),60,None,False))
+
+    def test_disconnect_invalidates_cold_and_steady_windows(self):
+        for kind,requested in [('cold',600),('idle',60),('functional',180),('soak',1800)]:
+            capture=CaptureCoverage(kind,requested,0)
+            capture.opened(1)
+            if kind=='cold':capture.boot(5)
+            capture.disconnected(20)
+            elapsed=capture.seconds(20)
+            self.assertEqual(capture.seconds(1000),elapsed)  # Disconnection cannot advance capture.
+            self.assertFalse(capture.active(21))
+            self.assertFalse(capture_complete(kind,elapsed,requested,elapsed,True,capture.interrupted))
+
+    def test_cold_preboot_power_cycle_does_not_start_or_invalidate_capture(self):
+        capture=CaptureCoverage('cold',600,0)
+        capture.opened(1)
+        capture.disconnected(2)
+        capture.opened(10)
+        self.assertFalse(capture.interrupted)
+        self.assertEqual(capture.seconds(100),0)
+        capture.boot(100)
+        self.assertEqual(capture.seconds(145),45)
+        self.assertTrue(capture_complete('cold',capture.seconds(145),600,45,False,capture.interrupted))
 
 
 if __name__=='__main__':unittest.main()

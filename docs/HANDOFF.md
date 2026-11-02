@@ -14,7 +14,12 @@ normal-policy/window tests and 13 shared-guard tests passing. Final fix review
 is blocked by CodeRabbit free quota (last error says 34 minutes at 21:34 Zagreb;
 retry conservatively after **22:10 on 2026-11-02**). Raw failed reviews/limits
 are retained; there is no final 0-issue tool review or execution binding yet.
-Latest code CI #557/#80 is still pending at this checkpoint. Superseded
+Latest code CI #557/#80 and publication #558/#81 passed 21/21 each. The 22:10
+review found another major issue: connection gaps counted toward capture.
+The follow-up records connected seconds and invalidates post-start disconnects,
+with seven normal coverage tests passing per OS and 13 shared-guard WSL tests.
+Its own review/CI and binding are pending; see the execution record's latest
+section. The older rate-limit paragraph above is historical. Superseded
 `dd245b6` workflows were cancelled, not passed. Do not modify the frozen runbook.
 Next: verify exact latest CI, rerun committed fix review against `f89bb36`,
 freeze/archive the new normal binding, publish the handoff, then software ROM

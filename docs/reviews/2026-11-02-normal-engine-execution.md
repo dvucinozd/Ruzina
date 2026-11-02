@@ -3,7 +3,7 @@
 Date: 2026-11-02. Continues the frozen
 [functional runbook](2026-11-02-normal-engine-campaign.md). Do not edit that
 runbook under an active registration; its byte hash is part of preflight.
-Status: OFFLINE_REGISTERED / FINAL_TOOL_REVIEW_RATE_LIMITED / NOT_FLASHED.
+Status: OFFLINE_REGISTERED / CONNECTION_COVERAGE_FIX_REVIEW_PENDING / NOT_FLASHED.
 Draft [PR #81](https://github.com/dvucinozd/Ruzina/pull/81) is stacked above #80.
 
 Firmware source `886127e0714c15cb096cc3b86798fbacba1773f7` passed exact-parent
@@ -105,3 +105,20 @@ full review findings and their fixing commits beside the final fix review.
 Archive and publish binding/tool hashes before COM3. Rerun both normal offline
 preflights. The owner-authorized software ROM method remains available; only
 cold/soak evidence still needs the corresponding real physical/elapsed event.
+
+## Connection-coverage follow-up (22:13 Zagreb)
+
+The scheduled 22:10 review completed and found one major additional issue:
+waiting for COM3 and serial-disconnection time could count toward a completed
+window. The [raw finding](evidence/2026-11-02-normal-engine/coderabbit-adapter-connection-finding.raw.log)
+is retained. The monitor now starts non-cold duration only after opening the
+port, permits at most ten seconds of initial waiting, and invalidates any
+disconnect after the measurement begins. Cold windows permit the expected
+pre-ELF USB power cycle, then require uninterrupted post-ELF capture within
+the original overall bound. Actual connected seconds/interruption are recorded.
+Seven normal policy/coverage tests pass on Windows and WSL; the unchanged
+shared guard still passes all 13 WSL tests. Source `05cff46` and publication
+`b1afa1b` have now each completed their own 21/21 CI. The connection fix needs
+its own review/CI and a fresh binding before hardware access; source, package,
+38/39 plans and the installed s07 remain unchanged. The owner reconfirmed the
+same COM3/topology, connected MASTER/headphones and visible library.

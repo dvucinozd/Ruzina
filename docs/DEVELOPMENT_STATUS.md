@@ -4,9 +4,11 @@ Normal-engine preparation is on [PR #81](https://github.com/dvucinozd/Ruzina/pul
 [Source/package and 38/39-plan registration](reviews/2026-11-02-normal-engine-execution.md)
 pass offline checks, source and registration each have 21/21 CI, and accepted
 s07 remains installed. A major capture-duration finding is fixed/tested, but
-the final fix review is CodeRabbit-rate-limited until about 22:10 Zagreb on
-2026-11-02. Latest tool CI is separate/pending. No normal binding, flash or
-functional acceptance is claimed before those gates close.
+the 22:10 review found another major connection-coverage issue. The monitor
+now excludes initial port waiting and invalidates post-start disconnects;
+seven normal coverage tests pass per OS. Prior tool/publication CI passed
+21/21 each; this follow-up's own review/CI is pending. No normal binding,
+flash or functional acceptance is claimed before those gates close.
 
 The [resource-readiness device campaign](reviews/2026-11-02-resource-readiness-device.md)
 passes three cold idle windows: 7000 callbacks each, maxima 2008/1847/1757 us,

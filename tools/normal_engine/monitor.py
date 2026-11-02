@@ -24,12 +24,47 @@ def validate_window(kind, seconds, after_boot, mode):
         raise ValueError('Unknown capture window')
 
 
-def capture_complete(kind, elapsed, requested, post_boot, stopped):
+class CaptureCoverage:
+    """One uninterrupted capture; pre-boot USB cycling is allowed for cold only."""
+    def __init__(self, kind, requested, start):
+        self.kind, self.requested, self.start = kind, requested, start
+        self.since, self.ended = None, None
+        self.interrupted = False
+
+    def opened(self, now):
+        if self.kind != 'cold' and self.since is None:
+            self.since = now
+
+    def boot(self, now):
+        if self.kind == 'cold' and self.since is None:
+            self.since = now
+
+    def disconnected(self, now):
+        if self.since is not None:
+            self.ended, self.interrupted = now, True
+
+    def seconds(self, now):
+        return 0 if self.since is None else (self.ended if self.ended is not None else now) - self.since
+
+    def active(self, now):
+        if self.interrupted:
+            return False
+        if self.kind == 'cold':
+            return now - self.start < self.requested
+        # Bound initial port absence separately; it never counts as capture.
+        if self.since is None:
+            return now - self.start < 10
+        return self.seconds(now) < self.requested
+
+
+def capture_complete(kind, connected_seconds, requested, post_boot, stopped, interrupted=False):
+    if interrupted:
+        return False
     if kind == 'cold':
         return post_boot is not None and post_boot >= 45
     if kind == 'functional' and stopped:
-        return elapsed >= 30
-    return elapsed >= requested
+        return connected_seconds >= 30
+    return connected_seconds >= requested
 
 
 def window(raw, elf):
@@ -69,12 +104,13 @@ def main():
     args.output.mkdir(parents=True, exist_ok=False)
     raw, port, boot_at = bytearray(), None, None
     start = time.monotonic()
+    coverage = CaptureCoverage(args.window, args.seconds, start)
     result = dict(status='STARTED', mode=args.mode, window=args.window, requested_seconds=args.seconds,
                   serial_writes=False, reset_requested=False,
                   elf_sha256=prepared.elf_sha, app_sha256=prepared.app_sha, physical_acceptance='NOT_ASSESSED')
     try:
         with (args.output / 'run.log').open('xb') as log:
-            while time.monotonic() - start < args.seconds and not (args.output / 'stop.request').exists():
+            while coverage.active(time.monotonic()) and not (args.output / 'stop.request').exists():
                 if port is None:
                     entries = list_ports.comports()
                     if not any(p.device == args.port for p in entries):
@@ -86,9 +122,11 @@ def main():
                     port.rts = False
                     port.port = args.port
                     port.open()
+                    coverage.opened(time.monotonic())
                 try:
                     data = port.read(4096)
                 except serial.SerialException:
+                    coverage.disconnected(time.monotonic())
                     port.close()
                     port = None
                     time.sleep(.2)
@@ -102,14 +140,18 @@ def main():
                     matches = re.findall(rb'ELF file SHA256:\s+([0-9a-fA-F]{8,64})', raw[-8192:])
                     if any(prepared.elf_sha.startswith(m.decode().lower()) for m in matches):
                         boot_at = time.monotonic()
-                if boot_at is not None and time.monotonic() - boot_at >= args.after_boot:
+                        coverage.boot(boot_at)
+                if boot_at is not None and coverage.seconds(time.monotonic()) >= args.after_boot:
                     break
         elapsed = time.monotonic() - start
-        post_boot = None if boot_at is None else time.monotonic() - boot_at
+        connected_seconds = coverage.seconds(time.monotonic())
+        post_boot = None if boot_at is None else connected_seconds
         stopped = (args.output / 'stop.request').exists()
-        complete = capture_complete(args.window, elapsed, args.seconds, post_boot, stopped)
+        complete = capture_complete(args.window, connected_seconds, args.seconds, post_boot, stopped,
+                                    coverage.interrupted)
         result.update(status='CAPTURED_NOT_QUALIFIED' if complete else 'CAPTURE_INCOMPLETE',
-                      capture_complete=complete, post_boot_seconds=post_boot, stopped_by_request=stopped)
+                      capture_complete=complete, post_boot_seconds=post_boot, stopped_by_request=stopped,
+                      connected_capture_seconds=connected_seconds, connection_interrupted=coverage.interrupted)
         if args.after_boot and boot_at is not None:
             offset, boot = window(bytes(raw), prepared.elf_sha)
             (args.output / 'boot-window.log').write_bytes(boot)
