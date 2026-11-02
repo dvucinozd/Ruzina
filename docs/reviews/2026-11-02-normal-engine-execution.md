@@ -3,7 +3,7 @@
 Date: 2026-11-02. Continues the frozen
 [functional runbook](2026-11-02-normal-engine-campaign.md). Do not edit that
 runbook under an active registration; its byte hash is part of preflight.
-Status: OFFLINE_REGISTERED / EXECUTION_TOOLS_REVIEW_PENDING / NOT_FLASHED.
+Status: OFFLINE_REGISTERED / FINAL_TOOL_REVIEW_RATE_LIMITED / NOT_FLASHED.
 Draft [PR #81](https://github.com/dvucinozd/Ruzina/pull/81) is stacked above #80.
 
 Firmware source `886127e0714c15cb096cc3b86798fbacba1773f7` passed exact-parent
@@ -56,3 +56,52 @@ destructive boundary from the reviewed resource campaign. Old profile bindings
 are not reused. Both actual offline preflights and new normal-policy tests pass;
 exact-parent tool review, its publication/CI and a new frozen binding remain
 required before device execution. No COM3 access occurred in this preparation.
+
+## Review fixes and exact continuation
+
+Full adapter/registration review at `ec43409` reported two minor argparse help
+issues; both are fixed in `dd245b6`. Registration `ec43409` independently passed
+21/21 CI ([host #554](https://github.com/dvucinozd/Ruzina/actions/runs/41518199082),
+[legacy #77](https://github.com/dvucinozd/Ruzina/actions/runs/41518198972)).
+Intermediate `dd245b6` workflows were deliberately cancelled after a newer
+bounded-window adapter was published; cancelled jobs are not counted as PASS.
+
+Full review of `f89bb36` then reported one major monitor issue: an ELF arriving
+near the overall timeout could receive CAPTURED_NOT_QUALIFIED before completing
+45 post-boot seconds. `05cff46bb38ff1ba365a89ceaedf08543bdf48a3` now records
+post-boot duration/completion explicitly, classifies short windows as
+CAPTURE_INCOMPLETE, and permits an early functional stop only after 30 seconds.
+Late/no boot, shortened idle/soak and early functional boundaries are tested.
+Four normal-policy/window tests pass on Windows/WSL; all 13 unchanged shared
+destructive-guard tests pass separately. The shared write/reset boundary and
+firmware package bytes remain unchanged by these Python fixes.
+
+Final fix review against parent `f89bb363286aec396cc6c7454eb833b663725c07`
+could not start: the retained CodeRabbit error reports **rate_limit / 34 minutes**
+at about **21:34 Europe/Zagreb on 2026-11-02**. Earlier six-minute and five-second
+quota errors are retained too. These are unavailable review attempts, never
+passed reviews. The initial full review and duration finding are preserved beside
+the [latest limiter result](evidence/2026-11-02-normal-engine/coderabbit-adapter-rate-limit-3.raw.log).
+No final tool 0-issue result/binding has been issued, no device is opened, and
+accepted s07 remains installed. This is a review-service limit, separate from
+the raised GitHub Actions quota.
+
+Continue after **22:10 Europe/Zagreb on 2026-11-02**, or after the repository is
+connected to a suitable CodeRabbit organization plan. Do not replace the final
+review with a claimed manual PASS. The exact command is:
+
+```powershell
+wsl -d Ubuntu bash -lc 'cd /mnt/d/AI/M1_PCB && coderabbit review --agent -t committed --base-commit f89bb363286aec396cc6c7454eb833b663725c07 > /mnt/d/BoardEvidence/JC1060-20261030-COM3/normal-engine-20261102/coderabbit-adapter-final.raw.log 2>&1'
+```
+
+Verify exact latest code CI:
+[host #557](https://github.com/dvucinozd/Ruzina/actions/runs/41520394199) and
+[legacy #80](https://github.com/dvucinozd/Ruzina/actions/runs/41520394178).
+They are pending at this checkpoint; older source/registration passes are not
+their results. Then create `adapter-ci-verified.json` bound to the reviewed
+tool commit and freeze with the external `freeze_execution_tools.py` (source
+currently `05cff46`, fix-review base `f89bb36`, four policy tests). Retain prior
+full review findings and their fixing commits beside the final fix review.
+Archive and publish binding/tool hashes before COM3. Rerun both normal offline
+preflights. The owner-authorized software ROM method remains available; only
+cold/soak evidence still needs the corresponding real physical/elapsed event.

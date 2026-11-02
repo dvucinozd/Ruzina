@@ -1,5 +1,28 @@
 # Rust M2.5 development handoff
 
+Active next campaign: `ogranak/jc1060-normal-engine-campaign`, draft
+[PR #81](https://github.com/dvucinozd/Ruzina/pull/81) above #80. Read
+[normal execution checkpoint](reviews/2026-11-02-normal-engine-execution.md)
+and the byte-frozen [runbook](reviews/2026-11-02-normal-engine-campaign.md).
+Source `886127e` has clean normal app `0ba716a4...`, source review 0 issues,
+six actual C cases and 21/21 CI. Registration `ec43409` has 21/21 CI; 38/39
+candidate/s07-return plans, two offline preflights and dual-copy 312-member
+archive pass. Owner confirms RCA MASTER speakers plus controller headphones.
+Normal adapter's two minor CLI issues were fixed in `dd245b6`. The next full
+review found one major capture-duration issue; `05cff46` fixes it, with four
+normal-policy/window tests and 13 shared-guard tests passing. Final fix review
+is blocked by CodeRabbit free quota (last error says 34 minutes at 21:34 Zagreb;
+retry conservatively after **22:10 on 2026-11-02**). Raw failed reviews/limits
+are retained; there is no final 0-issue tool review or execution binding yet.
+Latest code CI #557/#80 is still pending at this checkpoint. Superseded
+`dd245b6` workflows were cancelled, not passed. Do not modify the frozen runbook.
+Next: verify exact latest CI, rerun committed fix review against `f89bb36`,
+freeze/archive the new normal binding, publish the handoff, then software ROM
+entry and the registered normal-image cases. No normal-image COM3 access or
+write has occurred. Accepted s07/current 38/full `1a456836...` remain installed,
+all device monitors closed. Do not reuse the old profile binding or treat a
+captured-but-short/early-stopped cold/idle/soak window as complete.
+
 Completed physical campaign: read the
 [resource-readiness device result](reviews/2026-11-02-resource-readiness-device.md)
 and current

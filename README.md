@@ -11,6 +11,13 @@ It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
 Rust backend still requires revision **302** and must not be flashed to this unit.
 JC8012 has no transferable hardware acceptance from JC1060.
 
+Next normal-engine campaign is prepared in
+[draft PR #81](https://github.com/dvucinozd/Ruzina/pull/81): clean package,
+runtime resource telemetry, and 38/39-predecessor candidate/return plans pass
+offline checks. Final tool review is currently CodeRabbit-rate-limited; see the
+[exact continuation](docs/reviews/2026-11-02-normal-engine-execution.md).
+No normal-image flash has occurred; accepted s07 remains installed.
+
 Latest result: [resource readiness before UAC](docs/reviews/2026-11-02-resource-readiness-device.md),
 [draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80). Preparing both
 permanent deck bundles before audio activation passes three cold idle windows:

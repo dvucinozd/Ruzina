@@ -1,0 +1,9 @@
+test_accepts_only_clean_normal_engine (test_policy.NormalPolicyTests.test_accepts_only_clean_normal_engine) ... ok
+test_distinct_bounded_windows (test_policy.NormalPolicyTests.test_distinct_bounded_windows) ... ok
+test_late_boot_and_shortened_windows_are_incomplete (test_policy.NormalPolicyTests.test_late_boot_and_shortened_windows_are_incomplete) ... ok
+test_shared_guard_unchanged_and_no_serial_imports (test_policy.NormalPolicyTests.test_shared_guard_unchanged_and_no_serial_imports) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK

@@ -1,5 +1,13 @@
 # Current development status
 
+Normal-engine preparation is on [PR #81](https://github.com/dvucinozd/Ruzina/pull/81).
+[Source/package and 38/39-plan registration](reviews/2026-11-02-normal-engine-execution.md)
+pass offline checks, source and registration each have 21/21 CI, and accepted
+s07 remains installed. A major capture-duration finding is fixed/tested, but
+the final fix review is CodeRabbit-rate-limited until about 22:10 Zagreb on
+2026-11-02. Latest tool CI is separate/pending. No normal binding, flash or
+functional acceptance is claimed before those gates close.
+
 The [resource-readiness device campaign](reviews/2026-11-02-resource-readiness-device.md)
 passes three cold idle windows: 7000 callbacks each, maxima 2008/1847/1757 us,
 zero >3000/>=6000 crossings, valid calibrations and zero USB/idle errors. A
