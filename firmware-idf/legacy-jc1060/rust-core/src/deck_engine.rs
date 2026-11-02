@@ -62,7 +62,7 @@ pub(crate) struct Engine {
     seek_epoch: [Option<u32>; 2],
     source: [Option<LoadRequest>; 2],
     next_seek: u32,
-    revision: u32,
+    revision: [u32; 2],
     lease: Option<MediaLease>,
     pending_load: [Option<LoadPermit>; 2],
     unsupported: u32,
@@ -84,7 +84,7 @@ impl Engine {
             seek_epoch: [None; 2],
             source: [None; 2],
             next_seek: 0,
-            revision: 0,
+            revision: [0; 2],
             lease: None,
             pending_load: [None; 2],
             unsupported: 0,
@@ -190,7 +190,7 @@ impl Engine {
                         self.seeking[i] = Some(request);
                         self.unsent_seek[i] = Some(request);
                         self.seek_epoch[i] = None;
-                        self.revision = self.revision.wrapping_add(1);
+                        self.revision[i] = self.revision[i].wrapping_add(1);
                         self.publish_seek(i);
                     }
                 }
@@ -223,12 +223,12 @@ impl Engine {
                 self.seek_epoch[i] = None;
                 self.nudge[i].clear();
                 self.deck.unload_track(deck);
+                self.revision[i] = self.revision[i].wrapping_add(1);
                 TRACK_INDEX[i].store(u32::MAX, Ordering::Release);
                 STATUS[i][0].store(0, Ordering::Relaxed);
                 STATUS[i][1].store(0, Ordering::Relaxed);
             }
             self.lease = None;
-            self.revision = self.revision.wrapping_add(1);
         }
         for deck in DECKS {
             let i = index(deck);
@@ -253,7 +253,7 @@ impl Engine {
             self.loaded[i] = committed;
             self.faulted[i] = false;
             self.source[i] = committed.then_some(result.request);
-            self.revision = self.revision.wrapping_add(1);
+            self.revision[i] = self.revision[i].wrapping_add(1);
             self.playing[i] = false;
             self.seeking[i] = None;
             self.unsent_seek[i] = None;
@@ -286,7 +286,7 @@ impl Engine {
                     self.deck.finish_playback(DECKS[i], result.position_ms);
                     self.seek_epoch[i] = None;
                 }
-                self.revision = self.revision.wrapping_add(1);
+                self.revision[i] = self.revision[i].wrapping_add(1);
             }
         }
         let pitch = core::array::from_fn(|i| self.nudge[i].apply_centipercent(self.pitch[i]));
@@ -311,7 +311,7 @@ impl Engine {
             self.unsent_seek[i] = None;
         }
     }
-    pub(crate) fn revision(&self) -> u32 {
+    pub(crate) fn revision(&self) -> [u32; 2] {
         self.revision
     }
 

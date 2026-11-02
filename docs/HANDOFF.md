@@ -1,5 +1,14 @@
 # Rust M2.5 development handoff
 
+Current offline continuation: `ogranak/jc1060-peer-continuity-fixes`. Read the
+[peer continuity repair record](reviews/2026-11-02-peer-continuity-fixes.md).
+Per-deck revisions preserve the cached mixed suffix and reset only the changed
+deck at the next render boundary; media revocation still clears immediately.
+The analyzer rejects malformed unsigned record/cause/stage data. These fixes
+need fresh exact-image timing; old failed timing evidence is retained below.
+No COM3 access; s07 remains the last physically accepted image. Cache-counter
+ownership/mapping remains the next offline gate before a bounded experiment.
+
 Latest work: `ogranak/jc1060-uac-cause-profile`, continuing from `62717ce`.
 Read the [calibrated device result](reviews/2026-11-02-uac-cause-profile-device.md)
 first. [PR #76](https://github.com/dvucinozd/Ruzina/pull/76) contains source

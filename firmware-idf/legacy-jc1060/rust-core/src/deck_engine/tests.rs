@@ -208,6 +208,122 @@ struct LoadFixture {
     track_id: [u8; 16],
 }
 
+#[test]
+fn peer_source_changes_preserve_playing_pcm_at_partial_boundaries() {
+    use crate::deck_transport::{SeekOutcome, SeekResult};
+    use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+    let _lock = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let case = |active: usize, rate, offset: usize, action: u8| {
+        let mut mix = Mix::new();
+        let mut session = MediaSession::new();
+        let ConnectResult::Accepted(lease) = session.on_connect(MediaSourceId::new(7).unwrap())
+        else {
+            panic!()
+        };
+        crate::media_signal::activate(lease);
+        mix.engine().lease = Some(lease);
+        for (i, deck) in DECKS.into_iter().enumerate() {
+            attach_ring(i);
+            LOAD_REQUESTS[i].take();
+            LOAD_RESULTS[i].take();
+            SEEK_REQUESTS[i].take();
+            SEEK_RESULTS[i].take();
+            RINGS[i].restart_at(rate, 0);
+            let frames: std::vec::Vec<_> = (0..12_000)
+                .map(|n| PcmFrame {
+                    left: (n % 5000) as i16,
+                    right: (n % 3000) as i16,
+                })
+                .collect();
+            assert!(RINGS[i].push(&frames));
+            assert!(mix.engine().request_load(deck, i as u32));
+            let request = LOAD_REQUESTS[i].take().unwrap();
+            GATES[i].begin_replacement(request.permit).unwrap();
+            LOAD_RESULTS[i]
+                .put(LoadResult {
+                    request,
+                    ready: true,
+                    track_id: [i as u8 + 1; 16],
+                    bpm_x100: 12000,
+                })
+                .unwrap();
+            mix.tick();
+        }
+        for (control, value) in [
+            (SemanticControl::Tempo, 0),
+            (SemanticControl::EqLow, 11000),
+            (SemanticControl::Filter, 10000),
+        ] {
+            mix.control(&ControlEvent {
+                deck: Some(DECKS[active]),
+                control,
+                value: ControlValue::Absolute { value, max: 16383 },
+            });
+        }
+        mix.control(&ControlEvent {
+            deck: Some(DECKS[active]),
+            control: SemanticControl::Play,
+            value: ControlValue::Pressed(true),
+        });
+        let (mut warm, mut hp) = (
+            std::vec![PcmFrame::default();256+offset],
+            std::vec![PcmFrame::default();256+offset],
+        );
+        mix.fill(&mut warm, &mut hp, 48000, [false; 2]);
+        let peer = 1 - active;
+        if (1..=4).contains(&action) {
+            mix.engine().apply(DeckEffects::one(DeckEffect::Seek {
+                deck: DECKS[peer],
+                position_ms: 100,
+            }));
+            let request = SEEK_REQUESTS[peer].take().unwrap();
+            if action > 1 {
+                SEEK_RESULTS[peer]
+                    .put(SeekResult {
+                        request,
+                        outcome: match action {
+                            2 => SeekOutcome::Ready,
+                            3 => SeekOutcome::Failed,
+                            _ => SeekOutcome::Cancelled,
+                        },
+                        epoch: RINGS[peer].epoch(),
+                        position_ms: 100,
+                    })
+                    .unwrap();
+            }
+        } else if action >= 5 {
+            assert!(mix.engine().request_load(DECKS[peer], 9));
+            let request = LOAD_REQUESTS[peer].take().unwrap();
+            GATES[peer].begin_replacement(request.permit).unwrap();
+            LOAD_RESULTS[peer]
+                .put(LoadResult {
+                    request,
+                    ready: action == 5,
+                    track_id: [9; 16],
+                    bpm_x100: 12000,
+                })
+                .unwrap();
+        }
+        let (mut main, mut headphones) = ([PcmFrame::default(); 384], [PcmFrame::default(); 384]);
+        mix.fill(&mut main, &mut headphones, 48000, [false; 2]);
+        (main, headphones)
+    };
+    for active in 0..2 {
+        for rate in [44100, 48000] {
+            for offset in [1, 48, 127] {
+                let reference = case(active, rate, offset, 0);
+                for action in 1..=6 {
+                    assert_eq!(
+                        reference,
+                        case(active, rate, offset, action),
+                        "active={active} rate={rate} offset={offset} action={action}"
+                    );
+                }
+            }
+        }
+    }
+}
+
 #[cfg(feature = "idf-uac-profile")]
 #[test]
 fn profiled_render_matches_unarmed_pcm_across_blocks_and_partial_blocks() {

@@ -51,7 +51,7 @@ pub(crate) struct Mix {
     #[cfg(feature = "deck-engine")]
     engine: crate::deck_engine::Engine,
     #[cfg(feature = "deck-engine")]
-    engine_revision: u32,
+    engine_revision: [u32; 2],
 }
 
 impl Mix {
@@ -70,7 +70,7 @@ impl Mix {
             #[cfg(feature = "deck-engine")]
             engine: crate::deck_engine::Engine::new(),
             #[cfg(feature = "deck-engine")]
-            engine_revision: 0,
+            engine_revision: [0; 2],
         }
     }
 
@@ -155,19 +155,29 @@ impl Mix {
     fn render(&mut self, playing: [bool; 2]) {
         let _profile = uac_profile::scope(Stage::Init);
         uac_profile::block();
+        // Ordinary source changes take effect at a 128-frame boundary.
+        // Finish the cached suffix first: both readers have already committed
+        // its source frames. Revocation bypasses this delay in fill().
+        #[cfg(feature = "deck-engine")]
+        let (playing, pitch) = self.engine.transport();
+        #[cfg(feature = "deck-engine")]
+        {
+            self.pitch = pitch;
+        }
         let graph = self.graph.get_or_insert_with(FixedRateRenderGraph::new);
         uac_profile::stage(Stage::Transport);
         for (deck, reader) in self.readers.iter_mut().enumerate() {
-            if reader.sync(&RINGS[deck]) {
+            let changed = reader.sync(&RINGS[deck]);
+            #[cfg(feature = "deck-engine")]
+            let changed = changed || self.engine_revision[deck] != self.engine.revision()[deck];
+            if changed {
                 graph.reset_deck(deck);
             }
         }
         #[cfg(feature = "deck-engine")]
-        let playing = {
-            let (playing, pitch) = self.engine.transport();
-            self.pitch = pitch;
-            playing
-        };
+        {
+            self.engine_revision = self.engine.revision();
+        }
         uac_profile::stage(Stage::Control);
         let control = self.render_control(playing);
         let graph = self.graph.as_mut().expect("graph built above");
@@ -199,14 +209,6 @@ impl Mix {
     #[cfg(feature = "deck-engine")]
     pub(crate) fn tick(&mut self) {
         self.engine.transport();
-        if self.engine_revision != self.engine.revision() {
-            self.engine_revision = self.engine.revision();
-            self.position = RENDER_BLOCK_FRAMES;
-            if let Some(graph) = self.graph.as_mut() {
-                graph.reset_deck(0);
-                graph.reset_deck(1);
-            }
-        }
     }
 
     /// Fills one packet of MAIN and headphone frames; silent unless the

@@ -7,6 +7,8 @@ import re
 
 STAGES = ('init', 'transport', 'control', 'graph', 'progress', 'copy', 'pack', 'other')
 MASK = 2**32 - 1
+RECORD_WORDS = 'gen ordinal uptime_us phase busy health catalog d1_flags d2_flags drops packets blocks whole_us rust_us outer_us partition_valid sched_valid sched_window_us away_us switches'
+CAUSE_WORDS = 'gen ordinal calibration away_before away_after switches_before switches_after irq_calibration irq_valid irq_window_us irq_dispatch_us irq_entries irq_nested'
 
 
 def delta(after, before):
@@ -59,6 +61,13 @@ def analyze(data):
         item = dict(kind=kind, generation=gen, ordinal=ordinal, raw=g,
                     partition_verified=False, scheduler_usable=False, irq_dispatch_usable=False)
         try:
+            if (kind not in ('worst', 'latest_over', 'latest_headroom')
+                    or not words(r, RECORD_WORDS) or not words(c, CAUSE_WORDS)
+                    or int(gen) == 0 or int(ordinal) == 0
+                    or any(not words(s, 'gen ordinal us segments') for s in stages.values())
+                    or any(r[n] not in ('0', '1') for n in ('partition_valid', 'sched_valid'))
+                    or any(c[n] not in ('0', '1') for n in ('calibration', 'irq_calibration', 'irq_valid'))):
+                raise ValueError('Invalid record schema')
             whole = int(r['whole_us'])
             item['partition_verified'] = (r['partition_valid'] == '1' and set(stages) == set(STAGES)
                 and sum(int(s['us']) for s in stages.values()) == int(r['rust_us'])
@@ -82,6 +91,7 @@ def analyze(data):
                 and whole <= int(r['sched_window_us']) and int(r['away_us']) <= int(r['sched_window_us']))
             item['irq_dispatch_usable'] = (item['partition_verified'] and irq_cal
                 and c['irq_calibration'] == c['irq_valid'] == '1' and int(c['irq_nested']) == 0
+                and (int(c['irq_entries']) > 0 or int(c['irq_dispatch_us']) == 0)
                 and whole <= int(c['irq_window_us']) and int(c['irq_dispatch_us']) <= int(c['irq_window_us']))
             for valid, window, value, label in (
                 (item['scheduler_usable'], r['sched_window_us'], r['away_us'], 'scheduler_away'),
@@ -97,6 +107,9 @@ def analyze(data):
         h = histograms.get(key, {})
         item = dict(generation=key[0], samples=key[1], complete=False, raw=dict(distribution=d, histograms=h))
         try:
+            if (not words(d, 'gen samples valid') or int(d['gen']) == 0 or d.get('scope') != 'BOOT'
+                    or any(not words(row, 'gen samples max_us') for row in h.values())):
+                raise ValueError('Invalid histogram schema')
             samples, valid = int(d['samples']), int(d['valid'])
             bins = {name: [int(v) for v in row['bins'].split(',')] for name, row in h.items()}
             item['complete'] = (set(bins) == {'whole', *STAGES} and 0 <= valid <= samples < MASK
