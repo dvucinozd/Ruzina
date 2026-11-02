@@ -6,6 +6,10 @@ Read the [bounded experiment](reviews/2026-11-02-pack-placement-experiment.md).
 It includes the peer continuity repairs. Require a verified identical-archive/
 config control pair and fresh registration before device work. No COM3 access
 has occurred; the last accepted installed image is still s07.
+The pair and four entry/return plans are now registered with matching secondary
+archives; `f0ba8ca` CI passes 21/21 jobs. All four device-free preflights pass.
+Next: confirm current physical topology and fresh manual ROM entry, then guarded
+control write. Read the registered campaign section before any port access.
 
 Current offline continuation: `ogranak/jc1060-peer-continuity-fixes`. Read the
 [peer continuity repair record](reviews/2026-11-02-peer-continuity-fixes.md).

@@ -1,0 +1,26 @@
+[
+  {
+    "status": "OFFLINE_VALIDATED_NO_DEVICE_ACCESS",
+    "mode": "control",
+    "predecessors": 33,
+    "expected_before_sha256": "4324fee5c109cc9fe28aebbafa8f5cf2116ee4950afce374be5ef6f81aa2ae68"
+  },
+  {
+    "status": "OFFLINE_VALIDATED_NO_DEVICE_ACCESS",
+    "mode": "control-return",
+    "predecessors": 34,
+    "expected_before_sha256": "67892cc89c07815662d36217154742c95687eb98e15c253e77b4254774215afd"
+  },
+  {
+    "status": "OFFLINE_VALIDATED_NO_DEVICE_ACCESS",
+    "mode": "iram",
+    "predecessors": 34,
+    "expected_before_sha256": "67892cc89c07815662d36217154742c95687eb98e15c253e77b4254774215afd"
+  },
+  {
+    "status": "OFFLINE_VALIDATED_NO_DEVICE_ACCESS",
+    "mode": "iram-return",
+    "predecessors": 35,
+    "expected_before_sha256": "ce3a4a05495a5454cca308b94d00cd7d1f33831d5642a73e3f145ccf973c6267"
+  }
+]

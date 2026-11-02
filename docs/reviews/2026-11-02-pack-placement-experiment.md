@@ -121,3 +121,51 @@ published head before any physical registration. No new recovery plan, COM3
 access, target timing or playback acceptance is claimed. The next action is
 CI verification, then registration of the full controlled campaign with 33
 predecessors and s07 return plans; owner-assisted ROM entry follows registration.
+
+## Registered campaign, operator entry still open
+
+On continuation, final published head `f0ba8caedba35692384f6f80c0796add448e8cd2`
+passed **21/21 jobs**: [host #542](https://github.com/dvucinozd/Ruzina/actions/runs/41462344609)
+and [legacy #65](https://github.com/dvucinozd/Ruzina/actions/runs/41462344693),
+including the explicit IRAM placement job. No failed/skipped job is counted.
+
+The [registration](evidence/2026-11-02-pack-placement/campaign-registration.json)
+freezes four paths with complete expected before/after flash reconstructions:
+
+| Path | Required predecessors | App |
+|---|---:|---|
+| [control](../boards/readiness/jc1060-pack-control-write-recovery-plan-20261102.json) | 33 | Flash packetizer control |
+| [control-return](../boards/readiness/jc1060-pack-control-return-write-recovery-plan-20261102.json) | 34 | Accepted s07 if control fails |
+| [iram](../boards/readiness/jc1060-pack-iram-write-recovery-plan-20261102.json) | 34 | IRAM variant directly after control |
+| [iram-return](../boards/readiness/jc1060-pack-iram-return-write-recovery-plan-20261102.json) | 35 | Accepted s07 after variant |
+
+The two 34-predecessor paths are alternatives, not consecutive writes. If the
+control return is executed, do not run the registered IRAM entry: it expects
+the control image and must reject the restored state. Future resumed work then
+requires a new ancestry-aware entry plan. No alternative transition is inferred.
+
+Four original factory backups match. All 33 historical plans were replayed
+with exact restore bytes and preserved sector tails; current full state remains
+`4324fee5c109cc9fe28aebbafa8f5cf2116ee4950afce374be5ef6f81aa2ae68`.
+All candidate sources/artifacts were reverified. Every new plan and payload
+has a byte-identical secondary copy. The [registration archive](evidence/2026-11-02-pack-placement/registration-archive.json)
+passes CRC/member-hash/secondary checks: 3144400 bytes, SHA-256
+`6c5ab5c903883ad7e9bf765f0be307799a15f31947630cc710b0e09c984db0f5`.
+This supplements the unchanged package-pair archive; neither is overwritten.
+
+`program_campaign.py --mode <path> --check-only` verifies plan/package/source,
+four backups and the full reconstructed predecessor, and exits before any
+serial access. [All four offline preflights pass](evidence/2026-11-02-pack-placement/offline-preflight.json).
+Without that flag the guarded programmer requires fresh manual ROM entry,
+rev103/MAC/security/RDID and all 16 MiB predecessor equality before any write,
+then checks all written spans. It never requests a reset or eFuse operation.
+The passive `monitor_campaign.py` sends no bytes and validates COM3 USB identity.
+Exact script hashes are registered; scripts and raw records stay external.
+
+Registered measurements: three cold boots per image, 45 seconds after each
+expected ELF identity, then separate 60-second steady idle. No track loading,
+playback or control movement. The same instrumentation has not had its absolute
+observer cost removed; conclusions concern comparable instrumented images.
+Reject >=6000 us, target <=3000 us, require valid calibration/windows/partitions.
+After variant, or earlier control failure, restore/readback/cold/listen s07.
+Physical topology/ROM entry and all device measurements are still NOT_RUN.

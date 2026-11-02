@@ -1,0 +1,148 @@
+{
+  "status": "REGISTERED_NOT_FLASHED",
+  "archive_sha256": "6c5ab5c903883ad7e9bf765f0be307799a15f31947630cc710b0e09c984db0f5",
+  "archive_bytes": 3144400,
+  "secondary_sha256": "6c5ab5c903883ad7e9bf765f0be307799a15f31947630cc710b0e09c984db0f5",
+  "files": {
+    "archive_registration.py": {
+      "bytes": 1901,
+      "sha256": "8e53b1591556d9f810cbc9d198c1e1d510a421070e3a1ad714738898d591333b"
+    },
+    "campaign-registration.json": {
+      "bytes": 3354,
+      "sha256": "e75d4bf8140d16f06fd445c16aab5ade0fe250b86f14e6cc29805679270a8e7b"
+    },
+    "control-plan/plan.json": {
+      "bytes": 11995,
+      "sha256": "b2786feaec0e3be6621a4a2d95011d7d671487feef4ba4abdf66b5e024149016"
+    },
+    "control-plan/restore-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+    },
+    "control-plan/restore-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "control-plan/restore-00010000.bin": {
+      "bytes": 823296,
+      "sha256": "896e431cd915a04e6c8cb93b99b1399dd99030afa3c1a74b0452cac94b579697"
+    },
+    "control-plan/write-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "0e2646a8f74b0a41afd01c75136f2d05787be5543d556d82ae13954f3d5a0114"
+    },
+    "control-plan/write-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "control-plan/write-00010000.bin": {
+      "bytes": 823296,
+      "sha256": "5ef87a4dc701bd5de0a9d56493c9730d9fc0732f0f92cd75c42d3e4279e89f1f"
+    },
+    "control-return-plan/plan.json": {
+      "bytes": 12209,
+      "sha256": "7a22ed10eef2a3f57fe21faaeac0a51ade75fa527c627b7dc6d3bf15cc6874e0"
+    },
+    "control-return-plan/restore-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "0e2646a8f74b0a41afd01c75136f2d05787be5543d556d82ae13954f3d5a0114"
+    },
+    "control-return-plan/restore-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "control-return-plan/restore-00010000.bin": {
+      "bytes": 770048,
+      "sha256": "ccd0be86afabd7499381d0139b8d4d889e0e169dd00607c7fcb3c8883913a5a7"
+    },
+    "control-return-plan/write-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+    },
+    "control-return-plan/write-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "control-return-plan/write-00010000.bin": {
+      "bytes": 770048,
+      "sha256": "3937e727eb3ba414f46b6c55301772185e99fda3d9a5881ba5b503ba5ed35d8c"
+    },
+    "iram-plan/plan.json": {
+      "bytes": 12199,
+      "sha256": "3e4c9b923bf7ff3483cbe048528f82ac1c11247c3acbd154514f807217b0aac6"
+    },
+    "iram-plan/restore-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "0e2646a8f74b0a41afd01c75136f2d05787be5543d556d82ae13954f3d5a0114"
+    },
+    "iram-plan/restore-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "iram-plan/restore-00010000.bin": {
+      "bytes": 823296,
+      "sha256": "5ef87a4dc701bd5de0a9d56493c9730d9fc0732f0f92cd75c42d3e4279e89f1f"
+    },
+    "iram-plan/write-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "bdf1e704226ed06a0e00e1f11da125485078feab58d55867231ebbbf827b9e51"
+    },
+    "iram-plan/write-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "iram-plan/write-00010000.bin": {
+      "bytes": 823296,
+      "sha256": "03c697f390653876f9f9e002f9711a3d7e2772ca96533487d1814e88ea2599f7"
+    },
+    "iram-return-plan/plan.json": {
+      "bytes": 12410,
+      "sha256": "728dd1c861c1ecda4b9d3441d88f4f720a8cbc44eec829079ec825342672d771"
+    },
+    "iram-return-plan/restore-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "bdf1e704226ed06a0e00e1f11da125485078feab58d55867231ebbbf827b9e51"
+    },
+    "iram-return-plan/restore-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "iram-return-plan/restore-00010000.bin": {
+      "bytes": 770048,
+      "sha256": "7a89f8b682c1e0d1777acac5d3ac671b2176e685b8460689eef61fa850d189f0"
+    },
+    "iram-return-plan/write-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+    },
+    "iram-return-plan/write-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "iram-return-plan/write-00010000.bin": {
+      "bytes": 770048,
+      "sha256": "6f679a24cab2d78a0bfce6cc9ac03c62ca3b0be8b900ab8c123dc6e7d32edd24"
+    },
+    "monitor_campaign.py": {
+      "bytes": 4052,
+      "sha256": "0014d020b675d34dcb7ec700a23879d5b222351959c8a8432add5177668e6910"
+    },
+    "offline-preflight.json": {
+      "bytes": 857,
+      "sha256": "112097656c757b8d56c0c5277d8f20c3fe90c7ec736ec0cb9c38f44e90295a75"
+    },
+    "program_campaign.py": {
+      "bytes": 5729,
+      "sha256": "42eaa453e7f896643d41adff92d31db9e512a5f5572cebc8c7df16e20a175bb5"
+    },
+    "register_campaign.py": {
+      "bytes": 8152,
+      "sha256": "58a5760a88d39baa12ef78a1861c94b4102c9efb743620c86ed0d1840c91413c"
+    },
+    "validate_registration.py": {
+      "bytes": 1803,
+      "sha256": "ec8021f318d712b7c2483c483ed46f23915fedaab67b5c6d400fe12c0c96bdb6"
+    }
+  }
+}

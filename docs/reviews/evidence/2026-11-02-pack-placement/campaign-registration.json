@@ -1,0 +1,63 @@
+{
+  "status": "REGISTERED_OPERATOR_GATES_OPEN_NOT_FLASHED",
+  "device_access": false,
+  "source_commit": "605abe78f596dc7f94ccaf04e5e0936ac25a4750",
+  "ci_head": "f0ba8caedba35692384f6f80c0796add448e8cd2",
+  "ci_jobs_passed": 21,
+  "backup_copies_verified": 4,
+  "transitions": {
+    "control": {
+      "plan_dir": "control-plan",
+      "plan_sha256": "b2786feaec0e3be6621a4a2d95011d7d671487feef4ba4abdf66b5e024149016",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\pack-placement-20261102\\clean-control",
+      "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+      "predecessors": 33,
+      "expected_before_sha256": "4324fee5c109cc9fe28aebbafa8f5cf2116ee4950afce374be5ef6f81aa2ae68",
+      "expected_after_sha256": "67892cc89c07815662d36217154742c95687eb98e15c253e77b4254774215afd"
+    },
+    "control-return": {
+      "plan_dir": "control-return-plan",
+      "plan_sha256": "7a22ed10eef2a3f57fe21faaeac0a51ade75fa527c627b7dc6d3bf15cc6874e0",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-build-1",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "predecessors": 34,
+      "expected_before_sha256": "67892cc89c07815662d36217154742c95687eb98e15c253e77b4254774215afd",
+      "expected_after_sha256": "9627abf952f3a3c839d5f17f1fd205043c11e4b2e403dc47e852b3e107ed95c2"
+    },
+    "iram": {
+      "plan_dir": "iram-plan",
+      "plan_sha256": "3e4c9b923bf7ff3483cbe048528f82ac1c11247c3acbd154514f807217b0aac6",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\pack-placement-20261102\\clean-iram",
+      "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+      "predecessors": 34,
+      "expected_before_sha256": "67892cc89c07815662d36217154742c95687eb98e15c253e77b4254774215afd",
+      "expected_after_sha256": "ce3a4a05495a5454cca308b94d00cd7d1f33831d5642a73e3f145ccf973c6267"
+    },
+    "iram-return": {
+      "plan_dir": "iram-return-plan",
+      "plan_sha256": "728dd1c861c1ecda4b9d3441d88f4f720a8cbc44eec829079ec825342672d771",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-build-1",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "predecessors": 35,
+      "expected_before_sha256": "ce3a4a05495a5454cca308b94d00cd7d1f33831d5642a73e3f145ccf973c6267",
+      "expected_after_sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6"
+    }
+  },
+  "campaign": {
+    "control_cold_boots": 3,
+    "iram_cold_boots": 3,
+    "post_boot_seconds": 45,
+    "steady_seconds": 60,
+    "rejection_us": 6000,
+    "headroom_target_us": 3000,
+    "controls": "IDLE_ONLY_NO_LOAD_PLAY",
+    "attribution": "Calibrated scheduler/IRQ windows only; no residual CPU claim",
+    "observer_cost": "Same instrumentation and Rust/config on both; stage overhead not independently removed",
+    "exit": "Restore/readback/cold boot/owner listening s07"
+  },
+  "scripts": {
+    "program_campaign.py": "42eaa453e7f896643d41adff92d31db9e512a5f5572cebc8c7df16e20a175bb5",
+    "monitor_campaign.py": "0014d020b675d34dcb7ec700a23879d5b222351959c8a8432add5177668e6910",
+    "register_campaign.py": "58a5760a88d39baa12ef78a1861c94b4102c9efb743620c86ed0d1840c91413c"
+  }
+}
