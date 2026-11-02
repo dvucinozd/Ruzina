@@ -21,7 +21,7 @@ def window(raw, elf):
 
 
 def main():
-    p = argparse.ArgumentParser(__doc__)
+    p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root', type=Path, required=True)
     p.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[2])
     p.add_argument('--mode', choices=('candidate', 'return-s07'), required=True)
