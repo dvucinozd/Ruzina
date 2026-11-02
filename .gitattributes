@@ -15,3 +15,4 @@ docs/reviews/evidence/2026-11-02-pack-placement/** -text -whitespace
 docs/reviews/evidence/2026-11-02-resource-readiness/** -text -whitespace
 # Vendored upstream sources stay byte-identical to their recorded archive.
 firmware-idf/legacy-jc1060/third_party/esp-usb-*/** -text -whitespace
+tools/resource_readiness/** text eol=lf
