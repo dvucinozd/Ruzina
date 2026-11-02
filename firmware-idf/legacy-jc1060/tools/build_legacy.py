@@ -209,13 +209,22 @@ def main():
     elf = output / 'build/ruzina_legacy_probe.elf'
     profile_symbols = run(['riscv32-esp-elf-nm', '--defined-only', elf])
     for symbol in ('ruzina_legacy_uac_profile_begin', 'ruzina_legacy_uac_profile_end',
-                   'ruzina_uac_switched_in', 'ruzina_uac_switched_out'):
+                   'ruzina_uac_switched_in', 'ruzina_uac_switched_out',
+                   '__wrap__global_interrupt_handler', 'ruzina_uac_irq_stamp'):
         if (symbol in profile_symbols) != args.uac_profile:
             raise ValueError('Profiling symbol/default isolation mismatch: ' + symbol)
     if args.uac_profile:
         tasks_disassembly = run(['riscv32-esp-elf-objdump', '-dr', output / 'build/esp-idf/freertos/CMakeFiles/__idf_freertos.dir/FreeRTOS-Kernel/tasks.c.obj'])
         if any(s not in tasks_disassembly for s in ('ruzina_uac_switched_in', 'ruzina_uac_switched_out')):
             raise ValueError('FreeRTOS task switch hooks are not actually compiled into the kernel')
+        vector = run(['riscv32-esp-elf-objdump', '-d', '--disassemble=_interrupt_handler', elf])
+        wrapper = run(['riscv32-esp-elf-objdump', '-d', '--disassemble=__wrap__global_interrupt_handler', elf])
+        if '<__wrap__global_interrupt_handler>' not in vector or '<_global_interrupt_handler>' not in wrapper:
+            raise ValueError('IRQ wrapper is not on the actual vector-to-C-dispatch path')
+        table = run(['riscv32-esp-elf-objdump', '-t', elf])
+        for symbol in ('__wrap__global_interrupt_handler', 'esp_timer_get_time'):
+            if not any('.iram' in line and line.split()[-1]==symbol for line in table.splitlines()):
+                raise ValueError('IRQ timing code is not in IRAM: ' + symbol)
     abi = run(['riscv32-esp-elf-readelf', '-h', elf])
     if 'single-float ABI' not in abi:
         raise ValueError('Wrong linked ELF ABI')

@@ -1,5 +1,11 @@
 # Rust M2.5 development handoff
 
+Latest work: `ogranak/jc1060-uac-cause-profile`, continuing from `62717ce`.
+Read [calibrated cause experiment](reviews/2026-11-02-uac-cause-profile-execution.md)
+for current implementation/build/registration gates. New target measurements
+are NOT_RUN; the previously confirmed s07 remains the normal device image.
+The paragraphs below retain the prior measured checkpoint.
+
 Latest continuation: `ogranak/jc1060-uac-callback-profile`, [PR #75](https://github.com/dvucinozd/Ruzina/pull/75).
 Read the [callback device record](reviews/2026-11-01-uac-callback-profiling-device.md)
 first: source `8a9fe16` has CodeRabbit 0 issues, 20/20 CI jobs and clean normal/

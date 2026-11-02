@@ -6,7 +6,7 @@ if(NOT CONFIG_APP_BUILD_TYPE_PURE_RAM_APP)
 endif()
 set(probe_sources probe.c)
 if(CONFIG_RUZINA_UAC_PROFILE)
-    list(APPEND probe_sources uac_profile_sched.c)
+    list(APPEND probe_sources uac_profile_sched.c uac_profile_irq.c)
 endif()
 if(CONFIG_RUZINA_MEMORY_TASK)
     list(APPEND probe_sources memory_task.c)
@@ -42,6 +42,7 @@ endif()
 idf_component_register(SRCS ${probe_sources} INCLUDE_DIRS ${probe_includes} REQUIRES ${probe_requires})
 
 if(CONFIG_RUZINA_UAC_PROFILE)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=_global_interrupt_handler")
     idf_component_get_property(profile_freertos freertos COMPONENT_LIB)
     target_compile_options(${profile_freertos} PRIVATE
         "$<$<COMPILE_LANGUAGE:C>:-include>"

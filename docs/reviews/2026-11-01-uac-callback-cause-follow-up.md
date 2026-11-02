@@ -1,6 +1,7 @@
 # Follow-up after callback substage/scheduler capture
 
-Status: PLAN_ONLY / NOT_IMPLEMENTED. Read the [measured device record](2026-11-01-uac-callback-profiling-device.md).
+Status: implementation started in the [2026-11-02 execution](2026-11-02-uac-cause-profile-execution.md);
+device execution and cause/fix acceptance remain open. Read the [measured device record](2026-11-01-uac-callback-profiling-device.md).
 Do not change priorities, DSP, gain or the >=6000 us criterion before a controlled
 cause test. Native minimum remains revision 302; this unit uses legacy rev103.
 

@@ -38,6 +38,12 @@ static int alloc_fail_after=-1, submit_failures, fill_failures, endpoint_error;
 static int allocations, frees, submitted, live, flushes, clears;
 static bool hold_callbacks;
 #if UAC_TEST_PROFILE
+#include "uac_profile_sched.h"
+#include "uac_profile_irq.h"
+static bool calibration_hooks=true;
+static void vTaskDelay(unsigned ticks);
+unsigned uac_test_core(void) { return 0; }
+void __real__global_interrupt_handler(intptr_t sp,int mcause) { (void)sp;(void)mcause; }
 static const void *xTaskGetCurrentTaskHandle(void) { return (void *)1; }
 static unsigned uxTaskGetStackHighWaterMark(const void *task) { (void)task;return 3072; }
 #endif
@@ -47,6 +53,15 @@ static uint32_t fill_calls;
 static const uint32_t *fill_sequence;
 static unsigned fill_sequence_count, fill_sequence_pos;
 int64_t esp_timer_get_time(void) { return mock_time; }
+#if UAC_TEST_PROFILE
+static void vTaskDelay(unsigned ticks) {
+    assert(ticks==1 && live==0);
+    if(calibration_hooks) ruzina_uac_switched_out((void *)1,0);
+    mock_time+=10000;
+    __wrap__global_interrupt_handler(0,1);
+    if(calibration_hooks) ruzina_uac_switched_in((void *)1,0);
+}
+#endif
 static void sequence(const uint32_t *values, unsigned count) {
     fill_sequence=values; fill_sequence_count=count; fill_sequence_pos=0;
 }
@@ -90,14 +105,14 @@ typedef void *QueueHandle_t;
 #define pdTRUE 1
 #define pdPASS 1
 #define portMAX_DELAY -1
-static unsigned char log_storage[1024];
+static unsigned char log_storage[2048];
 static unsigned log_size, log_waiting;
 static QueueHandle_t xQueueCreate(unsigned count,unsigned bytes){assert(count==1 && bytes<=sizeof(log_storage));log_size=bytes;return log_storage;}
 static int xQueueReceive(QueueHandle_t q,void *out,int wait){(void)q;(void)wait;if(!log_waiting)return 0;memcpy(out,log_storage,log_size);log_waiting=0;return 1;}
 static unsigned uxQueueMessagesWaiting(QueueHandle_t q){(void)q;return log_waiting;}
 static int xQueueOverwrite(QueueHandle_t q,const void *sample){(void)q;memcpy(log_storage,sample,log_size);log_waiting=1;return 1;}
 static void vQueueDelete(QueueHandle_t q){(void)q;}
-static int xTaskCreatePinnedToCore(void (*fn)(void *),const char *name,unsigned stack,void *arg,int priority,void *handle,int core){(void)fn;(void)name;(void)arg;(void)handle;(void)core;assert(stack==3072 && priority==1);return 1;}
+static int xTaskCreatePinnedToCore(void (*fn)(void *),const char *name,unsigned stack,void *arg,int priority,void *handle,int core){(void)fn;(void)name;(void)arg;(void)handle;(void)core;assert(stack==(UAC_TEST_PROFILE?4096:3072) && priority==1);return 1;}
 #include "uac_driver.inc"
 int32_t ruzina_legacy_uac_select(const uint8_t *c,uint32_t l,int32_t h,uint32_t *o) {
     (void)c;(void)l;(void)h;uint32_t info[8]={1,1,2,384,4,2,48000,0};memcpy(o,info,sizeof(info));return 1;
@@ -212,12 +227,24 @@ int main(void) {
 #if UAC_TEST_TIMING
     timing_phases();
 #endif
+#if UAC_TEST_PROFILE
+    calibration_hooks=false;start();assert(!uac_cal_passed);
+    fill_duration=4000;complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    assert(uac_profile_headroom_seen && !uac_profile_headroom.calibration_passed && !uac_profile_headroom.sched_valid);
+    stop();calibration_hooks=true;start();assert(uac_cal_passed);
+    fill_duration=4001;complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    assert(uac_profile_headroom.whole_us==4001 && uac_profile_headroom.sched_valid);
+    assert(uac_profile_headroom.generation==uac_generation);
+    stop();fill_duration=200;flushes=clears=0;
+#endif
     start();assert(live==4);
     uac_report_pending=true;uac_report();assert(log_waiting==1);
     uac_report_pending=true;uac_report();assert(uac_log_drops==1);
     uac_log_snapshot_t snapshot;assert(xQueueReceive(uac_log_queue,&snapshot,0)==1);
 #if UAC_TEST_PROFILE
     assert(snapshot.log_drops==1);
+    assert(snapshot.distribution.samples==uac_profile_distribution.samples);
+    assert(snapshot.headroom_seen && snapshot.headroom.whole_us==4001);
     assert(snapshot.profile_seen && snapshot.worst.rust_valid);
     assert(snapshot.worst.generation<=snapshot.generation);
     // Pure interval arithmetic handles wrap and rejects incoherent samples.
@@ -227,6 +254,20 @@ int main(void) {
     assert(interval.sched_valid && interval.sched_away_us==20 && interval.sched_switches==1 && interval.sched_window_us==60);
     uac_profile_schedule(&interval,(uac_sched_stamp_t){.valid=false},(uac_sched_stamp_t){.valid=true});
     assert(!interval.sched_valid);
+    assert(uac_cal_passed && uac_cal_after.switches>uac_cal_before.switches);
+    assert(!uac_profile_calibration((uac_sched_stamp_t){.valid=true},(uac_sched_stamp_t){.valid=true}));
+    uac_profile_distribution_t dist={0};
+    uac_profile_record_t rec={.whole_us=3001,.rust_valid=1};
+    rec.rust[0]=3001;rec.rust[4]=3001;
+    uac_profile_distribute(&dist,&rec);
+    assert(dist.samples==1 && dist.valid==1 && dist.whole[6]==1 && dist.stage[0][6]==1 && dist.max[0]==3001);
+    rec.rust[1]=1;uac_profile_distribute(&dist,&rec);
+    assert(dist.samples==2 && dist.valid==1 && dist.whole[6]==2 && dist.stage[0][6]==1);
+    dist.samples=dist.valid=dist.whole[6]=dist.stage[0][6]=UINT32_MAX;rec.rust[1]=0;
+    uac_profile_distribute(&dist,&rec);
+    assert(dist.samples==UINT32_MAX && dist.valid==UINT32_MAX && dist.whole[6]==UINT32_MAX && dist.stage[0][6]==UINT32_MAX);
+    const uint32_t edges[]={0,50,51,100,101,250,251,500,501,1000,1001,3000,3001,UINT32_MAX};
+    for(unsigned i=0;i<14;++i) assert(uac_profile_bin(edges[i])==i/2);
 #endif
     assert(!uac_report_pending);assert(uac_health.state==UAC_HEALTH_STREAMING);
     complete(uac_iso[0],9);assert(uac_health.state==UAC_HEALTH_RECOVERING);

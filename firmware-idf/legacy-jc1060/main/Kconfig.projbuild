@@ -65,6 +65,6 @@ config RUZINA_LOAD_DISPLAY
 
 config RUZINA_UAC_PROFILE
     bool "Diagnostic UAC callback substages and scheduler trace intervals"
-    depends on RUZINA_DECK_ENGINE && !FREERTOS_SMP && !ESP_TRACE_ENABLE
+    depends on RUZINA_DECK_ENGINE && !FREERTOS_SMP && !ESP_TRACE_ENABLE && !SECURE_ENABLE_TEE
     select ESP_TIMER_IN_IRAM
     default n

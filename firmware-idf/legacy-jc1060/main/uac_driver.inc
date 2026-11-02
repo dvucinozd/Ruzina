@@ -48,9 +48,14 @@ static uint32_t uac_log_drops;
 #include "uac_profile_record.h"
 extern void ruzina_legacy_uac_profile_begin(void);
 extern uint32_t ruzina_legacy_uac_profile_end(uint32_t *out,uint32_t len);
-static uac_profile_record_t uac_profile_worst, uac_profile_over;
+static uac_profile_record_t uac_profile_worst, uac_profile_over, uac_profile_headroom;
+static uac_profile_distribution_t uac_profile_distribution;
+static uac_sched_stamp_t uac_cal_before,uac_cal_after;
+static uac_irq_stamp_t uac_irq_cal_before,uac_irq_cal_after;
+static uint32_t uac_cal_generation;
+static bool uac_cal_passed,uac_irq_cal_passed;
 static uint32_t uac_profile_ordinal;
-static bool uac_profile_seen, uac_profile_over_seen;
+static bool uac_profile_seen, uac_profile_over_seen, uac_profile_headroom_seen;
 #endif
 typedef struct { uint32_t generation; unsigned slot; } uac_context_t;
 static uac_context_t uac_context[UAC_TRANSFERS], uac_control_context;
@@ -70,6 +75,7 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     bool bound=ruzina_uac_sched_bind(xTaskGetCurrentTaskHandle());
     ruzina_legacy_uac_profile_begin();
     uac_sched_stamp_t sched_before=ruzina_uac_sched_stamp();
+    uac_irq_stamp_t irq_before=ruzina_uac_irq_stamp();
 #endif
 #if CONFIG_RUZINA_DECK_MIX
     int64_t start = esp_timer_get_time();
@@ -80,14 +86,21 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     int64_t elapsed = esp_timer_get_time() - start;
     uint32_t took = elapsed > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed;
 #if CONFIG_RUZINA_UAC_PROFILE
+    uac_irq_stamp_t irq_after=ruzina_uac_irq_stamp();
     uac_sched_stamp_t sched_after=ruzina_uac_sched_stamp();
     profile.whole_us=took;
     profile.rust_valid=ruzina_legacy_uac_profile_end(profile.rust,UAC_PROFILE_WORDS)==UAC_PROFILE_WORDS;
     uac_profile_schedule(&profile,sched_before,sched_after);
-    profile.sched_valid &= bound;
+    profile.calibration_passed=uac_cal_passed && uac_cal_generation==uac_generation;
+    profile.sched_valid &= bound && profile.calibration_passed;
+    uac_profile_interrupts(&profile,irq_before,irq_after);
+    profile.irq_calibration_passed=uac_irq_cal_passed && uac_cal_generation==uac_generation;
+    profile.irq_valid &= profile.irq_calibration_passed;
     if (phase==UAC_FILL_CALLBACK) {
+        uac_profile_distribute(&uac_profile_distribution,&profile);
         if (!uac_profile_seen || took>uac_profile_worst.whole_us) { uac_profile_worst=profile;uac_profile_seen=true; }
         if (took>=6000) { uac_profile_over=profile;uac_profile_over_seen=true; }
+        if (took>3000 && took<6000) { uac_profile_headroom=profile;uac_profile_headroom_seen=true; }
     }
 #endif
     if (took > uac_fill_max_us) uac_fill_max_us = took;
@@ -142,8 +155,12 @@ typedef struct {
     uint32_t generation;
     uac_fill_timing_t timing;
 #if CONFIG_RUZINA_UAC_PROFILE
-    uac_profile_record_t worst, over;
-    bool profile_seen, over_seen;
+    uac_profile_record_t worst, over, headroom;
+    uac_profile_distribution_t distribution;
+    uac_sched_stamp_t cal_before,cal_after;
+    uac_irq_stamp_t irq_cal_before,irq_cal_after;
+    uint32_t cal_generation;
+    bool profile_seen, over_seen, headroom_seen, cal_passed, irq_cal_passed;
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
     uint32_t engine[4], counters[2];
@@ -156,9 +173,7 @@ static QueueHandle_t uac_log_queue;
 
 #if CONFIG_RUZINA_UAC_PROFILE
 static void uac_log_profile(const char *name,const uac_profile_record_t *r,bool seen) {
-    uint64_t attributed=0;
-    for (unsigned i=0;i<8;++i) attributed+=r->rust[4+i];
-    bool partition=r->rust_valid && !r->rust[1] && attributed==r->rust[0] && r->rust[0]<=r->whole_us;
+    bool partition=uac_profile_partition(r);
     printf("uac_profile kind=%s seen=%u gen=%" PRIu32 " ordinal=%" PRIu32 " uptime_us=%" PRIu32
            " phase=%" PRIu32 " busy=%" PRIu32 " health=%" PRIu32 " catalog=%" PRIu32
            " d1_flags=%" PRIu32 " d2_flags=%" PRIu32 " drops=%" PRIu32 " whole_us=%" PRIu32
@@ -167,6 +182,11 @@ static void uac_log_profile(const char *name,const uac_profile_record_t *r,bool 
            name,(unsigned)seen,r->generation,r->ordinal,r->uptime_us,r->phase,r->pool_mask,r->health,r->catalog,
            r->flags[1],r->flags[3],r->log_drops,r->whole_us,r->rust[0],(unsigned)partition,
            partition?r->whole_us-r->rust[0]:0,r->rust[2],r->rust[3],r->sched_valid,r->sched_window_us,r->sched_away_us,r->sched_switches);
+    printf("uac_profile_cause kind=%s gen=%" PRIu32 " ordinal=%" PRIu32 " calibration=%" PRIu32
+           " away_before=%" PRIu32 " away_after=%" PRIu32 " switches_before=%" PRIu32 " switches_after=%" PRIu32
+           " irq_calibration=%" PRIu32 " irq_valid=%" PRIu32 " irq_window_us=%" PRIu32 " irq_dispatch_us=%" PRIu32 " irq_entries=%" PRIu32 " irq_nested=%" PRIu32 "\n",
+           name,r->generation,r->ordinal,r->calibration_passed,r->sched_away_before,r->sched_away_after,
+           r->sched_switches_before,r->sched_switches_after,r->irq_calibration_passed,r->irq_valid,r->irq_window_us,r->irq_us,r->irq_entries,r->irq_nested);
     static const char *const stages[8]={"init","transport","control","graph","progress","copy","pack","other"};
     for(unsigned i=0;i<8;++i)
         printf("uac_profile_stage kind=%s gen=%" PRIu32 " ordinal=%" PRIu32 " stage=%s us=%" PRIu32 " segments=%" PRIu32 "\n",
@@ -206,8 +226,31 @@ static void uac_log_task(void *unused)
                    p->max_us,(unsigned)p->max_after_iso_submit,p->gt_3000,p->ge_6000,p->failures);
         }
 #if CONFIG_RUZINA_UAC_PROFILE
+        printf("uac_profile_calibration gen=%" PRIu32 " passed=%u before_valid=%u after_valid=%u"
+               " wall_before=%" PRIu32 " wall_after=%" PRIu32 " away_before=%" PRIu32 " away_after=%" PRIu32
+               " switches_before=%" PRIu32 " switches_after=%" PRIu32 "\n",
+               sample.cal_generation,(unsigned)sample.cal_passed,(unsigned)sample.cal_before.valid,(unsigned)sample.cal_after.valid,
+               sample.cal_before.wall_us,sample.cal_after.wall_us,sample.cal_before.away_us,sample.cal_after.away_us,
+               sample.cal_before.switches,sample.cal_after.switches);
+        printf("uac_profile_irq_calibration gen=%" PRIu32 " passed=%u before_valid=%u after_valid=%u"
+               " entries_before=%" PRIu32 " entries_after=%" PRIu32 " us_before=%" PRIu32 " us_after=%" PRIu32
+               " nested_before=%" PRIu32 " nested_after=%" PRIu32 "\n",
+               sample.cal_generation,(unsigned)sample.irq_cal_passed,(unsigned)sample.irq_cal_before.valid,(unsigned)sample.irq_cal_after.valid,
+               sample.irq_cal_before.entries,sample.irq_cal_after.entries,sample.irq_cal_before.us,sample.irq_cal_after.us,
+               sample.irq_cal_before.nested,sample.irq_cal_after.nested);
         uac_log_profile("worst",&sample.worst,sample.profile_seen);
         uac_log_profile("latest_over",&sample.over,sample.over_seen);
+        uac_log_profile("latest_headroom",&sample.headroom,sample.headroom_seen);
+        printf("uac_profile_distribution gen=%" PRIu32 " scope=BOOT samples=%" PRIu32 " valid=%" PRIu32
+               " upper_us=50,100,250,500,1000,3000,INF\n",sample.generation,sample.distribution.samples,sample.distribution.valid);
+        static const char *const hist_names[]={"whole","init","transport","control","graph","progress","copy","pack","other"};
+        for(unsigned i=0;i<9;++i) {
+            const uint32_t *bins=i ? sample.distribution.stage[i-1] : sample.distribution.whole;
+            printf("uac_profile_hist gen=%" PRIu32 " samples=%" PRIu32 " stage=%s max_us=%" PRIu32 " bins=%" PRIu32 ",%" PRIu32 ",%" PRIu32
+                   ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 ",%" PRIu32 "\n",sample.generation,sample.distribution.samples,hist_names[i],
+                   i ? sample.distribution.max[i-1] : sample.timing.phase[UAC_FILL_CALLBACK].max_us,
+                   bins[0],bins[1],bins[2],bins[3],bins[4],bins[5],bins[6]);
+        }
         printf("uac_profile_logger stack_free=%u\n",(unsigned)uxTaskGetStackHighWaterMark(NULL));
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
@@ -237,6 +280,12 @@ static void uac_report(void)
     sample.generation=uac_generation; sample.timing=uac_fill_timing;
 #if CONFIG_RUZINA_UAC_PROFILE
     sample.worst=uac_profile_worst;sample.over=uac_profile_over;
+    sample.headroom=uac_profile_headroom; sample.headroom_seen=uac_profile_headroom_seen;
+    sample.distribution=uac_profile_distribution;
+    sample.cal_before=uac_cal_before; sample.cal_after=uac_cal_after;
+    sample.irq_cal_before=uac_irq_cal_before; sample.irq_cal_after=uac_irq_cal_after;
+    sample.irq_cal_passed=uac_irq_cal_passed;
+    sample.cal_generation=uac_cal_generation; sample.cal_passed=uac_cal_passed;
     sample.profile_seen=uac_profile_seen;sample.over_seen=uac_profile_over_seen;
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
@@ -343,15 +392,20 @@ static void uac_ctrl_done(usb_transfer_t *transfer)
     }
 }
 
+#if CONFIG_RUZINA_UAC_PROFILE
+#define UAC_LOG_STACK 4096
+#else
+#define UAC_LOG_STACK 3072
+#endif
 static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
 {
 #if CONFIG_RUZINA_UAC_PROFILE
-    printf("uac_profile_resources snapshot_bytes=%u record_bytes=%u stage_words=%u logger_stack=3072\n",
-           (unsigned)sizeof(uac_log_snapshot_t),(unsigned)sizeof(uac_profile_record_t),UAC_PROFILE_WORDS);
+    printf("uac_profile_resources snapshot_bytes=%u record_bytes=%u stage_words=%u logger_stack=%u irq_coverage=core0_c_dispatch\n",
+           (unsigned)sizeof(uac_log_snapshot_t),(unsigned)sizeof(uac_profile_record_t),UAC_PROFILE_WORDS,UAC_LOG_STACK);
 #endif
     if (!uac_log_queue) {
         uac_log_queue=xQueueCreate(1,sizeof(uac_log_snapshot_t));
-        if (uac_log_queue && xTaskCreatePinnedToCore(uac_log_task,"uac_log",3072,NULL,1,NULL,0)!=pdPASS) {
+        if (uac_log_queue && xTaskCreatePinnedToCore(uac_log_task,"uac_log",UAC_LOG_STACK,NULL,1,NULL,0)!=pdPASS) {
             vQueueDelete(uac_log_queue); uac_log_queue=NULL;
         }
     }
@@ -367,6 +421,21 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
     uac_timing_connection_begin(&uac_fill_timing); uac_any_iso_submitted=false;
 #endif
     uac_recovery_begin(&uac_health,uac_generation);
+#if CONFIG_RUZINA_UAC_PROFILE
+    /* This is the USB-client task, before this connection's first audio submit.
+     * A blocking tick (not taskYIELD with an uncertain peer) exercises hooks.
+     * It is outside every measured fill. A failure disables causal inference. */
+    bool bound=ruzina_uac_sched_bind(xTaskGetCurrentTaskHandle());
+    uac_cal_before=ruzina_uac_sched_stamp();
+    uac_irq_cal_before=ruzina_uac_irq_stamp();
+    vTaskDelay(1);
+    uac_irq_cal_after=ruzina_uac_irq_stamp();
+    uac_cal_after=ruzina_uac_sched_stamp();
+    uac_cal_generation=uac_generation;
+    uac_cal_passed=bound && uac_profile_calibration(uac_cal_before,uac_cal_after);
+    uac_irq_cal_passed=uac_irq_cal_before.valid && uac_irq_cal_after.valid
+        && uac_irq_cal_after.entries-uac_irq_cal_before.entries>0;
+#endif
     uac_interface = (uint8_t)uac_info[0];
     esp_err_t err = usb_host_interface_claim(client, device, uac_interface, (uint8_t)uac_info[1]);
     if (err != ESP_OK) { uac_interface=0xff;uac_health.state=UAC_HEALTH_OFF;return; }

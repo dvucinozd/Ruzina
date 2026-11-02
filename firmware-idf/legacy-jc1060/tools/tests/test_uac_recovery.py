@@ -37,6 +37,16 @@ class UacRecoveryTests(unittest.TestCase):
                             str(app / 'tools/tests/uac_profile_sched_test.c'), '-o', str(exe)], check=True)
             subprocess.run([str(exe)], check=True)
 
+    @unittest.skipUnless(shutil.which('cc'), 'Host C compiler required (run on Linux/WSL)')
+    def test_actual_irq_wrapper(self):
+        app = pathlib.Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as directory:
+            exe = pathlib.Path(directory) / 'uac-irq-test'
+            subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-DUAC_PROFILE_TEST=1',
+                            '-I', str(app / 'main'), str(app / 'main/uac_profile_irq.c'),
+                            str(app / 'tools/tests/uac_profile_irq_test.c'), '-o', str(exe)], check=True)
+            subprocess.run([str(exe)], check=True)
+
     def _run_driver(self, timing, profile=False):
         app = pathlib.Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as directory:
@@ -46,6 +56,7 @@ class UacRecoveryTests(unittest.TestCase):
             subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
                             f'-DUAC_TEST_TIMING={int(timing)}', f'-DUAC_TEST_PROFILE={int(profile)}', '-I', directory,
                             '-I', str(app / 'main'), str(app / 'tools/tests/uac_driver_test.c'),
-                            *([str(app / 'main/uac_profile_sched.c'), '-DUAC_PROFILE_TEST=1'] if profile else []),
+                            *([str(app / 'main/uac_profile_sched.c'), str(app / 'main/uac_profile_irq.c'),
+                               '-DUAC_PROFILE_TEST=1'] if profile else []),
                             '-o', str(exe)], check=True)
             subprocess.run([str(exe)], check=True)

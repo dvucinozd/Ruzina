@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\build_legacy.py", line 342, in <module>
+    main()
+    ~~~~^^
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\build_legacy.py", line 288, in main
+    raise ValueError('Sources changed during build')
+ValueError: Sources changed during build
