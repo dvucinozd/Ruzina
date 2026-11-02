@@ -94,3 +94,17 @@ to the saved analysis. Documentation checker: 400 links PASS.
 The uncommitted CodeRabbit attempt incorrectly scoped 474 files and failed
 the 150-file limit. It is not a passed review. Review the frozen commit against
 `e4aa31d` before publication or preparing clean flash packages.
+
+Final exact-parent committed review of source
+`eead8c6a9832aee63348922dcf9487992a24658a` completed: CodeRabbit raised 0 issues
+across the eight changed files. Fresh clean normal/profile builds both pass;
+all 282 source hashes per package and all 16 combined artifact hashes match.
+Clean normal app SHA-256:
+`3d6afe1076a2df5bc4ac091eadfaaedbcecb2db029694d6d1bfd7ba8711ab35f`;
+clean profile app SHA-256:
+`216dd8df18675ff334b068673f306a04a30065314875dc5905e33aaf99f7f058`.
+Working-tree pilot hashes above are retained separately. These clean packages
+are BUILD_ONLY / NOT_FLASHED and have no new physical timing acceptance or
+registered write plan. [Verification index](evidence/2026-11-02-peer-fixes/checks.json)
+records source/artifact verification and raw-log hashes. No new CI result is
+claimed for this branch; source publication and CI precede physical registration.

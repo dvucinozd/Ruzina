@@ -1,0 +1,48 @@
+{
+  "status": "OFFLINE_VALIDATED_NOT_FLASHED",
+  "packages": {
+    "clean-normal": {
+      "source_commit": "eead8c6a9832aee63348922dcf9487992a24658a",
+      "app_sha256": "3d6afe1076a2df5bc4ac091eadfaaedbcecb2db029694d6d1bfd7ba8711ab35f",
+      "app_bytes": 817280,
+      "source_hashes_verified": 282,
+      "artifact_hashes_verified": 8,
+      "manifest_sha256": "553b0f3d76ac56fdca417784f48fd9a58ca433f4b093b7670fcff8591b93db1f"
+    },
+    "clean-profile": {
+      "source_commit": "eead8c6a9832aee63348922dcf9487992a24658a",
+      "app_sha256": "216dd8df18675ff334b068673f306a04a30065314875dc5905e33aaf99f7f058",
+      "app_bytes": 823024,
+      "source_hashes_verified": 282,
+      "artifact_hashes_verified": 8,
+      "manifest_sha256": "99ff35d379d4993ea1393b36cd059c2ea798a2aec16a09a3dfd1e5bd82bfb2d7"
+    }
+  },
+  "logs": {
+    "checks.sh": {
+      "bytes": 647,
+      "sha256": "0d965020fa871970b8fabb1eb7bd88678f8cc3d84507d4b9ba92aceaa1bbae85"
+    },
+    "host-matrix-final.log": {
+      "bytes": 27236,
+      "sha256": "a2c00c567a6956839b0202d997adf48f466810c9a0fa74d2c1ae8bddd5519c28"
+    },
+    "python-tests.log": {
+      "bytes": 4831,
+      "sha256": "c7275614ce0c50edb557601ca6d7ff4e2108263228a7527887a4518ad5c6a59c"
+    },
+    "c-tests.log": {
+      "bytes": 9115,
+      "sha256": "230e7a9657dce9f500eaa0394b3f28323a3e9109fa7ae0bc76312e0b4cbed3bd"
+    },
+    "coderabbit.raw.log": {
+      "bytes": 2205,
+      "sha256": "5b4c17fdcef6c5526ac0a997b6dd673c36ac5db4f9972cdcf8f3f6124e20ad6a"
+    },
+    "coderabbit-committed.raw.log": {
+      "bytes": 1449,
+      "sha256": "7ea11ea63b6ec994a4f5d7a9b1f43be40bb50f05928b935b0c5602610932994c"
+    }
+  },
+  "review_issues": []
+}

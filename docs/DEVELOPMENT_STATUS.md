@@ -1,5 +1,13 @@
 # Current development status
 
+Offline continuation after the calibrated campaign: source `eead8c6` on
+`ogranak/jc1060-peer-continuity-fixes` fixes peer-deck cached-output continuity
+and fail-closed analysis schemas. Host/C tests, exact-parent CodeRabbit review
+and clean normal/profile builds pass. See the
+[repair record](reviews/2026-11-02-peer-continuity-fixes.md). It has no physical
+timing acceptance; s07 remains the last accepted image and I02–I13 stay open.
+The dated campaign results below remain historical evidence for their images.
+
 Updated 2026-11-02. Development has two distinct backends. Native requires
 ESP32-P4 >=302. The arrived JC1060 is v1.3/103 and uses pinned IDF 6.1 with
 shared Rust. Active continuation is `ogranak/jc1060-uac-cause-profile`, clean
