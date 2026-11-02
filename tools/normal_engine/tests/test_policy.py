@@ -6,7 +6,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 import campaign
-from monitor import validate_window, capture_complete, CaptureCoverage
+from monitor import validate_window, capture_complete, CaptureCoverage, open_capture_port
 
 
 class NormalPolicyTests(unittest.TestCase):
@@ -81,6 +81,22 @@ class NormalPolicyTests(unittest.TestCase):
         capture.boot(100)
         self.assertEqual(capture.seconds(145),45)
         self.assertTrue(capture_complete('cold',capture.seconds(145),600,45,False,capture.interrupted))
+
+    def test_port_open_race_retries_only_before_cold_boot(self):
+        class PortGone(Exception):pass
+        class Port:
+            closed=False
+            def open(self):raise PortGone()
+            def close(self):self.closed=True
+        cold=CaptureCoverage('cold',600,0)
+        port=Port()
+        self.assertFalse(open_capture_port(port,cold,PortGone))
+        self.assertTrue(port.closed)
+        self.assertTrue(cold.active(599))
+        self.assertFalse(cold.active(600))
+        cold.boot(10)
+        for coverage in [cold,CaptureCoverage('idle',60,0),CaptureCoverage('functional',180,0)]:
+            with self.assertRaises(PortGone):open_capture_port(Port(),coverage,PortGone)
 
 
 if __name__=='__main__':unittest.main()

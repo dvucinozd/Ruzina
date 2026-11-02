@@ -122,3 +122,11 @@ shared guard still passes all 13 WSL tests. Source `05cff46` and publication
 its own review/CI and a fresh binding before hardware access; source, package,
 38/39 plans and the installed s07 remain unchanged. The owner reconfirmed the
 same COM3/topology, connected MASTER/headphones and visible library.
+
+The connection fix `8a4478f` passed 21/21 CI ([host #559](https://github.com/dvucinozd/Ruzina/actions/runs/41526535396),
+[legacy #82](https://github.com/dvucinozd/Ruzina/actions/runs/41526535468)).
+Its final review found only a minor pre-boot enumeration/open race. The follow-up
+retries that `SerialException` solely in the bounded cold pre-boot wait and
+keeps all post-start/open failures invalid. Eight policy/coverage tests pass on
+Windows; exact review/CI for this follow-up remains required. The finding and
+test log are retained. No device access or new binding has occurred.

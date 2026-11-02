@@ -67,6 +67,18 @@ def capture_complete(kind, connected_seconds, requested, post_boot, stopped, int
     return connected_seconds >= requested
 
 
+def open_capture_port(port, coverage, serial_error):
+    """Tolerate enumeration/open races only during the permitted cold pre-boot wait."""
+    try:
+        port.open()
+    except serial_error:
+        if coverage.kind != 'cold' or coverage.since is not None:
+            raise
+        port.close()
+        return False
+    return True
+
+
 def window(raw, elf):
     """Keep preceding bytes immutable, analyze only the new expected boot."""
     identities = list(re.finditer(rb'ELF file SHA256:\s+([0-9a-fA-F]{8,64})', raw))
@@ -121,7 +133,10 @@ def main():
                     port.dtr = False
                     port.rts = False
                     port.port = args.port
-                    port.open()
+                    if not open_capture_port(port, coverage, serial.SerialException):
+                        port = None
+                        time.sleep(.2)
+                        continue
                     coverage.opened(time.monotonic())
                 try:
                     data = port.read(4096)
