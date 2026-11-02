@@ -53,6 +53,9 @@ mod deck_engine;
 #[cfg(feature = "deck-engine")]
 mod deck_transport;
 
+#[cfg(feature = "deck-engine")]
+mod deck_resources;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]

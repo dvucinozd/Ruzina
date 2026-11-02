@@ -5,6 +5,7 @@
 #include "driver/sdmmc_host.h"
 #include "esp_heap_caps.h"
 #include "esp_psram.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdmmc_cmd.h"
@@ -78,6 +79,14 @@ void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
     unsigned free_min=(unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
     printf("rust_load pass=%" PRIu32 " event=%" PRIu32 " value=%" PRIu32 " stack_free=%u psram_free=%u psram_min=%u\n",
            pass,event,value,stack,free_now,free_min);
+#if CONFIG_RUZINA_DECK_ENGINE
+    if(event==14 || event==15) {
+        printf("resource_prepare state=%s uptime_us=%" PRIi64 " psram_free=%u psram_largest=%u internal_free=%u stack_free=%u\n",
+               event==14 ? "PREPARING" : "READY",esp_timer_get_time(),free_now,
+               (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),stack);
+    }
+#endif
     fflush(stdout);
 #if CONFIG_RUZINA_LOAD_DISPLAY
     ruzina_load_display_event(pass,event,value,stack,free_now,free_min);

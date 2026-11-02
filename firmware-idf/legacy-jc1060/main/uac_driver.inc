@@ -60,6 +60,27 @@ static bool uac_profile_seen, uac_profile_over_seen, uac_profile_headroom_seen;
 typedef struct { uint32_t generation; unsigned slot; } uac_context_t;
 static uac_context_t uac_context[UAC_TRANSFERS], uac_control_context;
 static void uac_start_stream(enum uac_fill_phase phase);
+static void uac_begin_selected(void);
+#if CONFIG_RUZINA_DECK_ENGINE
+extern uint32_t ruzina_legacy_resources_state(void);
+static bool uac_wait_resources;
+#endif
+
+static void uac_start_poll(void)
+{
+#if CONFIG_RUZINA_DECK_ENGINE
+    if (!uac_wait_resources) return;
+    if (gone || !device) { uac_wait_resources=false; return; }
+    uint32_t state=ruzina_legacy_resources_state();
+    if (state==0 || state==1) return;
+    uac_wait_resources=false;
+    if (state!=2) {
+        uac_step=UAC_OFF; uac_health.state=UAC_HEALTH_FAULT_HELD;
+        printf("usb_uac unavailable=RESOURCE_INIT_FAILED\n"); return;
+    }
+    uac_begin_selected();
+#endif
+}
 
 static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
 {
@@ -301,6 +322,12 @@ static void uac_report(void)
 
 static void uac_start_stream(enum uac_fill_phase phase)
 {
+#if CONFIG_RUZINA_DECK_ENGINE
+    if (ruzina_legacy_resources_state()!=2) {
+        uac_step=UAC_OFF; uac_health.state=UAC_HEALTH_FAULT_HELD;
+        return;
+    }
+#endif
     uint32_t mps = uac_info[3];
     int started = 0;
     /* Allocate the complete pool before publishing any transfer. */
@@ -413,6 +440,19 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
         printf("usb_uac select=NONE\n");
         return;
     }
+#if CONFIG_RUZINA_DECK_ENGINE
+    /* Keep only the selected scalar format; never retain config's borrowed pointer. */
+    uac_step=UAC_OFF;
+    uac_health.state=UAC_HEALTH_STARTING;
+    uac_wait_resources=true;
+    uac_start_poll();
+#else
+    uac_begin_selected();
+#endif
+}
+
+static void uac_begin_selected(void)
+{
     uac_generation++; if (!uac_generation) uac_generation=1;
 #if CONFIG_RUZINA_UAC_PROFILE
     uac_profile_ordinal=0;
@@ -458,6 +498,9 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
 /* Waits for every audio transfer to leave the host, then frees and releases. */
 static bool uac_stop(void)
 {
+#if CONFIG_RUZINA_DECK_ENGINE
+    uac_wait_resources=false;
+#endif
     if (uac_interface == 0xff) return true;
     uac_step = UAC_OFF;
     uac_health.state=UAC_HEALTH_STOPPING;

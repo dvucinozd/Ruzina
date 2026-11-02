@@ -352,6 +352,7 @@ static void client_task(void *unused)
             fflush(stdout);
         }
 #if CONFIG_RUZINA_USB_HOST_UAC
+        uac_start_poll();
         uac_recover_poll();
         uac_report();
 #endif

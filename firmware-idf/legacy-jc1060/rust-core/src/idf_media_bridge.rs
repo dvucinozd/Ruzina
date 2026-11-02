@@ -252,6 +252,8 @@ pub unsafe extern "C" fn ruzina_legacy_bridge_complete(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_bridge_invalidate() -> i32 {
+    #[cfg(feature = "idf-deck-engine")]
+    crate::deck_resources::GATE.fail();
     #[cfg(feature = "deck-play")]
     crate::media_signal::revoke();
     let (safe, waker) = with_state(|state| {
@@ -450,6 +452,8 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
     impl Drop for RevokeOnExit {
         fn drop(&mut self) {
             crate::media_signal::revoke();
+            #[cfg(feature = "idf-deck-engine")]
+            crate::deck_resources::GATE.fail();
         }
     }
     #[cfg(feature = "deck-play")]
@@ -465,6 +469,17 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         return -1;
     };
     let current = || Port.is_current(binding);
+    #[cfg(feature = "idf-deck-engine")]
+    let prepared = {
+        use crate::deck_resources::{GATE, prepare};
+        report(0, 14, 0); // resource preparation starts, before mount/catalog/UAC
+        let Some(producers) = prepare(&GATE, &crate::deck_play::RINGS, current) else {
+            report(0, load_event::FAILED, 2 << 8 | 1);
+            return -7;
+        };
+        report(0, 15, 1); // both rings and permanent producer stores are ready
+        producers
+    };
     let mut client = ReadClient::new(Port, binding);
     let mut volume = match block_on(crate::exfat_fixture::mount(
         &mut client,
@@ -647,7 +662,7 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                         .map(|t| (t.track_id.0, t.bpm_x100))
                 })
             },
-            pass,
+            (pass, tracks),
             &mut volume,
             &current,
             |volume, index| run(volume, index, true),
@@ -657,7 +672,8 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                     .and_then(|snapshot| snapshot.get(index as usize).map(|t| t.audio_path))
                     .map(CatalogPath)
             },
-            tracks,
+            #[cfg(feature = "idf-deck-engine")]
+            prepared,
         );
         // SAFETY: task-only cooperative delay between passes.
         #[cfg(not(feature = "idf-deck-play"))]
@@ -756,22 +772,30 @@ mod play_event {
 #[cfg_attr(not(feature = "idf-deck-engine"), allow(unused_variables))]
 fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<str>>(
     track: impl Fn(u32) -> Option<([u8; 16], u32)>,
-    pass: u32,
+    (pass, tracks): (u32, usize),
     volume: &mut crate::exfat_fixture::Volume<D>,
     current: &C,
     detail: impl Fn(&mut crate::exfat_fixture::Volume<D>, usize) -> Option<u32>,
     path: impl Fn(u32) -> Option<P>,
-    tracks: usize,
+    #[cfg(feature = "idf-deck-engine")] prepared: [crate::deck_play::Producer<
+        <crate::exfat_fixture::Volume<D> as ruzina_media_fs::AsyncFileSystem>::File,
+    >; 2],
 ) -> i32 {
-    use crate::deck_play::{COMMANDS, DECKS, Event, Producer, RINGS, SourceFiles, attach_ring};
+    use crate::deck_play::{COMMANDS, DECKS, Event, RINGS, SourceFiles};
+    #[cfg(not(feature = "idf-deck-engine"))]
+    use crate::deck_play::{Producer, attach_ring};
     use core::sync::atomic::Ordering;
     // SAFETY: diagnostic telemetry passes three u32 POD values only.
     let report = |event, value| unsafe { ruzina_bridge_load_report(pass, event, value) };
+    #[cfg(not(feature = "idf-deck-engine"))]
     if !attach_ring(0) {
         report(load_event::FAILED, 2 << 8 | 1);
         return -7;
     }
+    #[cfg(not(feature = "idf-deck-engine"))]
     let mut producers: [Option<Producer<_>>; 2] = [Some(Producer::new()), None];
+    #[cfg(feature = "idf-deck-engine")]
+    let mut producers = prepared.map(Some);
     #[cfg(feature = "idf-deck-engine")]
     let mut pending_results = [None; 2];
     #[cfg(feature = "idf-deck-engine")]
@@ -851,11 +875,19 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
             #[cfg(not(feature = "idf-deck-engine"))]
             let needs_producer = COMMANDS[deck].pending_load();
             if producers[deck].is_none() && needs_producer {
-                if !attach_ring(deck) {
+                #[cfg(feature = "idf-deck-engine")]
+                {
                     report(load_event::FAILED, 2 << 8 | 1);
                     return -7;
                 }
-                producers[deck] = Some(Producer::new());
+                #[cfg(not(feature = "idf-deck-engine"))]
+                {
+                    if !attach_ring(deck) {
+                        report(load_event::FAILED, 2 << 8 | 1);
+                        return -7;
+                    }
+                    producers[deck] = Some(Producer::new());
+                }
             }
             let Some(producer) = producers[deck].as_mut() else {
                 continue;

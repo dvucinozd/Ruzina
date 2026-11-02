@@ -12,7 +12,9 @@
 //! (Load or Cue) bumps the ring's epoch and records where its frames start;
 //! the consumer jumps its read position there when it sees the new epoch, so
 //! the producer never waits for the consumer to discard the old track.
-use alloc::{boxed::Box, vec};
+use alloc::boxed::Box;
+#[cfg(any(test, not(feature = "deck-engine")))]
+use alloc::vec;
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicU32, Ordering};
 use ruzina_audio_dsp::{PcmFrame, ResamplerState};
@@ -69,6 +71,10 @@ pub(crate) struct Ring {
 }
 
 impl Ring {
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn has_storage(&self) -> bool {
+        !self.frames.load(Ordering::Acquire).is_null()
+    }
     pub(crate) const fn new() -> Self {
         Self {
             frames: AtomicPtr::new(core::ptr::null_mut()),
@@ -109,6 +115,7 @@ impl Ring {
     }
 
     /// Hands the ring its storage once; later calls keep the first.
+    #[cfg(test)]
     pub(crate) fn attach(&self, storage: &'static mut [PcmFrame]) -> bool {
         storage.len() == RING_FRAMES as usize
             && self
@@ -431,6 +438,7 @@ static INITIAL_CHECKPOINT: Mp3CheckpointStorage = Mp3CheckpointStorage::new();
 /// # Safety
 /// Only use for audited inline storage with no ownership or self references;
 /// a byte copy must be a valid independent value, including its destructor.
+#[cfg(any(test, not(feature = "deck-engine")))]
 unsafe fn boxed_copy<T>(initial: &'static T) -> Box<T> {
     let mut slot = Box::<T>::new_uninit();
     // SAFETY: the decoder states are plain arrays and counters that own no
@@ -443,6 +451,28 @@ unsafe fn boxed_copy<T>(initial: &'static T) -> Box<T> {
 }
 
 impl<File> Producer<File> {
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn try_new() -> Option<Self> {
+        use crate::deck_resources::{try_copy, try_zeros};
+        Some(Self {
+            // SAFETY: same audited inline, non-owning storage as new().
+            storage: unsafe { try_copy(&INITIAL_STORAGE)? },
+            checkpoints: [
+                unsafe { try_copy(&INITIAL_CHECKPOINT)? },
+                unsafe { try_copy(&INITIAL_CHECKPOINT)? },
+                unsafe { try_copy(&INITIAL_CHECKPOINT)? },
+            ],
+            encoded: try_zeros(ENCODED_BUFFER_BYTES)?,
+            read: [0; SOURCE_READ_BYTES],
+            source: None,
+            generation: 0,
+            prime: None,
+            opening: None,
+            prime_started_us: 0,
+        })
+    }
+
+    #[cfg(any(test, not(feature = "deck-engine")))]
     pub(crate) fn new() -> Self {
         Self {
             // SAFETY: these concrete audited storage types contain only inline
@@ -1019,9 +1049,33 @@ pub(crate) fn render(out: &mut [PcmFrame], device_rate: u32, playing: bool, gain
 }
 
 /// Allocates deck `deck`'s ring storage once, in the PSRAM heap.
+#[cfg(any(test, not(feature = "deck-engine")))]
 pub(crate) fn attach_ring(deck: usize) -> bool {
+    if !RINGS[deck].frames.load(Ordering::Acquire).is_null() {
+        return true;
+    }
     let storage = vec![PcmFrame::default(); RING_FRAMES as usize].into_boxed_slice();
-    RINGS[deck].attach(Box::leak(storage))
+    install_ring(&RINGS[deck], storage)
+}
+
+pub(crate) fn install_ring(ring: &Ring, mut storage: Box<[PcmFrame]>) -> bool {
+    if storage.len() != RING_FRAMES as usize {
+        return false;
+    }
+    if ring
+        .frames
+        .compare_exchange(
+            core::ptr::null_mut(),
+            storage.as_mut_ptr(),
+            Ordering::Release,
+            Ordering::Relaxed,
+        )
+        .is_err()
+    {
+        return false;
+    }
+    let _ = Box::leak(storage);
+    true
 }
 
 /// Decks that decode: deck 1, and deck 2 with `deck-mix`.

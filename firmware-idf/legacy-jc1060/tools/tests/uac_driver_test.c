@@ -12,6 +12,8 @@
 #define CONFIG_RUZINA_DECK_MIX UAC_TEST_TIMING
 #define CONFIG_RUZINA_DECK_PLAY UAC_TEST_TIMING
 #define CONFIG_RUZINA_DECK_ENGINE UAC_TEST_TIMING
+static uint32_t resource_state=2;
+uint32_t ruzina_legacy_resources_state(void) { return resource_state; }
 #ifndef UAC_TEST_PROFILE
 #define UAC_TEST_PROFILE 0
 #endif
@@ -291,5 +293,22 @@ int main(void) {
     // A callback with an old generation cannot alter the new pool.
     start();uac_context_t stale={uac_generation-1,0};usb_transfer_t fake={.context=&stale};
     unsigned before=(unsigned)live;uac_iso_done(&fake);assert((unsigned)live==before);stop();
+#if UAC_TEST_TIMING
+    // Deferred resource readiness never allocates/submits transfers or spins.
+    resource_state=0;unsigned prior_allocations=(unsigned)allocations;
+    uac_start(&config,USB_SPEED_HIGH);assert(uac_wait_resources && live==0);
+    for(unsigned i=0;i<20;++i)uac_start_poll();
+    assert((unsigned)allocations==prior_allocations && live==0);
+    resource_state=1;uac_start_poll();assert(live==0);
+    resource_state=2;uac_start_poll();assert(uac_ctrl_busy && live==1);
+    uac_start_poll();assert(live==1);complete(uac_ctrl,0);assert(live==4);stop();
+    resource_state=1;uac_start(&config,USB_SPEED_HIGH);assert(live==0);
+    resource_state=3;uac_start_poll();assert(!uac_wait_resources && live==0 && uac_health.state==UAC_HEALTH_FAULT_HELD);
+    assert(uac_stop());
+    resource_state=1;uac_start(&config,USB_SPEED_HIGH);gone=true;assert(uac_stop());
+    gone=false;resource_state=2;uac_start_poll();assert(live==0);
+    uac_start(&config,USB_SPEED_HIGH);resource_state=3;complete(uac_ctrl,0);
+    assert(live==0 && uac_health.state==UAC_HEALTH_FAULT_HELD);stop();resource_state=2;
+#endif
     return 0;
 }

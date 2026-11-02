@@ -5,6 +5,16 @@ revision is **103 (v1.3)**. It does not relax the native firmware's minimum
 revision 302, replace its esp-hal/esp-rtos startup, or activate product owners.
 See the [arrival evidence and assessment](../../docs/boards/JC1060_ARRIVAL_2026-10-30.md).
 
+The `deck-engine` candidate prepares both decks' permanent PCM rings, decoder,
+checkpoint and encoded stores on the SD owner before UAC activation. The USB
+client polls UNINITIALIZED/PREPARING/READY/FAILED without blocking event/MIDI
+handling; only READY permits interface startup and prefill. Resource readiness
+does not grant a media lease. Failure/removal is terminal until reboot; published
+rings remain alive. Lower diagnostic profiles retain their previous startup.
+See the [implementation record](../../docs/reviews/2026-11-02-resource-readiness.md)
+for verification and open physical gates. This candidate is not qualified or
+installed; s07 remains the accepted image.
+
 ## Reproducible offline tools
 
 S5 adds an independent `--variant memory-task` profile, selected by
