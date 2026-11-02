@@ -1,0 +1,10 @@
+{
+  "status": "NORMAL_TWO_DECK_REJECTED_S07_RESTORED_AND_OWNER_CONFIRMED",
+  "executed_predecessors_now": 40,
+  "installed_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "independent_full_postwrite_sha256": "7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6",
+  "normal_candidate": "REJECTED; cold/idle pass, single MP3 listening confirmed, both-playing underruns and packet error",
+  "restore_status": "Full readback/cold boot/owner sound Pause CUE confirmed; monitors closed",
+  "next": "Offline source-supply/USB analysis; new registration must include all 40 executed predecessors",
+  "native_minimum": 302
+}

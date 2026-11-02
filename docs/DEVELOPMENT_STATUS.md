@@ -1,5 +1,17 @@
 # Current development status
 
+Latest [normal-engine physical result](reviews/2026-11-02-normal-engine-device.md):
+**two-deck REJECTED**, s07 restored/full-readback/cold/listening confirmed.
+Cold/idle passes at 2397 us; individual MP3 listening passes with max 3214 us
+headroom target failure. Both playing: underruns 4765/5003, packet_errors 1,
+source supply 0/0, max 4982 us. PFL and N03-N08 stay open/NOT_RUN. Current
+executed ancestry **40**, full flash
+`7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6`.
+All monitors closed; dual-copy completed archive verified. Next is offline
+source-supply/USB service root-cause measurement design, then new reviewed
+40/41-plan registration; no threshold increase, normal promotion or merge.
+The paragraphs below describe historical preparation checkpoints.
+
 Latest tool checkpoint: `08a537b` has CodeRabbit **0 issues**, 13 normal monitor
 tests per OS (four real-loop synthetic serial cases), and 13 shared-guard WSL
 tests. Exact CI passed 21/21 and binding `a35aa0c4...` is frozen/dual-copy

@@ -1,0 +1,22 @@
+{
+  "status": "CAPTURED_NOT_QUALIFIED",
+  "mode": "return-s07",
+  "window": "cold",
+  "requested_seconds": 600,
+  "serial_writes": false,
+  "reset_requested": false,
+  "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+  "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "physical_acceptance": "NOT_ASSESSED",
+  "capture_complete": true,
+  "post_boot_seconds": 45.108959699999104,
+  "stopped_by_request": false,
+  "connected_capture_seconds": 45.108959699999104,
+  "connection_interrupted": false,
+  "boot_window_offset": 371,
+  "boot_window_sha256": "2c654143a80a25e3b0d629adddd1f17a44123699faa0424d01cb6b7db42a4be5",
+  "bytes": 15031,
+  "raw_sha256": "30dc8f7cf6afee19dd578254e41e04a8059d650a275ac33a949e049f873858ee",
+  "elapsed_seconds": 71.51627050000025,
+  "fatal_markers": []
+}

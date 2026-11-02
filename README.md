@@ -11,15 +11,22 @@ It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
 Rust backend still requires revision **302** and must not be flashed to this unit.
 JC8012 has no transferable hardware acceptance from JC1060.
 
-Next normal-engine campaign is prepared in
-[draft PR #81](https://github.com/dvucinozd/Ruzina/pull/81): clean package,
-runtime resource telemetry, and 38/39-predecessor candidate/return plans pass
-offline checks. Serial capture fixes and real-loop synthetic tests now have
-CodeRabbit **0 issues**, 21/21 CI and a frozen, dual-copy tool binding. See the
-[exact continuation](docs/reviews/2026-11-02-normal-engine-execution.md).
-No normal-image flash has occurred; accepted s07 remains installed.
+Latest [normal-engine device campaign](docs/reviews/2026-11-02-normal-engine-device.md)
+on [draft PR #81](https://github.com/dvucinozd/Ruzina/pull/81) is **REJECTED**
+for two-deck playback. Cold/idle pass at **2397 us** maximum; each MP3 source
+alone is owner-confirmed, but misses the <=3000 us headroom target (3214 us).
+Both together drain their buffers: **4765/5003 underruns**, one USB packet
+error, fill max **4982 us**. PFL and N03-N08 are not accepted/run after the stop.
+Source/tool review, 21/21 CI and dual-copy evidence are retained separately.
 
-Latest result: [resource readiness before UAC](docs/reviews/2026-11-02-resource-readiness-device.md),
+Exact accepted **s07 is restored** with full readback, physical cold boot and
+owner-confirmed sound/Pause/CUE. All monitors are closed. Current executed
+history is **40**, whole flash
+`7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6`.
+Next: offline per-deck producer/SD/USB service analysis and a separately reviewed,
+registered diagnostic; no normal promotion or automatic merge.
+
+Earlier result: [resource readiness before UAC](docs/reviews/2026-11-02-resource-readiness-device.md),
 [draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80). Preparing both
 permanent deck bundles before audio activation passes three cold idle windows:
 callback maxima **2008 / 1847 / 1757 us**, zero >3000/>=6000 crossings across
@@ -27,12 +34,12 @@ callback maxima **2008 / 1847 / 1757 us**, zero >3000/>=6000 crossings across
 Calibrations pass, with zero USB/idle errors. Host/target checks, both exact-parent
 CodeRabbit reviews (0 issues), clean packages and source/tool CI pass separately.
 
-Exact accepted s07 is restored with whole-flash readback, cold boot and owner
-sound/Pause/CUE confirmation. All monitors are closed. Future recovery needs
-**38** predecessors; current independent full hash is
+At that earlier checkpoint, exact accepted s07 was restored with whole-flash
+readback, cold boot and owner sound/Pause/CUE confirmation. Recovery then needed
+**38** predecessors; the independent full hash then was
 `1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe`.
-This passes the registered idle timing gate. Normal two-deck MAIN/PFL,
-LOAD/seek and I02-I13 still require a separately registered normal-image campaign.
+That passed the registered idle timing gate. The later normal-image result
+above supersedes its current-state/next-step status.
 
 Historical device checkpoint: the [packetizer placement comparison](docs/reviews/2026-11-02-pack-placement-device.md)
 completed three cold boots per image plus separate steady idle. Control maxima
@@ -41,7 +48,7 @@ unchanged >=6000 us gate. Narrow IRAM placement is insufficient and is not
 enabled for the product. Exact s07 was restored/readback/cold-boot verified;
 the owner confirms sound/Pause/CUE, with 20.112 s captured playback and zero
 underruns/USB errors. That checkpoint had **36** executed predecessors; current
-ancestry is **38** above. The [service-budget decision](docs/reviews/2026-11-02-usb-service-and-resource-decision.md)
+ancestry is **40** above. The [service-budget decision](docs/reviews/2026-11-02-usb-service-and-resource-decision.md)
 led to the completed resource-readiness campaign above, which supersedes its
 earlier next-step instructions.
 The paragraphs below retain earlier per-image checkpoints and their limits.

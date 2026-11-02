@@ -1,6 +1,19 @@
 # Rust M2.5 development handoff
 
-Current continuation (23:21 Zagreb): exclusive-port fix plus real-loop synthetic
+Current device state: read the [normal-engine rejection and next ordered work](reviews/2026-11-02-normal-engine-device.md).
+Cold/idle max 2397 us passes; each MP3 alone is owner-confirmed with no errors,
+but max 3214 us misses the headroom target. Two simultaneous MP3 sources drain
+both rings, underruns 4765/5003 and one USB packet error (fill max 4982 us):
+registered stop, no PFL acceptance or N03-N08 extension. Exact s07 was restored,
+full-readback/cold/owner sound-Pause-CUE confirmed; 14.052 captured playback
+seconds have zero errors. Tools closed. Current ancestry **40**, full hash
+`7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6`.
+The 37668270-byte completed archive `500b8398...` has matching CRC/members/secondary.
+Next is offline producer/decode/SD/USB-service instrumentation design, then
+review/CI and a new 40/41-predecessor diagnostic registration. No new device
+work, limit increase, normal promotion or merge follows from this rejection.
+
+Historical preparation (23:21 Zagreb): exclusive-port fix plus real-loop synthetic
 tests are published as `08a537b20310347a842a0efdef500c826e4baa59`.
 CodeRabbit against `3841b7f` completed with **0 issues**. All 13 normal-monitor
 tests pass on Windows/WSL, including four real-loop fake-serial cases; 13 shared
@@ -10,7 +23,7 @@ this checkpoint before normal device access. Read the latest record rather than 
 historical rate-limit paragraphs below. Registered firmware/runbook/plans are
 unchanged; native minimum remains 302 and the unit uses rev103 IDF only.
 
-Active next campaign: `ogranak/jc1060-normal-engine-campaign`, draft
+Historical next-campaign preparation: `ogranak/jc1060-normal-engine-campaign`, draft
 [PR #81](https://github.com/dvucinozd/Ruzina/pull/81) above #80. Read
 [normal execution checkpoint](reviews/2026-11-02-normal-engine-execution.md)
 and the byte-frozen [runbook](reviews/2026-11-02-normal-engine-campaign.md).

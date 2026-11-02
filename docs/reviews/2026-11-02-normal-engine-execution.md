@@ -3,7 +3,12 @@
 Date: 2026-11-02. Continues the frozen
 [functional runbook](2026-11-02-normal-engine-campaign.md). Do not edit that
 runbook under an active registration; its byte hash is part of preflight.
-Status: REVIEWED_TOOLS_BOUND_ARCHIVED / OFFLINE_REGISTERED / NOT_FLASHED.
+Current status: **EXECUTED / TWO_DECK_REJECTED / S07_RESTORED_OWNER_CONFIRMED**.
+Read the [device result and exact next work](2026-11-02-normal-engine-device.md)
+and [current progress](evidence/2026-11-02-normal-engine/device-progress.json).
+Current ancestry is40/full `7875f650...`, with all monitors closed. The source,
+registration and review checkpoint text below retains its original sequence;
+its earlier NOT_FLASHED/38-predecessor statements are historical.
 Draft [PR #81](https://github.com/dvucinozd/Ruzina/pull/81) is stacked above #80.
 
 Firmware source `886127e0714c15cb096cc3b86798fbacba1773f7` passed exact-parent

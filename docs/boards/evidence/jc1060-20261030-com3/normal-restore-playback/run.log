@@ -1,0 +1,177 @@
+heartbeat=52 uptime_us=52372212
+heartbeat=53 uptime_us=53372212
+heartbeat=54 uptime_us=54372212
+heartbeat=55 uptime_us=55372213
+heartbeat=56 uptime_us=56372212
+heartbeat=57 uptime_us=57372212
+heartbeat=58 uptime_us=58372212
+heartbeat=59 uptime_us=59372212
+heartbeat=60 uptime_us=60372212
+heartbeat=61 uptime_us=61372212
+heartbeat=62 uptime_us=62372212
+heartbeat=63 uptime_us=63372212
+heartbeat=64 uptime_us=64372212
+heartbeat=65 uptime_us=65372212
+heartbeat=66 uptime_us=66372213
+heartbeat=67 uptime_us=67372212
+heartbeat=68 uptime_us=68372212
+heartbeat=69 uptime_us=69372212
+heartbeat=70 uptime_us=70372212
+heartbeat=71 uptime_us=71372212
+heartbeat=72 uptime_us=72372212
+heartbeat=73 uptime_us=73372212
+heartbeat=74 uptime_us=74372213
+heartbeat=75 uptime_us=75372212
+heartbeat=76 uptime_us=76372212
+heartbeat=77 uptime_us=77372212
+heartbeat=78 uptime_us=78372212
+heartbeat=79 uptime_us=79372212
+heartbeat=80 uptime_us=80372212
+heartbeat=81 uptime_us=81372212
+heartbeat=82 uptime_us=82372212
+heartbeat=83 uptime_us=83372212
+heartbeat=84 uptime_us=84372213
+heartbeat=85 uptime_us=85372213
+heartbeat=86 uptime_us=86372212
+heartbeat=87 uptime_us=87372212
+usb_attach n=2 address=2 speed=HIGH usb=0200 vid=2b73 pid=0045 class=00/00/00 mps0=64 configs=1 config=1 total=451 interfaces=7 max_power_ma=500 manufacturer="AlphaTheta Corporation" product="DDJ-FLX4"
+usb_iad first=0 count=3 class=01/00/00
+usb_iface number=0 alt=0 endpoints=0 class=01/01/00
+usb_iface number=1 alt=0 endpoints=0 class=01/02/00
+usb_iface number=1 alt=1 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=576 interval=4
+usb_iface number=1 alt=2 endpoints=1 class=01/02/00
+usb_ep address=01 attributes=0d mps=384 interval=4
+usb_iface number=2 alt=0 endpoints=0 class=01/02/00
+usb_iface number=2 alt=1 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=288 interval=4
+usb_iface number=2 alt=2 endpoints=1 class=01/02/00
+usb_ep address=81 attributes=0d mps=192 interval=4
+usb_iad first=3 count=2 class=01/00/00
+usb_iface number=3 alt=0 endpoints=0 class=01/01/00
+usb_iface number=4 alt=0 endpoints=2 class=01/03/00
+usb_ep address=82 attributes=02 mps=512 interval=0
+usb_ep address=03 attributes=02 mps=512 interval=0
+usb_iad first=5 count=1 class=03/00/00
+usb_iface number=5 alt=0 endpoints=2 class=03/00/00
+usb_ep address=05 attributes=03 mps=64 interval=4
+usb_ep address=84 attributes=03 mps=64 interval=4
+usb_iad first=6 count=1 class=ff/f0/00
+usb_iface number=6 alt=0 endpoints=2 class=ff/f0/00
+usb_ep address=86 attributes=02 mps=512 interval=0
+usb_ep address=07 attributes=02 mps=512 interval=0
+usb_config_walk interfaces=11 endpoints=10 class_specific=25 complete=1
+usb_midi profile=1 interface=4 in=82 out=03 mps=512 claim=ESP_OK out=ESP_OK lamp_ms=1500
+usb_uac interface=1 alt=2 ep=01 mps=384 channels=4 bytes=2 rate=48000 freq_control=1 headphones=3/4 claim=ESP_OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6
+heartbeat=88 uptime_us=88372227
+heartbeat=89 uptime_us=89372213
+midi_lamp on=0
+heartbeat=90 uptime_us=90372213
+midi_event deck=0 control=BrowsePress(41) kind=1 value=1 max=1
+midi_ui action=2 deck=0 value=0
+midi_event deck=0 control=BrowsePress(41) kind=1 value=0 max=1
+heartbeat=91 uptime_us=91372213
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7120 denied_commands=0 stack_free=5224
+load_detail index=0 bpm_x100=12000 duration_ms=29000 key=Ab beats=60 cues=0 memory=0 peaks=400 peak_fnv=49da89cf stack_free=59084
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7200 denied_commands=0 stack_free=5224
+load_detail index=1 bpm_x100=11992 duration_ms=132000 key=B beats=266 cues=0 memory=0 peaks=400 peak_fnv=573d9142 stack_free=59084
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7280 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7360 denied_commands=0 stack_free=5224
+heartbeat=92 uptime_us=92373022
+rust_sd_owner reads=7440 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7520 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7600 denied_commands=0 stack_free=5224
+load_detail index=2 bpm_x100=10837 duration_ms=728000 key=C beats=1315 cues=0 memory=0 peaks=400 peak_fnv=e3208c8d stack_free=59084
+midi_event deck=0 control=BrowseDelta(39) kind=2 value=1 max=0
+midi_ui action=1 deck=0 value=1
+rust_sd_owner reads=7680 denied_commands=0 stack_free=5224
+rust_sd_owner reads=7760 denied_commands=0 stack_free=5224
+load_detail index=3 bpm_x100=8995 duration_ms=279000 key=Ebm beats=418 cues=1 memory=0 peaks=400 peak_fnv=e3973102 stack_free=59084
+heartbeat=93 uptime_us=93372228
+midi_event deck=1 control=Load(40) kind=1 value=1 max=1
+midi_ui action=3 deck=1 value=0
+rust_load pass=1 event=7 value=770 stack_free=31444 psram_free=29117064 psram_min=28635568
+rust_load pass=1 event=8 value=44100 stack_free=31444 psram_free=29117064 psram_min=28635568
+midi_event deck=1 control=Load(40) kind=1 value=0 max=1
+usb_uac_stats transfers=1000 packets=6024 frames=289152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_play_stats played=0 underruns=0 buffered=19631 rate=44100
+rust_sd_owner reads=7840 denied_commands=0 stack_free=5224
+heartbeat=94 uptime_us=94372228
+heartbeat=95 uptime_us=95372228
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+rust_sd_owner reads=7920 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=96 uptime_us=96372230
+rust_sd_owner reads=8000 denied_commands=0 stack_free=5224
+heartbeat=97 uptime_us=97372225
+rust_sd_owner reads=8080 denied_commands=0 stack_free=5224
+heartbeat=98 uptime_us=98372232
+rust_sd_owner reads=8160 denied_commands=0 stack_free=5224
+heartbeat=99 uptime_us=99372228
+rust_sd_owner reads=8240 denied_commands=0 stack_free=5224
+usb_uac_stats transfers=2000 packets=12024 frames=577152 tone_packets=4362 iso_errors=0 packet_errors=0
+deck_play_stats played=209376 underruns=0 buffered=64579 rate=44100
+heartbeat=100 uptime_us=100372227
+rust_sd_owner reads=8320 denied_commands=0 stack_free=5224
+heartbeat=101 uptime_us=101372229
+rust_sd_owner reads=8400 denied_commands=0 stack_free=5224
+heartbeat=102 uptime_us=102372231
+rust_sd_owner reads=8480 denied_commands=0 stack_free=5224
+heartbeat=103 uptime_us=103372229
+rust_sd_owner reads=8560 denied_commands=0 stack_free=5224
+heartbeat=104 uptime_us=104372229
+rust_sd_owner reads=8640 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+heartbeat=105 uptime_us=105372229
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+usb_uac_stats transfers=3000 packets=18024 frames=865152 tone_packets=9432 iso_errors=0 packet_errors=0
+deck_play_stats played=452736 underruns=0 buffered=65504 rate=44100
+heartbeat=106 uptime_us=106372213
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+rust_load pass=1 event=7 value=770 stack_free=31444 psram_free=29117064 psram_min=28635568
+rust_load pass=1 event=8 value=44100 stack_free=31444 psram_free=29117064 psram_min=28635568
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+rust_sd_owner reads=8720 denied_commands=0 stack_free=5224
+heartbeat=107 uptime_us=107372237
+midi_event deck=1 control=Cue(1) kind=1 value=1 max=1
+rust_sd_owner reads=8800 denied_commands=0 stack_free=5224
+rust_load pass=1 event=7 value=770 stack_free=31444 psram_free=29117064 psram_min=28635568
+rust_load pass=1 event=8 value=44100 stack_free=31444 psram_free=29117064 psram_min=28635568
+midi_event deck=1 control=Cue(1) kind=1 value=0 max=1
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+rust_sd_owner reads=8880 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=108 uptime_us=108372228
+rust_sd_owner reads=8960 denied_commands=0 stack_free=5224
+heartbeat=109 uptime_us=109372229
+rust_sd_owner reads=9040 denied_commands=0 stack_free=5224
+heartbeat=110 uptime_us=110372227
+rust_sd_owner reads=9120 denied_commands=0 stack_free=5224
+heartbeat=111 uptime_us=111372229
+rust_sd_owner reads=9200 denied_commands=0 stack_free=5224
+usb_uac_stats transfers=4000 packets=24024 frames=1153152 tone_packets=13290 iso_errors=0 packet_errors=0
+deck_play_stats played=637920 underruns=0 buffered=64918 rate=44100
+heartbeat=112 uptime_us=112372233
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+rust_sd_owner reads=9280 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+heartbeat=113 uptime_us=113372228
+heartbeat=114 uptime_us=114372213
+heartbeat=115 uptime_us=115372213
+heartbeat=116 uptime_us=116372213
+heartbeat=117 uptime_us=117372213
+usb_uac_stats transfers=5000 packets=30024 frames=1441152 tone_packets=14052 iso_errors=0 packet_errors=0
+deck_play_stats played=674496 underruns=0 buffered=65490 rate=44100
+heartbeat=118 uptime_us=118372213
+heartbeat=119 uptime_us=119372213
+heartbeat=120 uptime_us=120372213
+heartbeat=121 uptime_us=121372213
+heartbeat=122 uptime_us=122372213
+heartbeat=123 uptime_us=123372213
