@@ -90,13 +90,21 @@ class NormalPolicyTests(unittest.TestCase):
             def close(self):self.closed=True
         cold=CaptureCoverage('cold',600,0)
         port=Port()
-        self.assertFalse(open_capture_port(port,cold,PortGone))
+        self.assertFalse(open_capture_port(port,cold,PortGone,lambda:False))
         self.assertTrue(port.closed)
         self.assertTrue(cold.active(599))
         self.assertFalse(cold.active(600))
         cold.boot(10)
         for coverage in [cold,CaptureCoverage('idle',60,0),CaptureCoverage('functional',180,0)]:
-            with self.assertRaises(PortGone):open_capture_port(Port(),coverage,PortGone)
+            with self.assertRaises(PortGone):open_capture_port(Port(),coverage,PortGone,lambda:False)
+
+    def test_listed_port_open_errors_are_reported_immediately(self):
+        class AccessDenied(Exception):pass
+        class Port:
+            def open(self):raise AccessDenied('exclusive access')
+        cold=CaptureCoverage('cold',600,0)
+        with self.assertRaisesRegex(AccessDenied,'exclusive access'):
+            open_capture_port(Port(),cold,AccessDenied,lambda:True)
 
 
 if __name__=='__main__':unittest.main()

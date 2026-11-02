@@ -130,3 +130,11 @@ retries that `SerialException` solely in the bounded cold pre-boot wait and
 keeps all post-start/open failures invalid. Eight policy/coverage tests pass on
 Windows; exact review/CI for this follow-up remains required. The finding and
 test log are retained. No device access or new binding has occurred.
+
+`3841b7f` passed its own 21/21 CI ([host #560](https://github.com/dvucinozd/Ruzina/actions/runs/41527966834),
+[legacy #83](https://github.com/dvucinozd/Ruzina/actions/runs/41527966800)).
+The next review found one minor issue: a listed but exclusively held port was
+retried like a disappearing port. The follow-up re-enumerates after an open
+failure and permits the bounded cold pre-boot retry only if COM3 is absent.
+Listed-port access/driver failures propagate immediately. Nine tests now pass
+on Windows, including the exclusive-access case; fresh review/CI is pending.

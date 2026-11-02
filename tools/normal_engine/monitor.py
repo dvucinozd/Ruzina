@@ -67,12 +67,12 @@ def capture_complete(kind, connected_seconds, requested, post_boot, stopped, int
     return connected_seconds >= requested
 
 
-def open_capture_port(port, coverage, serial_error):
+def open_capture_port(port, coverage, serial_error, port_present):
     """Tolerate enumeration/open races only during the permitted cold pre-boot wait."""
     try:
         port.open()
     except serial_error:
-        if coverage.kind != 'cold' or coverage.since is not None:
+        if coverage.kind != 'cold' or coverage.since is not None or port_present():
             raise
         port.close()
         return False
@@ -133,7 +133,8 @@ def main():
                     port.dtr = False
                     port.rts = False
                     port.port = args.port
-                    if not open_capture_port(port, coverage, serial.SerialException):
+                    if not open_capture_port(port, coverage, serial.SerialException,
+                                             lambda: any(p.device == args.port for p in list_ports.comports())):
                         port = None
                         time.sleep(.2)
                         continue
