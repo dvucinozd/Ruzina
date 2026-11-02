@@ -13,6 +13,12 @@ def delta(after, before):
     return (int(after) - int(before)) & MASK
 
 
+def words(fields, names):
+    """Require complete unsigned scalar fields, including on truncated lines."""
+    values = [fields[name] for name in names.split()]
+    return all(re.fullmatch(r'[0-9]+', v) and int(v) <= MASK for v in values)
+
+
 def analyze(data):
     groups, calibrations, irq_calibrations, distributions, histograms = {}, {}, {}, {}, {}
     partial = 0
@@ -58,11 +64,17 @@ def analyze(data):
                 and sum(int(s['us']) for s in stages.values()) == int(r['rust_us'])
                 and int(r['rust_us']) + int(r['outer_us']) == whole)
             cal, ic = calibrations.get(gen, {}), irq_calibrations.get(gen, {})
-            sched_cal = (cal.get('passed') == '1' and cal['before_valid'] == cal['after_valid'] == '1'
+            sched_cal = (cal.get('passed') == '1'
+                and words(cal, 'wall_before wall_after switches_before switches_after away_before away_after')
+                and cal['before_valid'] == cal['after_valid'] == '1'
                 and delta(cal['switches_after'], cal['switches_before']) > 0
                 and 0 < delta(cal['away_after'], cal['away_before']) <= delta(cal['wall_after'], cal['wall_before']))
-            irq_cal = (ic.get('passed') == '1' and ic['before_valid'] == ic['after_valid'] == '1'
-                and delta(ic['entries_after'], ic['entries_before']) > 0)
+            irq_cal = (ic.get('passed') == '1'
+                and words(ic, 'entries_before entries_after us_before us_after nested_before nested_after wall_before wall_after')
+                and ic['before_valid'] == ic['after_valid'] == '1'
+                and 0 <= delta(ic['nested_after'], ic['nested_before']) < delta(ic['entries_after'], ic['entries_before'])
+                and (delta(ic['nested_after'], ic['nested_before']) > 0
+                     or delta(ic['us_after'], ic['us_before']) <= delta(ic['wall_after'], ic['wall_before'])))
             absolute = (delta(c['away_after'], c['away_before']) == int(r['away_us'])
                 and delta(c['switches_after'], c['switches_before']) == int(r['switches']))
             item['scheduler_usable'] = (item['partition_verified'] and sched_cal and absolute

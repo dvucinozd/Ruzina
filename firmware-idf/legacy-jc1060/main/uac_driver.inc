@@ -234,10 +234,10 @@ static void uac_log_task(void *unused)
                sample.cal_before.switches,sample.cal_after.switches);
         printf("uac_profile_irq_calibration gen=%" PRIu32 " passed=%u before_valid=%u after_valid=%u"
                " entries_before=%" PRIu32 " entries_after=%" PRIu32 " us_before=%" PRIu32 " us_after=%" PRIu32
-               " nested_before=%" PRIu32 " nested_after=%" PRIu32 "\n",
+               " nested_before=%" PRIu32 " nested_after=%" PRIu32 " wall_before=%" PRIu32 " wall_after=%" PRIu32 "\n",
                sample.cal_generation,(unsigned)sample.irq_cal_passed,(unsigned)sample.irq_cal_before.valid,(unsigned)sample.irq_cal_after.valid,
                sample.irq_cal_before.entries,sample.irq_cal_after.entries,sample.irq_cal_before.us,sample.irq_cal_after.us,
-               sample.irq_cal_before.nested,sample.irq_cal_after.nested);
+               sample.irq_cal_before.nested,sample.irq_cal_after.nested,sample.irq_cal_before.wall_us,sample.irq_cal_after.wall_us);
         uac_log_profile("worst",&sample.worst,sample.profile_seen);
         uac_log_profile("latest_over",&sample.over,sample.over_seen);
         uac_log_profile("latest_headroom",&sample.headroom,sample.headroom_seen);

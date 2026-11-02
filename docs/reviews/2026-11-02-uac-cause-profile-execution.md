@@ -90,6 +90,18 @@ not read an uninitialized systimer.
 
 Evidence root: `D:/BoardEvidence/JC1060-20261030-COM3/uac-cause-20261102/`.
 
+### Source review correction
+
+Source `7fc8bdb` passed fresh normal and profile IDF builds, including the actual
+vector/wrapper/IRAM checks. CodeRabbit's exact-parent review found one minor
+but valid analyzer defect: a truncated IRQ calibration line could omit time
+and nesting fields yet grant attribution. The correction requires all scalar
+calibration fields, unsigned bounds and interval geometry, and logs the IRQ
+calibration window. Regression tests cover truncation at every added field,
+negative/oversized/malformed words and impossible durations. Corrected-source
+clean packages and a repeated review are required; the first packages are not
+registered for flashing.
+
 ## Exact next physical gates
 
 No COM3 access in this implementation batch. Before device entry: publish and
