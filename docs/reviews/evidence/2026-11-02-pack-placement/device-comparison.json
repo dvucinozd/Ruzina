@@ -1,0 +1,138 @@
+{
+  "status": "MEASURED_NOT_QUALIFIED_S07_RETURN_PENDING",
+  "rows": [
+    {
+      "variant": "control",
+      "boot": 1,
+      "samples": 7000,
+      "ge_6000": 2,
+      "max_us": 15827,
+      "worst_ordinal": 472,
+      "graph_us": 7022,
+      "pack_us": 5624,
+      "irq_bounds_us": [
+        1046,
+        1102
+      ],
+      "scheduler_switches": 0,
+      "log_sha256": "2ff313be0b8448d2245f8d7fbd31130f45759b7b6502d2289d3f17098de55776"
+    },
+    {
+      "variant": "control",
+      "boot": 2,
+      "samples": 7000,
+      "ge_6000": 3,
+      "max_us": 17386,
+      "worst_ordinal": 470,
+      "graph_us": 6382,
+      "pack_us": 6101,
+      "irq_bounds_us": [
+        2226,
+        2287
+      ],
+      "scheduler_switches": 0,
+      "log_sha256": "49966eeb88f75391b46d69da0eade67af22c8681db6a648f87950efe0d6e3803"
+    },
+    {
+      "variant": "control",
+      "boot": 3,
+      "samples": 7000,
+      "ge_6000": 2,
+      "max_us": 15849,
+      "worst_ordinal": 472,
+      "graph_us": 7054,
+      "pack_us": 5596,
+      "irq_bounds_us": [
+        979,
+        1049
+      ],
+      "scheduler_switches": 0,
+      "log_sha256": "8b8e8ed1683b567eb6c9466789fc41355f16b1b7b9c23ddeb3cb14a8c642aab5"
+    },
+    {
+      "variant": "iram",
+      "boot": 1,
+      "samples": 7000,
+      "ge_6000": 3,
+      "max_us": 14157,
+      "worst_ordinal": 472,
+      "graph_us": 7417,
+      "pack_us": 4042,
+      "irq_bounds_us": [
+        958,
+        1013
+      ],
+      "scheduler_switches": 0,
+      "log_sha256": "ab2acfe3883cb002837e386db25b88fdf93b523222ff2775ddf3ef11ee1112e2"
+    },
+    {
+      "variant": "iram",
+      "boot": 2,
+      "samples": 7000,
+      "ge_6000": 2,
+      "max_us": 13599,
+      "worst_ordinal": 478,
+      "graph_us": 4805,
+      "pack_us": 5873,
+      "irq_bounds_us": [
+        1438,
+        1498
+      ],
+      "scheduler_switches": 0,
+      "log_sha256": "6aad703528a65e31307645314b387ddb3c2347d98b55d2d4669fa92793059cea"
+    },
+    {
+      "variant": "iram",
+      "boot": 3,
+      "samples": 7000,
+      "ge_6000": 3,
+      "max_us": 15548,
+      "worst_ordinal": 472,
+      "graph_us": 6952,
+      "pack_us": 5564,
+      "irq_bounds_us": [
+        797,
+        848
+      ],
+      "scheduler_switches": 0,
+      "log_sha256": "daa4a6c6b023ef8ee0557d8c494cef276748d6232df6e4349d5b58db0d3d4a3b"
+    }
+  ],
+  "totals": {
+    "control": {
+      "cold_samples": 21000,
+      "ge_6000": 7,
+      "maxima_us": [
+        15827,
+        17386,
+        15849
+      ],
+      "median_max_us": 15849,
+      "steady_deltas": {
+        "count": 9000,
+        "max_us": 0,
+        "gt_3000": 0,
+        "ge_6000": 0
+      }
+    },
+    "iram": {
+      "cold_samples": 21000,
+      "ge_6000": 8,
+      "maxima_us": [
+        14157,
+        13599,
+        15548
+      ],
+      "median_max_us": 14157,
+      "steady_deltas": {
+        "count": 9000,
+        "max_us": 0,
+        "gt_3000": 0,
+        "ge_6000": 0
+      }
+    }
+  },
+  "criterion": "BOTH_FAIL_GE_6000_US",
+  "decision": "Narrow packetizer IRAM placement is insufficient to close timing gate. No cache-mechanism proof or product optimization acceptance. No further variant in this campaign; restore s07.",
+  "limits": "Three sequential cold observations per image; no randomized/interleaved order. Idle only. Same instrumentation, absolute observer cost not removed. Stage/IRQ values are wall time, not exclusive CPU categories."
+}

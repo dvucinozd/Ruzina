@@ -11,6 +11,16 @@ It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
 Rust backend still requires revision **302** and must not be flashed to this unit.
 JC8012 has no transferable hardware acceptance from JC1060.
 
+Latest device checkpoint: the [packetizer placement comparison](docs/reviews/2026-11-02-pack-placement-device.md)
+completed three cold boots per image plus separate steady idle. Control maxima
+were 15827/17386/15849 us; IRAM maxima 14157/13599/15548 us. Both fail the
+unchanged >=6000 us gate. Narrow IRAM placement is insufficient and is not
+enabled for the product. Exact s07 was restored/readback/cold-boot verified;
+the owner confirms sound/Pause/CUE, with 20.112 s captured playback and zero
+underruns/USB errors. All monitors are closed. Future recovery needs **36**
+executed predecessors. Next is the [offline service-budget/design decision](docs/reviews/2026-11-02-post-placement-next-step.md).
+The paragraphs below retain earlier per-image checkpoints and their limits.
+
 The latest accepted playback record in this repository is
 [deck-play](docs/reviews/2026-11-01-legacy-deck-play.md): one deck reads the SD
 Rekordbox export and plays FLAC/MP3/WAV through the DDJ-FLX4 headphones, alongside
@@ -45,8 +55,8 @@ switch deltas. IRQ/cache/observer effects and runtime hook-liveness remain open;
 these numbers do not establish pure CPU cost or a fix. A separate 9000-callback
 steady window adds no threshold crossings. S07 is restored and owner-confirmed
 again, with zero captured underruns/USB errors; all monitors are closed.
-Next: follow the [cache/compute experiment plan](docs/reviews/2026-11-02-uac-cache-compute-follow-up.md)
-before resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.
+That checkpoint led to the [cache/compute experiment plan](docs/reviews/2026-11-02-uac-cache-compute-follow-up.md);
+the latest completed placement result and next action are above.
 The [calibrated cause experiment](docs/reviews/2026-11-02-uac-cause-profile-execution.md)
 has now [run on the exact rev103 unit](docs/reviews/2026-11-02-uac-cause-profile-device.md)
 in [PR #76](https://github.com/dvucinozd/Ruzina/pull/76). Both liveness
@@ -54,7 +64,8 @@ calibrations pass; the 14812 us worst callback has zero observed task-switch
 deltas and 1593–1653 us of covered IRQ dispatch inside the call. Timing still
 fails; uncovered wall time is not pure CPU cost. Separate steady idle adds no
 crossings. S07 is restored/readback/cold-boot verified and owner-confirmed for
-normal sound/Pause/CUE; all monitors are closed. Future plans need 33 predecessors.
+normal sound/Pause/CUE; all monitors were closed. That checkpoint required 33 predecessors;
+the later completed placement campaign raises the current count to 36.
 Source cues/analysis, loops, scratch, keylock and FX wiring, product
 UI/settings, C6 networking and OTA remain separate subsequent development work.
 See the [current status](docs/DEVELOPMENT_STATUS.md) and

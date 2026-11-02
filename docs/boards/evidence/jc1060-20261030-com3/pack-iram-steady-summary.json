@@ -1,0 +1,19 @@
+{
+  "status": "STEADY_CAPTURED_NOT_QUALIFIED",
+  "scenario": "iram-steady",
+  "anchor": "iram-cold-3",
+  "anchor_boot_elf": "cc47d1eed3fd76e8673e2fbe17ed3d540eabe35cb94409770a9b805d04ce7094",
+  "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+  "log_sha256": "40bcf3337f68b34b8c0e37a4b2c49ab1d2b344b368c65d135e4ddf82d69411a7",
+  "duration_seconds": 60.1,
+  "callback_first": "uac_fill_phase phase=callback generation=1 scope=BOOT count=9000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+  "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=18000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+  "counter_deltas": {
+    "count": 9000,
+    "max_us": 0,
+    "gt_3000": 0,
+    "ge_6000": 0
+  },
+  "histograms": 10,
+  "monitor_closed": true
+}

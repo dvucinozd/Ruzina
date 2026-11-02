@@ -2,7 +2,9 @@
 
 Continues the [peer continuity repairs](2026-11-02-peer-continuity-fixes.md)
 and [cache/compute plan](2026-11-02-uac-cache-compute-follow-up.md).
-Status: OFFLINE_IMPLEMENTED / NOT_FLASHED; target result NOT_RUN.
+Historical preparation status: OFFLINE_IMPLEMENTED / NOT_FLASHED.
+The later [completed device result](2026-11-02-pack-placement-device.md) supersedes
+that execution state: both timing gates fail; exact s07 is restored/confirmed.
 Native minimum 302, rev103 IDF backend, gain, DSP, priorities and all physical
 recovery requirements remain unchanged. No COM3 access is part of this batch.
 
@@ -169,3 +171,7 @@ observer cost removed; conclusions concern comparable instrumented images.
 Reject >=6000 us, target <=3000 us, require valid calibration/windows/partitions.
 After variant, or earlier control failure, restore/readback/cold/listen s07.
 Physical topology/ROM entry and all device measurements are still NOT_RUN.
+
+The statement above is the frozen pre-device checkpoint. The subsequent
+[comparison and recovery](2026-11-02-pack-placement-device.md) executed control,
+IRAM and IRAM-return (control-return unused), with 36 current predecessors.

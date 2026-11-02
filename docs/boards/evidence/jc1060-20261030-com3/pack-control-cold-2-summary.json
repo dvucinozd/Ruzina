@@ -1,0 +1,48 @@
+{
+  "scenario": "control-cold-2",
+  "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+  "log_sha256": "49966eeb88f75391b46d69da0eade67af22c8681db6a648f87950efe0d6e3803",
+  "boot_window_offset": 43116,
+  "boot_window_sha256": "64a5bfa91055505b03fb6a1c8b5380854f94525ab89e56e8d72051a82b5e33eb",
+  "boot_elf": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f",
+  "bytes": 97111,
+  "monitor_closed": true,
+  "library_owner_confirmation": "vra\u0107a",
+  "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=1016 first_after_iso_submit=1 max_us=17386 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+  "calibrations": "PASS",
+  "histograms": 7,
+  "records": [
+    {
+      "kind": "worst",
+      "generation": "1",
+      "ordinal": "470",
+      "partition_verified": true,
+      "scheduler_usable": true,
+      "irq_dispatch_usable": true,
+      "scheduler_away_inside_whole_bounds_us": [
+        0,
+        0
+      ],
+      "irq_dispatch_inside_whole_bounds_us": [
+        2226,
+        2287
+      ]
+    },
+    {
+      "kind": "latest_over",
+      "generation": "1",
+      "ordinal": "471",
+      "partition_verified": true,
+      "scheduler_usable": true,
+      "irq_dispatch_usable": true,
+      "scheduler_away_inside_whole_bounds_us": [
+        0,
+        0
+      ],
+      "irq_dispatch_inside_whole_bounds_us": [
+        508,
+        536
+      ]
+    }
+  ]
+}

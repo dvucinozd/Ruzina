@@ -1,0 +1,831 @@
+{
+  "status": "PACK_PLACEMENT_MEASURED_S07_RESTORED_AND_CONFIRMED",
+  "installed_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "programmer": {
+    "mode": "control",
+    "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+    "plan_sha256": "b2786feaec0e3be6621a4a2d95011d7d671487feef4ba4abdf66b5e024149016",
+    "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+    "flash_write_attempted": true,
+    "efuse_write": false,
+    "reset_requested": false,
+    "predecessor_plans": 33,
+    "chip": "ESP32-P4",
+    "revision": 103,
+    "mac": "e8:f6:0a:e7:22:1d",
+    "security": {
+      "flags": 0,
+      "flash_crypt_cnt": 0,
+      "key_purposes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        12
+      ],
+      "chip_id": 18,
+      "api_version": 2,
+      "parsed_flags": {
+        "SECURE_BOOT_EN": false,
+        "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+        "SECURE_DOWNLOAD_ENABLE": false,
+        "SECURE_BOOT_KEY_REVOKE0": false,
+        "SECURE_BOOT_KEY_REVOKE1": false,
+        "SECURE_BOOT_KEY_REVOKE2": false,
+        "SOFT_DIS_JTAG": false,
+        "HARD_DIS_JTAG": false,
+        "DIS_USB": false,
+        "DIS_DOWNLOAD_DCACHE": false,
+        "DIS_DOWNLOAD_ICACHE": false
+      }
+    },
+    "rdid": "0x184068",
+    "prewrite_sha256": "4324fee5c109cc9fe28aebbafa8f5cf2116ee4950afce374be5ef6f81aa2ae68",
+    "expected_prewrite_sha256": "4324fee5c109cc9fe28aebbafa8f5cf2116ee4950afce374be5ef6f81aa2ae68",
+    "full_predecessor_match": true,
+    "readbacks": [
+      {
+        "offset": 8192,
+        "bytes": 24576,
+        "sha256": "0e2646a8f74b0a41afd01c75136f2d05787be5543d556d82ae13954f3d5a0114"
+      },
+      {
+        "offset": 32768,
+        "bytes": 4096,
+        "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+      },
+      {
+        "offset": 65536,
+        "bytes": 823296,
+        "sha256": "5ef87a4dc701bd5de0a9d56493c9730d9fc0732f0f92cd75c42d3e4279e89f1f"
+      }
+    ],
+    "programmer_log_sha256": "3ad01e3f869acff8748873dce848ee6b3297d53ae7d781ec32b8816e38dea7e0"
+  },
+  "monitor_scenario": null,
+  "diagnostic_playback": "NOT_RUN",
+  "s07_restore": "READBACK_COLD_BOOT_OWNER_CONFIRMED",
+  "device_qualification": "NOT_QUALIFIED",
+  "control_cold_1": {
+    "scenario": "control-cold-1",
+    "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+    "log_sha256": "2ff313be0b8448d2245f8d7fbd31130f45759b7b6502d2289d3f17098de55776",
+    "boot_elf": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f",
+    "bytes": 54886,
+    "monitor_closed": true,
+    "library_owner_confirmation": "vra\u0107a",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=990 first_after_iso_submit=1 max_us=15827 max_after_iso_submit=1 gt_3000=3 ge_6000=2 failures=0",
+    "calibrations": "PASS",
+    "histograms": 7,
+    "records": [
+      {
+        "kind": "worst",
+        "generation": "1",
+        "ordinal": "472",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          1046,
+          1102
+        ]
+      },
+      {
+        "kind": "latest_over",
+        "generation": "1",
+        "ordinal": "472",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          1046,
+          1102
+        ]
+      },
+      {
+        "kind": "latest_headroom",
+        "generation": "1",
+        "ordinal": "473",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "timing_gate": "BOTH_FAIL_GE_6000_US",
+  "control_cold_2": {
+    "scenario": "control-cold-2",
+    "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+    "log_sha256": "49966eeb88f75391b46d69da0eade67af22c8681db6a648f87950efe0d6e3803",
+    "boot_window_offset": 43116,
+    "boot_window_sha256": "64a5bfa91055505b03fb6a1c8b5380854f94525ab89e56e8d72051a82b5e33eb",
+    "boot_elf": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f",
+    "bytes": 97111,
+    "monitor_closed": true,
+    "library_owner_confirmation": "vra\u0107a",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=1016 first_after_iso_submit=1 max_us=17386 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+    "calibrations": "PASS",
+    "histograms": 7,
+    "records": [
+      {
+        "kind": "worst",
+        "generation": "1",
+        "ordinal": "470",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          2226,
+          2287
+        ]
+      },
+      {
+        "kind": "latest_over",
+        "generation": "1",
+        "ordinal": "471",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          508,
+          536
+        ]
+      }
+    ]
+  },
+  "control_cold_3": {
+    "scenario": "control-cold-3",
+    "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+    "log_sha256": "8b8e8ed1683b567eb6c9466789fc41355f16b1b7b9c23ddeb3cb14a8c642aab5",
+    "boot_window_offset": 42659,
+    "boot_window_sha256": "14f48e079c8c87bad04363eb4a1b65130bc556995ec0c2efb3245119325f5086",
+    "boot_elf": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f",
+    "bytes": 97186,
+    "monitor_closed": true,
+    "library_owner_confirmation": "vra\u0107a",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=984 first_after_iso_submit=1 max_us=15849 max_after_iso_submit=1 gt_3000=3 ge_6000=2 failures=0",
+    "calibrations": "PASS",
+    "histograms": 7,
+    "records": [
+      {
+        "kind": "worst",
+        "generation": "1",
+        "ordinal": "472",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          979,
+          1049
+        ]
+      },
+      {
+        "kind": "latest_over",
+        "generation": "1",
+        "ordinal": "472",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          979,
+          1049
+        ]
+      },
+      {
+        "kind": "latest_headroom",
+        "generation": "1",
+        "ordinal": "473",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "control_steady": {
+    "status": "STEADY_CAPTURED_NOT_QUALIFIED",
+    "scenario": "control-steady",
+    "anchor": "control-cold-3",
+    "anchor_boot_elf": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f",
+    "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+    "log_sha256": "d3a62498a2ab55f448608cd49b1ddd5d85b5eec42cd5cdf61d7215c8e4239558",
+    "duration_seconds": 60.1,
+    "callback_first": "uac_fill_phase phase=callback generation=1 scope=BOOT count=13000 first_us=984 first_after_iso_submit=1 max_us=15849 max_after_iso_submit=1 gt_3000=3 ge_6000=2 failures=0",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=22000 first_us=984 first_after_iso_submit=1 max_us=15849 max_after_iso_submit=1 gt_3000=3 ge_6000=2 failures=0",
+    "counter_deltas": {
+      "count": 9000,
+      "max_us": 0,
+      "gt_3000": 0,
+      "ge_6000": 0
+    },
+    "histograms": 10,
+    "monitor_closed": true
+  },
+  "monitors": "CLOSED",
+  "iram_programmer": {
+    "mode": "iram",
+    "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+    "plan_sha256": "3e4c9b923bf7ff3483cbe048528f82ac1c11247c3acbd154514f807217b0aac6",
+    "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+    "flash_write_attempted": true,
+    "efuse_write": false,
+    "reset_requested": false,
+    "predecessor_plans": 34,
+    "chip": "ESP32-P4",
+    "revision": 103,
+    "mac": "e8:f6:0a:e7:22:1d",
+    "security": {
+      "flags": 0,
+      "flash_crypt_cnt": 0,
+      "key_purposes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        12
+      ],
+      "chip_id": 18,
+      "api_version": 2,
+      "parsed_flags": {
+        "SECURE_BOOT_EN": false,
+        "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+        "SECURE_DOWNLOAD_ENABLE": false,
+        "SECURE_BOOT_KEY_REVOKE0": false,
+        "SECURE_BOOT_KEY_REVOKE1": false,
+        "SECURE_BOOT_KEY_REVOKE2": false,
+        "SOFT_DIS_JTAG": false,
+        "HARD_DIS_JTAG": false,
+        "DIS_USB": false,
+        "DIS_DOWNLOAD_DCACHE": false,
+        "DIS_DOWNLOAD_ICACHE": false
+      }
+    },
+    "rdid": "0x184068",
+    "prewrite_sha256": "67892cc89c07815662d36217154742c95687eb98e15c253e77b4254774215afd",
+    "expected_prewrite_sha256": "67892cc89c07815662d36217154742c95687eb98e15c253e77b4254774215afd",
+    "full_predecessor_match": true,
+    "readbacks": [
+      {
+        "offset": 8192,
+        "bytes": 24576,
+        "sha256": "bdf1e704226ed06a0e00e1f11da125485078feab58d55867231ebbbf827b9e51"
+      },
+      {
+        "offset": 32768,
+        "bytes": 4096,
+        "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+      },
+      {
+        "offset": 65536,
+        "bytes": 823296,
+        "sha256": "03c697f390653876f9f9e002f9711a3d7e2772ca96533487d1814e88ea2599f7"
+      }
+    ],
+    "programmer_log_sha256": "327e23bb9c9a98f238d1e8202cc5bebca5ce84fb00be7565d6cc421d43d4be7d"
+  },
+  "iram_cold_1": {
+    "scenario": "iram-cold-1",
+    "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+    "log_sha256": "ab2acfe3883cb002837e386db25b88fdf93b523222ff2775ddf3ef11ee1112e2",
+    "boot_window_offset": 352,
+    "boot_window_sha256": "2f17fabc96cc22c2aa7a75fcd501bbef0dbdbe0ac40ca8f156060084da7c19f5",
+    "boot_elf": "cc47d1eed3fd76e8673e2fbe17ed3d540eabe35cb94409770a9b805d04ce7094",
+    "bytes": 54319,
+    "monitor_closed": true,
+    "library_owner_confirmation": "vra\u0107a",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=1017 first_after_iso_submit=1 max_us=14157 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+    "calibrations": "PASS",
+    "histograms": 7,
+    "records": [
+      {
+        "kind": "worst",
+        "generation": "1",
+        "ordinal": "472",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          958,
+          1013
+        ]
+      },
+      {
+        "kind": "latest_over",
+        "generation": "1",
+        "ordinal": "473",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          462,
+          486
+        ]
+      }
+    ]
+  },
+  "iram_cold_2": {
+    "scenario": "iram-cold-2",
+    "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+    "log_sha256": "6aad703528a65e31307645314b387ddb3c2347d98b55d2d4669fa92793059cea",
+    "boot_window_offset": 23585,
+    "boot_window_sha256": "0bbf98e036bf88e4626cd1a73230b0929c1ddedcd1e45f9c9069153ebf98b01d",
+    "boot_elf": "cc47d1eed3fd76e8673e2fbe17ed3d540eabe35cb94409770a9b805d04ce7094",
+    "bytes": 78105,
+    "monitor_closed": true,
+    "library_owner_confirmation": "vra\u0107a",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=973 first_after_iso_submit=1 max_us=13599 max_after_iso_submit=1 gt_3000=4 ge_6000=2 failures=0",
+    "calibrations": "PASS",
+    "histograms": 7,
+    "records": [
+      {
+        "kind": "worst",
+        "generation": "1",
+        "ordinal": "478",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          1438,
+          1498
+        ]
+      },
+      {
+        "kind": "latest_over",
+        "generation": "1",
+        "ordinal": "479",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          1007,
+          1060
+        ]
+      },
+      {
+        "kind": "latest_headroom",
+        "generation": "1",
+        "ordinal": "480",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          0,
+          51
+        ]
+      }
+    ]
+  },
+  "iram_cold_3": {
+    "scenario": "iram-cold-3",
+    "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+    "log_sha256": "daa4a6c6b023ef8ee0557d8c494cef276748d6232df6e4349d5b58db0d3d4a3b",
+    "boot_window_offset": 31042,
+    "boot_window_sha256": "4973b106b2340d238610efea917f1daa0596e369e99db3adddaafe353e5e3a1c",
+    "boot_elf": "cc47d1eed3fd76e8673e2fbe17ed3d540eabe35cb94409770a9b805d04ce7094",
+    "bytes": 85009,
+    "monitor_closed": true,
+    "library_owner_confirmation": "vra\u0107a",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+    "calibrations": "PASS",
+    "histograms": 7,
+    "records": [
+      {
+        "kind": "worst",
+        "generation": "1",
+        "ordinal": "472",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          797,
+          848
+        ]
+      },
+      {
+        "kind": "latest_over",
+        "generation": "1",
+        "ordinal": "473",
+        "partition_verified": true,
+        "scheduler_usable": true,
+        "irq_dispatch_usable": true,
+        "scheduler_away_inside_whole_bounds_us": [
+          0,
+          0
+        ],
+        "irq_dispatch_inside_whole_bounds_us": [
+          319,
+          341
+        ]
+      }
+    ]
+  },
+  "iram_steady": {
+    "status": "STEADY_CAPTURED_NOT_QUALIFIED",
+    "scenario": "iram-steady",
+    "anchor": "iram-cold-3",
+    "anchor_boot_elf": "cc47d1eed3fd76e8673e2fbe17ed3d540eabe35cb94409770a9b805d04ce7094",
+    "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+    "log_sha256": "40bcf3337f68b34b8c0e37a4b2c49ab1d2b344b368c65d135e4ddf82d69411a7",
+    "duration_seconds": 60.1,
+    "callback_first": "uac_fill_phase phase=callback generation=1 scope=BOOT count=9000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+    "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=18000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0",
+    "counter_deltas": {
+      "count": 9000,
+      "max_us": 0,
+      "gt_3000": 0,
+      "ge_6000": 0
+    },
+    "histograms": 10,
+    "monitor_closed": true
+  },
+  "comparison": {
+    "status": "MEASURED_NOT_QUALIFIED_S07_RETURN_PENDING",
+    "rows": [
+      {
+        "variant": "control",
+        "boot": 1,
+        "samples": 7000,
+        "ge_6000": 2,
+        "max_us": 15827,
+        "worst_ordinal": 472,
+        "graph_us": 7022,
+        "pack_us": 5624,
+        "irq_bounds_us": [
+          1046,
+          1102
+        ],
+        "scheduler_switches": 0,
+        "log_sha256": "2ff313be0b8448d2245f8d7fbd31130f45759b7b6502d2289d3f17098de55776"
+      },
+      {
+        "variant": "control",
+        "boot": 2,
+        "samples": 7000,
+        "ge_6000": 3,
+        "max_us": 17386,
+        "worst_ordinal": 470,
+        "graph_us": 6382,
+        "pack_us": 6101,
+        "irq_bounds_us": [
+          2226,
+          2287
+        ],
+        "scheduler_switches": 0,
+        "log_sha256": "49966eeb88f75391b46d69da0eade67af22c8681db6a648f87950efe0d6e3803"
+      },
+      {
+        "variant": "control",
+        "boot": 3,
+        "samples": 7000,
+        "ge_6000": 2,
+        "max_us": 15849,
+        "worst_ordinal": 472,
+        "graph_us": 7054,
+        "pack_us": 5596,
+        "irq_bounds_us": [
+          979,
+          1049
+        ],
+        "scheduler_switches": 0,
+        "log_sha256": "8b8e8ed1683b567eb6c9466789fc41355f16b1b7b9c23ddeb3cb14a8c642aab5"
+      },
+      {
+        "variant": "iram",
+        "boot": 1,
+        "samples": 7000,
+        "ge_6000": 3,
+        "max_us": 14157,
+        "worst_ordinal": 472,
+        "graph_us": 7417,
+        "pack_us": 4042,
+        "irq_bounds_us": [
+          958,
+          1013
+        ],
+        "scheduler_switches": 0,
+        "log_sha256": "ab2acfe3883cb002837e386db25b88fdf93b523222ff2775ddf3ef11ee1112e2"
+      },
+      {
+        "variant": "iram",
+        "boot": 2,
+        "samples": 7000,
+        "ge_6000": 2,
+        "max_us": 13599,
+        "worst_ordinal": 478,
+        "graph_us": 4805,
+        "pack_us": 5873,
+        "irq_bounds_us": [
+          1438,
+          1498
+        ],
+        "scheduler_switches": 0,
+        "log_sha256": "6aad703528a65e31307645314b387ddb3c2347d98b55d2d4669fa92793059cea"
+      },
+      {
+        "variant": "iram",
+        "boot": 3,
+        "samples": 7000,
+        "ge_6000": 3,
+        "max_us": 15548,
+        "worst_ordinal": 472,
+        "graph_us": 6952,
+        "pack_us": 5564,
+        "irq_bounds_us": [
+          797,
+          848
+        ],
+        "scheduler_switches": 0,
+        "log_sha256": "daa4a6c6b023ef8ee0557d8c494cef276748d6232df6e4349d5b58db0d3d4a3b"
+      }
+    ],
+    "totals": {
+      "control": {
+        "cold_samples": 21000,
+        "ge_6000": 7,
+        "maxima_us": [
+          15827,
+          17386,
+          15849
+        ],
+        "median_max_us": 15849,
+        "steady_deltas": {
+          "count": 9000,
+          "max_us": 0,
+          "gt_3000": 0,
+          "ge_6000": 0
+        }
+      },
+      "iram": {
+        "cold_samples": 21000,
+        "ge_6000": 8,
+        "maxima_us": [
+          14157,
+          13599,
+          15548
+        ],
+        "median_max_us": 14157,
+        "steady_deltas": {
+          "count": 9000,
+          "max_us": 0,
+          "gt_3000": 0,
+          "ge_6000": 0
+        }
+      }
+    },
+    "criterion": "BOTH_FAIL_GE_6000_US",
+    "decision": "Narrow packetizer IRAM placement is insufficient to close timing gate. No cache-mechanism proof or product optimization acceptance. No further variant in this campaign; restore s07.",
+    "limits": "Three sequential cold observations per image; no randomized/interleaved order. Idle only. Same instrumentation, absolute observer cost not removed. Stage/IRQ values are wall time, not exclusive CPU categories."
+  },
+  "restore_programmer": {
+    "mode": "iram-return",
+    "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+    "plan_sha256": "728dd1c861c1ecda4b9d3441d88f4f720a8cbc44eec829079ec825342672d771",
+    "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+    "flash_write_attempted": true,
+    "efuse_write": false,
+    "reset_requested": false,
+    "predecessor_plans": 35,
+    "chip": "ESP32-P4",
+    "revision": 103,
+    "mac": "e8:f6:0a:e7:22:1d",
+    "security": {
+      "flags": 0,
+      "flash_crypt_cnt": 0,
+      "key_purposes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        12
+      ],
+      "chip_id": 18,
+      "api_version": 2,
+      "parsed_flags": {
+        "SECURE_BOOT_EN": false,
+        "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+        "SECURE_DOWNLOAD_ENABLE": false,
+        "SECURE_BOOT_KEY_REVOKE0": false,
+        "SECURE_BOOT_KEY_REVOKE1": false,
+        "SECURE_BOOT_KEY_REVOKE2": false,
+        "SOFT_DIS_JTAG": false,
+        "HARD_DIS_JTAG": false,
+        "DIS_USB": false,
+        "DIS_DOWNLOAD_DCACHE": false,
+        "DIS_DOWNLOAD_ICACHE": false
+      }
+    },
+    "rdid": "0x184068",
+    "prewrite_sha256": "ce3a4a05495a5454cca308b94d00cd7d1f33831d5642a73e3f145ccf973c6267",
+    "expected_prewrite_sha256": "ce3a4a05495a5454cca308b94d00cd7d1f33831d5642a73e3f145ccf973c6267",
+    "full_predecessor_match": true,
+    "readbacks": [
+      {
+        "offset": 8192,
+        "bytes": 24576,
+        "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+      },
+      {
+        "offset": 32768,
+        "bytes": 4096,
+        "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+      },
+      {
+        "offset": 65536,
+        "bytes": 770048,
+        "sha256": "6f679a24cab2d78a0bfce6cc9ac03c62ca3b0be8b900ab8c123dc6e7d32edd24"
+      }
+    ],
+    "programmer_log_sha256": "583d4e01386f7d292249bd8fb6f9b7c69167a04a2fa646d9de30a0e4b6734da8"
+  },
+  "future_predecessors": 36,
+  "reconstructed_current_full_sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6",
+  "restore_cold": {
+    "mode": "restore",
+    "scenario": "restore-cold",
+    "status": "CAPTURED",
+    "serial_writes": false,
+    "reset_requested": false,
+    "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+    "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+    "physical_acceptance": "NOT_CAPTURED",
+    "bytes": 13887,
+    "duration_seconds": 54.0,
+    "log_sha256": "5bf6968aaba7b91e80458cb126fd4ea5c36bbafc23dec2c74524a6f6e4801dca",
+    "boot_elf_prefixes": [
+      "005f8d1e3"
+    ],
+    "expected_elf_seen": true,
+    "fatal_markers": [],
+    "reset_reasons": [
+      "1"
+    ],
+    "uac_fill_phase": [],
+    "uac_fill_first": [],
+    "deck_mix_stats": [],
+    "deck_engine_stats": [],
+    "deck_play_stats": [
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0",
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0",
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0",
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0"
+    ],
+    "usb_uac_stats": [
+      "usb_uac_stats transfers=1000 packets=6024 frames=289152 tone_packets=0 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=2000 packets=12024 frames=577152 tone_packets=0 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=3000 packets=18024 frames=865152 tone_packets=0 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=4000 packets=24024 frames=1153152 tone_packets=0 iso_errors=0 packet_errors=0"
+    ],
+    "producer_stats": [],
+    "producer_water": [],
+    "uac_profile kind=": [],
+    "uac_profile_stage ": [],
+    "uac_profile_resources": [],
+    "uac_profile_logger": [],
+    "uac_profile_cause ": [],
+    "uac_profile_calibration ": [],
+    "uac_profile_irq_calibration ": [],
+    "uac_profile_distribution ": [],
+    "uac_profile_hist ": []
+  },
+  "owner_library_return": true,
+  "restore_playback": {
+    "mode": "restore",
+    "scenario": "restore-playback",
+    "status": "CAPTURED",
+    "serial_writes": false,
+    "reset_requested": false,
+    "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+    "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+    "physical_acceptance": "NOT_CAPTURED",
+    "bytes": 7729,
+    "duration_seconds": 59.0,
+    "log_sha256": "4e8d132709b9d0a20c804125841e747d1a9a9cde5a77c5becbef9832cd9178a8",
+    "boot_elf_prefixes": [],
+    "expected_elf_seen": false,
+    "fatal_markers": [],
+    "reset_reasons": [],
+    "uac_fill_phase": [],
+    "uac_fill_first": [],
+    "deck_mix_stats": [],
+    "deck_engine_stats": [],
+    "deck_play_stats": [
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0",
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0",
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0",
+      "deck_play_stats played=0 underruns=0 buffered=0 rate=0",
+      "deck_play_stats played=127008 underruns=0 buffered=64223 rate=44100",
+      "deck_play_stats played=415008 underruns=0 buffered=64583 rate=44100",
+      "deck_play_stats played=625824 underruns=0 buffered=65327 rate=44100",
+      "deck_play_stats played=884736 underruns=0 buffered=65020 rate=44100",
+      "deck_play_stats played=965376 underruns=0 buffered=65300 rate=44100",
+      "deck_play_stats played=965376 underruns=0 buffered=65300 rate=44100"
+    ],
+    "usb_uac_stats": [
+      "usb_uac_stats transfers=8000 packets=48024 frames=2305152 tone_packets=0 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=9000 packets=54024 frames=2593152 tone_packets=0 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=10000 packets=60024 frames=2881152 tone_packets=0 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=11000 packets=66024 frames=3169152 tone_packets=0 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=12000 packets=72024 frames=3457152 tone_packets=2646 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=13000 packets=78024 frames=3745152 tone_packets=8646 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=14000 packets=84024 frames=4033152 tone_packets=13038 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=15000 packets=90024 frames=4321152 tone_packets=18432 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=16000 packets=96024 frames=4609152 tone_packets=20112 iso_errors=0 packet_errors=0",
+      "usb_uac_stats transfers=17000 packets=102024 frames=4897152 tone_packets=20112 iso_errors=0 packet_errors=0"
+    ],
+    "producer_stats": [],
+    "producer_water": [],
+    "uac_profile kind=": [],
+    "uac_profile_stage ": [],
+    "uac_profile_resources": [],
+    "uac_profile_logger": [],
+    "uac_profile_cause ": [],
+    "uac_profile_calibration ": [],
+    "uac_profile_irq_calibration ": [],
+    "uac_profile_distribution ": [],
+    "uac_profile_hist ": []
+  },
+  "restore_operator": {
+    "status": "OWNER_CONFIRMED",
+    "answer": "sve radi",
+    "checks": [
+      "known deck1 track",
+      "clean sound both ears",
+      "Pause",
+      "CUE",
+      "unchanged level"
+    ],
+    "capture_played_frames": 965376,
+    "capture_played_seconds": 20.112,
+    "source_rate": 44100
+  },
+  "reconstruction_limit": "Verified predecessor plus written/readback spans and preserved tails; not an independent full post-restore read"
+}

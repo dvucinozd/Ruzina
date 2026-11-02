@@ -1,0 +1,582 @@
+heartbeat=55 uptime_us=55372818
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=9000 packets=54024 frames=2593152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=2593152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=9000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=9000 valid=9000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=9000 stage=whole max_us=15548 bins=0,0,0,0,8937,60,3
+uac_profile_hist gen=1 samples=9000 stage=init max_us=249 bins=8994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=9000 stage=transport max_us=926 bins=8970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=9000 stage=control max_us=671 bins=8971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=9000 stage=graph max_us=6952 bins=0,0,0,6734,2263,0,3
+uac_profile_hist gen=1 samples=9000 stage=progress max_us=343 bins=8979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=9000 stage=copy max_us=499 bins=0,8993,5,2,0,0,0
+uac_profile_hist gen=1 samples=9000 stage=pack max_us=5564 bins=0,0,8994,3,0,1,2
+uac_profile_hist gen=1 samples=9000 stage=other max_us=451 bins=8974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+rust_load pass=1 event=13 value=20001 stack_free=59740 psram_free=29120028 psram_min=29120028
+producer_stats max_gap_us=20001
+heartbeat=56 uptime_us=56372212
+heartbeat=57 uptime_us=57372212
+heartbeat=58 uptime_us=58372818
+heartbeat=59 uptime_us=59372212
+heartbeat=60 uptime_us=60372212
+heartbeat=61 uptime_us=61372817
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=10000 packets=60024 frames=2881152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=2881152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=10000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=10000 valid=10000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=10000 stage=whole max_us=15548 bins=0,0,0,0,9937,60,3
+uac_profile_hist gen=1 samples=10000 stage=init max_us=249 bins=9994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=10000 stage=transport max_us=926 bins=9970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=10000 stage=control max_us=671 bins=9971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=10000 stage=graph max_us=6952 bins=0,0,0,7484,2513,0,3
+uac_profile_hist gen=1 samples=10000 stage=progress max_us=343 bins=9979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=10000 stage=copy max_us=499 bins=0,9993,5,2,0,0,0
+uac_profile_hist gen=1 samples=10000 stage=pack max_us=5564 bins=0,0,9994,3,0,1,2
+uac_profile_hist gen=1 samples=10000 stage=other max_us=451 bins=9974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=62 uptime_us=62372212
+heartbeat=63 uptime_us=63372212
+heartbeat=64 uptime_us=64372817
+heartbeat=65 uptime_us=65372212
+rust_load pass=1 event=13 value=20001 stack_free=59740 psram_free=29120028 psram_min=29120028
+producer_stats max_gap_us=20001
+heartbeat=66 uptime_us=66372212
+heartbeat=67 uptime_us=67372816
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=11000 packets=66024 frames=3169152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=3169152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=11000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=11000 valid=11000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=11000 stage=whole max_us=15548 bins=0,0,0,0,10937,60,3
+uac_profile_hist gen=1 samples=11000 stage=init max_us=249 bins=10994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=11000 stage=transport max_us=926 bins=10970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=11000 stage=control max_us=671 bins=10971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=11000 stage=graph max_us=6952 bins=0,0,0,8234,2763,0,3
+uac_profile_hist gen=1 samples=11000 stage=progress max_us=343 bins=10979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=11000 stage=copy max_us=499 bins=0,10993,5,2,0,0,0
+uac_profile_hist gen=1 samples=11000 stage=pack max_us=5564 bins=0,0,10994,3,0,1,2
+uac_profile_hist gen=1 samples=11000 stage=other max_us=451 bins=10974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=68 uptime_us=68372213
+heartbeat=69 uptime_us=69372212
+heartbeat=70 uptime_us=70372817
+heartbeat=71 uptime_us=71372212
+heartbeat=72 uptime_us=72372212
+heartbeat=73 uptime_us=73372817
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=12000 packets=72024 frames=3457152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=3457152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=12000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=12000 valid=12000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=12000 stage=whole max_us=15548 bins=0,0,0,0,11937,60,3
+uac_profile_hist gen=1 samples=12000 stage=init max_us=249 bins=11994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=12000 stage=transport max_us=926 bins=11970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=12000 stage=control max_us=671 bins=11971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=12000 stage=graph max_us=6952 bins=0,0,0,8984,3013,0,3
+uac_profile_hist gen=1 samples=12000 stage=progress max_us=343 bins=11979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=12000 stage=copy max_us=499 bins=0,11993,5,2,0,0,0
+uac_profile_hist gen=1 samples=12000 stage=pack max_us=5564 bins=0,0,11994,3,0,1,2
+uac_profile_hist gen=1 samples=12000 stage=other max_us=451 bins=11974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=74 uptime_us=74372212
+heartbeat=75 uptime_us=75372212
+heartbeat=76 uptime_us=76372817
+rust_load pass=1 event=13 value=20001 stack_free=59740 psram_free=29120028 psram_min=29120028
+producer_stats max_gap_us=20001
+heartbeat=77 uptime_us=77372213
+heartbeat=78 uptime_us=78372212
+heartbeat=79 uptime_us=79372817
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=13000 packets=78024 frames=3745152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=3745152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=13000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=13000 valid=13000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=13000 stage=whole max_us=15548 bins=0,0,0,0,12937,60,3
+uac_profile_hist gen=1 samples=13000 stage=init max_us=249 bins=12994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=13000 stage=transport max_us=926 bins=12970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=13000 stage=control max_us=671 bins=12971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=13000 stage=graph max_us=6952 bins=0,0,0,9734,3263,0,3
+uac_profile_hist gen=1 samples=13000 stage=progress max_us=343 bins=12979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=13000 stage=copy max_us=499 bins=0,12993,5,2,0,0,0
+uac_profile_hist gen=1 samples=13000 stage=pack max_us=5564 bins=0,0,12994,3,0,1,2
+uac_profile_hist gen=1 samples=13000 stage=other max_us=451 bins=12974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=80 uptime_us=80372212
+heartbeat=81 uptime_us=81372212
+heartbeat=82 uptime_us=82372817
+heartbeat=83 uptime_us=83372212
+heartbeat=84 uptime_us=84372212
+heartbeat=85 uptime_us=85372818
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=14000 packets=84024 frames=4033152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=4033152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=14000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=14000 valid=14000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=14000 stage=whole max_us=15548 bins=0,0,0,0,13937,60,3
+uac_profile_hist gen=1 samples=14000 stage=init max_us=249 bins=13994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=14000 stage=transport max_us=926 bins=13970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=14000 stage=control max_us=671 bins=13971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=14000 stage=graph max_us=6952 bins=0,0,0,10484,3513,0,3
+uac_profile_hist gen=1 samples=14000 stage=progress max_us=343 bins=13979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=14000 stage=copy max_us=499 bins=0,13993,5,2,0,0,0
+uac_profile_hist gen=1 samples=14000 stage=pack max_us=5564 bins=0,0,13994,3,0,1,2
+uac_profile_hist gen=1 samples=14000 stage=other max_us=451 bins=13974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=86 uptime_us=86372212
+rust_load pass=1 event=13 value=20001 stack_free=59740 psram_free=29120028 psram_min=29120028
+producer_stats max_gap_us=20001
+heartbeat=87 uptime_us=87372212
+heartbeat=88 uptime_us=88372818
+heartbeat=89 uptime_us=89372213
+heartbeat=90 uptime_us=90372212
+heartbeat=91 uptime_us=91372820
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=15000 packets=90024 frames=4321152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=4321152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=15000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=15000 valid=15000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=15000 stage=whole max_us=15548 bins=0,0,0,0,14937,60,3
+uac_profile_hist gen=1 samples=15000 stage=init max_us=249 bins=14994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=15000 stage=transport max_us=926 bins=14970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=15000 stage=control max_us=671 bins=14971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=15000 stage=graph max_us=6952 bins=0,0,0,11234,3763,0,3
+uac_profile_hist gen=1 samples=15000 stage=progress max_us=343 bins=14979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=15000 stage=copy max_us=499 bins=1,14992,5,2,0,0,0
+uac_profile_hist gen=1 samples=15000 stage=pack max_us=5564 bins=0,0,14994,3,0,1,2
+uac_profile_hist gen=1 samples=15000 stage=other max_us=451 bins=14974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=92 uptime_us=92372212
+heartbeat=93 uptime_us=93372212
+heartbeat=94 uptime_us=94372817
+heartbeat=95 uptime_us=95372212
+heartbeat=96 uptime_us=96372212
+rust_load pass=1 event=13 value=20001 stack_free=59740 psram_free=29120028 psram_min=29120028
+producer_stats max_gap_us=20001
+heartbeat=97 uptime_us=97372817
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=16000 packets=96024 frames=4609152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=4609152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=16000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=16000 valid=16000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=16000 stage=whole max_us=15548 bins=0,0,0,0,15937,60,3
+uac_profile_hist gen=1 samples=16000 stage=init max_us=249 bins=15994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=16000 stage=transport max_us=926 bins=15970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=16000 stage=control max_us=671 bins=15971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=16000 stage=graph max_us=6952 bins=0,0,0,11984,4013,0,3
+uac_profile_hist gen=1 samples=16000 stage=progress max_us=343 bins=15979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=16000 stage=copy max_us=499 bins=1,15992,5,2,0,0,0
+uac_profile_hist gen=1 samples=16000 stage=pack max_us=5564 bins=0,0,15994,3,0,1,2
+uac_profile_hist gen=1 samples=16000 stage=other max_us=451 bins=15974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=98 uptime_us=98372212
+heartbeat=99 uptime_us=99372212
+heartbeat=100 uptime_us=100372816
+heartbeat=101 uptime_us=101372212
+heartbeat=102 uptime_us=102372212
+heartbeat=103 uptime_us=103372817
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=17000 packets=102024 frames=4897152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=4897152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=17000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=17000 valid=17000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=17000 stage=whole max_us=15548 bins=0,0,0,0,16937,60,3
+uac_profile_hist gen=1 samples=17000 stage=init max_us=249 bins=16994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=17000 stage=transport max_us=926 bins=16970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=17000 stage=control max_us=671 bins=16971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=17000 stage=graph max_us=6952 bins=0,0,0,12734,4263,0,3
+uac_profile_hist gen=1 samples=17000 stage=progress max_us=343 bins=16979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=17000 stage=copy max_us=499 bins=1,16992,5,2,0,0,0
+uac_profile_hist gen=1 samples=17000 stage=pack max_us=5564 bins=0,0,16994,3,0,1,2
+uac_profile_hist gen=1 samples=17000 stage=other max_us=451 bins=16974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=104 uptime_us=104372212
+heartbeat=105 uptime_us=105372212
+heartbeat=106 uptime_us=106372816
+rust_load pass=1 event=13 value=20001 stack_free=59740 psram_free=29120028 psram_min=29120028
+producer_stats max_gap_us=20001
+heartbeat=107 uptime_us=107372212
+heartbeat=108 uptime_us=108372212
+heartbeat=109 uptime_us=109372817
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=18000 packets=108024 frames=5185152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=5185152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=15548
+uac_fill_first generation=1 seen=1 phase=0 us=2015 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=2015 first_after_iso_submit=0 max_us=2015 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=18000 first_us=1003 first_after_iso_submit=1 max_us=15548 max_after_iso_submit=1 gt_3000=3 ge_6000=3 failures=0
+uac_profile_calibration gen=1 passed=1 before_valid=1 after_valid=1 wall_before=2025139 wall_after=2032226 away_before=0 away_after=7010 switches_before=0 switches_after=1
+uac_profile_irq_calibration gen=1 passed=1 before_valid=1 after_valid=1 entries_before=0 entries_after=67 us_before=0 us_after=232 nested_before=0 nested_after=0 wall_before=2025170 wall_after=2032225
+uac_profile kind=worst seen=1 gen=1 ordinal=472 uptime_us=4875903 phase=2 busy=7 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=15548 rust_us=15411 partition_valid=1 outer_us=137 packets=6 blocks=2 sched_valid=1 sched_window_us=15655 away_us=0 switches=0
+uac_profile_cause kind=worst gen=1 ordinal=472 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=15599 irq_dispatch_us=848 irq_entries=4 irq_nested=0
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=init us=249 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=transport us=682 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=control us=671 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=graph us=6952 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=progress us=343 segments=2
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=copy us=499 segments=8
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=pack us=5564 segments=6
+uac_profile_stage kind=worst gen=1 ordinal=472 stage=other us=451 segments=13
+uac_profile kind=latest_over seen=1 gen=1 ordinal=473 uptime_us=4892706 phase=2 busy=14 health=2 catalog=5 d1_flags=0 d2_flags=0 drops=0 whole_us=6464 rust_us=6387 partition_valid=1 outer_us=77 packets=6 blocks=3 sched_valid=1 sched_window_us=6525 away_us=0 switches=0
+uac_profile_cause kind=latest_over gen=1 ordinal=473 calibration=1 away_before=2374855 away_after=2374855 switches_before=565 switches_after=565 irq_calibration=1 irq_valid=1 irq_window_us=6486 irq_dispatch_us=341 irq_entries=1 irq_nested=0
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=init us=98 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=transport us=271 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=control us=342 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=graph us=3277 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=progress us=248 segments=3
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=copy us=232 segments=9
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=pack us=1760 segments=6
+uac_profile_stage kind=latest_over gen=1 ordinal=473 stage=other us=159 segments=13
+uac_profile kind=latest_headroom seen=0 gen=0 ordinal=0 uptime_us=0 phase=0 busy=0 health=0 catalog=0 d1_flags=0 d2_flags=0 drops=0 whole_us=0 rust_us=0 partition_valid=0 outer_us=0 packets=0 blocks=0 sched_valid=0 sched_window_us=0 away_us=0 switches=0
+uac_profile_cause kind=latest_headroom gen=0 ordinal=0 calibration=0 away_before=0 away_after=0 switches_before=0 switches_after=0 irq_calibration=0 irq_valid=0 irq_window_us=0 irq_dispatch_us=0 irq_entries=0 irq_nested=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=init us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=transport us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=control us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=graph us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=progress us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=copy us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=pack us=0 segments=0
+uac_profile_stage kind=latest_headroom gen=0 ordinal=0 stage=other us=0 segments=0
+uac_profile_distribution gen=1 scope=BOOT samples=18000 valid=18000 upper_us=50,100,250,500,1000,3000,INF
+uac_profile_hist gen=1 samples=18000 stage=whole max_us=15548 bins=0,0,0,0,17937,60,3
+uac_profile_hist gen=1 samples=18000 stage=init max_us=249 bins=17994,4,2,0,0,0,0
+uac_profile_hist gen=1 samples=18000 stage=transport max_us=926 bins=17970,13,14,1,2,0,0
+uac_profile_hist gen=1 samples=18000 stage=control max_us=671 bins=17971,14,12,2,1,0,0
+uac_profile_hist gen=1 samples=18000 stage=graph max_us=6952 bins=0,0,0,13484,4513,0,3
+uac_profile_hist gen=1 samples=18000 stage=progress max_us=343 bins=17979,17,3,1,0,0,0
+uac_profile_hist gen=1 samples=18000 stage=copy max_us=499 bins=1,17992,5,2,0,0,0
+uac_profile_hist gen=1 samples=18000 stage=pack max_us=5564 bins=0,0,17994,3,0,1,2
+uac_profile_hist gen=1 samples=18000 stage=other max_us=451 bins=17974,19,5,2,0,0,0
+uac_profile_logger stack_free=2072
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=110 uptime_us=110372212
+heartbeat=111 uptime_us=111372212
+heartbeat=112 uptime_us=112372818
+heartbeat=113 uptime_us=113372212
+heartbeat=114 uptime_us=114372212

@@ -1,17 +1,22 @@
 # Rust M2.5 development handoff
 
-Current next gate: `ogranak/jc1060-pack-placement` implements an explicit
-build-only packetizer IRAM alternative after the offline cache-counter audit.
-Read the [bounded experiment](reviews/2026-11-02-pack-placement-experiment.md).
-It includes the peer continuity repairs. Require a verified identical-archive/
-config control pair and fresh registration before device work. No COM3 access
-has occurred; the last accepted installed image is still s07.
-The pair and four entry/return plans are now registered with matching secondary
-archives; `f0ba8ca` CI passes 21/21 jobs. All four device-free preflights pass.
-Next: confirm current physical topology and fresh manual ROM entry, then guarded
-control write. Read the registered campaign section before any port access.
+Latest work: `ogranak/jc1060-pack-placement`, PR #78 above #77. Read the
+[completed device comparison](reviews/2026-11-02-pack-placement-device.md) first.
+Control maxima: 15827/17386/15849 us; IRAM: 14157/13599/15548 us. Both fail;
+narrow pack placement is not a qualified fix. Each separate steady window adds
+9000 callbacks without new crossings. Exact s07 is restored/readback and cold
+boot verified, with owner-confirmed sound/Pause/CUE and 20.112 s captured sound,
+zero underruns/USB errors. All monitors are closed. Future plans require **36**
+predecessors and reconstructed full state
+`7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6`.
+This is reconstructed from verified predecessor/writes, not an independent
+whole post-restore read. The unused control-return is not in the executed chain.
+Next is the [service-budget and render/refill design decision](reviews/2026-11-02-post-placement-next-step.md),
+PLAN_ONLY. Do not run another placement variant or assume a cache mechanism.
+Source/build publication `f0ba8ca` passed 21/21 CI; later evidence CI is separate.
+The paragraphs below are historical preparation/results, not current actions.
 
-Current offline continuation: `ogranak/jc1060-peer-continuity-fixes`. Read the
+Historical offline continuation: `ogranak/jc1060-peer-continuity-fixes`. Read the
 [peer continuity repair record](reviews/2026-11-02-peer-continuity-fixes.md).
 Per-deck revisions preserve the cached mixed suffix and reset only the changed
 deck at the next render boundary; media revocation still clears immediately.
