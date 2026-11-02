@@ -18,7 +18,8 @@ allocation and nonblocking readiness polling. Host/target checks, actual C
 driver tests, CodeRabbit (0 issues) and clean normal/profile packages pass.
 Source `d28abd0` and publication `a2997bd` each passed 21/21 CI jobs. Candidate
 and s07 return plans plus their dual-copy archive pass offline verification;
-execution-wrapper review, registration CI and physical entry remain open. BUILD_ONLY /
+registration/tool source also pass 21/21 CI, with reviewed guarded execution
+tools and frozen binding archived. Fresh manual ROM entry remains open. BUILD_ONLY /
 NOT_FLASHED: no measured timing improvement or new hardware acceptance yet.
 
 Latest device checkpoint: the [packetizer placement comparison](docs/reviews/2026-11-02-pack-placement-device.md)

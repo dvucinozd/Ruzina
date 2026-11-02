@@ -12,11 +12,14 @@ readiness time, heap/stack high-water and USB timing are NOT_RUN. Both source
 `d28abd0` and publication `a2997bd` passed 21/21 CI jobs. Candidate and s07 return
 plans are now offline registered against 36/37 predecessors, and both offline
 preflights plus a 311-member dual-copy archive pass. Neither plan was executed;
-accepted s07/36 predecessors remain unchanged. Before COM3, verify the later
-registration commit's CI, prepare/review an exact-hash guarded execution wrapper
-and passive ELF monitor, then refresh physical topology/manual ROM entry with
-the owner. The current preflight tool has no device mode; raw command templates
-are not an execution path. Do not access COM3 from this offline batch. Next is
+accepted s07/36 predecessors remain unchanged. Registration `79e251a` and
+execution-tool source `51c6967` now each pass 21/21 CI. Reviewed guarded
+programmer/passive monitor, 13 host tests per OS and the exact-hash binding are
+complete; see the record's latest section and tools README. Device access is
+explicit and remains unexecuted at this checkpoint. The owner confirms the
+song list is visible; request fresh manual ROM entry before any programmer
+invocation. The tools default to offline; raw plan templates are not the
+execution path. Next is
 the registered three-cold/steady idle resource/timing comparison, followed by
 exact s07 return. I02-I13 follow only after
 the timing/resource gates permit them. No merge or broader architecture change.

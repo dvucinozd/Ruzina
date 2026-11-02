@@ -1,0 +1,58 @@
+{
+  "status": "REVIEWED_TOOLS_ARCHIVED_NOT_EXECUTED",
+  "source_commit": "51c6967f2933b61d2b46743bd13c4953762c1a96",
+  "binding_sha256": "8b26e198044cda08c4cc00f1315268ce139cf5ac69ea9a9a85039e53d1416a69",
+  "archive_bytes": 18401,
+  "archive_sha256": "de77bd03f38c4cd43bbf4e022b66e84c12112f3c4b59deab2bd62bd1860e8d8e",
+  "secondary_sha256": "de77bd03f38c4cd43bbf4e022b66e84c12112f3c4b59deab2bd62bd1860e8d8e",
+  "files": {
+    "coderabbit-tools-51c6967.raw.log": {
+      "bytes": 1321,
+      "sha256": "d8fd1aef716b2a1a32ecebfa57cdd6bb647425bbe4e2302caa22a275a265b2ab"
+    },
+    "execution-binding.json": {
+      "bytes": 1828,
+      "sha256": "8b26e198044cda08c4cc00f1315268ce139cf5ac69ea9a9a85039e53d1416a69"
+    },
+    "execution-tools-tests-wsl.log": {
+      "bytes": 1808,
+      "sha256": "560eab8fc3eb94bf82cbc55619a090fe46dee3d4a6be6368be1fb1b0d9e9f7ec"
+    },
+    "execution-tools-tests.log": {
+      "bytes": 1826,
+      "sha256": "cf3992fe1a048c032af6f70370397ae634b90ffaead8ac39c627abb1547a0618"
+    },
+    "freeze_execution_tools.py": {
+      "bytes": 4989,
+      "sha256": "5d625706a1cae4ddfd5b6168176a91eda3f8790a3cdb437558b678395db29af8"
+    },
+    "registration-ci-verified.json": {
+      "bytes": 4294,
+      "sha256": "4a2ff6d4833b0a61434f04bc856bba96404b7bd115bd81d691322021d4f89603"
+    },
+    "tools-ci-verified.json": {
+      "bytes": 4294,
+      "sha256": "bb71af64643b6763f3849b40c188c5b7d43e6caba64cbdb56cc2229a897dc4f9"
+    },
+    "tools/README.md": {
+      "bytes": 3421,
+      "sha256": "13189654f112d6af43c19876f74b2ca180c2eb2b338ec7f185d2d5809e5d67c8"
+    },
+    "tools/campaign.py": {
+      "bytes": 10383,
+      "sha256": "1b9e9b7e7f51202b65e34c5d2e212e9c42110ae2b3f8ea3df59756bfc6c2ebfb"
+    },
+    "tools/monitor.py": {
+      "bytes": 5203,
+      "sha256": "d74a7dbf298fa32e7542ad4538350aeca8e3aec11e30fe357fd06eef21eaa8ba"
+    },
+    "tools/program.py": {
+      "bytes": 2094,
+      "sha256": "a74696988b06ce94f5215015aa5f1b1ff29747d9457e58adbd9f97ac836bb5c6"
+    },
+    "tools/tests/test_campaign.py": {
+      "bytes": 9401,
+      "sha256": "27c739267376706552eeb04bd41ba9dd2abb41956e3aa99a60be5d545e05267d"
+    }
+  }
+}

@@ -8,8 +8,10 @@ review (0 issues), and clean normal/profile builds pass. BUILD_ONLY / NOT_FLASHE
 heap/stack runtime evidence and cold/steady timing remain NOT_RUN. Source
 `d28abd0` and publication `a2997bd` each passed 21/21 CI jobs. Candidate/s07
 return plans (36/37 predecessors), both offline preflights and a 311-file
-dual-copy archive are ready; no plan is executed. An exact-hash execution
-wrapper/passive monitor and registration CI remain gates before physical work.
+dual-copy archive are ready; no plan is executed. Registration `79e251a` and
+tool source `51c6967` each pass 21/21 CI; exact-parent tool review has 0 issues
+and 13 fake-device tests pass per OS. Reviewed programmer/monitor and their
+frozen binding are archived. Fresh operator ROM entry is the next physical gate.
 S07, recovery ancestry 36 and native minimum 302 are unchanged. The paragraphs
 below retain historical decision/device evidence.
 

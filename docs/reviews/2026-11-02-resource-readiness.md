@@ -179,3 +179,62 @@ not a newly randomized contemporaneous A/B comparison. Any invalid window,
 resource fault or >=6000 us callback prevents extension into playback gates.
 After this diagnostic, always return/readback/cold-boot/listening-verify s07;
 a later normal-image I02-I13 campaign needs independent registration.
+
+## Reviewed execution tools and CI closed
+
+Registration `79e251a999a7afda34f4b8bbfff15aa805bda273` passed 21/21 CI:
+[host #548](https://github.com/dvucinozd/Ruzina/actions/runs/41509637593),
+[legacy #71](https://github.com/dvucinozd/Ruzina/actions/runs/41509637557).
+The [verified snapshot](evidence/2026-11-02-resource-readiness/registration-ci-verified.json)
+binds every successful job. Subsequent execution-tool source
+`51c6967f2933b61d2b46743bd13c4953762c1a96` also passed 21/21:
+[host #549](https://github.com/dvucinozd/Ruzina/actions/runs/41510500324),
+[legacy #72](https://github.com/dvucinozd/Ruzina/actions/runs/41510500374), including
+the new fake-device fault tests. Its
+[snapshot](evidence/2026-11-02-resource-readiness/tools-ci-verified.json) is separate.
+
+The [tool instructions](../../tools/resource_readiness/README.md) now supersede
+the earlier missing-wrapper checkpoint. Both commands default to offline
+preflight and have no implicit serial import/access. Explicit device execution
+additionally needs a fresh output directory and the frozen binding hash. All
+checks remain active with Python `-O`. Immutable verified write bytes are held
+through execution, with no later payload reopen. Identity/security/RDID/full
+16 MiB predecessor equality precede writes; span and whole 16 MiB postwrite
+readback follow them. No reset, eFuse change, force or erase-all is requested.
+Errors/interruption stop and record evidence; no inferred recovery transition
+is executed. The passive monitor sets DTR/RTS off before opening and never
+sends bytes. A separate boot-window file preserves complete raw bytes.
+
+Thirteen fake-device tests pass on both Windows and WSL, covering each identity/
+security gate, full-predecessor mismatch, partial connect failure, bad span
+readback, corruption outside written spans, valid full readback, output reuse,
+hash/path drift, port identity, boot-window identity, Python optimization and
+passive monitor line/write policy. Exact-parent CodeRabbit review of the seven
+tool/workflow files completed with 0 issues; its raw output and test logs are
+retained beside the [execution binding](evidence/2026-11-02-resource-readiness/execution-binding.json).
+
+Binding SHA-256:
+`8b26e198044cda08c4cc00f1315268ce139cf5ac69ea9a9a85039e53d1416a69`.
+The [supplemental archive](evidence/2026-11-02-resource-readiness/execution-tools-archive.json)
+has 18401 bytes, SHA-256
+`de77bd03f38c4cd43bbf4e022b66e84c12112f3c4b59deab2bd62bd1860e8d8e`.
+CRC/member hashes and every secondary copy match. It supplements the unchanged
+311-member registration archive; original firmware package bytes are unchanged.
+Pinned execution Python remains the external IDF environment (3.13.0), esptool
+5.6.0 and pyserial 3.5. Execution binding/tool source is not firmware acceptance.
+
+READY is atomically published **before** the SD task prints its telemetry.
+USB and SD log ordering can therefore interleave; a stream/control print before
+the READY print is not by itself proof of a readiness violation. The ownership/
+ordering contract is tested in Rust/C. PREPARING-to-READY printed uptime is a
+global initialization observation including intervening scheduling/logging,
+not a pure allocator duration or exact atomic-publication timestamp. Do not
+derive causality or CPU time from that difference. Both readiness records and
+resource health still need inspection in each physical boot.
+
+At this checkpoint no COM3 access has occurred. The owner reports that the
+screen still shows the song list; manual ROM entry remains pending. Current
+executed ancestry is 36, s07 remains installed, and no new target timing/heap/
+stack result is claimed. After owner-assisted entry, use the frozen programmer,
+then the registered cold/steady observations and exact s07 return. Later
+evidence-publication CI is independent of the verified registration/tool heads.
