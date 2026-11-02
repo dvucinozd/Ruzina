@@ -140,13 +140,13 @@ fresh packages remain pending at this checkpoint.
 
 Source `e9ce242` built clean normal and diagnostic packages. Each verifies all
 289 source hashes and eight artifacts, exact app/ELF identity and mode isolation.
-Normal:819744 bytes, app `4eb5161dcfc27714f66c445cb73425b224e0e873cb0de46bc39f64b0d68a7ef7`,
-static load/fill74640/3120 bytes. Diagnostic:824720 bytes, app
+Normal: 819744 bytes, app `4eb5161dcfc27714f66c445cb73425b224e0e873cb0de46bc39f64b0d68a7ef7`,
+static load/fill 74640/3120 bytes. Diagnostic: 824720 bytes, app
 `173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd`,
-static load/fill75712/3120 bytes. All unchanged limits pass. These packages
+static load/fill 75712/3120 bytes. All unchanged limits pass. These packages
 remain BUILD_ONLY, not registered/flashed or runtime qualified.
 
-Full committed CodeRabbit review found3 issues: two missing spaces in this
+Full committed CodeRabbit review found 3 issues: two missing spaces in this
 documentation and one CI matrix issue. The producer include matched/modified
 the existing normal deck-engine combination, removing its separate CI build.
 The fix adds `producer_profile: [false]` to the base matrix, so the true include
