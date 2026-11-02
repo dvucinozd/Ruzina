@@ -1,5 +1,15 @@
 # Current development status
 
+The [resource-readiness implementation](reviews/2026-11-02-resource-readiness.md)
+on `ogranak/jc1060-resource-readiness` ([draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80))
+prepares both decks' permanent stores before engine UAC activation. Six host
+profiles, nine target Clippy configurations, real C driver tests, exact-parent
+review (0 issues), and clean normal/profile builds pass. BUILD_ONLY / NOT_FLASHED:
+heap/stack runtime evidence and cold/steady timing remain NOT_RUN. CI conclusions
+are pending at the source-publication checkpoint; the record links exact runs.
+S07, recovery ancestry 36 and native minimum 302 are unchanged. The paragraphs
+below retain historical decision/device evidence.
+
 The [service-budget and resource audit](reviews/2026-11-02-usb-service-and-resource-decision.md)
 closes the post-placement plan's first three steps. DESIGN_ONLY: defer separate
 render ownership and first prepare both decks' permanent resources before

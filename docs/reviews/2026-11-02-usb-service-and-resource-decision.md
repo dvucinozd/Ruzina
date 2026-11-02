@@ -2,6 +2,9 @@
 
 Date: 2026-11-02. Audit base `7a444e32bc9cdb4cd9816ef7e579ca09c1bd3c22`.
 Status: **OFFLINE_AUDIT_COMPLETE / DESIGN_ONLY / NOT_IMPLEMENTED**.
+This is the historical audit checkpoint. The subsequent
+[resource-readiness implementation](2026-11-02-resource-readiness.md) implements
+the chosen next candidate; its own validation and physical gates apply.
 Follows the [completed placement campaign](2026-11-02-pack-placement-device.md)
 and closes steps 1–3 of the [next-decision plan](2026-11-02-post-placement-next-step.md).
 No COM3 access, new build, firmware change or new physical claim in this audit.

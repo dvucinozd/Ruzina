@@ -11,6 +11,14 @@ It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
 Rust backend still requires revision **302** and must not be flashed to this unit.
 JC8012 has no transferable hardware acceptance from JC1060.
 
+Latest offline implementation: [both-deck resource readiness](docs/reviews/2026-11-02-resource-readiness.md),
+[draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80). Both permanent
+resource bundles are prepared before engine UAC startup, with fallible
+allocation and nonblocking readiness polling. Host/target checks, actual C
+driver tests, CodeRabbit (0 issues) and clean normal/profile packages pass.
+CI conclusions are pending at the source-publication checkpoint. BUILD_ONLY /
+NOT_FLASHED: no measured timing improvement or new hardware acceptance yet.
+
 Latest device checkpoint: the [packetizer placement comparison](docs/reviews/2026-11-02-pack-placement-device.md)
 completed three cold boots per image plus separate steady idle. Control maxima
 were 15827/17386/15849 us; IRAM maxima 14157/13599/15548 us. Both fail the
@@ -18,7 +26,9 @@ unchanged >=6000 us gate. Narrow IRAM placement is insufficient and is not
 enabled for the product. Exact s07 was restored/readback/cold-boot verified;
 the owner confirms sound/Pause/CUE, with 20.112 s captured playback and zero
 underruns/USB errors. All monitors are closed. Future recovery needs **36**
-executed predecessors. Next is the [offline service-budget/design decision](docs/reviews/2026-11-02-post-placement-next-step.md).
+executed predecessors. The [service-budget decision](docs/reviews/2026-11-02-usb-service-and-resource-decision.md)
+now has the offline implementation above; next is exact CI verification and
+a separately registered resource/timing campaign.
 The paragraphs below retain earlier per-image checkpoints and their limits.
 
 The latest accepted playback record in this repository is

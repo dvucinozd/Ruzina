@@ -3,7 +3,9 @@
 Date: 2026-11-02. Branch `ogranak/jc1060-resource-readiness`, based on
 `8449b95bd869ec34b0be0f3167d92f142d2deaba` and the
 [resource lifecycle decision](2026-11-02-usb-service-and-resource-decision.md).
-Status: IMPLEMENTED / OFFLINE_VALIDATION_IN_PROGRESS / NOT_FLASHED.
+Status: IMPLEMENTED / OFFLINE_VALIDATED / BUILD_ONLY / NOT_FLASHED.
+Draft [PR #80](https://github.com/dvucinozd/Ruzina/pull/80) is stacked above #79;
+neither this PR nor the earlier stack is merged by this work.
 
 The SD owner now prepares both producers and both 65536-frame PCM rings before
 mount/catalog preflight. Twelve fallible backing allocations reserve the
@@ -56,7 +58,39 @@ The real C driver harness covers repeated deferred polls, READY starting once,
 terminal failure, disconnect while pending, and failure before EP0 completes;
 its existing partial-pool/recovery/drain/stale-generation tests remain enabled.
 Existing peer-continuity, media-revocation, transport and fixture tests remain
-required. Final matrix/build/review results will be recorded after completion.
+enabled and pass. Rust host profiles pass 39/2/56/57/70/75 tests respectively;
+all six host Clippy and nine RISC-V release Clippy configurations pass. Windows
+Python passes 40 cases with six C-compiler skips; all six actual C cases pass
+separately under WSL. Exact-parent CodeRabbit review of source commit
+`d28abd0414a264cce96de4be2a2b783dc58cfd60` completed across ten files with 0 issues.
+See the [verification index](evidence/2026-11-02-resource-readiness/checks.json)
+and retained raw logs beside it. Initial failed setup/test attempts remain in
+the external evidence folder. The first reuse test counted small per-track
+allocations too; its corrected scope counts permanent-store-sized allocations.
+
+Clean packages built from that committed source with empty dirty status:
+
+| Package | App bytes | App SHA-256 |
+|---|---:|---|
+| `clean-normal-d28abd0` | 819424 | `a4379cec9665fec098d68d056e1885502c577609972d25cdcc1dd11bd32de06e` |
+| `clean-profile-d28abd0` | 825008 | `7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e` |
+
+All 285 source hashes per package and 18 combined artifact hashes match. Both
+packages keep the normal flash packetizer placement; no IRAM experiment is
+enabled. Relative to the prior clean control profile (`605abe7`), allocated
+ELF sections add 1912 bytes `.flash.text` and 72 bytes `.flash.rodata`; RAM
+section sizes are unchanged. Debug section deltas are recorded in the index.
+Image metadata/code offsets differ too, so this is static accounting only.
+
+The SD task is already configured for **98304 bytes** when DECK_PLAY is enabled;
+49152 applies to the non-decoding load profile. The measured static direct-call
+estimate is 74640 bytes, up from 73616 in the prior control profile and below
+the unchanged 90112-byte build limit (8 KiB reserved for C). The load-run entry
+frame is 12160 bytes; the largest individual Rust frame remains 24160, under
+the unchanged 24576 limit. USB fill's chain is 3120 bytes, under its unchanged
+4096-byte limit on an 8192-byte task. These are disassembly estimates, including
+conservative branch/tail-call handling; indirect calls and actual runtime
+high-water marks are not established. No task stack or threshold was increased.
 
 `resource_prepare` telemetry records PREPARING/READY uptime, free/largest PSRAM,
 free internal RAM and the SD task stack high-water mark. Actual target readiness
@@ -65,8 +99,13 @@ counts and static frame checks do not substitute for them.
 
 ## Next gate
 
-Finish exact-parent review, clean normal/profile builds and the complete CI
-matrix before registering an experiment. Packages remain BUILD_ONLY, without
+Exact-parent review and clean normal/profile builds are complete. The source
+head's [host #546](https://github.com/dvucinozd/Ruzina/actions/runs/41492408329)
+and [legacy #69](https://github.com/dvucinozd/Ruzina/actions/runs/41492408384)
+CI runs are still in progress at this publication checkpoint; do not call the
+complete CI matrix passed until their conclusions and exact SHA are verified.
+Documentation-only publication after the source commit has separate CI.
+Packages remain BUILD_ONLY, without
 an executable device-write registration. No COM3 access has occurred here.
 The board remains accepted s07, with 36 executed predecessors and reconstructed
 full state `7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6`.

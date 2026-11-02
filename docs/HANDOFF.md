@@ -1,5 +1,24 @@
 # Rust M2.5 development handoff
 
+Current implementation: `ogranak/jc1060-resource-readiness`, draft
+[PR #80](https://github.com/dvucinozd/Ruzina/pull/80) above #79. Read the
+[resource readiness record](reviews/2026-11-02-resource-readiness.md).
+Source `d28abd0` prepares both decks' permanent stores fallibly before UAC
+activation, preserves SD/USB ownership and leaves media admission separate.
+All six host profiles, nine target Clippy configurations, six real C cases,
+exact-parent CodeRabbit (0 issues) and clean normal/profile packages pass.
+Source/artifact hashes and static RAM/stack estimates are recorded; actual
+readiness time, heap/stack high-water and USB timing are NOT_RUN. CI is still
+pending at the source-publication checkpoint; verify exact current workflow
+conclusions before preparing a device registration. Do not access COM3 from
+this offline batch. Accepted s07/36 predecessors remain unchanged. The next
+action is CI verification followed by a separately registered cold/steady
+resource/timing comparison, with exact s07 return. I02-I13 follow only after
+the timing/resource gates permit them. No merge or broader architecture change.
+
+Historical decision checkpoint follows; the implementation above supersedes
+its NOT_IMPLEMENTED state while retaining its ownership and acceptance rules.
+
 Current offline decision: `ogranak/jc1060-usb-service-decision`. First read the
 [USB service-budget/resource design](reviews/2026-11-02-usb-service-and-resource-decision.md).
 The first three next-step audit tasks are complete. USB callbacks serialize;
