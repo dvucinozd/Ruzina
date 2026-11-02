@@ -1,0 +1,26 @@
+[
+  {
+    "raw": "coderabbit.raw.log",
+    "raw_sha256": "46fc2e9a658eda315317d3405605b4e69ab359dd7831ff5234ef4d0f71ccf55e",
+    "events": "coderabbit.events.ndjson",
+    "events_sha256": "0f708ee45ac9bfe5fa513db5ca54333749b634dd2e2921a39f976cc5aa02be7d",
+    "records": 3,
+    "raw_preserved": true
+  },
+  {
+    "raw": "coderabbit-committed.raw.log",
+    "raw_sha256": "fec9ca5cdd99fc218c49262d0bb1eeea9e042450f966192bf4ed9d5cd27cde3a",
+    "events": "coderabbit-committed.events.ndjson",
+    "events_sha256": "527d84fd1e907ad0369dfa37c354b1905d339fca73c035691b38b95b08b5c179",
+    "records": 8,
+    "raw_preserved": true
+  },
+  {
+    "raw": "coderabbit-corrected.raw.log",
+    "raw_sha256": "3655fdba23822d1dd00f21b013b56489db57f6a96d17f0d89680c025c1275fd4",
+    "events": "coderabbit-corrected.events.ndjson",
+    "events_sha256": "e1e20e4a83098bfa55aa0cfba3134ed386f54bdfb17a0123a8cef46215c76228",
+    "records": 8,
+    "raw_preserved": true
+  }
+]

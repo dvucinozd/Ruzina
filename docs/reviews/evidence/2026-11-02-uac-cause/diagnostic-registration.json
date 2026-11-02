@@ -1,0 +1,35 @@
+{
+  "status": "REGISTERED_BUILD_ONLY_NOT_FLASHED",
+  "source_commit": "3e20a8e64ef7f2ff855bf18706712e289c6cc747",
+  "packages": [
+    {
+      "package": "clean-normal-r2",
+      "source_commit": "3e20a8e64ef7f2ff855bf18706712e289c6cc747",
+      "app_sha256": "22b9af7c4816b3270226e9ef0185758763604c73b687bf2af6c34ab3340ffe58",
+      "bytes": 817344,
+      "uac_profile": false,
+      "sources": 282,
+      "artifacts": 8,
+      "manifest_sha256": "433c25b54d9bb83dca9f48147405a97fdc24a8a1d9549937261b5aa22ac12d01"
+    },
+    {
+      "package": "clean-profile-r2",
+      "source_commit": "3e20a8e64ef7f2ff855bf18706712e289c6cc747",
+      "app_sha256": "562788ee5fd8de05d6bad98af44f1e8b4e299c2eed2fd056f6b2c1430e65db35",
+      "bytes": 823072,
+      "uac_profile": true,
+      "sources": 282,
+      "artifacts": 8,
+      "manifest_sha256": "14586e3c6f51b25f251a2de7adb6ec01d284588f0d39c2070f1e2ffa4d6259ba"
+    }
+  ],
+  "predecessor_plans": 31,
+  "expected_current_full_flash_sha256": "817c75491f1c6f3b8e482b576ce44cec43693458d540685ede6adae392123e8d",
+  "backup_copies_verified": 4,
+  "candidate_plan_sha256": "fae4606a5e23b7d1bb6ec88f5045057d41184c97f90b119608ce1bf672d56528",
+  "fallback_plan_sha256": "45f4386dc026aeeaf83e16c8e788c613a4d0179f39339cf6bc19f13f5e5771bb",
+  "candidate_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-cause-20261102\\diagnostic-plan\\plan.json",
+  "fallback_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-cause-20261102\\return-s07-plan\\plan.json",
+  "device_access": false,
+  "diagnostic_policy": "Cold and separate steady idle only. Require both calibrations, partition/window validity and no IRQ nesting for attribution. IRQ covers core-0 C dispatch only. Retain >=6000 us aggregate rejection; no pure CPU claim, priority/gain/DSP change; restore s07 and confirm normal sound/Pause/CUE before exit."
+}

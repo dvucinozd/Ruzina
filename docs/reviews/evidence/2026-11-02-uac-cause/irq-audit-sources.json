@@ -1,0 +1,11 @@
+{
+  "idf_commit": "fff9895c82d744c7237be8847347bdd1b07c6643",
+  "source_sha256": {
+    "components/riscv/vectors.S": "f9da736ae5b9f764d514f51a44792871451610441ec84e528b7b0d2cad9230af",
+    "components/riscv/interrupt.c": "010ac3e40168df71791a12420abc6b9e900e1550e32a602ff523cf9b01f6bbd3",
+    "components/esp_hw_support/intr_alloc.c": "36750d6437fe0ac5baa0573520d7d1f5f710043371beb8e77f2373853faf245b",
+    "components/freertos/port_systick.c": "6b4acc9685373638bf902221eda04ab672dc3d8a61830d19d724bc97e3e0f443",
+    "components/esp_timer/src/esp_timer_impl_systimer.c": "582312fdb904afed442e5fbb81960eb3062fde9d3a4478caea56f2818b9e2fec"
+  },
+  "coverage": "core0 C dispatcher only; no full ISR or CPU-only claim"
+}

@@ -1,6 +1,6 @@
 # Calibrated callback cause experiment
 
-Status: IMPLEMENTED_OFFLINE / DEVICE_NOT_RUN. Branch
+Status: REGISTERED_BUILD_ONLY / DEVICE_NOT_RUN. Branch
 `ogranak/jc1060-uac-cause-profile`, parent `62717ce6b04b62cd5f1977b1bdfe5a91adcabf4f`.
 Continues the [cause plan](2026-11-01-uac-callback-cause-follow-up.md) after the
 [prior measurement and verified s07 return](2026-11-01-uac-callback-profiling-device.md).
@@ -119,3 +119,48 @@ validity and distributions supplement them. If attribution is still partial,
 register a later single-variable cache/compute control; do not guess a DSP or
 priority fix. Restore exact s07, verify readback/cold boot and normal sound,
 Pause/CUE before stopping. I02–I13 and target recovery timing remain NOT_RUN.
+
+## Clean corrected-source registration
+
+Published source `3e20a8e64ef7f2ff855bf18706712e289c6cc747`, [PR #76](https://github.com/dvucinozd/Ruzina/pull/76)
+above #75. Both corrected-source clean packages pass all link/isolation/IRAM
+and stack gates, with empty dirty status, 282 source hashes each and 16 artifact
+hashes verified. The correction passes 33 Python tests; all six actual C cases
+cover the six explicit Windows skips. Rust feature/target evidence above is
+unchanged. No new target result is claimed.
+
+| Package | App bytes | App SHA-256 |
+|---|---:|---|
+| clean-normal-r2 | 817344 | `22b9af7c4816b3270226e9ef0185758763604c73b687bf2af6c34ab3340ffe58` |
+| clean-profile-r2 | 823072 | `562788ee5fd8de05d6bad98af44f1e8b4e299c2eed2fd056f6b2c1430e65db35` |
+
+Normal/profile ELF text: 791924/797440 bytes; data: 25290/25506; BSS:
+544092/545084. The profile adds 5516 text bytes and 1208 static RAM bytes.
+The snapshot is 1172 versus normal 208 bytes (964 extra queue payload bytes);
+the profile logger stack adds 1024 bytes. Same RTOS control blocks. Direct Rust
+fill stack estimates are 3120 normal / 3104 profile bytes, load 73616 bytes;
+these exclude indirect/C/kernel frames. Runtime stack high-water remains open.
+
+The full-source repeated review of `3e20a8e` found only an evidence-format issue:
+a CLI text prefix made its `.ndjson` name misleading. Both affected raw streams
+are now preserved byte-for-byte as `.raw.log`, with separate strict
+`.events.ndjson` files and a [hash index](evidence/2026-11-02-uac-cause/review-stream-index.json).
+The reviewed analyzer defect is fixed; no raw evidence bytes were stripped.
+
+Offline ancestry replay verifies all 31 predecessors, preserved tails and four
+factory backup copies. [Diagnostic plan](../boards/readiness/jc1060-uac-cause-profile-write-recovery-plan-20261102.json)
+SHA-256 `fae4606a5e23b7d1bb6ec88f5045057d41184c97f90b119608ce1bf672d56528`;
+[s07 return plan](../boards/readiness/jc1060-uac-cause-profile-return-s07-write-recovery-plan-20261102.json)
+SHA-256 `45f4386dc026aeeaf83e16c8e788c613a4d0179f39339cf6bc19f13f5e5771bb`.
+Both plans, full packages and artifacts have matching secondary copies.
+
+The [registration](evidence/2026-11-02-uac-cause/diagnostic-registration.json)
+and [archive index](evidence/2026-11-02-uac-cause/registration-archive.json)
+record an 80-file, 15144688-byte ZIP with verified CRC, all member SHA-256 values
+and equal secondary SHA-256
+`ec25261d1f809e72ecc5d49b1cc3f690c36a16e3d37cbdbc909054970d6038e2`.
+Secondary root:
+`C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/uac-cause-20261102/`.
+Final evidence-format review, CI and publication are tracked independently of
+clean-build success. Device work stays disarmed until those gates close and the
+owner performs fresh manual ROM entry.

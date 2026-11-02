@@ -2,7 +2,9 @@
 
 Latest work: `ogranak/jc1060-uac-cause-profile`, continuing from `62717ce`.
 Read [calibrated cause experiment](reviews/2026-11-02-uac-cause-profile-execution.md)
-for current implementation/build/registration gates. New target measurements
+for current implementation/build/registration gates. [PR #76](https://github.com/dvucinozd/Ruzina/pull/76)
+contains source `3e20a8e`, clean normal/profile packages and 31-predecessor
+diagnostic/return plans. New target measurements
 are NOT_RUN; the previously confirmed s07 remains the normal device image.
 The paragraphs below retain the prior measured checkpoint.
 

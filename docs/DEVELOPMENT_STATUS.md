@@ -2,9 +2,9 @@
 
 Updated 2026-11-01. Development has two distinct backends. Native requires
 ESP32-P4 >=302. The arrived JC1060 is v1.3/103 and uses pinned IDF 6.1 with
-shared Rust. Active continuation is `ogranak/jc1060-uac-callback-profile`, clean
-diagnostic source `8a9fe16d48387b0a3cfbd461659696091b2aa89d`, stacked on the
-repair branch through PR #75 -> #74 -> #73 -> #72 -> #71. These PRs remain unmerged.
+shared Rust. Active continuation is `ogranak/jc1060-uac-cause-profile`, clean
+diagnostic source `3e20a8e64ef7f2ff855bf18706712e289c6cc747`, stacked on the
+repair branch through PR #76 -> #75 -> #74 -> #73 -> #72 -> #71. These PRs remain unmerged.
 
 | Component | Current evidence | Next gate |
 |---|---|---|
@@ -16,6 +16,7 @@ repair branch through PR #75 -> #74 -> #73 -> #72 -> #71. These PRs remain unmer
 | UAC phase diagnostic | [Measured](reviews/2026-11-01-uac-timing-device-results.md): prefill max 1844 us, callback max 10373 us, 3/6000 callbacks >=6000 us; zero idle underruns/USB errors | Timing criterion FAIL; s07 restored/cold boot and normal playback confirmed, monitors closed; next is bounded callback substage/preemption profiling |
 | UAC callback substage diagnostic | [Measured](reviews/2026-11-01-uac-callback-profiling-device.md): coherent 13087/13039 us records, exclusive partitions valid, zero observed switch deltas; 9000 steady callbacks add no threshold crossings | Aggregate FAIL; s07 restored/readback/cold boot and normal sound/Pause/CUE confirmed, monitors closed. [Cause plan](reviews/2026-11-01-uac-callback-cause-follow-up.md) awaits hook-liveness and IRQ/cache/compute attribution; future plans require 31 predecessors |
 | Native >=302 firmware | Separate compile-only backend on this unit | Compatible silicon and independent hardware gates |
+| Calibrated UAC cause experiment | [Implemented and clean-built](reviews/2026-11-02-uac-cause-profile-execution.md): pre-stream scheduler/IRQ liveness, core-0 C-dispatch intervals, exclusive histograms and headroom records; 31-plan recovery registered | Review/CI/publication then exact-image cold/steady idle; DEVICE_NOT_RUN, s07 remains installed; no timing fix or priority/DSP/gain change |
 | JC8012 | Separate BSP/source work | Independent arrival/recovery/peripheral/audio qualification |
 | External audio | [Future PCM5122/TLV320 plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md), including separate I2C and candidate JP1 map | Physical pin/power/module confirmation, drivers and listening/timing campaign |
 | C6/Web/settings/OTA | Host/simulator contracts | Real network, durable settings and OTA trust/layout/rollback adapters |

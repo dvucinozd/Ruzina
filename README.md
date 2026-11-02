@@ -47,6 +47,10 @@ steady window adds no threshold crossings. S07 is restored and owner-confirmed
 again, with zero captured underruns/USB errors; all monitors are closed.
 Next: follow the [cause experiment plan](docs/reviews/2026-11-01-uac-callback-cause-follow-up.md)
 before resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.
+The [calibrated cause experiment](docs/reviews/2026-11-02-uac-cause-profile-execution.md)
+now has clean normal/profile builds and registered recovery plans in
+[PR #76](https://github.com/dvucinozd/Ruzina/pull/76). Its target run is still
+NOT_RUN; accepted s07 remains installed.
 Source cues/analysis, loops, scratch, keylock and FX wiring, product
 UI/settings, C6 networking and OTA remain separate subsequent development work.
 See the [current status](docs/DEVELOPMENT_STATUS.md) and
