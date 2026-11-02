@@ -1,5 +1,11 @@
 # Current development status
 
+The [service-budget and resource audit](reviews/2026-11-02-usb-service-and-resource-decision.md)
+closes the post-placement plan's first three steps. DESIGN_ONLY: defer separate
+render ownership and first prepare both decks' permanent resources before
+product audio activation. Six arithmetic-model checks pass; these do not
+qualify USB timing or implement the resource gate. S07/36-plan recovery is unchanged.
+
 The [packetizer placement comparison](reviews/2026-11-02-pack-placement-device.md)
 on `ogranak/jc1060-pack-placement` (PR #78 above #77) is MEASURED_NOT_QUALIFIED.
 Three control boots reached 15827/17386/15849 us; three IRAM boots reached

@@ -1,0 +1,45 @@
+{
+  "status": "AUDITED_SOURCE_NOT_NEW_RUNTIME_EVIDENCE",
+  "repo_base": "7a444e32bc9cdb4cd9816ef7e579ca09c1bd3c22",
+  "idf_pin": "fff9895c82d744c7237be8847347bdd1b07c6643",
+  "repository_files": {
+    "firmware-idf/legacy-jc1060/main/uac_driver.inc": "a4d1623cd63f1832d237585806aceccb4c49d2b7883927631a16caf0611e7f89",
+    "firmware-idf/legacy-jc1060/main/usb_host_enum.c": "0214c6ab9286cb9621f3d8344c125023455bc8e86bc4c3101f2df57771c109e9",
+    "firmware-idf/legacy-jc1060/main/sd_bridge.c": "aac5b715628def1f9c05925e168a570a23c97ed4ed7c64abfbbb06a0f034512b",
+    "firmware-idf/legacy-jc1060/main/probe.c": "0a7fa53f54242f8f3ff410d2f952913297217ca809295e0287583fa4b6093c35",
+    "firmware-idf/legacy-jc1060/rust-core/src/controller_audio.rs": "ffdb2841c830d5918bd65daa8bda1654110c94aa5b1a5c8ddb9d7d42054c7687",
+    "firmware-idf/legacy-jc1060/rust-core/src/controller_midi.rs": "a07650fbd9a62a6d74da001c0bbe233abba051d7330a212f09882aaa4e4cf918",
+    "firmware-idf/legacy-jc1060/rust-core/src/deck_play.rs": "d42f94a8b1b0de2b4d9000c52d88e90531e7a69b5e39ac6848d87c771631626a",
+    "firmware-idf/legacy-jc1060/rust-core/src/deck_mix.rs": "397e235f61bb4f08a981509012ba6c7cc0848615027770566add164e4ffc97ca",
+    "firmware-idf/legacy-jc1060/rust-core/src/deck_engine.rs": "8b2c2001a9d24f6cd7b17cf08bc160b3514ca2d4d833f65f86c91323ce2eed78",
+    "firmware-idf/legacy-jc1060/rust-core/src/idf_media_bridge.rs": "3ef36b8068615bc225d1bb06ff9f1673f5f24df507756e04d53429ecc0dfd78d",
+    "firmware-idf/legacy-jc1060/rust-core/src/idf_alloc.rs": "709673162c2d1daaf7a75c741d1b5b6f91d0f982770de8283254095abba71bf0",
+    "firmware-idf/legacy-jc1060/third_party/esp-usb-1.6.0/usb/src/hcd_dwc.c": "f7be5cff2be70176baab93e1b4e643e1d5bd3cd56383f01cc79392c76c5adc15",
+    "firmware-idf/legacy-jc1060/third_party/esp-usb-1.6.0/usb/src/usb_host.c": "5c5309bf67fdaaec1d0a9b6778942c955873b9101462118c851ea20242229e33",
+    "firmware-rust/crates/ruzina-audio-runtime/src/decode.rs": "89c85dd4c40739c2e8c22a1bd3e2b5efaef53b1821409653565e8f3fde025216"
+  },
+  "idf_files": {
+    "components/freertos/heap_idf.c": "dfba4b9596e280843a7bb14f5d5516038a0d634faabb9c11cc9ba869efb59101",
+    "components/hal/esp32p4/include/hal/cache_ll.h": "26926751de91fbc583339ad18cba16cd30ab9cbba56ab0eae612d32aa035914c"
+  },
+  "exact_control_elf": {
+    "path": "D:/BoardEvidence/JC1060-20261030-COM3/pack-placement-20261102/clean-control/build/ruzina_legacy_probe.elf",
+    "sha256": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f"
+  },
+  "storage_bytes": {
+    "source_ring": 262144,
+    "decoder": 111144,
+    "checkpoint": 36560,
+    "checkpoint_count": 3,
+    "encoded": 98304
+  },
+  "observations": [
+    "USB callbacks serialize in _handle_pending_ep",
+    "HCD NUM_BUFFERS=2 with pending/done URBs",
+    "HCD IRQ can start next buffer before client callback",
+    "Catalog PASS precedes first producer/ring initialization",
+    "Deck2 permanent resources lazily allocated at first LOAD",
+    "Mix UnsafeCell requires one USB-task caller"
+  ],
+  "per_deck_payload_bytes": 581272
+}

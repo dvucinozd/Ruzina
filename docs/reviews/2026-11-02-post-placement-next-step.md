@@ -4,6 +4,12 @@ Status: PLAN_ONLY / NOT_IMPLEMENTED. Start from the
 [completed comparison](2026-11-02-pack-placement-device.md), not the earlier
 build-only report. S07 is restored and confirmed; no monitor is open.
 
+Steps 1–3 are now complete in the [service-budget/resource decision](2026-11-02-usb-service-and-resource-decision.md).
+Decision: defer render/refill task separation; first prepare both decks'
+permanent resources before audio activation. This is a design with explicit
+tests, not an implemented or physically validated fix. The list below is the
+original audit remit; step 4 is the next implementation gate.
+
 1. Audit the actual USB service contract offline against the pinned IDF/USB
    driver: four six-packet transfers, completion batching, queued audio depth,
    refill/submission ownership and maximum delay before the endpoint lacks data.

@@ -1,5 +1,18 @@
 # Rust M2.5 development handoff
 
+Current offline decision: `ogranak/jc1060-usb-service-decision`. First read the
+[USB service-budget/resource design](reviews/2026-11-02-usb-service-and-resource-decision.md).
+The first three next-step audit tasks are complete. USB callbacks serialize;
+nominal 24 ms pool depth is not a per-call budget. A 581272-byte per-deck
+permanent resource initialization follows catalog PASS while USB already runs;
+deck 2 repeats it on first LOAD. Contention is plausible, not proven.
+Decision: defer render-ahead ownership/latency migration; implement a fallible,
+idempotent both-deck resource preparation gate before UAC prefill/submission
+as the next single candidate. Exact states, tests and unchanged gates are in
+the design. No firmware implementation or COM3 access in this audit. S07 remains
+accepted; recovery ancestry 36. Do not silently combine this with a new task,
+queue-size change or broader IRAM placement.
+
 Latest work: `ogranak/jc1060-pack-placement`, PR #78 above #77. Read the
 [completed device comparison](reviews/2026-11-02-pack-placement-device.md) first.
 Control maxima: 15827/17386/15849 us; IRAM: 14157/13599/15548 us. Both fail;
