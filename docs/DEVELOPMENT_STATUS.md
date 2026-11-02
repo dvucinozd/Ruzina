@@ -1,5 +1,11 @@
 # Current development status
 
+Latest tool checkpoint: `08a537b` has CodeRabbit **0 issues**, 13 normal monitor
+tests per OS (four real-loop synthetic serial cases), and 13 shared-guard WSL
+tests. Exact CI passed 21/21 and binding `a35aa0c4...` is frozen/dual-copy
+archived; publication precedes execution. No device has been
+opened by the normal campaign; the earlier rate-limit entries below are history.
+
 Normal-engine preparation is on [PR #81](https://github.com/dvucinozd/Ruzina/pull/81).
 [Source/package and 38/39-plan registration](reviews/2026-11-02-normal-engine-execution.md)
 pass offline checks, source and registration each have 21/21 CI, and accepted

@@ -1,5 +1,15 @@
 # Rust M2.5 development handoff
 
+Current continuation (23:21 Zagreb): exclusive-port fix plus real-loop synthetic
+tests are published as `08a537b20310347a842a0efdef500c826e4baa59`.
+CodeRabbit against `3841b7f` completed with **0 issues**. All 13 normal-monitor
+tests pass on Windows/WSL, including four real-loop fake-serial cases; 13 shared
+destructive-guard WSL tests pass. Exact CI passed 21/21; binding `a35aa0c4...`
+and the 48447-byte dual-copy tools archive `670cdc3d...` are frozen. Publish
+this checkpoint before normal device access. Read the latest record rather than the
+historical rate-limit paragraphs below. Registered firmware/runbook/plans are
+unchanged; native minimum remains 302 and the unit uses rev103 IDF only.
+
 Active next campaign: `ogranak/jc1060-normal-engine-campaign`, draft
 [PR #81](https://github.com/dvucinozd/Ruzina/pull/81) above #80. Read
 [normal execution checkpoint](reviews/2026-11-02-normal-engine-execution.md)

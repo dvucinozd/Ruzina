@@ -14,8 +14,8 @@ JC8012 has no transferable hardware acceptance from JC1060.
 Next normal-engine campaign is prepared in
 [draft PR #81](https://github.com/dvucinozd/Ruzina/pull/81): clean package,
 runtime resource telemetry, and 38/39-predecessor candidate/return plans pass
-offline checks. A review finding about serial connection coverage is fixed
-and tested; its final review/CI remains pending. See the
+offline checks. Serial capture fixes and real-loop synthetic tests now have
+CodeRabbit **0 issues**, 21/21 CI and a frozen, dual-copy tool binding. See the
 [exact continuation](docs/reviews/2026-11-02-normal-engine-execution.md).
 No normal-image flash has occurred; accepted s07 remains installed.
 

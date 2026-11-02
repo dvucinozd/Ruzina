@@ -3,7 +3,7 @@
 Date: 2026-11-02. Continues the frozen
 [functional runbook](2026-11-02-normal-engine-campaign.md). Do not edit that
 runbook under an active registration; its byte hash is part of preflight.
-Status: OFFLINE_REGISTERED / CONNECTION_COVERAGE_FIX_REVIEW_PENDING / NOT_FLASHED.
+Status: REVIEWED_TOOLS_BOUND_ARCHIVED / OFFLINE_REGISTERED / NOT_FLASHED.
 Draft [PR #81](https://github.com/dvucinozd/Ruzina/pull/81) is stacked above #80.
 
 Firmware source `886127e0714c15cb096cc3b86798fbacba1773f7` passed exact-parent
@@ -146,3 +146,29 @@ and a listed busy port fails immediately. All 13 normal tests pass on Windows
 and WSL, with the 13 shared-guard WSL tests also passing. These are synthetic
 host cases, never device qualification. The final exclusive-access fix review
 was rate-limited for 34 minutes at 22:35; the next attempt includes these tests.
+
+## Final review closed
+
+At 23:21 Zagreb the committed review of `08a537b20310347a842a0efdef500c826e4baa59`
+against `3841b7ff32b97f35baf613c8059789af745fd327` completed with **0 issues**.
+Thirteen normal tests pass per OS, including four deterministic real capture
+loop cases. The unchanged shared guard passes 13 WSL tests. Exact source CI,
+new binding freeze/archive/publication and fresh offline preflights remain the
+last prerequisites to the registered device campaign. No normal COM3 access
+has occurred at this point. All older review findings and failed quota attempts
+remain retained as history.
+
+Exact `08a537b` CI is **21/21 PASS**: [host #562](https://github.com/dvucinozd/Ruzina/actions/runs/41536361680)
+and [legacy #85](https://github.com/dvucinozd/Ruzina/actions/runs/41536361702).
+The [execution binding](evidence/2026-11-02-normal-engine/execution-binding.json)
+has SHA-256 `a35aa0c48ae110668af466ffa4fd72fc09f847bf882e8cbad707a21cfff27b47`.
+The [supplemental tools archive](evidence/2026-11-02-normal-engine/execution-tools-archive.json)
+is 48447 bytes, SHA-256
+`670cdc3d613816be1f1040e456b0b9c4a16a49cdaddeb73a72fe0053bc6d5dca`;
+ZIP CRC/member hashes and every secondary copy match. It retains the full
+review/fix sequence, synthetic tests, analyzer, topology confirmation and
+software-ROM helper. The binding pins exact adapter bytes and registration;
+the shared destructive boundary is unchanged. Publish this checkpoint, rerun
+both offline preflights, then use the already authorized software ROM entry.
+Normal cold/idle admission precedes every playback case. Always restore s07
+with full readback/cold/listening before campaign exit.
