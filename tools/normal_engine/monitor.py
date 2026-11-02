@@ -10,6 +10,20 @@ from program import binding
 FATAL = (b'Guru Meditation', b'assert failed', b'Stack protection fault', b'abort()', b'HP_SYS_HP_WDT_RESET')
 
 
+def validate_window(kind, seconds, after_boot, mode):
+    require(0 <= after_boot < seconds, 'Invalid capture duration')
+    if kind == 'cold':
+        require(after_boot == 45 and seconds <= 600, 'Cold window is 45 seconds after ELF, bounded by 600')
+    elif kind == 'idle':
+        require(after_boot == 0 and seconds == 60, 'Idle window is 60 seconds')
+    elif kind == 'functional':
+        require(after_boot == 0 and 30 <= seconds <= 300, 'Functional window must be bounded to 30-300 seconds')
+    elif kind == 'soak':
+        require(mode == 'candidate' and after_boot == 0 and seconds == 1800, 'Registered candidate soak is 30 minutes')
+    else:
+        raise ValueError('Unknown capture window')
+
+
 def window(raw, elf):
     """Keep preceding bytes immutable, analyze only the new expected boot."""
     identities = list(re.finditer(rb'ELF file SHA256:\s+([0-9a-fA-F]{8,64})', raw))
@@ -31,9 +45,10 @@ def main():
     p.add_argument('--binding', type=Path)
     p.add_argument('--binding-sha256')
     p.add_argument('--seconds', type=int, default=300)
-    p.add_argument('--after-boot', type=int, default=45, help='0 for separate passive steady window')
+    p.add_argument('--window', choices=('cold', 'idle', 'functional', 'soak'), default='cold')
+    p.add_argument('--after-boot', type=int, default=45, help='0 for windows anchored to a verified boot')
     args = p.parse_args()
-    require(1 <= args.seconds <= 600 and 0 <= args.after_boot < args.seconds, 'Invalid capture duration')
+    validate_window(args.window, args.seconds, args.after_boot, args.mode)
     prepared = prepare(args.root, args.repo, args.mode)
     if not args.execute:
         print(json.dumps(prepared.summary()))
@@ -41,17 +56,13 @@ def main():
     require(args.output and args.binding and args.binding_sha256, 'Execute needs fresh output and exact binding')
     bound = binding(args.binding, args.binding_sha256)
     require(bound['registration_sha256'] == prepared.registration_sha, 'Binding for another campaign')
-    if args.after_boot == 0:
-        # A steady capture must be associated with a verified cold capture later.
-        require(args.seconds == 60, 'Registered steady duration is 60 seconds')
-    else:
-        require(args.after_boot == 45, 'Registered cold duration is 45 seconds')
     import serial
     from serial.tools import list_ports
     args.output.mkdir(parents=True, exist_ok=False)
     raw, port, boot_at = bytearray(), None, None
     start = time.monotonic()
-    result = dict(status='STARTED', mode=args.mode, serial_writes=False, reset_requested=False,
+    result = dict(status='STARTED', mode=args.mode, window=args.window, requested_seconds=args.seconds,
+                  serial_writes=False, reset_requested=False,
                   elf_sha256=prepared.elf_sha, app_sha256=prepared.app_sha, physical_acceptance='NOT_ASSESSED')
     try:
         with (args.output / 'run.log').open('xb') as log:
@@ -86,6 +97,7 @@ def main():
                 if boot_at is not None and time.monotonic() - boot_at >= args.after_boot:
                     break
         result['status'] = 'CAPTURED_NOT_QUALIFIED'
+        result['stopped_by_request'] = (args.output / 'stop.request').exists()
         if args.after_boot:
             offset, boot = window(bytes(raw), prepared.elf_sha)
             (args.output / 'boot-window.log').write_bytes(boot)

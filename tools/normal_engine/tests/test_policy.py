@@ -6,6 +6,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 import campaign
+from monitor import validate_window
 
 
 class NormalPolicyTests(unittest.TestCase):
@@ -27,6 +28,16 @@ class NormalPolicyTests(unittest.TestCase):
         self.assertIs(campaign.EspBackend,campaign._shared.EspBackend)
         self.assertNotIn('serial',sys.modules)
         self.assertNotIn('esptool',sys.modules)
+
+    def test_distinct_bounded_windows(self):
+        for window,seconds,after,mode in [('cold',600,45,'candidate'),('idle',60,0,'candidate'),
+                ('functional',180,0,'candidate'),('functional',180,0,'return-s07'),('soak',1800,0,'candidate')]:
+            validate_window(window,seconds,after,mode)
+        for window,seconds,after,mode in [('cold',601,45,'candidate'),('cold',60,0,'candidate'),
+                ('idle',180,0,'candidate'),('functional',301,0,'candidate'),('soak',1800,0,'return-s07'),
+                ('functional',180,45,'candidate'),('soak',1801,0,'candidate'),('other',60,0,'candidate')]:
+            with self.subTest(window=window,seconds=seconds,mode=mode), self.assertRaises(ValueError):
+                validate_window(window,seconds,after,mode)
 
 
 if __name__=='__main__':unittest.main()

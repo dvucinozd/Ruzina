@@ -21,6 +21,12 @@ Execution requires the new exact binding, explicit execute and a fresh output
 directory. Keep the registered runbook byte-identical until the campaign ends.
 Normal mode has no scheduler/IRQ substage profile; use whole/phase fill counters
 and distinct engine resource rows, not the diagnostic calibration analyzer.
+Select passive capture bounds explicitly: `--window cold --after-boot 45`
+(up to 600 seconds waiting for the owner), `--window idle --after-boot 0 --seconds 60`,
+`--window functional --after-boot 0 --seconds 180` (30-300 seconds permitted),
+or the registered `--window soak --after-boot 0 --seconds 1800`. Functional
+windows may be stopped using their `stop.request`; actual duration and the
+stop flag are recorded. Capture completion never grants case acceptance.
 Observe reserves and all-fill limits before advancing cases. Missing telemetry
 or an unavailable target fault injector is never PASS. Always return/readback/
 cold/listen s07 at campaign exit; preserve current full state and executed history.
