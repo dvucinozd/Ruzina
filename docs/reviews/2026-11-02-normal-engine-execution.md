@@ -138,3 +138,11 @@ retried like a disappearing port. The follow-up re-enumerates after an open
 failure and permits the bounded cold pre-boot retry only if COM3 is absent.
 Listed-port access/driver failures propagate immediately. Nine tests now pass
 on Windows, including the exclusive-access case; fresh review/CI is pending.
+
+Four deterministic fake-serial integration tests additionally execute the real
+monitor loop: late idle opening still captures a full connected minute,
+post-ELF loss stays incomplete, pre-boot disappearance retries successfully,
+and a listed busy port fails immediately. All 13 normal tests pass on Windows
+and WSL, with the 13 shared-guard WSL tests also passing. These are synthetic
+host cases, never device qualification. The final exclusive-access fix review
+was rate-limited for 34 minutes at 22:35; the next attempt includes these tests.
