@@ -24,6 +24,14 @@ def validate_window(kind, seconds, after_boot, mode):
         raise ValueError('Unknown capture window')
 
 
+def capture_complete(kind, elapsed, requested, post_boot, stopped):
+    if kind == 'cold':
+        return post_boot is not None and post_boot >= 45
+    if kind == 'functional' and stopped:
+        return elapsed >= 30
+    return elapsed >= requested
+
+
 def window(raw, elf):
     """Keep preceding bytes immutable, analyze only the new expected boot."""
     identities = list(re.finditer(rb'ELF file SHA256:\s+([0-9a-fA-F]{8,64})', raw))
@@ -96,13 +104,17 @@ def main():
                         boot_at = time.monotonic()
                 if boot_at is not None and time.monotonic() - boot_at >= args.after_boot:
                     break
-        result['status'] = 'CAPTURED_NOT_QUALIFIED'
-        result['stopped_by_request'] = (args.output / 'stop.request').exists()
-        if args.after_boot:
+        elapsed = time.monotonic() - start
+        post_boot = None if boot_at is None else time.monotonic() - boot_at
+        stopped = (args.output / 'stop.request').exists()
+        complete = capture_complete(args.window, elapsed, args.seconds, post_boot, stopped)
+        result.update(status='CAPTURED_NOT_QUALIFIED' if complete else 'CAPTURE_INCOMPLETE',
+                      capture_complete=complete, post_boot_seconds=post_boot, stopped_by_request=stopped)
+        if args.after_boot and boot_at is not None:
             offset, boot = window(bytes(raw), prepared.elf_sha)
             (args.output / 'boot-window.log').write_bytes(boot)
             result.update(boot_window_offset=offset, boot_window_sha256=sha(boot))
-        else:
+        elif not args.after_boot:
             result['requires_matching_cold_identity'] = True
     except BaseException as error:
         result.update(status='FAILED_CAPTURE', error=repr(error))

@@ -6,7 +6,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 import campaign
-from monitor import validate_window
+from monitor import validate_window, capture_complete
 
 
 class NormalPolicyTests(unittest.TestCase):
@@ -38,6 +38,17 @@ class NormalPolicyTests(unittest.TestCase):
                 ('functional',180,45,'candidate'),('soak',1801,0,'candidate'),('other',60,0,'candidate')]:
             with self.subTest(window=window,seconds=seconds,mode=mode), self.assertRaises(ValueError):
                 validate_window(window,seconds,after,mode)
+
+    def test_late_boot_and_shortened_windows_are_incomplete(self):
+        self.assertFalse(capture_complete('cold',600,600,None,False))
+        self.assertFalse(capture_complete('cold',600,600,44.99,False))
+        self.assertTrue(capture_complete('cold',600,600,45,False))
+        self.assertFalse(capture_complete('idle',30,60,None,True))
+        self.assertFalse(capture_complete('soak',1799.99,1800,None,False))
+        self.assertTrue(capture_complete('soak',1800,1800,None,False))
+        self.assertFalse(capture_complete('functional',29.99,180,None,True))
+        self.assertTrue(capture_complete('functional',30,180,None,True))
+        self.assertFalse(capture_complete('functional',30,180,None,False))
 
 
 if __name__=='__main__':unittest.main()
