@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "status": "OFFLINE_REGISTERED_OPERATOR_GATES_OPEN_NOT_FLASHED",
+  "device_access": false,
+  "unit_id": "JC1060-20261030-COM3",
+  "source_commit": "d28abd0414a264cce96de4be2a2b783dc58cfd60",
+  "ci_head": "a2997bd82bb0c53869847f1fc99605f0921c2270",
+  "ci_jobs_per_head": 21,
+  "backup_copies_verified": 4,
+  "current_executed_predecessors": 36,
+  "current_full_flash_sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6",
+  "normal_package_not_registered_for_write": "clean-normal-d28abd0",
+  "transitions": {
+    "candidate": {
+      "plan_dir": "candidate-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\resource-readiness-20261102\\clean-profile-d28abd0",
+      "plan_sha256": "585d1acb9dd7439e67a6ff59eafb5f30bee981e4c85400c84d241574aa277417",
+      "manifest_sha256": "4aaed8bfd24eb19117be80927841a0c5f5cb91670c725190d79befe8bd82ed65",
+      "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+      "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+      "predecessors": 36,
+      "expected_before_sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6",
+      "expected_after_sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35",
+      "device_access": false,
+      "execution": "NOT_RUN"
+    },
+    "return-s07": {
+      "plan_dir": "return-s07-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-build-1",
+      "plan_sha256": "7192491b6f27225f2076105675950437ea612ebc1d2b02de88b27ebec14d41b9",
+      "manifest_sha256": "09ff098c6cc97681b68322125e5c025b1be845b376b8aa1806ac896d65703752",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+      "predecessors": 37,
+      "expected_before_sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35",
+      "expected_after_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+      "device_access": false,
+      "execution": "NOT_RUN"
+    }
+  },
+  "measurement": {
+    "cold_boots": 3,
+    "post_expected_elf_seconds": 45,
+    "minimum_callbacks_each": 7000,
+    "separate_steady_seconds": 60,
+    "minimum_steady_callback_delta": 9000,
+    "reject_ge_us": 6000,
+    "headroom_target_le_us": 3000,
+    "controls": "IDLE_ONLY_NO_LOAD_PLAY_OR_CONTROL_MOVEMENT",
+    "readiness": "PREPARING -> READY once per boot; no product transfer before READY",
+    "resources": "Capture readiness duration; PSRAM free/largest and internal free; task high-water and heap minima without changing thresholds",
+    "calibrations": "Scheduler and IRQ valid; complete histograms/partitions; coverage is core0 C-dispatch wall time, not CPU time",
+    "comparison": "Historical clean-control observations remain historical; no contemporaneous randomized A/B claim",
+    "observer_cost": "Instrumented build; absolute stage/logger overhead not independently removed",
+    "failure": "Invalid identity/heap/stack/calibration/partition or >=6000 us: stop extension; preserve raw evidence and return s07",
+    "exit": "Always return/readback/cold/listening verify s07; only later independently register normal candidate I02-I13"
+  },
+  "operator_gates": [
+    "Refresh actual board topology/COM3/screen/controller/power",
+    "Published registration and its CI verified before device work",
+    "Fresh manual ROM entry, no automatic reset",
+    "Fresh rev103/MAC/security/RDID and full 16 MiB live predecessor equality before any write",
+    "Written span readbacks, expected ELF cold boot; no automatic eFuse or erase-all operation"
+  ],
+  "scripts": {
+    "register_readiness.py": "ab936f2a698746b3451d9e07a4e6d9fb3353ada664bf7385970d9f5c62328e88",
+    "preflight_readiness.py": "bfe44e95e4196777d193d720ba39c49f8c17367e90096f9ec83ceac22872c670",
+    "verify_packages.py": "70a5c689c6938c63cc6e731c8be6823749c9a9e5e742ef2e8fe9ce3f73170d3a"
+  }
+}

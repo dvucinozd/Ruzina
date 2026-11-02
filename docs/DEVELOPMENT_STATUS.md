@@ -5,8 +5,11 @@ on `ogranak/jc1060-resource-readiness` ([draft PR #80](https://github.com/dvucin
 prepares both decks' permanent stores before engine UAC activation. Six host
 profiles, nine target Clippy configurations, real C driver tests, exact-parent
 review (0 issues), and clean normal/profile builds pass. BUILD_ONLY / NOT_FLASHED:
-heap/stack runtime evidence and cold/steady timing remain NOT_RUN. CI conclusions
-are pending at the source-publication checkpoint; the record links exact runs.
+heap/stack runtime evidence and cold/steady timing remain NOT_RUN. Source
+`d28abd0` and publication `a2997bd` each passed 21/21 CI jobs. Candidate/s07
+return plans (36/37 predecessors), both offline preflights and a 311-file
+dual-copy archive are ready; no plan is executed. An exact-hash execution
+wrapper/passive monitor and registration CI remain gates before physical work.
 S07, recovery ancestry 36 and native minimum 302 are unchanged. The paragraphs
 below retain historical decision/device evidence.
 

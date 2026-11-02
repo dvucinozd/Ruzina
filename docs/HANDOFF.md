@@ -8,12 +8,17 @@ activation, preserves SD/USB ownership and leaves media admission separate.
 All six host profiles, nine target Clippy configurations, six real C cases,
 exact-parent CodeRabbit (0 issues) and clean normal/profile packages pass.
 Source/artifact hashes and static RAM/stack estimates are recorded; actual
-readiness time, heap/stack high-water and USB timing are NOT_RUN. CI is still
-pending at the source-publication checkpoint; verify exact current workflow
-conclusions before preparing a device registration. Do not access COM3 from
-this offline batch. Accepted s07/36 predecessors remain unchanged. The next
-action is CI verification followed by a separately registered cold/steady
-resource/timing comparison, with exact s07 return. I02-I13 follow only after
+readiness time, heap/stack high-water and USB timing are NOT_RUN. Both source
+`d28abd0` and publication `a2997bd` passed 21/21 CI jobs. Candidate and s07 return
+plans are now offline registered against 36/37 predecessors, and both offline
+preflights plus a 311-member dual-copy archive pass. Neither plan was executed;
+accepted s07/36 predecessors remain unchanged. Before COM3, verify the later
+registration commit's CI, prepare/review an exact-hash guarded execution wrapper
+and passive ELF monitor, then refresh physical topology/manual ROM entry with
+the owner. The current preflight tool has no device mode; raw command templates
+are not an execution path. Do not access COM3 from this offline batch. Next is
+the registered three-cold/steady idle resource/timing comparison, followed by
+exact s07 return. I02-I13 follow only after
 the timing/resource gates permit them. No merge or broader architecture change.
 
 Historical decision checkpoint follows; the implementation above supersedes

@@ -102,11 +102,14 @@ counts and static frame checks do not substitute for them.
 Exact-parent review and clean normal/profile builds are complete. The source
 head's [host #546](https://github.com/dvucinozd/Ruzina/actions/runs/41492408329)
 and [legacy #69](https://github.com/dvucinozd/Ruzina/actions/runs/41492408384)
-CI runs are still in progress at this publication checkpoint; do not call the
-complete CI matrix passed until their conclusions and exact SHA are verified.
-Documentation-only publication after the source commit has separate CI.
-Packages remain BUILD_ONLY, without
-an executable device-write registration. No COM3 access has occurred here.
+CI runs both completed SUCCESS, **21/21 jobs** on the exact source SHA. The
+publication head `a2997bd82bb0c53869847f1fc99605f0921c2270` also passed **21/21**:
+[host #547](https://github.com/dvucinozd/Ruzina/actions/runs/41493301952) and
+[legacy #70](https://github.com/dvucinozd/Ruzina/actions/runs/41493302021).
+The [CI snapshot](evidence/2026-11-02-resource-readiness/ci-verified.json) records
+all 42 successful jobs across those two heads, without skipped jobs. Later
+registration/documentation commits have their own workflow status.
+Packages remain BUILD_ONLY. No COM3 access has occurred here.
 The board remains accepted s07, with 36 executed predecessors and reconstructed
 full state `7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6`.
 
@@ -119,3 +122,60 @@ deck loads/MAIN/PFL and I02-I13 only after the timing/resource gate permits it.
 If a candidate fails, restore/readback/cold/listening-verify exact s07 before
 ending the device campaign. APTA, DAC, OTA and other peripherals remain outside
 this candidate.
+
+## Offline registered candidate and s07 return
+
+The [registration](evidence/2026-11-02-resource-readiness/campaign-registration.json)
+binds the exact profile above and the independently accepted s07 package.
+Both [offline preflights](evidence/2026-11-02-resource-readiness/offline-preflight.json)
+pass. These are prepared paths, not executed writes:
+
+| Transition | Predecessors | Expected full flash after the transition |
+|---|---:|---|
+| [candidate](../boards/readiness/jc1060-resources-candidate-write-recovery-plan-20261102.json) | 36 | `f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35` |
+| [return s07](../boards/readiness/jc1060-resources-return-s07-write-recovery-plan-20261102.json) | 37 | `1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe` |
+
+Current executed ancestry is still **36** and current reconstructed state is
+still `7df030bf...`. The prospective return hash differs because bytes after
+the shorter s07 app retain the candidate's previously written contents. It
+does not imply an executed transition or app mismatch. The return must use
+the candidate state as predecessor; do not insert either plan into executed
+history until its write/readback has actually completed. No normal engine
+write is registered; the normal package is build evidence only.
+
+All 36 historical plans were replayed with verified hashes, exact restore bytes
+and preserved sector tails. Four complete factory copies match; every new
+plan and payload has an identical secondary copy. The
+[archive index](evidence/2026-11-02-resource-readiness/registration-archive.json)
+binds 311 files, both engine packages, accepted s07 artifacts and historical
+plan/write/restore payloads. ZIP CRC, all member hashes, all secondary members
+and the secondary ZIP hash pass. ZIP: **40423786 bytes**, SHA-256
+`256fcbbaeb861a7dd8a630f2ed8f71e2bc2eb3c25a259b91bd77452a5a2b9940`.
+Primary: `D:/BoardEvidence/JC1060-20261030-COM3/resource-readiness-20261102/`.
+Secondary: `C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/resource-readiness-20261102/`.
+Archives do not contain the complete checked-out toolchains; recorded pins and
+separately retained factory images remain required. Original absolute plan
+paths must be restored or deliberately remapped and reverified before replay.
+
+`preflight_readiness.py --mode candidate` or `--mode return-s07` has **only** an
+offline mode: script/plan/package/source/backup/ancestry and expected before/
+after verification. It has no serial entry point. It does not authorize use
+of the plan's placeholder raw command templates. Before device work, prepare
+and review an execution wrapper bound to these registration hashes, using the
+existing guarded programmer's identity/security/RDID/full-predecessor/readback
+policy. Bind a passive monitor to the exact expected ELF as a separate action.
+Verify the published registration commit's CI first, then refresh actual board
+topology and request owner-assisted manual ROM entry. No physical entry is
+assumed from an earlier session.
+
+The frozen measurement contract is three cold boots, each 45 seconds after the
+expected ELF identity and at least 7000 complete callbacks, then a separate
+60-second idle window with at least 9000 new callbacks. Keep tracks unloaded
+and controls untouched. Validate one PREPARING-to-READY transition per boot,
+no product transfers before READY, readiness duration and heap/stack telemetry,
+both calibrations and complete partitions/histograms. Instrumentation overhead
+is not independently removed. Historical control observations are context,
+not a newly randomized contemporaneous A/B comparison. Any invalid window,
+resource fault or >=6000 us callback prevents extension into playback gates.
+After this diagnostic, always return/readback/cold-boot/listening-verify s07;
+a later normal-image I02-I13 campaign needs independent registration.
