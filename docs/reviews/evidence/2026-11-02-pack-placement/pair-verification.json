@@ -1,0 +1,155 @@
+{
+  "status": "BUILD_ONLY_NOT_QUALIFIED",
+  "rust_archive_sha256": "70f8e038e66b53d4b1f739a599f8cfdac21068c6db4c859b77a3c4c76f335ebb",
+  "sdkconfig_sha256": "09350f7f1fd53b1e2b087b86519952480c48787578356216613dadbe8feb4f1c",
+  "packages": {
+    "clean-control": {
+      "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+      "source_commit": "605abe78f596dc7f94ccaf04e5e0936ac25a4750",
+      "source_count": 284,
+      "artifact_count": 10,
+      "sections": {
+        ".rtc.text": 104,
+        ".rtc.force_fast": 0,
+        ".rtc_noinit": 0,
+        ".rtc.force_slow": 36,
+        ".rtc_reserved": 24,
+        ".spm.text": 114,
+        ".spm.data": 64,
+        ".iram0.text": 54614,
+        ".iram0.text_end": 42,
+        ".iram0.data": 0,
+        ".iram0.bss": 0,
+        ".iram0.end": 0,
+        ".dram0.dummy": 0,
+        ".dram0.data": 25162,
+        ".noinit": 2,
+        ".dram0.bss": 20616,
+        ".dram1.data": 0,
+        ".dram1.bss": 0,
+        ".dram1.heap_start": 0,
+        ".flash.text": 466360,
+        ".flash_rodata_dummy": 524288,
+        ".flash.appdesc": 256,
+        ".flash.rodata": 276044,
+        ".flash.init_array": 236,
+        ".flash.tdata": 16,
+        ".dram0.heap_start": 8,
+        ".noload": 4,
+        ".debug_aranges": 33272,
+        ".debug_info": 3008600,
+        ".debug_abbrev": 226365,
+        ".debug_line": 1437797,
+        ".debug_frame": 99520,
+        ".debug_str": 778834,
+        ".debug_loc": 827802,
+        ".debug_ranges": 170704,
+        ".debug_line_str": 2780,
+        ".debug_loclists": 15178,
+        ".debug_rnglists": 1360,
+        ".comment": 91,
+        ".riscv.attributes": 138
+      },
+      "placement": [
+        {
+          "object": "D",
+          "symbol": "_ZN10ruzina_uac6packet4pack17h74a1a7566359db1eE",
+          "section": ".flash.text",
+          "bytes": 316
+        },
+        {
+          "object": "D",
+          "symbol": "_ZN10ruzina_uac6packet4pack28_$u7b$$u7b$closure$u7d$$u7d$17h630e943859f0c092E",
+          "section": ".flash.text",
+          "bytes": 304
+        },
+        {
+          "object": "D",
+          "symbol": "_ZN10ruzina_uac6packet5write17h89a8d2d652bc6abaE",
+          "section": ".flash.text",
+          "bytes": 84
+        }
+      ],
+      "graph": "4003794a g     F .flash.text\t0000089c .hidden ruzina_audio_runtime::render::FixedRateRenderGraph::render_block",
+      "fill_stack_estimate": 3120,
+      "load_stack_estimate": 73616
+    },
+    "clean-iram": {
+      "app_sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6",
+      "source_commit": "605abe78f596dc7f94ccaf04e5e0936ac25a4750",
+      "source_count": 284,
+      "artifact_count": 12,
+      "sections": {
+        ".rtc.text": 104,
+        ".rtc.force_fast": 0,
+        ".rtc_noinit": 0,
+        ".rtc.force_slow": 36,
+        ".rtc_reserved": 24,
+        ".spm.text": 114,
+        ".spm.data": 64,
+        ".iram0.text": 55318,
+        ".iram0.text_end": 106,
+        ".iram0.data": 0,
+        ".iram0.bss": 0,
+        ".iram0.end": 0,
+        ".dram0.dummy": 0,
+        ".dram0.data": 25162,
+        ".noinit": 2,
+        ".dram0.bss": 20616,
+        ".dram1.data": 0,
+        ".dram1.bss": 0,
+        ".dram1.heap_start": 0,
+        ".flash.text": 465656,
+        ".flash_rodata_dummy": 524288,
+        ".flash.appdesc": 256,
+        ".flash.rodata": 276044,
+        ".flash.init_array": 236,
+        ".flash.tdata": 16,
+        ".dram0.heap_start": 8,
+        ".noload": 4,
+        ".debug_aranges": 33272,
+        ".debug_info": 3008600,
+        ".debug_abbrev": 226365,
+        ".debug_line": 1437797,
+        ".debug_frame": 99520,
+        ".debug_str": 778831,
+        ".debug_loc": 827802,
+        ".debug_ranges": 170704,
+        ".debug_line_str": 2780,
+        ".debug_loclists": 15178,
+        ".debug_rnglists": 1360,
+        ".comment": 91,
+        ".riscv.attributes": 138
+      },
+      "placement": [
+        {
+          "object": "D",
+          "symbol": "_ZN10ruzina_uac6packet4pack17h74a1a7566359db1eE",
+          "section": ".iram0.text",
+          "bytes": 316
+        },
+        {
+          "object": "D",
+          "symbol": "_ZN10ruzina_uac6packet4pack28_$u7b$$u7b$closure$u7d$$u7d$17h630e943859f0c092E",
+          "section": ".iram0.text",
+          "bytes": 304
+        },
+        {
+          "object": "D",
+          "symbol": "_ZN10ruzina_uac6packet5write17h89a8d2d652bc6abaE",
+          "section": ".iram0.text",
+          "bytes": 84
+        }
+      ],
+      "graph": "4003794a g     F .flash.text\t0000089c .hidden ruzina_audio_runtime::render::FixedRateRenderGraph::render_block",
+      "fill_stack_estimate": 3120,
+      "load_stack_estimate": 73616
+    }
+  },
+  "section_delta": {
+    ".debug_str": -3,
+    ".iram0.text": 704,
+    ".iram0.text_end": 64,
+    ".flash.text": -704
+  }
+}

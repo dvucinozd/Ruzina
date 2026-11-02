@@ -78,3 +78,46 @@ archive secondary copies and register every transition and return, then require
 fresh manual ROM entry, identity/security/RDID and full predecessor equality.
 Restore/readback/cold-boot/listen to accepted s07 before ending an unqualified
 campaign. I02–I13 remain separate NOT_RUN gates.
+
+## Offline verification completed
+
+Source `605abe78f596dc7f94ccaf04e5e0936ac25a4750`, [PR #78](https://github.com/dvucinozd/Ruzina/pull/78)
+above [peer fix PR #77](https://github.com/dvucinozd/Ruzina/pull/77).
+Exact-parent CodeRabbit review: 0 issues. Fresh Rust profile: 69 PASS;
+Windows Python: 40 PASS and six explicit C skips; all six actual C cases PASS
+in WSL. Five placement tests cover exact selection, missing/duplicate/oversized
+layout, undefined references, wrong target sections and instruction drift.
+
+Both clean comparison builds have empty dirty status, matching 284 source
+hashes each and all 22 combined artifact hashes. Their original Rust archive
+SHA-256 is identical:
+`70f8e038e66b53d4b1f739a599f8cfdac21068c6db4c859b77a3c4c76f335ebb`.
+Their sdkconfig files are byte-identical. The control/variant app hashes are:
+
+- Flash control: `0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea`.
+- IRAM variant: `b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6`.
+
+Exactly 704 function bytes (316/304/84) move from flash to IRAM; IRAM end
+alignment adds another 64 bytes. `.dram0.data` and `.dram0.bss` are unchanged.
+Direct Rust stack estimates are 3120 fill / 73616 load bytes for both images;
+they exclude indirect/C/kernel frames and do not establish runtime high-water.
+Graph stays in `.flash.text`. Fresh IRAM call inspection finds internal pack
+calls and ROM memset at 0x4fc00268; bounds/panic helpers remain in flash at
+0x40058aa4/0x40058668/0x40058d08. No cache-disabled safety claim is made.
+
+The [pair index](evidence/2026-11-02-pack-placement/pair-verification.json)
+records section deltas, exact symbols, hashes and stack estimates. Its ELF
+`object` label is not an archive-member identity; use symbol/section plus the
+separate generated relocation list for placement authority.
+The [archive index](evidence/2026-11-02-pack-placement/archive-index.json)
+records the 16750017-byte ZIP, verified CRC/member hashes and identical
+secondary copy. Archive SHA-256:
+`37297bac9ff82c26222302f0319d84dd02133868b4985a8b38ed64ea2c3ce1a2`.
+Primary root: `D:/BoardEvidence/JC1060-20261030-COM3/pack-placement-20261102/`;
+secondary: `C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/pack-placement-20261102/`.
+
+GitHub CI is separate from these local results and must complete on the
+published head before any physical registration. No new recovery plan, COM3
+access, target timing or playback acceptance is claimed. The next action is
+CI verification, then registration of the full controlled campaign with 33
+predecessors and s07 return plans; owner-assisted ROM entry follows registration.

@@ -1,5 +1,13 @@
 # Current development status
 
+The [bounded packetizer placement experiment](reviews/2026-11-02-pack-placement-experiment.md)
+is prepared on `ogranak/jc1060-pack-placement` (PR #78 above #77). Clean control
+and IRAM variants share identical original Rust/config bytes; three functions
+move 704 bytes to IRAM plus 64 bytes alignment, with unchanged data/BSS and
+stack estimates. Local tests, review and pair/archive verification pass.
+BUILD_ONLY / NOT_FLASHED: CI and campaign registration remain prerequisites
+to device work; s07 remains the accepted installed image.
+
 Offline continuation after the calibrated campaign: source `eead8c6` on
 `ogranak/jc1060-peer-continuity-fixes` fixes peer-deck cached-output continuity
 and fail-closed analysis schemas. Host/C tests, exact-parent CodeRabbit review
