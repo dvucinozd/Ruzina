@@ -1,13 +1,20 @@
 # Rust M2.5 development handoff
 
-Active source preparation: `ogranak/jc1060-source-supply-profile`; read the
+Active reviewed source: `ogranak/jc1060-source-supply-profile`, draft
+[PR #82](https://github.com/dvucinozd/Ruzina/pull/82); read the
 [producer/USB measurement contract](reviews/2026-11-03-source-supply-profile.md).
 Default-OFF producer profiling separates per-deck service/decode/read/step/push,
 owner remainder and USB client/service gaps. 75 diagnostic Rust tests plus
 Clippy, 70 normal Rust tests and eight actual C cases pass locally; Windows
-Python has 41 PASS/eight explicit C skips, executed separately in WSL. Source
-review, exact CI and fresh normal/diagnostic packages are next. No new COM3
-access, registration or runtime acceptance. S07/history40/full7875f650 remain
+Python has 41 PASS/eight explicit C skips, executed separately in WSL. Final
+fix review has 0 issues; exact `0c3d86d` CI passed 22/22 with both normal and
+diagnostic jobs. Clean normal/diagnostic packages pin `e9ce242`; all 289 source
+inputs are byte-identical through the CI/docs-only fixes. Stack estimates are
+74640/3120 normal and 75712/3120 diagnostic, with unchanged limits. The
+15118202-byte archive `9dce7560...` and every secondary member/hash pass.
+Next: freeze a target runbook, register new 40/41 recovery plans, and review/
+bind tools that validate producer-profile snapshots before COM3. No new device
+access, registration or runtime acceptance. S07/history 40/full 7875f650 remain
 the installed baseline. Prior normal-result publication `fd466b3` CI is now
 success in both workflows (#564/#87). Device evidence below remains immutable.
 

@@ -2,9 +2,12 @@
 
 Active [source-supply diagnostic preparation](reviews/2026-11-03-source-supply-profile.md)
 adds explicit OFF-by-default producer/USB wall measurements, independently of
-render/IRQ profiling. Local host/target tests pass; exact review/CI and fresh
-builds are pending. No new flash/registration; installed s07/history40 and its
-accepted recovery are unchanged. Last normal-result publication CI passed.
+render/IRQ profiling. Final fix review has 0 issues, exact CI passes 22/22,
+and clean normal/diagnostic builds pass source/artifact/symbol/stack checks.
+The 15118202-byte archive and all secondary hashes match. No new flash or
+registration; installed s07/history 40 and its accepted recovery are unchanged.
+Next: separate frozen target runbook, 40/41 recovery plans and exact reviewed
+execution/analysis tools; the dual-MP3 root cause remains open.
 
 Latest [normal-engine physical result](reviews/2026-11-02-normal-engine-device.md):
 **two-deck REJECTED**, s07 restored/full-readback/cold/listening confirmed.

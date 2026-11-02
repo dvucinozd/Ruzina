@@ -1,0 +1,162 @@
+{
+  "head": "0c3d86d131eaee0fdd0380d2feba2f3364850253",
+  "status": "SUCCESS",
+  "runs": [
+    {
+      "id": 41544300271,
+      "name": "Rust host foundation",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 567,
+      "jobs_url": "https://api.github.com/repos/dvucinozd/Ruzina/actions/runs/41544300271/jobs",
+      "logs_url": "https://api.github.com/repos/dvucinozd/Ruzina/actions/runs/41544300271/logs",
+      "workflow_id": 366130319,
+      "jobs": [
+        {
+          "id": 125615978644,
+          "name": "host",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 41544300145,
+      "name": "Legacy P4 IDF build only",
+      "status": "completed",
+      "conclusion": "success",
+      "run_number": 90,
+      "jobs_url": "https://api.github.com/repos/dvucinozd/Ruzina/actions/runs/41544300145/jobs",
+      "logs_url": "https://api.github.com/repos/dvucinozd/Ruzina/actions/runs/41544300145/logs",
+      "workflow_id": 402185688,
+      "jobs": [
+        {
+          "id": 125615978783,
+          "name": "media-bridge-host",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979000,
+          "name": "legacy (memory-task)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979226,
+          "name": "legacy (sd-rust-load-display)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979271,
+          "name": "legacy (display-touch)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979316,
+          "name": "legacy (deck-mix)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979355,
+          "name": "legacy (pure-ram)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979356,
+          "name": "legacy (deck-ui)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979368,
+          "name": "legacy (deck-audio)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979375,
+          "name": "legacy (deck-engine-profile)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979396,
+          "name": "legacy (flash-build-only)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979398,
+          "name": "legacy (deck-engine)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979458,
+          "name": "legacy (sd-readonly)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979473,
+          "name": "legacy (usb-midi)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979476,
+          "name": "legacy (sd-rust-load)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979506,
+          "name": "legacy (usb-host)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979510,
+          "name": "legacy (sd-rust-exfat)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979543,
+          "name": "legacy (deck-engine-profile-pack-iram)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979554,
+          "name": "legacy (deck-play)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979575,
+          "name": "legacy (deck-engine-producer-profile)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979608,
+          "name": "legacy (sd-file-readonly)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 125615979615,
+          "name": "legacy (sd-rust-bridge)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ]
+}

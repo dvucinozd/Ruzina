@@ -3,7 +3,7 @@
 Date: 2026-11-03. Branch `ogranak/jc1060-source-supply-profile`, parent
 `fd466b38a90af16baab6d614c2bff9302715ba2c`. Follows the
 [rejected normal two-MP3 campaign](2026-11-02-normal-engine-device.md).
-Status: SOURCE_PREPARATION / NOT_REGISTERED / NOT_FLASHED.
+Status: **REVIEWED_BUILT_ARCHIVED / NOT_REGISTERED / NOT_FLASHED**.
 
 Accepted s07 remains installed, with 40 executed predecessors and independently
 verified full flash `7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6`.
@@ -156,3 +156,42 @@ The docs and matrix are fixed; final fix review/CI remains pending. The source
 files recorded in both package manifests are byte-identical across this fix;
 the changed CI/docs files are outside those source manifests. Preserve the
 original review and fixing commit beside the exact final CI evidence.
+
+## Verified offline completion
+
+The full source review's matrix issue is fixed in `d6a5906`; its follow-up
+reported only a documentation spacing issue, fixed in `0c3d86d`. Final committed
+review against `d6a5906` completed with **0 issues**. The raw full/fix/final
+reviews and quota attempt are retained; the final result does not erase the
+earlier findings. Exact `0c3d86d131eaee0fdd0380d2feba2f3364850253` CI is
+**22/22 PASS**: [host #567](https://github.com/dvucinozd/Ruzina/actions/runs/41544300271)
+and [legacy #90](https://github.com/dvucinozd/Ruzina/actions/runs/41544300145).
+Both normal and producer-profile engine jobs are present and successful.
+See [CI evidence](evidence/2026-11-03-source-supply/ci-verified.json) and
+[final review](evidence/2026-11-03-source-supply/coderabbit-final.raw.log).
+
+Both clean package manifests pin firmware source `e9ce242`. All 289 source
+inputs remain byte-identical through the CI/docs-only fixes to `0c3d86d`;
+this equivalence and all eight artifacts per package are checked, rather than
+silently changing a manifest source commit. [Package checks](evidence/2026-11-03-source-supply/package-checks.json)
+retain full app/ELF/manifests/sections. Diagnostic static DRAM BSS increases by
+576 bytes; task stack sizes are unchanged, while its larger logger snapshot
+and producer observations still need actual heap/stack/timing measurements.
+Static call-chain limits pass, not runtime reserves or normal qualification.
+
+The [dual-copy archive index](evidence/2026-11-03-source-supply/artifact-archive.json)
+records `reviewed-source-supply-builds.zip`: **15118202 bytes**, SHA-256
+`9dce7560842bfe759aab2cb3aff196a904786bdd3a61bd02f62094b248bef822`.
+ZIP CRC, every member and every secondary member/archive match. It contains
+both packages, exact source bytes, tests, review chain, CI and the reviewed
+measurement contract. Primary:
+`D:/BoardEvidence/JC1060-20261030-COM3/source-supply-20261103/`;
+secondary: `C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/source-supply-20261103/`.
+
+Next is a separately frozen target campaign/runbook, **40/41** candidate/s07
+recovery plans from full `7875f650...`, and exact reviewed execution/analysis
+tools that validate the new profile flag and complete/fresh stage snapshots.
+No old normal/profile binding authorizes this image. Record baseline/delta
+semantics and the unchanged stop/return conditions before target work. Until
+then COM3 stays unopened and accepted s07/history 40 remains installed. The
+dual-MP3 problem is **not fixed or target-diagnosed** by this offline milestone.
