@@ -3,7 +3,15 @@
 Date: 2026-11-02. Branch `ogranak/jc1060-resource-readiness`, based on
 `8449b95bd869ec34b0be0f3167d92f142d2deaba` and the
 [resource lifecycle decision](2026-11-02-usb-service-and-resource-decision.md).
-Status: IMPLEMENTED / OFFLINE_VALIDATED / BUILD_ONLY / NOT_FLASHED.
+Current status: IMPLEMENTED / THREE_COLD_AND_STEADY_IDLE_TIMING_PASS /
+PRODUCT_NOT_QUALIFIED / S07_RESTORED_AND_CONFIRMED.
+Read the [completed device record](2026-11-02-resource-readiness-device.md)
+first: callback maxima 2008/1847/1757 us, no threshold crossings, and exact s07
+restore/readback/cold/listening confirmation. Current executed ancestry is 38;
+full independently read state is
+`1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe`.
+The sections below preserve implementation/offline/entry checkpoints and do
+not supersede that completed result. Normal engine playback/I02-I13 remain open.
 Draft [PR #80](https://github.com/dvucinozd/Ruzina/pull/80) is stacked above #79;
 neither this PR nor the earlier stack is merged by this work.
 

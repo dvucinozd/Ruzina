@@ -1,0 +1,73 @@
+{
+  "status": "WRITTEN_FULL_READBACK_MATCH_ROM_HELD",
+  "mode": "candidate",
+  "registration_sha256": "a83f6f162536964f389507d610618cb255b9b08572dd1d2ed249e8f761d9ca9a",
+  "plan_sha256": "585d1acb9dd7439e67a6ff59eafb5f30bee981e4c85400c84d241574aa277417",
+  "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+  "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+  "predecessors": 36,
+  "before_sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6",
+  "after_sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35",
+  "device_access": true,
+  "flash_write_attempted": true,
+  "reset_requested": false,
+  "efuse_write": false,
+  "identity": {
+    "chip": "ESP32-P4",
+    "revision": 103,
+    "mac": "e8:f6:0a:e7:22:1d",
+    "security": {
+      "flags": 0,
+      "flash_crypt_cnt": 0,
+      "key_purposes": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        12
+      ],
+      "chip_id": 18,
+      "api_version": 2,
+      "parsed_flags": {
+        "SECURE_BOOT_EN": false,
+        "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+        "SECURE_DOWNLOAD_ENABLE": false,
+        "SECURE_BOOT_KEY_REVOKE0": false,
+        "SECURE_BOOT_KEY_REVOKE1": false,
+        "SECURE_BOOT_KEY_REVOKE2": false,
+        "SOFT_DIS_JTAG": false,
+        "HARD_DIS_JTAG": false,
+        "DIS_USB": false,
+        "DIS_DOWNLOAD_DCACHE": false,
+        "DIS_DOWNLOAD_ICACHE": false
+      }
+    },
+    "rdid": 1589352
+  },
+  "full_predecessor_match": true,
+  "postwrite_sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35",
+  "captures": {
+    "postwrite-full.bin": {
+      "bytes": 16777216,
+      "sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35"
+    },
+    "prewrite-full.bin": {
+      "bytes": 16777216,
+      "sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6"
+    },
+    "readback-00002000.bin": {
+      "bytes": 24576,
+      "sha256": "294fd857c7735a64f28e9be16aef58bc8e0fab35c844de5152097157865ac590"
+    },
+    "readback-00008000.bin": {
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    "readback-00010000.bin": {
+      "bytes": 827392,
+      "sha256": "3724625a740764083da159cc94e766f0b15ca024ea42e1a4b31cfd7caf10127e"
+    }
+  }
+}

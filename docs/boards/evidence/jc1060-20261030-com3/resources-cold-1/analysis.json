@@ -1,0 +1,688 @@
+{
+  "status": "ANALYZED_NOT_QUALIFIED",
+  "log_sha256": "8d003dbc2c1cef4a193da40f6664b10f98cd76255c2e5bcd68cbf0a5c3afceaa",
+  "bytes": 53725,
+  "partial_lines": 0,
+  "records": [
+    {
+      "kind": "worst",
+      "generation": "1",
+      "ordinal": "185",
+      "raw": {
+        "stages": {
+          "init": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "init",
+            "us": "70",
+            "segments": "9"
+          },
+          "transport": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "transport",
+            "us": "228",
+            "segments": "9"
+          },
+          "control": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "control",
+            "us": "170",
+            "segments": "3"
+          },
+          "graph": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "graph",
+            "us": "895",
+            "segments": "3"
+          },
+          "progress": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "progress",
+            "us": "93",
+            "segments": "3"
+          },
+          "copy": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "copy",
+            "us": "94",
+            "segments": "9"
+          },
+          "pack": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "pack",
+            "us": "308",
+            "segments": "6"
+          },
+          "other": {
+            "kind": "worst",
+            "gen": "1",
+            "ordinal": "185",
+            "stage": "other",
+            "us": "121",
+            "segments": "13"
+          }
+        },
+        "record": {
+          "kind": "worst",
+          "seen": "1",
+          "gen": "1",
+          "ordinal": "185",
+          "uptime_us": "3148511",
+          "phase": "2",
+          "busy": "14",
+          "health": "2",
+          "catalog": "4",
+          "d1_flags": "0",
+          "d2_flags": "0",
+          "drops": "0",
+          "whole_us": "2008",
+          "rust_us": "1979",
+          "partition_valid": "1",
+          "outer_us": "29",
+          "packets": "6",
+          "blocks": "3",
+          "sched_valid": "1",
+          "sched_window_us": "2052",
+          "away_us": "0",
+          "switches": "0"
+        },
+        "cause": {
+          "kind": "worst",
+          "gen": "1",
+          "ordinal": "185",
+          "calibration": "1",
+          "away_before": "934976",
+          "away_after": "934976",
+          "switches_before": "223",
+          "switches_after": "223",
+          "irq_calibration": "1",
+          "irq_valid": "1",
+          "irq_window_us": "2031",
+          "irq_dispatch_us": "0",
+          "irq_entries": "0",
+          "irq_nested": "0"
+        }
+      },
+      "partition_verified": true,
+      "scheduler_usable": true,
+      "irq_dispatch_usable": true,
+      "scheduler_away_inside_whole_bounds_us": [
+        0,
+        0
+      ],
+      "irq_dispatch_inside_whole_bounds_us": [
+        0,
+        0
+      ]
+    }
+  ],
+  "distributions": [
+    {
+      "generation": "1",
+      "samples": "1000",
+      "complete": true,
+      "raw": {
+        "distribution": {
+          "gen": "1",
+          "scope": "BOOT",
+          "samples": "1000",
+          "valid": "1000",
+          "upper_us": "50,100,250,500,1000,3000,INF"
+        },
+        "histograms": {
+          "whole": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "whole",
+            "max_us": "2008",
+            "bins": "0,0,0,0,906,94,0"
+          },
+          "init": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "init",
+            "max_us": "85",
+            "bins": "988,12,0,0,0,0,0"
+          },
+          "transport": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "transport",
+            "max_us": "237",
+            "bins": "965,22,13,0,0,0,0"
+          },
+          "control": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "control",
+            "max_us": "170",
+            "bins": "976,13,11,0,0,0,0"
+          },
+          "graph": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "graph",
+            "max_us": "895",
+            "bins": "0,0,0,732,268,0,0"
+          },
+          "progress": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "progress",
+            "max_us": "93",
+            "bins": "995,5,0,0,0,0,0"
+          },
+          "copy": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "copy",
+            "max_us": "107",
+            "bins": "0,998,2,0,0,0,0"
+          },
+          "pack": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "pack",
+            "max_us": "314",
+            "bins": "0,0,975,25,0,0,0"
+          },
+          "other": {
+            "gen": "1",
+            "samples": "1000",
+            "stage": "other",
+            "max_us": "198",
+            "bins": "974,19,7,0,0,0,0"
+          }
+        }
+      }
+    },
+    {
+      "generation": "1",
+      "samples": "2000",
+      "complete": true,
+      "raw": {
+        "distribution": {
+          "gen": "1",
+          "scope": "BOOT",
+          "samples": "2000",
+          "valid": "2000",
+          "upper_us": "50,100,250,500,1000,3000,INF"
+        },
+        "histograms": {
+          "whole": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "whole",
+            "max_us": "2008",
+            "bins": "0,0,0,0,1906,94,0"
+          },
+          "init": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "init",
+            "max_us": "85",
+            "bins": "1988,12,0,0,0,0,0"
+          },
+          "transport": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "transport",
+            "max_us": "237",
+            "bins": "1965,22,13,0,0,0,0"
+          },
+          "control": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "control",
+            "max_us": "170",
+            "bins": "1976,13,11,0,0,0,0"
+          },
+          "graph": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "graph",
+            "max_us": "895",
+            "bins": "0,0,0,1482,518,0,0"
+          },
+          "progress": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "progress",
+            "max_us": "93",
+            "bins": "1995,5,0,0,0,0,0"
+          },
+          "copy": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "copy",
+            "max_us": "107",
+            "bins": "0,1998,2,0,0,0,0"
+          },
+          "pack": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "pack",
+            "max_us": "314",
+            "bins": "0,0,1975,25,0,0,0"
+          },
+          "other": {
+            "gen": "1",
+            "samples": "2000",
+            "stage": "other",
+            "max_us": "198",
+            "bins": "1974,19,7,0,0,0,0"
+          }
+        }
+      }
+    },
+    {
+      "generation": "1",
+      "samples": "3000",
+      "complete": true,
+      "raw": {
+        "distribution": {
+          "gen": "1",
+          "scope": "BOOT",
+          "samples": "3000",
+          "valid": "3000",
+          "upper_us": "50,100,250,500,1000,3000,INF"
+        },
+        "histograms": {
+          "whole": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "whole",
+            "max_us": "2008",
+            "bins": "0,0,0,0,2906,94,0"
+          },
+          "init": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "init",
+            "max_us": "85",
+            "bins": "2988,12,0,0,0,0,0"
+          },
+          "transport": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "transport",
+            "max_us": "237",
+            "bins": "2965,22,13,0,0,0,0"
+          },
+          "control": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "control",
+            "max_us": "170",
+            "bins": "2976,13,11,0,0,0,0"
+          },
+          "graph": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "graph",
+            "max_us": "895",
+            "bins": "0,0,0,2232,768,0,0"
+          },
+          "progress": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "progress",
+            "max_us": "93",
+            "bins": "2995,5,0,0,0,0,0"
+          },
+          "copy": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "copy",
+            "max_us": "107",
+            "bins": "0,2998,2,0,0,0,0"
+          },
+          "pack": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "pack",
+            "max_us": "314",
+            "bins": "0,0,2975,25,0,0,0"
+          },
+          "other": {
+            "gen": "1",
+            "samples": "3000",
+            "stage": "other",
+            "max_us": "198",
+            "bins": "2974,19,7,0,0,0,0"
+          }
+        }
+      }
+    },
+    {
+      "generation": "1",
+      "samples": "4000",
+      "complete": true,
+      "raw": {
+        "distribution": {
+          "gen": "1",
+          "scope": "BOOT",
+          "samples": "4000",
+          "valid": "4000",
+          "upper_us": "50,100,250,500,1000,3000,INF"
+        },
+        "histograms": {
+          "whole": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "whole",
+            "max_us": "2008",
+            "bins": "0,0,0,0,3906,94,0"
+          },
+          "init": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "init",
+            "max_us": "85",
+            "bins": "3988,12,0,0,0,0,0"
+          },
+          "transport": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "transport",
+            "max_us": "237",
+            "bins": "3965,22,13,0,0,0,0"
+          },
+          "control": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "control",
+            "max_us": "170",
+            "bins": "3976,13,11,0,0,0,0"
+          },
+          "graph": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "graph",
+            "max_us": "895",
+            "bins": "0,0,0,2982,1018,0,0"
+          },
+          "progress": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "progress",
+            "max_us": "93",
+            "bins": "3995,5,0,0,0,0,0"
+          },
+          "copy": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "copy",
+            "max_us": "107",
+            "bins": "0,3998,2,0,0,0,0"
+          },
+          "pack": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "pack",
+            "max_us": "314",
+            "bins": "0,0,3975,25,0,0,0"
+          },
+          "other": {
+            "gen": "1",
+            "samples": "4000",
+            "stage": "other",
+            "max_us": "198",
+            "bins": "3974,19,7,0,0,0,0"
+          }
+        }
+      }
+    },
+    {
+      "generation": "1",
+      "samples": "5000",
+      "complete": true,
+      "raw": {
+        "distribution": {
+          "gen": "1",
+          "scope": "BOOT",
+          "samples": "5000",
+          "valid": "5000",
+          "upper_us": "50,100,250,500,1000,3000,INF"
+        },
+        "histograms": {
+          "whole": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "whole",
+            "max_us": "2008",
+            "bins": "0,0,0,0,4906,94,0"
+          },
+          "init": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "init",
+            "max_us": "85",
+            "bins": "4988,12,0,0,0,0,0"
+          },
+          "transport": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "transport",
+            "max_us": "237",
+            "bins": "4965,22,13,0,0,0,0"
+          },
+          "control": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "control",
+            "max_us": "170",
+            "bins": "4976,13,11,0,0,0,0"
+          },
+          "graph": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "graph",
+            "max_us": "895",
+            "bins": "0,0,0,3732,1268,0,0"
+          },
+          "progress": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "progress",
+            "max_us": "93",
+            "bins": "4995,5,0,0,0,0,0"
+          },
+          "copy": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "copy",
+            "max_us": "107",
+            "bins": "0,4998,2,0,0,0,0"
+          },
+          "pack": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "pack",
+            "max_us": "314",
+            "bins": "0,0,4975,25,0,0,0"
+          },
+          "other": {
+            "gen": "1",
+            "samples": "5000",
+            "stage": "other",
+            "max_us": "198",
+            "bins": "4974,19,7,0,0,0,0"
+          }
+        }
+      }
+    },
+    {
+      "generation": "1",
+      "samples": "6000",
+      "complete": true,
+      "raw": {
+        "distribution": {
+          "gen": "1",
+          "scope": "BOOT",
+          "samples": "6000",
+          "valid": "6000",
+          "upper_us": "50,100,250,500,1000,3000,INF"
+        },
+        "histograms": {
+          "whole": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "whole",
+            "max_us": "2008",
+            "bins": "0,0,0,0,5906,94,0"
+          },
+          "init": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "init",
+            "max_us": "85",
+            "bins": "5988,12,0,0,0,0,0"
+          },
+          "transport": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "transport",
+            "max_us": "237",
+            "bins": "5965,22,13,0,0,0,0"
+          },
+          "control": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "control",
+            "max_us": "170",
+            "bins": "5976,13,11,0,0,0,0"
+          },
+          "graph": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "graph",
+            "max_us": "895",
+            "bins": "0,0,0,4482,1518,0,0"
+          },
+          "progress": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "progress",
+            "max_us": "93",
+            "bins": "5995,5,0,0,0,0,0"
+          },
+          "copy": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "copy",
+            "max_us": "107",
+            "bins": "0,5998,2,0,0,0,0"
+          },
+          "pack": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "pack",
+            "max_us": "314",
+            "bins": "0,0,5975,25,0,0,0"
+          },
+          "other": {
+            "gen": "1",
+            "samples": "6000",
+            "stage": "other",
+            "max_us": "198",
+            "bins": "5974,19,7,0,0,0,0"
+          }
+        }
+      }
+    },
+    {
+      "generation": "1",
+      "samples": "7000",
+      "complete": true,
+      "raw": {
+        "distribution": {
+          "gen": "1",
+          "scope": "BOOT",
+          "samples": "7000",
+          "valid": "7000",
+          "upper_us": "50,100,250,500,1000,3000,INF"
+        },
+        "histograms": {
+          "whole": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "whole",
+            "max_us": "2008",
+            "bins": "0,0,0,0,6906,94,0"
+          },
+          "init": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "init",
+            "max_us": "85",
+            "bins": "6988,12,0,0,0,0,0"
+          },
+          "transport": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "transport",
+            "max_us": "237",
+            "bins": "6965,22,13,0,0,0,0"
+          },
+          "control": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "control",
+            "max_us": "170",
+            "bins": "6976,13,11,0,0,0,0"
+          },
+          "graph": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "graph",
+            "max_us": "895",
+            "bins": "0,0,0,5232,1768,0,0"
+          },
+          "progress": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "progress",
+            "max_us": "93",
+            "bins": "6995,5,0,0,0,0,0"
+          },
+          "copy": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "copy",
+            "max_us": "107",
+            "bins": "0,6998,2,0,0,0,0"
+          },
+          "pack": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "pack",
+            "max_us": "314",
+            "bins": "0,0,6975,25,0,0,0"
+          },
+          "other": {
+            "gen": "1",
+            "samples": "7000",
+            "stage": "other",
+            "max_us": "198",
+            "bins": "6974,19,7,0,0,0,0"
+          }
+        }
+      }
+    }
+  ],
+  "policy": "Only calibrated valid windows permit bounded attribution. IRQ covers core-0 C dispatch only; nested samples are unusable. Do not subtract scheduler and IRQ intervals or call the residual CPU time."
+}

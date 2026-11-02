@@ -1,0 +1,15 @@
+{
+  "status": "CAPTURED_NOT_QUALIFIED",
+  "mode": "return-s07",
+  "serial_writes": false,
+  "reset_requested": false,
+  "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+  "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "physical_acceptance": "NOT_ASSESSED",
+  "boot_window_offset": 371,
+  "boot_window_sha256": "9d4bd9a73f3d4b382a1ee08a833cd7bd66271a45b9dfe59f06040ea917d8bcf6",
+  "bytes": 14859,
+  "raw_sha256": "e7f8b925b6ca7b04aa873b123774eebd0ba937dd87f757a75b8e78abd3b756ea",
+  "elapsed_seconds": 178.6937052000003,
+  "fatal_markers": []
+}

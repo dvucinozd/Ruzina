@@ -1,0 +1,46 @@
+{
+  "status": "VALID_STEADY_IDLE_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+  "anchor": "cold-3",
+  "anchor_summary_sha256": "5615c5d6db2b79a5a6d0ae8bc3c184eb13a86fd6f168be6ae60b99efe2197105",
+  "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+  "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+  "raw_sha256": "cfbc220001203463907876844a8f0c90508e1922682e31d29f96ef8fe72fc49a",
+  "seconds": 60.06405459999996,
+  "callback_first": {
+    "generation": 1,
+    "count": 9000,
+    "first_us": 976,
+    "first_after_iso_submit": 1,
+    "max_us": 1757,
+    "max_after_iso_submit": 1,
+    "gt_3000": 0,
+    "ge_6000": 0,
+    "failures": 0
+  },
+  "callback_last": {
+    "generation": 1,
+    "count": 18000,
+    "first_us": 976,
+    "first_after_iso_submit": 1,
+    "max_us": 1757,
+    "max_after_iso_submit": 1,
+    "gt_3000": 0,
+    "ge_6000": 0,
+    "failures": 0
+  },
+  "callback_delta": {
+    "count": 9000,
+    "max_us": 0,
+    "gt_3000": 0,
+    "ge_6000": 0,
+    "failures": 0
+  },
+  "no_new_rejection_crossings": true,
+  "no_new_headroom_crossings": true,
+  "usb_errors": 0,
+  "idle_underruns": [
+    0,
+    0
+  ],
+  "histograms": 10
+}

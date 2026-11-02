@@ -1,6 +1,19 @@
 # Current development status
 
-The [resource-readiness implementation](reviews/2026-11-02-resource-readiness.md)
+The [resource-readiness device campaign](reviews/2026-11-02-resource-readiness-device.md)
+passes three cold idle windows: 7000 callbacks each, maxima 2008/1847/1757 us,
+zero >3000/>=6000 crossings, valid calibrations and zero USB/idle errors. A
+separate 60-second steady window adds 9000 callbacks without new crossings/max.
+This is idle timing evidence, not two-deck playback qualification. Exact s07
+is restored with independent whole-flash readback, cold boot and owner sound/
+Pause/CUE confirmation (13.566 captured playback seconds, no errors).
+Current ancestry is **38**, full readback `1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe`.
+All monitors are closed; device archive and secondary hashes pass. Next is a
+separately registered normal-image I02-I13/resource campaign. No normal engine
+write, automatic merge or peripheral expansion is implied. Earlier checkpoints
+below retain their original limits.
+
+Historical offline checkpoint: the [resource-readiness implementation](reviews/2026-11-02-resource-readiness.md)
 on `ogranak/jc1060-resource-readiness` ([draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80))
 prepares both decks' permanent stores before engine UAC activation. Six host
 profiles, nine target Clippy configurations, real C driver tests, exact-parent

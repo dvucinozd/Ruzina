@@ -11,27 +11,31 @@ It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
 Rust backend still requires revision **302** and must not be flashed to this unit.
 JC8012 has no transferable hardware acceptance from JC1060.
 
-Latest offline implementation: [both-deck resource readiness](docs/reviews/2026-11-02-resource-readiness.md),
-[draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80). Both permanent
-resource bundles are prepared before engine UAC startup, with fallible
-allocation and nonblocking readiness polling. Host/target checks, actual C
-driver tests, CodeRabbit (0 issues) and clean normal/profile packages pass.
-Source `d28abd0` and publication `a2997bd` each passed 21/21 CI jobs. Candidate
-and s07 return plans plus their dual-copy archive pass offline verification;
-registration/tool source also pass 21/21 CI, with reviewed guarded execution
-tools and frozen binding archived. Fresh manual ROM entry remains open. BUILD_ONLY /
-NOT_FLASHED: no measured timing improvement or new hardware acceptance yet.
+Latest result: [resource readiness before UAC](docs/reviews/2026-11-02-resource-readiness-device.md),
+[draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80). Preparing both
+permanent deck bundles before audio activation passes three cold idle windows:
+callback maxima **2008 / 1847 / 1757 us**, zero >3000/>=6000 crossings across
+21000 callbacks. Separate steady idle adds 9000 callbacks with no new crossing.
+Calibrations pass, with zero USB/idle errors. Host/target checks, both exact-parent
+CodeRabbit reviews (0 issues), clean packages and source/tool CI pass separately.
 
-Latest device checkpoint: the [packetizer placement comparison](docs/reviews/2026-11-02-pack-placement-device.md)
+Exact accepted s07 is restored with whole-flash readback, cold boot and owner
+sound/Pause/CUE confirmation. All monitors are closed. Future recovery needs
+**38** predecessors; current independent full hash is
+`1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe`.
+This passes the registered idle timing gate. Normal two-deck MAIN/PFL,
+LOAD/seek and I02-I13 still require a separately registered normal-image campaign.
+
+Historical device checkpoint: the [packetizer placement comparison](docs/reviews/2026-11-02-pack-placement-device.md)
 completed three cold boots per image plus separate steady idle. Control maxima
 were 15827/17386/15849 us; IRAM maxima 14157/13599/15548 us. Both fail the
 unchanged >=6000 us gate. Narrow IRAM placement is insufficient and is not
 enabled for the product. Exact s07 was restored/readback/cold-boot verified;
 the owner confirms sound/Pause/CUE, with 20.112 s captured playback and zero
-underruns/USB errors. All monitors are closed. Future recovery needs **36**
-executed predecessors. The [service-budget decision](docs/reviews/2026-11-02-usb-service-and-resource-decision.md)
-now has the offline implementation above; next is exact CI verification and
-a separately registered resource/timing campaign.
+underruns/USB errors. That checkpoint had **36** executed predecessors; current
+ancestry is **38** above. The [service-budget decision](docs/reviews/2026-11-02-usb-service-and-resource-decision.md)
+led to the completed resource-readiness campaign above, which supersedes its
+earlier next-step instructions.
 The paragraphs below retain earlier per-image checkpoints and their limits.
 
 The latest accepted playback record in this repository is

@@ -1,6 +1,26 @@
 # Rust M2.5 development handoff
 
-Current implementation: `ogranak/jc1060-resource-readiness`, draft
+Completed physical campaign: read the
+[resource-readiness device result](reviews/2026-11-02-resource-readiness-device.md)
+and current
+[device progress](reviews/evidence/2026-11-02-resource-readiness/device-progress.json).
+Candidate and s07-return writes/independent whole-flash readbacks match; current
+executed ancestry is 38 and full state is `1a456836...`. Three cold windows each have
+7000 callbacks and maxima 2008/1847/1757 us, with zero >3000/>=6000 crossings,
+valid calibrations and zero USB/idle errors. Steady adds 9000 callbacks without
+new crossings/max. Registered s07 return has independent full readback, cold
+boot and owner-confirmed sound/Pause/CUE; 13.566 seconds of played frames have
+zero USB/underrun errors. All monitors are closed. Exact full current state:
+`1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe`.
+Future plans require all 38 executed predecessors. The 37697960-byte completed
+archive and every secondary copy/hash pass. Next: independently register the
+clean normal engine for bounded MAIN/PFL/two-deck LOAD/seek/CUE/EOF and I02-I13,
+including playing-source resource budgets, USB-client runtime stack and
+minimum internal/largest heap observations. No normal engine write or product
+qualification is implied by idle timing. Keep DAC/APTA/networking out of this
+next campaign. Earlier offline-only paragraphs retain their historical gates.
+
+Historical implementation/offline checkpoint: `ogranak/jc1060-resource-readiness`, draft
 [PR #80](https://github.com/dvucinozd/Ruzina/pull/80) above #79. Read the
 [resource readiness record](reviews/2026-11-02-resource-readiness.md).
 Source `d28abd0` prepares both decks' permanent stores fallibly before UAC
