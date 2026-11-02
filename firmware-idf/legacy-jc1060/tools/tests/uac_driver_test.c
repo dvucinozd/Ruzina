@@ -39,6 +39,13 @@ static bool gone;
 static int alloc_fail_after=-1, submit_failures, fill_failures, endpoint_error;
 static int allocations, frees, submitted, live, flushes, clears;
 static bool hold_callbacks;
+#if UAC_TEST_TIMING
+static unsigned stack_value=3072, heap_queries;
+static unsigned uxTaskGetStackHighWaterMark(const void *task) { (void)task;return stack_value; }
+static unsigned heap_caps_get_free_size(unsigned caps) { ++heap_queries;return caps; }
+static unsigned heap_caps_get_minimum_free_size(unsigned caps) { ++heap_queries;return caps; }
+static unsigned heap_caps_get_largest_free_block(unsigned caps) { ++heap_queries;return caps; }
+#endif
 #if UAC_TEST_PROFILE
 #include "uac_profile_sched.h"
 #include "uac_profile_irq.h"
@@ -47,7 +54,6 @@ static void vTaskDelay(unsigned ticks);
 unsigned uac_test_core(void) { return 0; }
 void __real__global_interrupt_handler(intptr_t sp,int mcause) { (void)sp;(void)mcause; }
 static const void *xTaskGetCurrentTaskHandle(void) { return (void *)1; }
-static unsigned uxTaskGetStackHighWaterMark(const void *task) { (void)task;return 3072; }
 #endif
 #if UAC_TEST_TIMING
 static int64_t mock_time, fill_duration=200;
@@ -180,9 +186,15 @@ static void timing_phases(void) {
     assert(p->first_after_iso_submit && p->max_after_iso_submit);
     assert(p->gt_3000==2 && p->ge_6000==1 && p->failures==0);
     assert(uac_fill_timing.first_connection_us==12260);
+    unsigned old_heap_queries=heap_queries;
     uac_report_pending=true; uac_report();
+    assert(heap_queries==old_heap_queries); /* no heap walks on USB owner */
     uac_log_snapshot_t sample; assert(xQueueReceive(uac_log_queue,&sample,0)==1);
     assert(sample.fill_max_us==12260 && sample.generation==uac_generation);
+    assert(sample.usb_stack_free==3072); /* measured by client, not logger */
+    stack_value=1234; uac_log_resources(&sample);
+    assert(heap_queries==old_heap_queries+6 && sample.usb_stack_free==3072);
+    stack_value=3072;
     assert(sample.timing.phase[UAC_FILL_CALLBACK].failures==1);
     assert(sample.timing.phase[UAC_FILL_RECOVERY_PREFILL].count==4);
     uint32_t prior_generation=uac_generation; stop();

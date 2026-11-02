@@ -53,6 +53,8 @@ class UacRecoveryTests(unittest.TestCase):
             exe = pathlib.Path(directory) / 'uac-driver-test'
             (pathlib.Path(directory) / 'esp_timer.h').write_text(
                 '#pragma once\n#include <stdint.h>\nint64_t esp_timer_get_time(void);\n')
+            (pathlib.Path(directory) / 'esp_heap_caps.h').write_text(
+                '#pragma once\n#define MALLOC_CAP_8BIT 4\n#define MALLOC_CAP_INTERNAL 2048\n#define MALLOC_CAP_SPIRAM 1024\n')
             subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function',
                             f'-DUAC_TEST_TIMING={int(timing)}', f'-DUAC_TEST_PROFILE={int(profile)}', '-I', directory,
                             '-I', str(app / 'main'), str(app / 'tools/tests/uac_driver_test.c'),

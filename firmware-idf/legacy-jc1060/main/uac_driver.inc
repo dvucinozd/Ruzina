@@ -9,6 +9,9 @@ extern void ruzina_legacy_play_diagnostics(uint32_t *out);
 #endif
 #if CONFIG_RUZINA_DECK_MIX
 #include "esp_timer.h"
+#if CONFIG_RUZINA_DECK_ENGINE
+#include "esp_heap_caps.h"
+#endif
 /* Rust (deck_mix.rs): rendered frames, underrun blocks per deck, buffered
  * frames and rate per deck, limited MAIN samples. */
 extern void ruzina_legacy_mix_stats(uint32_t *out);
@@ -184,7 +187,7 @@ typedef struct {
     bool profile_seen, over_seen, headroom_seen, cal_passed, irq_cal_passed;
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
-    uint32_t engine[4], counters[2];
+    uint32_t engine[4], counters[2], usb_stack_free;
 #endif
 #elif CONFIG_RUZINA_DECK_PLAY
     uint32_t play[4];
@@ -212,6 +215,24 @@ static void uac_log_profile(const char *name,const uac_profile_record_t *r,bool 
     for(unsigned i=0;i<8;++i)
         printf("uac_profile_stage kind=%s gen=%" PRIu32 " ordinal=%" PRIu32 " stage=%s us=%" PRIu32 " segments=%" PRIu32 "\n",
                name,r->generation,r->ordinal,stages[i],r->rust[4+i],r->rust[12+i]);
+}
+#endif
+
+#if CONFIG_RUZINA_DECK_ENGINE
+static void uac_log_resources(const uac_log_snapshot_t *sample)
+{
+    /* Heap walks and formatting stay on the low-priority logger, never
+     * in an audio refill. Values are asynchronous global observations. */
+    printf("engine_resources generation=%" PRIu32 " usb_stack_free=%" PRIu32
+           " logger_stack_free=%u internal_free=%u internal_min=%u internal_largest=%u"
+           " psram_free=%u psram_min=%u psram_largest=%u\n",
+           sample->generation,sample->usb_stack_free,(unsigned)uxTaskGetStackHighWaterMark(NULL),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT),
+           (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
 }
 #endif
 
@@ -275,6 +296,7 @@ static void uac_log_task(void *unused)
         printf("uac_profile_logger stack_free=%u\n",(unsigned)uxTaskGetStackHighWaterMark(NULL));
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
+        uac_log_resources(&sample);
         printf("deck_engine_stats d1_ms=%" PRIu32 " d1_flags=%" PRIu32 " d2_ms=%" PRIu32 " d2_flags=%" PRIu32
                " unsupported=%" PRIu32 " refused_loads=%" PRIu32 "\n",
                sample.engine[0],sample.engine[1],sample.engine[2],sample.engine[3],sample.counters[0],sample.counters[1]);
@@ -310,6 +332,9 @@ static void uac_report(void)
     sample.profile_seen=uac_profile_seen;sample.over_seen=uac_profile_over_seen;
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
+    /* This is the client loop, not uac_iso_done/refill. The watermark belongs
+     * to the USB client; the logger's own watermark is reported separately. */
+    sample.usb_stack_free=(uint32_t)uxTaskGetStackHighWaterMark(NULL);
     ruzina_legacy_engine_status(sample.engine);ruzina_legacy_engine_counters(sample.counters);
 #endif
 #elif CONFIG_RUZINA_DECK_PLAY
