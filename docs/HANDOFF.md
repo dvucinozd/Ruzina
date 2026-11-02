@@ -5,7 +5,7 @@ Active source preparation: `ogranak/jc1060-source-supply-profile`; read the
 Default-OFF producer profiling separates per-deck service/decode/read/step/push,
 owner remainder and USB client/service gaps. 75 diagnostic Rust tests plus
 Clippy, 70 normal Rust tests and eight actual C cases pass locally; Windows
-Python has41 PASS/eight explicit C skips, executed separately in WSL. Source
+Python has 41 PASS/eight explicit C skips, executed separately in WSL. Source
 review, exact CI and fresh normal/diagnostic packages are next. No new COM3
 access, registration or runtime acceptance. S07/history40/full7875f650 remain
 the installed baseline. Prior normal-result publication `fd466b3` CI is now

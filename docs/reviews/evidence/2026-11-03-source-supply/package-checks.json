@@ -1,0 +1,38 @@
+{
+  "status": "CLEAN_NORMAL_AND_PRODUCER_DIAGNOSTIC_OFFLINE_PASS",
+  "source_commit": "e9ce242ea04c7b95d0ee87f4d6849ba8a4284e09",
+  "device_access": false,
+  "registration": "NOT_REGISTERED",
+  "packages": {
+    "clean-normal": {
+      "status": "BUILD_ONLY_NOT_QUALIFIED",
+      "source_commit": "e9ce242ea04c7b95d0ee87f4d6849ba8a4284e09",
+      "producer_profile": false,
+      "manifest_sha256": "a981ba28a7c6e9d45a27b690b49861b11888e3dc7e1f1c1fe9d9184e9441a899",
+      "app_sha256": "4eb5161dcfc27714f66c445cb73425b224e0e873cb0de46bc39f64b0d68a7ef7",
+      "elf_sha256": "3005296527bfbeeda0cad366c990cce0cc3a584085dd61a9455712e03b1a2e13",
+      "bytes": 819744,
+      "source_count": 289,
+      "artifact_count": 8,
+      "load_stack": 74640,
+      "fill_stack": 3120,
+      "render_profile_symbols_absent": true,
+      "sections": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\clean-normal\\build\\ruzina_legacy_probe.elf  :\nsection                  size         addr\n.rtc.text                 104   1343258648\n.rtc.force_fast             0   1343258752\n.rtc_noinit                 0   1343258752\n.rtc.force_slow            36   1343258752\n.rtc_reserved              24   1343258624\n.spm.text                 114    806354944\n.spm.data                  64    806355060\n.iram0.text             54198   1341128704\n.iram0.text_end            74   1341182902\n.iram0.data                 0   1341182976\n.iram0.bss                  0   1341182976\n.iram0.end                  0   1341182976\n.dram0.dummy                0   1341182976\n.dram0.data             24946   1341182976\n.noinit                     2   1341207922\n.dram0.bss              19600   1341207936\n.dram1.data                 0   1341390848\n.dram1.bss                  0   1341390848\n.dram1.heap_start           0   1341390848\n.flash.text            464890   1073741856\n.flash_rodata_dummy    524288   1073741856\n.flash.appdesc            256   1074266144\n.flash.rodata          274852   1074266400\n.flash.init_array         236   1074541252\n.flash.tdata               16   1074541488\n.dram0.heap_start           0   1341227536\n.noload                     4            0\n.debug_aranges          33128            0\n.debug_info           3001688            0\n.debug_abbrev          225418            0\n.debug_line           1431376            0\n.debug_frame            99104            0\n.debug_str             777557            0\n.debug_loc             824789            0\n.debug_ranges          170376            0\n.debug_line_str          2780            0\n.debug_loclists         15178            0\n.debug_rnglists          1360            0\n.comment                   91            0\n.riscv.attributes         138            0\nTotal                 7946687\n\n\n"
+    },
+    "clean-diagnostic": {
+      "status": "BUILD_ONLY_NOT_QUALIFIED",
+      "source_commit": "e9ce242ea04c7b95d0ee87f4d6849ba8a4284e09",
+      "producer_profile": true,
+      "manifest_sha256": "80302e06f2bc022604439949bd1bfac3ed43b3668e42176dab5821d4edf8690a",
+      "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+      "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+      "bytes": 824720,
+      "source_count": 289,
+      "artifact_count": 8,
+      "load_stack": 75712,
+      "fill_stack": 3120,
+      "render_profile_symbols_absent": true,
+      "sections": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\clean-diagnostic\\build\\ruzina_legacy_probe.elf  :\nsection                  size         addr\n.rtc.text                 104   1343258648\n.rtc.force_fast             0   1343258752\n.rtc_noinit                 0   1343258752\n.rtc.force_slow            36   1343258752\n.rtc_reserved              24   1343258624\n.spm.text                 114    806354944\n.spm.data                  64    806355060\n.iram0.text             54198   1341128704\n.iram0.text_end            74   1341182902\n.iram0.data                 0   1341182976\n.iram0.bss                  0   1341182976\n.iram0.end                  0   1341182976\n.dram0.dummy                0   1341182976\n.dram0.data             24946   1341182976\n.noinit                     2   1341207922\n.dram0.bss              20176   1341207936\n.dram1.data                 0   1341390848\n.dram1.bss                  0   1341390848\n.dram1.heap_start           0   1341390848\n.flash.text            468986   1073741856\n.flash_rodata_dummy    524288   1073741856\n.flash.appdesc            256   1074266144\n.flash.rodata          275732   1074266400\n.flash.init_array         236   1074542132\n.flash.tdata               16   1074542368\n.dram0.heap_start           0   1341228112\n.noload                     4            0\n.debug_aranges          33144            0\n.debug_info           3003452            0\n.debug_abbrev          225467            0\n.debug_line           1432897            0\n.debug_frame            99168            0\n.debug_str             777936            0\n.debug_loc             826000            0\n.debug_ranges          170624            0\n.debug_line_str          2780            0\n.debug_loclists         15178            0\n.debug_rnglists          1360            0\n.comment                   91            0\n.riscv.attributes         138            0\nTotal                 7957491\n\n\n"
+    }
+  }
+}

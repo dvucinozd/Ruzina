@@ -128,10 +128,31 @@ normal failure is resolved. Select one measured fix only after this separation.
 
 Local preparation verification: 75 diagnostic Rust tests and host/target
 Clippy PASS; 70 normal engine Rust tests and target Clippy PASS; eight actual
-C cases PASS. Pinned Windows Python runs49 tests:41 PASS/eight C skips, with
+C cases PASS. Pinned Windows Python runs 49 tests: 41 PASS/eight C skips, with
 those eight C cases executed separately in WSL. A broad system-WSL Python
 attempt lacked esptool in two unrelated tool tests; that unavailable environment
 is not reported as a full WSL-suite PASS. Config CLI/CMake isolation, existing
-PCM/fault/fairness tests and496 documentation links pass. Raw logs are in
+PCM/fault/fairness tests and 496 documentation links pass. Raw logs are in
 `docs/reviews/evidence/2026-11-03-source-supply/`. Source review, exact CI and
 fresh packages remain pending at this checkpoint.
+
+## First source review and package checkpoint
+
+Source `e9ce242` built clean normal and diagnostic packages. Each verifies all
+289 source hashes and eight artifacts, exact app/ELF identity and mode isolation.
+Normal:819744 bytes, app `4eb5161dcfc27714f66c445cb73425b224e0e873cb0de46bc39f64b0d68a7ef7`,
+static load/fill74640/3120 bytes. Diagnostic:824720 bytes, app
+`173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd`,
+static load/fill75712/3120 bytes. All unchanged limits pass. These packages
+remain BUILD_ONLY, not registered/flashed or runtime qualified.
+
+Full committed CodeRabbit review found3 issues: two missing spaces in this
+documentation and one CI matrix issue. The producer include matched/modified
+the existing normal deck-engine combination, removing its separate CI build.
+The fix adds `producer_profile: [false]` to the base matrix, so the true include
+creates an additional job. Exact subsequent CI must contain both plain
+deck-engine and producer-profile jobs (22 total jobs across the two workflows).
+The docs and matrix are fixed; final fix review/CI remains pending. The source
+files recorded in both package manifests are byte-identical across this fix;
+the changed CI/docs files are outside those source manifests. Preserve the
+original review and fixing commit beside the exact final CI evidence.
