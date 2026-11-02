@@ -1,0 +1,157 @@
+{
+  "status": "CLEAN_NORMAL_BUILD_VERIFIED_NOT_REGISTERED",
+  "source_commit": "886127e0714c15cb096cc3b86798fbacba1773f7",
+  "app_sha256": "0ba716a48d615681da7d58d3dd85976cb14cd886a30c9f785ef3686818b0f011",
+  "elf_sha256": "02b053052ba10e7d7d889028cd56644d128b3b4aa2057873a0e3b83cdb042df2",
+  "app_bytes": 819744,
+  "manifest_sha256": "5c194311dc82ba9ded6fe17cdf9d5b572e7889f5e24461ba6692eaaffebba89c",
+  "sources_verified": 285,
+  "artifacts_verified": 8,
+  "stack": {
+    "ruzina_legacy_load_run": [
+      74640,
+      [
+        "ruzina_legacy_load_run",
+        "_ZN28ruzina_legacy_idf_core_probe16idf_media_bridge11serve_decks17h8d1ffef9c4794f26E",
+        "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$4poll17h0eac20b164a44309E",
+        "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$6decode17h002887656474f9e2E",
+        "_ZN20ruzina_audio_runtime6decode13SourceDecoder4step17hc4b9a320be6956f8E",
+        "_ZN20ruzina_audio_runtime6decode13SourceDecoder7restart17h8df6cee011ce98d3E",
+        "_ZN82_$LT$nanoaudio_mp3..Mp3Decoder$LT$S$GT$$u20$as$u20$nanoaudio_core..codec..Seek$GT$4seek17h2f242c9cd4607118E",
+        "_ZN12nanomp3_core7Decoder3new17hcc35af5ee11e028eE",
+        "_ZN12nanomp3_core7minimp36Mp3Dec3new17hf67105b5c12744a5E",
+        "memset"
+      ]
+    ],
+    "ruzina_legacy_uac_fill": [
+      3120,
+      [
+        "ruzina_legacy_uac_fill",
+        "_ZN28ruzina_legacy_idf_core_probe8deck_mix4with17h229e95e4b141d4dfE",
+        "_ZN20ruzina_audio_runtime6render20FixedRateRenderGraph12render_block17h0bc81a0f4756e5deE",
+        "_ZN20ruzina_audio_runtime2fx6DeckFx7process17h439e3995c328d2c2E",
+        "_ZN16ruzina_audio_dsp11FilterState13process_frame17h0d9205f8bb1ffd66E",
+        "_ZN4libm4math4tanf4tanf17h521017bcc14cf17eE",
+        "_ZN4libm4math9rem_pio2f9rem_pio2f17h8b0c724e8771e7a4E",
+        "_ZN4libm4math14rem_pio2_large14rem_pio2_large17h1b178a29f08864c7E",
+        "_ZN4libm4math6scalbn6scalbn17hfafd3e4a6e20598aE",
+        "__muldf3"
+      ]
+    ]
+  },
+  "sections": {
+    ".rtc.text": 104,
+    ".rtc.force_fast": 0,
+    ".rtc_noinit": 0,
+    ".rtc.force_slow": 36,
+    ".rtc_reserved": 24,
+    ".spm.text": 114,
+    ".spm.data": 64,
+    ".iram0.text": 54198,
+    ".iram0.text_end": 74,
+    ".iram0.data": 0,
+    ".iram0.bss": 0,
+    ".iram0.end": 0,
+    ".dram0.dummy": 0,
+    ".dram0.data": 24946,
+    ".noinit": 2,
+    ".dram0.bss": 19600,
+    ".dram1.data": 0,
+    ".dram1.bss": 0,
+    ".dram1.heap_start": 0,
+    ".flash.text": 464890,
+    ".flash_rodata_dummy": 524288,
+    ".flash.appdesc": 256,
+    ".flash.rodata": 274852,
+    ".flash.init_array": 236,
+    ".flash.tdata": 16,
+    ".dram0.heap_start": 0,
+    ".noload": 4,
+    ".debug_aranges": 33128,
+    ".debug_info": 3001688,
+    ".debug_abbrev": 225418,
+    ".debug_line": 1431373,
+    ".debug_frame": 99104,
+    ".debug_str": 777557,
+    ".debug_loc": 824789,
+    ".debug_ranges": 170376,
+    ".debug_line_str": 2780,
+    ".debug_loclists": 15178,
+    ".debug_rnglists": 1360,
+    ".comment": 91,
+    ".riscv.attributes": 138
+  },
+  "section_delta_from_readiness_normal": {
+    ".debug_abbrev": 24,
+    ".debug_frame": -4,
+    ".debug_info": 431,
+    ".debug_line": 243,
+    ".debug_loc": 24,
+    ".debug_ranges": -8,
+    ".debug_str": 9,
+    ".flash.rodata": 176,
+    ".flash.text": 140
+  },
+  "review": {
+    "issues": 0,
+    "files": [
+      "docs/reviews/2026-11-02-normal-engine-campaign.md",
+      "firmware-idf/legacy-jc1060/main/uac_driver.inc",
+      "firmware-idf/legacy-jc1060/tools/tests/test_uac_recovery.py",
+      "firmware-idf/legacy-jc1060/tools/tests/uac_driver_test.c"
+    ]
+  },
+  "local_tests": {
+    "windows_python_pass": 40,
+    "windows_c_skips": 6,
+    "actual_wsl_c_pass": 6
+  },
+  "device_access": false,
+  "current_executed_predecessors": 38,
+  "logs": {
+    "build.ps1": {
+      "bytes": 1062,
+      "sha256": "0044673008fa3ff92aa87e5b384fe60a0bfdaa945b86b8c2d70bda59040c53a3"
+    },
+    "c-harness-final.log": {
+      "bytes": 11188,
+      "sha256": "43d0adc353e7d702f19f07943c7c7890e44333a1fa38463b314f100946111c80"
+    },
+    "c-harness.log": {
+      "bytes": 10824,
+      "sha256": "098851f373317aa1588943fa21aebef0cf3526be42ffe3418944602dbffbd97d"
+    },
+    "campaign.template.py": {
+      "bytes": 7029,
+      "sha256": "e9750360046b2850b8788a1b5b6979eea49cfce334bfc60f89a2c1c09e18778c"
+    },
+    "clean-normal-console.log": {
+      "bytes": 108,
+      "sha256": "243a498fd09e7aaf93b7806a125497bf39cfb4ab8d66ff000d0616f83f0b46d8"
+    },
+    "coderabbit-source.raw.log": {
+      "bytes": 1293,
+      "sha256": "e8fafdcfcc9cc86a623531f99adb3756485f23a64ae48248fe3329b698b21875"
+    },
+    "preflight_normal.py": {
+      "bytes": 3187,
+      "sha256": "f0b3dd17bc5410b20dcb0d6fe638d9ad137fc9663210250b3669909ea7f957fb"
+    },
+    "python-tests.log": {
+      "bytes": 5596,
+      "sha256": "179dd82bcaa1235079107b11094a7a2de56ad37d41265448f11361ff036ed5a2"
+    },
+    "register_normal.py": {
+      "bytes": 11482,
+      "sha256": "be2a2a729cd4c5d50bf671370c6c19ff60280659a1cd8d37555a1781bb132b0f"
+    },
+    "verify-normal.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "verify_normal.py": {
+      "bytes": 3523,
+      "sha256": "0bb96985854bc3a6fc600e7c8097939a64ee04cce7ef29360f62062125ad0fc7"
+    }
+  }
+}

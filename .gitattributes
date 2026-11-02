@@ -16,3 +16,5 @@ docs/reviews/evidence/2026-11-02-resource-readiness/** -text -whitespace
 # Vendored upstream sources stay byte-identical to their recorded archive.
 firmware-idf/legacy-jc1060/third_party/esp-usb-*/** -text -whitespace
 tools/resource_readiness/** text eol=lf
+tools/normal_engine/** text eol=lf
+docs/reviews/evidence/2026-11-02-normal-engine/** -text -whitespace

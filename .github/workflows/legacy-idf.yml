@@ -2,9 +2,9 @@ name: Legacy P4 IDF build only
 on:
   push:
     branches: [main]
-    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', '.github/workflows/legacy-idf.yml']
+    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', 'tools/normal_engine/**', '.github/workflows/legacy-idf.yml']
   pull_request:
-    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', '.github/workflows/legacy-idf.yml']
+    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', 'tools/normal_engine/**', '.github/workflows/legacy-idf.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,7 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Guarded campaign host fault paths (no device)
-        run: python3 -m unittest discover -s tools/resource_readiness/tests -v
+        run: |
+          python3 -m unittest discover -s tools/resource_readiness/tests -v
+          python3 -m unittest discover -s tools/normal_engine/tests -v
       - name: Rust
         run: |
           rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy

@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "status": "OFFLINE_REGISTERED_OPERATOR_GATES_OPEN_NOT_FLASHED",
+  "device_access": false,
+  "unit_id": "JC1060-20261030-COM3",
+  "source_commit": "886127e0714c15cb096cc3b86798fbacba1773f7",
+  "ci_head": "886127e0714c15cb096cc3b86798fbacba1773f7",
+  "ci_jobs_per_head": 21,
+  "backup_copies_verified": 4,
+  "current_executed_predecessors": 38,
+  "current_full_flash_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+  "normal_package_registered_for_write": "clean-normal",
+  "transitions": {
+    "candidate": {
+      "plan_dir": "candidate-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\normal-engine-20261102\\clean-normal",
+      "plan_sha256": "5fe6aa57ec6daa818e6ff8c8d0211115cbd17efc6d2b43d8a61c4a6b4258c480",
+      "manifest_sha256": "5c194311dc82ba9ded6fe17cdf9d5b572e7889f5e24461ba6692eaaffebba89c",
+      "app_sha256": "0ba716a48d615681da7d58d3dd85976cb14cd886a30c9f785ef3686818b0f011",
+      "elf_sha256": "02b053052ba10e7d7d889028cd56644d128b3b4aa2057873a0e3b83cdb042df2",
+      "predecessors": 38,
+      "expected_before_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+      "expected_after_sha256": "155ab6b5db69ae73f3a4498e97c658fc50031d0a69c60275d59fc80a1692b5b1",
+      "device_access": false,
+      "execution": "NOT_RUN"
+    },
+    "return-s07": {
+      "plan_dir": "return-s07-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-build-1",
+      "plan_sha256": "01ba94d7d6922e7d4811715ff53e1fc14232d81f3f6e899dd474f4e16e464aa6",
+      "manifest_sha256": "09ff098c6cc97681b68322125e5c025b1be845b376b8aa1806ac896d65703752",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+      "predecessors": 39,
+      "expected_before_sha256": "155ab6b5db69ae73f3a4498e97c658fc50031d0a69c60275d59fc80a1692b5b1",
+      "expected_after_sha256": "7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6",
+      "device_access": false,
+      "execution": "NOT_RUN"
+    }
+  },
+  "runbook": {
+    "path": "docs/reviews/2026-11-02-normal-engine-campaign.md",
+    "sha256": "610af6e5308738d2e55f91c199d3c6bf5d9f7b73b88aca5b5a9cc1524eb72872",
+    "owner_outputs": "RCA MASTER speakers and controller headphones confirmed"
+  },
+  "measurement": {
+    "initial_cold_boots": 1,
+    "post_expected_elf_seconds": 45,
+    "minimum_callbacks_each": 7000,
+    "separate_steady_seconds": 60,
+    "minimum_steady_callback_delta": 9000,
+    "reject_ge_us": 6000,
+    "headroom_target_le_us": 3000,
+    "controls": "N01 idle only, then N02-N08 ordered cases from exact runbook",
+    "readiness": "PREPARING -> READY once per boot; no product transfer before READY",
+    "resources": {
+      "usb_stack_min": 2048,
+      "sd_stack_min": 8192,
+      "logger_stack_min": 1024,
+      "internal_heap_min": 65536,
+      "psram_heap_min": 8388608,
+      "observed_internal_largest_min": 8192,
+      "observed_psram_largest_min": 262144
+    },
+    "normal_image": "No per-stage/scheduler/IRQ profiler; all-fill aggregate and phase timing remains enabled",
+    "observer_cost": "Existing report cadence; USB-loop watermark scan and logger heap walks have nonzero cost",
+    "failure": "Any all-fill >=6000 us, runtime reserve failure or unexpected steady error: stop extension; preserve evidence and return s07",
+    "exit": "Always return/readback/cold/listening verify s07 after this experimental normal-image campaign"
+  },
+  "operator_gates": [
+    "Refresh actual board topology/COM3/screen/controller/power",
+    "Published registration and its CI verified before device work",
+    "Owner-authorized software USB ROM entry, fresh identity; guarded programmer itself requests no reset",
+    "Fresh rev103/MAC/security/RDID and full 16 MiB live predecessor equality before any write",
+    "Written span readbacks, expected ELF cold boot; no automatic eFuse or erase-all operation"
+  ],
+  "scripts": {
+    "register_normal.py": "be2a2a729cd4c5d50bf671370c6c19ff60280659a1cd8d37555a1781bb132b0f",
+    "preflight_normal.py": "f0b3dd17bc5410b20dcb0d6fe638d9ad137fc9663210250b3669909ea7f957fb",
+    "verify_normal.py": "0bb96985854bc3a6fc600e7c8097939a64ee04cce7ef29360f62062125ad0fc7"
+  }
+}
