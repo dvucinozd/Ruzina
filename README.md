@@ -4,7 +4,7 @@ Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with
 v3.2 silicon required by the native target. The minimum configured revision is 302.
 
-## Development checkpoint — 2026-11-01
+## Development checkpoint — 2026-11-02
 
 The observed JC1060 has ESP32-P4 **v1.3/103**, 16 MiB flash and 32 MiB PSRAM.
 It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
@@ -45,12 +45,16 @@ switch deltas. IRQ/cache/observer effects and runtime hook-liveness remain open;
 these numbers do not establish pure CPU cost or a fix. A separate 9000-callback
 steady window adds no threshold crossings. S07 is restored and owner-confirmed
 again, with zero captured underruns/USB errors; all monitors are closed.
-Next: follow the [cause experiment plan](docs/reviews/2026-11-01-uac-callback-cause-follow-up.md)
+Next: follow the [cache/compute experiment plan](docs/reviews/2026-11-02-uac-cache-compute-follow-up.md)
 before resuming two-deck MAIN/PFL, control-race, media-loss and USB-reconnect qualification.
 The [calibrated cause experiment](docs/reviews/2026-11-02-uac-cause-profile-execution.md)
-now has clean normal/profile builds and registered recovery plans in
-[PR #76](https://github.com/dvucinozd/Ruzina/pull/76). Its target run is still
-NOT_RUN; accepted s07 remains installed.
+has now [run on the exact rev103 unit](docs/reviews/2026-11-02-uac-cause-profile-device.md)
+in [PR #76](https://github.com/dvucinozd/Ruzina/pull/76). Both liveness
+calibrations pass; the 14812 us worst callback has zero observed task-switch
+deltas and 1593–1653 us of covered IRQ dispatch inside the call. Timing still
+fails; uncovered wall time is not pure CPU cost. Separate steady idle adds no
+crossings. S07 is restored/readback/cold-boot verified and owner-confirmed for
+normal sound/Pause/CUE; all monitors are closed. Future plans need 33 predecessors.
 Source cues/analysis, loops, scratch, keylock and FX wiring, product
 UI/settings, C6 networking and OTA remain separate subsequent development work.
 See the [current status](docs/DEVELOPMENT_STATUS.md) and

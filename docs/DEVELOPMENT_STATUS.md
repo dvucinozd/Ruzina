@@ -1,6 +1,6 @@
 # Current development status
 
-Updated 2026-11-01. Development has two distinct backends. Native requires
+Updated 2026-11-02. Development has two distinct backends. Native requires
 ESP32-P4 >=302. The arrived JC1060 is v1.3/103 and uses pinned IDF 6.1 with
 shared Rust. Active continuation is `ogranak/jc1060-uac-cause-profile`, clean
 diagnostic source `3e20a8e64ef7f2ff855bf18706712e289c6cc747`, stacked on the
@@ -11,12 +11,12 @@ repair branch through PR #76 -> #75 -> #74 -> #73 -> #72 -> #71. These PRs remai
 | Shared product logic | Rust host implementations for transport, media import, mixer/DSP and management contracts | Target adapter wiring and physical qualification per feature |
 | Legacy SD/library/display | 25-track real export, shared PDB/ANLZ preflight, NewPanel/touch and combined controller diagnostic observed | Broader fixtures and product UI |
 | Legacy deck-play | Accepted record: app `95d45203...`, FLX4 headphones, deck 1 FLAC/MP3/WAV; 90 s rendered audio in 15 min USB stream capture | No transfer of this acceptance to newer images |
-| Legacy deck-mix/deck-engine | Host/build implementation; s08/s09 history reconciled; no inherited two-deck acceptance | [Measure startup versus recurring UAC cost](reviews/2026-11-01-uac-timing-follow-up.md) |
+| Legacy deck-mix/deck-engine | Host/build implementation; s08/s09 history reconciled; no inherited two-deck acceptance | [Controlled cache/compute cause experiment](reviews/2026-11-02-uac-cache-compute-follow-up.md) before resuming qualification |
 | Review repairs A–H / campaign I | Offline validation complete; published PR #73 passed 19/19 CI jobs; exact candidate booted but I01 timing criterion failed at 12260 us | Candidate rejected for this campaign; s07 restored/readback and cold boot verified, normal playback owner-confirmed with zero captured underruns; I02–I13 NOT_RUN |
 | UAC phase diagnostic | [Measured](reviews/2026-11-01-uac-timing-device-results.md): prefill max 1844 us, callback max 10373 us, 3/6000 callbacks >=6000 us; zero idle underruns/USB errors | Timing criterion FAIL; s07 restored/cold boot and normal playback confirmed, monitors closed; next is bounded callback substage/preemption profiling |
 | UAC callback substage diagnostic | [Measured](reviews/2026-11-01-uac-callback-profiling-device.md): coherent 13087/13039 us records, exclusive partitions valid, zero observed switch deltas; 9000 steady callbacks add no threshold crossings | Aggregate FAIL; s07 restored/readback/cold boot and normal sound/Pause/CUE confirmed, monitors closed. [Cause plan](reviews/2026-11-01-uac-callback-cause-follow-up.md) awaits hook-liveness and IRQ/cache/compute attribution; future plans require 31 predecessors |
 | Native >=302 firmware | Separate compile-only backend on this unit | Compatible silicon and independent hardware gates |
-| Calibrated UAC cause experiment | [Implemented and clean-built](reviews/2026-11-02-uac-cause-profile-execution.md): pre-stream scheduler/IRQ liveness, core-0 C-dispatch intervals, exclusive histograms and headroom records; 31-plan recovery registered | Review/CI/publication then exact-image cold/steady idle; DEVICE_NOT_RUN, s07 remains installed; no timing fix or priority/DSP/gain change |
+| Calibrated UAC cause experiment | [Measured](reviews/2026-11-02-uac-cause-profile-device.md): both target calibrations pass; worst callback 14812 us, switch delta 0, covered IRQ bound 1593–1653 us; no new crossings in 9000 steady callbacks | Aggregate FAIL; s07 restored/readback/cold boot and normal sound/Pause/CUE confirmed, monitors closed. [Cache/compute plan](reviews/2026-11-02-uac-cache-compute-follow-up.md) is PLAN_ONLY; future plans require 33 predecessors |
 | JC8012 | Separate BSP/source work | Independent arrival/recovery/peripheral/audio qualification |
 | External audio | [Future PCM5122/TLV320 plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md), including separate I2C and candidate JP1 map | Physical pin/power/module confirmation, drivers and listening/timing campaign |
 | C6/Web/settings/OTA | Host/simulator contracts | Real network, durable settings and OTA trust/layout/rollback adapters |

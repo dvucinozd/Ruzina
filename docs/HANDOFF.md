@@ -1,12 +1,21 @@
 # Rust M2.5 development handoff
 
 Latest work: `ogranak/jc1060-uac-cause-profile`, continuing from `62717ce`.
-Read [calibrated cause experiment](reviews/2026-11-02-uac-cause-profile-execution.md)
-for current implementation/build/registration gates. [PR #76](https://github.com/dvucinozd/Ruzina/pull/76)
-contains source `3e20a8e`, clean normal/profile packages and 31-predecessor
-diagnostic/return plans. New target measurements
-are NOT_RUN; the previously confirmed s07 remains the normal device image.
-The paragraphs below retain the prior measured checkpoint.
+Read the [calibrated device result](reviews/2026-11-02-uac-cause-profile-device.md)
+first. [PR #76](https://github.com/dvucinozd/Ruzina/pull/76) contains source
+`3e20a8e` (20/20 source CI jobs), clean normal/profile packages and the executed
+diagnostic/return plans. Both target calibrations pass. Worst callback 14812 us
+has no observed switch delta and 1593–1653 us of covered C-dispatch IRQ time.
+The aggregate gate fails; the remainder is not established CPU/cache cost.
+Separate steady idle adds 9000 callbacks without new threshold crossings.
+Exact s07 was restored/readback/cold-boot verified; the owner confirms normal
+sound, Pause and CUE, with zero captured underruns/USB errors. All monitors are
+closed. Future plans require **33 predecessors**, reconstructed full SHA-256
+`4324fee5c109cc9fe28aebbafa8f5cf2116ee4950afce374be5ef6f81aa2ae68`.
+Next is the [bounded cache/compute plan](reviews/2026-11-02-uac-cache-compute-follow-up.md),
+PLAN_ONLY; no priority, DSP, gain or native-minimum change.
+The paragraphs below retain prior measured checkpoints; their predecessor
+counts and not-run states do not supersede the current result above.
 
 Latest continuation: `ogranak/jc1060-uac-callback-profile`, [PR #75](https://github.com/dvucinozd/Ruzina/pull/75).
 Read the [callback device record](reviews/2026-11-01-uac-callback-profiling-device.md)

@@ -1,0 +1,8 @@
+
+40049e5e l     F .flash.text	00000130 ruzina_uac::packet::pack::{{closure}}
+40049f8e l     F .flash.text	00000054 ruzina_uac::packet::write
+4003797e g     F .flash.text	0000089c .hidden ruzina_audio_runtime::render::FixedRateRenderGraph::render_block
+4ff0bb32 g     F .iram0.text	00000044 _global_interrupt_handler
+4ff018c6 g     F .iram0.text	000000a2 __wrap__global_interrupt_handler
+40049d22 g     F .flash.text	0000013c ruzina_uac::packet::pack
+

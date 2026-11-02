@@ -1,7 +1,10 @@
 # Follow-up after callback substage/scheduler capture
 
-Status: implementation started in the [2026-11-02 execution](2026-11-02-uac-cause-profile-execution.md);
-device execution and cause/fix acceptance remain open. Read the [measured device record](2026-11-01-uac-callback-profiling-device.md).
+Status: implemented and [measured on 2026-11-02](2026-11-02-uac-cause-profile-device.md).
+S07 is restored and confirmed; timing still fails. The next cause/fix gate is
+the [cache/compute follow-up](2026-11-02-uac-cache-compute-follow-up.md).
+The numbered steps below retain the original experiment contract. Read the
+[prior measured device record](2026-11-01-uac-callback-profiling-device.md) for its entry context.
 Do not change priorities, DSP, gain or the >=6000 us criterion before a controlled
 cause test. Native minimum remains revision 302; this unit uses legacy rev103.
 

@@ -7,6 +7,13 @@ Continues the [cause plan](2026-11-01-uac-callback-cause-follow-up.md) after the
 This is diagnostic attribution, not a timing fix. Native minimum remains 302;
 the observed JC1060 v1.3/103 stays on accepted s07 until the new registered run.
 
+The status above is the registration checkpoint. The later
+[device result](2026-11-02-uac-cause-profile-device.md) supersedes it: the exact
+image was measured, timing failed, and accepted s07 was restored/readback/cold-
+boot verified with owner-confirmed normal sound/Pause/CUE. All monitors are
+closed. Future plans need 33 predecessors. Continue with the
+[cache/compute plan](2026-11-02-uac-cache-compute-follow-up.md); it is PLAN_ONLY.
+
 ## Implementation
 
 - Before this connection's first audio submit, the actual USB client binds the
