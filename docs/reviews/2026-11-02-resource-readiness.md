@@ -238,3 +238,23 @@ executed ancestry is 36, s07 remains installed, and no new target timing/heap/
 stack result is claimed. After owner-assisted entry, use the frozen programmer,
 then the registered cold/steady observations and exact s07 return. Later
 evidence-publication CI is independent of the verified registration/tool heads.
+
+## Owner-requested software ROM entry
+
+After the owner confirmed the visible library, they asked the agent to perform
+the ROM entry instead of the physical button/cable sequence. This explicitly
+substitutes USB Serial/JTAG ROM entry for this campaign's earlier manual-entry
+gate; it does not substitute a software reset for any cold-boot measurement.
+The pinned esptool 5.6.0 `usb-reset` sequence is supported by the observed native
+COM3 VID303A/PID1001 interface. One attempt succeeded, with no stub, flash write,
+eFuse operation or post-connection reset. Fresh ROM identity is ESP32-P4 rev103,
+MAC `e8:f6:0a:e7:22:1d`, security flags/crypt count zero. The
+[entry result](../boards/evidence/jc1060-20261030-com3/resources-software-rom-entry/result.json)
+and raw log are retained and copied to secondary storage. Log SHA-256:
+`e648e7b1c69f07f51e8982951fb419bc6541d6e48159f7c54c854e1898182246`.
+
+The programmer remains frozen with `no-reset`, live full predecessor/identity/
+security/RDID checks and exact before/after readbacks. Software ROM entry
+changes no flash ancestry: s07 is still installed and the chip is held in ROM
+at this checkpoint. Physical power removal is still required for each of the
+registered cold boots. No cold evidence is claimed from this USB reset.

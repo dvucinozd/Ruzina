@@ -17,8 +17,12 @@ execution-tool source `51c6967` now each pass 21/21 CI. Reviewed guarded
 programmer/passive monitor, 13 host tests per OS and the exact-hash binding are
 complete; see the record's latest section and tools README. Device access is
 explicit and remains unexecuted at this checkpoint. The owner confirms the
-song list is visible; request fresh manual ROM entry before any programmer
-invocation. The tools default to offline; raw plan templates are not the
+song list is visible. The owner subsequently requested agent-performed ROM
+entry; one supported native USB software entry succeeded with fresh rev103/MAC/
+security identity and no flash write. See the latest record. This substitutes
+only the entry method: the chip is currently held in ROM, s07 still installed,
+36 executed predecessors. Physical cold boots remain required. The tools
+default to offline; raw plan templates are not the
 execution path. Next is
 the registered three-cold/steady idle resource/timing comparison, followed by
 exact s07 return. I02-I13 follow only after
