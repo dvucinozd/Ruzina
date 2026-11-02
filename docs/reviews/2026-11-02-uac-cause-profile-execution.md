@@ -156,11 +156,21 @@ Both plans, full packages and artifacts have matching secondary copies.
 
 The [registration](evidence/2026-11-02-uac-cause/diagnostic-registration.json)
 and [archive index](evidence/2026-11-02-uac-cause/registration-archive.json)
-record an 80-file, 15144688-byte ZIP with verified CRC, all member SHA-256 values
+record the current 79-file, 15142719-byte v3 ZIP with verified CRC, all member SHA-256 values
 and equal secondary SHA-256
-`ec25261d1f809e72ecc5d49b1cc3f690c36a16e3d37cbdbc909054970d6038e2`.
+`960865fa94b559abbedc6c4b6bfaf6d9702d88270d9339fd1cd95d214b10f357`.
 Secondary root:
 `C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/uac-cause-20261102/`.
 Final evidence-format review, CI and publication are tracked independently of
 clean-build success. Device work stays disarmed until those gates close and the
 owner performs fresh manual ROM entry.
+
+The registration review identified the redundant mixed-format `.ndjson` members
+inside the first archive as well. The v3 archive retains raw logs and strict
+event files, excludes only those redundant mislabeled members, and parses every
+remaining NDJSON line during verification. The original v1 archive is retained
+at its recorded hash; v2 stopped on a revised-tooling secondary-copy mismatch
+and is not registered. The earlier secondary tooling version is preserved.
+The reviewed analyzer and both evidence-format findings are resolved; no
+firmware source changed after the corrected clean builds. Archive CRC/content,
+strict NDJSON and secondary equality pass independently of CI.

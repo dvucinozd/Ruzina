@@ -1,13 +1,13 @@
 {
   "status": "CRC_CONTENT_AND_SECONDARY_SHA256_PASS",
   "source_commit": "3e20a8e64ef7f2ff855bf18706712e289c6cc747",
-  "files": 80,
-  "bytes": 15144688,
-  "sha256": "ec25261d1f809e72ecc5d49b1cc3f690c36a16e3d37cbdbc909054970d6038e2",
-  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-cause-20261102\\published-cause-diagnostic.zip",
-  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\uac-cause-20261102\\published-cause-diagnostic.zip",
+  "files": 79,
+  "bytes": 15142719,
+  "sha256": "960865fa94b559abbedc6c4b6bfaf6d9702d88270d9339fd1cd95d214b10f357",
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-cause-20261102\\published-cause-diagnostic-v3.zip",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\uac-cause-20261102\\published-cause-diagnostic-v3.zip",
   "content_sha256": {
-    "archive_registration.py": "4f6a5e17da99e9f59ccc46de53181fb15b3431857d9aff05466aaca80fbab7a2",
+    "archive_registration.py": "4464259784cea347ac6f307e2ff98f6a2c5a5cb161e926650584d698bba8282e",
     "build.ps1": "0044673008fa3ff92aa87e5b384fe60a0bfdaa945b86b8c2d70bda59040c53a3",
     "c-tests-corrected.log": "c683a3fdf895ac84551a98b7ef49658928cc5adf9756ca014b4ebd9be289476b",
     "c-tests-final.log": "b6ab251a0a2657a9fc3c5334675e971652194afa325faaacf06edbdcaf033afa",
@@ -48,15 +48,14 @@
     "clean-profile-r2-exit.txt": "13bf7b3039c63bf5a50491fa3cfd8eb4e699d1ba1436315aef9cbe5711530354",
     "coderabbit-committed-exit.txt": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
     "coderabbit-committed.events.ndjson": "527d84fd1e907ad0369dfa37c354b1905d339fca73c035691b38b95b08b5c179",
-    "coderabbit-committed.ndjson": "fec9ca5cdd99fc218c49262d0bb1eeea9e042450f966192bf4ed9d5cd27cde3a",
     "coderabbit-committed.raw.log": "fec9ca5cdd99fc218c49262d0bb1eeea9e042450f966192bf4ed9d5cd27cde3a",
     "coderabbit-corrected-exit.txt": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
     "coderabbit-corrected.events.ndjson": "e1e20e4a83098bfa55aa0cfba3134ed386f54bdfb17a0123a8cef46215c76228",
-    "coderabbit-corrected.ndjson": "3655fdba23822d1dd00f21b013b56489db57f6a96d17f0d89680c025c1275fd4",
     "coderabbit-corrected.raw.log": "3655fdba23822d1dd00f21b013b56489db57f6a96d17f0d89680c025c1275fd4",
     "coderabbit-exit.txt": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "coderabbit-registration-exit.txt": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "coderabbit-registration.raw.log": "dd1d95e426ee8f73db41ce28d6ead99c98816efa9220d9794f9a223d527991e6",
     "coderabbit.events.ndjson": "0f708ee45ac9bfe5fa513db5ca54333749b634dd2e2921a39f976cc5aa02be7d",
-    "coderabbit.ndjson": "46fc2e9a658eda315317d3405605b4e69ab359dd7831ff5234ef4d0f71ccf55e",
     "coderabbit.raw.log": "46fc2e9a658eda315317d3405605b4e69ab359dd7831ff5234ef4d0f71ccf55e",
     "diagnostic-plan/plan.json": "fae4606a5e23b7d1bb6ec88f5045057d41184c97f90b119608ce1bf672d56528",
     "diagnostic-plan/restore-00002000.bin": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88",
@@ -87,5 +86,9 @@
     "windows-tests-corrected.log": "430b7dc2e7e21792840fd8bd4ba3b5a517cf9dcec5f546aaa2a3731a8de98759",
     "windows-tests-final.log": "4e5d203a8b87d764a2068906c7c38d90f6dccddb7c30e9ceb46e2a5806b65d19",
     "windows-tests.log": "fa989434bf5c18ed6519c3807df85feaaf87b9b56cd331f4a87852c14bdd0ad0"
-  }
+  },
+  "strict_ndjson_members": true,
+  "previous_archive_retained": "published-cause-diagnostic.zip",
+  "previous_archive_sha256": "ec25261d1f809e72ecc5d49b1cc3f690c36a16e3d37cbdbc909054970d6038e2",
+  "incomplete_v2_retained_not_registered": "published-cause-diagnostic-v2.zip"
 }
