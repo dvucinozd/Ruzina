@@ -17,17 +17,17 @@ LIMITS = dict(usb_stack_min=2048, logger_stack_min=1024, internal_heap_min=65536
               observed_psram_largest_min=262144, sd_stack_min=8192)
 
 
-def report(i=1):
-    return (transcript((0, 0), [i]) +
+def report(i=1, playing=(0, 0)):
+    return (transcript(playing, [i]) +
             'producer_water log_drops=0\n'
-            'usb_uac_stats iso_errors=0 packet_errors=0 submit_errors=0\n'
+            f'usb_uac_stats transfers={i*1000} iso_errors=0 packet_errors=0 submit_errors=0\n'
             'deck_mix_stats underruns=0/0\n'
             'uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0\n' +
-            ''.join('uac_fill_phase phase=' + phase + ' generation=1 max_us=2000 ge_6000=0 failures=0\n'
+            ''.join('uac_fill_phase phase=' + phase + f' generation=1 count={i*1000} max_us=2000 gt_3000=0 ge_6000=0 failures=0\n'
                     for phase in ('initial_prefill', 'recovery_prefill', 'callback')) +
             'engine_resources usb_stack_free=4000 logger_stack_free=2000 internal_min=100000 '
             'psram_min=10000000 internal_largest=20000 psram_largest=1000000\n'
-            'deck_engine_stats d1_flags=0 d2_flags=0\n').encode()
+            f'deck_engine_stats d1_flags={playing[0]*2} d2_flags={playing[1]*2}\n').encode()
 
 
 class ContinuousTests(unittest.TestCase):

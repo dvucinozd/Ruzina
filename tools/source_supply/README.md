@@ -1,5 +1,11 @@
 # Registered producer-profile campaign tools
 
+Current continuation: [passive adapter/whole-stream analyzer](../../docs/reviews/2026-11-03-continuous-adapter.md).
+37 tests per OS include a synthetic five-case session with one connection.
+`continuous_adapter.py` defaults offline and rejects old bindings/plans;
+`continuous_analyze.py` requires the new receipt journal. No new device
+registration exists yet. Software boot/recovery registration remains separate.
+
 New offline work: [`continuous.py`](continuous.py) and the
 [capture contract](../../docs/reviews/2026-11-03-continuous-capture.md) preserve
 one full stream and coordinate owner readiness. The replay CLI has no device

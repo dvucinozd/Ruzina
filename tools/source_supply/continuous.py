@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 import re
 import secrets
+import shutil
 
 from analyze import HEADER, STAGES, USB_STAGES, fields, numbers
 from campaign import require, sha
@@ -40,7 +41,8 @@ class ContinuousCapture:
     Cold power/identity, source freshness and numerical acceptance remain the
     registered adapter/analyzer's responsibility. No positive acceptance here.
     """
-    def __init__(self, output, limits, expected_elf, *, start=0.0, max_seconds=1800):
+    def __init__(self, output, limits, expected_elf, *, start=0.0, max_seconds=1800,
+                 auto_cold=False, token_factory=None):
         require(re.fullmatch(r'[0-9a-f]{64}', expected_elf), 'Need exact ELF SHA')
         require(math.isfinite(start) and 0 < max_seconds <= 1800, 'Invalid session bound')
         self.output = Path(output)
@@ -59,6 +61,9 @@ class ContinuousCapture:
         self.failed = None
         self.closed = False
         self.boots = 0
+        self.auto_cold = auto_cold
+        self.token_factory = token_factory or (lambda: secrets.token_hex(16))
+        self.cold_confirmation = None
         self.event('session_started', start, serial_writes=False, reset_requested=False)
 
     def event(self, kind, now, **extra):
@@ -96,6 +101,9 @@ class ContinuousCapture:
         self.raw_file.flush()
         self.digest.update(data)
         self.offset += len(data)
+        if data:
+            self.event('serial_chunk', now, start=self.offset-len(data), end=self.offset,
+                       sha256=sha(data))
         if self.offset > 64 * 1024 * 1024:
             self.fail('Session byte bound reached', now)
             return
@@ -123,6 +131,15 @@ class ContinuousCapture:
             require(self.boots == 1 and match is not None and
                     self.expected_elf.startswith(match[1].lower()), 'Unexpected/malformed boot ELF')
             self.event('expected_elf_received', now, line_offset=begin)
+            if self.auto_cold:
+                require(not self.cases and self.active is None, 'Cold must be the first case')
+                self.cases.append(dict(name='cold-1', kind='cold', seconds=45,
+                                       state='CAPTURING', start=now, start_offset=begin,
+                                       deadline=now+45))
+                self.active = 0
+                self.event('cold_started', now, case=self.cases[0].copy())
+        reason = fault_reason((text + '\n').encode(), self.limits)
+        require(reason is None, reason or 'Runtime fault')
         key = text.split(' ', 1)[0]
         # A joined prefix/suffix must not hide a known telemetry/fatal row.
         if key not in REPORTS:
@@ -130,8 +147,6 @@ class ContinuousCapture:
             return
         require(self.boots == 1, 'Telemetry arrived before expected boot ELF')
         row = fields(text)  # Reject duplicates, including the real failed S03 prefix.
-        reason = fault_reason((text + '\n').encode(), self.limits)
-        require(reason is None, reason or 'Runtime fault')
         if self.frame is None:
             require(key == 'producer_profile' and row.get('deck') == '1', 'Orphan report/frame prefix')
             self.frame = dict(start=begin, received_start=now, rows=0, decks={})
@@ -167,7 +182,7 @@ class ContinuousCapture:
                 (kind == 'functional' and 30 <= seconds <= 180) or
                 (kind == 'both' and seconds == 60), 'Unregistered case duration')
         require(0 < readiness_seconds <= 120, 'Invalid readiness bound')
-        token = secrets.token_hex(16)
+        token = self.token_factory()
         self.cases.append(dict(name=name, kind=kind, seconds=seconds, token=token,
                                offered=now, ready_deadline=now + readiness_seconds, state='OFFERED'))
         self.active = len(self.cases) - 1
@@ -202,37 +217,66 @@ class ContinuousCapture:
         self.tick(now)
         self.fail('Serial connection lost; no reopen permitted', now)
 
+    def confirm_physical_cold(self, reply, now):
+        self.tick(now)
+        require(self.auto_cold and self.boots == 1 and self.failed is None and
+                self.cold_confirmation is None and isinstance(reply, str) and reply.strip(),
+                'Missing/repeated physical cold confirmation')
+        self.cold_confirmation = dict(reply=reply, received_seconds=now)
+        self.event('physical_cold_confirmed', now, reply=reply)
+
     def close(self, now):
         self.tick(now)
         if self.active is not None:
             self.end_case(now, 'INCOMPLETE')
+        self.event('session_closed', now, status='INVALID' if self.failed else 'CLOSED_NOT_QUALIFIED',
+                   raw_sha256=self.digest.hexdigest())
         self.raw_file.close()
+        self.events.close()
+        self.closed = True
+        return self.write_evidence(self.output, closed=True)
+
+    def snapshot(self, name, now):
+        self.tick(now)
+        require(self.failed is None and self.active is None, 'Checkpoint requires completed cases')
+        require(re.fullmatch(r'[a-z0-9][a-z0-9-]{0,63}', name), 'Unsafe checkpoint name')
+        folder = self.output / 'checkpoints' / name
+        folder.mkdir(parents=True, exist_ok=False)
+        self.event('session_checkpoint', now, name=name)
+        self.raw_file.flush()
+        shutil.copyfile(self.output/'stream.log', folder/'stream.log')
+        shutil.copyfile(self.output/'events.jsonl', folder/'events.jsonl')
+        self.write_evidence(folder, closed=False)
+        return folder
+
+    def write_evidence(self, folder, *, closed):
         result = dict(status='INVALID' if self.failed else 'CLOSED_NOT_QUALIFIED',
                       error=self.failed, raw_sha256=self.digest.hexdigest(), bytes=self.offset,
                       boot_count=self.boots, serial_writes=False, reset_requested=False,
                       expected_elf_sha256=self.expected_elf, physical_acceptance='NOT_ASSESSED',
                       unterminated_bytes=len(self.pending), incomplete_frame=self.frame,
-                      frames=self.frames, cases=self.cases)
+                      frames=self.frames, cases=[case.copy() for case in self.cases],
+                      start_seconds=self.start, end_seconds=self.last, max_seconds=self.max_seconds,
+                      auto_cold=self.auto_cold, cold_confirmation=self.cold_confirmation)
+        if not closed and self.failed is None:
+            result['status'] = 'CHECKPOINT_NOT_QUALIFIED'
         # A case slice preserves *all* its bytes. Complete frame offsets are an
         # additional view, never a way to repair or qualify an invalid session.
-        for case in self.cases:
+        for case in result['cases']:
             if 'start_offset' not in case:
                 continue
             begin, end = case['start_offset'], case['end_offset']
-            with (self.output / 'stream.log').open('rb') as source:
+            with (folder / 'stream.log').open('rb') as source:
                 source.seek(begin)
                 raw = source.read(end - begin)
-            with (self.output / (case['name'] + '.log')).open('xb') as target:
+            with (folder / (case['name'] + '.log')).open('xb') as target:
                 target.write(raw)
             case['raw_sha256'] = sha(raw)
             case['complete_frames'] = [i for i, frame in enumerate(self.frames)
                                       if begin <= frame['start'] and frame['end'] <= end and
                                       case['start'] <= frame['received_start'] <= frame['received_end'] <= case['deadline']]
-        self.event('session_closed', now, status=result['status'], raw_sha256=result['raw_sha256'])
-        self.events.close()
-        self.closed = True
-        result['events_sha256'] = sha((self.output / 'events.jsonl').read_bytes())
-        (self.output / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+        result['events_sha256'] = sha((folder / 'events.jsonl').read_bytes())
+        (folder / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         return result
 
 

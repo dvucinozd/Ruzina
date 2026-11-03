@@ -6,6 +6,11 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-03
 
+The [continuous COM3 adapter and analyzer](docs/reviews/2026-11-03-continuous-adapter.md)
+now pass offline whole-session and fault tests. They gate each case on validated
+continuous evidence and actual owner readiness. No new target access: software
+boot action, fresh 42/43 registration/binding and review/CI still precede use.
+
 Offline [continuous capture core](docs/reviews/2026-11-03-continuous-capture.md)
 now retains the full stream, complete report offsets and owner-ready case
 boundaries. Its host tests pass; live adapter/analysis and fresh 42/43

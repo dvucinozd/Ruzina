@@ -7,9 +7,9 @@ owner-confirmed; tools closed. Current history 42/full
 `28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921`.
 The [owner recovery policy](RECOVERY_POLICY.md) removes future repeated s07
 physical cold/listening/Pause/CUE checks; keep automatic full readback.
-The [continuous capture core](reviews/2026-11-03-continuous-capture.md) now has
-offline framing/readiness/pump regressions. Next: live adapter, continuous
-analysis, reviewed software boot action and fresh 42/43 plans. Older checkpoints
+The [continuous adapter/analyzer](reviews/2026-11-03-continuous-adapter.md) now has
+37 offline framing/readiness/whole-session tests per OS. No COM3 access. Next:
+reviewed software boot action, new 42/43 plans and exact capture binding. Older checkpoints
 below retain historical state.
 
 The [producer campaign](reviews/2026-11-03-source-supply-execution.md) is now
