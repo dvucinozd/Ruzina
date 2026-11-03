@@ -130,6 +130,35 @@ pre-correction model attempts remain separate from successful final checks.
 Review/CI/publication and archive completion are recorded separately after
 this initial source checkpoint; this section does not infer their success.
 
+## Review and retained publication evidence
+
+Source checkpoint `844c3b7700a95bda9f379f629c051842363de107` completed the full
+CodeRabbit review with **1 minor issue**: a boundary-crossing MIDI record was
+retained but the case status/CLI summary could look clean. The issue was
+verified against the code. Fix `59baed2d9aa780484f886c8025a150122ed529d9` gives
+such cases `INCOMPLETE_BOUNDARY_CONTROL_AUDIT`, prints the crossing count and
+tests the actual CLI. Its completed review raised **0 issues**. Four audit
+tests pass per OS after the fix; rerunning the real capture produces exactly
+the original audit bytes. See [review completion](evidence/2026-11-03-source-budget/review-completion.json).
+Initial review warnings are retained, not relabeled as zero issues.
+
+[Archive record](evidence/2026-11-03-source-budget/archive.json):
+`completed-source-budget.zip`, **25209794 bytes**, **684 members**, SHA-256
+`b08095f6d52f09d34178e4e75c9c15b52976d1b60974bc94ac1d1f919fb78825`.
+CRC, every member hash and every secondary file/archive match. Primary root:
+`D:/BoardEvidence/JC1060-20261030-COM3/source-budget-20261103/`; secondary:
+`C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/source-budget-20261103/`.
+It preserves final and earlier source checkpoints, pinned constructor source,
+normal package, rejected opt3 ELF/compiler logs, benchmarks/PCM, failed attempts,
+tests and both completed reviews. The archived report is the earlier source
+checkpoint; this subsequent publication adds the archive/review record.
+
+Remote CI for exact fix `59baed2` was queued at this checkpoint (Rust host #584,
+legacy #107); **no remote CI PASS is inferred** from local builds/tests or
+previous heads. Before any later registration, verify the exact new source's
+completed CI. The existing `validation-summary.json` is the earlier pre-review
+checkpoint; this completed review/archive record supersedes its pending labels.
+
 ## Continuation contract
 
 1. Inspect the rejected constructor's emitted prologue and its callers,

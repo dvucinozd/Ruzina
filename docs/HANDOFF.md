@@ -11,6 +11,10 @@ estimate **90544 > 90112**. Normal build passes. Default compiler policy and
 native minimum 302 stay unchanged. No device access; s07/history **44** persist.
 Next: inspect runtime reset/seek construction and design bounded-stack decoder
 initialization; do not register/flash this rejected image or enlarge limits.
+Full review raised 1 minor audit-boundary issue; fix `59baed2` has final review
+0 issues and four audit tests per OS pass. The 25209794-byte/684-member archive
+`b08095f6...` passes CRC/member/secondary checks. New exact-source CI was queued;
+do not substitute previous-head CI or local checks for it.
 
 Latest device result: [continuous 42/43 campaign](reviews/2026-11-03-continuous-device.md).
 Cold/idle and individual Disturbed/Ben Folds Five MP3 windows were admitted;

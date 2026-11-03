@@ -14,6 +14,8 @@ compiler experiment improves host decode time with exact PCM equality, but
 the P4 build is **REJECTED**: constructor frame 39008 > 24576 bytes; independently
 estimated load chain 90544 > 90112 bytes. No new COM3 access or flash.
 Next: bounded-stack decoder reconstruction before another candidate or plan.
+The reviewed audit fix has 0 CodeRabbit issues; final evidence is archived on
+both drives. New remote CI remains separate from completed local validation.
 
 Latest [continuous device campaign](docs/reviews/2026-11-03-continuous-device.md):
 cold/idle and each MP3 source separately passed their observation gates. Both

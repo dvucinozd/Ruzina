@@ -1,0 +1,14 @@
+{
+  "status": "CRC_ALL_MEMBERS_AND_SECONDARY_MATCH",
+  "device_access": false,
+  "archive": "completed-source-budget.zip",
+  "bytes": 25209794,
+  "sha256": "b08095f6d52f09d34178e4e75c9c15b52976d1b60974bc94ac1d1f919fb78825",
+  "members": 684,
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-budget-20261103",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\source-budget-20261103",
+  "source_head": "59baed2d9aa780484f886c8025a150122ed529d9",
+  "opt3_status": "REJECTED_NO_MANIFEST_NOT_FOR_FLASH",
+  "current_device_history": 44,
+  "application_running": "NOT_OBSERVED"
+}
