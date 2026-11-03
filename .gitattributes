@@ -20,3 +20,5 @@ tools/normal_engine/** text eol=lf
 docs/reviews/evidence/2026-11-02-normal-engine/** -text -whitespace
 docs/reviews/evidence/2026-11-03-source-supply/** -text -whitespace
 tools/source_supply/** text eol=lf
+
+docs/reviews/evidence/2026-11-03-continuous-capture/** -text -whitespace

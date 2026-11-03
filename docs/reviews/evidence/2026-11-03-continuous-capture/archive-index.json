@@ -1,0 +1,12 @@
+{
+  "status": "OFFLINE_REVIEWED_CORE_ARCHIVE_NOT_DEVICE_BINDING",
+  "archive": "reviewed-continuous-core.zip",
+  "bytes": 35638,
+  "sha256": "affe9129bd9d056f35396fdaf8caf533cb674a3f8c2c4f8ee9e512391b3d6fa2",
+  "members": 24,
+  "source_commit": "fd9d828944c79e96e34989b86c63ba6f2bc9d222",
+  "device_access": false,
+  "zip_crc_and_member_hashes_verified": true,
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\continuous-capture-20261103",
+  "initial_failed_format_replays_retained": true
+}

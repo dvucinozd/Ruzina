@@ -84,6 +84,25 @@ These are possible loss paths during a closed console. They do not prove
 which path caused S03, or prove cross-task interleaving. No libc/firmware
 locking, buffer or stack changes were made on this evidence alone.
 
+## Review and retained evidence
+
+Initial committed core `1cdfa91` against `10b06e2`: CodeRabbit raised 0 issues.
+The actual-log compatibility fix `fd9d828` against `1cdfa91`: CodeRabbit raised
+0 issues. [Verification](evidence/2026-11-03-continuous-capture/verification.json)
+retains exact source hashes, both raw review hashes, 26 tests per OS, the docs
+check and unchanged historical four-tool/shared-writer hashes. Source-head
+GitHub CI is pending separately; the prior `10b06e2` publication passed 22/22.
+This checkpoint is not a target execution binding.
+
+The [archive index](evidence/2026-11-03-continuous-capture/archive-index.json)
+records `reviewed-continuous-core.zip`: **35638 bytes**, 24 members, SHA-256
+`affe9129bd9d056f35396fdaf8caf533cb674a3f8c2c4f8ee9e512391b3d6fa2`.
+CRC, every member and every secondary file/archive match. Primary root:
+`D:/BoardEvidence/JC1060-20261030-COM3/continuous-capture-20261103/`; secondary:
+`C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/continuous-capture-20261103/`.
+The two initially failed format replays remain in the archive alongside the
+final seven-frame replay; no failed attempt was relabelled or overwritten.
+
 ## Remaining work before another target attempt
 
 1. Bind a live adapter to this core: exact port/control-line checks, physical

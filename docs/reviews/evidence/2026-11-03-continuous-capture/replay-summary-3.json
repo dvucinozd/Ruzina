@@ -1,0 +1,11 @@
+{
+  "replay_only": true,
+  "device_access": false,
+  "status": "CLOSED_NOT_QUALIFIED",
+  "error": null,
+  "frames": 7,
+  "source": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\cold-1\\boot-window.log",
+  "raw_sha256": "a5a980c1507bc5c50e0212f0901ed28bcef65162d4776375403c456e20f65f6e",
+  "incomplete_frame": null,
+  "unterminated_bytes": 0
+}

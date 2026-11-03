@@ -1,0 +1,11 @@
+{
+  "replay_only": true,
+  "device_access": false,
+  "status": "INVALID",
+  "error": "Unexpected/malformed boot ELF",
+  "frames": 0,
+  "source": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\cold-1\\boot-window.log",
+  "raw_sha256": "d17974dda9ed1ca5764037f1d03a66c3159f278eed20c4b21ef588fe1d881f33",
+  "incomplete_frame": null,
+  "unterminated_bytes": 4064
+}

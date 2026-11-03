@@ -1,0 +1,94 @@
+{
+  "status": "OFFLINE_CORE_REVIEWED_NOT_REGISTERED_FOR_DEVICE",
+  "source_commit": "fd9d828944c79e96e34989b86c63ba6f2bc9d222",
+  "device_access": false,
+  "physical_acceptance": "NOT_ASSESSED",
+  "tests": {
+    "windows-source-tests": {
+      "command": [
+        "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/source_supply/tests",
+        "-v"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "450e75b0ef9db08eec67623fc80252c65f93a2ece90c95a37d91d03856c80a5a"
+    },
+    "linux-source-tests": {
+      "command": [
+        "wsl",
+        "-d",
+        "Ubuntu",
+        "bash",
+        "-lc",
+        "cd /mnt/d/AI/M1_PCB && python3 -m unittest discover -s tools/source_supply/tests -v"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "54c48c11e4edc25dc62b19a6876b21565a827fb9763f99ef81eb3625a516ec28"
+    },
+    "docs": {
+      "command": [
+        "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+        "firmware-rust/tools/check_docs.py"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "e9983de60f70248a8dc2c8321cbf2a4a3d6fa7c2eef58c318d1247c1def17b42"
+    }
+  },
+  "reviews": [
+    {
+      "file": "coderabbit-core.raw.log",
+      "raw_sha256": "e5db74286e140ddc29dcc5eaf3bdd992ab718d8a3cf9a855278812284bbb9173",
+      "issues": 0,
+      "context": {
+        "type": "review_context",
+        "reviewType": "committed",
+        "currentBranch": "ogranak/jc1060-source-supply-profile",
+        "baseBranch": "main",
+        "baseCommit": "10b06e27d7c576246a058b71a1a96c6730bc863c",
+        "workingDirectory": "/mnt/d/AI/M1_PCB",
+        "expectedDuration": "Reviews usually take 2-6 minutes and can take up to 15. Keep this command running for at least 15 minutes or run it in the background; stopping it early discards the review."
+      }
+    },
+    {
+      "file": "coderabbit-fixes.raw.log",
+      "raw_sha256": "f3f301b600f0a23e7656a3b447720a57754187049e3638c31e16389e95087a98",
+      "issues": 0,
+      "context": {
+        "type": "review_context",
+        "reviewType": "committed",
+        "currentBranch": "ogranak/jc1060-source-supply-profile",
+        "baseBranch": "main",
+        "baseCommit": "1cdfa91",
+        "workingDirectory": "/mnt/d/AI/M1_PCB",
+        "expectedDuration": "Reviews usually take 2-6 minutes and can take up to 15. Keep this command running for at least 15 minutes or run it in the background; stopping it early discards the review."
+      }
+    }
+  ],
+  "historical_four_tools_and_shared_guard_unchanged": true,
+  "sources": {
+    "tools/source_supply/continuous.py": "7f054b749deaa20868bcdd5b6e04d06c5ebe35eb08d8c254e4a700a664f2e5a5",
+    "tools/source_supply/tests/test_continuous.py": "6dc24f25b5cf98322ef22b7fcb7ceef285904e5169dc1f2d4e3d0bf0d536da5a"
+  },
+  "replay": {
+    "replay_only": true,
+    "device_access": false,
+    "status": "CLOSED_NOT_QUALIFIED",
+    "error": null,
+    "frames": 7,
+    "source": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\cold-1\\boot-window.log",
+    "raw_sha256": "a5a980c1507bc5c50e0212f0901ed28bcef65162d4776375403c456e20f65f6e",
+    "incomplete_frame": null,
+    "unterminated_bytes": 0
+  },
+  "remaining": [
+    "live adapter",
+    "continuous analyzer",
+    "separate reviewed software boot action",
+    "42/43 registration and frozen binding"
+  ],
+  "ci_status": "PENDING"
+}
