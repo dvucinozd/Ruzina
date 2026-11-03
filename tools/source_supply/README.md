@@ -1,5 +1,9 @@
 # Registered producer-profile campaign tools
 
+This 40/41 campaign is completed; current actual history is 42/full 28830827.
+Do not execute its plans again. Future work needs new 42/43 registration and
+reviewed capture/analysis tools. See the [device result](../../docs/reviews/2026-11-03-source-supply-device.md).
+
 Exact registration `83e4a7fb...`, source `e9ce242`, candidate/return history
 40/41. Default program/monitor commands perform offline preflight only. The
 destructive writer, USB identity and esptool backend are imported from the
@@ -43,5 +47,9 @@ raises rather than granting a continuation result. Preserve failed/partial
 raw captures and restore exact s07 even when quantitative analysis cannot pass.
 
 Follow the byte-frozen [runbook](../../docs/reviews/2026-11-03-source-supply-campaign.md).
-Always return/full-readback/cold/listen s07 at campaign exit. Keep native
+For future accepted-s07 returns, use automatic readback under the
+[owner recovery policy](../../docs/RECOVERY_POLICY.md), without repeated manual
+cold/listening/Pause/CUE recovery checks. Preserve the earlier frozen runbook
+as historical; prepare any software boot action separately from the writer.
+Keep native
 minimum 302 and current accepted gain/ownership unchanged.

@@ -2,7 +2,11 @@
 
 Date: 2026-11-03. Continues the [reviewed source/packages](2026-11-03-source-supply-profile.md)
 and byte-frozen [campaign runbook](2026-11-03-source-supply-campaign.md).
-Status: **REVIEWED_TOOLS_BOUND_ARCHIVED / OFFLINE_REGISTERED / NOT_FLASHED**.
+Current status: **EXECUTED / COLD_IDLE_PASS / PLAYBACK_NOT_CAPTURED / S07_RESTORED**.
+Read the [actual device result](2026-11-03-source-supply-device.md) and
+[new owner recovery policy](../RECOVERY_POLICY.md). Current history 42/full
+`28830827...`; all tools closed. The preparation sequence below is historical;
+its NOT_FLASHED/history 40 statements do not describe the current device.
 No COM3 access has occurred in this registration. The owner reconfirmed the
 same COM3/full-speed USB-C, USB-only power, FLX4, MASTER/headphones and library.
 Accepted s07/history 40/full `7875f650...` remain installed. Native minimum 302

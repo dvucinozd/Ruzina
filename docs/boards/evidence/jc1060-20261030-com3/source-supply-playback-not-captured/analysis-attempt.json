@@ -1,0 +1,19 @@
+{
+  "exit_code": 1,
+  "command": [
+    "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+    "D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py",
+    "--root",
+    "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103",
+    "--capture",
+    "s03-deck1",
+    "--kind",
+    "functional",
+    "--playing",
+    "1,0"
+  ],
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 225, in <module>\n    if __name__=='__main__':main()\n                            ~~~~^^\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 220, in main\n    result=analyze(folder,args.root,args.kind,tuple(map(int,args.playing.split(','))))\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 170, in analyze\n    integrity=profiles(text,playing)\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 57, in profiles\n    row=fields(line)\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 17, in fields\n    require(len(pairs)==len({key for key,_ in pairs}),'Duplicate telemetry fields')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\campaign.py\", line 19, in require\n    raise ValueError(message)\nValueError: Duplicate telemetry fields\n",
+  "analyzer_sha256": "06e64c289b8bdcdd879410df128cf65851db7911d6378b24fb454216e4f0a875",
+  "status": "ANALYSIS_INVALID_NOT_CAPTURED_NO_CONTINUATION"
+}

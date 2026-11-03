@@ -6,6 +6,18 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-02
 
+Latest 2026-11-03 [producer diagnostic result](docs/reviews/2026-11-03-source-supply-device.md):
+cold/idle pass at **1880 us**, playback **NOT_CAPTURED**. The functional window
+ended without an active source and its initial joined telemetry was rejected.
+Dual-MP3 root cause remains open. Exact **s07 is restored**, tools are closed;
+current executed history is **42**, whole flash
+`28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921`.
+Next: continuous capture/framing and operator-ready coordination before a new
+42/43-plan campaign. The [new recovery policy](docs/RECOVERY_POLICY.md) removes
+repeated manual s07 cold/listening/Pause/CUE checks; automatic readback remains.
+
+The earlier development checkpoints below retain their original results.
+
 Continuation 2026-11-03: [source-supply/USB diagnostic preparation](docs/reviews/2026-11-03-source-supply-profile.md)
 adds default-OFF wall measurements to identify the dual-MP3 bottleneck.
 Host/target checks, final fix review (0 issues), **22/22 CI** and clean normal/
@@ -13,7 +25,8 @@ diagnostic builds pass. Exact packages/sources are archived on both drives.
 The separate [40/41-plan target registration](docs/reviews/2026-11-03-source-supply-execution.md)
 passes offline checks; execution/analysis tools have final review 0 issues,
 22/22 CI and a frozen dual-copy binding.
-No new device access or promotion; accepted s07 stays installed.
+At that preparation checkpoint no device access/promotion was claimed; the
+later physical result above supersedes its current-state/next-step status.
 
 The observed JC1060 has ESP32-P4 **v1.3/103**, 16 MiB flash and 32 MiB PSRAM.
 It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native

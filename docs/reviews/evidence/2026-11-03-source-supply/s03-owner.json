@@ -1,0 +1,8 @@
+{
+  "case": "S03",
+  "owner_reply": "ekran se ugasio",
+  "context": "Reply arrived after 180-second capture ended and software ROM entry for registered return",
+  "listening_acceptance": false,
+  "playback_measurement": "NOT_CAPTURED",
+  "screen_off_reason": "Expected ROM download mode during return; not evidence of application crash"
+}

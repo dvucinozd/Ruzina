@@ -1,0 +1,7 @@
+{
+  "case": "S01 cold",
+  "owner_reply": "vraća",
+  "library_visible": true,
+  "requested_action": "USB power removal 5-10 seconds, reconnect without BOOT/RESET; FLX4 connected, no controls/load",
+  "physical_scope": "Library/cold only; no playback acceptance"
+}

@@ -1,0 +1,15 @@
+{
+  "status": "COLD_IDLE_PASS_PLAYBACK_NOT_CAPTURED",
+  "candidate_cases": {
+    "S01": "Valid full cold analysis PASS, max all-fill1880 us, 7000 callbacks",
+    "S02": "Valid separate60s idle analysis PASS, 9000 new callbacks, same max",
+    "S03": "180s setup/capture bound ended without a loaded/playing deck. Frozen analyzer rejects malformed initial producer/heartbeat line as Duplicate telemetry fields. No quantitative playback or listening PASS",
+    "S04": "NOT_RUN after S03 incomplete/invalid evidence",
+    "S05": "NOT_RUN after S03 incomplete/invalid evidence"
+  },
+  "invalid_raw_first_line": "producer_profile deck=1 generation=1 schema=1 seq=248 uptime_us=heartbeat=140 uptime_us=140372185",
+  "integrity_policy": "Original raw bytes and rejected analysis attempt are retained. No trimming, repair, threshold/binding change, repetition or extension used to grant a pass",
+  "cause_limit": "Joined/partial data is at capture entry. Transport buffering/drop at port reopen and concurrent writers require investigation; do not claim a proved concurrency or decoder fault",
+  "owner_screen_reply": "ekran se ugasio arrived after software ROM entry for the registered s07 return. No captured fatal/reset marker; earlier exact screen-change time unknown",
+  "next": "Offline capture continuity/framing and operator-ready coordination; fresh 42/43 registration before another device campaign. Keep native minimum302"
+}

@@ -1,0 +1,1945 @@
+{
+  "status": "SOURCE_SUPPLY_COLD_IDLE_PASS_PLAYBACK_NOT_CAPTURED_S07_RESTORED_OWNER_CONFIRMED",
+  "product_qualification": false,
+  "current_executed_predecessors": 42,
+  "installed_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "installed_elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+  "independent_full_flash_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+  "programmers": {
+    "candidate": {
+      "status": "WRITTEN_FULL_READBACK_MATCH_ROM_HELD",
+      "mode": "candidate",
+      "registration_sha256": "83e4a7fb8cf47c14d773f1fa06c46e683b88dd788d04bdd7cbcba936099d2818",
+      "plan_sha256": "fe406eb3003c05c965eaff014ee73a6b6cf773b1b834585764bb56bc4e3f4650",
+      "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+      "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+      "predecessors": 40,
+      "before_sha256": "7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6",
+      "after_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9",
+      "device_access": true,
+      "flash_write_attempted": true,
+      "reset_requested": false,
+      "efuse_write": false,
+      "identity": {
+        "chip": "ESP32-P4",
+        "revision": 103,
+        "mac": "e8:f6:0a:e7:22:1d",
+        "security": {
+          "flags": 0,
+          "flash_crypt_cnt": 0,
+          "key_purposes": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            12
+          ],
+          "chip_id": 18,
+          "api_version": 2,
+          "parsed_flags": {
+            "SECURE_BOOT_EN": false,
+            "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+            "SECURE_DOWNLOAD_ENABLE": false,
+            "SECURE_BOOT_KEY_REVOKE0": false,
+            "SECURE_BOOT_KEY_REVOKE1": false,
+            "SECURE_BOOT_KEY_REVOKE2": false,
+            "SOFT_DIS_JTAG": false,
+            "HARD_DIS_JTAG": false,
+            "DIS_USB": false,
+            "DIS_DOWNLOAD_DCACHE": false,
+            "DIS_DOWNLOAD_ICACHE": false
+          }
+        },
+        "rdid": 1589352
+      },
+      "full_predecessor_match": true,
+      "postwrite_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9",
+      "captures": {
+        "postwrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9"
+        },
+        "prewrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6"
+        },
+        "readback-00002000.bin": {
+          "bytes": 24576,
+          "sha256": "0c40a48f021c1c74ed9767b89c4440a775306eaa718232c1ffba6c7a8317e8bc"
+        },
+        "readback-00008000.bin": {
+          "bytes": 4096,
+          "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+        },
+        "readback-00010000.bin": {
+          "bytes": 827392,
+          "sha256": "2e39e8a8fcf84c4b855f4ed30602fdf3bb152b84a2fe36cbf3d3a818fa99a5be"
+        }
+      }
+    },
+    "return-s07": {
+      "status": "WRITTEN_FULL_READBACK_MATCH_ROM_HELD",
+      "mode": "return-s07",
+      "registration_sha256": "83e4a7fb8cf47c14d773f1fa06c46e683b88dd788d04bdd7cbcba936099d2818",
+      "plan_sha256": "cd76f6c0611a9c587f25b7f02352fa81805a961a99e885c415287898c9d1f85d",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+      "predecessors": 41,
+      "before_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9",
+      "after_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+      "device_access": true,
+      "flash_write_attempted": true,
+      "reset_requested": false,
+      "efuse_write": false,
+      "identity": {
+        "chip": "ESP32-P4",
+        "revision": 103,
+        "mac": "e8:f6:0a:e7:22:1d",
+        "security": {
+          "flags": 0,
+          "flash_crypt_cnt": 0,
+          "key_purposes": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            12
+          ],
+          "chip_id": 18,
+          "api_version": 2,
+          "parsed_flags": {
+            "SECURE_BOOT_EN": false,
+            "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+            "SECURE_DOWNLOAD_ENABLE": false,
+            "SECURE_BOOT_KEY_REVOKE0": false,
+            "SECURE_BOOT_KEY_REVOKE1": false,
+            "SECURE_BOOT_KEY_REVOKE2": false,
+            "SOFT_DIS_JTAG": false,
+            "HARD_DIS_JTAG": false,
+            "DIS_USB": false,
+            "DIS_DOWNLOAD_DCACHE": false,
+            "DIS_DOWNLOAD_ICACHE": false
+          }
+        },
+        "rdid": 1589352
+      },
+      "full_predecessor_match": true,
+      "postwrite_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+      "captures": {
+        "postwrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921"
+        },
+        "prewrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9"
+        },
+        "readback-00002000.bin": {
+          "bytes": 24576,
+          "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+        },
+        "readback-00008000.bin": {
+          "bytes": 4096,
+          "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+        },
+        "readback-00010000.bin": {
+          "bytes": 770048,
+          "sha256": "f1a0d9e9c03ac9b9843ad018a303061ad68883ac6fed256c1f9af952f206e26e"
+        }
+      }
+    }
+  },
+  "observations": {
+    "cold-1": {
+      "monitor": {
+        "status": "CAPTURED_NOT_QUALIFIED",
+        "mode": "candidate",
+        "window": "cold",
+        "requested_seconds": 600,
+        "serial_writes": false,
+        "reset_requested": false,
+        "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+        "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+        "physical_acceptance": "NOT_ASSESSED",
+        "capture_complete": true,
+        "post_boot_seconds": 45.07200879999982,
+        "stopped_by_request": false,
+        "connected_capture_seconds": 45.07200879999982,
+        "connection_interrupted": false,
+        "stopped_for_fault": null,
+        "boot_window_offset": 371,
+        "boot_window_sha256": "a5a980c1507bc5c50e0212f0901ed28bcef65162d4776375403c456e20f65f6e",
+        "bytes": 36197,
+        "raw_sha256": "127469aa4aa55b2bff6ff95b0bd328abafb62eb8b7736f91a2cc99df1a1b4e9f",
+        "elapsed_seconds": 74.89315469999974,
+        "fatal_markers": []
+      },
+      "quantitative_status": "VALID_CAPTURED",
+      "analysis_attempt": {
+        "exit_code": 0,
+        "command": [
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+          "D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py",
+          "--root",
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103",
+          "--capture",
+          "cold-1",
+          "--kind",
+          "cold",
+          "--playing",
+          "0,0"
+        ],
+        "stdout": "{\n  \"status\": \"SOURCE_DIAGNOSTIC_OBSERVATION_NOT_PRODUCT_QUALIFIED\",\n  \"raw_sha256\": \"127469aa4aa55b2bff6ff95b0bd328abafb62eb8b7736f91a2cc99df1a1b4e9f\",\n  \"kind\": \"cold\",\n  \"parsed_window_sha256\": \"a5a980c1507bc5c50e0212f0901ed28bcef65162d4776375403c456e20f65f6e\",\n  \"unterminated_tail_bytes\": 0,\n  \"app_sha256\": \"173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd\",\n  \"elf_sha256\": \"54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11\",\n  \"stop_reason\": null,\n  \"continuation_pass\": true,\n  \"headroom_target_pass\": true,\n  \"all_fill_max_us\": 1880,\n  \"callback_first\": {\n    \"count\": 1000,\n    \"max_us\": 1598,\n    \"gt_3000\": 0,\n    \"ge_6000\": 0,\n    \"failures\": 0,\n    \"generation\": 1\n  },\n  \"callback_last\": {\n    \"count\": 7000,\n    \"max_us\": 1598,\n    \"gt_3000\": 0,\n    \"ge_6000\": 0,\n    \"failures\": 0,\n    \"generation\": 1\n  },\n  \"resource_minima\": {\n    \"usb_stack_free\": 4964,\n    \"logger_stack_free\": 1592,\n    \"internal_min\": 414548,\n    \"psram_min\": 28054272,\n    \"internal_largest\": 249856,\n    \"psram_largest\": 28311552\n  },\n  \"sd_client_stack_min\": 58044,\n  \"usb_first\": {\n    \"transfers\": 1000,\n    \"iso_errors\": 0,\n    \"packet_errors\": 0,\n    \"submit_errors\": 0\n  },\n  \"usb_last\": {\n    \"transfers\": 7000,\n    \"iso_errors\": 0,\n    \"packet_errors\": 0,\n    \"submit_errors\": 0\n  },\n  \"mix_first\": \"deck_mix_stats rendered=289152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880\",\n  \"mix_last\": \"deck_mix_stats rendered=2017152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880\",\n  \"physical_acceptance\": \"Record owner separately\"\n}\n",
+        "stderr": "",
+        "analyzer_sha256": "06e64c289b8bdcdd879410df128cf65851db7911d6378b24fb454216e4f0a875",
+        "status": "ANALYSIS_EXECUTED"
+      },
+      "summary": {
+        "status": "SOURCE_DIAGNOSTIC_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+        "raw_sha256": "127469aa4aa55b2bff6ff95b0bd328abafb62eb8b7736f91a2cc99df1a1b4e9f",
+        "kind": "cold",
+        "parsed_window_sha256": "a5a980c1507bc5c50e0212f0901ed28bcef65162d4776375403c456e20f65f6e",
+        "unterminated_tail_bytes": 0,
+        "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+        "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+        "integrity": {
+          "producer_samples": {
+            "1": 7,
+            "2": 7
+          },
+          "stable_intervals": {
+            "1": [
+              {
+                "start_seq": 8,
+                "end_seq": 20,
+                "source_elapsed_us": 6010001,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 651
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 20,
+                "end_seq": 32,
+                "source_elapsed_us": 6019999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 602,
+                    "total_us": 634
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 32,
+                "end_seq": 44,
+                "source_elapsed_us": 6020001,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 602,
+                    "total_us": 635
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 44,
+                "end_seq": 56,
+                "source_elapsed_us": 5999999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 613
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 56,
+                "end_seq": 68,
+                "source_elapsed_us": 6010000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 615
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 68,
+                "end_seq": 80,
+                "source_elapsed_us": 6010000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 607
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              }
+            ],
+            "2": [
+              {
+                "start_seq": 8,
+                "end_seq": 20,
+                "source_elapsed_us": 6010001,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 621
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 20,
+                "end_seq": 32,
+                "source_elapsed_us": 6019999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 602,
+                    "total_us": 614
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 32,
+                "end_seq": 44,
+                "source_elapsed_us": 6020001,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 602,
+                    "total_us": 622
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 44,
+                "end_seq": 56,
+                "source_elapsed_us": 5999999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 616
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 56,
+                "end_seq": 68,
+                "source_elapsed_us": 6010000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 612
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 68,
+                "end_seq": 80,
+                "source_elapsed_us": 6010000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 614
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              }
+            ]
+          },
+          "sample_time_bounds": {
+            "1": [
+              7887191,
+              43957191
+            ],
+            "2": [
+              7887191,
+              43957191
+            ],
+            "owner": [
+              7887183,
+              43957183
+            ]
+          },
+          "owner_first": {
+            "generation": 1,
+            "seq": 8,
+            "uptime_us": 7887183,
+            "turns": 302,
+            "wall_us": 3018314,
+            "polls_us": 762,
+            "other_including_idle_us": 3017552,
+            "max_turn_us": 10007,
+            "invalid": 0,
+            "saturated": 0
+          },
+          "owner_last": {
+            "generation": 1,
+            "seq": 80,
+            "uptime_us": 43957183,
+            "turns": 3909,
+            "wall_us": 39084105,
+            "polls_us": 8216,
+            "other_including_idle_us": 39075889,
+            "max_turn_us": 13384,
+            "invalid": 0,
+            "saturated": 0
+          },
+          "usb_service": {
+            "handle_events_wall": {
+              "first": {
+                "calls": 1003,
+                "total_us": 5982457,
+                "max_us": 7455
+              },
+              "last": {
+                "calls": 7003,
+                "total_us": 41946909,
+                "max_us": 7455
+              }
+            },
+            "client_tail_wall": {
+              "first": {
+                "calls": 1003,
+                "total_us": 8442,
+                "max_us": 359
+              },
+              "last": {
+                "calls": 7003,
+                "total_us": 36531,
+                "max_us": 359
+              }
+            },
+            "callback_entry_gap": {
+              "first": {
+                "calls": 999,
+                "total_us": 5993855,
+                "max_us": 6699
+              },
+              "last": {
+                "calls": 6999,
+                "total_us": 41993854,
+                "max_us": 6699
+              }
+            }
+          },
+          "wall_time_includes_wait_preemption": true,
+          "cross_core_snapshots_asynchronous": true,
+          "maxima_are_not_subtracted": true
+        },
+        "stop_reason": null,
+        "continuation_pass": true,
+        "headroom_target_pass": true,
+        "all_fill_max_us": 1880,
+        "callback_first": {
+          "count": 1000,
+          "max_us": 1598,
+          "gt_3000": 0,
+          "ge_6000": 0,
+          "failures": 0,
+          "generation": 1
+        },
+        "callback_last": {
+          "count": 7000,
+          "max_us": 1598,
+          "gt_3000": 0,
+          "ge_6000": 0,
+          "failures": 0,
+          "generation": 1
+        },
+        "resource_minima": {
+          "usb_stack_free": 4964,
+          "logger_stack_free": 1592,
+          "internal_min": 414548,
+          "psram_min": 28054272,
+          "internal_largest": 249856,
+          "psram_largest": 28311552
+        },
+        "sd_client_stack_min": 58044,
+        "usb_first": {
+          "transfers": 1000,
+          "iso_errors": 0,
+          "packet_errors": 0,
+          "submit_errors": 0
+        },
+        "usb_last": {
+          "transfers": 7000,
+          "iso_errors": 0,
+          "packet_errors": 0,
+          "submit_errors": 0
+        },
+        "mix_first": "deck_mix_stats rendered=289152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880",
+        "mix_last": "deck_mix_stats rendered=2017152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880",
+        "physical_acceptance": "Record owner separately"
+      }
+    },
+    "idle-1": {
+      "monitor": {
+        "status": "CAPTURED_NOT_QUALIFIED",
+        "mode": "candidate",
+        "window": "idle",
+        "requested_seconds": 60,
+        "serial_writes": false,
+        "reset_requested": false,
+        "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+        "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+        "physical_acceptance": "NOT_ASSESSED",
+        "capture_complete": true,
+        "post_boot_seconds": null,
+        "stopped_by_request": false,
+        "connected_capture_seconds": 60.10715879999998,
+        "connection_interrupted": false,
+        "stopped_for_fault": null,
+        "requires_matching_cold_identity": true,
+        "bytes": 33991,
+        "raw_sha256": "47f907f99021bdb71d683fc769fd37d1905b3a785d60d542d3eb262030183144",
+        "elapsed_seconds": 60.1334824999999,
+        "fatal_markers": []
+      },
+      "quantitative_status": "VALID_CAPTURED",
+      "analysis_attempt": {
+        "exit_code": 0,
+        "command": [
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+          "D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py",
+          "--root",
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103",
+          "--capture",
+          "idle-1",
+          "--kind",
+          "idle",
+          "--playing",
+          "0,0"
+        ],
+        "stdout": "{\n  \"status\": \"SOURCE_DIAGNOSTIC_OBSERVATION_NOT_PRODUCT_QUALIFIED\",\n  \"raw_sha256\": \"47f907f99021bdb71d683fc769fd37d1905b3a785d60d542d3eb262030183144\",\n  \"kind\": \"idle\",\n  \"parsed_window_sha256\": \"47f907f99021bdb71d683fc769fd37d1905b3a785d60d542d3eb262030183144\",\n  \"unterminated_tail_bytes\": 0,\n  \"app_sha256\": \"173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd\",\n  \"elf_sha256\": \"54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11\",\n  \"stop_reason\": null,\n  \"continuation_pass\": true,\n  \"headroom_target_pass\": true,\n  \"all_fill_max_us\": 1880,\n  \"callback_first\": {\n    \"count\": 11000,\n    \"max_us\": 1598,\n    \"gt_3000\": 0,\n    \"ge_6000\": 0,\n    \"failures\": 0,\n    \"generation\": 1\n  },\n  \"callback_last\": {\n    \"count\": 20000,\n    \"max_us\": 1598,\n    \"gt_3000\": 0,\n    \"ge_6000\": 0,\n    \"failures\": 0,\n    \"generation\": 1\n  },\n  \"resource_minima\": {\n    \"usb_stack_free\": 4964,\n    \"logger_stack_free\": 1560,\n    \"internal_min\": 414548,\n    \"psram_min\": 28054272,\n    \"internal_largest\": 249856,\n    \"psram_largest\": 28311552\n  },\n  \"sd_client_stack_min\": 58044,\n  \"usb_first\": {\n    \"transfers\": 11000,\n    \"iso_errors\": 0,\n    \"packet_errors\": 0,\n    \"submit_errors\": 0\n  },\n  \"usb_last\": {\n    \"transfers\": 20000,\n    \"iso_errors\": 0,\n    \"packet_errors\": 0,\n    \"submit_errors\": 0\n  },\n  \"mix_first\": \"deck_mix_stats rendered=3169152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880\",\n  \"mix_last\": \"deck_mix_stats rendered=5761152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880\",\n  \"physical_acceptance\": \"Record owner separately\"\n}\n",
+        "stderr": "",
+        "analyzer_sha256": "06e64c289b8bdcdd879410df128cf65851db7911d6378b24fb454216e4f0a875",
+        "status": "ANALYSIS_EXECUTED"
+      },
+      "summary": {
+        "status": "SOURCE_DIAGNOSTIC_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+        "raw_sha256": "47f907f99021bdb71d683fc769fd37d1905b3a785d60d542d3eb262030183144",
+        "kind": "idle",
+        "parsed_window_sha256": "47f907f99021bdb71d683fc769fd37d1905b3a785d60d542d3eb262030183144",
+        "unterminated_tail_bytes": 0,
+        "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+        "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+        "integrity": {
+          "producer_samples": {
+            "1": 10,
+            "2": 10
+          },
+          "stable_intervals": {
+            "1": [
+              {
+                "start_seq": 128,
+                "end_seq": 140,
+                "source_elapsed_us": 6009999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 610
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 140,
+                "end_seq": 152,
+                "source_elapsed_us": 6010000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 633
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 152,
+                "end_seq": 164,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 619
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 164,
+                "end_seq": 176,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 642
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 176,
+                "end_seq": 188,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 625
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 188,
+                "end_seq": 200,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 623
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 200,
+                "end_seq": 212,
+                "source_elapsed_us": 6010001,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 612
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 212,
+                "end_seq": 224,
+                "source_elapsed_us": 6009999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 622
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 224,
+                "end_seq": 236,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 627
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              }
+            ],
+            "2": [
+              {
+                "start_seq": 128,
+                "end_seq": 140,
+                "source_elapsed_us": 6009999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 607
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 140,
+                "end_seq": 152,
+                "source_elapsed_us": 6010000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 611
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 152,
+                "end_seq": 164,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 604
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 164,
+                "end_seq": 176,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 606
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 176,
+                "end_seq": 188,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 605
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 188,
+                "end_seq": 200,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 604
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 200,
+                "end_seq": 212,
+                "source_elapsed_us": 6010001,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 617
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 212,
+                "end_seq": 224,
+                "source_elapsed_us": 6009999,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 601,
+                    "total_us": 607
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              },
+              {
+                "start_seq": 224,
+                "end_seq": 236,
+                "source_elapsed_us": 6000000,
+                "epoch": 0,
+                "index": 4294967295,
+                "rate": 0,
+                "pitch": 0,
+                "playing": 0,
+                "frames": 0,
+                "logical_read_bytes": 0,
+                "produced_frames_per_second": 0.0,
+                "required_source_frames_per_second": 0,
+                "observed_supply_us": [
+                  0,
+                  0
+                ],
+                "stages": {
+                  "poll": {
+                    "calls": 600,
+                    "total_us": 601
+                  },
+                  "decode": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "step": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "read": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "push": {
+                    "calls": 0,
+                    "total_us": 0
+                  },
+                  "decode_other": {
+                    "calls": 0,
+                    "total_us": 0
+                  }
+                }
+              }
+            ]
+          },
+          "sample_time_bounds": {
+            "1": [
+              67987192,
+              122027191
+            ],
+            "2": [
+              67987192,
+              122027191
+            ],
+            "owner": [
+              67987183,
+              122027183
+            ]
+          },
+          "owner_first": {
+            "generation": 1,
+            "seq": 128,
+            "uptime_us": 67987183,
+            "turns": 6311,
+            "wall_us": 63111400,
+            "polls_us": 13123,
+            "other_including_idle_us": 63098277,
+            "max_turn_us": 19999,
+            "invalid": 0,
+            "saturated": 0
+          },
+          "owner_last": {
+            "generation": 1,
+            "seq": 236,
+            "uptime_us": 122027183,
+            "turns": 11715,
+            "wall_us": 117145330,
+            "polls_us": 24197,
+            "other_including_idle_us": 117121133,
+            "max_turn_us": 19999,
+            "invalid": 0,
+            "saturated": 0
+          },
+          "usb_service": {
+            "handle_events_wall": {
+              "first": {
+                "calls": 11003,
+                "total_us": 65923288,
+                "max_us": 7455
+              },
+              "last": {
+                "calls": 20003,
+                "total_us": 119870170,
+                "max_us": 7455
+              }
+            },
+            "client_tail_wall": {
+              "first": {
+                "calls": 11003,
+                "total_us": 55239,
+                "max_us": 359
+              },
+              "last": {
+                "calls": 20003,
+                "total_us": 97383,
+                "max_us": 359
+              }
+            },
+            "callback_entry_gap": {
+              "first": {
+                "calls": 10999,
+                "total_us": 65993854,
+                "max_us": 6699
+              },
+              "last": {
+                "calls": 19999,
+                "total_us": 119993854,
+                "max_us": 6699
+              }
+            }
+          },
+          "wall_time_includes_wait_preemption": true,
+          "cross_core_snapshots_asynchronous": true,
+          "maxima_are_not_subtracted": true
+        },
+        "stop_reason": null,
+        "continuation_pass": true,
+        "headroom_target_pass": true,
+        "all_fill_max_us": 1880,
+        "callback_first": {
+          "count": 11000,
+          "max_us": 1598,
+          "gt_3000": 0,
+          "ge_6000": 0,
+          "failures": 0,
+          "generation": 1
+        },
+        "callback_last": {
+          "count": 20000,
+          "max_us": 1598,
+          "gt_3000": 0,
+          "ge_6000": 0,
+          "failures": 0,
+          "generation": 1
+        },
+        "resource_minima": {
+          "usb_stack_free": 4964,
+          "logger_stack_free": 1560,
+          "internal_min": 414548,
+          "psram_min": 28054272,
+          "internal_largest": 249856,
+          "psram_largest": 28311552
+        },
+        "sd_client_stack_min": 58044,
+        "usb_first": {
+          "transfers": 11000,
+          "iso_errors": 0,
+          "packet_errors": 0,
+          "submit_errors": 0
+        },
+        "usb_last": {
+          "transfers": 20000,
+          "iso_errors": 0,
+          "packet_errors": 0,
+          "submit_errors": 0
+        },
+        "mix_first": "deck_mix_stats rendered=3169152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880",
+        "mix_last": "deck_mix_stats rendered=5761152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880",
+        "physical_acceptance": "Record owner separately"
+      }
+    },
+    "s03-deck1": {
+      "monitor": {
+        "status": "CAPTURED_NOT_QUALIFIED",
+        "mode": "candidate",
+        "window": "functional",
+        "requested_seconds": 180,
+        "serial_writes": false,
+        "reset_requested": false,
+        "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+        "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+        "physical_acceptance": "NOT_ASSESSED",
+        "capture_complete": true,
+        "post_boot_seconds": null,
+        "stopped_by_request": false,
+        "connected_capture_seconds": 180.09270259999994,
+        "connection_interrupted": false,
+        "stopped_for_fault": null,
+        "requires_matching_cold_identity": true,
+        "bytes": 102418,
+        "raw_sha256": "10f2c800cff2c8411f25f87efbcfb096096be0304891f9b5c00973a6817f2b16",
+        "elapsed_seconds": 180.11866239999972,
+        "fatal_markers": []
+      },
+      "quantitative_status": "NOT_CAPTURED",
+      "analysis_attempt": {
+        "exit_code": 1,
+        "command": [
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+          "D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py",
+          "--root",
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103",
+          "--capture",
+          "s03-deck1",
+          "--kind",
+          "functional",
+          "--playing",
+          "1,0"
+        ],
+        "stdout": "",
+        "stderr": "Traceback (most recent call last):\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 225, in <module>\n    if __name__=='__main__':main()\n                            ~~~~^^\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 220, in main\n    result=analyze(folder,args.root,args.kind,tuple(map(int,args.playing.split(','))))\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 170, in analyze\n    integrity=profiles(text,playing)\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 57, in profiles\n    row=fields(line)\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\analyze.py\", line 17, in fields\n    require(len(pairs)==len({key for key,_ in pairs}),'Duplicate telemetry fields')\n    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\AI\\M1_PCB\\tools\\source_supply\\campaign.py\", line 19, in require\n    raise ValueError(message)\nValueError: Duplicate telemetry fields\n",
+        "analyzer_sha256": "06e64c289b8bdcdd879410df128cf65851db7911d6378b24fb454216e4f0a875",
+        "status": "ANALYSIS_INVALID_NOT_CAPTURED_NO_CONTINUATION"
+      }
+    },
+    "s04-deck2": {
+      "status": "NOT_RUN"
+    },
+    "s05-both": {
+      "status": "NOT_RUN"
+    }
+  },
+  "owner": {
+    "library_visible": true,
+    "library_reply": "vra\u0107a",
+    "clean_both_ears": true,
+    "pause_cue_controls_normal": true,
+    "playback_reply": "sva je ok",
+    "accepted_audio_level_unchanged": true,
+    "physical_scope": "Restored exact accepted s07; known deck1 track; Pause and transport CUE; no producer-profile playback acceptance"
+  },
+  "recovery": {
+    "cold_raw_sha256": "e37874a0c489c5f2826200f1305946cfe2ab141dc26172bece8e501d813cac2b",
+    "playback_raw_sha256": "0c3f1c07242afbfae66d40f0bd34c51d6f0551f38e12c967716cf57a57e9be7a",
+    "captured_played_frame_delta": 445248,
+    "output_rate": 48000,
+    "output_seconds": 9.276,
+    "usb_iso_packet_errors": 0,
+    "underruns": 0
+  },
+  "stopping_condition": {
+    "status": "COLD_IDLE_PASS_PLAYBACK_NOT_CAPTURED",
+    "candidate_cases": {
+      "S01": "Valid full cold analysis PASS, max all-fill1880 us, 7000 callbacks",
+      "S02": "Valid separate60s idle analysis PASS, 9000 new callbacks, same max",
+      "S03": "180s setup/capture bound ended without a loaded/playing deck. Frozen analyzer rejects malformed initial producer/heartbeat line as Duplicate telemetry fields. No quantitative playback or listening PASS",
+      "S04": "NOT_RUN after S03 incomplete/invalid evidence",
+      "S05": "NOT_RUN after S03 incomplete/invalid evidence"
+    },
+    "invalid_raw_first_line": "producer_profile deck=1 generation=1 schema=1 seq=248 uptime_us=heartbeat=140 uptime_us=140372185",
+    "integrity_policy": "Original raw bytes and rejected analysis attempt are retained. No trimming, repair, threshold/binding change, repetition or extension used to grant a pass",
+    "cause_limit": "Joined/partial data is at capture entry. Transport buffering/drop at port reopen and concurrent writers require investigation; do not claim a proved concurrency or decoder fault",
+    "owner_screen_reply": "ekran se ugasio arrived after software ROM entry for the registered s07 return. No captured fatal/reset marker; earlier exact screen-change time unknown",
+    "next": "Offline capture continuity/framing and operator-ready coordination; fresh 42/43 registration before another device campaign. Keep native minimum302"
+  },
+  "open_gates": [
+    "Two-deck source supply and USB packet error root cause",
+    "<=3000 us headroom target",
+    "PFL1/PFL2 physical isolation NOT_ACCEPTED",
+    "N03-N08 NOT_RUN after registered stop",
+    "No normal promotion or transferable other-board acceptance"
+  ]
+}

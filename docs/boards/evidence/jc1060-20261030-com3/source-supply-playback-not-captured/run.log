@@ -1,0 +1,1024 @@
+producer_profile deck=1 generation=1 schema=1 seq=248 uptime_us=heartbeat=140 uptime_us=140372185
+heartbeat=141 uptime_us=141372185
+heartbeat=142 uptime_us=142372185
+heartbeat=143 uptime_us=143372185
+heartbeat=144 uptime_us=144372185
+heartbeat=145 uptime_us=145372185
+producer_profile deck=1 generation=1 schema=1 seq=282 uptime_us=145057192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=282 stage=poll calls=14019 total_us=14633 max_us=123
+producer_profile_stage deck=1 seq=282 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=282 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=282 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=282 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=282 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=282 uptime_us=145057192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=282 stage=poll calls=14019 total_us=14300 max_us=3
+producer_profile_stage deck=2 seq=282 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=282 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=282 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=282 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=282 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=282 uptime_us=145057183 turns=14018 wall_us=140172685 polls_us=28931 other_including_idle_us=140143754 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=24003 total_us=143846524 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=24003 total_us=116097 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=23999 total_us=143993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=24000 packets=144024 frames=6913152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=6913152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=24000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=146 uptime_us=146372185
+heartbeat=147 uptime_us=147372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=148 uptime_us=148372185
+heartbeat=149 uptime_us=149372185
+heartbeat=150 uptime_us=150372185
+heartbeat=151 uptime_us=151372185
+producer_profile deck=1 generation=1 schema=1 seq=294 uptime_us=151077191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=294 stage=poll calls=14621 total_us=15243 max_us=123
+producer_profile_stage deck=1 seq=294 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=294 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=294 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=294 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=294 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=294 uptime_us=151077191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=294 stage=poll calls=14621 total_us=14915 max_us=3
+producer_profile_stage deck=2 seq=294 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=294 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=294 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=294 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=294 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=294 uptime_us=151077183 turns=14620 wall_us=146191990 polls_us=30156 other_including_idle_us=146161834 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=25003 total_us=149840596 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=25003 total_us=120739 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=24999 total_us=149993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=25000 packets=150024 frames=7201152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=7201152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=25000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=152 uptime_us=152372185
+heartbeat=153 uptime_us=153372185
+heartbeat=154 uptime_us=154372185
+heartbeat=155 uptime_us=155372185
+heartbeat=156 uptime_us=156372185
+heartbeat=157 uptime_us=157372185
+producer_profile deck=1 generation=1 schema=1 seq=306 uptime_us=157087192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=306 stage=poll calls=15222 total_us=15866 max_us=123
+producer_profile_stage deck=1 seq=306 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=306 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=306 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=306 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=306 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=306 uptime_us=157087192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=306 stage=poll calls=15222 total_us=15538 max_us=3
+producer_profile_stage deck=2 seq=306 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=306 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=306 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=306 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=306 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=306 uptime_us=157087183 turns=15221 wall_us=152201254 polls_us=31402 other_including_idle_us=152169852 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=26003 total_us=155834634 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=26003 total_us=125424 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=25999 total_us=155993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=26000 packets=156024 frames=7489152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=7489152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=26000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=158 uptime_us=158372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=159 uptime_us=159372185
+heartbeat=160 uptime_us=160372185
+heartbeat=161 uptime_us=161372185
+heartbeat=162 uptime_us=162372185
+heartbeat=163 uptime_us=163372185
+producer_profile deck=1 generation=1 schema=1 seq=318 uptime_us=163117192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=318 stage=poll calls=15825 total_us=16497 max_us=123
+producer_profile_stage deck=1 seq=318 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=318 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=318 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=318 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=318 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=318 uptime_us=163117192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=318 stage=poll calls=15825 total_us=16162 max_us=3
+producer_profile_stage deck=2 seq=318 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=318 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=318 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=318 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=318 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=318 uptime_us=163117183 turns=15824 wall_us=158230521 polls_us=32657 other_including_idle_us=158197864 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=27003 total_us=161828705 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=27003 total_us=130108 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=26999 total_us=161993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=27000 packets=162024 frames=7777152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=7777152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=27000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=164 uptime_us=164372185
+heartbeat=165 uptime_us=165372185
+heartbeat=166 uptime_us=166372185
+heartbeat=167 uptime_us=167372185
+heartbeat=168 uptime_us=168372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=169 uptime_us=169372185
+producer_profile deck=1 generation=1 schema=1 seq=330 uptime_us=169117192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=330 stage=poll calls=16425 total_us=17115 max_us=123
+producer_profile_stage deck=1 seq=330 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=330 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=330 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=330 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=330 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=330 uptime_us=169117192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=330 stage=poll calls=16425 total_us=16783 max_us=3
+producer_profile_stage deck=2 seq=330 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=330 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=330 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=330 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=330 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=330 uptime_us=169117183 turns=16424 wall_us=164229799 polls_us=33896 other_including_idle_us=164195903 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=28003 total_us=167822754 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=28003 total_us=134777 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=27999 total_us=167993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=28000 packets=168024 frames=8065152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=8065152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=28000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=170 uptime_us=170372185
+heartbeat=171 uptime_us=171372185
+heartbeat=172 uptime_us=172372185
+heartbeat=173 uptime_us=173372185
+heartbeat=174 uptime_us=174372185
+heartbeat=175 uptime_us=175372185
+producer_profile deck=1 generation=1 schema=1 seq=342 uptime_us=175127191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=342 stage=poll calls=17026 total_us=17728 max_us=123
+producer_profile_stage deck=1 seq=342 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=342 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=342 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=342 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=342 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=342 uptime_us=175127191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=342 stage=poll calls=17026 total_us=17396 max_us=3
+producer_profile_stage deck=2 seq=342 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=342 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=342 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=342 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=342 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=342 uptime_us=175127183 turns=17025 wall_us=170239114 polls_us=35122 other_including_idle_us=170203992 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=29003 total_us=173816811 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=29003 total_us=139464 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=28999 total_us=173993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=29000 packets=174024 frames=8353152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=8353152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=29000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=176 uptime_us=176372185
+heartbeat=177 uptime_us=177372185
+heartbeat=178 uptime_us=178372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=179 uptime_us=179372185
+heartbeat=180 uptime_us=180372185
+heartbeat=181 uptime_us=181372185
+producer_profile deck=1 generation=1 schema=1 seq=354 uptime_us=181147192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=354 stage=poll calls=17628 total_us=18341 max_us=123
+producer_profile_stage deck=1 seq=354 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=354 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=354 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=354 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=354 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=354 uptime_us=181147192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=354 stage=poll calls=17628 total_us=18010 max_us=3
+producer_profile_stage deck=2 seq=354 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=354 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=354 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=354 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=354 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=354 uptime_us=181147183 turns=17627 wall_us=176258430 polls_us=36349 other_including_idle_us=176222081 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=30003 total_us=179810861 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=30003 total_us=144154 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=29999 total_us=179993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=30000 packets=180024 frames=8641152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=8641152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=30000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=182 uptime_us=182372185
+heartbeat=183 uptime_us=183372185
+heartbeat=184 uptime_us=184372185
+heartbeat=185 uptime_us=185372185
+heartbeat=186 uptime_us=186372185
+heartbeat=187 uptime_us=187372185
+producer_profile deck=1 generation=1 schema=1 seq=366 uptime_us=187167191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=366 stage=poll calls=18230 total_us=18963 max_us=123
+producer_profile_stage deck=1 seq=366 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=366 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=366 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=366 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=366 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=366 uptime_us=187167191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=366 stage=poll calls=18230 total_us=18621 max_us=3
+producer_profile_stage deck=2 seq=366 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=366 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=366 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=366 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=366 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=366 uptime_us=187167183 turns=18229 wall_us=182277719 polls_us=37582 other_including_idle_us=182240137 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=31003 total_us=185804876 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=31003 total_us=148828 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=30999 total_us=185993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=31000 packets=186024 frames=8929152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=8929152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=31000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=188 uptime_us=188372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=189 uptime_us=189372185
+heartbeat=190 uptime_us=190372185
+heartbeat=191 uptime_us=191372185
+heartbeat=192 uptime_us=192372185
+heartbeat=193 uptime_us=193372185
+producer_profile deck=1 generation=1 schema=1 seq=378 uptime_us=193197192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=378 stage=poll calls=18833 total_us=19590 max_us=123
+producer_profile_stage deck=1 seq=378 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=378 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=378 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=378 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=378 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=378 uptime_us=193197192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=378 stage=poll calls=18833 total_us=19234 max_us=3
+producer_profile_stage deck=2 seq=378 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=378 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=378 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=378 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=378 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=378 uptime_us=193197183 turns=18832 wall_us=188307018 polls_us=38822 other_including_idle_us=188268196 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=32003 total_us=191798918 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=32003 total_us=153491 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=31999 total_us=191993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=32000 packets=192024 frames=9217152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=9217152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=32000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=194 uptime_us=194372185
+heartbeat=195 uptime_us=195372185
+heartbeat=196 uptime_us=196372185
+heartbeat=197 uptime_us=197372185
+heartbeat=198 uptime_us=198372185
+heartbeat=199 uptime_us=199372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+producer_profile deck=1 generation=1 schema=1 seq=390 uptime_us=199217191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=390 stage=poll calls=19435 total_us=20200 max_us=123
+producer_profile_stage deck=1 seq=390 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=390 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=390 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=390 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=390 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=390 uptime_us=199217191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=390 stage=poll calls=19435 total_us=19851 max_us=3
+producer_profile_stage deck=2 seq=390 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=390 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=390 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=390 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=390 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=390 uptime_us=199217183 turns=19434 wall_us=194326345 polls_us=40049 other_including_idle_us=194286296 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=33003 total_us=197792968 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=33003 total_us=158158 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=32999 total_us=197993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=33000 packets=198024 frames=9505152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=9505152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=33000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=200 uptime_us=200372185
+heartbeat=201 uptime_us=201372185
+heartbeat=202 uptime_us=202372185
+heartbeat=203 uptime_us=203372185
+heartbeat=204 uptime_us=204372185
+heartbeat=205 uptime_us=205372185
+producer_profile deck=1 generation=1 schema=1 seq=402 uptime_us=205217191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=402 stage=poll calls=20035 total_us=20849 max_us=123
+producer_profile_stage deck=1 seq=402 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=402 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=402 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=402 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=402 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=402 uptime_us=205217191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=402 stage=poll calls=20035 total_us=20479 max_us=3
+producer_profile_stage deck=2 seq=402 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=402 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=402 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=402 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=402 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=402 uptime_us=205217183 turns=20034 wall_us=200325623 polls_us=41326 other_including_idle_us=200284297 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=34003 total_us=203787061 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=34003 total_us=162838 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=33999 total_us=203993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=34000 packets=204024 frames=9793152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=9793152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=34000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=206 uptime_us=206372185
+heartbeat=207 uptime_us=207372185
+heartbeat=208 uptime_us=208372185
+heartbeat=209 uptime_us=209372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=210 uptime_us=210372185
+heartbeat=211 uptime_us=211372185
+producer_profile deck=1 generation=1 schema=1 seq=414 uptime_us=211227191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=414 stage=poll calls=20636 total_us=21481 max_us=123
+producer_profile_stage deck=1 seq=414 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=414 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=414 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=414 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=414 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=414 uptime_us=211227191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=414 stage=poll calls=20636 total_us=21094 max_us=3
+producer_profile_stage deck=2 seq=414 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=414 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=414 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=414 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=414 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=414 uptime_us=211227183 turns=20635 wall_us=206334916 polls_us=42573 other_including_idle_us=206292343 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=35003 total_us=209781149 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=35003 total_us=167497 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=34999 total_us=209993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=35000 packets=210024 frames=10081152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=10081152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=35000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=212 uptime_us=212372185
+heartbeat=213 uptime_us=213372185
+heartbeat=214 uptime_us=214372185
+heartbeat=215 uptime_us=215372185
+heartbeat=216 uptime_us=216372185
+heartbeat=217 uptime_us=217372185
+producer_profile deck=1 generation=1 schema=1 seq=426 uptime_us=217237191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=426 stage=poll calls=21237 total_us=22109 max_us=123
+producer_profile_stage deck=1 seq=426 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=426 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=426 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=426 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=426 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=426 uptime_us=217237191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=426 stage=poll calls=21237 total_us=21706 max_us=3
+producer_profile_stage deck=2 seq=426 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=426 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=426 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=426 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=426 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=426 uptime_us=217237183 turns=21236 wall_us=212344248 polls_us=43813 other_including_idle_us=212300435 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=36003 total_us=215775246 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=36003 total_us=172164 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=35999 total_us=215993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=36000 packets=216024 frames=10369152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=10369152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=36000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=218 uptime_us=218372185
+heartbeat=219 uptime_us=219372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=220 uptime_us=220372185
+heartbeat=221 uptime_us=221372185
+heartbeat=222 uptime_us=222372185
+heartbeat=223 uptime_us=223372185
+producer_profile deck=1 generation=1 schema=1 seq=438 uptime_us=223237192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=438 stage=poll calls=21837 total_us=22723 max_us=123
+producer_profile_stage deck=1 seq=438 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=438 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=438 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=438 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=438 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=438 uptime_us=223237192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=438 stage=poll calls=21837 total_us=22320 max_us=3
+producer_profile_stage deck=2 seq=438 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=438 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=438 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=438 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=438 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=438 uptime_us=223237183 turns=21836 wall_us=218343550 polls_us=45041 other_including_idle_us=218298509 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=37003 total_us=221769345 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=37003 total_us=176816 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=36999 total_us=221993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=37000 packets=222024 frames=10657152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=10657152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=37000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=224 uptime_us=224372185
+heartbeat=225 uptime_us=225372185
+heartbeat=226 uptime_us=226372185
+heartbeat=227 uptime_us=227372185
+heartbeat=228 uptime_us=228372185
+heartbeat=229 uptime_us=229372185
+producer_profile deck=1 generation=1 schema=1 seq=450 uptime_us=229237192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=450 stage=poll calls=22437 total_us=23343 max_us=123
+producer_profile_stage deck=1 seq=450 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=450 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=450 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=450 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=450 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=450 uptime_us=229237192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=450 stage=poll calls=22437 total_us=22946 max_us=3
+producer_profile_stage deck=2 seq=450 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=450 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=450 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=450 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=450 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=450 uptime_us=229237183 turns=22436 wall_us=224342843 polls_us=46287 other_including_idle_us=224296556 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=38003 total_us=227763450 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=38003 total_us=181474 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=37999 total_us=227993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=38000 packets=228024 frames=10945152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=10945152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=38000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=230 uptime_us=230372185
+heartbeat=231 uptime_us=231372185
+heartbeat=232 uptime_us=232372185
+heartbeat=233 uptime_us=233372185
+heartbeat=234 uptime_us=234372185
+heartbeat=235 uptime_us=235372185
+producer_profile deck=1 generation=1 schema=1 seq=462 uptime_us=235247191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=462 stage=poll calls=23038 total_us=23984 max_us=123
+producer_profile_stage deck=1 seq=462 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=462 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=462 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=462 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=462 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=462 uptime_us=235247191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=462 stage=poll calls=23038 total_us=23560 max_us=3
+producer_profile_stage deck=2 seq=462 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=462 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=462 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=462 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=462 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=462 uptime_us=235247183 turns=23037 wall_us=230352178 polls_us=47541 other_including_idle_us=230304637 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=39003 total_us=233757544 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=39003 total_us=186153 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=38999 total_us=233993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=39000 packets=234024 frames=11233152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=11233152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=39000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=236 uptime_us=236372185
+heartbeat=237 uptime_us=237372185
+heartbeat=238 uptime_us=238372185
+heartbeat=239 uptime_us=239372185
+heartbeat=240 uptime_us=240372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=241 uptime_us=241372185
+producer_profile deck=1 generation=1 schema=1 seq=474 uptime_us=241257191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=474 stage=poll calls=23639 total_us=24635 max_us=123
+producer_profile_stage deck=1 seq=474 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=474 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=474 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=474 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=474 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=474 uptime_us=241257191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=474 stage=poll calls=23639 total_us=24188 max_us=3
+producer_profile_stage deck=2 seq=474 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=474 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=474 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=474 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=474 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=474 uptime_us=241257183 turns=23638 wall_us=236361465 polls_us=48821 other_including_idle_us=236312644 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=40003 total_us=239751627 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=40003 total_us=190825 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=39999 total_us=239993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=40000 packets=240024 frames=11521152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=11521152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=40000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=242 uptime_us=242372185
+heartbeat=243 uptime_us=243372185
+heartbeat=244 uptime_us=244372185
+heartbeat=245 uptime_us=245372185
+heartbeat=246 uptime_us=246372185
+heartbeat=247 uptime_us=247372185
+producer_profile deck=1 generation=1 schema=1 seq=486 uptime_us=247277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=486 stage=poll calls=24241 total_us=25270 max_us=123
+producer_profile_stage deck=1 seq=486 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=486 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=486 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=486 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=486 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=486 uptime_us=247277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=486 stage=poll calls=24241 total_us=24813 max_us=3
+producer_profile_stage deck=2 seq=486 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=486 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=486 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=486 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=486 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=486 uptime_us=247277183 turns=24240 wall_us=242380770 polls_us=50081 other_including_idle_us=242330689 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=41003 total_us=245745715 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=41003 total_us=195494 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=40999 total_us=245993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=41000 packets=246024 frames=11809152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=11809152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=41000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=248 uptime_us=248372185
+heartbeat=249 uptime_us=249372185
+heartbeat=250 uptime_us=250372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=251 uptime_us=251372185
+heartbeat=252 uptime_us=252372185
+heartbeat=253 uptime_us=253372185
+producer_profile deck=1 generation=1 schema=1 seq=498 uptime_us=253277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=498 stage=poll calls=24841 total_us=25884 max_us=123
+producer_profile_stage deck=1 seq=498 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=498 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=498 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=498 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=498 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=498 uptime_us=253277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=498 stage=poll calls=24841 total_us=25432 max_us=3
+producer_profile_stage deck=2 seq=498 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=498 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=498 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=498 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=498 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=498 uptime_us=253277183 turns=24840 wall_us=248380061 polls_us=51314 other_including_idle_us=248328747 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=42003 total_us=251739814 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=42003 total_us=200165 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=41999 total_us=251993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=42000 packets=252024 frames=12097152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=12097152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=42000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1560 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=254 uptime_us=254372185
+heartbeat=255 uptime_us=255372185
+heartbeat=256 uptime_us=256372185
+heartbeat=257 uptime_us=257372185
+heartbeat=258 uptime_us=258372185
+heartbeat=259 uptime_us=259372185
+producer_profile deck=1 generation=1 schema=1 seq=510 uptime_us=259277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=510 stage=poll calls=25441 total_us=26518 max_us=123
+producer_profile_stage deck=1 seq=510 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=510 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=510 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=510 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=510 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=510 uptime_us=259277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=510 stage=poll calls=25441 total_us=26041 max_us=3
+producer_profile_stage deck=2 seq=510 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=510 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=510 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=510 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=510 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=510 uptime_us=259277183 turns=25440 wall_us=254379348 polls_us=52557 other_including_idle_us=254326791 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=43003 total_us=257733930 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=43003 total_us=204797 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=42999 total_us=257993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=43000 packets=258024 frames=12385152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=12385152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=43000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=260 uptime_us=260372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=261 uptime_us=261372185
+heartbeat=262 uptime_us=262372185
+heartbeat=263 uptime_us=263372185
+heartbeat=264 uptime_us=264372185
+heartbeat=265 uptime_us=265372185
+producer_profile deck=1 generation=1 schema=1 seq=522 uptime_us=265277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=522 stage=poll calls=26041 total_us=27144 max_us=123
+producer_profile_stage deck=1 seq=522 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=522 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=522 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=522 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=522 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=522 uptime_us=265277191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=522 stage=poll calls=26041 total_us=26671 max_us=3
+producer_profile_stage deck=2 seq=522 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=522 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=522 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=522 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=522 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=522 uptime_us=265277183 turns=26040 wall_us=260378635 polls_us=53813 other_including_idle_us=260324822 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=44003 total_us=263728033 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=44003 total_us=209478 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=43999 total_us=263993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=44000 packets=264024 frames=12673152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=12673152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=44000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=266 uptime_us=266372185
+heartbeat=267 uptime_us=267372185
+heartbeat=268 uptime_us=268372185
+heartbeat=269 uptime_us=269372185
+heartbeat=270 uptime_us=270372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=271 uptime_us=271372185
+producer_profile deck=1 generation=1 schema=1 seq=534 uptime_us=271287191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=534 stage=poll calls=26642 total_us=27780 max_us=123
+producer_profile_stage deck=1 seq=534 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=534 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=534 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=534 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=534 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=534 uptime_us=271287191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=534 stage=poll calls=26642 total_us=27301 max_us=3
+producer_profile_stage deck=2 seq=534 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=534 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=534 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=534 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=534 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=534 uptime_us=271287183 turns=26641 wall_us=266387905 polls_us=55079 other_including_idle_us=266332826 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=45003 total_us=269722138 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=45003 total_us=214144 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=44999 total_us=269993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=45000 packets=270024 frames=12961152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=12961152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=45000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=272 uptime_us=272372185
+heartbeat=273 uptime_us=273372185
+heartbeat=274 uptime_us=274372185
+heartbeat=275 uptime_us=275372185
+heartbeat=276 uptime_us=276372185
+heartbeat=277 uptime_us=277372185
+producer_profile deck=1 generation=1 schema=1 seq=546 uptime_us=277297192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=546 stage=poll calls=27243 total_us=28392 max_us=123
+producer_profile_stage deck=1 seq=546 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=546 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=546 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=546 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=546 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=546 uptime_us=277297192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=546 stage=poll calls=27243 total_us=27916 max_us=3
+producer_profile_stage deck=2 seq=546 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=546 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=546 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=546 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=546 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=546 uptime_us=277297183 turns=27242 wall_us=272397216 polls_us=56306 other_including_idle_us=272340910 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=46003 total_us=275716206 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=46003 total_us=218822 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=45999 total_us=275993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=46000 packets=276024 frames=13249152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=13249152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=46000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=278 uptime_us=278372185
+heartbeat=279 uptime_us=279372185
+heartbeat=280 uptime_us=280372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=281 uptime_us=281372185
+heartbeat=282 uptime_us=282372185
+heartbeat=283 uptime_us=283372185
+producer_profile deck=1 generation=1 schema=1 seq=558 uptime_us=283317191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=558 stage=poll calls=27845 total_us=29001 max_us=123
+producer_profile_stage deck=1 seq=558 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=558 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=558 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=558 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=558 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=558 uptime_us=283317191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=558 stage=poll calls=27845 total_us=28537 max_us=3
+producer_profile_stage deck=2 seq=558 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=558 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=558 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=558 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=558 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=558 uptime_us=283317183 turns=27844 wall_us=278416531 polls_us=57536 other_including_idle_us=278358995 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=47003 total_us=281710306 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=47003 total_us=223516 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=46999 total_us=281993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=47000 packets=282024 frames=13537152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=13537152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=47000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=284 uptime_us=284372185
+heartbeat=285 uptime_us=285372185
+heartbeat=286 uptime_us=286372185
+heartbeat=287 uptime_us=287372185
+heartbeat=288 uptime_us=288372185
+heartbeat=289 uptime_us=289372185
+producer_profile deck=1 generation=1 schema=1 seq=570 uptime_us=289317191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=570 stage=poll calls=28445 total_us=29626 max_us=123
+producer_profile_stage deck=1 seq=570 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=570 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=570 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=570 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=570 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=570 uptime_us=289317191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=570 stage=poll calls=28445 total_us=29148 max_us=3
+producer_profile_stage deck=2 seq=570 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=570 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=570 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=570 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=570 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=570 uptime_us=289317183 turns=28444 wall_us=284415862 polls_us=58772 other_including_idle_us=284357090 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=48003 total_us=287704417 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=48003 total_us=228181 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=47999 total_us=287993855 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=48000 packets=288024 frames=13825152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=13825152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=48000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=290 uptime_us=290372185
+heartbeat=291 uptime_us=291372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=292 uptime_us=292372185
+heartbeat=293 uptime_us=293372185
+heartbeat=294 uptime_us=294372185
+heartbeat=295 uptime_us=295372185
+producer_profile deck=1 generation=1 schema=1 seq=582 uptime_us=295327191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=582 stage=poll calls=29046 total_us=30257 max_us=123
+producer_profile_stage deck=1 seq=582 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=582 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=582 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=582 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=582 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=582 uptime_us=295327191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=582 stage=poll calls=29046 total_us=29761 max_us=3
+producer_profile_stage deck=2 seq=582 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=582 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=582 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=582 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=582 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=582 uptime_us=295327183 turns=29045 wall_us=290425188 polls_us=60016 other_including_idle_us=290365172 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=49003 total_us=293698523 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=49003 total_us=232865 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=48999 total_us=293993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=49000 packets=294024 frames=14113152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=14113152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=49000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=296 uptime_us=296372185
+heartbeat=297 uptime_us=297372185
+heartbeat=298 uptime_us=298372185
+heartbeat=299 uptime_us=299372185
+heartbeat=300 uptime_us=300372185
+heartbeat=301 uptime_us=301372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+producer_profile deck=1 generation=1 schema=1 seq=594 uptime_us=301327192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=594 stage=poll calls=29646 total_us=30892 max_us=123
+producer_profile_stage deck=1 seq=594 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=594 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=594 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=594 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=594 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=594 uptime_us=301327192 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=594 stage=poll calls=29646 total_us=30379 max_us=3
+producer_profile_stage deck=2 seq=594 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=594 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=594 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=594 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=594 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=594 uptime_us=301327183 turns=29645 wall_us=296424480 polls_us=61269 other_including_idle_us=296363211 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=50003 total_us=299692639 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=50003 total_us=237531 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=49999 total_us=299993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=50000 packets=300024 frames=14401152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=14401152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=50000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=302 uptime_us=302372185
+heartbeat=303 uptime_us=303372185
+heartbeat=304 uptime_us=304372185
+heartbeat=305 uptime_us=305372185
+heartbeat=306 uptime_us=306372185
+heartbeat=307 uptime_us=307372185
+producer_profile deck=1 generation=1 schema=1 seq=606 uptime_us=307347191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=606 stage=poll calls=30248 total_us=31512 max_us=123
+producer_profile_stage deck=1 seq=606 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=606 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=606 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=606 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=606 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=606 uptime_us=307347191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=606 stage=poll calls=30248 total_us=30993 max_us=3
+producer_profile_stage deck=2 seq=606 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=606 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=606 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=606 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=606 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=606 uptime_us=307347183 turns=30247 wall_us=302443741 polls_us=62503 other_including_idle_us=302381238 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=51003 total_us=305686759 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=51003 total_us=242214 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=50999 total_us=305993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=51000 packets=306024 frames=14689152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=14689152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=51000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=308 uptime_us=308372185
+heartbeat=309 uptime_us=309372185
+heartbeat=310 uptime_us=310372185
+heartbeat=311 uptime_us=311372185
+rust_load pass=1 event=13 value=20000 stack_free=58044 psram_free=28538732 psram_min=28054272
+producer_stats max_gap_us=20000
+heartbeat=312 uptime_us=312372185
+heartbeat=313 uptime_us=313372185
+producer_profile deck=1 generation=1 schema=1 seq=618 uptime_us=313347191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=618 stage=poll calls=30848 total_us=32193 max_us=123
+producer_profile_stage deck=1 seq=618 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=618 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=618 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=618 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=618 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=618 uptime_us=313347191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=618 stage=poll calls=30848 total_us=31610 max_us=3
+producer_profile_stage deck=2 seq=618 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=618 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=618 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=618 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=618 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=618 uptime_us=313347183 turns=30847 wall_us=308443031 polls_us=63801 other_including_idle_us=308379230 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=52003 total_us=311680846 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=52003 total_us=246866 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=51999 total_us=311993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=52000 packets=312024 frames=14977152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=14977152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=52000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=314 uptime_us=314372185
+heartbeat=315 uptime_us=315372185
+heartbeat=316 uptime_us=316372185
+heartbeat=317 uptime_us=317372185
+heartbeat=318 uptime_us=318372185
+heartbeat=319 uptime_us=319372185
+producer_profile deck=1 generation=1 schema=1 seq=630 uptime_us=319377191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=19996
+producer_profile_stage deck=1 seq=630 stage=poll calls=31451 total_us=32811 max_us=123
+producer_profile_stage deck=1 seq=630 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=630 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=630 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=630 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=1 seq=630 stage=decode_other calls=0 total_us=0 max_us=0
+producer_profile deck=2 generation=1 schema=1 seq=630 uptime_us=319377191 epoch=0 index=4294967295 rate=0 playing=0 pitch=0 supply_us=0 busy=0 frames=0 logical_read_bytes=0 invalid=0 saturated=0 max_service_gap_us=20003
+producer_profile_stage deck=2 seq=630 stage=poll calls=31451 total_us=32231 max_us=3
+producer_profile_stage deck=2 seq=630 stage=decode calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=630 stage=step calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=630 stage=read calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=630 stage=push calls=0 total_us=0 max_us=0
+producer_profile_stage deck=2 seq=630 stage=decode_other calls=0 total_us=0 max_us=0
+producer_owner generation=1 seq=630 uptime_us=319377183 turns=31450 wall_us=314472355 polls_us=65040 other_including_idle_us=314407315 max_turn_us=19999 invalid=0 saturated=0
+producer_usb_service generation=1 stage=handle_events_wall count=53003 total_us=317674970 max_us=7455 invalid=0 saturated=0
+producer_usb_service generation=1 stage=client_tail_wall count=53003 total_us=251519 max_us=359 invalid=0 saturated=0
+producer_usb_service generation=1 stage=callback_entry_gap count=52999 total_us=317993854 max_us=6699 invalid=0 saturated=0
+producer_water low_us=4294967295/4294967295 prime_max_us=0/0 log_drops=0
+usb_uac_stats transfers=53000 packets=318024 frames=15265152 tone_packets=0 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=15265152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880
+uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1880 first_after_iso_submit=0 max_us=1880 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=53000 first_us=1153 first_after_iso_submit=1 max_us=1598 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4964 logger_stack_free=1528 internal_free=414564 internal_min=414548 internal_largest=249856 psram_free=28538732 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0

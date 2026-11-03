@@ -1,6 +1,25 @@
 # Rust M2.5 development handoff
 
-Current continuation: [producer campaign registration](reviews/2026-11-03-source-supply-execution.md)
+Current device result: [producer cold/idle and incomplete playback](reviews/2026-11-03-source-supply-device.md).
+S01/S02 pass at 1880 us all-fill maximum; S03 ends without load/play and its
+initial producer/heartbeat prefix fails frozen analysis. No throughput or
+dual-MP3 root cause is established; S04/S05 NOT_RUN. Exact s07 was restored
+with full readback, cold boot and owner `sva je ok`; captured playback 9.276 s
+has zero errors. All tools closed. Current history **42**, full flash
+`28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921`.
+Completed archive 37678594 bytes, `4576676b...`, CRC/members/secondary pass.
+
+Owner decision after recovery: **no more repeated s07 physical cold/listening/
+Pause/CUE recovery checks**. Use automatic readback and the
+[recovery policy](RECOVERY_POLICY.md); prepare a separately reviewed software
+boot action if needed. Preserve old frozen runbooks/archives as historical.
+Next: offline continuous-capture/framing and operator-ready coordination tests,
+then new 42/43 plans and reviewed tools before another target campaign. No
+decoder optimization, extra flash or manual recovery qualification is implied.
+
+The preparation checkpoints below are historical.
+
+Historical registration: [producer campaign registration](reviews/2026-11-03-source-supply-execution.md)
 and [frozen runbook](reviews/2026-11-03-source-supply-campaign.md). Candidate/s07
 plans are registered against 40/41 predecessors; both offline preflights and
 326-member dual-copy archive pass. Current actual s07/history 40/full 7875f650
@@ -10,7 +29,8 @@ has 0 issues and exact `bb96132` CI passes 22/22. Four-file binding `a63241b1...
 and the 48748-byte dual-copy tools archive `949e4831...` are frozen; publication
 and both offline preflights precede COM3.
 Old normal/profile bindings do not authorize this image. Follow S01-S05 only,
-then always restore/readback/cold/listen exact s07. Do not edit the runbook.
+then execute its originally registered exit. That manual s07 exit is superseded
+for future campaigns by the owner policy above. Do not edit the frozen runbook.
 
 Active reviewed source: `ogranak/jc1060-source-supply-profile`, draft
 [PR #82](https://github.com/dvucinozd/Ruzina/pull/82); read the

@@ -1,5 +1,15 @@
 # Current development status
 
+Latest [producer-profile campaign](reviews/2026-11-03-source-supply-device.md):
+cold/idle pass at 1880 us; functional playback NOT_CAPTURED, initial joined
+telemetry rejected. S04/S05 NOT_RUN; root cause open. S07 is restored and
+owner-confirmed; tools closed. Current history 42/full
+`28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921`.
+The [owner recovery policy](RECOVERY_POLICY.md) removes future repeated s07
+physical cold/listening/Pause/CUE checks; keep automatic full readback.
+Next is continuous capture/framing and readiness coordination offline, then
+fresh 42/43 plans. Older checkpoints below retain historical state.
+
 The [producer campaign](reviews/2026-11-03-source-supply-execution.md) is now
 offline registered against 40/41 predecessors. Both plans and dual-copy archive
 pass; final tool review has 0 issues, exact CI passes 22/22, and the four-file
