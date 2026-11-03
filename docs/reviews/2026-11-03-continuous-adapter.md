@@ -51,10 +51,19 @@ deadline is 120 seconds after the cold case bound. Idle starts automatically
 only after cold admission.
 
 Each completed case creates an immutable checkpoint while the serial reader
-remains open. Analysis must pass before the next case is offered. Failures
+remains open. A reader-thread metadata snapshot fixes the exact byte prefixes;
+a single background worker copies only those prefixes and runs analysis while
+the reader continues receiving and watching faults. It never reads the live
+capture's mutable metadata. No latency exception is added to freshness checks.
+Pending admission has a 30-second bound, separate from case durations. Analysis
+must pass before the next case is offered. Failures
 retain `analysis-attempt.json`, invalidate the session and close the port.
 There is no repeated or extended window to manufacture missing playback.
 The adapter stops after five admitted cases or the first fault/invalid input.
+After closing the port it reanalyzes the final entire session, including bytes
+received during the last pending admission. A valid older checkpoint cannot
+override a failing final stream. Background work is joined only after closing
+the reader, including fault exits.
 The existing <6000-us, USB, underrun, resource and log-drop gates remain. A
 3000-us headroom miss remains separately reported, not a rewritten hard gate.
 
@@ -125,6 +134,17 @@ case tails, short source intervals, disjoint both-playing intervals, wrong
 reset/readiness, missing physical confirmation, media faults between cases,
 busy/enumerating/disconnected ports, edited owner commands and consumed plans.
 No synthetic transcript or owner placeholder is board evidence.
+
+The first connected CLI review produced three issues (one major, two minor),
+then failed with `Connection failed: WebSocket closed`; it is not a completed
+review. Its issues were verified and addressed: background snapshot/analysis
+instead of blocking reads, storing the exact readiness bound for replay rather
+than reconstructing it by floating-point subtraction, and fixing handoff prose.
+Two additional regressions cover a deliberately held worker while receiving
+and whole-journal replay across a floating-point exponent boundary. Combined
+source-supply suite now has 46 cases per OS, including the separate boot tests.
+Ruzina's GitHub CodeRabbit installation is confirmed by its PR82 bot response;
+the PR remains draft. Successful repeat review is still required separately.
 
 The separate [software boot action](2026-11-03-software-boot.md) is now
 implemented with seven further tests (44 source-supply tests total per OS).

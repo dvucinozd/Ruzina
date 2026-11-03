@@ -1,9 +1,11 @@
 """Deterministic whole-session adapter/analyzer tests. No serial/device imports."""
 import copy
+from concurrent.futures import Future
 import json
 from pathlib import Path
 import sys
 import tempfile
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -51,6 +53,19 @@ class Clock:
         return self.now
     def sleep(self, seconds):
         self.now += seconds
+
+
+class ImmediateExecutor:
+    """Deterministic executor for synthetic clock integration only."""
+    def __init__(self, **kwargs):
+        pass
+    def submit(self, function):
+        future = Future()
+        try:future.set_result(function())
+        except BaseException as error:future.set_exception(error)
+        return future
+    def shutdown(self, **kwargs):
+        pass
 
 
 class Serial:
@@ -274,8 +289,9 @@ class AdapterTests(unittest.TestCase):
                     path.write_text(json.dumps(dict(sequence=int(name[:6]), **command)))
             return pending.pop(0) if pending else b''
         serial = Serial(clock, provider)
-        result = execute(output, contract(), dict(synthetic=True), serial, serial.comports,
-                         clock.monotonic, clock.sleep)
+        with patch('continuous_adapter.ThreadPoolExecutor', ImmediateExecutor):
+            result = execute(output, contract(), dict(synthetic=True), serial, serial.comports,
+                             clock.monotonic, clock.sleep)
         self.assertEqual(result['status'], 'MEASURED_NOT_PRODUCT_QUALIFIED', result)
         self.assertEqual(result['admitted_cases'], 5)
         self.assertEqual(serial.opens, 1)
@@ -296,6 +312,58 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Accepted control file changed'):
             controller(capture, 45)
         capture.close(45)
+        controller.close()
+
+    def test_async_admission_keeps_receiving_and_snapshot_is_a_frozen_prefix(self):
+        capture = self.cold()
+        controller = Controller(capture, contract())
+        entered, release = threading.Event(), threading.Event()
+        real_analyze = analyze
+        def slow_analyze(folder, policy):
+            entered.set()
+            if not release.wait(5):raise RuntimeError('Test worker timeout')
+            return real_analyze(folder, policy)
+        try:
+            with patch('continuous_adapter.analyze', slow_analyze):
+                self.assertFalse(controller(capture, 45))
+                self.assertTrue(entered.wait(5))
+                prefix = capture.offset
+                for i in range(8, 11):
+                    feed(capture, sample(i), i*6)
+                    self.assertFalse(controller(capture, i*6))
+                self.assertGreater(capture.offset, prefix)
+                self.assertEqual(controller.admitted, 0)
+                self.assertIsNone(capture.failed)
+                release.set()
+                controller.pending.result(timeout=5)
+                self.assertFalse(controller(capture, 60))
+                self.assertEqual(controller.admitted, 1)
+                folder = capture.output/'checkpoints/cold-1'
+                self.assertEqual((folder/'stream.log').stat().st_size, prefix)
+                self.assertEqual(analyze(folder, contract())['completed_cases'], 1)
+        finally:
+            release.set()
+            controller.close()
+            capture.close(capture.last)
+
+    def test_original_readiness_bound_replays_at_float_exponent_boundary(self):
+        origin = 2**16-100.123456789
+        capture = ContinuousCapture(self.root/'float', LIMITS, ELF, start=origin, auto_cold=True)
+        try:
+            feed(capture, BOOT, origin)
+            for i in range(1, 8):feed(capture, sample(i), origin+i*6)
+            capture.confirm_physical_cold('Synthetic', origin+43)
+            capture.tick(origin+45)
+            token = capture.offer_case('idle-1', 'idle', 60, origin+45, readiness_seconds=120)
+            self.assertEqual(capture.cases[-1]['readiness_seconds'], 120)
+            capture.acknowledge_ready(token, 'Synthetic', origin+45)
+            capture.begin_case(token, origin+45)
+            for i in range(8, 18):feed(capture, sample(i), origin+i*6)
+            capture.tick(origin+105)
+            folder = capture.snapshot('idle-1', origin+105)
+            self.assertEqual(analyze(folder, contract())['completed_cases'], 2)
+        finally:
+            capture.close(capture.last)
 
 
 if __name__ == '__main__':

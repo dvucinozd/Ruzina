@@ -49,7 +49,7 @@ def replay(folder, contract):
                 elif kind == 'case_offered':
                     case = row['case']
                     capture.offer_case(case['name'], case['kind'], case['seconds'], now,
-                                       readiness_seconds=case['ready_deadline']-now)
+                                       readiness_seconds=case['readiness_seconds'])
                 elif kind == 'owner_ready':
                     capture.acknowledge_ready(row['token'], row['reply'], now)
                 elif kind == 'case_started':

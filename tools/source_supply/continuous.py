@@ -4,13 +4,13 @@ A future registered adapter supplies passive bytes and monotonic receive times.
 The replay CLI exercises framing only; it cannot qualify a board or a case.
 """
 import argparse
+import copy
 import hashlib
 import json
 import math
 from pathlib import Path
 import re
 import secrets
-import shutil
 
 from analyze import HEADER, STAGES, USB_STAGES, fields, numbers
 from campaign import require, sha
@@ -184,7 +184,8 @@ class ContinuousCapture:
         require(0 < readiness_seconds <= 120, 'Invalid readiness bound')
         token = self.token_factory()
         self.cases.append(dict(name=name, kind=kind, seconds=seconds, token=token,
-                               offered=now, ready_deadline=now + readiness_seconds, state='OFFERED'))
+                               offered=now, readiness_seconds=readiness_seconds,
+                               ready_deadline=now + readiness_seconds, state='OFFERED'))
         self.active = len(self.cases) - 1
         self.event('case_offered', now, case=self.cases[self.active].copy())
         return token
@@ -237,6 +238,17 @@ class ContinuousCapture:
         return self.write_evidence(self.output, closed=True)
 
     def snapshot(self, name, now):
+        folder, job = self.prepare_snapshot(name, now)
+        job()
+        return folder
+
+    def prepare_snapshot(self, name, now):
+        """Freeze a byte-prefix and metadata; return I/O work for another thread.
+
+        Only the reader thread mutates this capture. The returned job owns a
+        separate metadata copy and reads only the already-flushed file prefixes.
+        It never reads later appended bytes or the live capture's mutable lists.
+        """
         self.tick(now)
         require(self.failed is None and self.active is None, 'Checkpoint requires completed cases')
         require(re.fullmatch(r'[a-z0-9][a-z0-9-]{0,63}', name), 'Unsafe checkpoint name')
@@ -244,10 +256,22 @@ class ContinuousCapture:
         folder.mkdir(parents=True, exist_ok=False)
         self.event('session_checkpoint', now, name=name)
         self.raw_file.flush()
-        shutil.copyfile(self.output/'stream.log', folder/'stream.log')
-        shutil.copyfile(self.output/'events.jsonl', folder/'events.jsonl')
-        self.write_evidence(folder, closed=False)
-        return folder
+        frozen = copy.copy(self)
+        for field in ('frames', 'cases', 'frame', 'cold_confirmation'):
+            setattr(frozen, field, copy.deepcopy(getattr(self, field)))
+        frozen.digest = self.digest.copy()
+        sizes = {'stream.log':self.offset, 'events.jsonl':self.events.tell()}
+        def job():
+            for filename, size in sizes.items():
+                with (self.output/filename).open('rb') as source, (folder/filename).open('xb') as target:
+                    remaining = size
+                    while remaining:
+                        data = source.read(min(65536, remaining))
+                        require(data, 'Checkpoint prefix truncated')
+                        target.write(data)
+                        remaining -= len(data)
+            frozen.write_evidence(folder, closed=False)
+        return folder, job
 
     def write_evidence(self, folder, *, closed):
         result = dict(status='INVALID' if self.failed else 'CLOSED_NOT_QUALIFIED',

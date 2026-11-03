@@ -1,5 +1,6 @@
 """Passive COM3 adapter; offline by default, new contract/binding/proof required."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import re
@@ -62,12 +63,16 @@ class Controller:
         self.commands.mkdir()
         self.accepted.mkdir()
         self.last_status = None
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='capture-admission')
+        self.pending = None
+        self.analysis_started = None
 
     def status(self):
         capture = self.capture
         case = capture.cases[capture.active] if capture.active is not None else None
         status = dict(admitted_cases=self.admitted, active_case=case, error=capture.failed,
                       boot_seen=bool(capture.boots), cold_confirmed=bool(capture.cold_confirmation),
+                      admission_pending=self.pending is not None,
                       next_command=f'{self.command_number:06}.json', serial_writes=False)
         raw = json.dumps(status, indent=2)+'\n'
         if raw != self.last_status:
@@ -115,16 +120,13 @@ class Controller:
             return True
         if capture.boots and capture.cold_confirmation is None:
             require(now < capture.cases[0]['deadline']+120, 'Physical cold confirmation timeout')
-        if capture.active is None and len(capture.cases) > self.admitted and capture.cold_confirmation:
-            case = capture.cases[-1]
-            require(case['state'] == 'BOUND_REACHED_NOT_QUALIFIED', 'Incomplete case cannot continue')
-            folder = capture.snapshot(case['name'], now)
-            try:
-                summary = analyze(folder, self.contract)
-            except Exception as error:
-                (folder/'analysis-attempt.json').write_text(json.dumps(dict(status='INVALID', error=repr(error)))+'\n')
-                raise
-            (folder/'admission.json').write_text(json.dumps(summary, indent=2)+'\n')
+        if self.pending is not None:
+            require(now-self.analysis_started < 30, 'Admission analysis timeout')
+            if not self.pending.done():
+                self.status()
+                return False
+            summary = self.pending.result()
+            self.pending = None
             self.admitted = summary['completed_cases']
             if self.admitted == len(CASES):
                 self.status()
@@ -134,8 +136,27 @@ class Controller:
             if spec['kind'] == 'idle':
                 capture.acknowledge_ready(token, 'Automatic idle after admitted physical cold', now)
                 capture.begin_case(token, now)
+        elif capture.active is None and len(capture.cases) > self.admitted and capture.cold_confirmation:
+            case = capture.cases[-1]
+            require(case['state'] == 'BOUND_REACHED_NOT_QUALIFIED', 'Incomplete case cannot continue')
+            folder, snapshot_job = capture.prepare_snapshot(case['name'], now)
+            def admission():
+                try:
+                    snapshot_job()
+                    summary = analyze(folder, self.contract)
+                    (folder/'admission.json').write_text(json.dumps(summary, indent=2)+'\n')
+                    return summary
+                except Exception as error:
+                    (folder/'analysis-attempt.json').write_text(json.dumps(dict(status='INVALID', error=repr(error)))+'\n')
+                    raise
+            self.analysis_started = now
+            self.pending = self.executor.submit(admission)
         self.status()
         return False
+
+    def close(self):
+        # Called only after the reader/port has closed, including fault exits.
+        self.executor.shutdown(wait=True, cancel_futures=True)
 
 
 def execute(output, contract, authority, serial, comports, clock=time.monotonic, sleep=time.sleep):
@@ -148,14 +169,25 @@ def execute(output, contract, authority, serial, comports, clock=time.monotonic,
         capture.fail('Controller setup failed: '+repr(error), capture.last)
         capture.close(capture.last)
         raise
-    result = pump(capture, reader, clock, controller)
-    status = ('MEASURED_NOT_PRODUCT_QUALIFIED' if not result['error'] and controller.admitted == len(CASES)
+    try:
+        result = pump(capture, reader, clock, controller)
+    finally:
+        controller.close()
+    error = result['error']
+    if not error and controller.admitted == len(CASES):
+        try:
+            final_summary = analyze(capture.output, contract)
+            (capture.output/'final-admission.json').write_text(json.dumps(final_summary, indent=2)+'\n')
+        except Exception as caught:
+            error = 'Final whole-session analysis: '+repr(caught)
+            (capture.output/'final-analysis-attempt.json').write_text(json.dumps(dict(status='INVALID', error=error))+'\n')
+    status = ('MEASURED_NOT_PRODUCT_QUALIFIED' if not error and controller.admitted == len(CASES)
               else 'INVALID_OR_INCOMPLETE_RESTORE_REQUIRED')
     final = dict(status=status, admitted_cases=controller.admitted, raw_sha256=result['raw_sha256'],
                  events_sha256=result['events_sha256'], authority_sha256=sha((capture.output/'authority.json').read_bytes()),
                  serial_writes=False, reset_requested=False, device_access=True,
                  writer_invoked=False, automatic_recovery_invoked=False, port_closed=reader.port is None,
-                 error=result['error'])
+                 error=error)
     (capture.output/'adapter-result.json').write_text(json.dumps(final, indent=2)+'\n')
     return final
 
