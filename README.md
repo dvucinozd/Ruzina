@@ -6,6 +6,11 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-03
 
+New [42/43 continuous campaign preparation](docs/reviews/2026-11-03-continuous-registration.md)
+has both offline plans/contracts and full ancestry reconstruction passing.
+The 53-test combined suite passes per OS. No new COM3 access: writer review,
+exact CI, archives and independent bindings/publication still precede use.
+
 The [continuous COM3 adapter and analyzer](docs/reviews/2026-11-03-continuous-adapter.md)
 now pass offline whole-session and fault tests. They gate each case on validated
 continuous evidence and actual owner readiness. No new target access: software

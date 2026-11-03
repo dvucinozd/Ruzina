@@ -1,5 +1,11 @@
 # Registered producer-profile campaign tools
 
+New [42/43 registration](../../docs/reviews/2026-11-03-continuous-registration.md)
+has real-file offline preflights and 53 tests per OS. `continuous_write.py`
+uses the unchanged shared writer but requires its own reviewed binding.
+`register_continuous.py` never accesses a device. See the new
+[runbook](../../docs/reviews/2026-11-03-continuous-campaign.md); old plans remain consumed.
+
 Current continuation: [passive adapter/whole-stream analyzer](../../docs/reviews/2026-11-03-continuous-adapter.md).
 39 capture/adapter tests per OS include a synthetic five-case session with one connection.
 `continuous_adapter.py` defaults offline and rejects old bindings/plans;

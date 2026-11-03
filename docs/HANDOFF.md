@@ -1,5 +1,12 @@
 # Rust M2.5 development handoff
 
+Latest preparation: [new 42/43 continuous-source registration](reviews/2026-11-03-continuous-registration.md)
+and frozen [runbook](reviews/2026-11-03-continuous-campaign.md). Both real-file
+offline preflights reconstruct exact current/candidate/return states; 53 tests
+pass per OS. No target access. New writer review/CI, archives and exact separate
+write/capture/boot bindings must precede execution. Earlier checkpoint details
+below retain their historical counts/status; do not reuse old plans.
+
 Current device result: [producer cold/idle and incomplete playback](reviews/2026-11-03-source-supply-device.md).
 S01/S02 pass at 1880 us all-fill maximum; S03 ends without load/play and its
 initial producer/heartbeat prefix fails frozen analysis. No throughput or

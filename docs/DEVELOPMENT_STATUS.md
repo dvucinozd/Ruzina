@@ -1,5 +1,11 @@
 # Current development status
 
+New [42/43 continuous-source plans](reviews/2026-11-03-continuous-registration.md)
+and contracts pass actual-file offline preflight; full factory/history and
+source checks pass. Combined suite: 53 tests per OS. No target access or new
+device result. New writer review/CI, dual-copy archives, exact bindings and
+publication remain before execution. Older checkpoint counts/status follow.
+
 Latest [producer-profile campaign](reviews/2026-11-03-source-supply-device.md):
 cold/idle pass at 1880 us; functional playback NOT_CAPTURED, initial joined
 telemetry rejected. S04/S05 NOT_RUN; root cause open. S07 is restored and
