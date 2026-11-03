@@ -51,6 +51,8 @@ output reuse, old binding/proof rejection and full-file/span/app integrity.
 No synthetic hashes or fake port calls become a real execution binding. All
 46 source-supply tests pass on Windows and Linux; 13 unchanged shared-guard
 tests pass on Linux. The [continuous adapter](2026-11-03-continuous-adapter.md)
-and this action still need successful review/CI and new registration before
-any target use. The initial review attempt hit a CodeRabbit rate limit; no
-review result is inferred from tests or dashboard setup.
+and this action have now completed the [combined review](2026-11-03-continuous-adapter.md):
+one minor documentation issue in the full pass, followed by final fix review
+with 0 issues. Exact latest CI and new registration/bindings still precede any
+target use. The initial rate-limit/WebSocket failures remain separate attempts;
+no review result is inferred from tests or dashboard setup.

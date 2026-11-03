@@ -9,9 +9,13 @@ The [owner recovery policy](RECOVERY_POLICY.md) removes future repeated s07
 physical cold/listening/Pause/CUE checks; keep automatic full readback.
 The [continuous adapter/analyzer](reviews/2026-11-03-continuous-adapter.md) now has
 39 offline framing/readiness/whole-session tests per OS. No COM3 access. Next:
-review/CI for the adapter and [software boot action](reviews/2026-11-03-software-boot.md),
+verify latest CI for the reviewed adapter and [software boot action](reviews/2026-11-03-software-boot.md),
 new 42/43 plans and exact bindings. Combined suite now has 46 tests per OS. Older checkpoints
 below retain historical state.
+
+CodeRabbit connection and combined review are complete: one minor count issue
+fixed, final fix review 0 issues. Exact tooling/tests/review attempts have a
+verified dual-copy archive; no execution binding or new device result follows.
 
 The [producer campaign](reviews/2026-11-03-source-supply-execution.md) is now
 offline registered against 40/41 predecessors. Both plans and dual-copy archive

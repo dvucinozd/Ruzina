@@ -1,0 +1,129 @@
+{
+  "status": "OFFLINE_TOOLS_REVIEWED_NOT_DEVICE_REGISTERED_CI_PENDING",
+  "source_commit": "1d09ca1cc5aee0ff025c2f33fd7dc54b6b9739c7",
+  "device_access": false,
+  "physical_acceptance": "NOT_ASSESSED",
+  "sources": {
+    "tools/source_supply/continuous.py": "61f8b39c3150bd51c02a3977f9163c879d821e9dfe2eab406b846eb1df5f86af",
+    "tools/source_supply/continuous_adapter.py": "0a2c461e26aa2576579a44ed60c912e1841b2cb9c32077593b63063c6f0d90ee",
+    "tools/source_supply/continuous_analyze.py": "765e34330e710c16666268c28bd7b7cf0ee71928dab01c8406e4334869451e08",
+    "tools/source_supply/continuous_contract.py": "b5fd5e51e247d541e5f79aced6cfd3fd9d6b5c9516b4d32f24662f78a8ce960f",
+    "tools/source_supply/software_boot.py": "c2ef521658c1f99125f0c20156dae8ec4319405f04a637c43a4594b41a77c4e4",
+    "tools/source_supply/campaign.py": "77d6ed50dd0ebe7061939efa389838cd64c479ad10e659c75f8e7daae7cc9881",
+    "tools/source_supply/program.py": "ae4a0cd2d1a0258c31f9ac9d2e8f9f6eb3f547b98fa2a22ac86ec64517bb7200",
+    "tools/source_supply/monitor.py": "ca4aad25849bf5520affd5ce78fe4836d364ad65888ba83a07a12483afeb2c7c",
+    "tools/source_supply/analyze.py": "06e64c289b8bdcdd879410df128cf65851db7911d6378b24fb454216e4f0a875",
+    "tools/source_supply/tests/test_continuous.py": "d7f1dc5e629ff4bd405b3330cb2ca50c989b0fd81f64f61c958dc2a43462f21e",
+    "tools/source_supply/tests/test_continuous_adapter.py": "eb90c8720301bb9bc3f7a47f7955b60b4327ce23e6c1ee144c1396f930a23440",
+    "tools/source_supply/tests/test_software_boot.py": "2b15752b1dcddb7660b885fcda7948173b1d5a6ea82396cd84afec714a9d263c"
+  },
+  "reviews": [
+    {
+      "source_commit": "2f11f2f53e83ecc4589bbb274b1e08e281d29afa",
+      "base_commit": "ad28067bc04ea405130327d5c5983644dde6ab55",
+      "file": "coderabbit-async-full.raw.log",
+      "raw_sha256": "8d239a47a705f68902ec5ddbb89cfd3281cf06e9b9ec5677f638ee9c5d1d742c",
+      "issues": 1,
+      "findings": [
+        {
+          "severity": "minor",
+          "file": "docs/reviews/2026-11-03-continuous-adapter.md",
+          "title": "Make the test counts the same in every checkpoint document."
+        }
+      ]
+    },
+    {
+      "source_commit": "1d09ca1cc5aee0ff025c2f33fd7dc54b6b9739c7",
+      "base_commit": "2f11f2f53e83ecc4589bbb274b1e08e281d29afa",
+      "file": "coderabbit-count-fix.raw.log",
+      "raw_sha256": "7cc138857f9201a47c9ae99e69a6e36979850b07db545e3c0a0c46dcef7df6c7",
+      "issues": 0,
+      "findings": []
+    }
+  ],
+  "tests": {
+    "source_commit": "2f11f2f53e83ecc4589bbb274b1e08e281d29afa",
+    "tests": {
+      "windows-tests-final": {
+        "command": [
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tools/source_supply/tests",
+          "-v"
+        ],
+        "exit_code": 0,
+        "raw_sha256": "c2e88c2a4f6b1f8e7d867f7a60dc7995c6f6007fa57789f3cea9e111350a0f4f"
+      },
+      "linux-tests-final": {
+        "command": [
+          "wsl",
+          "-d",
+          "Ubuntu",
+          "bash",
+          "-lc",
+          "cd /mnt/d/AI/M1_PCB && python3 -m unittest discover -s tools/source_supply/tests -v"
+        ],
+        "exit_code": 0,
+        "raw_sha256": "de6b0fe9d070a6bc24bf57dc8c6220bf1758b3acfffea432baee1a856c2d9108"
+      },
+      "docs-final": {
+        "command": [
+          "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+          "firmware-rust/tools/check_docs.py"
+        ],
+        "exit_code": 0,
+        "raw_sha256": "0a310e39041a2359522e509c53fab45ea452bddc32bf0669647815395f8425fc"
+      }
+    },
+    "historical_four_tools_and_shared_guard_unchanged": true,
+    "firmware_sources_verified": 289
+  },
+  "source_supply_tests_per_os": 46,
+  "capture_adapter_tests": 39,
+  "software_boot_tests": 7,
+  "shared_guard_linux_tests": 13,
+  "reset_backend_test": {
+    "status": "PINNED_RESET_BACKEND_FAKE_PORT_PASS",
+    "device_access": false,
+    "calls": [
+      [
+        "RTS",
+        true
+      ],
+      [
+        "DTR",
+        false
+      ],
+      [
+        "sleep",
+        0.2
+      ],
+      [
+        "RTS",
+        false
+      ],
+      [
+        "DTR",
+        false
+      ],
+      [
+        "sleep",
+        0.2
+      ]
+    ],
+    "backend_sha256": "52d636ed8eff0855cf9e8c44deb1c5392ea642be153f9dee2931ad334d474b88"
+  },
+  "prior_ci_verified_head": "0fc9cf6631edb6683360a1fb88364efc0a379c80",
+  "latest_ci_status": "PENDING",
+  "remaining": [
+    "42/43 plans and frozen runbook",
+    "new write adapter and registration",
+    "exact capture/boot policy bindings",
+    "review/CI/archive/publication before target"
+  ],
+  "recovery_policy": "No repeated manual s07 cold/listening/Pause/CUE recovery checks; automatic readback retained",
+  "review_attempts": "Rate limits and incomplete WebSocket review retained separately; not review passes"
+}

@@ -22,3 +22,5 @@ docs/reviews/evidence/2026-11-03-source-supply/** -text -whitespace
 tools/source_supply/** text eol=lf
 
 docs/reviews/evidence/2026-11-03-continuous-capture/** -text -whitespace
+
+docs/reviews/evidence/2026-11-03-continuous-adapter/** -text -whitespace

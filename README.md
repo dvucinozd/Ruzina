@@ -16,6 +16,11 @@ is also implemented offline; the combined 46-test suite passes per OS.
 Review/CI and new policies/bindings remain required. No manual s07 recovery
 qualification is reinstated.
 
+CodeRabbit is now connected to Ruzina. Combined tooling review is complete
+(one minor documentation issue fixed; final fix review 0 issues), with a
+verified dual-copy archive. Latest source CI/new 42/43 registration remain
+separate gates before device use.
+
 Offline [continuous capture core](docs/reviews/2026-11-03-continuous-capture.md)
 now retains the full stream, complete report offsets and owner-ready case
 boundaries. Its host tests pass; live adapter/analysis and fresh 42/43

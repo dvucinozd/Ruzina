@@ -144,14 +144,29 @@ Two additional regressions cover a deliberately held worker while receiving
 and whole-journal replay across a floating-point exponent boundary. Combined
 source-supply suite now has 46 cases per OS, including the separate boot tests.
 Ruzina's GitHub CodeRabbit installation is confirmed by its PR82 bot response;
-the PR remains draft. Successful repeat review is still required separately.
+the PR remains draft. Successful full repeat review `2f11f2f` reported one minor
+documentation issue (inconsistent test counts), corrected by `1d09ca1`; its
+final fix review raised 0 issues. Earlier rate-limit and WebSocket failures
+remain retained attempts, not successful reviews. Both raw successful reviews
+are in the [verification record](evidence/2026-11-03-continuous-adapter/verification.json).
 
 The separate [software boot action](2026-11-03-software-boot.md) is now
 implemented with seven further tests (46 source-supply tests total per OS, including the two
 async-admission regressions).
-No boot action or target access was executed. The first review attempt was
-blocked by the CodeRabbit CLI rate limit; dashboard installation and tests do
-not constitute a review pass.
+No boot action or target access was executed. Source-head CI remains separate:
+`0fc9cf6` passed 22/22 before the async fixes; the latest source/publication CI
+must be checked before binding these tools for execution.
+
+The [dual-copy archive index](evidence/2026-11-03-continuous-adapter/archive-index.json)
+records `reviewed-continuous-adapter-boot.zip`: **64731 bytes**, 31 members,
+SHA-256 `0a59b8b2c0e9678a936f7dd092e9af9c22a7dd02ebeab7145c98c6e886076967`.
+CRC, all member hashes and every secondary file/archive match. Primary root:
+`D:/BoardEvidence/JC1060-20261030-COM3/continuous-adapter-20261103/`; secondary:
+`C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/continuous-adapter-20261103/`.
+The archive preserves exact tool bytes, test logs, failed/partial/successful
+review attempts and the pinned reset backend's fake-port trace. It is not an
+execution binding. All 289 firmware inputs and the four historical execution
+files/shared writer remain byte-identical to their previous evidence.
 
 Before target use: complete review/CI and retain exact tool evidence, then build/register/publish new
 42/43 plans, contract and binding. Reuse the retained exact producer image;

@@ -19,7 +19,9 @@ owner commands and 39 capture/adapter tests per OS, including one synthetic five
 connection. The separate software boot action is also
 [implemented and host-tested](reviews/2026-11-03-software-boot.md)
 (46 source-supply tests per OS after the async-admission regressions). Target access is still unregistered. Next:
-finish review/CI, then new 42/43 plans, contracts and exact bindings. No
+verify latest CI, then new 42/43 plans, contracts and exact bindings. Combined
+CodeRabbit review completed (one minor docs issue fixed, final fix review 0);
+exact evidence and dual-copy 64731-byte archive `0a59b8b2...` are retained. No
 decoder optimization, extra flash or manual recovery qualification is implied.
 
 The preparation checkpoints below are historical.

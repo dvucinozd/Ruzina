@@ -1,0 +1,31 @@
+{
+  "status": "PINNED_RESET_BACKEND_FAKE_PORT_PASS",
+  "device_access": false,
+  "calls": [
+    [
+      "RTS",
+      true
+    ],
+    [
+      "DTR",
+      false
+    ],
+    [
+      "sleep",
+      0.2
+    ],
+    [
+      "RTS",
+      false
+    ],
+    [
+      "DTR",
+      false
+    ],
+    [
+      "sleep",
+      0.2
+    ]
+  ],
+  "backend_sha256": "52d636ed8eff0855cf9e8c44deb1c5392ea642be153f9dee2931ad334d474b88"
+}
