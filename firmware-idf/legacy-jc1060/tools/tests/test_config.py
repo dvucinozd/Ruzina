@@ -1,9 +1,29 @@
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 
 
 class ConfigTests(unittest.TestCase):
+    def test_mp3_core_override_is_explicit_and_build_only(self):
+        import importlib.util
+        builder = Path(__file__).resolve().parents[1]/'build_legacy.py'
+        spec = importlib.util.spec_from_file_location('budget_builder', builder)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for operation in ('build', 'clippy', 'fmt', '--version'):
+            default = module.rust_command([operation, '--release'])
+            self.assertEqual(default, ['cargo', '+1.95.0', operation, '--release'])
+            explicit = module.rust_command([operation, '--release'], True)
+            self.assertEqual('--config' in explicit, operation in ('build', 'clippy'))
+            if operation in ('build', 'clippy'):
+                self.assertEqual(explicit[2:4], ['--config', 'profile.release.package.nanomp3-core.opt-level=3'])
+        result = subprocess.run([sys.executable, str(builder), '--idf', 'missing-idf', '--output',
+                                 'missing-output', '--variant', 'deck-engine', '--mp3-core-opt3'],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('requires explicit producer profiling', result.stderr)
+
     def test_producer_profile_cli_rejects_wrong_or_combined_mode_before_idf(self):
         import sys
         builder=Path(__file__).resolve().parents[1]/'build_legacy.py'

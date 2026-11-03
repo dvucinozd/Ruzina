@@ -6,6 +6,15 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-03
 
+Latest [offline source-budget investigation](docs/reviews/2026-11-03-source-budget.md)
+adds a deterministic shared-time producer test, release-mode PCM benchmark
+and control audit. S03 contained 74 extra control messages, so its original
+numerical admission is not isolated-control acceptance. A default-OFF MP3
+compiler experiment improves host decode time with exact PCM equality, but
+the P4 build is **REJECTED**: constructor frame 39008 > 24576 bytes; independently
+estimated load chain 90544 > 90112 bytes. No new COM3 access or flash.
+Next: bounded-stack decoder reconstruction before another candidate or plan.
+
 Latest [continuous device campaign](docs/reviews/2026-11-03-continuous-device.md):
 cold/idle and each MP3 source separately passed their observation gates. Both
 playing failed after 15.88 seconds with source underruns **78/94**, matching

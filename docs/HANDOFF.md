@@ -1,5 +1,17 @@
 # Rust M2.5 development handoff
 
+Latest offline result: [source-budget investigation](reviews/2026-11-03-source-budget.md).
+Real producer/decoder shared-time tests and a release benchmark isolate read
+pressure and compiler sensitivity; all compared host PCM files match exactly.
+Control audit finds 74 extra messages in S03 and reproduces eight unsupported
+scratch effects, not media failures. Frozen numerical admissions are retained,
+but S03 is not isolated-control acceptance. The opt3 core candidate is rejected
+before packaging: constructor frame **39008 > 24576**; independent load-chain
+estimate **90544 > 90112**. Normal build passes. Default compiler policy and
+native minimum 302 stay unchanged. No device access; s07/history **44** persist.
+Next: inspect runtime reset/seek construction and design bounded-stack decoder
+initialization; do not register/flash this rejected image or enlarge limits.
+
 Latest device result: [continuous 42/43 campaign](reviews/2026-11-03-continuous-device.md).
 Cold/idle and individual Disturbed/Ben Folds Five MP3 windows were admitted;
 both-playing failed after 15.88 seconds, underruns **78/94**, matching owner

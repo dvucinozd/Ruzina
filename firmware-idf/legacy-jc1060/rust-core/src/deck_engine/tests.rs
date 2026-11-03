@@ -44,6 +44,34 @@ fn near(value: u32, expected: u32, slack: u32) -> bool {
     value.abs_diff(expected) <= slack
 }
 
+#[test]
+fn eight_scratch_messages_are_unsupported_effects_not_media_errors() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut engine = Engine::new();
+    let message = |control, value| ControlEvent {
+        deck: Some(DeckId::Two),
+        control,
+        value,
+    };
+    engine.control(&message(
+        SemanticControl::JogTouch,
+        ControlValue::Pressed(true),
+    ));
+    let before = engine.counters();
+    for _ in 0..8 {
+        engine.control(&message(
+            SemanticControl::JogScratch,
+            ControlValue::Relative(1),
+        ));
+    }
+    engine.control(&message(
+        SemanticControl::JogTouch,
+        ControlValue::Pressed(false),
+    ));
+    assert_eq!(engine.counters(), [before[0] + 8, before[1]]);
+    assert_eq!(engine.playing(), [false; 2]);
+}
+
 // One test: the rings, commands and mailboxes are process-wide statics.
 #[test]
 fn the_deck_engine_owns_transport() {

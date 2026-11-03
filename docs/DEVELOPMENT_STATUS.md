@@ -1,5 +1,13 @@
 # Current development status
 
+Latest [offline source-budget result](reviews/2026-11-03-source-budget.md):
+host decoder compiler sensitivity is reproduced with exact PCM equality.
+The isolated opt3 core target build is rejected by frame limit (39008/24576)
+and independent load-chain audit (90544/90112). No new target access or timing
+qualification. S03 has 74 additional controls; its numerical admission does
+not establish isolated-control acceptance. Next: bounded-stack reconstruction,
+then fresh review/build gates before any 44/45 registration. S07/history44 remain.
+
 Latest [continuous hardware observation](reviews/2026-11-03-continuous-device.md)
 admits cold/idle and individual MP3 sources, but rejects both-playing with
 78/94 source underruns after 15.88 seconds. S07 is restored by full readback;

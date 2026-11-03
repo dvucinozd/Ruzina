@@ -19,6 +19,9 @@ const VBR_44K: &[u8] = fixture!("vbr.mp3");
 const LONG_ID3: &[u8] = fixture!("long-vbr.mp3");
 
 #[cfg(feature = "producer-profile")]
+mod service_model;
+
+#[cfg(feature = "producer-profile")]
 #[test]
 fn source_profile_measures_slow_read_and_keeps_real_pcm_and_failure() {
     struct Slow {

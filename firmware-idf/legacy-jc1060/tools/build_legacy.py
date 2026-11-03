@@ -27,6 +27,12 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def rust_command(command, mp3_core_opt3=False):
+    overrides = (['--config', 'profile.release.package.nanomp3-core.opt-level=3']
+                 if mp3_core_opt3 and command[0] in ('build', 'clippy') else [])
+    return ['cargo', '+1.95.0', *overrides, *command]
+
+
 def sources():
     paths = list(APP.rglob('*'))
     lock = tomllib.loads((APP / 'rust-core/Cargo.lock').read_text())
@@ -51,6 +57,7 @@ def main():
     parser.add_argument('--uac-profile', action='store_true', help='Explicit deck-engine-only callback profiling diagnostic')
     parser.add_argument('--uac-pack-iram', action='store_true', help='Single-variable exact-symbol pack placement; requires --uac-profile')
     parser.add_argument('--producer-profile', action='store_true', help='Separate deck-engine source-supply/USB service diagnostic')
+    parser.add_argument('--mp3-core-opt3', action='store_true', help='Default-OFF nanomp3-core compiler experiment; requires producer profiling')
     args = parser.parse_args()
     if args.uac_pack_iram and not args.uac_profile:
         raise ValueError('IRAM packetizer experiment requires explicit UAC profiling')
@@ -58,6 +65,8 @@ def main():
         raise ValueError('UAC profiling is an explicit deck-engine diagnostic only')
     if args.producer_profile and (args.variant != 'deck-engine' or args.uac_profile or args.uac_pack_iram):
         raise ValueError('Producer profiling requires deck-engine and excludes UAC/IRAM profiling')
+    if args.mp3_core_opt3 and not args.producer_profile:
+        raise ValueError('MP3 core optimization requires explicit producer profiling')
     idf = args.idf.resolve()
     output = args.output.resolve()
     if output.exists():
@@ -78,7 +87,7 @@ def main():
     output.mkdir(parents=True)
     initial_sources = sources()
     def rust(command):
-        command = ['cargo', '+1.95.0', *command]
+        command = rust_command(command, args.mp3_core_opt3)
         if args.wsl:
             import shlex
             def unix(path):
@@ -120,7 +129,7 @@ def main():
         common += ['--features', 'idf-producer-profile' if args.producer_profile else
                    ('idf-uac-profile' if args.uac_profile else 'idf-deck-engine')]
     rust(['clippy', *common, '--', '-D', 'warnings'])
-    (output / 'rust-build.log').write_text(rust(['build', *common]))
+    (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
     link_archive = archive
     if args.uac_pack_iram:
@@ -358,7 +367,9 @@ def main():
                 if depth > 90112:
                     raise ValueError(f'Load run call chain needs {depth} bytes of the 96 KiB SD client stack')
     manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, uac_pack_iram=args.uac_pack_iram,
-                    producer_profile=args.producer_profile, sha256=sha(binary), bytes=len(data),
+                    producer_profile=args.producer_profile, mp3_core_opt3=args.mp3_core_opt3,
+                    rust_release_overrides={'nanomp3-core': {'opt-level': 3}} if args.mp3_core_opt3 else {},
+                    sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],
                     idf_commit=PIN, submodules=subs, versions=versions, sources=initial_sources,
                     fatfs_sources={name: sha(idf / 'components/fatfs/src' / name) for name in ('ff.c','ff.h','ffunicode.c','diskio.h')} if args.variant in ('sd-readonly', 'sd-file-readonly') else {},

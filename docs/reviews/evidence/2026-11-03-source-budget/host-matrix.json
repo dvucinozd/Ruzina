@@ -1,0 +1,682 @@
+{
+  "status": "HOST_ONLY_NOT_TARGET_QUALIFIED",
+  "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)",
+  "device_access": false,
+  "cross_build_pcm_byte_equality": true,
+  "source_sha256": {
+    "firmware-idf/legacy-jc1060/rust-core/Cargo.toml": "d68c809108d4601045cdd811bf06f89f161b1b6f62aba7597e72e8eae61382d5",
+    "firmware-idf/legacy-jc1060/rust-core/Cargo.lock": "6bdb4d509ea3e498d9ad18ed5346012430c0d661c0e9cc856ff77aac5ede7c1f",
+    "firmware-idf/legacy-jc1060/rust-core/src/deck_play/tests/service_model.rs": "62168a99657e37db5d74538494631c8881cfaff639031ef7a6d82cb233baaabe",
+    "firmware-rust/crates/ruzina-audio-runtime/tests/fixtures/codecs/long-vbr.mp3": "93d1a84561aa88a32fe6be6bde0596c00a3d045cb60636c5879bbe1d82b46d96"
+  },
+  "measurements": [
+    {
+      "name": "size",
+      "command": [
+        "cargo",
+        "+1.95.0",
+        "--config",
+        "profile.release.opt-level=\"s\"",
+        "test",
+        "--locked",
+        "--release",
+        "--verbose",
+        "--manifest-path",
+        "/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core/Cargo.toml",
+        "--target-dir",
+        "/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core/target",
+        "--features",
+        "idf-producer-profile",
+        "host_source_service_benchmark",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "pcm_sha256": "2fb60aa3d5dc7243d38208d215fa40c13083d062b51c5eeebca8a88c6fd3ddac",
+      "log_sha256": "fd42f45416939c33983de3ed47693a47616479255944a70a3e18249a191e9403",
+      "rows": [
+        {
+          "delay_us": 0,
+          "repetition": 0,
+          "elapsed_us": 115434,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 111514,
+          "step_us": 108454,
+          "read_us": 1275
+        },
+        {
+          "delay_us": 0,
+          "repetition": 1,
+          "elapsed_us": 113135,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 109865,
+          "step_us": 109282,
+          "read_us": 35
+        },
+        {
+          "delay_us": 0,
+          "repetition": 2,
+          "elapsed_us": 110123,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 107568,
+          "step_us": 107008,
+          "read_us": 23
+        },
+        {
+          "delay_us": 0,
+          "repetition": 3,
+          "elapsed_us": 110537,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 107929,
+          "step_us": 107378,
+          "read_us": 23
+        },
+        {
+          "delay_us": 0,
+          "repetition": 4,
+          "elapsed_us": 110304,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 107656,
+          "step_us": 107102,
+          "read_us": 15
+        },
+        {
+          "delay_us": 200,
+          "repetition": 0,
+          "elapsed_us": 156165,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 153254,
+          "step_us": 111933,
+          "read_us": 40147
+        },
+        {
+          "delay_us": 200,
+          "repetition": 1,
+          "elapsed_us": 152584,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 149872,
+          "step_us": 109968,
+          "read_us": 39035
+        },
+        {
+          "delay_us": 200,
+          "repetition": 2,
+          "elapsed_us": 158119,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 155380,
+          "step_us": 114934,
+          "read_us": 39478
+        },
+        {
+          "delay_us": 200,
+          "repetition": 3,
+          "elapsed_us": 153245,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 150570,
+          "step_us": 110371,
+          "read_us": 39123
+        },
+        {
+          "delay_us": 200,
+          "repetition": 4,
+          "elapsed_us": 154312,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 151581,
+          "step_us": 110778,
+          "read_us": 39831
+        }
+      ],
+      "groups": [
+        {
+          "requested_read_delay_us": 0,
+          "medians": {
+            "elapsed_us": 110537,
+            "step_us": 107378,
+            "read_us": 23,
+            "poll_us": 107929
+          },
+          "elapsed_range_us": [
+            110123,
+            115434
+          ]
+        },
+        {
+          "requested_read_delay_us": 200,
+          "medians": {
+            "elapsed_us": 154312,
+            "step_us": 110778,
+            "read_us": 39478,
+            "poll_us": 151581
+          },
+          "elapsed_range_us": [
+            152584,
+            158119
+          ]
+        }
+      ]
+    },
+    {
+      "name": "core3",
+      "command": [
+        "cargo",
+        "+1.95.0",
+        "--config",
+        "profile.release.opt-level=\"s\"",
+        "--config",
+        "profile.release.package.nanomp3-core.opt-level=3",
+        "test",
+        "--locked",
+        "--release",
+        "--verbose",
+        "--manifest-path",
+        "/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core/Cargo.toml",
+        "--target-dir",
+        "/mnt/d/BoardEvidence/JC1060-20261030-COM3/source-budget-20261103/host-core-opt3",
+        "--features",
+        "idf-producer-profile",
+        "host_source_service_benchmark",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "pcm_sha256": "2fb60aa3d5dc7243d38208d215fa40c13083d062b51c5eeebca8a88c6fd3ddac",
+      "log_sha256": "644543a28d7b3453f05c11205e5075530bd896162f4d5bb9b6f566286fa49590",
+      "rows": [
+        {
+          "delay_us": 0,
+          "repetition": 0,
+          "elapsed_us": 61774,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 58339,
+          "step_us": 55821,
+          "read_us": 1512
+        },
+        {
+          "delay_us": 0,
+          "repetition": 1,
+          "elapsed_us": 57047,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 53828,
+          "step_us": 53331,
+          "read_us": 19
+        },
+        {
+          "delay_us": 0,
+          "repetition": 2,
+          "elapsed_us": 56520,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 53796,
+          "step_us": 53227,
+          "read_us": 17
+        },
+        {
+          "delay_us": 0,
+          "repetition": 3,
+          "elapsed_us": 56851,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 54051,
+          "step_us": 53537,
+          "read_us": 17
+        },
+        {
+          "delay_us": 0,
+          "repetition": 4,
+          "elapsed_us": 56484,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 53754,
+          "step_us": 53262,
+          "read_us": 17
+        },
+        {
+          "delay_us": 200,
+          "repetition": 0,
+          "elapsed_us": 104539,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 101713,
+          "step_us": 58653,
+          "read_us": 41998
+        },
+        {
+          "delay_us": 200,
+          "repetition": 1,
+          "elapsed_us": 99924,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 96980,
+          "step_us": 57255,
+          "read_us": 38826
+        },
+        {
+          "delay_us": 200,
+          "repetition": 2,
+          "elapsed_us": 95676,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 92835,
+          "step_us": 54295,
+          "read_us": 37681
+        },
+        {
+          "delay_us": 200,
+          "repetition": 3,
+          "elapsed_us": 96724,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 93937,
+          "step_us": 55307,
+          "read_us": 37790
+        },
+        {
+          "delay_us": 200,
+          "repetition": 4,
+          "elapsed_us": 97278,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 94506,
+          "step_us": 55459,
+          "read_us": 38131
+        }
+      ],
+      "groups": [
+        {
+          "requested_read_delay_us": 0,
+          "medians": {
+            "elapsed_us": 56851,
+            "step_us": 53331,
+            "read_us": 17,
+            "poll_us": 53828
+          },
+          "elapsed_range_us": [
+            56484,
+            61774
+          ]
+        },
+        {
+          "requested_read_delay_us": 200,
+          "medians": {
+            "elapsed_us": 97278,
+            "step_us": 55459,
+            "read_us": 38131,
+            "poll_us": 94506
+          },
+          "elapsed_range_us": [
+            95676,
+            104539
+          ]
+        }
+      ]
+    },
+    {
+      "name": "decode-chain3",
+      "command": [
+        "cargo",
+        "+1.95.0",
+        "--config",
+        "profile.release.opt-level=\"s\"",
+        "--config",
+        "profile.release.package.nanomp3-core.opt-level=3",
+        "--config",
+        "profile.release.package.nanoaudio-mp3.opt-level=3",
+        "--config",
+        "profile.release.package.ruzina-audio-runtime.opt-level=3",
+        "test",
+        "--locked",
+        "--release",
+        "--verbose",
+        "--manifest-path",
+        "/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core/Cargo.toml",
+        "--target-dir",
+        "/mnt/d/BoardEvidence/JC1060-20261030-COM3/source-budget-20261103/host-chain-opt3",
+        "--features",
+        "idf-producer-profile",
+        "host_source_service_benchmark",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "pcm_sha256": "2fb60aa3d5dc7243d38208d215fa40c13083d062b51c5eeebca8a88c6fd3ddac",
+      "log_sha256": "737c1e74d0d8e5233b473cde4508196b8f72cc2e58fcf37f4144b9800b73af87",
+      "rows": [
+        {
+          "delay_us": 0,
+          "repetition": 0,
+          "elapsed_us": 17908,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 14247,
+          "step_us": 12068,
+          "read_us": 1023
+        },
+        {
+          "delay_us": 0,
+          "repetition": 1,
+          "elapsed_us": 15058,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 11805,
+          "step_us": 11294,
+          "read_us": 21
+        },
+        {
+          "delay_us": 0,
+          "repetition": 2,
+          "elapsed_us": 14463,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 11822,
+          "step_us": 11331,
+          "read_us": 29
+        },
+        {
+          "delay_us": 0,
+          "repetition": 3,
+          "elapsed_us": 14634,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 11883,
+          "step_us": 11371,
+          "read_us": 19
+        },
+        {
+          "delay_us": 0,
+          "repetition": 4,
+          "elapsed_us": 14364,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 11652,
+          "step_us": 11166,
+          "read_us": 18
+        },
+        {
+          "delay_us": 200,
+          "repetition": 0,
+          "elapsed_us": 56601,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 53607,
+          "step_us": 13127,
+          "read_us": 39509
+        },
+        {
+          "delay_us": 200,
+          "repetition": 1,
+          "elapsed_us": 53902,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 51088,
+          "step_us": 11992,
+          "read_us": 38187
+        },
+        {
+          "delay_us": 200,
+          "repetition": 2,
+          "elapsed_us": 60072,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 56802,
+          "step_us": 14454,
+          "read_us": 41314
+        },
+        {
+          "delay_us": 200,
+          "repetition": 3,
+          "elapsed_us": 55950,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 52898,
+          "step_us": 12869,
+          "read_us": 39047
+        },
+        {
+          "delay_us": 200,
+          "repetition": 4,
+          "elapsed_us": 54572,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 51612,
+          "step_us": 12132,
+          "read_us": 38605
+        }
+      ],
+      "groups": [
+        {
+          "requested_read_delay_us": 0,
+          "medians": {
+            "elapsed_us": 14634,
+            "step_us": 11331,
+            "read_us": 21,
+            "poll_us": 11822
+          },
+          "elapsed_range_us": [
+            14364,
+            17908
+          ]
+        },
+        {
+          "requested_read_delay_us": 200,
+          "medians": {
+            "elapsed_us": 55950,
+            "step_us": 12869,
+            "read_us": 39047,
+            "poll_us": 52898
+          },
+          "elapsed_range_us": [
+            53902,
+            60072
+          ]
+        }
+      ]
+    },
+    {
+      "name": "all3",
+      "command": [
+        "cargo",
+        "+1.95.0",
+        "--config",
+        "profile.release.opt-level=3",
+        "test",
+        "--locked",
+        "--release",
+        "--verbose",
+        "--manifest-path",
+        "/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core/Cargo.toml",
+        "--target-dir",
+        "/mnt/d/BoardEvidence/JC1060-20261030-COM3/source-budget-20261103/host-opt3",
+        "--features",
+        "idf-producer-profile",
+        "host_source_service_benchmark",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "pcm_sha256": "2fb60aa3d5dc7243d38208d215fa40c13083d062b51c5eeebca8a88c6fd3ddac",
+      "log_sha256": "9a180546435e229b36b34e81df7700acef0ecc16b36242f67477082213568dde",
+      "rows": [
+        {
+          "delay_us": 0,
+          "repetition": 0,
+          "elapsed_us": 18074,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 14912,
+          "step_us": 13106,
+          "read_us": 843
+        },
+        {
+          "delay_us": 0,
+          "repetition": 1,
+          "elapsed_us": 14316,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 11685,
+          "step_us": 11233,
+          "read_us": 18
+        },
+        {
+          "delay_us": 0,
+          "repetition": 2,
+          "elapsed_us": 13800,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 11665,
+          "step_us": 11222,
+          "read_us": 13
+        },
+        {
+          "delay_us": 0,
+          "repetition": 3,
+          "elapsed_us": 13866,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 11697,
+          "step_us": 11237,
+          "read_us": 16
+        },
+        {
+          "delay_us": 0,
+          "repetition": 4,
+          "elapsed_us": 14835,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 12643,
+          "step_us": 12141,
+          "read_us": 10
+        },
+        {
+          "delay_us": 200,
+          "repetition": 0,
+          "elapsed_us": 55217,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 52762,
+          "step_us": 12903,
+          "read_us": 38930
+        },
+        {
+          "delay_us": 200,
+          "repetition": 1,
+          "elapsed_us": 52974,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 50685,
+          "step_us": 12025,
+          "read_us": 37746
+        },
+        {
+          "delay_us": 200,
+          "repetition": 2,
+          "elapsed_us": 53973,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 51592,
+          "step_us": 12974,
+          "read_us": 37803
+        },
+        {
+          "delay_us": 200,
+          "repetition": 3,
+          "elapsed_us": 55002,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 52520,
+          "step_us": 13127,
+          "read_us": 38525
+        },
+        {
+          "delay_us": 200,
+          "repetition": 4,
+          "elapsed_us": 53897,
+          "frames": 352800,
+          "pcm_fnv64": "6658f640430880e6",
+          "reads": 138,
+          "poll_us": 51540,
+          "step_us": 12694,
+          "read_us": 38037
+        }
+      ],
+      "groups": [
+        {
+          "requested_read_delay_us": 0,
+          "medians": {
+            "elapsed_us": 14316,
+            "step_us": 11237,
+            "read_us": 16,
+            "poll_us": 11697
+          },
+          "elapsed_range_us": [
+            13800,
+            18074
+          ]
+        },
+        {
+          "requested_read_delay_us": 200,
+          "medians": {
+            "elapsed_us": 53973,
+            "step_us": 12903,
+            "read_us": 38037,
+            "poll_us": 51592
+          },
+          "elapsed_range_us": [
+            52974,
+            55217
+          ]
+        }
+      ]
+    }
+  ]
+}

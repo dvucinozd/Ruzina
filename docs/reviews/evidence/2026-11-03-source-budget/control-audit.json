@@ -1,0 +1,832 @@
+{
+  "status": "OFFLINE_CONTROL_AUDIT_NOT_ADMISSION",
+  "raw_sha256": "7b9f4606b659b111a78d0ba44a2e4d1ac8c5db36ccd1ccaacc64f68b06cc921d",
+  "device_access": false,
+  "previous_admission_modified": false,
+  "scope": "Allowed pairs describe requested setup; not timing/order or listening qualification",
+  "cases": [
+    {
+      "name": "cold-1",
+      "control_count": 0,
+      "extra_controls": [],
+      "boundary_crossing_controls": [],
+      "status": "NO_EXTRA_CONTROLS_OBSERVED"
+    },
+    {
+      "name": "idle-1",
+      "control_count": 0,
+      "extra_controls": [],
+      "boundary_crossing_controls": [],
+      "status": "NO_EXTRA_CONTROLS_OBSERVED"
+    },
+    {
+      "name": "s03-deck1",
+      "control_count": 84,
+      "extra_controls": [
+        {
+          "line": 1411,
+          "start": 131476,
+          "end": 131548,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4084 max=16383"
+        },
+        {
+          "line": 1412,
+          "start": 131548,
+          "end": 131620,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4132 max=16383"
+        },
+        {
+          "line": 1413,
+          "start": 131620,
+          "end": 131692,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4181 max=16383"
+        },
+        {
+          "line": 1414,
+          "start": 131692,
+          "end": 131764,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4230 max=16383"
+        },
+        {
+          "line": 1415,
+          "start": 131764,
+          "end": 131836,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4279 max=16383"
+        },
+        {
+          "line": 1416,
+          "start": 131836,
+          "end": 131908,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4328 max=16383"
+        },
+        {
+          "line": 1417,
+          "start": 131908,
+          "end": 131980,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4376 max=16383"
+        },
+        {
+          "line": 1418,
+          "start": 131980,
+          "end": 132052,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4425 max=16383"
+        },
+        {
+          "line": 1419,
+          "start": 132052,
+          "end": 132124,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4474 max=16383"
+        },
+        {
+          "line": 1420,
+          "start": 132124,
+          "end": 132196,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4523 max=16383"
+        },
+        {
+          "line": 1422,
+          "start": 132256,
+          "end": 132328,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4572 max=16383"
+        },
+        {
+          "line": 1423,
+          "start": 132328,
+          "end": 132400,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4620 max=16383"
+        },
+        {
+          "line": 1424,
+          "start": 132400,
+          "end": 132472,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4669 max=16383"
+        },
+        {
+          "line": 1425,
+          "start": 132472,
+          "end": 132544,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=4799 max=16383"
+        },
+        {
+          "line": 1426,
+          "start": 132544,
+          "end": 132616,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5027 max=16383"
+        },
+        {
+          "line": 1427,
+          "start": 132616,
+          "end": 132688,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5255 max=16383"
+        },
+        {
+          "line": 1428,
+          "start": 132688,
+          "end": 132760,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5515 max=16383"
+        },
+        {
+          "line": 1429,
+          "start": 132760,
+          "end": 132832,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5776 max=16383"
+        },
+        {
+          "line": 1430,
+          "start": 132832,
+          "end": 132904,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6117 max=16383"
+        },
+        {
+          "line": 1431,
+          "start": 132904,
+          "end": 132976,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6345 max=16383"
+        },
+        {
+          "line": 1432,
+          "start": 132976,
+          "end": 133048,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6556 max=16383"
+        },
+        {
+          "line": 1433,
+          "start": 133048,
+          "end": 133120,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6752 max=16383"
+        },
+        {
+          "line": 1434,
+          "start": 133120,
+          "end": 133192,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6947 max=16383"
+        },
+        {
+          "line": 1435,
+          "start": 133192,
+          "end": 133264,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6996 max=16383"
+        },
+        {
+          "line": 1436,
+          "start": 133264,
+          "end": 133336,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=7061 max=16383"
+        },
+        {
+          "line": 1437,
+          "start": 133336,
+          "end": 133408,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=7110 max=16383"
+        },
+        {
+          "line": 1439,
+          "start": 133443,
+          "end": 133515,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=7061 max=16383"
+        },
+        {
+          "line": 1441,
+          "start": 133575,
+          "end": 133647,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6996 max=16383"
+        },
+        {
+          "line": 1442,
+          "start": 133647,
+          "end": 133719,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6947 max=16383"
+        },
+        {
+          "line": 1443,
+          "start": 133719,
+          "end": 133791,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6882 max=16383"
+        },
+        {
+          "line": 1444,
+          "start": 133791,
+          "end": 133863,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6833 max=16383"
+        },
+        {
+          "line": 1446,
+          "start": 133898,
+          "end": 133970,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6784 max=16383"
+        },
+        {
+          "line": 1475,
+          "start": 137262,
+          "end": 137334,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6735 max=16383"
+        },
+        {
+          "line": 1476,
+          "start": 137334,
+          "end": 137406,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6670 max=16383"
+        },
+        {
+          "line": 1477,
+          "start": 137406,
+          "end": 137478,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6605 max=16383"
+        },
+        {
+          "line": 1478,
+          "start": 137478,
+          "end": 137550,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6524 max=16383"
+        },
+        {
+          "line": 1479,
+          "start": 137550,
+          "end": 137622,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6426 max=16383"
+        },
+        {
+          "line": 1480,
+          "start": 137622,
+          "end": 137694,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6377 max=16383"
+        },
+        {
+          "line": 1481,
+          "start": 137694,
+          "end": 137766,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6312 max=16383"
+        },
+        {
+          "line": 1482,
+          "start": 137766,
+          "end": 137838,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6247 max=16383"
+        },
+        {
+          "line": 1483,
+          "start": 137838,
+          "end": 137910,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6199 max=16383"
+        },
+        {
+          "line": 1484,
+          "start": 137910,
+          "end": 137982,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6150 max=16383"
+        },
+        {
+          "line": 1486,
+          "start": 138017,
+          "end": 138089,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6085 max=16383"
+        },
+        {
+          "line": 1487,
+          "start": 138089,
+          "end": 138161,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=6036 max=16383"
+        },
+        {
+          "line": 1488,
+          "start": 138161,
+          "end": 138233,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5987 max=16383"
+        },
+        {
+          "line": 1489,
+          "start": 138233,
+          "end": 138305,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5938 max=16383"
+        },
+        {
+          "line": 1490,
+          "start": 138305,
+          "end": 138377,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5889 max=16383"
+        },
+        {
+          "line": 1491,
+          "start": 138377,
+          "end": 138449,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5841 max=16383"
+        },
+        {
+          "line": 1492,
+          "start": 138449,
+          "end": 138521,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5792 max=16383"
+        },
+        {
+          "line": 1493,
+          "start": 138521,
+          "end": 138593,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5743 max=16383"
+        },
+        {
+          "line": 1494,
+          "start": 138593,
+          "end": 138665,
+          "deck": 0,
+          "control": "MasterVolume",
+          "text": "midi_event deck=0 control=MasterVolume(55) kind=3 value=5694 max=16383"
+        },
+        {
+          "line": 1536,
+          "start": 142600,
+          "end": 142660,
+          "deck": 2,
+          "control": "JogTouch",
+          "text": "midi_event deck=2 control=JogTouch(4) kind=1 value=1 max=1"
+        },
+        {
+          "line": 1537,
+          "start": 142660,
+          "end": 142722,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1538,
+          "start": 142722,
+          "end": 142784,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1539,
+          "start": 142784,
+          "end": 142846,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1540,
+          "start": 142846,
+          "end": 142908,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1541,
+          "start": 142908,
+          "end": 142970,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1542,
+          "start": 142970,
+          "end": 143032,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1543,
+          "start": 143032,
+          "end": 143094,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1544,
+          "start": 143094,
+          "end": 143156,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1545,
+          "start": 143156,
+          "end": 143216,
+          "deck": 2,
+          "control": "JogTouch",
+          "text": "midi_event deck=2 control=JogTouch(4) kind=1 value=0 max=1"
+        },
+        {
+          "line": 1546,
+          "start": 143216,
+          "end": 143278,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=1 max=1"
+        },
+        {
+          "line": 1547,
+          "start": 143278,
+          "end": 143337,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1548,
+          "start": 143337,
+          "end": 143396,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1549,
+          "start": 143396,
+          "end": 143455,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1550,
+          "start": 143455,
+          "end": 143514,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1551,
+          "start": 143514,
+          "end": 143573,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1552,
+          "start": 143573,
+          "end": 143632,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1553,
+          "start": 143632,
+          "end": 143691,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1554,
+          "start": 143691,
+          "end": 143753,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=0 max=1"
+        },
+        {
+          "line": 1555,
+          "start": 143753,
+          "end": 143812,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1556,
+          "start": 143812,
+          "end": 143871,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1561,
+          "start": 144096,
+          "end": 144158,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=1 max=1"
+        },
+        {
+          "line": 1562,
+          "start": 144158,
+          "end": 144220,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=0 max=1"
+        }
+      ],
+      "boundary_crossing_controls": [],
+      "status": "EXTRA_CONTROLS_OBSERVED"
+    },
+    {
+      "name": "s04-deck2",
+      "control_count": 13,
+      "extra_controls": [],
+      "boundary_crossing_controls": [],
+      "status": "NO_EXTRA_CONTROLS_OBSERVED"
+    },
+    {
+      "name": "s05-both",
+      "control_count": 2,
+      "extra_controls": [],
+      "boundary_crossing_controls": [],
+      "status": "NO_EXTRA_CONTROLS_OBSERVED"
+    }
+  ],
+  "unsupported_transitions": [
+    {
+      "line": 1597,
+      "previous": 0,
+      "current": 8,
+      "midi_since_previous_stats": [
+        {
+          "line": 1536,
+          "start": 142600,
+          "end": 142660,
+          "deck": 2,
+          "control": "JogTouch",
+          "text": "midi_event deck=2 control=JogTouch(4) kind=1 value=1 max=1"
+        },
+        {
+          "line": 1537,
+          "start": 142660,
+          "end": 142722,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1538,
+          "start": 142722,
+          "end": 142784,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1539,
+          "start": 142784,
+          "end": 142846,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1540,
+          "start": 142846,
+          "end": 142908,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1541,
+          "start": 142908,
+          "end": 142970,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1542,
+          "start": 142970,
+          "end": 143032,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1543,
+          "start": 143032,
+          "end": 143094,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1544,
+          "start": 143094,
+          "end": 143156,
+          "deck": 2,
+          "control": "JogScratch",
+          "text": "midi_event deck=2 control=JogScratch(2) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1545,
+          "start": 143156,
+          "end": 143216,
+          "deck": 2,
+          "control": "JogTouch",
+          "text": "midi_event deck=2 control=JogTouch(4) kind=1 value=0 max=1"
+        },
+        {
+          "line": 1546,
+          "start": 143216,
+          "end": 143278,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=1 max=1"
+        },
+        {
+          "line": 1547,
+          "start": 143278,
+          "end": 143337,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1548,
+          "start": 143337,
+          "end": 143396,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1549,
+          "start": 143396,
+          "end": 143455,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1550,
+          "start": 143455,
+          "end": 143514,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1551,
+          "start": 143514,
+          "end": 143573,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1552,
+          "start": 143573,
+          "end": 143632,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1553,
+          "start": 143632,
+          "end": 143691,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1554,
+          "start": 143691,
+          "end": 143753,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=0 max=1"
+        },
+        {
+          "line": 1555,
+          "start": 143753,
+          "end": 143812,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1556,
+          "start": 143812,
+          "end": 143871,
+          "deck": 2,
+          "control": "JogBend",
+          "text": "midi_event deck=2 control=JogBend(3) kind=2 value=1 max=0"
+        },
+        {
+          "line": 1561,
+          "start": 144096,
+          "end": 144158,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=1 max=1"
+        },
+        {
+          "line": 1562,
+          "start": 144158,
+          "end": 144220,
+          "deck": 0,
+          "control": "MasterCue",
+          "text": "midi_event deck=0 control=MasterCue(56) kind=1 value=0 max=1"
+        }
+      ]
+    }
+  ],
+  "capture_result_sha256": "2a4a6ccefedf38435c6c926dc3f2be302bcc1f7a839b048054aaca0a6fc7b9ce",
+  "adapter_result_sha256": "62bc32ee21d290b136c3e9cb8c5f91a79c952facf17b8f17f42c068efa896729"
+}
