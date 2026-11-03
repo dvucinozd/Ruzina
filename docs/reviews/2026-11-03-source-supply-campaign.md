@@ -37,16 +37,16 @@ the registration; append actual results in a separate record.
 
 | Case | Capture and operator actions | Required observations |
 |---|---|---|
-| S01 cold | Monitor first, owner removes USB power 5-10 seconds and reconnects without BOOT/RESET. No load/control. 45 uninterrupted seconds after exact ELF, maximum600 seconds waiting. | One cold reset_reason=1, UAC stream started, >=7000 callbacks, both stores prepared, all normal counters/resources and complete producer/owner/USB observations |
-| S02 idle | Separate60 connected seconds, no controls/load | >=9000 new callbacks; no unexpected boot/generation/error; advancing producer/owner snapshots |
-| S03 deck1 | Dedicated30-180-second capture; owner loads the known Disturbed MP3 on deck1, deck2 stays unloaded/paused; play about20 seconds then pause | Load receipt/index/codec/rate and owner title, >=2 same-state fresh snapshots per deck, current source frames/supply/pitch and service partitions; no errors |
-| S04 deck2 | New capture, deck1 paused; known Ben Folds Five MP3 on deck2 about20 seconds then pause | Same requirements, distinct case and listening confirmation |
-| S05 both | New capture, both known sources loaded, crossfader centered; play both without extra browse/PFL/transport actions. Maximum60 seconds of both-playing; stop at first failure. | Stable same-state intervals if available; producer frame deltas/supply and partitions, USB counters/gaps. Insufficient interval before failure is NOT_CAPTURED, not a reason to repeat or extend |
+| S01 cold | Monitor first, owner removes USB power 5-10 seconds and reconnects without BOOT/RESET. No load/control. 45 uninterrupted seconds after exact ELF, maximum 600 seconds waiting. | One cold reset_reason=1, UAC stream started, >=7000 callbacks, both stores prepared, all normal counters/resources and complete producer/owner/USB observations |
+| S02 idle | Separate 60 connected seconds, no controls/load | >=9000 new callbacks; no unexpected boot/generation/error; advancing producer/owner snapshots |
+| S03 deck1 | Dedicated 30-180-second capture; owner loads the known Disturbed MP3 on deck 1, deck 2 stays unloaded/paused; play about 20 seconds then pause | Load receipt/index/codec/rate and owner title, >=2 same-state fresh snapshots per deck, current source frames/supply/pitch and service partitions; no errors |
+| S04 deck2 | New capture, deck 1 paused; known Ben Folds Five MP3 on deck 2 about 20 seconds then pause | Same requirements, distinct case and listening confirmation |
+| S05 both | New capture, both known sources loaded, crossfader centered; play both without extra browse/PFL/transport actions. Maximum 60 connected seconds total including setup; stop at first failure. | Stable same-state intervals if available; producer frame deltas/supply and partitions, USB counters/gaps. Insufficient interval before failure is NOT_CAPTURED, not a reason to repeat or extend |
 
-The passive monitor is bounded to180 seconds per functional case (S05 can use
-the same180-second setup bound); owner should not extend both-playing beyond
-60 seconds. A separate explicit stop request ends the window after capture
-starts. Record actual durations. Windows shorter than30 seconds are incomplete
+The passive monitor is bounded to 180 seconds for S03/S04 and 60 seconds total
+for S05 including setup; restore promptly at the end of that window. A separate
+explicit stop request ends the window after capture
+starts. Record actual durations. Windows shorter than 30 seconds are incomplete
 evidence even when a failure correctly triggers recovery. Preserve short raw
 failure data; never continue running merely to meet the duration requirement.
 
@@ -56,23 +56,23 @@ diagnostic ends with the first bounded failure or after S05, then returns s07.
 
 ## Admission, integrity and stopping
 
-- All-fill every phase <6000us; zero unexpected USB iso/packet/submit/fill
+- All-fill every phase <6000 us; zero unexpected USB iso/packet/submit/fill
   errors, steady-playing underruns, source failure, reset or unresolved current
   transport. Any such error stops extension and triggers registered s07 return.
-  <=3000us remains a separately reported headroom target; a miss is never PASS
-  for normal headroom, but is not the >=6000us mandatory stop by itself.
-- Runtime reserves unchanged: USB stack>=2048B, SD client>=8192B,
-  logger>=1024B, internal heap minimum>=65536B, PSRAM minimum>=8388608B;
-  smallest observed largest blocks>=8192B internal/>=262144B PSRAM. Missing
+  <=3000 us remains a separately reported headroom target; a miss is never PASS
+  for normal headroom, but is not the >=6000 us mandatory stop by itself.
+- Runtime reserves unchanged: USB stack >=2048 B, SD client >=8192 B,
+  logger >=1024 B, internal heap minimum >=65536 B, PSRAM minimum >=8388608 B;
+  smallest observed largest blocks >=8192 B internal/>=262144 B PSRAM. Missing
   resource observations or reserve failure stops extension. Largest-block
   minima are sampled, not continuous.
 - Analyze only exact-image windows anchored to this candidate's verified cold
-  boot; generation must stay1 without reconnect. Complete connected capture
+  boot; generation must stay 1 without reconnect. Complete connected capture
   is mandatory for positive quantitative evidence; no boot/connection gap
   time may count toward measurement. Identity and owner observations remain
   distinct from an analyzer status.
 - Each producer header must have all six same-deck/same-sequence stage rows:
-  poll/decode/step/read/push/decode_other. Require schema1, even advancing
+  poll/decode/step/read/push/decode_other. Require schema 1, even advancing
   sequence, monotonic timestamps, >=2 coherent samples, max snapshot spacing
   10 seconds, no unavailable rows, nonzero invalid/saturated fields or dropped
   logger reports. Owner and all three USB service stages also need complete,
