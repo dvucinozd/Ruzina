@@ -1,0 +1,5 @@
+{
+  "screen_reply": "prikazuje popis pjesama",
+  "reply_scope": "Current screen confirmed; other topology retained from session context, not separately re-enumerated by owner in this reply",
+  "device_access": false
+}

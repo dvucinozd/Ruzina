@@ -1,0 +1,11 @@
+{
+  "reply": "na početku je bio tih. sad krći",
+  "recorded_utc": "2026-11-03T19:01:40.0548003Z",
+  "sources": [
+    "Disturbed MP3",
+    "Ben Folds Five MP3"
+  ],
+  "operator_stop_issued": true,
+  "numerical_acceptance": "FAILED_SOURCE_UNDERRUN",
+  "case": "s05-both"
+}

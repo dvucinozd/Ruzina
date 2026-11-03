@@ -1,0 +1,14 @@
+{
+  "status": "INVALID_OR_INCOMPLETE_RESTORE_REQUIRED",
+  "admitted_cases": 4,
+  "raw_sha256": "7b9f4606b659b111a78d0ba44a2e4d1ac8c5db36ccd1ccaacc64f68b06cc921d",
+  "events_sha256": "3087a19ddca26dbb864bf5d19d05490427529d24d2826ce78bd96b3dce118008",
+  "authority_sha256": "67768bded5214727a1a5b3470cd978ee602af5f7093010fc0efb2835225a8435",
+  "serial_writes": false,
+  "reset_requested": false,
+  "device_access": true,
+  "writer_invoked": false,
+  "automatic_recovery_invoked": false,
+  "port_closed": true,
+  "error": "Source underrun/missing"
+}

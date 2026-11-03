@@ -6,6 +6,20 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-03
 
+Latest [continuous device campaign](docs/reviews/2026-11-03-continuous-device.md):
+cold/idle and each MP3 source separately passed their observation gates. Both
+playing failed after 15.88 seconds with source underruns **78/94**, matching
+the owner's crackling report. This is not a dual-deck pass. Exact s07 was
+restored with full 16 MiB readback; one software boot pulse was issued, with
+application execution **NOT_OBSERVED**. No repeated manual recovery checks.
+Current executed history is **44**; 42/43 plans are consumed. Evidence has
+verified primary/secondary archives. Next: offline decoder-step/read budget
+attribution before selecting a single change and registering another campaign.
+Native minimum remains **302**; no experimental image is promoted.
+
+Earlier preparation and device checkpoints below are historical; the result
+above supersedes their current-state and next-action statements.
+
 New [42/43 continuous campaign preparation](docs/reviews/2026-11-03-continuous-registration.md)
 has both offline plans/contracts and full ancestry reconstruction passing.
 The 53-test combined suite passes per OS. Writer review raised 0 issues;

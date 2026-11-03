@@ -1,5 +1,19 @@
 # Rust M2.5 development handoff
 
+Latest device result: [continuous 42/43 campaign](reviews/2026-11-03-continuous-device.md).
+Cold/idle and individual Disturbed/Ben Folds Five MP3 windows were admitted;
+both-playing failed after 15.88 seconds, underruns **78/94**, matching owner
+crackling. Four admitted checkpoints do not make the failed whole session PASS.
+S07 recovery passed all spans and independent 16 MiB equality; the separately
+bound single software boot pulse completed, application **NOT_OBSERVED**.
+No manual recovery qualification was requested. Tools closed. History **44**,
+full `28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921`.
+42/43 plans are consumed; a future transition needs new **44/45** ancestry.
+Completed archive `b188a18b...`, 39722727 bytes/119 members, CRC/member/secondary
+verification passed. Follow the report's ordered offline source-budget work;
+no new flash, native-minimum reduction, APTA/DAC/PFL scope or promotion.
+All older current-state/next-step paragraphs below are historical checkpoints.
+
 Latest preparation: [new 42/43 continuous-source registration](reviews/2026-11-03-continuous-registration.md)
 and frozen [runbook](reviews/2026-11-03-continuous-campaign.md). Both real-file
 offline preflights reconstruct exact current/candidate/return states; 53 tests

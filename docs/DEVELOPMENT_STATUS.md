@@ -1,5 +1,15 @@
 # Current development status
 
+Latest [continuous hardware observation](reviews/2026-11-03-continuous-device.md)
+admits cold/idle and individual MP3 sources, but rejects both-playing with
+78/94 source underruns after 15.88 seconds. S07 is restored by full readback;
+software boot pulse completed, application NOT_OBSERVED. No manual recovery
+checks repeated. Current history **44**; 42/43 plans consumed. Next is offline
+decoder-step/synchronous-read budget attribution, then one independently
+reviewed change and fresh registration. Native minimum **302** is unchanged.
+The following status entries describe older checkpoints and are superseded
+where they name current device state, history or next actions.
+
 New [42/43 continuous-source plans](reviews/2026-11-03-continuous-registration.md)
 and contracts pass actual-file offline preflight; full factory/history and
 source checks pass. Combined suite: 53 tests per OS. No target access or new
