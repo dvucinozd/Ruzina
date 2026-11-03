@@ -24,3 +24,6 @@ tools/source_supply/** text eol=lf
 docs/reviews/evidence/2026-11-03-continuous-capture/** -text -whitespace
 
 docs/reviews/evidence/2026-11-03-continuous-adapter/** -text -whitespace
+
+docs/reviews/evidence/2026-11-03-continuous-registration/** -text -whitespace
+docs/reviews/2026-11-03-continuous-campaign.md -text -whitespace

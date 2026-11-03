@@ -1,0 +1,17 @@
+{
+  "device_access": false,
+  "proofs": [
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\candidate-execution-1\\capture\\result.json",
+      "sha256": "2eac382c6e74226ca2b8f74c51267ba105c4d0e3106a1cfdc481032334ecabab",
+      "predecessors": 40,
+      "plan_sha256": "fe406eb3003c05c965eaff014ee73a6b6cf773b1b834585764bb56bc4e3f4650"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\return-execution-1\\capture\\result.json",
+      "sha256": "af6faee7347599e80f0d4b26670e7533c46fcee75dced4bd27bb9d770718c4a9",
+      "predecessors": 41,
+      "plan_sha256": "cd76f6c0611a9c587f25b7f02352fa81805a961a99e885c415287898c9d1f85d"
+    }
+  ]
+}

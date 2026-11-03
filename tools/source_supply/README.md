@@ -5,6 +5,9 @@ has real-file offline preflights and 53 tests per OS. `continuous_write.py`
 uses the unchanged shared writer but requires its own reviewed binding.
 `register_continuous.py` never accesses a device. See the new
 [runbook](../../docs/reviews/2026-11-03-continuous-campaign.md); old plans remain consumed.
+Writer review 0 issues, exact source CI 22/22; all write/capture/boot bindings
+and dual-copy archives are verified. No new device access. Publish/verify and
+refresh topology before execution. Older preparation checkpoints follow.
 
 Current continuation: [passive adapter/whole-stream analyzer](../../docs/reviews/2026-11-03-continuous-adapter.md).
 39 capture/adapter tests per OS include a synthetic five-case session with one connection.

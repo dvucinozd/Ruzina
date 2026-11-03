@@ -1,0 +1,10 @@
+{
+  "status": "OFFLINE_REGISTERED_NOT_EXECUTED_REVIEW_CI_BINDINGS_PENDING",
+  "archive": "registered-continuous-source.zip",
+  "bytes": 86523695,
+  "sha256": "99d41efcccc3aa4674786d037e07787c616ae3e3e57efc15d287cec0977128c7",
+  "members": 656,
+  "crc_and_all_member_hashes_verified": true,
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\continuous-source-20261103",
+  "registration_sha256": "163d3ecd3e6809710c627b264aa57f5ec924aa76c5e3f74686f10ce1fe192a47"
+}

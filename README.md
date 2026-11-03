@@ -8,8 +8,12 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 New [42/43 continuous campaign preparation](docs/reviews/2026-11-03-continuous-registration.md)
 has both offline plans/contracts and full ancestry reconstruction passing.
-The 53-test combined suite passes per OS. No new COM3 access: writer review,
-exact CI, archives and independent bindings/publication still precede use.
+The 53-test combined suite passes per OS. Writer review raised 0 issues;
+exact source CI passes 22/22. All three independent write/capture/boot bindings
+and both dual-copy archives are verified. No new COM3 access. Next: verify
+publication/offline bytes and refresh topology before the candidate experiment.
+
+The preparation checkpoints below retain their earlier counts and status.
 
 The [continuous COM3 adapter and analyzer](docs/reviews/2026-11-03-continuous-adapter.md)
 now pass offline whole-session and fault tests. They gate each case on validated

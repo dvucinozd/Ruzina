@@ -1,0 +1,55 @@
+{
+  "status": "REVIEWED_REGISTERED_ALL_BINDINGS_VERIFIED_NOT_EXECUTED",
+  "device_access": false,
+  "tools_source_commit": "b92fb2364db94d23fb7745391953597ba51a03b5",
+  "firmware_source_commit": "e9ce242ea04c7b95d0ee87f4d6849ba8a4284e09",
+  "registration_sha256": "163d3ecd3e6809710c627b264aa57f5ec924aa76c5e3f74686f10ce1fe192a47",
+  "capture_contract_sha256": "4eb8e011166eb133b13c0296062a1279f6e97bfc673156707833937390a6a3ce",
+  "boot_policy_sha256": "f4a76f15dd1b303a110d568c88f41accb85c656e613c0fac1b520ebc6c0342ff",
+  "bindings": {
+    "write": {
+      "file": "write-binding.json",
+      "sha256": "59e6a05a9ef75ca22749e3260344f91193869904ba205d19c2b2f6610523cc83"
+    },
+    "capture": {
+      "file": "capture-binding.json",
+      "sha256": "b971f685caecd7b810db638e9be28470a40b8131927b229c58c8694b248d5542"
+    },
+    "boot": {
+      "file": "boot-binding.json",
+      "sha256": "53175f800c99aa5dfcd290e4b44c6a2b0cb967ad2ac537ff9b90e2cb5bf7edf8"
+    }
+  },
+  "writer_review": {
+    "file": "review\\coderabbit-registration-after-reset.raw.log",
+    "raw_sha256": "3b432df284d755d694473efd727be08ef7fc25798ad6f0d2d38b8af280c766af",
+    "issues": 0
+  },
+  "writer_ci": {
+    "head": "b92fb2364db94d23fb7745391953597ba51a03b5",
+    "sha256": "c673e2882574445f5f1057b89b3f4705960119e09f7d3e5412234c53a99f6e52",
+    "jobs_pass": 22
+  },
+  "capture_boot_ci": {
+    "head": "0ac84ab62820665f133823c50a189433d84fe895",
+    "sha256": "dac6a09472dab5acca0791acb50d71fd24648fd6875f9230b17e1c1add15578e",
+    "jobs_pass": 22
+  },
+  "offline_tests_per_os": 53,
+  "shared_guard_linux_tests": 13,
+  "registration_archive": {
+    "status": "OFFLINE_REGISTERED_NOT_EXECUTED_REVIEW_CI_BINDINGS_PENDING",
+    "archive": "registered-continuous-source.zip",
+    "bytes": 86523695,
+    "sha256": "99d41efcccc3aa4674786d037e07787c616ae3e3e57efc15d287cec0977128c7",
+    "members": 656,
+    "crc_and_all_member_hashes_verified": true,
+    "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\continuous-source-20261103",
+    "registration_sha256": "163d3ecd3e6809710c627b264aa57f5ec924aa76c5e3f74686f10ce1fe192a47"
+  },
+  "current_executed_predecessors": 42,
+  "current_full_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+  "physical_status": "NOT_RUN",
+  "manual_s07_requalification": false,
+  "next_gate": "Publish and verify remote, final offline byte checks, then refresh actual topology before any device access"
+}

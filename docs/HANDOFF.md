@@ -3,8 +3,10 @@
 Latest preparation: [new 42/43 continuous-source registration](reviews/2026-11-03-continuous-registration.md)
 and frozen [runbook](reviews/2026-11-03-continuous-campaign.md). Both real-file
 offline preflights reconstruct exact current/candidate/return states; 53 tests
-pass per OS. No target access. New writer review/CI, archives and exact separate
-write/capture/boot bindings must precede execution. Earlier checkpoint details
+pass per OS. Writer review 0 issues, exact source `b92fb23` CI 22/22; all three
+separate bindings and dual-copy registration/tools archives pass. No target
+access. Next: publish/verify remote and offline bytes, refresh actual topology,
+then the registered candidate experiment with automatic s07 exit. Earlier checkpoint details
 below retain their historical counts/status; do not reuse old plans.
 
 Current device result: [producer cold/idle and incomplete playback](reviews/2026-11-03-source-supply-device.md).

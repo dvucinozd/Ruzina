@@ -3,8 +3,10 @@
 New [42/43 continuous-source plans](reviews/2026-11-03-continuous-registration.md)
 and contracts pass actual-file offline preflight; full factory/history and
 source checks pass. Combined suite: 53 tests per OS. No target access or new
-device result. New writer review/CI, dual-copy archives, exact bindings and
-publication remain before execution. Older checkpoint counts/status follow.
+device result. Writer review raised 0 issues; `b92fb23` source CI passes 22/22.
+Dual-copy archives and all separate bindings pass. Next: publication/remote and
+offline byte verification, actual topology refresh, then the registered candidate
+experiment. Older checkpoint counts/status follow.
 
 Latest [producer-profile campaign](reviews/2026-11-03-source-supply-device.md):
 cold/idle pass at 1880 us; functional playback NOT_CAPTURED, initial joined

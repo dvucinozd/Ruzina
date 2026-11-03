@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "status": "REGISTERED_CONTINUOUS_SOURCE_CAMPAIGN",
+  "unit_id": "JC1060-20261030-COM3",
+  "mac": "e8:f6:0a:e7:22:1d",
+  "chip_revision": 103,
+  "native_minimum": 302,
+  "firmware_source": "e9ce242ea04c7b95d0ee87f4d6849ba8a4284e09",
+  "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+  "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+  "candidate_predecessors": 42,
+  "return_predecessors": 43,
+  "before_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+  "cases": [
+    {
+      "name": "cold-1",
+      "kind": "cold",
+      "seconds": 45,
+      "playing": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "idle-1",
+      "kind": "idle",
+      "seconds": 60,
+      "playing": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "s03-deck1",
+      "kind": "functional",
+      "seconds": 180,
+      "playing": [
+        1,
+        0
+      ]
+    },
+    {
+      "name": "s04-deck2",
+      "kind": "functional",
+      "seconds": 180,
+      "playing": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "s05-both",
+      "kind": "both",
+      "seconds": 60,
+      "playing": [
+        1,
+        1
+      ]
+    }
+  ],
+  "resources": {
+    "usb_stack_min": 2048,
+    "sd_stack_min": 8192,
+    "logger_stack_min": 1024,
+    "internal_heap_min": 65536,
+    "psram_heap_min": 8388608,
+    "observed_internal_largest_min": 8192,
+    "observed_psram_largest_min": 262144
+  },
+  "write_registration_sha256": "163d3ecd3e6809710c627b264aa57f5ec924aa76c5e3f74686f10ce1fe192a47",
+  "candidate_plan_sha256": "baa23c1709125d34751b2802ea6df621d21579fb841588f12dd5c48a15d56c95",
+  "return_plan_sha256": "c39e6f0e3de6783fedbda1d4a37b423cd822ee7fb57d4a0ef825745e4d3a6a56",
+  "after_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9"
+}
