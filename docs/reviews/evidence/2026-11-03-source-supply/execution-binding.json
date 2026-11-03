@@ -1,0 +1,27 @@
+{
+  "status": "REVIEWED_EXECUTION_TOOLS",
+  "source_commit": "bb9613277ecebb1017622d4042f01a4b0fe420c2",
+  "registration_sha256": "83e4a7fb8cf47c14d773f1fa06c46e683b88dd788d04bdd7cbcba936099d2818",
+  "shared_guard_sha256": "1b9e9b7e7f51202b65e34c5d2e212e9c42110ae2b3f8ea3df59756bfc6c2ebfb",
+  "tools": {
+    "campaign.py": "77d6ed50dd0ebe7061939efa389838cd64c479ad10e659c75f8e7daae7cc9881",
+    "program.py": "ae4a0cd2d1a0258c31f9ac9d2e8f9f6eb3f547b98fa2a22ac86ec64517bb7200",
+    "monitor.py": "ca4aad25849bf5520affd5ce78fe4836d364ad65888ba83a07a12483afeb2c7c",
+    "analyze.py": "06e64c289b8bdcdd879410df128cf65851db7911d6378b24fb454216e4f0a875",
+    "README.md": "aca78a8bcd6707f089505e0db621fa88009fef9d5ad59145d375c3d299781ca6",
+    "tests/test_analysis.py": "1306e6332d386337a6880b232a5afa921f6ce20583742a1f9be275ff3649896a",
+    "tests/test_monitor_integration.py": "5cd79209f46f8bc45977361eba9d34461e43e5a8ac08f73d6e5010d3262dbe9f"
+  },
+  "ci_sha256": "9970ac0b2f8961e39926f785205077fc65d516ef6612903b288cc0c8f5d64347",
+  "review": {
+    "head": "bb9613277ecebb1017622d4042f01a4b0fe420c2",
+    "base": "d713276b201c6f97e12ef16c5847f0bd6c103538",
+    "issues": 0,
+    "file": "coderabbit-tools-final.raw.log",
+    "raw_sha256": "1dc75a4619dfd0e4f4c87e1adfb084a8ff06e7a225b1dc54d4247c9e33cafcdb",
+    "full_review": "d713276 reported one minor terminal-line issue; fixed in bb96132",
+    "device_access": false
+  },
+  "physical_status": "NOT_RUN",
+  "execution": "Explicit execute only; fresh exact identity/full-state equality, passive connected capture; always return/readback/cold/listen accepted s07"
+}

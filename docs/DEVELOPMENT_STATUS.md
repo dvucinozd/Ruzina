@@ -2,7 +2,9 @@
 
 The [producer campaign](reviews/2026-11-03-source-supply-execution.md) is now
 offline registered against 40/41 predecessors. Both plans and dual-copy archive
-pass; exact new tool review/CI/binding is pending. No COM3 access or new write;
+pass; final tool review has 0 issues, exact CI passes 22/22, and the four-file
+binding/dual-copy tools archive is frozen. Publication/preflight precedes access.
+No COM3 access or new write at this checkpoint;
 actual installed s07/history 40/full 7875f650 remains unchanged.
 
 Active [source-supply diagnostic preparation](reviews/2026-11-03-source-supply-profile.md)

@@ -1,0 +1,9 @@
+{
+  "head": "bb9613277ecebb1017622d4042f01a4b0fe420c2",
+  "base": "d713276b201c6f97e12ef16c5847f0bd6c103538",
+  "issues": 0,
+  "file": "coderabbit-tools-final.raw.log",
+  "raw_sha256": "1dc75a4619dfd0e4f4c87e1adfb084a8ff06e7a225b1dc54d4247c9e33cafcdb",
+  "full_review": "d713276 reported one minor terminal-line issue; fixed in bb96132",
+  "device_access": false
+}

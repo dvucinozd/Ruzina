@@ -2,7 +2,7 @@
 
 Date: 2026-11-03. Continues the [reviewed source/packages](2026-11-03-source-supply-profile.md)
 and byte-frozen [campaign runbook](2026-11-03-source-supply-campaign.md).
-Status: **OFFLINE_REGISTERED / TOOLS_REVIEW_CI_PENDING / NOT_FLASHED**.
+Status: **REVIEWED_TOOLS_BOUND_ARCHIVED / OFFLINE_REGISTERED / NOT_FLASHED**.
 No COM3 access has occurred in this registration. The owner reconfirmed the
 same COM3/full-speed USB-C, USB-only power, FLX4, MASTER/headphones and library.
 Accepted s07/history 40/full `7875f650...` remain installed. Native minimum 302
@@ -63,3 +63,23 @@ parses only complete lines. A complete producer header with missing stages
 still fails. Regression cases cover both outcomes; all 12 tests pass per OS.
 Raw review and updated logs are retained. Final fix review/CI/binding remain
 pending; no source package, frozen runbook, plan or device state changed.
+
+## Execution tools verified
+
+Final fix review at `bb9613277ecebb1017622d4042f01a4b0fe420c2` against
+`d713276` completed with **0 issues**. Exact CI is **22/22 PASS**:
+[host #572](https://github.com/dvucinozd/Ruzina/actions/runs/41601593545),
+[legacy #95](https://github.com/dvucinozd/Ruzina/actions/runs/41601593562).
+The full/fix reviews and all 12 per-OS tests are retained separately; the shared
+destructive guard remains SHA-identical with all 13 WSL fault tests passing.
+
+[Execution binding](evidence/2026-11-03-source-supply/execution-binding.json)
+SHA-256: `a63241b1c2c64f33a1c0d127e0489fdc1a86064a9c78526dd95c462ea18608dc`.
+It pins campaign/program/monitor/analyzer and the unchanged write boundary.
+The [tools archive](evidence/2026-11-03-source-supply/execution-tools-archive.json)
+is **48748 bytes**, SHA-256
+`949e48318a3538f1909d4ce72c4eb65fbdf5c4184927049b04c9fe896bb42aa8`.
+CRC, every member and secondary copy match. Publish this checkpoint and rerun
+both actual offline preflights before the already authorized software ROM entry.
+No normal/profile binding is reused. S01 admission precedes every source case;
+always restore/readback/physical cold/listen s07 before campaign exit.

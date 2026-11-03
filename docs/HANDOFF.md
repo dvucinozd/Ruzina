@@ -5,8 +5,10 @@ and [frozen runbook](reviews/2026-11-03-source-supply-campaign.md). Candidate/s0
 plans are registered against 40/41 predecessors; both offline preflights and
 326-member dual-copy archive pass. Current actual s07/history 40/full 7875f650
 is unchanged. New producer adapter/analyzer and automatic report-fault stop
-have 12 tests passing per OS, with 13 shared-guard WSL tests. Their review/CI
-and a newly published four-file tool binding remain required before COM3.
+have 12 tests passing per OS, with 13 shared-guard WSL tests. Final fix review
+has 0 issues and exact `bb96132` CI passes 22/22. Four-file binding `a63241b1...`
+and the 48748-byte dual-copy tools archive `949e4831...` are frozen; publication
+and both offline preflights precede COM3.
 Old normal/profile bindings do not authorize this image. Follow S01-S05 only,
 then always restore/readback/cold/listen exact s07. Do not edit the runbook.
 
