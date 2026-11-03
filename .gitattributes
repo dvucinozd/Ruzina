@@ -30,3 +30,4 @@ docs/reviews/2026-11-03-continuous-campaign.md -text -whitespace
 docs/reviews/evidence/2026-11-03-continuous-device/** -text -whitespace
 docs/reviews/evidence/2026-11-03-source-budget/** -text -whitespace
 tools/source_budget/** text eol=lf
+firmware-idf/legacy-jc1060/third_party/** -text -whitespace
