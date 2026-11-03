@@ -35,6 +35,8 @@ Use `idle`/`functional` and the actual requested playing state for later cases.
 They revalidate the exact cold anchor. The analyzer checks complete stage
 groups, same-window partitions, advancing/fresh timestamps/sequences, counter
 monotonicity, resources, callback bounds, drops and stable-source intervals.
+An unterminated final line stays in the raw hash and is counted separately;
+parsing uses complete lines. Complete headers with missing stages still fail.
 It reports wall time and actual intervals; no CPU-time, hardware IRQ-latency,
 simultaneous cross-core or full-case throughput inference. Incomplete evidence
 raises rather than granting a continuation result. Preserve failed/partial

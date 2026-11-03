@@ -53,6 +53,14 @@ class AnalysisTests(unittest.TestCase):
             (folder/'result.json').write_text(json.dumps(result))
             with patch('analyze.checked',return_value=json.dumps(reg).encode()):
                 self.assertTrue(analyze(folder,root,'cold',(0,0))['continuation_pass'])
+                cut=raw+b'usb_uac_stats transfers='
+                (folder/'run.log').write_bytes(cut);(folder/'boot-window.log').write_bytes(cut)
+                (folder/'result.json').write_text(json.dumps({**result,'raw_sha256':sha(cut),'boot_window_sha256':sha(cut)}))
+                trimmed=analyze(folder,root,'cold',(0,0))
+                self.assertTrue(trimmed['continuation_pass'])
+                self.assertEqual(trimmed['raw_sha256'],sha(cut))
+                self.assertEqual(trimmed['unterminated_tail_bytes'],len(cut)-len(raw))
+                (folder/'run.log').write_bytes(raw);(folder/'boot-window.log').write_bytes(raw)
                 (folder/'result.json').write_text(json.dumps({**result,'capture_complete':False}))
                 with self.assertRaises(ValueError):analyze(folder,root,'cold',(0,0))
                 (folder/'result.json').write_text(json.dumps(result))
@@ -72,6 +80,7 @@ class AnalysisTests(unittest.TestCase):
         broken=[
             source.replace('stage=read calls=10 total_us=20','stage=read calls=10 total_us=19',1),
             source.replace('stage=step calls=10 total_us=20 max_us=10\n','',1),
+            source[:source.rfind('producer_profile_stage')],
             source.replace('seq=4 uptime_us=12000000','seq=2 uptime_us=12000000',1),
             source.replace('uptime_us=12000000','uptime_us=22000000'),
             source.replace('invalid=0','invalid=1',1),

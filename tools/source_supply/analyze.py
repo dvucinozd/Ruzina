@@ -159,9 +159,14 @@ def analyze(folder,root,kind,playing):
         window=raw
     require(r['window']==kind and r['status']=='CAPTURED_NOT_QUALIFIED','Wrong capture window/status')
     require(r['connected_capture_seconds']>=(60 if kind=='idle' else (45 if kind=='cold' else 30)),'Short window')
-    text=window.decode('utf-8',errors='replace')
+    # Preserve/hash original bytes; a capture bound may cut one final line.
+    # Complete headers still require every stage, even when a final stage is cut.
+    complete,separator,tail=window.rpartition(b'\n')
+    parsed_window=complete+separator
+    require(parsed_window,'No complete telemetry lines')
+    text=parsed_window.decode('utf-8',errors='replace')
     limits=reg['measurement']['resources']
-    stopped=fault_reason(window,limits) or r.get('stopped_for_fault')
+    stopped=fault_reason(parsed_window,limits) or r.get('stopped_for_fault')
     integrity=profiles(text,playing)
     phases={stage:[numbers(fields(line),('count','max_us','gt_3000','ge_6000','failures','generation'))
         for line in text.splitlines() if line.startswith('uac_fill_phase phase='+stage+' ')]
@@ -193,6 +198,7 @@ def analyze(folder,root,kind,playing):
                 heartbeats[-1]-10_000_000<=last<=heartbeats[-1]+10_000_000,'Stale snapshots at capture edges')
     maximum=max(row['max_us'] for rows in phases.values() for row in rows)
     return dict(status='SOURCE_DIAGNOSTIC_OBSERVATION_NOT_PRODUCT_QUALIFIED',raw_sha256=sha(raw),kind=kind,
+        parsed_window_sha256=sha(parsed_window),unterminated_tail_bytes=len(tail),
         app_sha256=r['app_sha256'],elf_sha256=r['elf_sha256'],integrity=integrity,stop_reason=stopped,
         continuation_pass=stopped is None,headroom_target_pass=maximum<=3000 and all(row['gt_3000']==0 for rows in phases.values() for row in rows),
         all_fill_max_us=maximum,callback_first=callbacks[0],callback_last=callbacks[-1],

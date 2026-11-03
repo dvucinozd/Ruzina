@@ -55,3 +55,11 @@ The prior normal binding is not reused. Keep the runbook byte-identical.
 After the reviewed binding is published: software ROM entry, guarded candidate
 write, S01/S02 admission, separate single sources, then bounded both-playing.
 Always exact s07 return/full readback/physical cold/listening at campaign exit.
+
+Full committed tool review at `d713276` found one minor capture-boundary issue:
+an unterminated final serial line could be parsed as missing fields. The fix
+preserves/hash-checks all raw bytes, counts the final fragment separately, and
+parses only complete lines. A complete producer header with missing stages
+still fails. Regression cases cover both outcomes; all 12 tests pass per OS.
+Raw review and updated logs are retained. Final fix review/CI/binding remain
+pending; no source package, frozen runbook, plan or device state changed.
