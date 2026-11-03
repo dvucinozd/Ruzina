@@ -5,16 +5,17 @@
 - **What fixed it:** the decode crates are built at `opt-level = 3` (commit
   `521172a`). On the JC1060 the owner played two MP3 decks together for about
   59 s with 0 underruns and heard it clean.
-- **On the board:** the installed image is that deck-engine build, app
-  `31b4fb8f…`. Its live pre-write backup is in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s10-dual-mp3-opt3-flash`.
+- **USB audio follow-up (2026-11-04):** the image with the USB audio fix is
+  owner-accepted after about 5 minutes with seeks. A lost isochronous packet
+  is now only counted, and the recovery budget refills after clean streaming.
+- **On the board:** app `ec46fa95…`. Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0,1}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
-  - `fill_max_us` reached 5325 µs (limit 6000) and there were 3 USB
-    `packet_errors`;
-  - CUE, seek and pads, and WAV/FLAC, are untested during two-deck play;
-  - there has been no long soak.
+  - MP3 seeks still underrun briefly, so the seek index walk is needed;
+  - `fill_max_us` is 4848 µs, above the 3000 µs headroom target;
+  - there has been no soak longer than 5 minutes.
 - **Older paragraphs** below are historical checkpoints.
 
 Latest offline implementation: [legacy MP3 in-place reset](reviews/2026-11-03-mp3-in-place-reset.md).

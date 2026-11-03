@@ -101,4 +101,11 @@ opt-level = 3
 [profile.release.package.ruzina-audio-runtime]
 opt-level = 3
 
+# The render/mix path in the USB fill runs these per frame.
+[profile.release.package.ruzina-audio-dsp]
+opt-level = 3
+
+[profile.release.package.ruzina-mixer]
+opt-level = 3
+
 [workspace]

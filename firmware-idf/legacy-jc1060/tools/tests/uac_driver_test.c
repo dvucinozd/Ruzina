@@ -298,6 +298,11 @@ int main(void) {
     for(unsigned i=0;i<14;++i) assert(uac_profile_bin(edges[i])==i/2);
 #endif
     assert(!uac_report_pending);assert(uac_health.state==UAC_HEALTH_STREAMING);
+    // A lost isochronous packet is counted and the stream carries on.
+    uint32_t lost=uac_packet_errors;int lost_flushes=flushes;usb_transfer_t *t0=uac_iso[0];
+    t0->isoc_packet_desc[2].status=9;complete(t0,0);t0->isoc_packet_desc[2].status=0;
+    assert(uac_packet_errors==lost+1);assert(uac_health.state==UAC_HEALTH_STREAMING);
+    assert(live==4);assert(flushes==lost_flushes);
     complete(uac_iso[0],9);assert(uac_health.state==UAC_HEALTH_RECOVERING);
     uac_recover_poll();assert(flushes==1);assert(live==3);
     usb_host_client_handle_events(1,0);assert(live==0);

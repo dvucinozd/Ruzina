@@ -3,7 +3,10 @@
 #include <stdint.h>
 
 /* Client-task-only recovery policy; endpoint/DMA ownership stays in the driver.
- * Three recoveries per connection, deliberately conservative until measured. */
+ * At most three back-to-back recoveries. A lone isochronous packet error is
+ * counted by the driver but is not a fault (the stream carries on), and a
+ * stream that has run cleanly for UAC_RECOVERY_HEALTHY_TRANSFERS earns its
+ * recovery budget back, so rare errors over a long set never silence it. */
 enum uac_health { UAC_HEALTH_OFF, UAC_HEALTH_STARTING, UAC_HEALTH_STREAMING,
                   UAC_HEALTH_RECOVERING, UAC_HEALTH_STOPPING, UAC_HEALTH_FAULT_HELD };
 typedef struct {
@@ -12,8 +15,10 @@ typedef struct {
     unsigned attempts;
     bool flushed;
     unsigned wait_turns;
+    unsigned healthy_transfers;
 } uac_recovery_t;
-enum { UAC_RECOVERY_LIMIT = 3, UAC_DRAIN_TURNS = 50 };
+/* 1000 transfers of 6 packets are about 6 s of audio. */
+enum { UAC_RECOVERY_LIMIT = 3, UAC_DRAIN_TURNS = 50, UAC_RECOVERY_HEALTHY_TRANSFERS = 1000 };
 static inline void uac_recovery_begin(uac_recovery_t *s, uint32_t generation) {
     *s = (uac_recovery_t){.state=UAC_HEALTH_STARTING, .generation=generation};
 }
@@ -23,6 +28,14 @@ static inline bool uac_recovery_current(const uac_recovery_t *s, uint32_t genera
 static inline void uac_recovery_fault(uac_recovery_t *s) {
     if (s->state == UAC_HEALTH_STREAMING || s->state == UAC_HEALTH_STARTING) {
         s->state=UAC_HEALTH_RECOVERING; s->flushed=false; s->wait_turns=0;
+    }
+    s->healthy_transfers=0;
+}
+/* One transfer completed and was queued again while streaming. */
+static inline void uac_recovery_healthy(uac_recovery_t *s) {
+    if (s->state != UAC_HEALTH_STREAMING || s->attempts == 0) return;
+    if (++s->healthy_transfers >= UAC_RECOVERY_HEALTHY_TRANSFERS) {
+        s->attempts=0; s->healthy_transfers=0;
     }
 }
 /* Return permission to clear the halted endpoint and refill the complete pool.

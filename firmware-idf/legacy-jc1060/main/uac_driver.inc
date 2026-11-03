@@ -159,10 +159,11 @@ static void uac_iso_done(usb_transfer_t *transfer)
         uac_recovery_fault(&uac_health);
     if (transfer->status == USB_TRANSFER_STATUS_COMPLETED) {
         uac_completed++;
+        /* A lost isochronous packet is a dropped millisecond, not a broken
+         * endpoint: count it and keep streaming (no halt/flush/restart). */
         for (int i = 0; i < UAC_PACKETS; ++i)
-            if (transfer->isoc_packet_desc[i].status != USB_TRANSFER_STATUS_COMPLETED) {
-                uac_packet_errors++; uac_recovery_fault(&uac_health);
-            }
+            if (transfer->isoc_packet_desc[i].status != USB_TRANSFER_STATUS_COMPLETED)
+                uac_packet_errors++;
     } else if (transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
             && transfer->status != USB_TRANSFER_STATUS_CANCELED) {
         uac_iso_errors++; uac_recovery_fault(&uac_health);
@@ -170,7 +171,9 @@ static void uac_iso_done(usb_transfer_t *transfer)
     /* Keep the stream running: refill this transfer and queue it again. */
     if (uac_step == UAC_STREAMING && uac_health.state == UAC_HEALTH_STREAMING && device && !gone) {
         if (!uac_refill(transfer,UAC_FILL_CALLBACK)) uac_recovery_fault(&uac_health);
-        else if (usb_host_transfer_submit(transfer) == ESP_OK) uac_iso_busy[index] = true;
+        else if (usb_host_transfer_submit(transfer) == ESP_OK) {
+            uac_iso_busy[index] = true; uac_recovery_healthy(&uac_health);
+        }
         else { uac_submit_errors++; uac_recovery_fault(&uac_health); }
     }
     if (uac_completed && uac_completed % 1000 == 0) uac_report_pending = true;
