@@ -3,7 +3,10 @@
 Date: 2026-11-03. Branch `ogranak/jc1060-source-supply-profile`, parent
 `fd466b38a90af16baab6d614c2bff9302715ba2c`. Follows the
 [rejected normal two-MP3 campaign](2026-11-02-normal-engine-device.md).
-Status: **REVIEWED_BUILT_ARCHIVED / NOT_REGISTERED / NOT_FLASHED**.
+Status: **REVIEWED_BUILT_ARCHIVED / OFFLINE_REGISTERED / NOT_FLASHED**.
+The later [execution registration](2026-11-03-source-supply-execution.md) now
+binds the 40/41 plans and frozen runbook; new tool review/CI/binding remains
+pending. Earlier NOT_REGISTERED checkpoints below retain their historical state.
 
 Accepted s07 remains installed, with 40 executed predecessors and independently
 verified full flash `7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6`.

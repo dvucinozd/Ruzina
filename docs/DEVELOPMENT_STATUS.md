@@ -1,5 +1,10 @@
 # Current development status
 
+The [producer campaign](reviews/2026-11-03-source-supply-execution.md) is now
+offline registered against 40/41 predecessors. Both plans and dual-copy archive
+pass; exact new tool review/CI/binding is pending. No COM3 access or new write;
+actual installed s07/history 40/full 7875f650 remains unchanged.
+
 Active [source-supply diagnostic preparation](reviews/2026-11-03-source-supply-profile.md)
 adds explicit OFF-by-default producer/USB wall measurements, independently of
 render/IRQ profiling. Final fix review has 0 issues, exact CI passes 22/22,

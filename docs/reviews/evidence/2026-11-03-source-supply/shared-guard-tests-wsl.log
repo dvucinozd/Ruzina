@@ -1,0 +1,18 @@
+test_bad_span_readback_is_not_success (test_campaign.CampaignTests.test_bad_span_readback_is_not_success) ... ok
+test_boot_window_excludes_earlier_image_but_rejects_second_boot (test_campaign.CampaignTests.test_boot_window_excludes_earlier_image_but_rejects_second_boot) ... ok
+test_checks_survive_python_optimization (test_campaign.CampaignTests.test_checks_survive_python_optimization) ... ok
+test_each_identity_security_gate_prevents_writes (test_campaign.CampaignTests.test_each_identity_security_gate_prevents_writes) ... ok
+test_esptool_policy_uses_no_reset_and_exact_keep_options (test_campaign.CampaignTests.test_esptool_policy_uses_no_reset_and_exact_keep_options) ... ok
+test_full_postwrite_detects_corruption_outside_written_spans (test_campaign.CampaignTests.test_full_postwrite_detects_corruption_outside_written_spans) ... ok
+test_full_predecessor_mismatch_never_writes (test_campaign.CampaignTests.test_full_predecessor_mismatch_never_writes) ... ok
+test_hash_and_path_drift_rejected (test_campaign.CampaignTests.test_hash_and_path_drift_rejected) ... ok
+test_output_reuse_never_connects (test_campaign.CampaignTests.test_output_reuse_never_connects) ... ok
+test_partial_connection_is_closed_and_recorded (test_campaign.CampaignTests.test_partial_connection_is_closed_and_recorded) ... ok
+test_passive_monitor_never_writes_and_sets_lines_before_open (test_campaign.CampaignTests.test_passive_monitor_never_writes_and_sets_lines_before_open) ... ok
+test_success_saves_full_before_and_after_and_closes (test_campaign.CampaignTests.test_success_saves_full_before_and_after_and_closes) ... ok
+test_usb_port_identity_must_match (test_campaign.CampaignTests.test_usb_port_identity_must_match) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.451s
+
+OK

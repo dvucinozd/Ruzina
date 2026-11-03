@@ -1,5 +1,15 @@
 # Rust M2.5 development handoff
 
+Current continuation: [producer campaign registration](reviews/2026-11-03-source-supply-execution.md)
+and [frozen runbook](reviews/2026-11-03-source-supply-campaign.md). Candidate/s07
+plans are registered against 40/41 predecessors; both offline preflights and
+326-member dual-copy archive pass. Current actual s07/history 40/full 7875f650
+is unchanged. New producer adapter/analyzer and automatic report-fault stop
+have 12 tests passing per OS, with 13 shared-guard WSL tests. Their review/CI
+and a newly published four-file tool binding remain required before COM3.
+Old normal/profile bindings do not authorize this image. Follow S01-S05 only,
+then always restore/readback/cold/listen exact s07. Do not edit the runbook.
+
 Active reviewed source: `ogranak/jc1060-source-supply-profile`, draft
 [PR #82](https://github.com/dvucinozd/Ruzina/pull/82); read the
 [producer/USB measurement contract](reviews/2026-11-03-source-supply-profile.md).
