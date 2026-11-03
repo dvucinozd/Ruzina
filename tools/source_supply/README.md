@@ -6,6 +6,11 @@ Current continuation: [passive adapter/whole-stream analyzer](../../docs/reviews
 `continuous_analyze.py` requires the new receipt journal. No new device
 registration exists yet. Software boot/recovery registration remains separate.
 
+The [standalone s07 boot action](../../docs/reviews/2026-11-03-software-boot.md)
+is implemented and tested without device access. Combined suite: 44 tests per
+OS. It needs its own new 43-predecessor return proof, policy and reviewed
+binding; it never invokes a writer or claims a running app from a boot pulse.
+
 New offline work: [`continuous.py`](continuous.py) and the
 [capture contract](../../docs/reviews/2026-11-03-continuous-capture.md) preserve
 one full stream and coordinate owner readiness. The replay CLI has no device

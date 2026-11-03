@@ -126,8 +126,13 @@ reset/readiness, missing physical confirmation, media faults between cases,
 busy/enumerating/disconnected ports, edited owner commands and consumed plans.
 No synthetic transcript or owner placeholder is board evidence.
 
-Before target use: complete review/CI and retain exact tool evidence, implement
-the separately reviewed software boot action, then build/register/publish new
+The separate [software boot action](2026-11-03-software-boot.md) is now
+implemented with seven further tests (44 source-supply tests total per OS).
+No boot action or target access was executed. The first review attempt was
+blocked by the CodeRabbit CLI rate limit; dashboard installation and tests do
+not constitute a review pass.
+
+Before target use: complete review/CI and retain exact tool evidence, then build/register/publish new
 42/43 plans, contract and binding. Reuse the retained exact producer image;
 do not optimize the decoder based on the failed S03 attempt. Candidate physical
 cold and source measurements keep their own requirements. Apply the

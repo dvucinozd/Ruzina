@@ -17,7 +17,9 @@ The [continuous adapter/analyzer](reviews/2026-11-03-continuous-adapter.md)
 now extends the offline core with immutable checkpoints, whole-journal replay,
 owner commands and 37 tests per OS, including one synthetic five-case passive
 connection. Target access is still unregistered. Next: reviewed software boot
-action, then new 42/43 plans, contract and reviewed/bound tools. No
+action is now [implemented and host-tested](reviews/2026-11-03-software-boot.md)
+as well (44 source-supply tests per OS). Next: finish review/CI after CodeRabbit
+quota/setup, then new 42/43 plans, contracts and exact bindings. No
 decoder optimization, extra flash or manual recovery qualification is implied.
 
 The preparation checkpoints below are historical.
