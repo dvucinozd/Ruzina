@@ -11,7 +11,7 @@ crate-type = ["staticlib"]
 [[test]]
 name = "legacy_codec_streams"
 path = "../../../firmware-rust/crates/ruzina-audio-runtime/tests/codec_streams.rs"
-required-features = ["deck-play"]
+required-features = ["deck-mix"]
 
 [dependencies]
 ruzina-deck = { path = "../../../firmware-rust/crates/ruzina-deck" }
@@ -88,5 +88,17 @@ nanoaudio-mp3 = { path = "../third_party/nanoaudio-mp3-0.1.1" }
 [profile.release]
 panic = "abort"
 opt-level = "s"
+
+# MP3 decoding is CPU-bound: at "s" one MP3 deck took about 47 % of core 1
+# on the device, so two decks underran. Speed-optimize the decode path only;
+# the reset-in-place patch (third_party) keeps its stack frames bounded.
+[profile.release.package.nanomp3-core]
+opt-level = 3
+
+[profile.release.package.nanoaudio-mp3]
+opt-level = 3
+
+[profile.release.package.ruzina-audio-runtime]
+opt-level = 3
 
 [workspace]
