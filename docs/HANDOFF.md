@@ -1,5 +1,22 @@
 # Rust M2.5 development handoff
 
+**Current state (2026-11-03): [two MP3 decks play clean](reviews/2026-11-03-dual-mp3-opt3.md).**
+
+- **What fixed it:** the decode crates are built at `opt-level = 3` (commit
+  `521172a`). On the JC1060 the owner played two MP3 decks together for about
+  59 s with 0 underruns and heard it clean.
+- **On the board:** the installed image is that deck-engine build, app
+  `31b4fb8f…`. Its live pre-write backup is in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s10-dual-mp3-opt3-flash`.
+- **Parked work:** the matched control/opt3 source-compare preparation is on
+  `ogranak/jc1060-source-compare-parked`, not for merge.
+- **Open:**
+  - `fill_max_us` reached 5325 µs (limit 6000) and there were 3 USB
+    `packet_errors`;
+  - CUE, seek and pads, and WAV/FLAC, are untested during two-deck play;
+  - there has been no long soak.
+- **Older paragraphs** below are historical checkpoints.
+
 Latest offline implementation: [legacy MP3 in-place reset](reviews/2026-11-03-mp3-in-place-reset.md).
 Only legacy dependency resolution uses two pinned local crate copies; three
 upstream files change. Safe field resets replace core construction in wrapper
