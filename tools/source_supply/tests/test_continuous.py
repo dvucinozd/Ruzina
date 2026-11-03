@@ -22,7 +22,7 @@ def report(i=1):
             'producer_water log_drops=0\n'
             'usb_uac_stats iso_errors=0 packet_errors=0 submit_errors=0\n'
             'deck_mix_stats underruns=0/0\n'
-            'uac_fill_first generation=1 seen=1\n' +
+            'uac_fill_first generation=1 seen=1 phase=0 us=1880 after_iso_submit=0\n' +
             ''.join('uac_fill_phase phase=' + phase + ' generation=1 max_us=2000 ge_6000=0 failures=0\n'
                     for phase in ('initial_prefill', 'recovery_prefill', 'callback')) +
             'engine_resources usb_stack_free=4000 logger_stack_free=2000 internal_min=100000 '
@@ -63,6 +63,14 @@ class ContinuousTests(unittest.TestCase):
             self.assertTrue(raw[frame['start']:frame['end']].startswith(b'producer_profile deck=1 '))
             self.assertTrue(raw[frame['start']:frame['end']].endswith(b'deck_engine_stats d1_flags=0 d2_flags=0\n'))
         self.assertEqual(result['status'], 'CLOSED_NOT_QUALIFIED')
+
+    def test_actual_idf_abbreviated_elf_line_and_bad_suffix(self):
+        self.feed(('ELF file SHA256:  ' + ELF[:9] + '...\r\n').encode(), 1, size=7)
+        self.feed(report(), 2)
+        self.assertEqual(len(self.capture.close(3)['frames']), 1)
+        second = ContinuousCapture(Path(self.temporary.name) / 'bad-elf', LIMITS, ELF)
+        second.feed(('ELF file SHA256: ' + ELF[:9] + '...garbage\n').encode(), 1)
+        self.assertIn('Unexpected/malformed boot', second.close(2)['error'])
 
     def test_same_stream_across_idle_ready_and_two_functional_cases(self):
         self.feed(BOOT + report(), 1)

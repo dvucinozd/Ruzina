@@ -119,7 +119,7 @@ class ContinuousCapture:
     def line(self, text, begin, end, now):
         if 'ELF file SHA256:' in text:
             self.boots += 1
-            match = re.search(r'ELF file SHA256:\s+([0-9a-fA-F]{8,64})\s*$', text)
+            match = re.search(r'ELF file SHA256:\s+([0-9a-fA-F]{8,64})(?:\.\.\.)?\s*$', text)
             require(self.boots == 1 and match is not None and
                     self.expected_elf.startswith(match[1].lower()), 'Unexpected/malformed boot ELF')
             self.event('expected_elf_received', now, line_offset=begin)
@@ -137,7 +137,9 @@ class ContinuousCapture:
             self.frame = dict(start=begin, received_start=now, rows=0, decks={})
         frame = self.frame
         expected = ORDER[frame['rows']]
-        descriptor = (key, row.get('deck'), row.get('stage', row.get('phase')))
+        descriptor = (key, row.get('deck') if key in ('producer_profile', 'producer_profile_stage') else None,
+                      row.get('stage') if key in ('producer_profile_stage', 'producer_usb_service') else
+                      row.get('phase') if key == 'uac_fill_phase' else None)
         require(descriptor == expected, 'Missing/duplicate/out-of-order report line')
         if key == 'producer_profile':
             header = numbers(row, HEADER + ('deck',))

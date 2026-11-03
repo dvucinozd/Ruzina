@@ -58,14 +58,22 @@ source-time freshness and cold identity still require the registered analyzer.
 
 ## Verification and output-path inspection
 
-The 25 source-supply tests pass on Windows pinned Python and WSL Linux: the
-existing 12 plus 13 new framing/coordination/pump regressions. They exercise
+The 26 source-supply tests pass on Windows pinned Python and WSL Linux: the
+existing 12 plus 14 new framing/coordination/pump regressions. They exercise
 seven-byte reads, delayed/empty reads, one reader across cases, stale replies,
 readiness expiry, setup timing, late reads, cut frames, disconnects, unexpected
 boots, injected writer fragments, clock faults and immediate runtime stops.
 The exact first line from the retained failed S03 capture is a regression input:
 it remains invalid with `Duplicate telemetry fields`, without repair or skip.
 Synthetic tests and replay times are never board evidence.
+
+Replay of the retained cold-1 boot window exposed two formatting assumptions:
+ESP-IDF prints an abbreviated ELF prefix with `...`, and `uac_fill_first` has
+a numeric `phase` field which is not a frame-order selector. Both are corrected
+and covered by regressions. The final replay retains the original boot-window
+hash `a5a980c1507bc5c50e0212f0901ed28bcef65162d4776375403c456e20f65f6e`
+and identifies seven complete report frames, no partial tail or framing error.
+This is offline reuse of old bytes, not another physical cold measurement.
 
 Local pinned ESP-IDF `fff9895c82d744c7237be8847347bdd1b07c6643` inspection found
 `components/esp_libc/src/picolibc/picolibc_init.c` configures buffered stdout,
