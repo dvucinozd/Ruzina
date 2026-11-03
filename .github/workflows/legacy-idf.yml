@@ -2,9 +2,9 @@ name: Legacy P4 IDF build only
 on:
   push:
     branches: [main]
-    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', 'tools/normal_engine/**', 'tools/source_supply/**', 'tools/source_budget/**', '.github/workflows/legacy-idf.yml']
+    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', 'tools/normal_engine/**', 'tools/source_supply/**', 'tools/source_budget/**', 'tools/source_compare/**', '.github/workflows/legacy-idf.yml']
   pull_request:
-    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', 'tools/normal_engine/**', 'tools/source_supply/**', 'tools/source_budget/**', '.github/workflows/legacy-idf.yml']
+    paths: ['firmware-idf/**', 'firmware-rust/crates/**', 'firmware-rust/Cargo.*', 'firmware-rust/tools/check_docs.py', 'docs/**', 'tools/resource_readiness/**', 'tools/normal_engine/**', 'tools/source_supply/**', 'tools/source_budget/**', 'tools/source_compare/**', '.github/workflows/legacy-idf.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,7 @@ jobs:
           python3 -m unittest discover -s tools/source_supply/tests -v
           python3 -m unittest discover -s tools/source_budget/tests -v
           python3 tools/source_budget/verify_vendor.py
+          python3 -m unittest discover -s tools/source_compare/tests -v
       - name: Rust
         run: |
           rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy

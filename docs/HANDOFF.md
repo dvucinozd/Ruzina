@@ -1,5 +1,14 @@
 # Rust M2.5 development handoff
 
+Latest offline preparation: [matched control/opt3 layouts](reviews/2026-11-03-source-compare-preparation.md).
+The real 44-plan prefix and execution captures reconstruct accepted s07. Four
+conditional transitions require actual counts 44/45/46/47. Both returns use
+complete baseline sector snapshots, since ordinary smaller-s07 rewrites leave
+new diagnostic tails. All plans are LAYOUT_ONLY_UNBOUND_NOT_EXECUTABLE/NOT_RUN;
+executed count stays 44. Five tests per OS and real-file checks pass. Next are
+new exact-return writer/capture/boot adapters and bindings, review/CI, archives
+and publication; old 42/43 tools cannot authorize these layouts. No COM3 access.
+
 Latest offline implementation: [legacy MP3 in-place reset](reviews/2026-11-03-mp3-in-place-reset.md).
 Only legacy dependency resolution uses two pinned local crate copies; three
 upstream files change. Safe field resets replace core construction in wrapper

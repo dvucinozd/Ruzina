@@ -6,6 +6,13 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-03
 
+Latest [matched-comparison preparation](docs/reviews/2026-11-03-source-compare-preparation.md)
+reconstructs the 44-plan executed state and proposes control/return/opt3/return
+layouts. Exact returns restore whole saved sector spans; rewriting smaller s07
+alone would leave diagnostic bytes. Five tests per OS and real-file replay pass.
+The four plans are **layout-only, unbound and NOT_RUN**. New reviewed execution,
+capture and boot contracts plus firmware/tool CI still precede COM3 access.
+
 Latest [legacy MP3 reset fix](docs/reviews/2026-11-03-mp3-in-place-reset.md)
 removes the large runtime reset/seek temporary through safe in-place clearing.
 Both normal and opt3 builds now pass unchanged stack guards; the reset frame

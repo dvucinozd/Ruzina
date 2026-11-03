@@ -1,0 +1,10 @@
+test_cli_has_no_execute_mode_or_device_side_effect (test_prepare.ExactReturnTests.test_cli_has_no_execute_mode_or_device_side_effect) ... ok
+test_link_order_policy_and_escaped_payload_are_rejected (test_prepare.ExactReturnTests.test_link_order_policy_and_escaped_payload_are_rejected) ... ok
+test_missing_span_and_changed_candidate_full_state_cannot_form_exact_return (test_prepare.ExactReturnTests.test_missing_span_and_changed_candidate_full_state_cannot_form_exact_return) ... ok
+test_saved_predecessor_corruption_is_rejected_even_with_updated_digest (test_prepare.ExactReturnTests.test_saved_predecessor_corruption_is_rejected_even_with_updated_digest) ... ok
+test_smaller_image_leaves_stale_bytes_but_exact_sector_return_restores_everything (test_prepare.ExactReturnTests.test_smaller_image_leaves_stale_bytes_but_exact_sector_return_restores_everything) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.359s
+
+OK
