@@ -1,5 +1,12 @@
 # Registered producer-profile campaign tools
 
+New offline work: [`continuous.py`](continuous.py) and the
+[capture contract](../../docs/reviews/2026-11-03-continuous-capture.md) preserve
+one full stream and coordinate owner readiness. The replay CLI has no device
+opener; it does not extend this completed campaign's execution permission.
+Live adapter, continuous analyzer, software boot action and new 42/43 binding
+remain required before target use. All replay outputs are unqualified.
+
 This 40/41 campaign is completed; current actual history is 42/full 28830827.
 Do not execute its plans again. Future work needs new 42/43 registration and
 reviewed capture/analysis tools. See the [device result](../../docs/reviews/2026-11-03-source-supply-device.md).

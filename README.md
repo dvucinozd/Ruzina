@@ -4,7 +4,12 @@ Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with
 v3.2 silicon required by the native target. The minimum configured revision is 302.
 
-## Development checkpoint — 2026-11-02
+## Development checkpoint — 2026-11-03
+
+Offline [continuous capture core](docs/reviews/2026-11-03-continuous-capture.md)
+now retains the full stream, complete report offsets and owner-ready case
+boundaries. Its host tests pass; live adapter/analysis and fresh 42/43
+registration still precede another target attempt. No new COM3 access.
 
 Latest 2026-11-03 [producer diagnostic result](docs/reviews/2026-11-03-source-supply-device.md):
 cold/idle pass at **1880 us**, playback **NOT_CAPTURED**. The functional window

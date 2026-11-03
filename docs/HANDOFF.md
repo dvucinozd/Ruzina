@@ -13,8 +13,10 @@ Owner decision after recovery: **no more repeated s07 physical cold/listening/
 Pause/CUE recovery checks**. Use automatic readback and the
 [recovery policy](RECOVERY_POLICY.md); prepare a separately reviewed software
 boot action if needed. Preserve old frozen runbooks/archives as historical.
-Next: offline continuous-capture/framing and operator-ready coordination tests,
-then new 42/43 plans and reviewed tools before another target campaign. No
+The [offline continuous-capture core](reviews/2026-11-03-continuous-capture.md)
+and framing/owner-ready regressions are implemented. Next: live adapter and
+continuous analysis, reviewed software boot action, then new 42/43 plans and
+reviewed tools before another target campaign. No
 decoder optimization, extra flash or manual recovery qualification is implied.
 
 The preparation checkpoints below are historical.
