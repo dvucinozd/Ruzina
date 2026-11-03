@@ -1,0 +1,10 @@
+{
+  "status": "REVIEWED_OFFLINE_TOOLS_ARCHIVE_NOT_EXECUTION_BINDING",
+  "archive": "reviewed-continuous-adapter-boot.zip",
+  "source_commit": "1d09ca1cc5aee0ff025c2f33fd7dc54b6b9739c7",
+  "bytes": 64731,
+  "sha256": "0a59b8b2c0e9678a936f7dd092e9af9c22a7dd02ebeab7145c98c6e886076967",
+  "members": 31,
+  "crc_and_all_member_hashes_verified": true,
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\continuous-adapter-20261103"
+}

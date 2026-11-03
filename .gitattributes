@@ -2,5 +2,33 @@
 # trailing spaces emitted by the firmware/toolchain. Never normalize it.
 docs/boards/evidence/** -text -whitespace
 docs/boards/readiness/*write-recovery-plan*.json -text -whitespace
+docs/boards/readiness/jc1060-uac-timing-return-s07-plan-20261101.json -text -whitespace
+docs/boards/readiness/jc1060-resources-*-write-recovery-plan-20261102.json -text -whitespace
+# Preserve raw review evidence and the hashes recorded in its manifests.
+docs/reviews/evidence/2026-11-01-code-review/** -text -whitespace
+docs/reviews/evidence/2026-11-01-review-fixes/** -text -whitespace
+docs/reviews/evidence/2026-11-01-uac-timing/** -text -whitespace
+docs/reviews/evidence/2026-11-01-uac-profile/** -text -whitespace
+
+docs/reviews/evidence/2026-11-02-uac-cause/** -text -whitespace
+docs/reviews/evidence/2026-11-02-pack-placement/** -text -whitespace
+docs/reviews/evidence/2026-11-02-resource-readiness/** -text -whitespace
 # Vendored upstream sources stay byte-identical to their recorded archive.
 firmware-idf/legacy-jc1060/third_party/esp-usb-*/** -text -whitespace
+tools/resource_readiness/** text eol=lf
+tools/normal_engine/** text eol=lf
+docs/reviews/evidence/2026-11-02-normal-engine/** -text -whitespace
+docs/reviews/evidence/2026-11-03-source-supply/** -text -whitespace
+tools/source_supply/** text eol=lf
+
+docs/reviews/evidence/2026-11-03-continuous-capture/** -text -whitespace
+
+docs/reviews/evidence/2026-11-03-continuous-adapter/** -text -whitespace
+
+docs/reviews/evidence/2026-11-03-continuous-registration/** -text -whitespace
+docs/reviews/2026-11-03-continuous-campaign.md -text -whitespace
+docs/reviews/evidence/2026-11-03-continuous-device/** -text -whitespace
+docs/reviews/evidence/2026-11-03-source-budget/** -text -whitespace
+tools/source_budget/** text eol=lf
+firmware-idf/legacy-jc1060/third_party/** -text -whitespace
+docs/reviews/evidence/2026-11-03-mp3-reset/** -text -whitespace

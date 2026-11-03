@@ -1,0 +1,936 @@
+{
+  "status": "SOURCE_DIAGNOSTIC_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+  "raw_sha256": "47f907f99021bdb71d683fc769fd37d1905b3a785d60d542d3eb262030183144",
+  "kind": "idle",
+  "parsed_window_sha256": "47f907f99021bdb71d683fc769fd37d1905b3a785d60d542d3eb262030183144",
+  "unterminated_tail_bytes": 0,
+  "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+  "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+  "integrity": {
+    "producer_samples": {
+      "1": 10,
+      "2": 10
+    },
+    "stable_intervals": {
+      "1": [
+        {
+          "start_seq": 128,
+          "end_seq": 140,
+          "source_elapsed_us": 6009999,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 610
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 140,
+          "end_seq": 152,
+          "source_elapsed_us": 6010000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 633
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 152,
+          "end_seq": 164,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 619
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 164,
+          "end_seq": 176,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 642
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 176,
+          "end_seq": 188,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 625
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 188,
+          "end_seq": 200,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 623
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 200,
+          "end_seq": 212,
+          "source_elapsed_us": 6010001,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 612
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 212,
+          "end_seq": 224,
+          "source_elapsed_us": 6009999,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 622
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 224,
+          "end_seq": 236,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 627
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        }
+      ],
+      "2": [
+        {
+          "start_seq": 128,
+          "end_seq": 140,
+          "source_elapsed_us": 6009999,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 607
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 140,
+          "end_seq": 152,
+          "source_elapsed_us": 6010000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 611
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 152,
+          "end_seq": 164,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 604
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 164,
+          "end_seq": 176,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 606
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 176,
+          "end_seq": 188,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 605
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 188,
+          "end_seq": 200,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 604
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 200,
+          "end_seq": 212,
+          "source_elapsed_us": 6010001,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 617
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 212,
+          "end_seq": 224,
+          "source_elapsed_us": 6009999,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 601,
+              "total_us": 607
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        },
+        {
+          "start_seq": 224,
+          "end_seq": 236,
+          "source_elapsed_us": 6000000,
+          "epoch": 0,
+          "index": 4294967295,
+          "rate": 0,
+          "pitch": 0,
+          "playing": 0,
+          "frames": 0,
+          "logical_read_bytes": 0,
+          "produced_frames_per_second": 0.0,
+          "required_source_frames_per_second": 0,
+          "observed_supply_us": [
+            0,
+            0
+          ],
+          "stages": {
+            "poll": {
+              "calls": 600,
+              "total_us": 601
+            },
+            "decode": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "step": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "read": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "push": {
+              "calls": 0,
+              "total_us": 0
+            },
+            "decode_other": {
+              "calls": 0,
+              "total_us": 0
+            }
+          }
+        }
+      ]
+    },
+    "sample_time_bounds": {
+      "1": [
+        67987192,
+        122027191
+      ],
+      "2": [
+        67987192,
+        122027191
+      ],
+      "owner": [
+        67987183,
+        122027183
+      ]
+    },
+    "owner_first": {
+      "generation": 1,
+      "seq": 128,
+      "uptime_us": 67987183,
+      "turns": 6311,
+      "wall_us": 63111400,
+      "polls_us": 13123,
+      "other_including_idle_us": 63098277,
+      "max_turn_us": 19999,
+      "invalid": 0,
+      "saturated": 0
+    },
+    "owner_last": {
+      "generation": 1,
+      "seq": 236,
+      "uptime_us": 122027183,
+      "turns": 11715,
+      "wall_us": 117145330,
+      "polls_us": 24197,
+      "other_including_idle_us": 117121133,
+      "max_turn_us": 19999,
+      "invalid": 0,
+      "saturated": 0
+    },
+    "usb_service": {
+      "handle_events_wall": {
+        "first": {
+          "calls": 11003,
+          "total_us": 65923288,
+          "max_us": 7455
+        },
+        "last": {
+          "calls": 20003,
+          "total_us": 119870170,
+          "max_us": 7455
+        }
+      },
+      "client_tail_wall": {
+        "first": {
+          "calls": 11003,
+          "total_us": 55239,
+          "max_us": 359
+        },
+        "last": {
+          "calls": 20003,
+          "total_us": 97383,
+          "max_us": 359
+        }
+      },
+      "callback_entry_gap": {
+        "first": {
+          "calls": 10999,
+          "total_us": 65993854,
+          "max_us": 6699
+        },
+        "last": {
+          "calls": 19999,
+          "total_us": 119993854,
+          "max_us": 6699
+        }
+      }
+    },
+    "wall_time_includes_wait_preemption": true,
+    "cross_core_snapshots_asynchronous": true,
+    "maxima_are_not_subtracted": true
+  },
+  "stop_reason": null,
+  "continuation_pass": true,
+  "headroom_target_pass": true,
+  "all_fill_max_us": 1880,
+  "callback_first": {
+    "count": 11000,
+    "max_us": 1598,
+    "gt_3000": 0,
+    "ge_6000": 0,
+    "failures": 0,
+    "generation": 1
+  },
+  "callback_last": {
+    "count": 20000,
+    "max_us": 1598,
+    "gt_3000": 0,
+    "ge_6000": 0,
+    "failures": 0,
+    "generation": 1
+  },
+  "resource_minima": {
+    "usb_stack_free": 4964,
+    "logger_stack_free": 1560,
+    "internal_min": 414548,
+    "psram_min": 28054272,
+    "internal_largest": 249856,
+    "psram_largest": 28311552
+  },
+  "sd_client_stack_min": 58044,
+  "usb_first": {
+    "transfers": 11000,
+    "iso_errors": 0,
+    "packet_errors": 0,
+    "submit_errors": 0
+  },
+  "usb_last": {
+    "transfers": 20000,
+    "iso_errors": 0,
+    "packet_errors": 0,
+    "submit_errors": 0
+  },
+  "mix_first": "deck_mix_stats rendered=3169152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880",
+  "mix_last": "deck_mix_stats rendered=5761152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1880",
+  "physical_acceptance": "Record owner separately"
+}

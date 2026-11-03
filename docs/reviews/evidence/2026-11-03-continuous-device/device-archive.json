@@ -1,0 +1,27 @@
+{
+  "status": "CRC_ALL_MEMBERS_AND_SECONDARY_MATCH",
+  "archive": "completed-continuous-device.zip",
+  "archive_bytes": 39722727,
+  "archive_sha256": "b188a18b862f695a34c8b0bb17ecd0b7cf69f1f82d0d72287a803d8c5a4fd733",
+  "members": 119,
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\continuous-source-20261103",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\continuous-source-20261103",
+  "archives": [
+    {
+      "name": "registered-continuous-source.zip",
+      "bytes": 86523695,
+      "sha256": "99d41efcccc3aa4674786d037e07787c616ae3e3e57efc15d287cec0977128c7"
+    },
+    {
+      "name": "reviewed-continuous-source-tools.zip",
+      "bytes": 91834,
+      "sha256": "8344bfe621a318f5bfe8a8a1c71de8d361a2d28b10bf2df99d289f2731d93fbc"
+    },
+    {
+      "name": "completed-continuous-device.zip",
+      "bytes": 39722727,
+      "sha256": "b188a18b862f695a34c8b0bb17ecd0b7cf69f1f82d0d72287a803d8c5a4fd733"
+    }
+  ],
+  "registration_and_tools_archives_unchanged": true
+}

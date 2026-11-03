@@ -1,0 +1,20 @@
+{
+  "status": "BOOT_PULSE_ISSUED_APPLICATION_NOT_OBSERVED",
+  "authority": {
+    "policy_sha256": "f4a76f15dd1b303a110d568c88f41accb85c656e613c0fac1b520ebc6c0342ff",
+    "binding_sha256": "53175f800c99aa5dfcd290e4b44c6a2b0cb967ad2ac537ff9b90e2cb5bf7edf8",
+    "reset_backend_sha256": "52d636ed8eff0855cf9e8c44deb1c5392ea642be153f9dee2931ad334d474b88",
+    "return_result_sha256": "51ba5977876d90dcde3ee43ffa3da5111ebb9cc4469ed95c7e618375d8643b9d",
+    "return_plan_sha256": "c39e6f0e3de6783fedbda1d4a37b423cd822ee7fb57d4a0ef825745e4d3a6a56",
+    "full_and_span_readback_verified": true,
+    "history_after_return": 44
+  },
+  "flash_write": false,
+  "efuse_write": false,
+  "serial_data_writes": false,
+  "reset_attempted": true,
+  "reset_completed": true,
+  "physical_power_cycle": false,
+  "application_running": "NOT_OBSERVED",
+  "port_closed": true
+}

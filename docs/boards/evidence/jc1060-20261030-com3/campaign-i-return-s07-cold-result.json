@@ -1,0 +1,28 @@
+{
+  "scenario": "campaign-i-return-s07-cold",
+  "mode": "PASSIVE_NO_RESET_NO_SERIAL_WRITE",
+  "bytes": 13887,
+  "duration_seconds": 56.5,
+  "log_sha256": "7ac8fc4a8544b1acc9950e69111163cc357a6f8e69eff3ff9cd863607f61a188",
+  "expected_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "expected_elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+  "boot_elf_prefixes": [
+    "005f8d1e3"
+  ],
+  "expected_elf_seen": true,
+  "fatal_markers": [],
+  "reset_reasons": [
+    "1"
+  ],
+  "stream_started_count": 1,
+  "deck_mix_stats": [],
+  "deck_engine_stats": [],
+  "usb_uac_stats": [
+    "usb_uac_stats transfers=1000 packets=6024 frames=289152 tone_packets=0 iso_errors=0 packet_errors=0",
+    "usb_uac_stats transfers=2000 packets=12024 frames=577152 tone_packets=0 iso_errors=0 packet_errors=0",
+    "usb_uac_stats transfers=3000 packets=18024 frames=865152 tone_packets=0 iso_errors=0 packet_errors=0",
+    "usb_uac_stats transfers=4000 packets=24024 frames=1153152 tone_packets=0 iso_errors=0 packet_errors=0"
+  ],
+  "producer_stats": [],
+  "physical_acceptance": "NOT_CAPTURED"
+}

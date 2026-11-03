@@ -1,0 +1,35 @@
+{
+  "status": "REGISTERED_BUILD_ONLY_NOT_FLASHED",
+  "source_commit": "8a9fe16d48387b0a3cfbd461659696091b2aa89d",
+  "packages": [
+    {
+      "package": "clean-normal",
+      "source_commit": "8a9fe16d48387b0a3cfbd461659696091b2aa89d",
+      "app_sha256": "f42878fc953ee62f179d48a9a87faa7940e8e7769c3d9cd4defad5944dc30b46",
+      "bytes": 817344,
+      "uac_profile": false,
+      "sources": 277,
+      "artifacts": 8,
+      "manifest_sha256": "ef9ea49200a9bf8c65c548b46579b7a5c3ad35fc83077751c581b5311c428132"
+    },
+    {
+      "package": "clean-profile",
+      "source_commit": "8a9fe16d48387b0a3cfbd461659696091b2aa89d",
+      "app_sha256": "46cb70ef201c4be12415931fc3330a186dadf48d0d435121432a1731dda5a4a2",
+      "bytes": 820432,
+      "uac_profile": true,
+      "sources": 277,
+      "artifacts": 8,
+      "manifest_sha256": "aabf6d776f077061c3491d5493102a2c1bb81c2744a2f84d66633c263c2bebb5"
+    }
+  ],
+  "predecessor_plans": 29,
+  "expected_current_full_flash_sha256": "3130901f09e304949556d582b46b3b8e417713600317bce755bb819b6f876a40",
+  "backup_copies_verified": 4,
+  "candidate_plan_sha256": "370faa84843f2ecd14c686550f6f837238d67dedeb580f757cacf97e3d2f75b6",
+  "fallback_plan_sha256": "7dea4155234fd4e1328856f4fcb06ca3c4b7365514f516b1f41a2ac14e8e0441",
+  "candidate_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-profile-20261101\\diagnostic-plan\\plan.json",
+  "fallback_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-profile-20261101\\return-s07-plan\\plan.json",
+  "device_access": false,
+  "diagnostic_policy": "Cold boot and steady idle only; retain aggregate >=6000 us rejection; validate partition/scheduler flags; no CPU-only or optimization claim; restore s07 and confirm normal sound/controls before exit."
+}

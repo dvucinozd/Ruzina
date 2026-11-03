@@ -1,0 +1,473 @@
+{
+  "status": "SUBSTAGES_CAPTURED_S07_RESTORED_AND_CONFIRMED",
+  "source_commit": "8a9fe16d48387b0a3cfbd461659696091b2aa89d",
+  "candidate_app_sha256": "46cb70ef201c4be12415931fc3330a186dadf48d0d435121432a1731dda5a4a2",
+  "criterion": "FAIL_AGGREGATE_GE_6000_US",
+  "cold_analysis": {
+    "scenario": "profile-cold",
+    "status": "PARSED_DIAGNOSTIC_NOT_QUALIFIED",
+    "records": [
+      {
+        "record": {
+          "kind": "worst",
+          "seen": "1",
+          "gen": "1",
+          "ordinal": "709",
+          "uptime_us": "5022856",
+          "phase": "2",
+          "busy": "14",
+          "health": "2",
+          "catalog": "5",
+          "d1_flags": "0",
+          "d2_flags": "0",
+          "drops": "0",
+          "whole_us": "13087",
+          "rust_us": "12935",
+          "partition_valid": "1",
+          "outer_us": "152",
+          "packets": "6",
+          "blocks": "3",
+          "sched_valid": "1",
+          "sched_window_us": "13124",
+          "away_us": "0",
+          "switches": "0"
+        },
+        "stages": {
+          "init": {
+            "us": 137,
+            "segments": 9
+          },
+          "transport": {
+            "us": 826,
+            "segments": 9
+          },
+          "control": {
+            "us": 421,
+            "segments": 3
+          },
+          "graph": {
+            "us": 6523,
+            "segments": 3
+          },
+          "progress": {
+            "us": 342,
+            "segments": 3
+          },
+          "copy": {
+            "us": 486,
+            "segments": 9
+          },
+          "pack": {
+            "us": 3725,
+            "segments": 6
+          },
+          "other": {
+            "us": 475,
+            "segments": 13
+          }
+        },
+        "all_stages_present": true,
+        "partition_verified": true,
+        "outer_verified": true,
+        "scheduler_away_inside_whole_lower_us": 0,
+        "scheduler_away_inside_whole_upper_us": 0,
+        "scheduler_bound_note": "Bounds from the wider coherent scheduler window; not CPU or ISR-only time."
+      },
+      {
+        "record": {
+          "kind": "latest_over",
+          "seen": "1",
+          "gen": "1",
+          "ordinal": "710",
+          "uptime_us": "5037295",
+          "phase": "2",
+          "busy": "13",
+          "health": "2",
+          "catalog": "5",
+          "d1_flags": "0",
+          "d2_flags": "0",
+          "drops": "0",
+          "whole_us": "13039",
+          "rust_us": "12896",
+          "partition_valid": "1",
+          "outer_us": "143",
+          "packets": "6",
+          "blocks": "2",
+          "sched_valid": "1",
+          "sched_window_us": "13067",
+          "away_us": "0",
+          "switches": "0"
+        },
+        "stages": {
+          "init": {
+            "us": 161,
+            "segments": 8
+          },
+          "transport": {
+            "us": 1009,
+            "segments": 8
+          },
+          "control": {
+            "us": 1015,
+            "segments": 2
+          },
+          "graph": {
+            "us": 5289,
+            "segments": 2
+          },
+          "progress": {
+            "us": 204,
+            "segments": 2
+          },
+          "copy": {
+            "us": 881,
+            "segments": 8
+          },
+          "pack": {
+            "us": 3934,
+            "segments": 6
+          },
+          "other": {
+            "us": 403,
+            "segments": 13
+          }
+        },
+        "all_stages_present": true,
+        "partition_verified": true,
+        "outer_verified": true,
+        "scheduler_away_inside_whole_lower_us": 0,
+        "scheduler_away_inside_whole_upper_us": 0,
+        "scheduler_bound_note": "Bounds from the wider coherent scheduler window; not CPU or ISR-only time."
+      }
+    ],
+    "phase_final": {
+      "initial_prefill": {
+        "generation": "1",
+        "scope": "BOOT",
+        "count": "4",
+        "first_us": "2024",
+        "first_after_iso_submit": "0",
+        "max_us": "2024",
+        "max_after_iso_submit": "0",
+        "gt_3000": "0",
+        "ge_6000": "0",
+        "failures": "0"
+      },
+      "recovery_prefill": {
+        "generation": "1",
+        "scope": "BOOT",
+        "count": "0",
+        "first_us": "0",
+        "first_after_iso_submit": "0",
+        "max_us": "0",
+        "max_after_iso_submit": "0",
+        "gt_3000": "0",
+        "ge_6000": "0",
+        "failures": "0"
+      },
+      "callback": {
+        "generation": "1",
+        "scope": "BOOT",
+        "count": "5000",
+        "first_us": "989",
+        "first_after_iso_submit": "1",
+        "max_us": "13087",
+        "max_after_iso_submit": "1",
+        "gt_3000": "3",
+        "ge_6000": "2",
+        "failures": "0"
+      }
+    },
+    "expected_elf_seen": true,
+    "fatal_markers": [],
+    "aggregate_bound_us": 6000,
+    "policy": "No stage attribution if partition invalid; no scheduler inference if stamp/window invalid."
+  },
+  "steady_analysis": {
+    "scenario": "profile-steady",
+    "status": "PARSED_DIAGNOSTIC_NOT_QUALIFIED",
+    "records": [
+      {
+        "record": {
+          "kind": "worst",
+          "seen": "1",
+          "gen": "1",
+          "ordinal": "709",
+          "uptime_us": "5022856",
+          "phase": "2",
+          "busy": "14",
+          "health": "2",
+          "catalog": "5",
+          "d1_flags": "0",
+          "d2_flags": "0",
+          "drops": "0",
+          "whole_us": "13087",
+          "rust_us": "12935",
+          "partition_valid": "1",
+          "outer_us": "152",
+          "packets": "6",
+          "blocks": "3",
+          "sched_valid": "1",
+          "sched_window_us": "13124",
+          "away_us": "0",
+          "switches": "0"
+        },
+        "stages": {
+          "init": {
+            "us": 137,
+            "segments": 9
+          },
+          "transport": {
+            "us": 826,
+            "segments": 9
+          },
+          "control": {
+            "us": 421,
+            "segments": 3
+          },
+          "graph": {
+            "us": 6523,
+            "segments": 3
+          },
+          "progress": {
+            "us": 342,
+            "segments": 3
+          },
+          "copy": {
+            "us": 486,
+            "segments": 9
+          },
+          "pack": {
+            "us": 3725,
+            "segments": 6
+          },
+          "other": {
+            "us": 475,
+            "segments": 13
+          }
+        },
+        "all_stages_present": true,
+        "partition_verified": true,
+        "outer_verified": true,
+        "scheduler_away_inside_whole_lower_us": 0,
+        "scheduler_away_inside_whole_upper_us": 0,
+        "scheduler_bound_note": "Bounds from the wider coherent scheduler window; not CPU or ISR-only time."
+      },
+      {
+        "record": {
+          "kind": "latest_over",
+          "seen": "1",
+          "gen": "1",
+          "ordinal": "710",
+          "uptime_us": "5037295",
+          "phase": "2",
+          "busy": "13",
+          "health": "2",
+          "catalog": "5",
+          "d1_flags": "0",
+          "d2_flags": "0",
+          "drops": "0",
+          "whole_us": "13039",
+          "rust_us": "12896",
+          "partition_valid": "1",
+          "outer_us": "143",
+          "packets": "6",
+          "blocks": "2",
+          "sched_valid": "1",
+          "sched_window_us": "13067",
+          "away_us": "0",
+          "switches": "0"
+        },
+        "stages": {
+          "init": {
+            "us": 161,
+            "segments": 8
+          },
+          "transport": {
+            "us": 1009,
+            "segments": 8
+          },
+          "control": {
+            "us": 1015,
+            "segments": 2
+          },
+          "graph": {
+            "us": 5289,
+            "segments": 2
+          },
+          "progress": {
+            "us": 204,
+            "segments": 2
+          },
+          "copy": {
+            "us": 881,
+            "segments": 8
+          },
+          "pack": {
+            "us": 3934,
+            "segments": 6
+          },
+          "other": {
+            "us": 403,
+            "segments": 13
+          }
+        },
+        "all_stages_present": true,
+        "partition_verified": true,
+        "outer_verified": true,
+        "scheduler_away_inside_whole_lower_us": 0,
+        "scheduler_away_inside_whole_upper_us": 0,
+        "scheduler_bound_note": "Bounds from the wider coherent scheduler window; not CPU or ISR-only time."
+      }
+    ],
+    "phase_final": {
+      "initial_prefill": {
+        "generation": "1",
+        "scope": "BOOT",
+        "count": "4",
+        "first_us": "2024",
+        "first_after_iso_submit": "0",
+        "max_us": "2024",
+        "max_after_iso_submit": "0",
+        "gt_3000": "0",
+        "ge_6000": "0",
+        "failures": "0"
+      },
+      "recovery_prefill": {
+        "generation": "1",
+        "scope": "BOOT",
+        "count": "0",
+        "first_us": "0",
+        "first_after_iso_submit": "0",
+        "max_us": "0",
+        "max_after_iso_submit": "0",
+        "gt_3000": "0",
+        "ge_6000": "0",
+        "failures": "0"
+      },
+      "callback": {
+        "generation": "1",
+        "scope": "BOOT",
+        "count": "24000",
+        "first_us": "989",
+        "first_after_iso_submit": "1",
+        "max_us": "13087",
+        "max_after_iso_submit": "1",
+        "gt_3000": "3",
+        "ge_6000": "2",
+        "failures": "0"
+      }
+    },
+    "expected_elf_seen": false,
+    "fatal_markers": [],
+    "aggregate_bound_us": 6000,
+    "policy": "No stage attribution if partition invalid; no scheduler inference if stamp/window invalid."
+  },
+  "inference": "Retained slow records have zero observed switch deltas; wall time still includes IRQ/cache/observer effects; target absolute-counter calibration not captured.",
+  "playback": "NOT_RUN",
+  "target_recovery_timing": "NOT_RUN",
+  "restored_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "restored_expected_full_sha256": "817c75491f1c6f3b8e482b576ce44cec43693458d540685ede6adae392123e8d",
+  "future_predecessor_plans": 31,
+  "raw_records": [
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-diagnostic-flash-programmer.log",
+      "sha256": "d4529843fc8f73db95a57c1de0c680f61adde69005b797da9ef82ceaa337b278",
+      "bytes": 1431
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-diagnostic-flash-result.json",
+      "sha256": "216000a0cde6edab53fdd376d143aec7b305402cee0488751585fce4453ecfc2",
+      "bytes": 1885
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-profile-cold-analysis.json",
+      "sha256": "ffdee6ffdc2cdd6fb8427e3716700a0e4ce588c6ea0d7b8d6170f6d5fceb7f10",
+      "bytes": 4433
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-profile-cold-result.json",
+      "sha256": "fe4520456176335e8520757162370457874c8837c5717e24030d8d749a6097c3",
+      "bytes": 16613
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-profile-cold-run.log",
+      "sha256": "2c2563654974f8cb39d68951eda3acaf121aa6cef4eebc56b6210beb79b4f524",
+      "bytes": 28495
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-profile-steady-analysis.json",
+      "sha256": "6adf11fa8837f9a0f88ee7108588f62e0d1219b39819c92a798485f810e49e77",
+      "bytes": 4437
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-profile-steady-result.json",
+      "sha256": "f8ea4d2fc0e074eeecafa85afd5a9f75e35cc319aa01fce6eda77fcb16929646",
+      "bytes": 31685
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-profile-steady-run.log",
+      "sha256": "94bda3c63cd602fa4c072dcf02846cd9971bf8315b27d1132bb2016784d19596",
+      "bytes": 31448
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-restore-flash-programmer.log",
+      "sha256": "a6752cffe8a9bf3eeced842dee6339225bfe102fcb6ab7fef0ab7bf97a590f77",
+      "bytes": 1431
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-restore-flash-result.json",
+      "sha256": "d5c235c6b610669929ce506efc37a453c0537d5f9caed9b22708616040006ca0",
+      "bytes": 1882
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-restore-cold-result.json",
+      "sha256": "5016e316625215a0dbae1382bcb729f0d0880ccd4dcbe23616a9c3f126577b85",
+      "bytes": 1639
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-restore-cold-run.log",
+      "sha256": "f8fd0a7d644df011cf59ca58a2ea94ff343ce72fabf02972f82b80f4115859a7",
+      "bytes": 13887
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-restore-playback-result.json",
+      "sha256": "31944766ac0195e93b5e0318d0262ecbf8aeb1fc5b1c7afd95cbbadb8e8c4c44",
+      "bytes": 2559
+    },
+    {
+      "path": "docs/boards/evidence/jc1060-20261030-com3/uac-callback-restore-playback-run.log",
+      "sha256": "3c195d9ae2188e123dfd8383b9531ba9facf6ca1c4d52467462beaaa783d4bf4",
+      "bytes": 7371
+    }
+  ],
+  "restore_listening": "OWNER_CONFIRMED",
+  "monitors": "CLOSED",
+  "operator_confirmation": {
+    "date": "2026-11-01",
+    "scope": "RESTORED_S07_NORMAL_SOUND_PAUSE_CUE",
+    "question": "Na vraćenom deck-playu učitaj poznatu pjesmu na deck 1, pusti je oko 20 sekundi pa provjeri Pause i CUE. Na dosadašnjoj glasnoći potvrdi čist zvuk u oba uha i normalan rad kontrola. Monitor je spreman.",
+    "answer": "sve je ok",
+    "confirmed": true
+  },
+  "restored_playback": {
+    "played_frames": 993312,
+    "output_rate_hz": 48000,
+    "source_rates_hz": [
+      44100
+    ],
+    "underruns": 0,
+    "usb_iso_packet_errors": [
+      0,
+      0
+    ],
+    "log_sha256": "3c195d9ae2188e123dfd8383b9531ba9facf6ca1c4d52467462beaaa783d4bf4",
+    "final_stats": {
+      "played": 993312,
+      "underruns": 0,
+      "buffered": 65515,
+      "rate": 44100
+    },
+    "note": "Short recovery confirmation only; preceding cold capture binds identity."
+  }
+}

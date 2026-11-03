@@ -1,0 +1,52 @@
+{
+  "status": "OFFLINE_MODEL_BENCH_PASS_OPT3_TARGET_REJECTED",
+  "device_access": false,
+  "current_device_history": 44,
+  "installed_full_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+  "application_running": "NOT_OBSERVED",
+  "native_minimum": 302,
+  "normal_build": {
+    "status": "BUILD_ONLY_NOT_QUALIFIED",
+    "app_sha256": "e3c5c8709a0a9cf67166ff6f5d623d8ffc76fec903d9b88b3e831d57fc651c96",
+    "app_bytes": 819744,
+    "manifest_sha256": "d1c29627e5f6d37297f3cb08a072d58245ccc4c9c836373e014b8c83e0d69ed2",
+    "source_inputs_verified": 290,
+    "artifacts_verified": 8
+  },
+  "opt3_build": {
+    "status": "REJECTED_NO_MANIFEST",
+    "exit_code": 1,
+    "frame_bytes": 39008,
+    "frame_limit": 24576,
+    "independent_load_chain_bytes": 90544,
+    "load_chain_limit": 90112,
+    "flash_authorization": false
+  },
+  "checks": {
+    "diagnostic_rust_passed": 78,
+    "diagnostic_ignored_manual_benchmark": 1,
+    "normal_rust_passed": 71,
+    "linux_idf_tool_tests": 50,
+    "windows_config_tests": 14,
+    "control_audit_tests_per_os": 4,
+    "host_clippy": "PASS",
+    "target_clippy": "PASS",
+    "format": "PASS",
+    "benchmark_configurations": 4,
+    "benchmark_repetitions_per_reader": 5,
+    "benchmark_readers": 2,
+    "cross_build_pcm_byte_equality": true
+  },
+  "benchmark_body_sha256": "55cead647328ae932d43a62e5f479ec379d299a9da7f4410d7a976ab2a8d9881",
+  "matrix_source_checkpoint_sha256": "62168a99657e37db5d74538494631c8881cfaff639031ef7a6d82cb233baaabe",
+  "current_model_source_sha256": "5e9c8312c66e055aa5f50bba412fd9856b8f913dd6f6422f6601af0e60f136ef",
+  "failed_attempts_retained": [
+    "Initial Windows config suite lacked cmake on PATH; rerun 14/14 with pinned cmake passed",
+    "Initial Linux tool suite lacked esptool; rerun 50/50 in isolated venv passed",
+    "First PCM export used unbuffered WSL Windows writes; terminated during export, replaced by BufWriter and matrix-final2 completed",
+    "Initial model consumed past four-second bound inside a slow read; final capped-bound regression passes"
+  ],
+  "next_action": "Bounded-stack runtime decoder reconstruction before new candidate or 44/45 registration",
+  "current_review": "NOT_YET_RUN",
+  "current_ci": "NOT_YET_PUBLISHED"
+}

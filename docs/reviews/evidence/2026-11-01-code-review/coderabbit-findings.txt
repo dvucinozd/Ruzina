@@ -1,0 +1,44 @@
+Most recent local review with findings: 1 stored finding
+Review directory: /mnt/d/AI/M1_PCB
+Base branch: main
+
+────────────────────────────────────────────────────────────────────────
+  minor [Stability & Availability]
+  → firmware-idf/legacy-jc1060/rust-core/src/deck_engine.rs:234-236
+
+  A failed seek leaves the seek hold set. The deck can stay "playing" and
+  silent.
+
+  Engine::apply sets seeking[i] to the ring epoch when it issues a seek.
+  progress clears the hold only when reader.epoch() changes.
+  Producer::seek in deck_play.rs opens a new epoch only after it decodes
+  the first block. If stream.change or the prime decode fails, it calls
+  ring.end() on the old epoch and returns Seeked { ok: false }. The
+  engine never receives that result, because it only reaches the C log.
+
+  After that failure, the hold stays Some until the next load. These
+  effects follow:
+  - set_position_ms is never called again.
+  - finish_playback is never reached, because it sits behind
+  seeking[i].is_none().
+  - playing[i] stays true once the old epoch drains.
+  - The Play LED stays on.
+  - Rendering is silent.
+
+  Trigger: a read error during a seek, such as card removal, or a decoder
+  that rejects the target. Release the hold when the reader's current epoch
+  has ended and drained, so the existing end-of-track path can run.
+
+
+  Proposed fix
+
+  -            if self.seeking[i].is_some_and(|epoch| reader.epoch() != epoch) {
+  +            let drained = reader.ended(&RINGS[i]) && reader.buffered(&RINGS[i]) == 0;
+  +            if self.seeking[i].is_some_and(|epoch| reader.epoch() != epoch || drained) {
+                   self.seeking[i] = None;
+               }
+
+  Check this against a seek that starts after a track has ended. The
+  producer then opens a new epoch on its next poll, so the hold may release
+  one block early.
+

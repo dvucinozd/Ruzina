@@ -1,0 +1,36 @@
+[
+  {
+    "package": "nanomp3-core-0.2.0",
+    "source": "crates.io registry copy from locked dependency",
+    "unmodified_file_sha256": {
+      "LICENSE-APACHE": "47b2b7375318c574ef44d0def1e28d296e8bac5940d24d2694f5d99e7053b780",
+      "README.md": "39d3d168702bdc31d9b8946ab7682501eaa7120d7d8eaaae6a8cf66c1fa2b9ea",
+      "LICENSE-MIT": "cfcc75440926fc8b2e1b4f4d84028eedff4cb8b509783839d31441ec63ceb511",
+      "Cargo.toml.orig": "5486aa4e26ced18a94d37232c8d7d94a9aec513e9ad77e9652c00236cc165987",
+      "Cargo.toml": "cbc2b3760c82382a9f5969674a77999e1ab72677ab3dc9aeadf1a32de5aa2671",
+      "src/tests.rs": "d6712a1ea0b87e08714cd853f1e507c95a20033e4d4c2c7e11eab54b6cc316a2",
+      "src/lib.rs": "c5ffcc622770a80819a8e3de646b37c52c9ee400a43c42cd6b6e140609975bb3",
+      "src/minimp3.rs": "944fddd898a7a600da4e4dfe8fb3fd6fe011b8e0ef02a67d3c61a0e136d309c8",
+      "src/minimp3/lanes.rs": "0cd954278844e52f7cbd5d6f31be408b32360ad5297cb1b263bfbb92cfadc61a",
+      "src/minimp3/layer12.rs": "af3d48e7fd583f42d4e9c38fa37f00ce7dec293db95585891c06c756676e8faf",
+      "src/minimp3/tables.rs": "1f4f9f34f8a8b40f7b440d34e92a07d4c4335729fc30bd3f5a2ecf9de452e6dd"
+    }
+  },
+  {
+    "package": "nanoaudio-mp3-0.1.1",
+    "source": "crates.io registry copy from locked dependency",
+    "unmodified_file_sha256": {
+      "LICENSE": "918a8284dd0c5d653a2eeef5f9cba56c1f0da9e2969a06f4d7ab1b806150850e",
+      "README.md": "e0c62ee6bc2340418e48e65856d6ae5e6725eae6a2724e2e85f0ed899c4e3d01",
+      "CHANGELOG.md": "02c19854e2bd2e8c70364904145aceed12145ab890e6a2feba92de24398d1add",
+      "Cargo.toml.orig": "270e56fe28cba8badcce5436140d5a90e8a167771299d64b9731210e201a6232",
+      "Cargo.toml": "980e0a9e74e58ce2ab338e6546266dfd0329b78245aaf289b3dc7408b12eec1b",
+      "tests/free_format.rs": "858ed9bb9e10147cc23175246db3731b11615422a9bd86e981c86c8274e88380",
+      "tests/seek.rs": "e57f23e8fef50a54841a3447b831dc2062c2645c57ec941b462951332aed64b4",
+      "tests/gapless.rs": "11a60c2367d1e66f223662a387d36309d9b505806255f8287a8015db749707a6",
+      "tests/mp3.rs": "bfa277ca3c98b089c456f68267b843d63eed5c030e5433702e48dc7d54a0141f",
+      "src/stream.rs": "9ab4ef22a0dc40772098ed9929aec4729a11b688b8aa473418010c8df0c620a1",
+      "src/lib.rs": "6ed4173cc2cb4f22127a60d3c839e90ccfdcbf22c373818a53fa696f9f692beb"
+    }
+  }
+]

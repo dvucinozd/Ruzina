@@ -1,0 +1,29 @@
+heartbeat=3436 uptime_us=3436371404
+heartbeat=3437 uptime_us=3437371404
+heartbeat=3438 uptime_us=3438371404
+heartbeat=3439 uptime_us=3439371404
+heartbeat=3440 uptime_us=3440371404
+usb_uac_stats transfers=10000 packets=60024 frames=2881152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_mix_stats rendered=2881152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1903
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=3441 uptime_us=3441371404
+heartbeat=3442 uptime_us=3442371404
+heartbeat=3443 uptime_us=3443371404
+heartbeat=3444 uptime_us=3444371404
+heartbeat=3445 uptime_us=3445371404
+heartbeat=3446 uptime_us=3446371404
+usb_uac_stats transfers=11000 packets=66024 frames=3169152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_mix_stats rendered=3169152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1903
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=3447 uptime_us=3447371404
+heartbeat=3448 uptime_us=3448371404
+heartbeat=3449 uptime_us=3449371404
+heartbeat=3450 uptime_us=3450371404
+heartbeat=3451 uptime_us=3451371404
+heartbeat=3452 uptime_us=3452371404
+usb_uac_stats transfers=12000 packets=72024 frames=3457152 tone_packets=0 iso_errors=0 packet_errors=0
+deck_mix_stats rendered=3457152 underruns=0/0 buffered=0/0 rate=0/0 limited=0 fill_max_us=1903
+deck_engine_stats d1_ms=0 d1_flags=0 d2_ms=0 d2_flags=0 unsupported=0 refused_loads=0
+heartbeat=3453 uptime_us=3453371404
+heartbeat=3454 uptime_us=3454371404
+heartbeat=3455 uptime_us=3455371404

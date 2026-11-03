@@ -1,0 +1,345 @@
+/* Compile and fault-inject the actual driver included by usb_host_enum.c. */
+#include <assert.h>
+#include <inttypes.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "uac_recovery.h"
+#ifndef UAC_TEST_TIMING
+#define UAC_TEST_TIMING 0
+#endif
+#define CONFIG_RUZINA_DECK_MIX UAC_TEST_TIMING
+#define CONFIG_RUZINA_DECK_PLAY UAC_TEST_TIMING
+#define CONFIG_RUZINA_DECK_ENGINE UAC_TEST_TIMING
+static uint32_t resource_state=2;
+uint32_t ruzina_legacy_resources_state(void) { return resource_state; }
+#ifndef UAC_TEST_PROFILE
+#define UAC_TEST_PROFILE 0
+#endif
+#define CONFIG_RUZINA_UAC_PROFILE UAC_TEST_PROFILE
+#ifndef UAC_TEST_PRODUCER
+#define UAC_TEST_PRODUCER 0
+#endif
+#define CONFIG_RUZINA_PRODUCER_PROFILE UAC_TEST_PRODUCER
+#if UAC_TEST_PRODUCER
+uint32_t ruzina_legacy_producer_profile_snapshot(uint32_t *out,uint32_t len) {
+    assert(len==120);memset(out,0,len*sizeof(*out));out[0]=1;out[40]=1;out[80]=1;return 7;
+}
+#endif
+#define ESP_OK 0
+#define USB_TRANSFER_STATUS_COMPLETED 0
+#define USB_TRANSFER_STATUS_NO_DEVICE 1
+#define USB_TRANSFER_STATUS_CANCELED 2
+#define USB_SPEED_HIGH 2
+#define pdMS_TO_TICKS(x) (x)
+typedef int esp_err_t;
+typedef int usb_speed_t;
+typedef struct { uint16_t wTotalLength; } usb_config_desc_t;
+typedef struct usb_transfer {
+    unsigned char *data_buffer; int data_buffer_size, num_bytes;
+    int device_handle, bEndpointAddress, status;
+    void (*callback)(struct usb_transfer *);
+    void *context;
+    struct {int num_bytes,status;} isoc_packet_desc[6];
+} usb_transfer_t;
+static int client=1, device=1;
+static bool gone;
+static int alloc_fail_after=-1, submit_failures, fill_failures, endpoint_error;
+static int allocations, frees, submitted, live, flushes, clears;
+static bool hold_callbacks;
+#if UAC_TEST_TIMING
+static unsigned stack_value=3072, heap_queries;
+static unsigned uxTaskGetStackHighWaterMark(const void *task) { (void)task;return stack_value; }
+static unsigned heap_caps_get_free_size(unsigned caps) { ++heap_queries;return caps; }
+static unsigned heap_caps_get_minimum_free_size(unsigned caps) { ++heap_queries;return caps; }
+static unsigned heap_caps_get_largest_free_block(unsigned caps) { ++heap_queries;return caps; }
+#endif
+#if UAC_TEST_PROFILE
+#include "uac_profile_sched.h"
+#include "uac_profile_irq.h"
+static bool calibration_hooks=true;
+static void vTaskDelay(unsigned ticks);
+unsigned uac_test_core(void) { return 0; }
+void __real__global_interrupt_handler(intptr_t sp,int mcause) { (void)sp;(void)mcause; }
+static const void *xTaskGetCurrentTaskHandle(void) { return (void *)1; }
+#endif
+#if UAC_TEST_TIMING
+static int64_t mock_time, fill_duration=200;
+static uint32_t fill_calls;
+static const uint32_t *fill_sequence;
+static unsigned fill_sequence_count, fill_sequence_pos;
+int64_t esp_timer_get_time(void) { return mock_time; }
+#if UAC_TEST_PROFILE
+static void vTaskDelay(unsigned ticks) {
+    assert(ticks==1 && live==0);
+    if(calibration_hooks) ruzina_uac_switched_out((void *)1,0);
+    mock_time+=10000;
+    __wrap__global_interrupt_handler(0,1);
+    if(calibration_hooks) ruzina_uac_switched_in((void *)1,0);
+}
+#endif
+static void sequence(const uint32_t *values, unsigned count) {
+    fill_sequence=values; fill_sequence_count=count; fill_sequence_pos=0;
+}
+#endif
+static usb_transfer_t *owned[16];
+static const char *esp_err_to_name(int e) { return e ? "FAIL" : "OK"; }
+static int usb_host_transfer_alloc(int bytes,int packets,usb_transfer_t **out) {
+    (void)packets;
+    if(alloc_fail_after==0) return -1;
+    if(alloc_fail_after>0) --alloc_fail_after;
+    *out=calloc(1,sizeof(**out)); (*out)->data_buffer=calloc(1,(size_t)bytes); (*out)->data_buffer_size=bytes;
+    allocations++; return 0;
+}
+static int usb_host_transfer_submit(usb_transfer_t *t) {
+    assert(device && !gone);
+    if(submit_failures) {--submit_failures;return -1;}
+    for(unsigned i=0;i<16;++i) if(!owned[i]) {owned[i]=t;live++;submitted++;return 0;}
+    assert(false); return -1;
+}
+static int usb_host_transfer_submit_control(int c,usb_transfer_t *t) { (void)c; return usb_host_transfer_submit(t); }
+static int usb_host_transfer_free(usb_transfer_t *t) {
+    for(unsigned i=0;i<16;++i) assert(owned[i]!=t);
+    free(t->data_buffer); free(t); frees++;return 0;
+}
+static void complete(usb_transfer_t *t,int status) {
+    bool found=false;
+    for(unsigned i=0;i<16;++i) if(owned[i]==t) {owned[i]=NULL;live--;found=true;break;}
+    assert(found);t->status=status;t->callback(t);
+}
+static int usb_host_endpoint_halt(int d,int ep) { (void)d;(void)ep;return endpoint_error; }
+static int usb_host_endpoint_flush(int d,int ep) { (void)d;(void)ep;flushes++;return endpoint_error; }
+static int usb_host_endpoint_clear(int d,int ep) { (void)d;(void)ep;clears++;return endpoint_error; }
+static int usb_host_interface_claim(int c,int d,int i,int a) { (void)c;(void)d;(void)i;(void)a;return 0; }
+static int usb_host_interface_release(int c,int d,int i) { (void)c;(void)d;(void)i;assert(live==0);return 0; }
+static int usb_host_client_handle_events(int c,int ticks) {
+    (void)c;(void)ticks;
+    if(!hold_callbacks) for(unsigned i=0;i<16;++i) if(owned[i]) complete(owned[i],gone?USB_TRANSFER_STATUS_NO_DEVICE:USB_TRANSFER_STATUS_CANCELED);
+    return 0;
+}
+typedef void *QueueHandle_t;
+#define pdTRUE 1
+#define pdPASS 1
+#define portMAX_DELAY -1
+static unsigned char log_storage[2048];
+static unsigned log_size, log_waiting;
+static QueueHandle_t xQueueCreate(unsigned count,unsigned bytes){assert(count==1 && bytes<=sizeof(log_storage));log_size=bytes;return log_storage;}
+static int xQueueReceive(QueueHandle_t q,void *out,int wait){(void)q;(void)wait;if(!log_waiting)return 0;memcpy(out,log_storage,log_size);log_waiting=0;return 1;}
+static unsigned uxQueueMessagesWaiting(QueueHandle_t q){(void)q;return log_waiting;}
+static int xQueueOverwrite(QueueHandle_t q,const void *sample){(void)q;memcpy(log_storage,sample,log_size);log_waiting=1;return 1;}
+static void vQueueDelete(QueueHandle_t q){(void)q;}
+static int xTaskCreatePinnedToCore(void (*fn)(void *),const char *name,unsigned stack,void *arg,int priority,void *handle,int core){(void)fn;(void)name;(void)arg;(void)handle;(void)core;assert(stack==(UAC_TEST_PROFILE?4096:3072) && priority==1);return 1;}
+#include "uac_driver.inc"
+int32_t ruzina_legacy_uac_select(const uint8_t *c,uint32_t l,int32_t h,uint32_t *o) {
+    (void)c;(void)l;(void)h;uint32_t info[8]={1,1,2,384,4,2,48000,0};memcpy(o,info,sizeof(info));return 1;
+}
+uint32_t ruzina_legacy_uac_control(uint32_t step,uint8_t *out) { (void)step;out[0]=0;return 8; }
+uint32_t ruzina_legacy_uac_fill(uint8_t *b,uint32_t c,uint32_t *sizes,uint32_t packets) {
+#if UAC_TEST_TIMING
+    mock_time += fill_sequence_pos < fill_sequence_count ? fill_sequence[fill_sequence_pos++] : fill_duration;
+    ++fill_calls;
+#endif
+    (void)b;(void)c;if(fill_failures){--fill_failures;return 0;}for(unsigned i=0;i<packets;++i)sizes[i]=384;return packets*384;
+}
+void ruzina_legacy_uac_stats(uint32_t *out) { memset(out,0,3*sizeof(*out)); }
+#if UAC_TEST_TIMING
+void ruzina_legacy_mix_stats(uint32_t *out) { memset(out,0,8*sizeof(*out)); }
+void ruzina_legacy_play_diagnostics(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
+void ruzina_legacy_engine_status(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
+void ruzina_legacy_engine_counters(uint32_t *out) { memset(out,0,2*sizeof(*out)); }
+#endif
+#if UAC_TEST_PROFILE
+static unsigned profile_begin_count,profile_end_count;
+static int64_t profile_start;
+void ruzina_legacy_uac_profile_begin(void) { profile_begin_count++;profile_start=mock_time; }
+uint32_t ruzina_legacy_uac_profile_end(uint32_t *out,uint32_t len) {
+    assert(len==UAC_PROFILE_WORDS); profile_end_count++;memset(out,0,len*sizeof(*out));
+    out[0]=(uint32_t)(mock_time-profile_start);out[2]=6;out[3]=2;out[4+7]=out[0];out[12+7]=1;
+    return len;
+}
+#endif
+static void start(void) {
+    usb_config_desc_t config={0};gone=false;device=1;
+    uac_start(&config,USB_SPEED_HIGH); assert(uac_ctrl_busy);
+    complete(uac_ctrl,USB_TRANSFER_STATUS_COMPLETED);
+}
+static void stop(void) { gone=true;assert(uac_stop());assert(live==0);assert(frees==allocations);gone=false; }
+#if UAC_TEST_TIMING
+static void timing_phases(void) {
+    const uint32_t initial[]={12260,200,3000,3001}; sequence(initial,4);
+    start(); assert(live==4);
+    const uac_fill_phase_stats_t *p=&uac_fill_timing.phase[UAC_FILL_INITIAL_PREFILL];
+    assert(p->count==4 && p->first_us==12260 && p->max_us==12260);
+    assert(!p->first_after_iso_submit && !p->max_after_iso_submit);
+    assert(p->gt_3000==2 && p->ge_6000==1 && p->failures==0);
+    assert(uac_fill_timing.first_connection_us==12260);
+    assert(uac_fill_timing.first_connection_phase==UAC_FILL_INITIAL_PREFILL);
+    assert(!uac_fill_timing.first_connection_after_iso_submit);
+    assert(uac_fill_timing.phase[UAC_FILL_RECOVERY_PREFILL].count==0);
+    assert(uac_fill_timing.phase[UAC_FILL_CALLBACK].count==0);
+    assert(uac_fill_max_us==12260);
+    fill_duration=6000; complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    fill_failures=1; fill_duration=6001; complete(uac_iso[1],USB_TRANSFER_STATUS_COMPLETED);
+    p=&uac_fill_timing.phase[UAC_FILL_CALLBACK];
+    assert(p->count==2 && p->first_us==6000 && p->max_us==6001);
+    assert(p->first_after_iso_submit && p->max_after_iso_submit);
+    assert(p->gt_3000==2 && p->ge_6000==2 && p->failures==1);
+    assert(uac_fill_max_us==12260);
+    assert(uac_health.state==UAC_HEALTH_RECOVERING);
+    uac_recover_poll(); usb_host_client_handle_events(1,0);
+    const uint32_t recovery[]={5999,6000,3000,0}; sequence(recovery,4);
+    uac_recover_poll(); assert(live==4);
+    p=&uac_fill_timing.phase[UAC_FILL_RECOVERY_PREFILL];
+    assert(p->count==4 && p->first_us==5999 && p->max_us==6000);
+    assert(p->first_after_iso_submit && p->max_after_iso_submit);
+    assert(p->gt_3000==2 && p->ge_6000==1 && p->failures==0);
+    assert(uac_fill_timing.first_connection_us==12260);
+    unsigned old_heap_queries=heap_queries;
+    uac_report_pending=true; uac_report();
+    assert(heap_queries==old_heap_queries); /* no heap walks on USB owner */
+    uac_log_snapshot_t sample; assert(xQueueReceive(uac_log_queue,&sample,0)==1);
+    assert(sample.fill_max_us==12260 && sample.generation==uac_generation);
+    assert(sample.usb_stack_free==3072); /* measured by client, not logger */
+#if UAC_TEST_PRODUCER
+    assert(sample.producer_mask==7 && sample.producers[0]==1 && sample.producers[80]==1);
+    assert(sample.service.generation==sample.generation);
+    assert(sample.service.callback_gap.count>0);
+#endif
+    stack_value=1234; uac_log_resources(&sample);
+    assert(heap_queries==old_heap_queries+6 && sample.usb_stack_free==3072);
+    stack_value=3072;
+    assert(sample.timing.phase[UAC_FILL_CALLBACK].failures==1);
+    assert(sample.timing.phase[UAC_FILL_RECOVERY_PREFILL].count==4);
+    uint32_t prior_generation=uac_generation; stop();
+    fill_duration=55; start(); assert(uac_generation==prior_generation+1);
+    assert(uac_fill_timing.first_connection_us==55);
+    assert(!uac_fill_timing.first_connection_after_iso_submit);
+    assert(uac_fill_timing.phase[UAC_FILL_INITIAL_PREFILL].count==8);
+    assert(uac_fill_timing.phase[UAC_FILL_INITIAL_PREFILL].first_us==12260);
+    assert(uac_fill_max_us==12260); stop();
+    // Allocation failure before the first fill: the first connection sample
+    // is a recovery prefill with no audio submission in this connection yet.
+    alloc_fail_after=2; start(); assert(live==0);
+    assert(!uac_fill_timing.first_connection_seen);
+    alloc_fail_after=-1; uac_recover_poll(); uac_recover_poll(); assert(live==4);
+    assert(uac_fill_timing.first_connection_phase==UAC_FILL_RECOVERY_PREFILL);
+    assert(!uac_fill_timing.first_connection_after_iso_submit);
+    uint32_t classified=0;
+    for(unsigned i=0;i<UAC_FILL_PHASE_COUNT;++i) classified+=uac_fill_timing.phase[i].count;
+    assert(classified==fill_calls);
+    // An old callback produces no timing sample in a new session.
+    uac_context_t stale={uac_generation-1,0}; usb_transfer_t fake={.context=&stale};
+    uint32_t before=fill_calls; uac_iso_done(&fake); assert(fill_calls==before);
+    // Telemetry must not wrap after a very long blocked call or counter limit.
+    fill_duration=(int64_t)UINT32_MAX+42; complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    assert(uac_fill_max_us==UINT32_MAX);
+    assert(uac_fill_timing.phase[UAC_FILL_CALLBACK].max_us==UINT32_MAX);
+    stop(); fill_duration=200;
+    uac_fill_timing_t saturated={0};
+    saturated.phase[UAC_FILL_CALLBACK]=(uac_fill_phase_stats_t){.count=UINT32_MAX,.gt_3000=UINT32_MAX,.ge_6000=UINT32_MAX,.failures=UINT32_MAX};
+    uac_timing_record(&saturated,UAC_FILL_CALLBACK,7000,true,true);
+    p=&saturated.phase[UAC_FILL_CALLBACK];
+    assert(p->count==UINT32_MAX && p->gt_3000==UINT32_MAX && p->ge_6000==UINT32_MAX && p->failures==UINT32_MAX);
+    assert(p->max_us==7000);
+#if UAC_TEST_PROFILE
+    assert(profile_begin_count==profile_end_count && profile_begin_count==fill_calls);
+    assert(uac_profile_worst.phase==UAC_FILL_CALLBACK && uac_profile_worst.rust_valid);
+    assert(uac_profile_worst.generation==uac_generation && uac_profile_over_seen);
+#endif
+    // Leave the original fault campaign's independent counters untouched.
+    flushes=clears=0; uac_log_drops=0;
+}
+#endif
+int main(void) {
+#if UAC_TEST_TIMING
+    timing_phases();
+#endif
+#if UAC_TEST_PROFILE
+    calibration_hooks=false;start();assert(!uac_cal_passed);
+    fill_duration=4000;complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    assert(uac_profile_headroom_seen && !uac_profile_headroom.calibration_passed && !uac_profile_headroom.sched_valid);
+    stop();calibration_hooks=true;start();assert(uac_cal_passed);
+    fill_duration=4001;complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+    assert(uac_profile_headroom.whole_us==4001 && uac_profile_headroom.sched_valid);
+    assert(uac_profile_headroom.generation==uac_generation);
+    stop();fill_duration=200;flushes=clears=0;
+#endif
+    start();assert(live==4);
+    uac_report_pending=true;uac_report();assert(log_waiting==1);
+    uac_report_pending=true;uac_report();assert(uac_log_drops==1);
+    uac_log_snapshot_t snapshot;assert(xQueueReceive(uac_log_queue,&snapshot,0)==1);
+#if UAC_TEST_PROFILE
+    assert(snapshot.log_drops==1);
+    assert(snapshot.distribution.samples==uac_profile_distribution.samples);
+    assert(snapshot.headroom_seen && snapshot.headroom.whole_us==4001);
+    assert(snapshot.profile_seen && snapshot.worst.rust_valid);
+    assert(snapshot.worst.generation<=snapshot.generation);
+    // Pure interval arithmetic handles wrap and rejects incoherent samples.
+    uac_profile_record_t interval={0};
+    uac_profile_schedule(&interval,(uac_sched_stamp_t){.away_us=UINT32_MAX-9,.switches=UINT32_MAX,.wall_us=UINT32_MAX-29,.valid=true},
+                        (uac_sched_stamp_t){.away_us=10,.switches=0,.wall_us=30,.valid=true});
+    assert(interval.sched_valid && interval.sched_away_us==20 && interval.sched_switches==1 && interval.sched_window_us==60);
+    uac_profile_schedule(&interval,(uac_sched_stamp_t){.valid=false},(uac_sched_stamp_t){.valid=true});
+    assert(!interval.sched_valid);
+    assert(uac_cal_passed && uac_cal_after.switches>uac_cal_before.switches);
+    assert(!uac_profile_calibration((uac_sched_stamp_t){.valid=true},(uac_sched_stamp_t){.valid=true}));
+    uac_profile_distribution_t dist={0};
+    uac_profile_record_t rec={.whole_us=3001,.rust_valid=1};
+    rec.rust[0]=3001;rec.rust[4]=3001;
+    uac_profile_distribute(&dist,&rec);
+    assert(dist.samples==1 && dist.valid==1 && dist.whole[6]==1 && dist.stage[0][6]==1 && dist.max[0]==3001);
+    rec.rust[1]=1;uac_profile_distribute(&dist,&rec);
+    assert(dist.samples==2 && dist.valid==1 && dist.whole[6]==2 && dist.stage[0][6]==1);
+    dist.samples=dist.valid=dist.whole[6]=dist.stage[0][6]=UINT32_MAX;rec.rust[1]=0;
+    uac_profile_distribute(&dist,&rec);
+    assert(dist.samples==UINT32_MAX && dist.valid==UINT32_MAX && dist.whole[6]==UINT32_MAX && dist.stage[0][6]==UINT32_MAX);
+    const uint32_t edges[]={0,50,51,100,101,250,251,500,501,1000,1001,3000,3001,UINT32_MAX};
+    for(unsigned i=0;i<14;++i) assert(uac_profile_bin(edges[i])==i/2);
+#endif
+    assert(!uac_report_pending);assert(uac_health.state==UAC_HEALTH_STREAMING);
+    // A lost isochronous packet is counted and the stream carries on.
+    uint32_t lost=uac_packet_errors;int lost_flushes=flushes;usb_transfer_t *t0=uac_iso[0];
+    t0->isoc_packet_desc[2].status=9;complete(t0,0);t0->isoc_packet_desc[2].status=0;
+    assert(uac_packet_errors==lost+1);assert(uac_health.state==UAC_HEALTH_STREAMING);
+    assert(live==4);assert(flushes==lost_flushes);
+    complete(uac_iso[0],9);assert(uac_health.state==UAC_HEALTH_RECOVERING);
+    uac_recover_poll();assert(flushes==1);assert(live==3);
+    usb_host_client_handle_events(1,0);assert(live==0);
+    uac_recover_poll();assert(clears==1);assert(live==4);
+    submit_failures=1;complete(uac_iso[0],0);assert(uac_submit_errors==1);
+    uac_recover_poll();usb_host_client_handle_events(1,0);uac_recover_poll();assert(live==4);
+    fill_failures=1;complete(uac_iso[1],0);assert(uac_fill_errors==1);
+    uac_recover_poll();usb_host_client_handle_events(1,0);uac_recover_poll();assert(live==4);
+    complete(uac_iso[2],9);uac_recover_poll();usb_host_client_handle_events(1,0);uac_recover_poll();
+    assert(uac_health.state==UAC_HEALTH_FAULT_HELD);assert(live==0);stop();
+    alloc_fail_after=2;start();assert(uac_health.state==UAC_HEALTH_RECOVERING);assert(live==0);
+    alloc_fail_after=-1;uac_recover_poll();uac_recover_poll();assert(live==4);
+    hold_callbacks=true;gone=true;int previous_frees=frees;
+    assert(!uac_stop());assert(frees==previous_frees);assert(uac_interface!=0xff);
+    hold_callbacks=false;assert(uac_stop());assert(frees==allocations);gone=false;
+    // EP0 completion after loss cannot start streaming.
+    usb_config_desc_t config={0};uac_start(&config,USB_SPEED_HIGH);gone=true;
+    complete(uac_ctrl,USB_TRANSFER_STATUS_NO_DEVICE);assert(live==0);assert(uac_stop());gone=false;
+    // A callback with an old generation cannot alter the new pool.
+    start();uac_context_t stale={uac_generation-1,0};usb_transfer_t fake={.context=&stale};
+    unsigned before=(unsigned)live;uac_iso_done(&fake);assert((unsigned)live==before);stop();
+#if UAC_TEST_TIMING
+    // Deferred resource readiness never allocates/submits transfers or spins.
+    resource_state=0;unsigned prior_allocations=(unsigned)allocations;
+    uac_start(&config,USB_SPEED_HIGH);assert(uac_wait_resources && live==0);
+    for(unsigned i=0;i<20;++i)uac_start_poll();
+    assert((unsigned)allocations==prior_allocations && live==0);
+    resource_state=1;uac_start_poll();assert(live==0);
+    resource_state=2;uac_start_poll();assert(uac_ctrl_busy && live==1);
+    uac_start_poll();assert(live==1);complete(uac_ctrl,0);assert(live==4);stop();
+    resource_state=1;uac_start(&config,USB_SPEED_HIGH);assert(live==0);
+    resource_state=3;uac_start_poll();assert(!uac_wait_resources && live==0 && uac_health.state==UAC_HEALTH_FAULT_HELD);
+    assert(uac_stop());
+    resource_state=1;uac_start(&config,USB_SPEED_HIGH);gone=true;assert(uac_stop());
+    gone=false;resource_state=2;uac_start_poll();assert(live==0);
+    uac_start(&config,USB_SPEED_HIGH);resource_state=3;complete(uac_ctrl,0);
+    assert(live==0 && uac_health.state==UAC_HEALTH_FAULT_HELD);stop();resource_state=2;
+#endif
+    return 0;
+}

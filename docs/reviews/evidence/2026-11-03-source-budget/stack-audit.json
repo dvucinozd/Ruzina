@@ -1,0 +1,47 @@
+[
+  {
+    "build": "clean-normal-final",
+    "elf_sha256": "73c0df6243ba946f1fbd797e7759c33e9ad75d72a90abc00c76395012ceee00f",
+    "constructors": {
+      "_ZN12nanomp3_core7Decoder3new17hcc35af5ee11e028eE": 16
+    },
+    "rust_frame_limit": 24576,
+    "load_chain_estimate": 74640,
+    "load_chain_limit": 90112,
+    "load_chain_path": [
+      "ruzina_legacy_load_run",
+      "_ZN28ruzina_legacy_idf_core_probe16idf_media_bridge11serve_decks17h8d1ffef9c4794f26E",
+      "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$4poll17h0eac20b164a44309E",
+      "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$6decode17h002887656474f9e2E",
+      "_ZN20ruzina_audio_runtime6decode13SourceDecoder4step17hc4b9a320be6956f8E",
+      "_ZN20ruzina_audio_runtime6decode13SourceDecoder7restart17h8df6cee011ce98d3E",
+      "_ZN82_$LT$nanoaudio_mp3..Mp3Decoder$LT$S$GT$$u20$as$u20$nanoaudio_core..codec..Seek$GT$4seek17h2f242c9cd4607118E",
+      "_ZN12nanomp3_core7Decoder3new17hcc35af5ee11e028eE",
+      "_ZN12nanomp3_core7minimp36Mp3Dec3new17hf67105b5c12744a5E",
+      "memset"
+    ],
+    "status": "BUILD_ONLY_NOT_QUALIFIED"
+  },
+  {
+    "build": "mp3-core-opt3",
+    "elf_sha256": "ee95e934ac0b9579da89776d4e960044f3dcc51b7e2f2f381244450ae389d75e",
+    "constructors": {
+      "_ZN12nanomp3_core7Decoder3new17h0e9cbf313492d5baE.llvm.10938343087519479093": 39008
+    },
+    "rust_frame_limit": 24576,
+    "load_chain_estimate": 90544,
+    "load_chain_limit": 90112,
+    "load_chain_path": [
+      "ruzina_legacy_load_run",
+      "_ZN28ruzina_legacy_idf_core_probe16idf_media_bridge11serve_decks17h278d554e8b1e6625E",
+      "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$4poll17h9e468e352f04006fE",
+      "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$6decode17hc80456dc65485854E",
+      "_ZN20ruzina_audio_runtime6decode13SourceDecoder4step17h94361f12bc78c3e3E",
+      "_ZN20ruzina_audio_runtime6decode13SourceDecoder7restart17h579966518a3ede27E",
+      "_ZN82_$LT$nanoaudio_mp3..Mp3Decoder$LT$S$GT$$u20$as$u20$nanoaudio_core..codec..Seek$GT$4seek17hb4ee9e06905823f0E",
+      "_ZN12nanomp3_core7Decoder3new17h0e9cbf313492d5baE.llvm.10938343087519479093",
+      "memset"
+    ],
+    "status": "REJECTED_NO_MANIFEST"
+  }
+]

@@ -48,7 +48,28 @@ config RUZINA_DECK_PLAY
     depends on RUZINA_USB_HOST_UAC && RUZINA_LOAD_DISPLAY
     default n
 
+config RUZINA_DECK_MIX
+    bool "Mix both decks through the product render graph to MAIN and the headphones"
+    depends on RUZINA_DECK_PLAY
+    default n
+
+config RUZINA_DECK_ENGINE
+    bool "Run the product deck engine: CUE point, seek, pitch and jog on both decks"
+    depends on RUZINA_DECK_MIX
+    default n
+
 config RUZINA_LOAD_DISPLAY
     bool "Show the media load status on the New_Panel, with touch track selection"
     depends on RUZINA_SD_RUST_LOAD && !RUZINA_DISPLAY_TOUCH
+    default n
+
+config RUZINA_UAC_PROFILE
+    bool "Diagnostic UAC callback substages and scheduler trace intervals"
+    depends on RUZINA_DECK_ENGINE && !FREERTOS_SMP && !ESP_TRACE_ENABLE && !SECURE_ENABLE_TEE
+    select ESP_TIMER_IN_IRAM
+    default n
+
+config RUZINA_PRODUCER_PROFILE
+    bool "Diagnostic producer wall partitions and USB service observations"
+    depends on RUZINA_DECK_ENGINE && !RUZINA_UAC_PROFILE
     default n

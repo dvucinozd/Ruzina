@@ -1,0 +1,13 @@
+{
+  "source_commit": "0ac84ab62820665f133823c50a189433d84fe895",
+  "shared_guard_sha256": "1b9e9b7e7f51202b65e34c5d2e212e9c42110ae2b3f8ea3df59756bfc6c2ebfb",
+  "ci_sha256": "dac6a09472dab5acca0791acb50d71fd24648fd6875f9230b17e1c1add15578e",
+  "review_evidence_sha256": "94279cf39ab26d188dcdef7737f70608b146ad9dd6863584d03ddb6eea237bdd",
+  "device_access": false,
+  "status": "REVIEWED_S07_SOFTWARE_BOOT_TOOLS",
+  "policy_sha256": "f4a76f15dd1b303a110d568c88f41accb85c656e613c0fac1b520ebc6c0342ff",
+  "tools": {
+    "software_boot.py": "c2ef521658c1f99125f0c20156dae8ec4319405f04a637c43a4594b41a77c4e4",
+    "campaign.py": "77d6ed50dd0ebe7061939efa389838cd64c479ad10e659c75f8e7daae7cc9881"
+  }
+}

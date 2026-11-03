@@ -1,0 +1,7 @@
+{
+  "date": "2026-11-02",
+  "scope": "RESTORED_S07_NORMAL_SOUND_PAUSE_CUE",
+  "question": "Vraćeni s07 ima potvrđen hladni boot, a playback monitor je spreman. Učitaj poznatu pjesmu na deck 1, pusti je oko 20 sekundi pa provjeri Pause i CUE. Na istoj glasnoći potvrdi čist zvuk u oba uha i normalne komande.",
+  "answer": "sve radi",
+  "confirmed": true
+}

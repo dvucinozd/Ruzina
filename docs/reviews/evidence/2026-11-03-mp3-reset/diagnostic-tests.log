@@ -1,0 +1,118 @@
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.94s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-8770b0e450884abc)
+
+running 80 tests
+test deck_play::tests::descriptor_publication_rejects_busy_and_interleaved_reads ... ok
+test controller_audio::tests::flx4_headphone_tone_is_selected_requested_and_packed ... ok
+test deck_play::tests::descriptor_wrap_and_full_ring_preserve_pcm_ownership ... ok
+test deck_play::tests::output_gain_follows_the_headphone_level ... ok
+test deck_play::tests::producer_priority_uses_rate_and_pitch_time_coverage ... ok
+test deck_play::tests::riff_metadata_walk_yields_between_chunks ... ok
+test deck_play::tests::descriptor_snapshot_is_coherent_under_concurrent_restarts ... ok
+test deck_play::tests::ring_keeps_its_first_storage ... ok
+test deck_play::tests::service_model::host_source_service_benchmark ... ignored, manual host release benchmark; not ESP32-P4 timing
+test deck_engine::tests::the_deck_engine_owns_transport ... ok
+test deck_engine::tests::eight_scratch_messages_are_unsupported_effects_not_media_errors ... ok
+test deck_engine::tests::load_permit_protects_real_producer_and_rejects_late_results ... ok
+test controller_midi::tests::flx4_play_presses_reach_the_semantic_session ... ok
+test deck_engine::tests::media_revocation_discards_cached_audio_and_late_receipts ... ok
+test deck_engine::tests::controller_disconnect_releases_a_cue_preview_without_resuming_it ... ok
+test deck_play::tests::source_profile_measures_slow_read_and_keeps_real_pcm_and_failure ... ok
+test deck_play::tests::unusable_tracks_fail_by_stage_and_silence_the_deck ... ok
+test deck_resources::tests::gate_never_reopens_or_overwrites_a_cancellation ... ok
+test deck_play::tests::output_resamples_while_playing_and_counts_only_real_underruns ... ok
+test deck_resources::tests::cancellation_and_repeated_initialization_cannot_publish_ready_again ... ok
+test deck_transport::tests::slot_never_overwrites_an_unconsumed_item ... ok
+test deck_resources::tests::every_backing_allocation_can_fail_before_publication ... ok
+test deck_resources::tests::published_pair_cannot_be_replaced_or_partially_republished ... ok
+test deck_play::tests::wav_and_flac_tracks_reach_the_ring_bit_exact ... ok
+test deck_play::tests::mp3_tracks_decode_at_their_own_rate ... ok
+test deck_transport::tests::slot_transfers_whole_values_between_threads ... ok
+test deck_engine::tests::peer_source_changes_preserve_playing_pcm_at_partial_boundaries ... ok
+test deck_engine::tests::seek_receipts_finish_eof_failure_and_ignore_superseded_work ... ok
+test exfat_fixture::tests::cached_file_bytes_cannot_bypass_fixture_lease_gate ... ok
+test exfat_fixture::tests::canceled_mount_keeps_outer_client_ticket_for_drain ... ok
+test exfat_fixture::tests::corrupt_boot_checksum_is_rejected_before_open ... ok
+test idf_alloc::tests::allocations_request_psram_with_the_layout_alignment_and_fail_closed ... ok
+test idf_media_bridge::tests::concrete_ffi_worker_client_and_fault_boundaries ... ok
+test media_bridge::tests::active_removal_fences_late_success_and_delays_teardown ... ok
+test deck_play::tests::slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck ... ok
+test media_bridge::tests::cancel_active_then_recover_preserves_owner_buffer_and_blocks_new_read ... ok
+test exfat_fixture::tests::corrupt_fixture_is_rejected ... ok
+test media_bridge::tests::cancel_queued_then_invalidate_can_be_drained ... ok
+test media_bridge::tests::client_rechecks_lease_after_transport_delivers_success ... ok
+test media_bridge::tests::completion_before_first_wait_is_not_lost ... ok
+test media_bridge::tests::completion_wakes_the_registered_waiter ... ok
+test media_bridge::tests::dropping_client_does_not_free_an_active_worker_buffer ... ok
+test media_bridge::tests::dropping_unpolled_future_never_submits ... ok
+test media_bridge::tests::invalid_transfers_never_reach_the_worker ... ok
+test media_bridge::tests::io_errors_and_short_reads_return_the_original_buffer ... ok
+test media_bridge::tests::queued_invalidation_wakes_waiter_and_does_not_wait_for_worker ... ok
+test media_bridge::tests::queued_removal_returns_buffer_without_starting_dma ... ok
+test media_bridge::tests::remount_waits_for_drain_and_never_revives_an_old_client ... ok
+test media_bridge::tests::removal_after_completion_before_delivery_also_rejects_success ... ok
+test media_bridge::tests::removal_before_submission_rejects_the_old_lease ... ok
+test media_bridge::tests::slot_backpressure_preserves_both_buffers ... ok
+test media_bridge::tests::success_returns_the_same_owned_allocation ... ok
+test media_bridge::tests::unsupported_geometry_and_sequence_wrap_are_rejected ... ok
+test media_bridge::tests::wrong_ticket_cannot_consume_or_overwrite_a_completion ... ok
+test media_load::tests::missing_or_directory_audio_is_a_source_error ... ok
+test media_load::tests::canceled_preflight_drains_then_reloads_under_a_new_lease ... ok
+test media_load::tests::catalog_import_then_preflight_loads_the_exported_track ... ok
+test media_load::tests::preflight_imports_analysis_from_a_real_exfat_volume ... ok
+test media_load::tests::removal_during_an_analysis_read_never_returns_analysis ... ok
+test media_load::tests::removal_during_catalog_import_publishes_nothing ... ok
+test deck_resources::tests::both_prepared_decks_reuse_storage_for_load_seek_and_failed_load ... ok
+test deck_resources::tests::prepared_producers_decode_like_original_storage ... ok
+test media_load::tests::volume_identity_uses_the_native_exfat_derivation ... ok
+test media_load::tests::warm_volume_cache_cannot_serve_a_load_after_removal ... ok
+test media_load::tests::withdrawn_publication_or_foreign_lease_is_stale ... ok
+test exfat_fixture::tests::exfat_partition_offset_nonzero_mismatch_stays_rejected ... ok
+test producer_profile::tests::owner_partitions_and_wide_totals_do_not_subtract_saturated_aggregates ... ok
+test producer_profile::tests::concurrent_publications_are_coherent_or_explicitly_unavailable ... ok
+test producer_profile::tests::partitions_same_window_and_marks_invalid_or_saturated ... ok
+test producer_profile::tests::unpublished_or_interrupted_slot_is_unavailable_without_spinning ... ok
+test exfat_fixture::tests::invalidation_during_long_verify_never_returns_success ... ok
+test deck_play::tests::cue_restarts_the_track_and_load_replaces_a_full_ring ... ok
+test exfat_fixture::tests::canceled_filesystem_read_drains_then_remounts_with_new_lease ... ok
+test exfat_fixture::tests::exfat_partition_offset_zero_uses_bounded_partition_extent ... ok
+test exfat_fixture::tests::shared_partition_exfat_full_utf8_fixture_sha_eof_and_seeks ... ok
+test deck_play::tests::a_long_track_fills_the_ring_then_follows_the_consumer ... ok
+test deck_play::tests::service_model::consumption_stops_at_the_requested_bound_inside_a_slow_read ... ok
+test deck_play::tests::a_seek_reopens_the_track_at_its_position ... ok
+test deck_play::tests::in_place_core_reset_matches_fresh_decoder_across_sources ... ok
+test deck_play::tests::service_model::shared_read_timeline_exposes_dual_source_pressure ... ok
+
+test result: ok. 79 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 16.27s
+
+     Running ../../../firmware-rust/crates/ruzina-audio-runtime/tests/codec_streams.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/legacy_codec_streams-8a4c04f5a07f7623)
+
+running 24 tests
+test decoder_storage_and_input_are_fixed_and_reusable_across_formats ... ok
+test io_failure_is_generation_bound_and_waiting_for_input_never_advances_pcm ... ok
+test full_scale_32bit_flac_preserves_polarity_and_saturates_pcm16_boundaries ... ok
+test background_index_failure_budget_preserves_playback_and_partial_index ... ok
+test lossless_stereo_and_mono_match_original_pcm_and_duplicate_mono ... ok
+test compressed_source_failure_clears_only_its_wet_history_while_other_deck_keeps_running ... ok
+test shared_wav_contract_matches_existing_pcm_sample_order_and_eof ... ok
+test deep_flac_96khz_has_correct_frame_count_and_rounded_pcm16_conversion ... ok
+test malformed_flac_crc_truncated_mp3_and_impossible_bounds_fail_closed ... ok
+test mixed_rate_mp3_flac_run_together_through_master_tempo_pfl_backpressure_and_receipts ... ok
+test id3_cover_art_is_skipped_by_length_even_when_it_contains_valid_mp3_audio ... ok
+test mp3_without_xing_has_no_invented_length_and_seek_is_still_exact ... ok
+test mp3_cbr_vbr_and_mono_match_independent_ffmpeg_length_and_signal ... ok
+test exact_end_seek_reports_eof_and_unknown_metadata_does_not_fake_a_length ... ok
+test replacing_mp3_flac_and_wav_reuses_dirty_context_without_old_audio_or_metadata ... ok
+test short_compressed_loop_is_cached_without_repeated_file_reads ... ok
+test compressed_loop_prefix_wrap_resize_exit_and_eof_keep_exact_media_coordinates ... ok
+test seek_is_sample_exact_for_vbr_gapless_and_flac_and_rejects_old_pcm ... ok
+test every_codec_is_invariant_under_single_byte_and_odd_short_reads ... ok
+test recent_mp3_seek_restores_checkpoint_samples_and_bounds_file_reads ... ok
+test late_mp3_loop_restores_exact_state_without_redecoding_the_track_prefix ... ok
+test untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration ... ok
+test partial_index_serves_covered_targets_and_falls_back_beyond_it ... ok
+test cold_mp3_seeks_use_the_frame_index_and_stay_sample_exact ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.18s
+

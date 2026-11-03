@@ -1,0 +1,542 @@
+{
+  "status": "COLD_STEADY_IDLE_TIMING_PASS_S07_RESTORED_AND_OWNER_CONFIRMED",
+  "product_qualification": false,
+  "current_executed_predecessors": 38,
+  "installed_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "installed_elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+  "independent_full_flash_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+  "programmers": {
+    "candidate": {
+      "status": "WRITTEN_FULL_READBACK_MATCH_ROM_HELD",
+      "mode": "candidate",
+      "registration_sha256": "a83f6f162536964f389507d610618cb255b9b08572dd1d2ed249e8f761d9ca9a",
+      "plan_sha256": "585d1acb9dd7439e67a6ff59eafb5f30bee981e4c85400c84d241574aa277417",
+      "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+      "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+      "predecessors": 36,
+      "before_sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6",
+      "after_sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35",
+      "device_access": true,
+      "flash_write_attempted": true,
+      "reset_requested": false,
+      "efuse_write": false,
+      "identity": {
+        "chip": "ESP32-P4",
+        "revision": 103,
+        "mac": "e8:f6:0a:e7:22:1d",
+        "security": {
+          "flags": 0,
+          "flash_crypt_cnt": 0,
+          "key_purposes": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            12
+          ],
+          "chip_id": 18,
+          "api_version": 2,
+          "parsed_flags": {
+            "SECURE_BOOT_EN": false,
+            "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+            "SECURE_DOWNLOAD_ENABLE": false,
+            "SECURE_BOOT_KEY_REVOKE0": false,
+            "SECURE_BOOT_KEY_REVOKE1": false,
+            "SECURE_BOOT_KEY_REVOKE2": false,
+            "SOFT_DIS_JTAG": false,
+            "HARD_DIS_JTAG": false,
+            "DIS_USB": false,
+            "DIS_DOWNLOAD_DCACHE": false,
+            "DIS_DOWNLOAD_ICACHE": false
+          }
+        },
+        "rdid": 1589352
+      },
+      "full_predecessor_match": true,
+      "postwrite_sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35",
+      "captures": {
+        "postwrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35"
+        },
+        "prewrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "7df030bf565c63503a04bfaf2a9cd114632c60e5f357335da9f49d81c2e544e6"
+        },
+        "readback-00002000.bin": {
+          "bytes": 24576,
+          "sha256": "294fd857c7735a64f28e9be16aef58bc8e0fab35c844de5152097157865ac590"
+        },
+        "readback-00008000.bin": {
+          "bytes": 4096,
+          "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+        },
+        "readback-00010000.bin": {
+          "bytes": 827392,
+          "sha256": "3724625a740764083da159cc94e766f0b15ca024ea42e1a4b31cfd7caf10127e"
+        }
+      }
+    },
+    "return-s07": {
+      "status": "WRITTEN_FULL_READBACK_MATCH_ROM_HELD",
+      "mode": "return-s07",
+      "registration_sha256": "a83f6f162536964f389507d610618cb255b9b08572dd1d2ed249e8f761d9ca9a",
+      "plan_sha256": "7192491b6f27225f2076105675950437ea612ebc1d2b02de88b27ebec14d41b9",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+      "predecessors": 37,
+      "before_sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35",
+      "after_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+      "device_access": true,
+      "flash_write_attempted": true,
+      "reset_requested": false,
+      "efuse_write": false,
+      "identity": {
+        "chip": "ESP32-P4",
+        "revision": 103,
+        "mac": "e8:f6:0a:e7:22:1d",
+        "security": {
+          "flags": 0,
+          "flash_crypt_cnt": 0,
+          "key_purposes": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            12
+          ],
+          "chip_id": 18,
+          "api_version": 2,
+          "parsed_flags": {
+            "SECURE_BOOT_EN": false,
+            "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+            "SECURE_DOWNLOAD_ENABLE": false,
+            "SECURE_BOOT_KEY_REVOKE0": false,
+            "SECURE_BOOT_KEY_REVOKE1": false,
+            "SECURE_BOOT_KEY_REVOKE2": false,
+            "SOFT_DIS_JTAG": false,
+            "HARD_DIS_JTAG": false,
+            "DIS_USB": false,
+            "DIS_DOWNLOAD_DCACHE": false,
+            "DIS_DOWNLOAD_ICACHE": false
+          }
+        },
+        "rdid": 1589352
+      },
+      "full_predecessor_match": true,
+      "postwrite_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+      "captures": {
+        "postwrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe"
+        },
+        "prewrite-full.bin": {
+          "bytes": 16777216,
+          "sha256": "f417a0b35e462406ef954c0d71a8e9aba07826e133a5b1759003ff198751fd35"
+        },
+        "readback-00002000.bin": {
+          "bytes": 24576,
+          "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+        },
+        "readback-00008000.bin": {
+          "bytes": 4096,
+          "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+        },
+        "readback-00010000.bin": {
+          "bytes": 770048,
+          "sha256": "7c90c2200a0ce3e10705e214fba4b90d3eb4427bb4376b580fd0d52c83681996"
+        }
+      }
+    }
+  },
+  "cold": [
+    {
+      "status": "VALID_COLD_IDLE_TIMING_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+      "scenario": "cold-1",
+      "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+      "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+      "raw_sha256": "14f89ecc4d613ff5cd9e2a3901d6307f2d0a61a71c7c9d79db059e347f26b8dc",
+      "boot_window_sha256": "8d003dbc2c1cef4a193da40f6664b10f98cd76255c2e5bcd68cbf0a5c3afceaa",
+      "owner_library_confirmation": "vra\u0107a",
+      "physical_power_cycle": true,
+      "reset_reason": 1,
+      "callback": {
+        "generation": 1,
+        "count": 7000,
+        "first_us": 1331,
+        "first_after_iso_submit": 1,
+        "max_us": 2008,
+        "max_after_iso_submit": 1,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "timing_rejection_pass": true,
+      "headroom_target_pass": true,
+      "calibrations": "PASS_SCHEDULER_AND_CORE0_C_DISPATCH_IRQ",
+      "resources": {
+        "preparing": {
+          "uptime_us": 514625,
+          "psram_free": 32320580,
+          "psram_largest": 31981568,
+          "internal_free": 432748,
+          "stack_free": 85892
+        },
+        "ready": {
+          "uptime_us": 595992,
+          "psram_free": 31157988,
+          "psram_largest": 30932992,
+          "internal_free": 432748,
+          "stack_free": 79724
+        },
+        "printed_interval_us": 81367,
+        "global_psram_delta": 1162592,
+        "interpretation": "Global/logged timing and heap; not pure allocator duration or exact per-allocation cost"
+      },
+      "load_resource_rows": [
+        "rust_load pass=0 event=14 value=0 stack_free=85892 psram_free=32320580 psram_min=32320580",
+        "rust_load pass=0 event=15 value=1 stack_free=79724 psram_free=31157988 psram_min=31157988",
+        "rust_load pass=0 event=1 value=2048 stack_free=79724 psram_free=31157988 psram_min=31157988",
+        "rust_load pass=1 event=2 value=25 stack_free=62812 psram_free=28540604 psram_min=28528444",
+        "rust_load pass=1 event=3 value=1 stack_free=62812 psram_free=28540604 psram_min=28528444",
+        "rust_load pass=1 event=4 value=0 stack_free=58316 psram_free=28540604 psram_min=28495232",
+        "rust_load pass=1 event=4 value=256 stack_free=58316 psram_free=28540372 psram_min=28431080",
+        "rust_load pass=1 event=4 value=512 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=768 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1024 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1280 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1536 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1792 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2048 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2304 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2560 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2816 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3072 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3328 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3584 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3840 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4096 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4352 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4608 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4864 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5120 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5376 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5632 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5888 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=6144 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=5 value=25 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=10264 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=10286 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=14146 stack_free=58284 psram_free=28538732 psram_min=28054272"
+      ],
+      "usb_errors": 0,
+      "idle_underruns": [
+        0,
+        0
+      ],
+      "histograms": 7,
+      "records": [
+        {
+          "kind": "worst",
+          "generation": "1",
+          "ordinal": "185",
+          "partition_verified": true,
+          "scheduler_usable": true,
+          "irq_dispatch_usable": true,
+          "scheduler_away_inside_whole_bounds_us": [
+            0,
+            0
+          ],
+          "irq_dispatch_inside_whole_bounds_us": [
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "status": "VALID_COLD_IDLE_TIMING_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+      "scenario": "cold-2",
+      "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+      "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+      "raw_sha256": "b749da4781eb83bcb8496220fbd981f55a3f435a90f53a435a13c3a5d812b622",
+      "boot_window_sha256": "6fbe18094b2ebc5e73bb4baa77ac537031262ffa9d9756b8096e1bd5b82a98a0",
+      "owner_library_confirmation": "vra\u0107a",
+      "physical_power_cycle": true,
+      "reset_reason": 1,
+      "callback": {
+        "generation": 1,
+        "count": 7000,
+        "first_us": 1208,
+        "first_after_iso_submit": 1,
+        "max_us": 1847,
+        "max_after_iso_submit": 1,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "timing_rejection_pass": true,
+      "headroom_target_pass": true,
+      "calibrations": "PASS_SCHEDULER_AND_CORE0_C_DISPATCH_IRQ",
+      "resources": {
+        "preparing": {
+          "uptime_us": 514695,
+          "psram_free": 32320580,
+          "psram_largest": 31981568,
+          "internal_free": 432748,
+          "stack_free": 85892
+        },
+        "ready": {
+          "uptime_us": 596195,
+          "psram_free": 31157988,
+          "psram_largest": 30932992,
+          "internal_free": 432748,
+          "stack_free": 79724
+        },
+        "printed_interval_us": 81500,
+        "global_psram_delta": 1162592,
+        "interpretation": "Global/logged timing and heap; not pure allocator duration or exact per-allocation cost"
+      },
+      "load_resource_rows": [
+        "rust_load pass=0 event=14 value=0 stack_free=85892 psram_free=32320580 psram_min=32320580",
+        "rust_load pass=0 event=15 value=1 stack_free=79724 psram_free=31157988 psram_min=31157988",
+        "rust_load pass=0 event=1 value=2048 stack_free=79724 psram_free=31157988 psram_min=31157988",
+        "rust_load pass=1 event=2 value=25 stack_free=62748 psram_free=28540604 psram_min=28528444",
+        "rust_load pass=1 event=3 value=1 stack_free=62748 psram_free=28540604 psram_min=28528444",
+        "rust_load pass=1 event=4 value=0 stack_free=58316 psram_free=28540604 psram_min=28495232",
+        "rust_load pass=1 event=4 value=256 stack_free=58316 psram_free=28540372 psram_min=28431080",
+        "rust_load pass=1 event=4 value=512 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=768 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1024 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1280 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1536 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1792 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2048 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2304 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2560 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2816 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3072 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3328 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3584 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3840 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4096 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4352 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4608 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4864 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5120 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5376 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5632 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5888 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=6144 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=5 value=25 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=10354 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=10354 stack_free=58284 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=10359 stack_free=58284 psram_free=28538732 psram_min=28054272"
+      ],
+      "usb_errors": 0,
+      "idle_underruns": [
+        0,
+        0
+      ],
+      "histograms": 7,
+      "records": [
+        {
+          "kind": "worst",
+          "generation": "1",
+          "ordinal": "35",
+          "partition_verified": true,
+          "scheduler_usable": true,
+          "irq_dispatch_usable": true,
+          "scheduler_away_inside_whole_bounds_us": [
+            0,
+            0
+          ],
+          "irq_dispatch_inside_whole_bounds_us": [
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "status": "VALID_COLD_IDLE_TIMING_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+      "scenario": "cold-3",
+      "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+      "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+      "raw_sha256": "14601195f311f0d8c351a876517359b858064efbd553f0fb45453fba99ba7519",
+      "boot_window_sha256": "7c68668d69b86819a706cf50eda135b875e88de9bf017f94edd558d578786f3d",
+      "owner_library_confirmation": "vra\u0107a",
+      "physical_power_cycle": true,
+      "reset_reason": 1,
+      "callback": {
+        "generation": 1,
+        "count": 7000,
+        "first_us": 976,
+        "first_after_iso_submit": 1,
+        "max_us": 1757,
+        "max_after_iso_submit": 1,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "timing_rejection_pass": true,
+      "headroom_target_pass": true,
+      "calibrations": "PASS_SCHEDULER_AND_CORE0_C_DISPATCH_IRQ",
+      "resources": {
+        "preparing": {
+          "uptime_us": 514885,
+          "psram_free": 32320580,
+          "psram_largest": 31981568,
+          "internal_free": 432748,
+          "stack_free": 85892
+        },
+        "ready": {
+          "uptime_us": 596953,
+          "psram_free": 31157988,
+          "psram_largest": 30932992,
+          "internal_free": 432748,
+          "stack_free": 79724
+        },
+        "printed_interval_us": 82068,
+        "global_psram_delta": 1162592,
+        "interpretation": "Global/logged timing and heap; not pure allocator duration or exact per-allocation cost"
+      },
+      "load_resource_rows": [
+        "rust_load pass=0 event=14 value=0 stack_free=85892 psram_free=32320580 psram_min=32320580",
+        "rust_load pass=0 event=15 value=1 stack_free=79724 psram_free=31157988 psram_min=31157988",
+        "rust_load pass=0 event=1 value=2048 stack_free=79724 psram_free=31157988 psram_min=31157988",
+        "rust_load pass=1 event=2 value=25 stack_free=62812 psram_free=28540604 psram_min=28528444",
+        "rust_load pass=1 event=3 value=1 stack_free=62812 psram_free=28540604 psram_min=28528444",
+        "rust_load pass=1 event=4 value=0 stack_free=58316 psram_free=28540604 psram_min=28495232",
+        "rust_load pass=1 event=4 value=256 stack_free=58316 psram_free=28540372 psram_min=28431080",
+        "rust_load pass=1 event=4 value=512 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=768 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1024 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1280 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1536 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=1792 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2048 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2304 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2560 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=2816 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3072 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3328 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3584 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=3840 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4096 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4352 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4608 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=4864 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5120 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5376 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5632 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=5888 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=4 value=6144 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=5 value=25 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=14739 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=14739 stack_free=58316 psram_free=28538732 psram_min=28054272",
+        "rust_load pass=1 event=13 value=14917 stack_free=58316 psram_free=28538732 psram_min=28054272"
+      ],
+      "usb_errors": 0,
+      "idle_underruns": [
+        0,
+        0
+      ],
+      "histograms": 7,
+      "records": [
+        {
+          "kind": "worst",
+          "generation": "1",
+          "ordinal": "65",
+          "partition_verified": true,
+          "scheduler_usable": true,
+          "irq_dispatch_usable": true,
+          "scheduler_away_inside_whole_bounds_us": [
+            0,
+            0
+          ],
+          "irq_dispatch_inside_whole_bounds_us": [
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "steady": {
+    "status": "VALID_STEADY_IDLE_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+    "anchor": "cold-3",
+    "anchor_summary_sha256": "5615c5d6db2b79a5a6d0ae8bc3c184eb13a86fd6f168be6ae60b99efe2197105",
+    "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+    "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+    "raw_sha256": "cfbc220001203463907876844a8f0c90508e1922682e31d29f96ef8fe72fc49a",
+    "seconds": 60.06405459999996,
+    "callback_first": {
+      "generation": 1,
+      "count": 9000,
+      "first_us": 976,
+      "first_after_iso_submit": 1,
+      "max_us": 1757,
+      "max_after_iso_submit": 1,
+      "gt_3000": 0,
+      "ge_6000": 0,
+      "failures": 0
+    },
+    "callback_last": {
+      "generation": 1,
+      "count": 18000,
+      "first_us": 976,
+      "first_after_iso_submit": 1,
+      "max_us": 1757,
+      "max_after_iso_submit": 1,
+      "gt_3000": 0,
+      "ge_6000": 0,
+      "failures": 0
+    },
+    "callback_delta": {
+      "count": 9000,
+      "max_us": 0,
+      "gt_3000": 0,
+      "ge_6000": 0,
+      "failures": 0
+    },
+    "no_new_rejection_crossings": true,
+    "no_new_headroom_crossings": true,
+    "usb_errors": 0,
+    "idle_underruns": [
+      0,
+      0
+    ],
+    "histograms": 10
+  },
+  "owner": {
+    "library_visible": true,
+    "library_owner_reply": "vra\u0107a",
+    "physical_cold_power_cycle": true,
+    "clean_both_ears": true,
+    "pause_cue_controls_normal": true,
+    "playback_owner_reply": "sve je ok",
+    "requested_smoke": "Known track on deck 1, about 20 seconds, Pause/CUE at unchanged accepted level",
+    "duration_note": "Request is not measured duration; captured played-frame delta is reported separately",
+    "scope": "Exact accepted s07 recovery confirmation only; not engine or two-deck qualification"
+  },
+  "recovery": {
+    "cold_raw_sha256": "e7f8b925b6ca7b04aa873b123774eebd0ba937dd87f757a75b8e78abd3b756ea",
+    "playback_raw_sha256": "6335c0a391cfaf5a450227fd8e4063a6be3a44ef78d3ff9f17148239c3a79548",
+    "captured_played_frame_delta": 651168,
+    "output_rate": 48000,
+    "output_seconds": 13.566,
+    "usb_iso_packet_errors": 0,
+    "underruns": 0
+  },
+  "open_gates": [
+    "Normal engine image not registered/flashed",
+    "Two-deck MAIN/PFL, LOAD/seek/CUE/EOF and I02-I13",
+    "Playing-source stress/reconnect/soak",
+    "USB-client runtime stack, minimum internal heap and minimum largest block"
+  ]
+}

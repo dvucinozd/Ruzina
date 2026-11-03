@@ -18,15 +18,119 @@ const CBR: &[u8] = fixture!("cbr.mp3");
 const VBR_44K: &[u8] = fixture!("vbr.mp3");
 const LONG_ID3: &[u8] = fixture!("long-vbr.mp3");
 
+#[test]
+fn in_place_core_reset_matches_fresh_decoder_across_sources() {
+    fn decode(decoder: &mut nanomp3_core::Decoder, data: &[u8]) -> Vec<i16> {
+        let mut rest = data;
+        let mut output = Vec::new();
+        let mut pcm = [0i16; nanomp3_core::MAX_SAMPLES_PER_FRAME];
+        while !rest.is_empty() {
+            let (consumed, result) = decoder.decode(rest, &mut pcm);
+            if consumed == 0 {
+                break;
+            }
+            assert!(consumed <= rest.len());
+            rest = &rest[consumed..];
+            if let Ok(info) = result {
+                output.extend_from_slice(
+                    &pcm[..info.samples_produced * info.channels.num() as usize],
+                );
+            }
+        }
+        assert!(!output.is_empty());
+        output
+    }
+    let mut reused = nanomp3_core::Decoder::new_minimp3_compat();
+    for data in [CBR, VBR_44K, fixture!("mono.mp3"), LONG_ID3, CBR] {
+        let _dirty_state = decode(&mut reused, LONG_ID3);
+        reused.reset();
+        reused.reset();
+        let mut fresh = nanomp3_core::Decoder::new();
+        assert_eq!(decode(&mut reused, data), decode(&mut fresh, data));
+    }
+}
+
+#[cfg(feature = "producer-profile")]
+mod service_model;
+
+#[cfg(feature = "producer-profile")]
+#[test]
+fn source_profile_measures_slow_read_and_keeps_real_pcm_and_failure() {
+    struct Slow {
+        inner: Memory,
+        clock: core::cell::Cell<u64>,
+    }
+    impl SourceFiles for Slow {
+        type File = &'static [u8];
+        fn open(&mut self, path: &str) -> Option<Self::File> {
+            self.inner.open(path)
+        }
+        fn len(&self, file: &Self::File) -> u64 {
+            self.inner.len(file)
+        }
+        fn close(&mut self, file: Self::File) {
+            self.inner.close(file)
+        }
+        fn now_us(&self) -> u64 {
+            self.clock.get()
+        }
+        fn read_at(&mut self, file: &mut Self::File, offset: u64, out: &mut [u8]) -> Option<usize> {
+            self.clock.set(self.clock.get() + 5000);
+            self.inner.read_at(file, offset, out)
+        }
+    }
+    let (ring, commands) = (ring(), Commands::new());
+    let mut files = Slow {
+        inner: Memory::new(&[WAV]),
+        clock: core::cell::Cell::new(1),
+    };
+    let mut producer = Producer::new();
+    let mut reader = Reader::new();
+    commands.load(0);
+    let mut pcm = Vec::new();
+    for _ in 0..100_000 {
+        let start = files.now_us();
+        let head = ring.profile_head();
+        let (busy, _) = producer.poll(&mut files, ring, &commands, path);
+        producer.profile_poll(ring, start, files.now_us(), busy, head);
+        pcm.extend(drain(&mut reader, ring));
+        if !busy {
+            break;
+        }
+    }
+    assert_eq!(pcm, wav_pcm());
+    let words = producer.profile.words();
+    let total =
+        |stage: usize| u64::from(words[17 + stage * 4]) | (u64::from(words[18 + stage * 4]) << 32);
+    assert_eq!(total(1), (2..6).map(total).sum::<u64>());
+    assert!(total(3) >= 5000);
+    assert_eq!(words[19 + 3 * 4], 5000);
+    assert_eq!(words[11] as usize, pcm.len());
+    assert_eq!((words[13], words[14]), (0, 0));
+    files.inner.fail_reads_after = Some(files.inner.reads);
+    commands.load(0);
+    let mut failed = false;
+    for _ in 0..10 {
+        failed |= matches!(
+            producer.poll(&mut files, ring, &commands, path).1,
+            Some(Event::Failed { .. })
+        );
+        if failed {
+            break;
+        }
+    }
+    assert!(failed);
+}
+
 /// Tracks by catalog index, read from memory.
-struct Memory {
+pub(crate) struct Memory {
     files: Vec<&'static [u8]>,
     reads: usize,
-    fail_reads_after: Option<usize>,
+    pub(crate) fail_reads_after: Option<usize>,
 }
 
 impl Memory {
-    fn new(files: &[&'static [u8]]) -> Self {
+    pub(crate) fn new(files: &[&'static [u8]]) -> Self {
         Self {
             files: files.to_vec(),
             reads: 0,
@@ -309,6 +413,9 @@ fn output_resamples_while_playing_and_counts_only_real_underruns() {
     let mut producer = Producer::new();
     commands.load(0);
     producer.poll(&mut files, ring, &commands, path);
+    while producer.priming() {
+        producer.poll(&mut files, ring, &commands, path);
+    }
     for _ in 0..400 {
         output.render(ring, &mut packet, 48_000, true, 1 << 15);
     }
@@ -327,6 +434,68 @@ fn output_gain_follows_the_headphone_level() {
 }
 
 #[test]
+fn a_seek_reopens_the_track_at_its_position() {
+    let (ring, commands) = (ring(), Commands::new());
+    let mut files = Memory::new(&[WAV, LONG_ID3]);
+    let mut producer = Producer::new();
+    let mut reader = Reader::new();
+    // WAV: frame-exact. 100 ms at 48 kHz is frame 4800.
+    commands.load(0);
+    run(&mut producer, &mut files, ring, &commands);
+    commands.seek(100);
+    let events = run(&mut producer, &mut files, ring, &commands);
+    assert_eq!(
+        events[0],
+        Event::Seeked {
+            index: 0,
+            position_ms: 100,
+            ok: true
+        }
+    );
+    reader.sync(ring);
+    assert_eq!(reader.position_ms(), 100);
+    assert_eq!(drain(&mut reader, ring), wav_pcm()[4_800..]);
+    assert_eq!(reader.position_ms(), 250);
+    // A seek after the end revives the track.
+    commands.seek(0);
+    run(&mut producer, &mut files, ring, &commands);
+    assert_eq!(drain(&mut reader, ring), wav_pcm());
+    // MP3 behind an ID3 tag: forward, then back past the start, each epoch
+    // starting at its target.
+    commands.load(1);
+    run(&mut producer, &mut files, ring, &commands);
+    for target in [6_000, 1_000, 7_900] {
+        reader.sync(ring);
+        commands.seek(target);
+        let events = run(&mut producer, &mut files, ring, &commands);
+        assert!(
+            matches!(events[0], Event::Seeked { ok: true, .. }),
+            "{events:?}"
+        );
+        reader.sync(ring);
+        assert_eq!(reader.position_ms(), target);
+        // The full ring held the first block back until the reader followed.
+        run(&mut producer, &mut files, ring, &commands);
+        assert!(reader.pop(ring).is_some());
+    }
+    // Two seeks before the producer runs: the newer wins.
+    commands.seek(2_000);
+    commands.seek(3_000);
+    let events = run(&mut producer, &mut files, ring, &commands);
+    assert!(matches!(
+        events[0],
+        Event::Seeked {
+            position_ms: 3_000,
+            ..
+        }
+    ));
+    // Without a track there is nothing to seek.
+    let mut idle = Producer::new();
+    commands.seek(10);
+    assert_eq!(idle.poll(&mut files, ring, &commands, path), (false, None));
+}
+
+#[test]
 fn ring_keeps_its_first_storage() {
     let ring = ring();
     let other = std::vec![PcmFrame::default(); RING_FRAMES as usize].into_boxed_slice();
@@ -334,4 +503,258 @@ fn ring_keeps_its_first_storage() {
     let short = std::vec![PcmFrame::default(); 8].into_boxed_slice();
     assert!(!Ring::new().attach(Box::leak(short)));
     assert!(!Ring::new().push(&[PcmFrame::default()]));
+}
+
+#[test]
+fn descriptor_publication_rejects_busy_and_interleaved_reads() {
+    let ring = ring();
+    ring.restart_at(44_100, 123);
+    let first = ring.snapshot().unwrap();
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    let tail = ring.tail.load(Ordering::Acquire);
+    // Pause a writer before its first field, then after partial mutation.
+    ring.descriptor_seq.fetch_add(1, Ordering::SeqCst);
+    assert_eq!(ring.snapshot(), None);
+    ring.origin.store(456, Ordering::SeqCst);
+    assert!(!reader.sync(ring));
+    assert_eq!((reader.epoch, reader.position), (first.epoch, 123));
+    assert_eq!(ring.tail.load(Ordering::Acquire), tail);
+    ring.origin.store(123, Ordering::SeqCst);
+    ring.descriptor_seq.fetch_add(1, Ordering::SeqCst);
+    // A complete restart between field reads and validation must be rejected.
+    assert_eq!(ring.snapshot_with(|| ring.restart_at(48_000, 789)), None);
+    assert!(reader.sync(ring));
+    assert_eq!((reader.rate, reader.position), (48_000, 789));
+    ring.end();
+    assert!(reader.ended(ring));
+    ring.restart_at(44_100, 10);
+    assert!(!reader.ended(ring));
+    assert!(reader.sync(ring));
+    assert!(!reader.ended(ring));
+}
+
+#[test]
+fn descriptor_wrap_and_full_ring_preserve_pcm_ownership() {
+    let ring = ring();
+    ring.head.store(u32::MAX - 99, Ordering::Relaxed);
+    ring.tail.store(u32::MAX - 99, Ordering::Relaxed);
+    ring.epoch.store(u32::MAX, Ordering::SeqCst);
+    ring.descriptor_seq.store(u32::MAX - 1, Ordering::SeqCst);
+    ring.restart_at(48_000, 10);
+    assert_eq!(ring.snapshot().unwrap().epoch, 1);
+    assert_eq!(ring.descriptor_seq.load(Ordering::SeqCst), 0);
+    let frames = std::vec![PcmFrame { left: 12, right: 34 }; RING_FRAMES as usize];
+    assert!(ring.push(&frames));
+    assert_eq!(ring.free(), 0);
+    ring.restart_at(44_100, 20);
+    assert!(!ring.push(&[PcmFrame::default()]));
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    assert_eq!(reader.position, 20);
+    assert_eq!(reader.buffered(ring), 0);
+    assert_eq!(ring.free(), RING_FRAMES);
+    assert!(ring.push(&frames[..10]));
+    assert_eq!(drain(&mut reader, ring), frames[..10]);
+}
+
+#[test]
+fn descriptor_snapshot_is_coherent_under_concurrent_restarts() {
+    let ring = ring();
+    let writer = std::thread::spawn(move || {
+        for origin in 1..=200_000 {
+            ring.restart_at(if origin % 2 == 0 { 48_000 } else { 44_100 }, origin);
+            if origin % 7 == 0 {
+                ring.end();
+            }
+        }
+    });
+    let mut reader = Reader::new();
+    for _ in 0..200_000 {
+        if reader.sync(ring) {
+            assert_eq!(reader.position, reader.epoch);
+            assert_eq!(
+                reader.rate,
+                if reader.epoch.is_multiple_of(2) {
+                    48_000
+                } else {
+                    44_100
+                }
+            );
+            assert_eq!(reader.tail, 0);
+        }
+    }
+    writer.join().unwrap();
+    reader.sync(ring);
+    assert_eq!(reader.position, 200_000);
+}
+
+#[test]
+fn slow_large_tag_prime_is_incremental_and_does_not_starve_playing_deck() {
+    use std::cell::Cell;
+    struct Slow {
+        inner: Memory,
+        clock: Cell<u64>,
+    }
+    impl SourceFiles for Slow {
+        type File = &'static [u8];
+        fn open(&mut self, p: &str) -> Option<Self::File> {
+            self.inner.open(p)
+        }
+        fn len(&self, f: &Self::File) -> u64 {
+            self.inner.len(f)
+        }
+        fn read_at(&mut self, f: &mut Self::File, o: u64, b: &mut [u8]) -> Option<usize> {
+            self.clock.set(self.clock.get() + 500);
+            self.inner.read_at(f, o, b)
+        }
+        fn close(&mut self, f: Self::File) {
+            self.inner.close(f)
+        }
+        fn now_us(&self) -> u64 {
+            self.clock.get()
+        }
+    }
+    // Retain the real fixture's MP3 frames, replacing just its ID3 padding.
+    let old_tag = 10
+        + LONG_ID3[6..10]
+            .iter()
+            .fold(0usize, |n, b| (n << 7) | usize::from(*b));
+    let tag_len = 512 * 1024usize;
+    let mut tagged = std::vec![0u8;tag_len+10];
+    tagged[..6].copy_from_slice(b"ID3\x04\x00\x00");
+    for (i, b) in tagged[6..10].iter_mut().enumerate() {
+        *b = ((tag_len >> (7 * (3 - i))) & 127) as u8;
+    }
+    tagged.extend_from_slice(&LONG_ID3[old_tag..]);
+    let tagged = Box::leak(tagged.into_boxed_slice());
+    let mut files = [
+        Slow {
+            inner: Memory::new(&[LONG_ID3]),
+            clock: Cell::new(0),
+        },
+        Slow {
+            inner: Memory::new(&[tagged]),
+            clock: Cell::new(0),
+        },
+    ];
+    let rings = [ring(), ring()];
+    let commands = [Commands::new(), Commands::new()];
+    let mut producers = [Producer::new(), Producer::new()];
+    commands[0].load(0);
+    run(
+        &mut producers[0],
+        &mut files[0].inner,
+        rings[0],
+        &commands[0],
+    );
+    let mut reader = Reader::new();
+    reader.sync(rings[0]);
+    commands[1].load(0);
+    let mut primed = false;
+    let mut rounds = 0;
+    let mut minimum = RING_FRAMES;
+    let mut max_reads = 0;
+    for turn in 0..10_000 {
+        rounds += 1;
+        let before_time = files[0].clock.get() + files[1].clock.get();
+        let order = crate::producer_schedule::order(rings, [true, false], [0, 0], turn % 2 == 0);
+        assert_eq!(order, [0, 1]);
+        for i in order {
+            let reads = files[i].inner.reads;
+            let (_, event) = producers[i].poll(&mut files[i], rings[i], &commands[i], path);
+            max_reads = max_reads.max(files[i].inner.reads - reads);
+            if i == 1 && matches!(event, Some(Event::Ready { .. })) {
+                primed = true;
+            }
+        }
+        let elapsed = files[0].clock.get() + files[1].clock.get() - before_time + 1000;
+        let frames = (elapsed * 44_100).div_ceil(1_000_000);
+        for _ in 0..frames {
+            assert!(
+                reader.pop(rings[0]).is_some(),
+                "playing source starved while priming other deck"
+            );
+        }
+        reader.commit(rings[0]);
+        minimum = minimum.min(reader.buffered(rings[0]));
+        if primed {
+            break;
+        }
+    }
+    assert!(primed);
+    assert!(rings[1].prime_max_us.load(Ordering::Relaxed) >= 1000);
+    // The decoder may skip the complete ID3 padding by offset; require
+    // continuation across turns without assuming an inefficient linear scan.
+    assert!(rounds > 1);
+    assert!(max_reads <= 2, "per-turn read budget exceeded: {max_reads}");
+    assert!(
+        minimum > RING_FRAMES / 2,
+        "unexpectedly low headroom: {minimum}"
+    );
+    // Scheduling compares time coverage, not raw frame counts.
+    rings[0].restart(48_000);
+    rings[1].restart(44_100);
+    assert_eq!(
+        crate::producer_schedule::order(rings, [false, true], [0, 0], false),
+        [1, 0]
+    );
+}
+
+#[test]
+fn riff_metadata_walk_yields_between_chunks() {
+    let mut wav = std::vec::Vec::from(&WAV[..12]);
+    for _ in 0..300 {
+        wav.extend_from_slice(b"JUNK\x00\x00\x00\x00");
+    }
+    wav.extend_from_slice(&WAV[12..]);
+    let len = wav.len() as u32 - 8;
+    wav[4..8].copy_from_slice(&len.to_le_bytes());
+    let fixture = Box::leak(wav.into_boxed_slice());
+    let mut files = Memory::new(&[fixture]);
+    let ring = ring();
+    let commands = Commands::new();
+    let mut producer = Producer::new();
+    commands.load(0);
+    let mut ready = false;
+    for turn in 0..1000 {
+        let reads = files.reads;
+        let (busy, event) = producer.poll(&mut files, ring, &commands, path);
+        assert!(busy);
+        if turn < 300 {
+            assert!(files.reads - reads <= 1);
+            assert!(event.is_none());
+        }
+        if matches!(event, Some(Event::Ready { .. })) {
+            ready = true;
+            break;
+        }
+    }
+    assert!(ready);
+    let mut reader = Reader::new();
+    run(&mut producer, &mut files, ring, &commands);
+    assert_eq!(drain(&mut reader, ring), wav_pcm());
+}
+
+#[test]
+fn producer_priority_uses_rate_and_pitch_time_coverage() {
+    let rings = [ring(), ring()];
+    rings[0].restart(44_100);
+    rings[1].restart(48_000);
+    let frames = std::vec![PcmFrame::default();2000];
+    assert!(rings[0].push(&frames));
+    assert!(rings[1].push(&frames));
+    assert_eq!(
+        crate::producer_schedule::order(rings, [true, true], [0, 0], false),
+        [1, 0]
+    );
+    assert_eq!(
+        crate::producer_schedule::order(rings, [true, true], [1000, 0], false),
+        [0, 1]
+    );
+    assert_eq!(rings[0].low_supply_us.load(Ordering::Relaxed), u32::MAX);
+    rings[0].record_supply(0);
+    let first = rings[0].low_supply_us.load(Ordering::Relaxed);
+    rings[0].record_supply(1000);
+    assert!(rings[0].low_supply_us.load(Ordering::Relaxed) < first);
 }

@@ -1,0 +1,63 @@
+{
+  "mode": "restore",
+  "status": "WRITTEN_READBACK_MATCH_ROM_HELD",
+  "plan_sha256": "4312e199ea36a2ef4262f3b5999397be7d9a4b5c57c6e4be3fc7a04b0b040a84",
+  "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "predecessor_plans": 28,
+  "chip": "ESP32-P4",
+  "revision": 103,
+  "mac": "e8:f6:0a:e7:22:1d",
+  "security": {
+    "flags": 0,
+    "flash_crypt_cnt": 0,
+    "key_purposes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      12
+    ],
+    "chip_id": 18,
+    "api_version": 2,
+    "parsed_flags": {
+      "SECURE_BOOT_EN": false,
+      "SECURE_BOOT_AGGRESSIVE_REVOKE": false,
+      "SECURE_DOWNLOAD_ENABLE": false,
+      "SECURE_BOOT_KEY_REVOKE0": false,
+      "SECURE_BOOT_KEY_REVOKE1": false,
+      "SECURE_BOOT_KEY_REVOKE2": false,
+      "SOFT_DIS_JTAG": false,
+      "HARD_DIS_JTAG": false,
+      "DIS_USB": false,
+      "DIS_DOWNLOAD_DCACHE": false,
+      "DIS_DOWNLOAD_ICACHE": false
+    }
+  },
+  "rdid": "0x184068",
+  "prewrite_sha256": "9e7c084f89f4b37940606d2dfd0828922fe7005a6ceca4daf70d4599bc81f9de",
+  "expected_prewrite_sha256": "9e7c084f89f4b37940606d2dfd0828922fe7005a6ceca4daf70d4599bc81f9de",
+  "full_predecessor_match": true,
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 770048,
+      "sha256": "05464b180ee4803733d81a8bbd45e4887782e99e5dd0c32b4e8c6e1393f8430c"
+    }
+  ],
+  "programmer_log_sha256": "fe9655f4baa5f1c106998658f5a49e472485b96f43606157aa503f3a22c99695"
+}

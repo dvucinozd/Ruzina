@@ -1,0 +1,10 @@
+{
+  "status": "REVIEWED_REGISTERED_TOOL_ARCHIVE_NOT_EXECUTED",
+  "archive": "reviewed-continuous-source-tools.zip",
+  "bytes": 91834,
+  "sha256": "8344bfe621a318f5bfe8a8a1c71de8d361a2d28b10bf2df99d289f2731d93fbc",
+  "members": 42,
+  "crc_and_all_member_hashes_verified": true,
+  "execution_bindings_sha256": "08b433671476a8de2399ebd2250acb395612382a09ac44167dbfaecd2f1e1815",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\continuous-source-20261103"
+}

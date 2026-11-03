@@ -4,49 +4,192 @@ Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with
 v3.2 silicon required by the native target. The minimum configured revision is 302.
 
-The first JC1060 arrived on 2026-10-30. Readout on COM3 identifies **v1.3**,
-which the native Rust HAL does not support. See the
-[arrival evidence and separate ESP-IDF assessment](docs/boards/JC1060_ARRIVAL_2026-10-30.md).
-An isolated ESP-IDF 6.1 / shared Rust probe built, linked and executed from RAM.
-Four scalar Rust calls matched expectations. Warm reset after that RAM mode
-failed; a complete power disconnect restored ROM/factory boot, and the owner
-confirmed the factory display works. Native firmware has not been flashed.
-The separate [S4 IDF diagnostic campaign](docs/reviews/2026-10-30-legacy-s4-runtime.md)
-has now programmed and readback-verified a flash-backed scalar image. It boots,
-reports monotonic heartbeats and passed three application restarts; reset and
-reconnect scenarios are recorded independently in that report.
-The separate [S5 memory/task probe](docs/reviews/2026-10-30-legacy-s5-memory-task.md)
-observed 32 MiB PSRAM at 80 MHz, bounded scratch/allocator checks, preempted C/Rust
-FP loops and the existing EQ benchmark. These are diagnostic measurements;
-DMA, full product timing and peripherals remain unqualified.
-The isolated [S6 display/touch diagnostic](docs/reviews/2026-10-30-legacy-s6-display-touch.md)
-now initializes the New_Panel candidate and GT911. The owner confirmed the
-static color order/corners; touch coordinates and lifecycle are recorded in
-that report. It is not yet the product UI renderer.
-The separate [read-only SD/exFAT diagnostic](docs/reviews/2026-10-30-legacy-s6-sd-readonly.md)
-has mounted the owner's 64 GB card and enumerated its root without creating
-files. This diagnostic temporarily replaces the static display profile;
-file/audio streaming and product storage integration remain unqualified.
-The [known-file extension](docs/reviews/2026-10-30-legacy-s6-sd-file.md) now
-verifies an 8 MiB + 513 UTF-8-path fixture byte-for-byte and by SHA-256, EOF and
-boundary seeks, including active-read removal/reinsertion smoke. It is still
-a standalone diagnostic rather than a wired product media pipeline.
-The [read-only Rust media bridge protocol](docs/reviews/2026-10-30-legacy-s6-rust-media-bridge.md)
-now has host coverage for owned-buffer cancellation and media generations.
-Its [concrete IDF transport](docs/reviews/2026-10-30-legacy-s6-idf-media-transport.md)
-runs a separate raw-block diagnostic on the board, with first-boot and three
-app-restart hash observations. Idle removal and same-card reinsertion were
-observed, with matching raw reads after an owner-confirmed cold return (initial
-boot prefix missed). A subsequent [shared Rust partition/exFAT profile](docs/reviews/2026-10-30-legacy-s6-rust-exfat.md)
-now mounts the same card and verifies the full UTF-8 fixture SHA/EOF/seek cases,
-with three first-boot passes and three app-restart observations. This is still
-an isolated diagnostic. Open-file removal/reinsertion and a full fixture pass
-after owner-confirmed cold return are observed on its exact image (initial boot
-prefix missed). Product loading/executor and broader media qualification remain
-separate gates.
-Product logic, simulation and target
-compilation are verified separately; product boot, peripherals and audible
-output remain pending. JC8012 has no physical observations yet.
+## Development checkpoint — 2026-11-03
+
+Latest [legacy MP3 reset fix](docs/reviews/2026-11-03-mp3-in-place-reset.md)
+removes the large runtime reset/seek temporary through safe in-place clearing.
+Both normal and opt3 builds now pass unchanged stack guards; the reset frame
+is 16 B and opt3's maximum Rust frame is 16048 B. Host PCM remains byte-exact.
+This is build/host evidence only: no new COM3 access, s07/history44 unchanged.
+Exact-source review/CI, clean packages and fresh registered comparison still
+precede any physical campaign. Native minimum 302 and compiler defaults stay.
+Review completed with 0 issues; all three clean packages and their dual-copy
+archive pass. Exact-source host CI passed; legacy CI remains queued.
+
+Latest [offline source-budget investigation](docs/reviews/2026-11-03-source-budget.md)
+adds a deterministic shared-time producer test, release-mode PCM benchmark
+and control audit. S03 contained 74 extra control messages, so its original
+numerical admission is not isolated-control acceptance. A default-OFF MP3
+compiler experiment improves host decode time with exact PCM equality, but
+the P4 build is **REJECTED**: constructor frame 39008 > 24576 bytes; independently
+estimated load chain 90544 > 90112 bytes. No new COM3 access or flash.
+Next: bounded-stack decoder reconstruction before another candidate or plan.
+The reviewed audit fix has 0 CodeRabbit issues; final evidence is archived on
+both drives. New remote CI remains separate from completed local validation.
+
+Latest [continuous device campaign](docs/reviews/2026-11-03-continuous-device.md):
+cold/idle and each MP3 source separately passed their observation gates. Both
+playing failed after 15.88 seconds with source underruns **78/94**, matching
+the owner's crackling report. This is not a dual-deck pass. Exact s07 was
+restored with full 16 MiB readback; one software boot pulse was issued, with
+application execution **NOT_OBSERVED**. No repeated manual recovery checks.
+Current executed history is **44**; 42/43 plans are consumed. Evidence has
+verified primary/secondary archives. Next: offline decoder-step/read budget
+attribution before selecting a single change and registering another campaign.
+Native minimum remains **302**; no experimental image is promoted.
+
+Earlier preparation and device checkpoints below are historical; the result
+above supersedes their current-state and next-action statements.
+
+New [42/43 continuous campaign preparation](docs/reviews/2026-11-03-continuous-registration.md)
+has both offline plans/contracts and full ancestry reconstruction passing.
+The 53-test combined suite passes per OS. Writer review raised 0 issues;
+exact source CI passes 22/22. All three independent write/capture/boot bindings
+and both dual-copy archives are verified. No new COM3 access. Next: verify
+publication/offline bytes and refresh topology before the candidate experiment.
+
+The preparation checkpoints below retain their earlier counts and status.
+
+The [continuous COM3 adapter and analyzer](docs/reviews/2026-11-03-continuous-adapter.md)
+now pass offline whole-session and fault tests. They gate each case on validated
+continuous evidence and actual owner readiness. No new target access: software
+boot action, fresh 42/43 registration/binding and review/CI still precede use.
+
+The separate [s07 software boot action](docs/reviews/2026-11-03-software-boot.md)
+is also implemented offline; the combined 46-test suite passes per OS.
+Review/CI and new policies/bindings remain required. No manual s07 recovery
+qualification is reinstated.
+
+CodeRabbit is now connected to Ruzina. Combined tooling review is complete
+(one minor documentation issue fixed; final fix review 0 issues), with a
+verified dual-copy archive. Latest source CI/new 42/43 registration remain
+separate gates before device use.
+
+Offline [continuous capture core](docs/reviews/2026-11-03-continuous-capture.md)
+now retains the full stream, complete report offsets and owner-ready case
+boundaries. Its host tests pass; live adapter/analysis and fresh 42/43
+registration still precede another target attempt. No new COM3 access.
+
+Latest 2026-11-03 [producer diagnostic result](docs/reviews/2026-11-03-source-supply-device.md):
+cold/idle pass at **1880 us**, playback **NOT_CAPTURED**. The functional window
+ended without an active source and its initial joined telemetry was rejected.
+Dual-MP3 root cause remains open. Exact **s07 is restored**, tools are closed;
+current executed history is **42**, whole flash
+`28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921`.
+Next: continuous capture/framing and operator-ready coordination before a new
+42/43-plan campaign. The [new recovery policy](docs/RECOVERY_POLICY.md) removes
+repeated manual s07 cold/listening/Pause/CUE checks; automatic readback remains.
+
+The earlier development checkpoints below retain their original results.
+
+Continuation 2026-11-03: [source-supply/USB diagnostic preparation](docs/reviews/2026-11-03-source-supply-profile.md)
+adds default-OFF wall measurements to identify the dual-MP3 bottleneck.
+Host/target checks, final fix review (0 issues), **22/22 CI** and clean normal/
+diagnostic builds pass. Exact packages/sources are archived on both drives.
+The separate [40/41-plan target registration](docs/reviews/2026-11-03-source-supply-execution.md)
+passes offline checks; execution/analysis tools have final review 0 issues,
+22/22 CI and a frozen dual-copy binding.
+At that preparation checkpoint no device access/promotion was claimed; the
+later physical result above supersedes its current-state/next-step status.
+
+The observed JC1060 has ESP32-P4 **v1.3/103**, 16 MiB flash and 32 MiB PSRAM.
+It uses the separate pinned **ESP-IDF 6.1 + shared Rust** backend. The native
+Rust backend still requires revision **302** and must not be flashed to this unit.
+JC8012 has no transferable hardware acceptance from JC1060.
+
+Latest [normal-engine device campaign](docs/reviews/2026-11-02-normal-engine-device.md)
+on [draft PR #81](https://github.com/dvucinozd/Ruzina/pull/81) is **REJECTED**
+for two-deck playback. Cold/idle pass at **2397 us** maximum; each MP3 source
+alone is owner-confirmed, but misses the <=3000 us headroom target (3214 us).
+Both together drain their buffers: **4765/5003 underruns**, one USB packet
+error, fill max **4982 us**. PFL and N03-N08 are not accepted/run after the stop.
+Source/tool review, 21/21 CI and dual-copy evidence are retained separately.
+
+Exact accepted **s07 is restored** with full readback, physical cold boot and
+owner-confirmed sound/Pause/CUE. All monitors are closed. Current executed
+history is **40**, whole flash
+`7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6`.
+Next: offline per-deck producer/SD/USB service analysis and a separately reviewed,
+registered diagnostic; no normal promotion or automatic merge.
+
+Earlier result: [resource readiness before UAC](docs/reviews/2026-11-02-resource-readiness-device.md),
+[draft PR #80](https://github.com/dvucinozd/Ruzina/pull/80). Preparing both
+permanent deck bundles before audio activation passes three cold idle windows:
+callback maxima **2008 / 1847 / 1757 us**, zero >3000/>=6000 crossings across
+21000 callbacks. Separate steady idle adds 9000 callbacks with no new crossing.
+Calibrations pass, with zero USB/idle errors. Host/target checks, both exact-parent
+CodeRabbit reviews (0 issues), clean packages and source/tool CI pass separately.
+
+At that earlier checkpoint, exact accepted s07 was restored with whole-flash
+readback, cold boot and owner sound/Pause/CUE confirmation. Recovery then needed
+**38** predecessors; the independent full hash then was
+`1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe`.
+That passed the registered idle timing gate. The later normal-image result
+above supersedes its current-state/next-step status.
+
+Historical device checkpoint: the [packetizer placement comparison](docs/reviews/2026-11-02-pack-placement-device.md)
+completed three cold boots per image plus separate steady idle. Control maxima
+were 15827/17386/15849 us; IRAM maxima 14157/13599/15548 us. Both fail the
+unchanged >=6000 us gate. Narrow IRAM placement is insufficient and is not
+enabled for the product. Exact s07 was restored/readback/cold-boot verified;
+the owner confirms sound/Pause/CUE, with 20.112 s captured playback and zero
+underruns/USB errors. That checkpoint had **36** executed predecessors; current
+ancestry is **40** above. The [service-budget decision](docs/reviews/2026-11-02-usb-service-and-resource-decision.md)
+led to the completed resource-readiness campaign above, which supersedes its
+earlier next-step instructions.
+The paragraphs below retain earlier per-image checkpoints and their limits.
+
+The latest accepted playback record in this repository is
+[deck-play](docs/reviews/2026-11-01-legacy-deck-play.md): one deck reads the SD
+Rekordbox export and plays FLAC/MP3/WAV through the DDJ-FLX4 headphones, alongside
+the library display/touch and MIDI/LED control. This is bounded device evidence,
+not full product qualification. The [s08/s09 recovery reconciliation](docs/reviews/2026-11-01-review-fix-history-reconciliation.md)
+now verifies the complete history and live 16 MiB predecessor image.
+
+`deck-mix` and `deck-engine` add two-deck MAIN/PFL, mixer processing and product
+transport. Their PRs #71/#72 were open at the reviewed base. The local
+`ogranak/jc1060-review-fixes` branch applies the
+[review repair plan](docs/reviews/2026-11-01-review-fix-implementation-plan.md):
+transactional LOAD, identified seek receipts, coherent ring descriptors, media
+revocation, USB recovery and incremental producer scheduling. Read the
+[execution log](docs/reviews/2026-11-01-review-fix-execution.md) for actual test
+and build results. Offline steps A–H are complete: all 17 IDF packages and the
+host/target checks pass; final CodeRabbit reports 0 issues. Published [PR #73](https://github.com/dvucinozd/Ruzina/pull/73)
+passed 19/19 CI jobs. The [first device campaign](docs/reviews/2026-11-01-review-fix-device-results.md)
+booted the candidate but failed its registered timing gate (`fill_max_us=12260`,
+limit 6000 us), despite idle underruns 0/0. The exact accepted deck-play image
+was restored; cold boot, normal sound, Pause and CUE are confirmed again.
+
+The [phase diagnostic](docs/reviews/2026-11-01-uac-timing-device-results.md) has
+now measured the outlier: initial prefill maximum 1844 us, callback maximum
+10373 us (3 of 6000 callbacks >=6000 us). The aggregate criterion still fails;
+substage/preemption cause is not established. The s07 image was restored and
+cold-booted; normal sound, Pause and CUE were confirmed again, with zero captured
+underruns/USB errors. All monitors are closed.
+The later [callback substage run](docs/reviews/2026-11-01-uac-callback-profiling-device.md)
+captured valid exclusive records at 13087/13039 us. The worst record includes
+6523 us graph and 3725 us PCM packing wall time, with zero observed scheduler
+switch deltas. IRQ/cache/observer effects and runtime hook-liveness remain open;
+these numbers do not establish pure CPU cost or a fix. A separate 9000-callback
+steady window adds no threshold crossings. S07 is restored and owner-confirmed
+again, with zero captured underruns/USB errors; all monitors are closed.
+That checkpoint led to the [cache/compute experiment plan](docs/reviews/2026-11-02-uac-cache-compute-follow-up.md);
+the latest completed placement result and next action are above.
+The [calibrated cause experiment](docs/reviews/2026-11-02-uac-cause-profile-execution.md)
+has now [run on the exact rev103 unit](docs/reviews/2026-11-02-uac-cause-profile-device.md)
+in [PR #76](https://github.com/dvucinozd/Ruzina/pull/76). Both liveness
+calibrations pass; the 14812 us worst callback has zero observed task-switch
+deltas and 1593–1653 us of covered IRQ dispatch inside the call. Timing still
+fails; uncovered wall time is not pure CPU cost. Separate steady idle adds no
+crossings. S07 is restored/readback/cold-boot verified and owner-confirmed for
+normal sound/Pause/CUE; all monitors were closed. That checkpoint required 33 predecessors;
+the later completed placement campaign raises the current count to 36.
+Source cues/analysis, loops, scratch, keylock and FX wiring, product
+UI/settings, C6 networking and OTA remain separate subsequent development work.
+See the [current status](docs/DEVELOPMENT_STATUS.md) and
+[handoff](docs/HANDOFF.md). Historical bring-up results retain their own
+image hashes and scenario limits in `docs/reviews`.
+
 Pajoniiir **M2.5** is now the released functional reference. The rewrite started
 from M2.2; the [M2.5 parity audit and plan](docs/M2_5_PARITY_PLAN.md) records the
 remaining differences and separately evaluates newer shared-P4 beta/master work.
@@ -99,7 +242,11 @@ Extra controllers and Pro DJ Link remain separate optional scope.
 MAIN automatically prefers a present, initialized external stereo DAC, then a
 compatible controller's MAIN output; otherwise MAIN is muted.
 **Headphones/CUE/PFL always use the controller.** MAIN switching does not reroute
-headphones. Physical DAC detection, channel mapping and I2S/UAC output are pending.
+headphones. External DAC detection and I2S output remain planned. FLX4 UAC headphone
+playback has bounded device evidence; two-deck MAIN/PFL requires its own campaign.
+The [external audio plan](docs/boards/JC1060_EXTERNAL_AUDIO_PLAN.md) also records
+a later optional headphone DAC and independent Settings; that extension is not
+the current implemented headphone policy.
 The boards' onboard mono speaker codec is not the stereo MAIN/headphone path.
 
 ## Build and simulate

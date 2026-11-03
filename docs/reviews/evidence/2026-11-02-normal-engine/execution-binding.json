@@ -1,0 +1,45 @@
+{
+  "shared_guard_sha256": "1b9e9b7e7f51202b65e34c5d2e212e9c42110ae2b3f8ea3df59756bfc6c2ebfb",
+  "status": "REVIEWED_EXECUTION_TOOLS",
+  "source_commit": "08a537b20310347a842a0efdef500c826e4baa59",
+  "registration_commit": "08a537b20310347a842a0efdef500c826e4baa59",
+  "registration_sha256": "75792be6b74a73f6b4595e1d8f014f0fd0820c12f2a2d293acde0b6642b721e6",
+  "tools": {
+    "campaign.py": "fba917c67a7ba8011fd0f1961921059be3542dd8b71e277be67c69fb750cb2e4",
+    "program.py": "c77b4b7db2378018016a8ffdc7d0d41e16ca874acdf99f32e01d08c52250b756",
+    "monitor.py": "70c4afd6b6b6066df67871bac4bd5db0f68bdfea3f3de576b932e9ccfb016d19",
+    "README.md": "78ab43fcc107ee82091b12270d73cb9c9b685948c59d2797d53e155166234e9a",
+    "tests/test_policy.py": "0d38dc16329b8f9ad8fc961989424741f12aa44f5ef2c28e31c997527ea3a35d",
+    "tests/test_monitor_integration.py": "03910afd90b7471015096e74aeb5d6999c3204af59770567ef09fc25fd7a0f0d"
+  },
+  "ci": {
+    "ci-verified.json": {
+      "sha256": "0d29bb0793dcf2a4ec181d8e3b7651a13bef4e6365d6c0223507be69392e1e40",
+      "head": "886127e0714c15cb096cc3b86798fbacba1773f7"
+    },
+    "adapter-integration-ci-verified.json": {
+      "sha256": "fb0219cc168b42f8181288476657721b9dbc1a72f1c3998d5c31d928afc3503f",
+      "head": "08a537b20310347a842a0efdef500c826e4baa59"
+    }
+  },
+  "review": {
+    "issues": 0,
+    "files": [
+      "docs/reviews/2026-11-02-normal-engine-execution.md",
+      "docs/reviews/evidence/2026-11-02-normal-engine/adapter-exclusive-tests.log",
+      "docs/reviews/evidence/2026-11-02-normal-engine/coderabbit-adapter-exclusive-finding.raw.log",
+      "tools/normal_engine/monitor.py",
+      "tools/normal_engine/tests/test_monitor_integration.py",
+      "tools/normal_engine/tests/test_policy.py"
+    ],
+    "raw_sha256": "6df4e80e63aae231aaa9125224225af9d9f933a8610bdac5cff5236cb7b86d61"
+  },
+  "tests": {
+    "normal_policy_windows": 13,
+    "normal_policy_wsl": 13,
+    "shared_guard_wsl": 13,
+    "device_access": false
+  },
+  "physical_status": "NOT_RUN",
+  "execution": "Requires explicit execute, owner topology/manual ROM, exact before/after flash and accepted s07 return"
+}

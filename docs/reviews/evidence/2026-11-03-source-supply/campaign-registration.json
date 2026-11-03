@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "status": "OFFLINE_REGISTERED_OPERATOR_GATES_OPEN_NOT_FLASHED",
+  "device_access": false,
+  "unit_id": "JC1060-20261030-COM3",
+  "source_commit": "e9ce242ea04c7b95d0ee87f4d6849ba8a4284e09",
+  "ci_head": "84df18bf41050522eaee1925aeb619b471118031",
+  "ci_jobs_per_head": 22,
+  "backup_copies_verified": 4,
+  "current_executed_predecessors": 40,
+  "current_full_flash_sha256": "7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6",
+  "producer_package_registered_for_write": "clean-diagnostic",
+  "transitions": {
+    "candidate": {
+      "plan_dir": "candidate-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\clean-diagnostic",
+      "plan_sha256": "fe406eb3003c05c965eaff014ee73a6b6cf773b1b834585764bb56bc4e3f4650",
+      "manifest_sha256": "80302e06f2bc022604439949bd1bfac3ed43b3668e42176dab5821d4edf8690a",
+      "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+      "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+      "predecessors": 40,
+      "expected_before_sha256": "7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6",
+      "expected_after_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9",
+      "device_access": false,
+      "execution": "NOT_RUN"
+    },
+    "return-s07": {
+      "plan_dir": "return-s07-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-build-1",
+      "plan_sha256": "cd76f6c0611a9c587f25b7f02352fa81805a961a99e885c415287898c9d1f85d",
+      "manifest_sha256": "09ff098c6cc97681b68322125e5c025b1be845b376b8aa1806ac896d65703752",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+      "predecessors": 41,
+      "expected_before_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9",
+      "expected_after_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+      "device_access": false,
+      "execution": "NOT_RUN"
+    }
+  },
+  "runbook": {
+    "path": "docs/reviews/2026-11-03-source-supply-campaign.md",
+    "sha256": "88d787cd5d9e61cdc42f90b35327f2525e080db543eaa64733e00ef801524785",
+    "owner_outputs": "RCA MASTER speakers and controller headphones confirmed"
+  },
+  "measurement": {
+    "initial_cold_boots": 1,
+    "post_expected_elf_seconds": 45,
+    "minimum_callbacks_each": 7000,
+    "separate_steady_seconds": 60,
+    "minimum_steady_callback_delta": 9000,
+    "reject_ge_us": 6000,
+    "headroom_target_le_us": 3000,
+    "controls": "S01 cold, S02 idle, S03 deck1, S04 deck2, S05 both <=60 connected seconds; first error return",
+    "readiness": "PREPARING -> READY once per boot; no product transfer before READY",
+    "resources": {
+      "usb_stack_min": 2048,
+      "sd_stack_min": 8192,
+      "logger_stack_min": 1024,
+      "internal_heap_min": 65536,
+      "psram_heap_min": 8388608,
+      "observed_internal_largest_min": 8192,
+      "observed_psram_largest_min": 262144
+    },
+    "diagnostic_image": "Producer profile only; no render/scheduler/IRQ profiler; six producer wall stages, owner remainder and three USB service stages",
+    "observer_cost": "Existing report cadence; USB-loop watermark scan and logger heap walks have nonzero cost",
+    "failure": "Any all-fill >=6000 us, runtime reserve failure or unexpected steady error: stop extension; preserve evidence and return s07",
+    "exit": "Always return/readback/cold/listening verify s07 after this experimental normal-image campaign"
+  },
+  "operator_gates": [
+    "Refresh actual board topology/COM3/screen/controller/power",
+    "Published registration and its CI verified before device work",
+    "Owner-authorized software USB ROM entry, fresh identity; guarded programmer itself requests no reset",
+    "Fresh rev103/MAC/security/RDID and full 16 MiB live predecessor equality before any write",
+    "Written span readbacks, expected ELF cold boot; no automatic eFuse or erase-all operation"
+  ],
+  "scripts": {
+    "register_supply.py": "5fcb62c1abe3908c0bcd9ea86a4f5b9ad86a51bb0c2a5c99b61e09d1cb45d949",
+    "preflight_supply.py": "20d772cbfc415b2faa870cee493e4357e470ee1e11c76a244cc24cf7f430d6de",
+    "verify_packages.py": "7f26b6b23a7d00a613f6c8f07779a5b7dd2850ebbff0e7e9f1ddcee45a2699f1"
+  }
+}

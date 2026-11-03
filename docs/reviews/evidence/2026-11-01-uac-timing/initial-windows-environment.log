@@ -1,0 +1,192 @@
+test_deck_ui_combines_only_load_display_and_midi (test_config.ConfigTests.test_deck_ui_combines_only_load_display_and_midi) ... ERROR
+test_display_ownership (test_config.ConfigTests.test_display_ownership) ... ERROR
+test_file_fixture_requires_sd_owner (test_config.ConfigTests.test_file_fixture_requires_sd_owner) ... ERROR
+test_guards (test_config.ConfigTests.test_guards) ... ERROR
+test_load_display_requires_load_and_no_touch (test_config.ConfigTests.test_load_display_requires_load_and_no_touch) ... ERROR
+test_memory_profile (test_config.ConfigTests.test_memory_profile) ... ERROR
+test_rust_bridge_requires_exclusive_sd_owner (test_config.ConfigTests.test_rust_bridge_requires_exclusive_sd_owner) ... ERROR
+test_rust_exfat_requires_bridge (test_config.ConfigTests.test_rust_exfat_requires_bridge) ... ERROR
+test_rust_load_requires_bridge_caps_psram_and_no_fixture (test_config.ConfigTests.test_rust_load_requires_bridge_caps_psram_and_no_fixture) ... ERROR
+test_sd_readonly_owner (test_config.ConfigTests.test_sd_readonly_owner) ... ERROR
+test_usb_host_enum_is_isolated (test_config.ConfigTests.test_usb_host_enum_is_isolated) ... ERROR
+test_history_preserves_tail_after_smaller_upgrade (test_flash_plan.FlashPlanTests.test_history_preserves_tail_after_smaller_upgrade) ... ok
+test_invalid_table (test_flash_plan.FlashPlanTests.test_invalid_table) ... ok
+test_valid_table (test_flash_plan.FlashPlanTests.test_valid_table) ... ok
+test_exact_reviewed_records (test_panel_table.PanelTableTests.test_exact_reviewed_records) ... ok
+test_fixed_fixture_and_no_overwrite (test_sd_fixture.FixtureTests.test_fixed_fixture_and_no_overwrite) ... ok
+test_host_and_device_names_and_digest_agree (test_sd_fixture.FixtureTests.test_host_and_device_names_and_digest_agree) ... ok
+test_rust_fixture_and_c_success_telemetry_agree (test_sd_fixture.FixtureTests.test_rust_fixture_and_c_success_telemetry_agree) ... ok
+test_deepest_stack (test_tools.Tests.test_deepest_stack) ... ok
+test_execute_failures_close_and_finalize (test_tools.Tests.test_execute_failures_close_and_finalize) ... ok
+test_ranges (test_tools.Tests.test_ranges) ... ok
+test_rejected_input_never_opens_transport (test_tools.Tests.test_rejected_input_never_opens_transport) ... ERROR
+test_stack_frames (test_tools.Tests.test_stack_frames) ... ok
+test_unit_record (test_tools.Tests.test_unit_record) ... ok
+test_wrong_hash_and_variant_under_optimization (test_tools.Tests.test_wrong_hash_and_variant_under_optimization) ... ok
+test_wrong_header (test_tools.Tests.test_wrong_header) ... ERROR
+test_actual_driver_fault_paths (test_uac_recovery.UacRecoveryTests.test_actual_driver_fault_paths) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_actual_driver_timing_phases (test_uac_recovery.UacRecoveryTests.test_actual_driver_timing_phases) ... skipped 'Host C compiler required (run on Linux/WSL)'
+test_production_recovery_policy (test_uac_recovery.UacRecoveryTests.test_production_recovery_policy) ... skipped 'Host C compiler required (run on Linux/WSL)'
+
+======================================================================
+ERROR: test_deck_ui_combines_only_load_display_and_midi (test_config.ConfigTests.test_deck_ui_combines_only_load_display_and_midi)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 155, in test_deck_ui_combines_only_load_display_and_midi
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_display_ownership (test_config.ConfigTests.test_display_ownership)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 50, in test_display_ownership
+    result=subprocess.run(['cmake', *[f'-D{k}={v}' for k,v in config.items()], '-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_file_fixture_requires_sd_owner (test_config.ConfigTests.test_file_fixture_requires_sd_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 71, in test_file_fixture_requires_sd_owner
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_guards (test_config.ConfigTests.test_guards)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 21, in test_guards
+    result = subprocess.run(['cmake', *[f'-D{k}={v}' for k, v in config.items()],
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_load_display_requires_load_and_no_touch (test_config.ConfigTests.test_load_display_requires_load_and_no_touch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 114, in test_load_display_requires_load_and_no_touch
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_memory_profile (test_config.ConfigTests.test_memory_profile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 39, in test_memory_profile
+    result = subprocess.run(['cmake', *[f'-D{k}={v}' for k, v in config.items()], '-P', str(guard)], capture_output=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_rust_bridge_requires_exclusive_sd_owner (test_config.ConfigTests.test_rust_bridge_requires_exclusive_sd_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 83, in test_rust_bridge_requires_exclusive_sd_owner
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_rust_exfat_requires_bridge (test_config.ConfigTests.test_rust_exfat_requires_bridge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 165, in test_rust_exfat_requires_bridge
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_rust_load_requires_bridge_caps_psram_and_no_fixture (test_config.ConfigTests.test_rust_load_requires_bridge_caps_psram_and_no_fixture)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 99, in test_rust_load_requires_bridge_caps_psram_and_no_fixture
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_sd_readonly_owner (test_config.ConfigTests.test_sd_readonly_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 61, in test_sd_readonly_owner
+    result=subprocess.run(['cmake', *[f'-D{k}={v}' for k,v in config.items()], '-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_usb_host_enum_is_isolated (test_config.ConfigTests.test_usb_host_enum_is_isolated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_config.py", line 130, in test_usb_host_enum_is_isolated
+    result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "subprocess.py", line 548, in run
+  File "subprocess.py", line 1024, in __init__
+  File "subprocess.py", line 1493, in _execute_child
+FileNotFoundError: [WinError 2] The system cannot find the file specified
+
+======================================================================
+ERROR: test_rejected_input_never_opens_transport (test_tools.Tests.test_rejected_input_never_opens_transport)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_tools.py", line 139, in test_rejected_input_never_opens_transport
+    ram.execute(b'bad', {'variant': 'flash-build-only'}, Path(temp) / 'out',
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\run_ram_probe.py", line 73, in execute
+    verify(data, manifest)
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\run_ram_probe.py", line 14, in verify
+    from esptool.bin_image import LoadFirmwareImage
+ModuleNotFoundError: No module named 'esptool'
+
+======================================================================
+ERROR: test_wrong_header (test_tools.Tests.test_wrong_header)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\tests\test_tools.py", line 88, in test_wrong_header
+    with patch('esptool.bin_image.LoadFirmwareImage', return_value=SimpleNamespace(
+  File "unittest\mock.py", line 1421, in __enter__
+  File "pkgutil.py", line 700, in resolve_name
+  File "importlib\__init__.py", line 126, in import_module
+  File "<frozen importlib._bootstrap>", line 1206, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1178, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1142, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'esptool'
+
+----------------------------------------------------------------------
+Ran 29 tests in 5.674s
+
+FAILED (errors=13, skipped=3)

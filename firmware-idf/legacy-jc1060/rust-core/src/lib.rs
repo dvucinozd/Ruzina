@@ -1,7 +1,15 @@
 #![no_std]
 
+#[cfg(all(feature = "producer-profile", feature = "uac-profile"))]
+compile_error!("Producer profiling and render/IRQ profiling require separate images");
+
 #[cfg(test)]
 extern crate std;
+
+/// Tests that drive the process-wide deck rings, commands and controller
+/// session take this lock, so they never interleave.
+#[cfg(all(test, feature = "controller-midi"))]
+static DECK_TESTS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[cfg(feature = "media-load")]
 extern crate alloc;
@@ -27,8 +35,32 @@ mod controller_midi;
 #[cfg(feature = "controller-audio")]
 mod controller_audio;
 
+#[cfg(feature = "controller-audio")]
+mod uac_profile;
+
 #[cfg(feature = "deck-play")]
 mod deck_play;
+
+#[cfg(feature = "deck-play")]
+mod media_signal;
+
+#[cfg(feature = "deck-play")]
+mod producer_schedule;
+
+#[cfg(feature = "producer-profile")]
+mod producer_profile;
+
+#[cfg(feature = "deck-mix")]
+mod deck_mix;
+
+#[cfg(feature = "deck-engine")]
+mod deck_engine;
+
+#[cfg(feature = "deck-engine")]
+mod deck_transport;
+
+#[cfg(feature = "deck-engine")]
+mod deck_resources;
 
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.

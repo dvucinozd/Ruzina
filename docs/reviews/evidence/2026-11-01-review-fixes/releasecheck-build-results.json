@@ -1,0 +1,121 @@
+[
+  {
+    "variant": "pure-ram",
+    "exit_code": 0,
+    "seconds": 240,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-pure-ram.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-pure-ram"
+  },
+  {
+    "variant": "deck-mix",
+    "exit_code": 0,
+    "seconds": 278,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-mix.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-mix"
+  },
+  {
+    "variant": "deck-play",
+    "exit_code": 0,
+    "seconds": 280,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-play.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-play"
+  },
+  {
+    "variant": "deck-engine",
+    "exit_code": 0,
+    "seconds": 283,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-engine.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-engine"
+  },
+  {
+    "variant": "flash-build-only",
+    "exit_code": 0,
+    "seconds": 278,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-flash-build-only.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-flash-build-only"
+  },
+  {
+    "variant": "display-touch",
+    "exit_code": 0,
+    "seconds": 331,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-display-touch.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-display-touch"
+  },
+  {
+    "variant": "memory-task",
+    "exit_code": 0,
+    "seconds": 336,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-memory-task.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-memory-task"
+  },
+  {
+    "variant": "sd-readonly",
+    "exit_code": 0,
+    "seconds": 332,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-readonly.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-readonly"
+  },
+  {
+    "variant": "sd-file-readonly",
+    "exit_code": 0,
+    "seconds": 279,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-file-readonly.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-file-readonly"
+  },
+  {
+    "variant": "sd-rust-bridge",
+    "exit_code": 0,
+    "seconds": 267,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-bridge.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-bridge"
+  },
+  {
+    "variant": "sd-rust-exfat",
+    "exit_code": 0,
+    "seconds": 271,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-exfat.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-exfat"
+  },
+  {
+    "variant": "sd-rust-load",
+    "exit_code": 0,
+    "seconds": 295,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-load.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-load"
+  },
+  {
+    "variant": "sd-rust-load-display",
+    "exit_code": 0,
+    "seconds": 311,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-load-display.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-sd-rust-load-display"
+  },
+  {
+    "variant": "usb-host",
+    "exit_code": 0,
+    "seconds": 233,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-usb-host.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-usb-host"
+  },
+  {
+    "variant": "usb-midi",
+    "exit_code": 0,
+    "seconds": 230,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-usb-midi.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-usb-midi"
+  },
+  {
+    "variant": "deck-ui",
+    "exit_code": 0,
+    "seconds": 288,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-ui.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-ui"
+  },
+  {
+    "variant": "deck-audio",
+    "exit_code": 0,
+    "seconds": 172,
+    "log": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-audio.log",
+    "output": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\releasecheck-build-deck-audio"
+  }
+]

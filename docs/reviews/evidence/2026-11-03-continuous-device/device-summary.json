@@ -1,0 +1,203 @@
+{
+  "status": "SINGLE_SOURCES_ADMITTED_BOTH_UNDERRUN_S07_READBACK_RESTORED",
+  "product_qualification": false,
+  "native_minimum": 302,
+  "chip_revision": 103,
+  "current_executed_predecessors": 44,
+  "independent_full_flash_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+  "installed_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "installed_elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+  "application_running": "NOT_OBSERVED",
+  "boot_status": "BOOT_PULSE_ISSUED_APPLICATION_NOT_OBSERVED",
+  "manual_s07_requalification": false,
+  "firmware_source": "e9ce242ea04c7b95d0ee87f4d6849ba8a4284e09",
+  "published_entry_head": "5719d5cae22d2cc36a4748ba2923338f94c27989",
+  "cases": [
+    {
+      "name": "cold-1",
+      "status": "ADMITTED_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+      "all_fill_max_us": 1908,
+      "headroom_target_pass": true,
+      "callback_first": {
+        "generation": 1,
+        "count": 1000,
+        "max_us": 1888,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "callback_last": {
+        "generation": 1,
+        "count": 7000,
+        "max_us": 1888,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "resource_minima": {
+        "usb_stack_free": 4964,
+        "logger_stack_free": 1528,
+        "internal_min": 414548,
+        "psram_min": 28054272,
+        "internal_largest": 249856,
+        "psram_largest": 28311552
+      },
+      "sd_client_stack_min": 58044
+    },
+    {
+      "name": "idle-1",
+      "status": "ADMITTED_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+      "all_fill_max_us": 1908,
+      "headroom_target_pass": true,
+      "callback_first": {
+        "generation": 1,
+        "count": 8000,
+        "max_us": 1888,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "callback_last": {
+        "generation": 1,
+        "count": 17000,
+        "max_us": 1888,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "resource_minima": {
+        "usb_stack_free": 4964,
+        "logger_stack_free": 1528,
+        "internal_min": 414548,
+        "psram_min": 28054272,
+        "internal_largest": 249856,
+        "psram_largest": 28311552
+      },
+      "sd_client_stack_min": 58044
+    },
+    {
+      "name": "s03-deck1",
+      "status": "ADMITTED_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+      "all_fill_max_us": 3635,
+      "headroom_target_pass": false,
+      "callback_first": {
+        "generation": 1,
+        "count": 30000,
+        "max_us": 1888,
+        "gt_3000": 0,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "callback_last": {
+        "generation": 1,
+        "count": 59000,
+        "max_us": 3635,
+        "gt_3000": 12,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "resource_minima": {
+        "usb_stack_free": 4964,
+        "logger_stack_free": 1528,
+        "internal_min": 414548,
+        "psram_min": 28054272,
+        "internal_largest": 249856,
+        "psram_largest": 28311552
+      },
+      "sd_client_stack_min": 27444
+    },
+    {
+      "name": "s04-deck2",
+      "status": "ADMITTED_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+      "all_fill_max_us": 3635,
+      "headroom_target_pass": false,
+      "callback_first": {
+        "generation": 1,
+        "count": 68000,
+        "max_us": 3635,
+        "gt_3000": 15,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "callback_last": {
+        "generation": 1,
+        "count": 97000,
+        "max_us": 3635,
+        "gt_3000": 31,
+        "ge_6000": 0,
+        "failures": 0
+      },
+      "resource_minima": {
+        "usb_stack_free": 4964,
+        "logger_stack_free": 1528,
+        "internal_min": 414548,
+        "psram_min": 28054272,
+        "internal_largest": 249856,
+        "psram_largest": 28311552
+      },
+      "sd_client_stack_min": 27444
+    },
+    {
+      "name": "s05-both",
+      "status": "FAILED_SOURCE_UNDERRUN",
+      "requested_seconds": 60,
+      "observed_until_stop_seconds": 15.877143400000932,
+      "stable_both_source_seconds": "NOT_ADMITTED",
+      "raw_terminal_observation": {
+        "underruns": [
+          78,
+          94
+        ],
+        "buffered_frames": [
+          681,
+          93
+        ],
+        "fill_max_us": 4960,
+        "usb_iso_errors": 0,
+        "usb_packet_errors": 0,
+        "usb_submit_errors": 0,
+        "note": "Terminal producer frame is incomplete; not an admitted stable interval"
+      }
+    }
+  ],
+  "adapter": {
+    "status": "INVALID_OR_INCOMPLETE_RESTORE_REQUIRED",
+    "admitted_cases": 4,
+    "raw_sha256": "7b9f4606b659b111a78d0ba44a2e4d1ac8c5db36ccd1ccaacc64f68b06cc921d",
+    "events_sha256": "3087a19ddca26dbb864bf5d19d05490427529d24d2826ce78bd96b3dce118008",
+    "authority_sha256": "67768bded5214727a1a5b3470cd978ee602af5f7093010fc0efb2835225a8435",
+    "serial_writes": false,
+    "reset_requested": false,
+    "device_access": true,
+    "writer_invoked": false,
+    "automatic_recovery_invoked": false,
+    "port_closed": true,
+    "error": "Source underrun/missing"
+  },
+  "software_boot": {
+    "status": "BOOT_PULSE_ISSUED_APPLICATION_NOT_OBSERVED",
+    "authority": {
+      "policy_sha256": "f4a76f15dd1b303a110d568c88f41accb85c656e613c0fac1b520ebc6c0342ff",
+      "binding_sha256": "53175f800c99aa5dfcd290e4b44c6a2b0cb967ad2ac537ff9b90e2cb5bf7edf8",
+      "reset_backend_sha256": "52d636ed8eff0855cf9e8c44deb1c5392ea642be153f9dee2931ad334d474b88",
+      "return_result_sha256": "51ba5977876d90dcde3ee43ffa3da5111ebb9cc4469ed95c7e618375d8643b9d",
+      "return_plan_sha256": "c39e6f0e3de6783fedbda1d4a37b423cd822ee7fb57d4a0ef825745e4d3a6a56",
+      "full_and_span_readback_verified": true,
+      "history_after_return": 44
+    },
+    "flash_write": false,
+    "efuse_write": false,
+    "serial_data_writes": false,
+    "reset_attempted": true,
+    "reset_completed": true,
+    "physical_power_cycle": false,
+    "application_running": "NOT_OBSERVED",
+    "port_closed": true
+  },
+  "owner_reply_scope": "Screen refresh explicit; remaining topology retained from prior session, not individually reconfirmed",
+  "next_action": "Offline decoder-step versus synchronous-read budget attribution; no new flash or promotion",
+  "consumed_plans": [
+    "baa23c1709125d34751b2802ea6df621d21579fb841588f12dd5c48a15d56c95",
+    "c39e6f0e3de6783fedbda1d4a37b423cd822ee7fb57d4a0ef825745e4d3a6a56"
+  ]
+}

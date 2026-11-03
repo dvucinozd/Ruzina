@@ -1,0 +1,14 @@
+{
+  "status": "CAPTURED_NOT_QUALIFIED",
+  "mode": "candidate",
+  "serial_writes": false,
+  "reset_requested": false,
+  "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+  "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+  "physical_acceptance": "NOT_ASSESSED",
+  "requires_matching_cold_identity": true,
+  "bytes": 59108,
+  "raw_sha256": "cfbc220001203463907876844a8f0c90508e1922682e31d29f96ef8fe72fc49a",
+  "elapsed_seconds": 60.06405459999996,
+  "fatal_markers": []
+}

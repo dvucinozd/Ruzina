@@ -1,0 +1,19 @@
+{
+  "source_commit": "0ac84ab62820665f133823c50a189433d84fe895",
+  "shared_guard_sha256": "1b9e9b7e7f51202b65e34c5d2e212e9c42110ae2b3f8ea3df59756bfc6c2ebfb",
+  "ci_sha256": "dac6a09472dab5acca0791acb50d71fd24648fd6875f9230b17e1c1add15578e",
+  "review_evidence_sha256": "94279cf39ab26d188dcdef7737f70608b146ad9dd6863584d03ddb6eea237bdd",
+  "device_access": false,
+  "status": "REVIEWED_CONTINUOUS_CAPTURE_TOOLS",
+  "contract_sha256": "4eb8e011166eb133b13c0296062a1279f6e97bfc673156707833937390a6a3ce",
+  "tools": {
+    "continuous.py": "61f8b39c3150bd51c02a3977f9163c879d821e9dfe2eab406b846eb1df5f86af",
+    "continuous_contract.py": "b5fd5e51e247d541e5f79aced6cfd3fd9d6b5c9516b4d32f24662f78a8ce960f",
+    "continuous_adapter.py": "0a2c461e26aa2576579a44ed60c912e1841b2cb9c32077593b63063c6f0d90ee",
+    "continuous_analyze.py": "765e34330e710c16666268c28bd7b7cf0ee71928dab01c8406e4334869451e08",
+    "campaign.py": "77d6ed50dd0ebe7061939efa389838cd64c479ad10e659c75f8e7daae7cc9881",
+    "analyze.py": "06e64c289b8bdcdd879410df128cf65851db7911d6378b24fb454216e4f0a875",
+    "monitor.py": "ca4aad25849bf5520affd5ce78fe4836d364ad65888ba83a07a12483afeb2c7c",
+    "program.py": "ae4a0cd2d1a0258c31f9ac9d2e8f9f6eb3f547b98fa2a22ac86ec64517bb7200"
+  }
+}

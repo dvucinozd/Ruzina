@@ -1,0 +1,332 @@
+{
+  "schema": 1,
+  "status": "OFFLINE_REVIEWED_OPERATOR_GATES_OPEN",
+  "device_access": false,
+  "unit_id": "JC1060-20261030-COM3",
+  "manifest_sha256": "09ff098c6cc97681b68322125e5c025b1be845b376b8aa1806ac896d65703752",
+  "factory_sha256": "27d5782978aeb3c42f8b49659e793d3ca8f59543f62e419d7b1981de2c492060",
+  "backup_copies_verified": 4,
+  "predecessor_plan_sha256": "bfef28135fb73f522893d58209cbda40d55e21f3b092efa620b383125dba3335",
+  "predecessor_chain": [
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s04-reviewed-telemetry-plan\\plan.json",
+      "sha256": "84fde618c4e630e68948ab6b12d3641a3796caeedf5c17ca4fb1742f4003dab6"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s05-write-recovery-plan\\plan.json",
+      "sha256": "566b3e6c58bb13f9729d94533bed10aab084b1eb4f14791e09cdcbffc5c00a06"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-write-recovery-plan\\plan.json",
+      "sha256": "4feabf5456f86a3a6143f766ab6d9d442b5ac0689129551ea450db023be84ad5"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-sd-write-recovery-plan\\plan.json",
+      "sha256": "d5e11135dfcb15001849f25e69aff7ddf19bc93985af633ce296eba662816f95"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-sd-file-reviewed-write-plan\\plan.json",
+      "sha256": "dadbb16b2dec7006839a5d93676f7d4fed051c1107ee8ad3b393854f5d2d7af5"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-sd-file-timing-write-plan\\plan.json",
+      "sha256": "adedf325eb2f6e5929b0966d0476933804b037e23d4a7927598feecadec8bd80"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-bridge-write-plan\\plan.json",
+      "sha256": "82585d0dfcf53bf0a9e1e1795922e1d1194b6f8f93b67288c95934ff053248d9"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-exfat-write-plan\\plan.json",
+      "sha256": "e2d2565581002013b85d4bb5325874c5a17d850458d488d762add7ba41ddb3c3"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-load-write-plan\\plan.json",
+      "sha256": "fce1261c55a5a2e268fd4059e9cb5a032a79c24f3362e1b20ac055a382f6b81a"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-rust-load-fix-write-plan\\plan.json",
+      "sha256": "191c73aaefdd339d88ff1f273466151f6eb7802691d12584c2cfe52ebf9126f7"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-load-display-write-plan\\plan.json",
+      "sha256": "64e21688f03d96a6953afe95e5b2b0e9fdbfe95c88d9e467ee573edd2a2218e6"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-load-touch-write-plan\\plan.json",
+      "sha256": "8881509f2c8d082129849d9044c7baf9cfb00d798d6f89dfc85115f6815e1381"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-host-write-plan\\plan.json",
+      "sha256": "60403d54574ba8e8c2b191c821c7569d2050c6837ff17d3a0498f7f755ed8ab3"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-host-2-write-plan\\plan.json",
+      "sha256": "ed7ae4c0cae3bf590ec9e33fbb948e9c2ead3f3fd5cfbbb5aac511d1b159b208"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-write-plan\\plan.json",
+      "sha256": "a6ba74be546984fac88a952757cfb8238a28c62eea249ec07394e5f59c2b1d60"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-2-write-plan\\plan.json",
+      "sha256": "634538a8ee2c381a7a2aadbb50239070ef2ae89036db21cb90158ab95d622c49"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-3-write-plan\\plan.json",
+      "sha256": "fec51cfba20489b387741d2be5aa7a776fca7976da96e2c651e57ee1c052c747"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-led-write-plan\\plan.json",
+      "sha256": "cf7549e5a83039a8c953efc2090d00d669c710772b12dc7b253b7fc2a02aa736"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-usb-midi-led-2-write-plan\\plan.json",
+      "sha256": "8ef6755ce0168a7ab5200343aac7c0e28caf7227a11ae406517e8727942c4ae6"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-deck-ui-write-plan\\plan.json",
+      "sha256": "07381298b2707fb35c7390fb37bf3d15939858512a9ff2eeb3b780a8f2aaec91"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-deck-audio-write-plan\\plan.json",
+      "sha256": "7ee8681243b5c74849e682ba671c265a3007f27740dadaf9a9ca7e16f3d6b9a0"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s06-deck-audio-2-write-plan\\plan.json",
+      "sha256": "b0e17fdb09e69b6b5a98b00de9a677da7066b6472e9b61ba704a265a7ecdfb5c"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-write-plan\\plan.json",
+      "sha256": "6b3d32ad0a1827e1b773401a92fb413287445644972ac6412a4fdeba9a6f50b7"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s08-deck-mix-write-plan\\plan.json",
+      "sha256": "cfb7211d4da1cbdfa4fc13f237f89a08cde9e69e55288a2e3d709b858f7a9d45"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s09-deck-engine-write-plan\\plan.json",
+      "sha256": "478f6f96281c5d9bcf0d27c8f32b36652cb067c5cba9a6e14b46fb6e2808931a"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\campaign-i-offline-plan\\plan.json",
+      "sha256": "18022505a4821fda7c4ce55be749bcc8e9eab9bb57c4e590b76631a5380cbc92"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\campaign-i-return-s07-plan\\plan.json",
+      "sha256": "3a7f1d54ec71a51f8df6f2764fe92b37960a8d6f8b2fab85f6b00186ee036c90"
+    },
+    {
+      "path": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-timing-20261101\\diagnostic-plan\\plan.json",
+      "sha256": "bfef28135fb73f522893d58209cbda40d55e21f3b092efa620b383125dba3335"
+    }
+  ],
+  "sector_restore_target": "PREDECESSOR_DIAGNOSTIC",
+  "factory_partitions": [
+    {
+      "type": 1,
+      "subtype": 2,
+      "offset": 36864,
+      "bytes": 24576,
+      "label": "nvs",
+      "flags": 0
+    },
+    {
+      "type": 1,
+      "subtype": 1,
+      "offset": 61440,
+      "bytes": 4096,
+      "label": "phy_init",
+      "flags": 0
+    },
+    {
+      "type": 0,
+      "subtype": 0,
+      "offset": 65536,
+      "bytes": 7340032,
+      "label": "factory",
+      "flags": 0
+    },
+    {
+      "type": 1,
+      "subtype": 130,
+      "offset": 7405568,
+      "bytes": 8388608,
+      "label": "storage",
+      "flags": 0
+    }
+  ],
+  "diagnostic_partitions": [
+    {
+      "type": 1,
+      "subtype": 2,
+      "offset": 36864,
+      "bytes": 24576,
+      "label": "nvs",
+      "flags": 0
+    },
+    {
+      "type": 1,
+      "subtype": 1,
+      "offset": 61440,
+      "bytes": 4096,
+      "label": "phy_init",
+      "flags": 0
+    },
+    {
+      "type": 0,
+      "subtype": 0,
+      "offset": 65536,
+      "bytes": 1048576,
+      "label": "factory",
+      "flags": 0
+    }
+  ],
+  "writes": [
+    {
+      "offset": 8192,
+      "bytes": 23296,
+      "erase_end": 32768,
+      "staged_file": "write-00002000.bin",
+      "staged_sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88",
+      "restore_file": "restore-00002000.bin",
+      "restore_sha256": "e6823227e47dee02dec9f0454d5121e07881fdcb5302dbd0b96a479646969e89"
+    },
+    {
+      "offset": 32768,
+      "bytes": 3072,
+      "erase_end": 36864,
+      "staged_file": "write-00008000.bin",
+      "staged_sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295",
+      "restore_file": "restore-00008000.bin",
+      "restore_sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 768176,
+      "erase_end": 835584,
+      "staged_file": "write-00010000.bin",
+      "staged_sha256": "05464b180ee4803733d81a8bbd45e4887782e99e5dd0c32b4e8c6e1393f8430c",
+      "restore_file": "restore-00010000.bin",
+      "restore_sha256": "4bbee6bfb2228c65dc3a035b8abc0a53eec514cfe36b267afc8f8439f0d00423"
+    }
+  ],
+  "command_policy": {
+    "chip": "esp32p4",
+    "before": "no-reset",
+    "after": "no-reset",
+    "flash_mode": "keep",
+    "flash_freq": "keep",
+    "flash_size": "keep",
+    "erase_all": false,
+    "force": false
+  },
+  "full_restore": {
+    "offset": 0,
+    "bytes": 16777216,
+    "source": "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-1.bin",
+    "sha256": "27d5782978aeb3c42f8b49659e793d3ca8f59543f62e419d7b1981de2c492060"
+  },
+  "remaining_gates": [
+    "Physical connector/power/markings",
+    "Manual ROM entry evidence",
+    "Live identity/security recheck",
+    "Diagnostic image reset telemetry"
+  ],
+  "command_templates_not_executed": {
+    "cwd": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-timing-20261101\\return-s07-plan",
+    "write": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "write-flash",
+      "--flash-mode",
+      "keep",
+      "--flash-size",
+      "keep",
+      "--flash-freq",
+      "keep",
+      "0x2000",
+      "write-00002000.bin",
+      "0x8000",
+      "write-00008000.bin",
+      "0x10000",
+      "write-00010000.bin"
+    ],
+    "restore_changed_sectors": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "write-flash",
+      "--flash-mode",
+      "keep",
+      "--flash-size",
+      "keep",
+      "--flash-freq",
+      "keep",
+      "0x2000",
+      "restore-00002000.bin",
+      "0x8000",
+      "restore-00008000.bin",
+      "0x10000",
+      "restore-00010000.bin"
+    ],
+    "restore_full": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "write-flash",
+      "--flash-mode",
+      "keep",
+      "--flash-size",
+      "keep",
+      "--flash-freq",
+      "keep",
+      "0",
+      "D:\\BoardEvidence\\JC1060-20261030-COM3\\factory-esptool56-read-1.bin"
+    ],
+    "readback_full": [
+      "<PINNED_PYTHON>",
+      "-m",
+      "esptool",
+      "--chip",
+      "esp32p4",
+      "--port",
+      "<MANUALLY_VERIFIED_PORT>",
+      "--before",
+      "no-reset",
+      "--after",
+      "no-reset",
+      "read-flash",
+      "--flash-size",
+      "16MB",
+      "0",
+      "0x1000000",
+      "<NEW_READBACK_PATH>"
+    ]
+  }
+}

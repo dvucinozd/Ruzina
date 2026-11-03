@@ -1,0 +1,16 @@
+{
+  "status": "OFFLINE_A_H_COMPLETE_NOT_FLASHED",
+  "date": "2026-11-01",
+  "branch": "ogranak/jc1060-review-fixes",
+  "head": "b35dcd39f4c1ddb9f4b253d6af89110ee68a2335",
+  "packages": 17,
+  "verified_artifacts": 134,
+  "source_files": 269,
+  "source_map_sha256": "708d379fb01e46d9ec0ffd53c852e21b55d427f8cea9998a6f1559498837ddbc",
+  "review_issues": 0,
+  "docs_links": 309,
+  "diff_check": "PASS",
+  "hardware_access": false,
+  "commit_push_merge": false,
+  "physical_campaign": "PREPARED_NOT_RUN"
+}

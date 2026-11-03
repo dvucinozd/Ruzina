@@ -1,0 +1,29 @@
+{
+  "status": "RESTORED_S07_READBACK_MATCH_ROM_HELD",
+  "purpose": "RESTORE_LAST_LISTENING_ACCEPTED_S07",
+  "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "plan_sha256": "3a7f1d54ec71a51f8df6f2764fe92b37960a8d6f8b2fab85f6b00186ee036c90",
+  "flash_write_attempted": true,
+  "efuse_write": false,
+  "reset_requested": false,
+  "flash_rdid_hex": "0x184068",
+  "prewrite_candidate_sectors": "MATCH",
+  "readbacks": [
+    {
+      "offset": 8192,
+      "bytes": 24576,
+      "sha256": "e7d4808316b2be705599e929619d2286871bb0e765a9abb0f346d27c1968bf88"
+    },
+    {
+      "offset": 32768,
+      "bytes": 4096,
+      "sha256": "b9118aa3840f7c042a4dea8dae339d07a6e69f3716102174cc87b18046276295"
+    },
+    {
+      "offset": 65536,
+      "bytes": 770048,
+      "sha256": "622b7369e7451ddf4a47401497bf13c5e86cd119048653f9843f3814a634e150"
+    }
+  ],
+  "programmer_log_sha256": "3c2d05c0bf6129bbb2f4c1d6240174de52b2210c69c3778cd4f3472990acbf28"
+}

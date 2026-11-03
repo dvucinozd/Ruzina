@@ -1,0 +1,19 @@
+{
+  "case": "I01_BOOT_IDLE",
+  "status": "FAILED_BOOT_INSPECT",
+  "app_sha256": "0d4d07fa79d2eef299575304ed11258d1d071d8bdace84f35d793b176d551d85",
+  "elf_sha256": "babdee193eef1af50b18233e94b37ffeed4596b4ad7c923db2a9671937fd3245",
+  "physical_screen": "NOT_CAPTURED",
+  "playback": "NOT_RUN",
+  "hardware_reset_requested": true,
+  "flash_written": false,
+  "boot_elf_prefixes": [],
+  "expected_elf_seen": false,
+  "fatal_markers": [],
+  "stream_started": false,
+  "deck_engine_stats": [],
+  "deck_mix_stats": [],
+  "producer_stats": [],
+  "bytes": 139,
+  "log_sha256": "808f4a8492056e562b649297fe786a473430fe43ad4ccfda4134d3ad84def83e"
+}

@@ -1,0 +1,14 @@
+{
+  "status": "OWNER_CONFIRMED",
+  "answer": "sve radi",
+  "checks": [
+    "known deck1 track",
+    "clean sound both ears",
+    "Pause",
+    "CUE",
+    "unchanged level"
+  ],
+  "capture_played_frames": 965376,
+  "capture_played_seconds": 20.112,
+  "source_rate": 44100
+}

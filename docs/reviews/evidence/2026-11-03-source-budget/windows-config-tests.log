@@ -1,0 +1,19 @@
+test_deck_ui_combines_only_load_display_and_midi (test_config.ConfigTests.test_deck_ui_combines_only_load_display_and_midi) ... ok
+test_display_ownership (test_config.ConfigTests.test_display_ownership) ... ok
+test_file_fixture_requires_sd_owner (test_config.ConfigTests.test_file_fixture_requires_sd_owner) ... ok
+test_guards (test_config.ConfigTests.test_guards) ... ok
+test_load_display_requires_load_and_no_touch (test_config.ConfigTests.test_load_display_requires_load_and_no_touch) ... ok
+test_memory_profile (test_config.ConfigTests.test_memory_profile) ... ok
+test_mp3_core_override_is_explicit_and_build_only (test_config.ConfigTests.test_mp3_core_override_is_explicit_and_build_only) ... ok
+test_producer_profile_cli_rejects_wrong_or_combined_mode_before_idf (test_config.ConfigTests.test_producer_profile_cli_rejects_wrong_or_combined_mode_before_idf) ... ok
+test_rust_bridge_requires_exclusive_sd_owner (test_config.ConfigTests.test_rust_bridge_requires_exclusive_sd_owner) ... ok
+test_rust_exfat_requires_bridge (test_config.ConfigTests.test_rust_exfat_requires_bridge) ... ok
+test_rust_load_requires_bridge_caps_psram_and_no_fixture (test_config.ConfigTests.test_rust_load_requires_bridge_caps_psram_and_no_fixture) ... ok
+test_sd_readonly_owner (test_config.ConfigTests.test_sd_readonly_owner) ... ok
+test_uac_profile_guards (test_config.ConfigTests.test_uac_profile_guards) ... ok
+test_usb_host_enum_is_isolated (test_config.ConfigTests.test_usb_host_enum_is_isolated) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 3.525s
+
+OK

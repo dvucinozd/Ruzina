@@ -6,6 +6,12 @@ Candidate pins are documentation, not authorization to drive GPIOs.
 
 ## JC1060P470C_I_W_Y
 
+Future optional external-audio work is recorded in the
+[JC1060 external audio plan](JC1060_EXTERNAL_AUDIO_PLAN.md), including a JP1
+candidate map. Do not attach TLV320DAC3100 to the onboard GPIO7/8 I2C bus without
+resolving the ES8311 `0x18` collision; the plan uses separate I2C1 GPIO45/46.
+All external-audio assignments remain source-only and physically unverified.
+
 Unit-specific update 2026-10-30: [S6 legacy diagnostic](../reviews/2026-10-30-legacy-s6-display-touch.md)
 uses GPIO0/23 and shared I2C7/8 with New_Panel table provenance. The schematic
 does connect touch 21/22; this diagnostic leaves them unconfigured and polls

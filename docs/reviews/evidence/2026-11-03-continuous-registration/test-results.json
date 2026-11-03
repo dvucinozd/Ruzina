@@ -1,0 +1,51 @@
+{
+  "source_commit": "b92fb2364db94d23fb7745391953597ba51a03b5",
+  "source_supply_tests_per_os": 53,
+  "tests": {
+    "windows-tests": {
+      "command": [
+        "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/source_supply/tests",
+        "-v"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "96644033481c7f1ddfb9c523a847bfd446239d2d172a11c9b0153dfdb3761df0"
+    },
+    "linux-tests": {
+      "command": [
+        "wsl",
+        "-d",
+        "Ubuntu",
+        "bash",
+        "-lc",
+        "cd /mnt/d/AI/M1_PCB && python3 -m unittest discover -s tools/source_supply/tests -v"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "c8c534e0eb90a35e1ed998e292ad1b7c2eea577ac269b101a50cb0441ec25e13"
+    },
+    "shared-guard-linux": {
+      "command": [
+        "wsl",
+        "-d",
+        "Ubuntu",
+        "bash",
+        "-lc",
+        "cd /mnt/d/AI/M1_PCB && python3 -m unittest discover -s tools/resource_readiness/tests -v"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "6d9f99ed75187726267a6b1c05855b428351d20f484c3bc13df75f93119fe0dd"
+    },
+    "docs": {
+      "command": [
+        "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+        "firmware-rust/tools/check_docs.py"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "e8bb9a32d8132b471ecc51c9dffbef45b4f44d1663e897d75ee97a25092f1ba7"
+    }
+  }
+}

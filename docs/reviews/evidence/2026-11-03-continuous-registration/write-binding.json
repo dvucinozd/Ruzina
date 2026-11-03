@@ -1,0 +1,21 @@
+{
+  "status": "REVIEWED_CONTINUOUS_WRITE_TOOLS",
+  "source_commit": "b92fb2364db94d23fb7745391953597ba51a03b5",
+  "registration_sha256": "163d3ecd3e6809710c627b264aa57f5ec924aa76c5e3f74686f10ce1fe192a47",
+  "tools": {
+    "continuous_write.py": "ac5b83c9951bad00d0ff3ac57a591b2c671a7a2e3bbc21f3074c9b25c07afec2",
+    "campaign.py": "77d6ed50dd0ebe7061939efa389838cd64c479ad10e659c75f8e7daae7cc9881",
+    "continuous_contract.py": "b5fd5e51e247d541e5f79aced6cfd3fd9d6b5c9516b4d32f24662f78a8ce960f",
+    "software_boot.py": "c2ef521658c1f99125f0c20156dae8ec4319405f04a637c43a4594b41a77c4e4"
+  },
+  "shared_guard_sha256": "1b9e9b7e7f51202b65e34c5d2e212e9c42110ae2b3f8ea3df59756bfc6c2ebfb",
+  "ci_sha256": "c673e2882574445f5f1057b89b3f4705960119e09f7d3e5412234c53a99f6e52",
+  "review": {
+    "file": "D:\\BoardEvidence\\JC1060-20261030-COM3\\continuous-source-20261103\\review\\coderabbit-registration-after-reset.raw.log",
+    "raw_sha256": "3b432df284d755d694473efd727be08ef7fc25798ad6f0d2d38b8af280c766af",
+    "base": "0ac84ab62820665f133823c50a189433d84fe895",
+    "head": "b92fb2364db94d23fb7745391953597ba51a03b5",
+    "issues": 0
+  },
+  "device_access": false
+}

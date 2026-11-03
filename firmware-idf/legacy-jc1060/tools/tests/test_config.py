@@ -1,9 +1,63 @@
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 
 
 class ConfigTests(unittest.TestCase):
+    def test_mp3_core_override_is_explicit_and_build_only(self):
+        import importlib.util
+        builder = Path(__file__).resolve().parents[1]/'build_legacy.py'
+        spec = importlib.util.spec_from_file_location('budget_builder', builder)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for operation in ('build', 'clippy', 'fmt', '--version'):
+            default = module.rust_command([operation, '--release'])
+            self.assertEqual(default, ['cargo', '+1.95.0', operation, '--release'])
+            explicit = module.rust_command([operation, '--release'], True)
+            self.assertEqual('--config' in explicit, operation in ('build', 'clippy'))
+            if operation in ('build', 'clippy'):
+                self.assertEqual(explicit[2:4], ['--config', 'profile.release.package.nanomp3-core.opt-level=3'])
+        result = subprocess.run([sys.executable, str(builder), '--idf', 'missing-idf', '--output',
+                                 'missing-output', '--variant', 'deck-engine', '--mp3-core-opt3'],
+                                capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('requires explicit producer profiling', result.stderr)
+
+    def test_producer_profile_cli_rejects_wrong_or_combined_mode_before_idf(self):
+        import sys
+        builder=Path(__file__).resolve().parents[1]/'build_legacy.py'
+        for extra in (['--variant','deck-play'],['--variant','deck-engine','--uac-profile'],
+                      ['--variant','deck-engine','--uac-profile','--uac-pack-iram']):
+            result=subprocess.run([sys.executable,str(builder),'--idf','unused-idf','--output','unused-output',
+                                   '--producer-profile',*extra],capture_output=True,text=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('Producer profiling requires deck-engine',result.stderr)
+
+    def test_uac_profile_guards(self):
+        guard=Path(__file__).resolve().parents[1]/'check_config.cmake'
+        baseline=dict(IDF_TARGET='esp32p4',CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
+            CONFIG_ESP32P4_REV_MIN_FULL='100',CONFIG_ESP32P4_REV_MAX_FULL='199',
+            CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ='360',IDF_VERSION='6.1.0',CONFIG_RUZINA_UAC_PROFILE='ON',
+            CONFIG_RUZINA_SD_RUST_BRIDGE='ON',CONFIG_RUZINA_SD_RUST_LOAD='ON',CONFIG_RUZINA_LOAD_DISPLAY='ON',
+            CONFIG_RUZINA_USB_HOST_ENUM='ON',CONFIG_RUZINA_USB_HOST_MIDI='ON',CONFIG_RUZINA_USB_HOST_UAC='ON',
+            CONFIG_RUZINA_DECK_PLAY='ON',CONFIG_RUZINA_DECK_MIX='ON',CONFIG_RUZINA_DECK_ENGINE='ON',
+            CONFIG_SPIRAM='ON',CONFIG_SPIRAM_SPEED='80',CONFIG_SPIRAM_USE_CAPS_ALLOC='ON')
+        good=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in baseline.items()],'-P',str(guard)],capture_output=True,text=True)
+        self.assertEqual(good.returncode,0,good.stderr)
+        producer={**baseline,'CONFIG_RUZINA_UAC_PROFILE':'OFF','CONFIG_RUZINA_PRODUCER_PROFILE':'ON'}
+        for extra,accepted in (({},True),({'CONFIG_RUZINA_UAC_PROFILE':'ON'},False),
+                               ({'CONFIG_RUZINA_DECK_ENGINE':'OFF'},False)):
+            result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in {**producer,**extra}.items()],
+                                   '-P',str(guard)],capture_output=True,text=True)
+            self.assertEqual(result.returncode==0,accepted,(extra,result.stderr))
+        for extra in ({'CONFIG_RUZINA_DECK_ENGINE':'OFF'},{'CONFIG_FREERTOS_SMP':'ON'},
+                      {'CONFIG_ESP_TRACE_ENABLE':'ON'},{'CONFIG_SECURE_ENABLE_TEE':'ON'}):
+            config={**baseline,**extra}
+            result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True,text=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('exclusive pinned non-SMP trace hooks',' '.join(result.stderr.split()))
+
     def test_guards(self):
         baseline = dict(IDF_TARGET='esp32p4', CONFIG_ESP32P4_SELECTS_REV_LESS_V3='ON',
                         CONFIG_ESP32P4_REV_MIN_FULL='100', CONFIG_ESP32P4_REV_MAX_FULL='199',
@@ -144,7 +198,12 @@ class ConfigTests(unittest.TestCase):
                ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_USB_HOST_MIDI':'OFF'},False),
                ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON'},True),
                ({'CONFIG_RUZINA_DECK_PLAY':'ON'},False),
-               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_LOAD_DISPLAY':'OFF'},False)]
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_LOAD_DISPLAY':'OFF'},False),
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_DECK_MIX':'ON'},True),
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_MIX':'ON'},False),
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_DECK_MIX':'ON',
+                 'CONFIG_RUZINA_DECK_ENGINE':'ON'},True),
+               ({'CONFIG_RUZINA_USB_HOST_UAC':'ON','CONFIG_RUZINA_DECK_PLAY':'ON','CONFIG_RUZINA_DECK_ENGINE':'ON'},False)]
         for override,accepted in cases:
             config=base|override
             result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)

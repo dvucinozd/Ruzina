@@ -1,0 +1,147 @@
+test_actual_driver_fault_paths (test_uac_recovery.UacRecoveryTests.test_actual_driver_fault_paths) ... usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+ok
+test_actual_driver_producer_profile (test_uac_recovery.UacRecoveryTests.test_actual_driver_producer_profile) ... usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+engine_resources generation=1 usb_stack_free=3072 logger_stack_free=1234 internal_free=2052 internal_min=2052 internal_largest=2052 psram_free=1028 psram_min=1028 psram_largest=1028
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=3
+usb_uac_stop transfers=1 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=5
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=7
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=8
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac unavailable=RESOURCE_INIT_FAILED
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+ok
+test_actual_driver_profile_context (test_uac_recovery.UacRecoveryTests.test_actual_driver_profile_context) ... uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+engine_resources generation=1 usb_stack_free=3072 logger_stack_free=1234 internal_free=2052 internal_min=2052 internal_largest=2052 psram_free=1028 psram_min=1028 psram_largest=1028
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=3
+usb_uac_stop transfers=1 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac_stop transfers=1 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=5
+usb_uac_stop transfers=1 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=6
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=6
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=6
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=6
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=7
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=9
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=10
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac unavailable=RESOURCE_INIT_FAILED
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+uac_profile_resources snapshot_bytes=1176 record_bytes=196 stage_words=20 logger_stack=4096 irq_coverage=core0_c_dispatch
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+ok
+test_actual_driver_timing_phases (test_uac_recovery.UacRecoveryTests.test_actual_driver_timing_phases) ... usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+engine_resources generation=1 usb_stack_free=3072 logger_stack_free=1234 internal_free=2052 internal_min=2052 internal_largest=2052 psram_free=1028 psram_min=1028 psram_largest=1028
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=2
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=3
+usb_uac_stop transfers=1 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=4
+usb_uac unavailable=FAULT_HELD attempts=3 submit_errors=1
+usb_uac_stop transfers=2 packets=0 frames=0 tone_packets=0 iso_errors=2 packet_errors=0 control_errors=0 fill_errors=1 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=5
+usb_uac unavailable=DRAIN_TIMEOUT resources=HELD
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=7
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=8
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+usb_uac unavailable=RESOURCE_INIT_FAILED
+usb_uac interface=1 alt=1 ep=02 mps=384 channels=4 bytes=2 rate=48000 freq_control=0 headphones=3/4 claim=OK
+usb_uac_stop transfers=0 packets=0 frames=0 tone_packets=0 iso_errors=0 packet_errors=0 control_errors=0 fill_errors=0 freed=YES release=OK
+ok
+test_actual_irq_wrapper (test_uac_recovery.UacRecoveryTests.test_actual_irq_wrapper) ... ok
+test_actual_scheduler_hooks (test_uac_recovery.UacRecoveryTests.test_actual_scheduler_hooks) ... ok
+test_producer_service_wall_gaps_and_epoch_bounds (test_uac_recovery.UacRecoveryTests.test_producer_service_wall_gaps_and_epoch_bounds) ... ok
+test_production_recovery_policy (test_uac_recovery.UacRecoveryTests.test_production_recovery_policy) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 4.686s
+
+OK

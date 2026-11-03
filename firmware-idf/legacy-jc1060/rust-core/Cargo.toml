@@ -8,6 +8,11 @@ publish = false
 [lib]
 crate-type = ["staticlib"]
 
+[[test]]
+name = "legacy_codec_streams"
+path = "../../../firmware-rust/crates/ruzina-audio-runtime/tests/codec_streams.rs"
+required-features = ["deck-mix"]
+
 [dependencies]
 ruzina-deck = { path = "../../../firmware-rust/crates/ruzina-deck" }
 ruzina-audio-dsp = { path = "../../../firmware-rust/crates/ruzina-audio-dsp", optional = true }
@@ -25,6 +30,9 @@ ruzina-controller-profile = { path = "../../../firmware-rust/crates/ruzina-contr
 ruzina-controller-session = { path = "../../../firmware-rust/crates/ruzina-controller-session", optional = true }
 ruzina-uac = { path = "../../../firmware-rust/crates/ruzina-uac", optional = true }
 ruzina-audio-runtime = { path = "../../../firmware-rust/crates/ruzina-audio-runtime", optional = true }
+ruzina-mixer = { path = "../../../firmware-rust/crates/ruzina-mixer", optional = true }
+ruzina-hot-cues = { path = "../../../firmware-rust/crates/ruzina-hot-cues", optional = true }
+ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core", optional = true }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
 
 [features]
@@ -54,12 +62,50 @@ idf-controller-audio = ["idf-controller-midi", "controller-audio"]
 deck-play = ["controller-audio", "media-load", "dep:ruzina-audio-runtime"]
 # Deck 1 decoded from the card to the controller headphones over UAC1.
 idf-deck-play = ["idf-controller-audio", "idf-media-load", "deck-play"]
+deck-mix = ["deck-play", "dep:ruzina-mixer"]
+# Both decks through the product render graph to MAIN and the headphones.
+idf-deck-mix = ["idf-deck-play", "deck-mix"]
+deck-engine = ["deck-mix", "dep:ruzina-hot-cues", "dep:ruzina-core"]
+# The product deck engine (ruzina-deck) owns transport: CUE, seek, pitch, jog.
+idf-deck-engine = ["idf-deck-mix", "deck-engine"]
+
+# Explicit diagnostic only. Normal deck-engine has no substage clock calls.
+uac-profile = ["deck-engine"]
+idf-uac-profile = ["idf-deck-engine", "uac-profile"]
+
+# Separate source-supply diagnostic; no render substage or IRQ profiling.
+producer-profile = ["deck-engine"]
+idf-producer-profile = ["idf-deck-engine", "producer-profile"]
 
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }
+nanomp3-core = { version = "=0.2.0", default-features = false }
+
+[patch.crates-io]
+nanomp3-core = { path = "../third_party/nanomp3-core-0.2.0" }
+nanoaudio-mp3 = { path = "../third_party/nanoaudio-mp3-0.1.1" }
 
 [profile.release]
 panic = "abort"
 opt-level = "s"
+
+# MP3 decoding is CPU-bound: at "s" one MP3 deck took about 47 % of core 1
+# on the device, so two decks underran. Speed-optimize the decode path only;
+# the reset-in-place patch (third_party) keeps its stack frames bounded.
+[profile.release.package.nanomp3-core]
+opt-level = 3
+
+[profile.release.package.nanoaudio-mp3]
+opt-level = 3
+
+[profile.release.package.ruzina-audio-runtime]
+opt-level = 3
+
+# The render/mix path in the USB fill runs these per frame.
+[profile.release.package.ruzina-audio-dsp]
+opt-level = 3
+
+[profile.release.package.ruzina-mixer]
+opt-level = 3
 
 [workspace]

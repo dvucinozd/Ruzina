@@ -1,0 +1,9 @@
+{
+  "library_visible": true,
+  "library_reply": "vraća",
+  "clean_both_ears": true,
+  "pause_cue_controls_normal": true,
+  "playback_reply": "sva je ok",
+  "accepted_audio_level_unchanged": true,
+  "physical_scope": "Restored exact accepted s07; known deck1 track; Pause and transport CUE; no producer-profile playback acceptance"
+}

@@ -1,0 +1,9 @@
+{
+  "case": "N02 deck1",
+  "headroom_target_pass": false,
+  "all_fill_max_us": 3214,
+  "gt_3000_delta": 3,
+  "ge_6000_delta": 0,
+  "continuation_basis": "Exact registration measurement.failure stops on all-fill >=6000 us, runtime reserve failure or unexpected steady error. <=3000 us is the separate headroom target. No target PASS or full admission PASS claimed.",
+  "thresholds_changed": false
+}

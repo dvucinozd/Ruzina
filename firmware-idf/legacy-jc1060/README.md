@@ -5,6 +5,16 @@ revision is **103 (v1.3)**. It does not relax the native firmware's minimum
 revision 302, replace its esp-hal/esp-rtos startup, or activate product owners.
 See the [arrival evidence and assessment](../../docs/boards/JC1060_ARRIVAL_2026-10-30.md).
 
+The `deck-engine` candidate prepares both decks' permanent PCM rings, decoder,
+checkpoint and encoded stores on the SD owner before UAC activation. The USB
+client polls UNINITIALIZED/PREPARING/READY/FAILED without blocking event/MIDI
+handling; only READY permits interface startup and prefill. Resource readiness
+does not grant a media lease. Failure/removal is terminal until reboot; published
+rings remain alive. Lower diagnostic profiles retain their previous startup.
+See the [implementation record](../../docs/reviews/2026-11-02-resource-readiness.md)
+for verification and open physical gates. This candidate is not qualified or
+installed; s07 remains the accepted image.
+
 ## Reproducible offline tools
 
 S5 adds an independent `--variant memory-task` profile, selected by
@@ -38,7 +48,7 @@ python -m unittest discover -s firmware-idf/legacy-jc1060/tools/tests -v
 python firmware-idf/legacy-jc1060/tools/validate_unit.py docs/boards/readiness/jc1060-20261030-com3.json
 ```
 
-Windows can use `tools/build_legacy.ps1` with IdF/Output/Variant/Python parameters
+Windows can use `tools/build_legacy.ps1` with Idf/Output/Variant/Python parameters
 or call Python directly. Optional `--wsl Ubuntu --cargo-home /linux/cache/cargo
 --rustup-home /linux/cache/rustup` selects WSL Rust; paths are translated by
 wslpath, while IDF uses Windows paths. All tools/build environment paths are
@@ -157,7 +167,7 @@ cargo +1.95.0 build --locked --release --manifest-path firmware-idf/legacy-jc106
 The separate `sd-rust-bridge` builder variant enables `idf-media-bridge` and
 `CONFIG_RUZINA_SD_RUST_BRIDGE`. It supplies a concrete IDF owner task on core 0
 and a diagnostic Rust client task on core 1. The C owner alone holds card/host/
-LDO4 and a512-byte internal DMA-capable bounce buffer. Rust retains its own
+LDO4 and a 512-byte internal DMA-capable bounce buffer. Rust retains its own
 owned 512-byte arrays and copies from the DMA-complete C buffer synchronously;
 no Rust request/future/layout or retained buffer pointer crosses C. State uses
 one shared IDF portMUX, with wake notifications delivered after unlocking.
@@ -177,7 +187,7 @@ filesystem path and asynchronous product executor remain subsequent work.
 
 `sd-rust-exfat` is a separate opt-in extension selecting the shared Rust
 partition/exFAT reader and pure-Rust SHA-256 for the same deterministic fixture.
-It retains the transport's one-sector C bounce buffer and uses a32768-byte
+It retains the transport's one-sector C bounce buffer and uses a 32768-byte
 diagnostic client stack. MBR/superfloppy and bounded GPT discovery reuse the
 shared partition parser; the chosen exFAT header/partition bounds and main boot
 checksum must validate. No C/FatFs mount, file handle or write API is involved.
@@ -285,7 +295,7 @@ stayed flat, and removal, reinsertion and cold return were clean. See the
 profile plus a status screen on the New_Panel. `display_touch.c` now exposes
 `ruzina_panel_start()`, the same DSI, LDO3, reset, init-table and DPI bring-up
 that the `display-touch` diagnostic uses. The panel starts with a dark frame
-before the SD owner. The GT911 touch controller is polled through the shared`nruzina_touch_start()` and `ruzina_touch_poll()`, which the touch diagnostic
+before the SD owner. The GT911 touch controller is polled through the shared `ruzina_touch_start()` and `ruzina_touch_poll()`, which the touch diagnostic
 also uses; the profile still excludes that diagnostic.
 
 `load_display.c` draws the screen with a 12x24 bitmap font: `font24.h`, a
@@ -432,3 +442,99 @@ with deck 1's track in place of the tone.
   chain under the load run (`load-run-stack.log`).
 
 See [deck play](../../docs/reviews/2026-11-01-legacy-deck-play.md).
+
+## `deck-mix` profile
+
+`deck-mix` (`CONFIG_RUZINA_DECK_MIX`, Rust `idf-deck-mix`) plays both decks
+and mixes them with the product's own render graph.
+
+- **Decoding.** The SD load task decodes deck 1 and deck 2, each into its own
+  PSRAM ring. Deck 2's decoder is allocated at its first Load.
+- **Render.** On the USB client task, `ruzina-audio-runtime`'s
+  `FixedRateRenderGraph` renders 128-frame blocks:
+  - per-deck resampling to 48 kHz, with the Tempo fader as pitch;
+  - trim, EQ and filter;
+  - the channel faders, crossfader, master gain and the MAIN limiter;
+  - the PFL and MAIN headphone mix.
+- **Controls.** The FLX4's mixer controls drive `ruzina-mixer`'s
+  `MixerState`, as on the native firmware.
+- **Outputs.** MAIN goes to FLX4 channels 1/2 (the MASTER output), and the
+  headphones to 3/4.
+- **Safety.** Master Volume and Headphone Level start at a quarter until each
+  knob moves, and the headphones keep a −12 dB ceiling.
+- **Telemetry.** The log adds `deck_mix_stats` with underruns and buffered
+  frames per deck, limited MAIN samples and `fill_max_us`.
+- **Stack.** The build checks the call chain under the UAC fill against the
+  8 KiB USB client task (`uac-fill-stack.log`).
+
+See [deck mix](../../docs/reviews/2026-11-01-legacy-deck-mix.md).
+
+## `deck-engine` profile
+
+`deck-engine` (`CONFIG_RUZINA_DECK_ENGINE`, Rust `idf-deck-engine`) is
+`deck-mix` with the product deck engine, `ruzina-deck`'s `DeckProductState`,
+in charge of transport.
+
+- **Controls.** Every controller event reaches the engine. It handles Play
+  and CDJ CUE (return, set, preview), the Tempo faders, and the jog: scrub
+  while paused, bend while playing. The Hot Cue pads set and recall local hot
+  cues.
+- **Effects.** Playback and pause gate the render, and seeks reopen the
+  deck's decoder at the target (`StreamChange::SeekMilliseconds`).
+- **Feedback to the engine.** The renderer reports each deck's position back
+  to the engine. A loaded track is committed with `commit_track_load` once its
+  producer has decoded it.
+- **Load lock.** Load is refused while the deck plays.
+- **Feedback to the owner.** The Play LEDs follow the engine. The screen
+  header shows `> m:ss` or `| m:ss` per deck, and the log adds
+  `deck_engine_stats`.
+- **Not yet executed.** Scratch, loops, pad FX and beat FX effects are
+  counted only.
+
+See [deck engine](../../docs/reviews/2026-11-01-legacy-deck-engine.md).
+
+## UAC fill-phase diagnostics (`deck-mix` / `deck-engine`)
+
+For the later OFF-by-default substage/scheduler diagnostic, use
+`build_legacy.py --variant deck-engine --uac-profile` (PowerShell wrapper:
+`-Variant deck-engine -UacProfile`). It selects Rust `idf-uac-profile` and
+`CONFIG_RUZINA_UAC_PROFILE`; normal profiles do not contain substage clocks or
+scheduler hooks. Build verification rejects mismatched config/symbols and
+checks the actual compiled FreeRTOS switch hooks. Do not patch the IDF checkout.
+
+The profile retains the whole-fill/phase statistics below and adds coherent
+worst/latest-over-budget callback records, exclusive Rust stage durations and
+completed USB-task switch-out intervals. All formatting stays on the logger.
+Scheduler windows slightly bracket the original fill window; `away_us` is not
+task-only CPU time or a measurement of ISR time without a task switch. Check
+validity flags and do not double-count graph/source pulls or nested intervals.
+This measures a cause; it does not change priorities, gain or DSP, and it does
+not qualify a slow image. Read the [execution record](../../docs/reviews/2026-11-01-uac-callback-profiling-execution.md)
+for word layout, tests, exact packages and remaining physical gates.
+
+`fill_max_us` retains its boot-cumulative maximum across all fills, including
+prefill, recovery and failed fills. The diagnostic adds bounded, saturating
+per-phase counters without changing render/transport behavior or gain:
+
+- `uac_fill_phase`: `initial_prefill`, `recovery_prefill` and `callback` each
+  report count, first and maximum wall time, failures, `gt_3000` (>3000 us) and
+  `ge_6000` (>=6000 us). Phase statistics and their first samples are cumulative
+  since boot (`scope=BOOT`), not reset by a reconnect.
+- `uac_fill_first`: first attempted fill in the current connection, tagged by
+  generation; phase numbers 0/1/2 map to the three names above. `seen=0` means
+  no fill has occurred in that connection (for example, allocation failed).
+- `after_iso_submit` flags mean an audio transfer had previously been
+  successfully submitted in that connection, not that it remains in flight.
+  EP0 control submissions do not set them. Maximum-context flags refer to the
+  first sample attaining that maximum.
+
+Measurements cover the same Rust fill call as the existing maximum and include
+preemption; they are not task-only CPU time. Failed fills are counted. Counts
+and elapsed durations clamp at `UINT32_MAX`. Snapshots use the existing one-slot
+queue and priority-1 logger; no formatting or allocation is added to callbacks.
+The three phase counts account for all measured fill attempts until saturation.
+
+This instrumentation diagnoses the [12260 us campaign result](../../docs/reviews/2026-11-01-review-fix-device-results.md).
+It does not establish a timing improvement or change the registered 6000 us
+rejection criterion. See the [follow-up execution](../../docs/reviews/2026-11-01-uac-timing-execution.md)
+before choosing a package or accessing the device.

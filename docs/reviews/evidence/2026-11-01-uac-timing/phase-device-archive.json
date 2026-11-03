@@ -1,0 +1,10 @@
+{
+  "status": "CRC_CONTENT_AND_SECONDARY_SHA256_PASS",
+  "files": 45,
+  "bytes": 20771576,
+  "sha256": "81a4a496b44145dee7361413c1aa6f455e0fefe3ab5d78e7a9d62664a00b8fe5",
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-timing-20261101\\phase-measurement-d4a5774.zip",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\uac-timing-20261101\\phase-measurement-d4a5774.zip",
+  "raw_records_verified": 12,
+  "current_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd"
+}

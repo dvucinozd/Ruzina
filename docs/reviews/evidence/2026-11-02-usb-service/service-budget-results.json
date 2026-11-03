@@ -1,0 +1,41 @@
+{
+  "status": "MODEL_ARITHMETIC_PASS_NOT_TARGET_QUALIFICATION",
+  "tests": 6,
+  "assumptions": "Idealized service-budget arithmetic, NOT a USB driver or observed replay.\n\nFour initially queued 6 ms URBs, no IRQ/HCD scheduling cost, perfect scheduling\nof pending URBs. CPU callbacks serialize; callback cost includes resubmission.\nActual driver deadlines require completion/dispatch/submission/frame evidence.\n",
+  "examples": {
+    "single_outlier_can_fit": [
+      {
+        "released_us": 6000,
+        "callback_start_us": 6000,
+        "resubmit_us": 23386,
+        "old_tail_us": 24000,
+        "modeled_gap_us": 0
+      }
+    ],
+    "successive_delays_can_empty_pool": [
+      {
+        "released_us": 6000,
+        "callback_start_us": 6000,
+        "resubmit_us": 23386,
+        "old_tail_us": 24000,
+        "modeled_gap_us": 0
+      },
+      {
+        "released_us": 12000,
+        "callback_start_us": 23386,
+        "resubmit_us": 31771,
+        "old_tail_us": 30000,
+        "modeled_gap_us": 1771
+      }
+    ],
+    "dispatch_delay_consumes_headroom": [
+      {
+        "released_us": 6000,
+        "callback_start_us": 12000,
+        "resubmit_us": 26000,
+        "old_tail_us": 24000,
+        "modeled_gap_us": 2000
+      }
+    ]
+  }
+}

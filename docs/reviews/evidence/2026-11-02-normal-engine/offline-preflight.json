@@ -1,0 +1,16 @@
+[
+  {
+    "status": "OFFLINE_PREFLIGHT_PASS_NO_DEVICE_ACCESS",
+    "mode": "candidate",
+    "predecessors": 38,
+    "expected_before_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+    "expected_after_sha256": "155ab6b5db69ae73f3a4498e97c658fc50031d0a69c60275d59fc80a1692b5b1"
+  },
+  {
+    "status": "OFFLINE_PREFLIGHT_PASS_NO_DEVICE_ACCESS",
+    "mode": "return-s07",
+    "predecessors": 39,
+    "expected_before_sha256": "155ab6b5db69ae73f3a4498e97c658fc50031d0a69c60275d59fc80a1692b5b1",
+    "expected_after_sha256": "7875f650ba7404475e9c26561990851b04c11409b3f309401f6e77a51ddf38a6"
+  }
+]

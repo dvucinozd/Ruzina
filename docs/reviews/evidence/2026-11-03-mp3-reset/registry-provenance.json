@@ -1,0 +1,15 @@
+{
+  "status": "LOCKED_ORIGINAL_ARCHIVES_AND_COPIED_FILES_MATCH",
+  "records": [
+    {
+      "package": "nanomp3-core-0.2.0",
+      "archive_sha256": "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c",
+      "original_files_verified": 11
+    },
+    {
+      "package": "nanoaudio-mp3-0.1.1",
+      "archive_sha256": "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214",
+      "original_files_verified": 11
+    }
+  ]
+}

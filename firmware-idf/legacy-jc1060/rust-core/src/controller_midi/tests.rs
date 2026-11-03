@@ -56,6 +56,7 @@ fn take_out(capacity: usize) -> Vec<[u8; 4]> {
 // One test: the session is a single process-wide static, as on the device.
 #[test]
 fn flx4_play_presses_reach_the_semantic_session() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     assert_eq!(ruzina_legacy_midi_bind(0x1234, 0x0045), 0);
     assert_eq!(ingest(&[0x09, 0x90, 0x0b, 0x7f]), -1);
 
@@ -76,15 +77,21 @@ fn flx4_play_presses_reach_the_semantic_session() {
 
     // The echo latched both decks' Play LEDs on (the deck 1 release does not
     // toggle): note-on 0x90/0x91 0x0B with a non-zero value, CIN 9, cable 0.
+    // With the deck engine, Play on an empty deck is refused: LEDs stay off.
     let out = take_out(512);
+    let engine = cfg!(feature = "deck-engine");
     let lit = |status: u8| {
         out.iter()
             .rev()
             .find(|p| p[1] == status && p[2] == 0x0b)
             .map(|p| (p[0], p[3]))
     };
-    assert!(matches!(lit(0x90), Some((0x09, value)) if value != 0));
-    assert!(matches!(lit(0x91), Some((0x09, value)) if value != 0));
+    if engine {
+        assert_eq!((lit(0x90), lit(0x91)), (None, None));
+    } else {
+        assert!(matches!(lit(0x90), Some((0x09, value)) if value != 0));
+        assert!(matches!(lit(0x91), Some((0x09, value)) if value != 0));
+    }
     assert!(take_out(512).is_empty());
 
     // A second deck 1 press turns its Play LED off; Cue follows the hold.
@@ -98,7 +105,7 @@ fn flx4_play_presses_reach_the_semantic_session() {
             .map(|p| p[3])
             .collect::<Vec<_>>()
     };
-    assert_eq!(deck1(0x0b).last(), Some(&0));
+    assert_eq!(deck1(0x0b).last(), if engine { None } else { Some(&0) });
     let cue = deck1(0x0c);
     assert_eq!(cue.len(), 2);
     assert!(cue[0] != 0 && cue[1] == 0);
@@ -143,20 +150,22 @@ fn flx4_play_presses_reach_the_semantic_session() {
         ]
     );
 
-    #[cfg(feature = "deck-play")]
+    #[cfg(all(feature = "deck-play", not(feature = "deck-engine")))]
     {
         use crate::deck_play::COMMANDS;
         // Load paused deck 2 above; deck 1 plays, then Cue pauses it and
-        // asks the producer to return to the start. Deck 2's Cue does not.
+        // asks the producer to return to the start; deck 2's Cue asks its own.
         assert_eq!(playing(), [false, false]);
-        COMMANDS.take();
+        COMMANDS[0].take();
+        COMMANDS[1].take();
         ingest(&[0x09, 0x90, 0x0b, 0x7f, 0x09, 0x91, 0x0c, 0x7f]);
         assert_eq!(playing(), [true, false]);
-        assert_eq!(COMMANDS.take(), (0, false));
+        assert_eq!(COMMANDS[0].take(), (0, false));
+        assert_eq!(COMMANDS[1].take(), (0, true));
         take_out(512);
         ingest(&[0x09, 0x90, 0x0c, 0x7f]);
         assert_eq!(playing(), [false, false]);
-        assert_eq!(COMMANDS.take(), (0, true));
+        assert_eq!(COMMANDS[0].take(), (0, true));
         assert!(take_out(512).iter().any(|p| p[1..] == [0x90, 0x0b, 0x00]));
         // Load on a playing deck pauses it too.
         ingest(&[0x09, 0x90, 0x0b, 0x7f, 0x09, 0x96, 0x46, 0x7f]);

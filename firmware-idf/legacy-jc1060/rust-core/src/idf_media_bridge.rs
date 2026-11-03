@@ -154,6 +154,8 @@ pub extern "C" fn ruzina_legacy_bridge_init(sectors: u32) -> i32 {
         ) else {
             return -2;
         };
+        #[cfg(feature = "deck-play")]
+        crate::media_signal::activate(binding.lease);
         *state = Some(State {
             queue,
             binding,
@@ -250,6 +252,10 @@ pub unsafe extern "C" fn ruzina_legacy_bridge_complete(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_bridge_invalidate() -> i32 {
+    #[cfg(feature = "idf-deck-engine")]
+    crate::deck_resources::GATE.fail();
+    #[cfg(feature = "deck-play")]
+    crate::media_signal::revoke();
     let (safe, waker) = with_state(|state| {
         let Some(s) = state.as_mut() else {
             return (true, None);
@@ -440,6 +446,18 @@ mod load_event {
 #[cfg(feature = "idf-media-load")]
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_load_run() -> i32 {
+    #[cfg(feature = "deck-play")]
+    struct RevokeOnExit;
+    #[cfg(feature = "deck-play")]
+    impl Drop for RevokeOnExit {
+        fn drop(&mut self) {
+            crate::media_signal::revoke();
+            #[cfg(feature = "idf-deck-engine")]
+            crate::deck_resources::GATE.fail();
+        }
+    }
+    #[cfg(feature = "deck-play")]
+    let _revoke_on_exit = RevokeOnExit;
     use crate::media_load::{Error, import_catalog, preflight, volume_identity};
     use alloc::boxed::Box;
     use ruzina_media_catalog::{CatalogLoadCandidate, CatalogPublicationId};
@@ -451,6 +469,17 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         return -1;
     };
     let current = || Port.is_current(binding);
+    #[cfg(feature = "idf-deck-engine")]
+    let prepared = {
+        use crate::deck_resources::{GATE, prepare};
+        report(0, 14, 0); // resource preparation starts, before mount/catalog/UAC
+        let Some(producers) = prepare(&GATE, &crate::deck_play::RINGS, current) else {
+            report(0, load_event::FAILED, 2 << 8 | 1);
+            return -7;
+        };
+        report(0, 15, 1); // both rings and permanent producer stores are ready
+        producers
+    };
     let mut client = ReadClient::new(Port, binding);
     let mut volume = match block_on(crate::exfat_fixture::mount(
         &mut client,
@@ -626,7 +655,14 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         // serves selections and decodes deck 1 instead of re-reading the card.
         #[cfg(feature = "idf-deck-play")]
         return serve_decks(
-            pass,
+            |index| {
+                stage.current().and_then(|snapshot| {
+                    snapshot
+                        .get(index as usize)
+                        .map(|t| (t.track_id.0, t.bpm_x100))
+                })
+            },
+            (pass, tracks),
             &mut volume,
             &current,
             |volume, index| run(volume, index, true),
@@ -636,7 +672,8 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                     .and_then(|snapshot| snapshot.get(index as usize).map(|t| t.audio_path))
                     .map(CatalogPath)
             },
-            tracks,
+            #[cfg(feature = "idf-deck-engine")]
+            prepared,
         );
         // SAFETY: task-only cooperative delay between passes.
         #[cfg(not(feature = "idf-deck-play"))]
@@ -678,6 +715,13 @@ impl<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> crate::deck_play::So
         block_on(self.volume.open_read(path)).ok()
     }
 
+    fn now_us(&self) -> u64 {
+        unsafe extern "C" {
+            fn esp_timer_get_time() -> i64;
+        }
+        // SAFETY: IDF monotonic task-safe clock, no retained pointer.
+        unsafe { esp_timer_get_time() as u64 }
+    }
     fn len(&self, file: &Self::File) -> u64 {
         ruzina_media_fs::FileHandle::len(file)
     }
@@ -690,7 +734,8 @@ impl<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> crate::deck_play::So
         let volume = &mut *self.volume;
         block_on(async {
             volume.seek_absolute(file, offset).await.ok()?;
-            volume.read(file, out).await.ok()
+            let bytes = volume.read(file, out).await.ok()?;
+            (self.current)().then_some(bytes)
         })
     }
 
@@ -700,71 +745,302 @@ impl<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> crate::deck_play::So
     }
 }
 
-/// Deck playback telemetry, through the load report.
+/// Deck playback telemetry, through the load report. Values carry the deck
+/// (0 deck 1, 1 deck 2) in bits 24 and up.
 #[cfg(feature = "idf-deck-play")]
 mod play_event {
-    /// Deck 1 decodes a track; value is `index << 8 | codec` (1 WAV, 2 MP3, 3 FLAC).
+    /// A deck decodes a track; value is `deck << 24 | index << 8 | codec`
+    /// (1 WAV, 2 MP3, 3 FLAC).
     pub const READY: u32 = 7;
-    /// The track's source rate in Hz.
+    /// The track's source rate in Hz, `deck << 24 | rate`.
     pub const RATE: u32 = 8;
-    /// The track failed to load; value is `index << 8 | stage`
+    /// The track failed to load; value is `deck << 24 | index << 8 | stage`
     /// (1 path, 2 open, 3 format, 4 decode).
     pub const FAILED: u32 = 9;
-    /// The track ended; value is `index << 8 | faulted`.
+    /// The track ended; value is `deck << 24 | index << 8 | faulted`.
     pub const ENDED: u32 = 10;
+    /// A seek reopened the track; value is `deck << 24 | failed << 23 | ms`
+    /// (ms capped at 23 bits).
+    pub const SEEKED: u32 = 11;
 }
 
-/// After the first pass: serve detail selections and the deck 1 producer
-/// until the lease ends. Returns only on a lost lease or allocation failure.
+/// After the first pass: serve detail selections and the deck producers
+/// until the lease ends. Deck 1's producer exists from the start; deck 2's
+/// (with `deck-mix`) is allocated at its first Load. Returns only on a lost
+/// lease or allocation failure.
 #[cfg(feature = "idf-deck-play")]
+#[cfg_attr(not(feature = "idf-deck-engine"), allow(unused_variables))]
 fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<str>>(
-    pass: u32,
+    track: impl Fn(u32) -> Option<([u8; 16], u32)>,
+    (pass, tracks): (u32, usize),
     volume: &mut crate::exfat_fixture::Volume<D>,
     current: &C,
     detail: impl Fn(&mut crate::exfat_fixture::Volume<D>, usize) -> Option<u32>,
     path: impl Fn(u32) -> Option<P>,
-    tracks: usize,
+    #[cfg(feature = "idf-deck-engine")] prepared: [crate::deck_play::Producer<
+        <crate::exfat_fixture::Volume<D> as ruzina_media_fs::AsyncFileSystem>::File,
+    >; 2],
 ) -> i32 {
-    use crate::deck_play::{COMMANDS, Event, Producer, RING, attach_ring};
+    use crate::deck_play::{COMMANDS, DECKS, Event, RINGS, SourceFiles};
+    #[cfg(not(feature = "idf-deck-engine"))]
+    use crate::deck_play::{Producer, attach_ring};
     use core::sync::atomic::Ordering;
     // SAFETY: diagnostic telemetry passes three u32 POD values only.
     let report = |event, value| unsafe { ruzina_bridge_load_report(pass, event, value) };
-    if !attach_ring() {
+    #[cfg(not(feature = "idf-deck-engine"))]
+    if !attach_ring(0) {
         report(load_event::FAILED, 2 << 8 | 1);
         return -7;
     }
-    let mut producer = Producer::new();
+    #[cfg(not(feature = "idf-deck-engine"))]
+    let mut producers: [Option<Producer<_>>; 2] = [Some(Producer::new()), None];
+    #[cfg(feature = "idf-deck-engine")]
+    let mut producers = prepared.map(Some);
+    #[cfg(feature = "idf-deck-engine")]
+    let mut pending_results = [None; 2];
+    #[cfg(feature = "idf-deck-engine")]
+    let mut pending_seeks = [None; 2];
+    #[cfg(feature = "idf-deck-engine")]
+    let mut sources = [None; 2];
+    #[cfg(feature = "idf-deck-engine")]
+    let mut active_loads = [None; 2];
+    #[cfg(feature = "idf-deck-engine")]
+    let mut active_seeks = [None; 2];
+    #[cfg(feature = "idf-deck-engine")]
+    let lease = with_state(|s| s.as_ref().unwrap().binding.lease);
+    #[cfg(feature = "idf-deck-engine")]
+    let _ = crate::deck_transport::MEDIA.put(lease);
+    let mut deck_two_first = false;
+    let mut detail_deferred = false;
+    let mut last_turn_us = 0u64;
+    let mut maximum_gap_us = 0u64;
+    let mut turns = 0u32;
+    #[cfg(feature = "producer-profile")]
+    let mut last_profile_publish = 0u64;
+    #[cfg(feature = "producer-profile")]
+    let (mut owner_profile, mut owner_end) = (crate::producer_profile::Stats::default(), 0u64);
     loop {
-        if LOAD_DETAIL_OWED.swap(false, Ordering::Acquire) {
+        let now = VolumeFiles {
+            volume: &mut *volume,
+            current,
+        }
+        .now_us();
+        if last_turn_us != 0 {
+            maximum_gap_us = maximum_gap_us.max(now.saturating_sub(last_turn_us));
+        }
+        last_turn_us = now;
+        turns = turns.wrapping_add(1);
+        #[cfg(feature = "producer-profile")]
+        let mut poll_wall = 0u64;
+        let playing = crate::media_signal::playing();
+        if playing.into_iter().any(|p| p) && LOAD_DETAIL_OWED.load(Ordering::Acquire) {
+            if !detail_deferred {
+                report(12, 0);
+                detail_deferred = true;
+            }
+        } else if LOAD_DETAIL_OWED.swap(false, Ordering::Acquire) {
+            detail_deferred = false;
             let selected = LOAD_SELECTED.load(Ordering::Relaxed) as usize;
             if selected < tracks && detail(volume, selected) == Some(3) {
                 report(load_event::FAILED, 4 << 8);
                 return -6;
             }
         }
-        let mut files = VolumeFiles {
-            volume: &mut *volume,
-            current,
-        };
-        let (busy, event) = producer.poll(&mut files, &RING, &COMMANDS, &path);
-        match event {
-            Some(Event::Ready { index, codec, rate }) => {
-                report(play_event::READY, index << 8 | codec);
-                report(play_event::RATE, rate);
+        let mut busy = false;
+        // One poll per deck per turn, starting with the other deck each
+        // turn, so neither ring waits behind the other's reads.
+        let order = crate::producer_schedule::order(
+            [&RINGS[0], &RINGS[1]],
+            playing,
+            crate::media_signal::pitch(),
+            deck_two_first,
+        );
+        for deck in order.into_iter().filter(|&deck| deck < DECKS) {
+            #[cfg(feature = "idf-deck-engine")]
+            if let Some(result) = pending_results[deck].take() {
+                if let Err(result) = crate::deck_transport::LOAD_RESULTS[deck].put(result) {
+                    pending_results[deck] = Some(result);
+                }
+                continue;
             }
-            Some(Event::Failed { index, stage }) => report(play_event::FAILED, index << 8 | stage),
-            Some(Event::Ended { index, faulted }) => {
-                report(play_event::ENDED, index << 8 | u32::from(faulted))
+            #[cfg(feature = "idf-deck-engine")]
+            if let Some(result) = pending_seeks[deck].take() {
+                if let Err(result) = crate::deck_transport::SEEK_RESULTS[deck].put(result) {
+                    pending_seeks[deck] = Some(result);
+                }
+                continue;
             }
-            None => {}
+            #[cfg(feature = "idf-deck-engine")]
+            let request = if active_loads[deck].is_none() && active_seeks[deck].is_none() {
+                crate::deck_transport::LOAD_REQUESTS[deck].take()
+            } else {
+                None
+            };
+            #[cfg(feature = "idf-deck-engine")]
+            let needs_producer = request.is_some();
+            #[cfg(not(feature = "idf-deck-engine"))]
+            let needs_producer = COMMANDS[deck].pending_load();
+            if producers[deck].is_none() && needs_producer {
+                #[cfg(feature = "idf-deck-engine")]
+                {
+                    report(load_event::FAILED, 2 << 8 | 1);
+                    return -7;
+                }
+                #[cfg(not(feature = "idf-deck-engine"))]
+                {
+                    if !attach_ring(deck) {
+                        report(load_event::FAILED, 2 << 8 | 1);
+                        return -7;
+                    }
+                    producers[deck] = Some(Producer::new());
+                }
+            }
+            let Some(producer) = producers[deck].as_mut() else {
+                continue;
+            };
+            let mut files = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            };
+            #[cfg(feature = "producer-profile")]
+            let (poll_start, poll_head) = (files.now_us(), RINGS[deck].profile_head());
+            #[cfg(not(feature = "idf-deck-engine"))]
+            let (worked, event) = producer.poll(&mut files, &RINGS[deck], &COMMANDS[deck], &path);
+            #[cfg(feature = "idf-deck-engine")]
+            let (worked, event) = if let Some(request) = request {
+                let selected_path = path(request.index);
+                if !current() {
+                    return -6;
+                }
+                match crate::deck_transport::begin_load(
+                    deck,
+                    request,
+                    lease,
+                    producer,
+                    &mut files,
+                    selected_path.as_ref().map(AsRef::as_ref),
+                ) {
+                    Ok(event) => {
+                        active_loads[deck] = Some(request);
+                        (true, event)
+                    }
+                    Err(()) => (false, None),
+                }
+            } else if active_loads[deck].is_none() && active_seeks[deck].is_none() {
+                if let Some(request) = crate::deck_transport::SEEK_REQUESTS[deck].take() {
+                    if sources[deck] != Some(request.source) {
+                        pending_seeks[deck] = Some(crate::deck_transport::SeekResult {
+                            request,
+                            outcome: crate::deck_transport::SeekOutcome::Cancelled,
+                            epoch: RINGS[deck].epoch(),
+                            position_ms: 0,
+                        });
+                        (true, None)
+                    } else {
+                        active_seeks[deck] = Some(request);
+                        (
+                            true,
+                            producer.begin_seek(&mut files, &RINGS[deck], request.target_ms),
+                        )
+                    }
+                } else {
+                    producer.poll(&mut files, &RINGS[deck], &COMMANDS[deck], &path)
+                }
+            } else {
+                producer.poll(&mut files, &RINGS[deck], &COMMANDS[deck], &path)
+            };
+            #[cfg(feature = "idf-deck-engine")]
+            if let Some(Event::Ready { .. } | Event::Failed { .. }) = event
+                && let Some(request) = active_loads[deck].take()
+            {
+                let ready = matches!(event, Some(Event::Ready { .. }));
+                sources[deck] = ready.then_some(request);
+                let (track_id, bpm_x100) = track(request.index).unwrap_or(([0; 16], 0));
+                pending_results[deck] = Some(crate::deck_transport::LoadResult {
+                    request,
+                    ready,
+                    track_id,
+                    bpm_x100,
+                });
+            }
+            #[cfg(feature = "idf-deck-engine")]
+            if let Some(Event::Seeked { ok, .. }) = event
+                && let Some(request) = active_seeks[deck].take()
+            {
+                pending_seeks[deck] = Some(crate::deck_transport::seek_result(deck, request, ok));
+            }
+            #[cfg(feature = "producer-profile")]
+            {
+                let poll_end = files.now_us();
+                producer.profile_poll(&RINGS[deck], poll_start, poll_end, worked, poll_head);
+                poll_wall = poll_wall.saturating_add(poll_end.saturating_sub(poll_start));
+            }
+            busy |= worked;
+            let tag = (deck as u32) << 24;
+            match event {
+                Some(Event::Ready { index, codec, rate }) => {
+                    report(play_event::READY, tag | index << 8 | codec);
+                    report(play_event::RATE, tag | rate);
+                }
+                Some(Event::Failed { index, stage }) => {
+                    report(play_event::FAILED, tag | index << 8 | stage)
+                }
+                Some(Event::Seeked {
+                    position_ms, ok, ..
+                }) => report(
+                    play_event::SEEKED,
+                    tag | u32::from(!ok) << 23 | position_ms.min(0x7f_ffff),
+                ),
+                Some(Event::Ended { index, faulted }) => {
+                    report(play_event::ENDED, tag | index << 8 | u32::from(faulted))
+                }
+                None => {}
+            }
+        }
+        deck_two_first = !deck_two_first;
+        #[cfg(feature = "producer-profile")]
+        if now.saturating_sub(last_profile_publish) >= 1_000_000 {
+            let published_at = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            }
+            .now_us();
+            for (deck, producer) in producers.iter().enumerate() {
+                if let Some(producer) = producer {
+                    producer.profile_publish(
+                        deck,
+                        &RINGS[deck],
+                        published_at,
+                        playing[deck],
+                        crate::media_signal::pitch()[deck],
+                    );
+                }
+            }
+            let mut owner_words = owner_profile.words();
+            owner_words[2] = owner_end as u32;
+            owner_words[3] = (owner_end >> 32) as u32;
+            crate::producer_profile::publish(2, owner_words);
+            last_profile_publish = now;
+        }
+        if turns.is_multiple_of(1024) {
+            report(13, maximum_gap_us.min(u64::from(u32::MAX)) as u32);
         }
         if !current() {
             report(load_event::FAILED, 4 << 8);
             return -6;
         }
         if !busy {
-            // SAFETY: dedicated task only; one tick while the ring is full.
+            // SAFETY: dedicated task only; one tick while the rings are full.
             unsafe { ruzina_bridge_fixture_yield() };
+        }
+        #[cfg(feature = "producer-profile")]
+        {
+            owner_end = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            }
+            .now_us();
+            owner_profile.owner_turn(now, owner_end, poll_wall);
         }
     }
 }

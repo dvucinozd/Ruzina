@@ -1,0 +1,104 @@
+{
+  "status": "VALID_COLD_IDLE_TIMING_OBSERVATION_NOT_PRODUCT_QUALIFIED",
+  "scenario": "cold-1",
+  "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+  "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+  "raw_sha256": "14f89ecc4d613ff5cd9e2a3901d6307f2d0a61a71c7c9d79db059e347f26b8dc",
+  "boot_window_sha256": "8d003dbc2c1cef4a193da40f6664b10f98cd76255c2e5bcd68cbf0a5c3afceaa",
+  "owner_library_confirmation": "vra\u0107a",
+  "physical_power_cycle": true,
+  "reset_reason": 1,
+  "callback": {
+    "generation": 1,
+    "count": 7000,
+    "first_us": 1331,
+    "first_after_iso_submit": 1,
+    "max_us": 2008,
+    "max_after_iso_submit": 1,
+    "gt_3000": 0,
+    "ge_6000": 0,
+    "failures": 0
+  },
+  "timing_rejection_pass": true,
+  "headroom_target_pass": true,
+  "calibrations": "PASS_SCHEDULER_AND_CORE0_C_DISPATCH_IRQ",
+  "resources": {
+    "preparing": {
+      "uptime_us": 514625,
+      "psram_free": 32320580,
+      "psram_largest": 31981568,
+      "internal_free": 432748,
+      "stack_free": 85892
+    },
+    "ready": {
+      "uptime_us": 595992,
+      "psram_free": 31157988,
+      "psram_largest": 30932992,
+      "internal_free": 432748,
+      "stack_free": 79724
+    },
+    "printed_interval_us": 81367,
+    "global_psram_delta": 1162592,
+    "interpretation": "Global/logged timing and heap; not pure allocator duration or exact per-allocation cost"
+  },
+  "load_resource_rows": [
+    "rust_load pass=0 event=14 value=0 stack_free=85892 psram_free=32320580 psram_min=32320580",
+    "rust_load pass=0 event=15 value=1 stack_free=79724 psram_free=31157988 psram_min=31157988",
+    "rust_load pass=0 event=1 value=2048 stack_free=79724 psram_free=31157988 psram_min=31157988",
+    "rust_load pass=1 event=2 value=25 stack_free=62812 psram_free=28540604 psram_min=28528444",
+    "rust_load pass=1 event=3 value=1 stack_free=62812 psram_free=28540604 psram_min=28528444",
+    "rust_load pass=1 event=4 value=0 stack_free=58316 psram_free=28540604 psram_min=28495232",
+    "rust_load pass=1 event=4 value=256 stack_free=58316 psram_free=28540372 psram_min=28431080",
+    "rust_load pass=1 event=4 value=512 stack_free=58316 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=768 stack_free=58316 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=1024 stack_free=58316 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=1280 stack_free=58316 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=1536 stack_free=58316 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=1792 stack_free=58316 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=2048 stack_free=58316 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=2304 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=2560 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=2816 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=3072 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=3328 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=3584 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=3840 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=4096 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=4352 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=4608 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=4864 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=5120 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=5376 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=5632 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=5888 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=4 value=6144 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=5 value=25 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=13 value=10264 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=13 value=10286 stack_free=58284 psram_free=28538732 psram_min=28054272",
+    "rust_load pass=1 event=13 value=14146 stack_free=58284 psram_free=28538732 psram_min=28054272"
+  ],
+  "usb_errors": 0,
+  "idle_underruns": [
+    0,
+    0
+  ],
+  "histograms": 7,
+  "records": [
+    {
+      "kind": "worst",
+      "generation": "1",
+      "ordinal": "185",
+      "partition_verified": true,
+      "scheduler_usable": true,
+      "irq_dispatch_usable": true,
+      "scheduler_away_inside_whole_bounds_us": [
+        0,
+        0
+      ],
+      "irq_dispatch_inside_whole_bounds_us": [
+        0,
+        0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "status": "DERIVED_FROM_ADMITTED_COMPLETE_FRAMES",
+  "admission_sha256": "94bd543f95458b1ffb62a7e786f078d4e23638478ee2cc2a885d1c34797ba05b",
+  "wall_includes_wait_preemption": true,
+  "nested_stages_are_not_additive": true,
+  "cpu_utilization": "NOT_MEASURED",
+  "partitions": [
+    {
+      "case": "s03-deck1",
+      "deck": 1,
+      "stable_source_seconds": 156.708782,
+      "produced_frames": 6910848,
+      "produced_frames_per_second": 44099.940742312705,
+      "stage_wall_us_per_source_second": {
+        "poll": 639556.8118192635,
+        "decode": 637071.5905379188,
+        "step": 466709.8171945462,
+        "read": 160462.3472856805,
+        "push": 4943.551919126013,
+        "decode_other": 4955.874138566146
+      },
+      "supply_us_min": 1464852,
+      "supply_us_max": 1485623
+    },
+    {
+      "case": "s04-deck2",
+      "deck": 2,
+      "stable_source_seconds": 126.597609,
+      "produced_frames": 5582592,
+      "produced_frames_per_second": 44097.13614733434,
+      "stage_wall_us_per_source_second": {
+        "poll": 646595.9953477478,
+        "decode": 644107.9862732636,
+        "step": 467096.16766932775,
+        "read": 168199.2351056172,
+        "push": 4739.686671333579,
+        "decode_other": 4072.896826985097
+      },
+      "supply_us_min": 1461927,
+      "supply_us_max": 1484535
+    }
+  ]
+}

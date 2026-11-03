@@ -1,0 +1,9 @@
+{
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\review-fixes-20261101\\final-offline-evidence.zip",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\review-fixes-20261101\\final-offline-evidence.zip",
+  "sha256": "2a4ab25bd1e631a7aef05d66f14d8a4b768e184a9ec6c116cc41fa3e1ee3fe22",
+  "bytes": 1861415,
+  "verification": "ZIP_CRC_AND_SECONDARY_SHA256_MATCH",
+  "contents": "Review evidence, documentation and frozen source; full build artifacts remain at primary build output paths",
+  "hardware_access": false
+}

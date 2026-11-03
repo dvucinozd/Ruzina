@@ -1,0 +1,9 @@
+{
+  "status": "CRC_CONTENT_AND_SECONDARY_SHA256_PASS",
+  "source_commit": "8a9fe16d48387b0a3cfbd461659696091b2aa89d",
+  "files": 61,
+  "bytes": 15114345,
+  "sha256": "8729d2815404478b874fc9b26df31246c487c8397a81255a1f0b3ea0dfe0ba93",
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-profile-20261101\\published-callback-diagnostic.zip",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\uac-profile-20261101\\published-callback-diagnostic.zip"
+}

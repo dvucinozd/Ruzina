@@ -1,0 +1,4 @@
+{
+  "clean-normal": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n 791924\t  25290\t 544092\t1361306\t 14c59a\tD:\\BoardEvidence\\JC1060-20261030-COM3\\uac-profile-20261101\\clean-normal\\build\\ruzina_legacy_probe.elf\n",
+  "clean-profile": "   text\t   data\t    bss\t    dec\t    hex\tfilename\n 794794\t  25506\t 544430\t1364730\t 14d2fa\tD:\\BoardEvidence\\JC1060-20261030-COM3\\uac-profile-20261101\\clean-profile\\build\\ruzina_legacy_probe.elf\n"
+}

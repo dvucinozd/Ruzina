@@ -1,0 +1,12 @@
+{
+  "status": "CRC_ALL_MEMBERS_AND_SECONDARY_MATCH",
+  "source_commit": "a2453350624bd6c207a921850354c5df4dd23316",
+  "archive": "completed-reset-evidence.zip",
+  "bytes": 31466623,
+  "sha256": "fe94bb235ffe7fb86fa8074af1c9e7933c0e590361e51f20d0689bf14db533dc",
+  "members": 405,
+  "primary": "D:\\BoardEvidence\\JC1060-20261030-COM3\\reset-inplace-20261103",
+  "secondary": "C:\\Users\\Daniel\\Documents\\BoardBackups\\JC1060-20261030-COM3\\reset-inplace-20261103",
+  "device_access": false,
+  "physical_acceptance": "NOT_RUN"
+}

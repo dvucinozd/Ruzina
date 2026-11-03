@@ -1,0 +1,63 @@
+{
+  "status": "CLEAN_PUBLISHED_BUILD_ONLY_NOT_FLASHED",
+  "source_commit": "5c579e6e287362af36924f30919d6d0ea911ad59",
+  "packages": [
+    {
+      "variant": "deck-audio",
+      "sha256": "ac4508efd988c94f261b772252bc6e9eb9d19ada2366658f56c681d938717627",
+      "bytes": 510512,
+      "source_commit": "5c579e6e287362af36924f30919d6d0ea911ad59",
+      "dirty_status": "",
+      "manifest_sha256": "6b0b2794f05597f4b964217f2ee4b78a845fc43a46f94b86e8ccefe817660f08",
+      "sources": 270,
+      "artifacts": 8
+    },
+    {
+      "variant": "deck-play",
+      "sha256": "5ab984c1fb48392c37077693c4412255d27fa8c9828627cc7015865e6532a621",
+      "bytes": 774208,
+      "source_commit": "5c579e6e287362af36924f30919d6d0ea911ad59",
+      "dirty_status": "",
+      "manifest_sha256": "02c171d765a50330e1e192d364710699f6134a72165f0a36364b1ec307262d55",
+      "sources": 270,
+      "artifacts": 8
+    },
+    {
+      "variant": "deck-mix",
+      "sha256": "dcbaa4648448a07938253f174016cc0550ddfd2aff8c4f26bc97363fdf0956eb",
+      "bytes": 796016,
+      "source_commit": "5c579e6e287362af36924f30919d6d0ea911ad59",
+      "dirty_status": "",
+      "manifest_sha256": "8a6c7869d640cd295fb678b5872a9cc016f3e390d6420060f2e62acbfd2f89a6",
+      "sources": 270,
+      "artifacts": 8
+    },
+    {
+      "variant": "deck-engine",
+      "sha256": "d4a577493512df5988927ac4dc765e0e796861f2ff3c9e0e1dbad55455d10902",
+      "bytes": 817344,
+      "source_commit": "5c579e6e287362af36924f30919d6d0ea911ad59",
+      "dirty_status": "",
+      "manifest_sha256": "5acd251e121092752c92e75503801e373421ea57b0bcfd0320bd08eff6c2ffb3",
+      "sources": 270,
+      "artifacts": 8
+    }
+  ],
+  "predecessor_plans": 27,
+  "predecessor_plan_sha256": "3a7f1d54ec71a51f8df6f2764fe92b37960a8d6f8b2fab85f6b00186ee036c90",
+  "expected_current_full_flash_sha256": "c11aa1f7a8ff8121888f9d7a70d247a447f381bb2d07b63ebd8cf7f69633f76f",
+  "backup_copies_verified": 4,
+  "candidate_plan_sha256": "bfef28135fb73f522893d58209cbda40d55e21f3b092efa620b383125dba3335",
+  "fallback_plan_sha256": "4312e199ea36a2ef4262f3b5999397be7d9a4b5c57c6e4be3fc7a04b0b040a84",
+  "candidate_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-timing-20261101\\diagnostic-plan\\plan.json",
+  "fallback_plan": "D:\\BoardEvidence\\JC1060-20261030-COM3\\uac-timing-20261101\\return-s07-plan\\plan.json",
+  "device_access": false,
+  "timing_acceptance": "DIAGNOSTIC_ONLY_KEEP_ORIGINAL_AGGREGATE_BOUND_GE_6000_FAIL",
+  "device_entry_gates": [
+    "Verify physical topology/idle",
+    "Manual ROM entry",
+    "Live identity/security/RDID",
+    "Live current complete predecessor bytes"
+  ],
+  "exit": "Restore exact s07 through this ancestry-aware fallback and verify normal playback before stopping an unsuccessful experimental run."
+}

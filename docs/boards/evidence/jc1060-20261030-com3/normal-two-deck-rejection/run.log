@@ -1,0 +1,445 @@
+rust_sd_owner reads=18960 denied_commands=0 stack_free=5224
+producer_water low_us=1442993/1443038 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=62000 packets=372024 frames=17857152 tone_packets=138252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=17857152 underruns=0/0 buffered=65494/64819 rate=44100/44100 limited=0 fill_max_us=3214
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=62000 first_us=1309 first_after_iso_submit=1 max_us=3214 max_after_iso_submit=1 gt_3000=5 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=88362 d1_flags=1 d2_ms=49887 d2_flags=3 unsupported=0 refused_loads=0
+heartbeat=374 uptime_us=374372279
+rust_sd_owner reads=19040 denied_commands=0 stack_free=5224
+heartbeat=375 uptime_us=375372660
+rust_sd_owner reads=19120 denied_commands=0 stack_free=5224
+heartbeat=376 uptime_us=376372256
+rust_load pass=1 event=13 value=270015 stack_free=28468 psram_free=28532804 psram_min=28054272
+producer_stats max_gap_us=270015
+rust_sd_owner reads=19200 denied_commands=0 stack_free=5224
+heartbeat=377 uptime_us=377372209
+rust_sd_owner reads=19280 denied_commands=0 stack_free=5224
+heartbeat=378 uptime_us=378372819
+rust_sd_owner reads=19360 denied_commands=0 stack_free=5224
+heartbeat=379 uptime_us=379372229
+producer_water low_us=1442993/1443038 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=63000 packets=378024 frames=18145152 tone_packets=144252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=18145152 underruns=0/0 buffered=65494/64027 rate=44100/44100 limited=0 fill_max_us=3214
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=63000 first_us=1309 first_after_iso_submit=1 max_us=3214 max_after_iso_submit=1 gt_3000=5 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=88362 d1_flags=1 d2_ms=55887 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=19440 denied_commands=0 stack_free=5224
+heartbeat=380 uptime_us=380372209
+rust_sd_owner reads=19520 denied_commands=0 stack_free=5224
+heartbeat=381 uptime_us=381372608
+rust_sd_owner reads=19600 denied_commands=0 stack_free=5224
+heartbeat=382 uptime_us=382372209
+rust_sd_owner reads=19680 denied_commands=0 stack_free=5224
+heartbeat=383 uptime_us=383372209
+rust_load pass=1 event=13 value=270015 stack_free=28468 psram_free=28532804 psram_min=28054272
+producer_stats max_gap_us=270015
+rust_sd_owner reads=19760 denied_commands=0 stack_free=5224
+heartbeat=384 uptime_us=384372236
+rust_sd_owner reads=19840 denied_commands=0 stack_free=5224
+heartbeat=385 uptime_us=385372248
+producer_water low_us=1442993/1443038 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=64000 packets=384024 frames=18433152 tone_packets=150252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=18433152 underruns=0/0 buffered=65494/64387 rate=44100/44100 limited=0 fill_max_us=3214
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=64000 first_us=1309 first_after_iso_submit=1 max_us=3214 max_after_iso_submit=1 gt_3000=5 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=88362 d1_flags=1 d2_ms=61887 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=19920 denied_commands=0 stack_free=5224
+heartbeat=386 uptime_us=386372211
+rust_sd_owner reads=20000 denied_commands=0 stack_free=5224
+heartbeat=387 uptime_us=387372368
+rust_sd_owner reads=20080 denied_commands=0 stack_free=5224
+heartbeat=388 uptime_us=388372205
+rust_sd_owner reads=20160 denied_commands=0 stack_free=5224
+heartbeat=389 uptime_us=389372210
+rust_sd_owner reads=20240 denied_commands=0 stack_free=5224
+heartbeat=390 uptime_us=390373189
+rust_load pass=1 event=13 value=270015 stack_free=28468 psram_free=28532804 psram_min=28054272
+producer_stats max_gap_us=270015
+rust_sd_owner reads=20320 denied_commands=0 stack_free=5224
+heartbeat=391 uptime_us=391372216
+producer_water low_us=1442993/1443038 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=65000 packets=390024 frames=18721152 tone_packets=156252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=18721152 underruns=0/0 buffered=65494/64747 rate=44100/44100 limited=0 fill_max_us=3214
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=65000 first_us=1309 first_after_iso_submit=1 max_us=3214 max_after_iso_submit=1 gt_3000=5 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=88362 d1_flags=1 d2_ms=67887 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=20400 denied_commands=0 stack_free=5224
+heartbeat=392 uptime_us=392372210
+heartbeat=393 uptime_us=393372553
+rust_sd_owner reads=20480 denied_commands=0 stack_free=5224
+heartbeat=394 uptime_us=394372208
+rust_sd_owner reads=20560 denied_commands=0 stack_free=5224
+heartbeat=395 uptime_us=395372205
+rust_sd_owner reads=20640 denied_commands=0 stack_free=5224
+heartbeat=396 uptime_us=396372553
+rust_sd_owner reads=20720 denied_commands=0 stack_free=5224
+heartbeat=397 uptime_us=397372208
+rust_load pass=1 event=13 value=270015 stack_free=28468 psram_free=28532804 psram_min=28054272
+producer_stats max_gap_us=270015
+rust_sd_owner reads=20800 denied_commands=0 stack_free=5224
+producer_water low_us=1442993/1443038 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=66000 packets=396024 frames=19009152 tone_packets=162252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=19009152 underruns=0/0 buffered=65494/65107 rate=44100/44100 limited=0 fill_max_us=3214
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=66000 first_us=1309 first_after_iso_submit=1 max_us=3214 max_after_iso_submit=1 gt_3000=6 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=88362 d1_flags=1 d2_ms=73887 d2_flags=3 unsupported=0 refused_loads=0
+heartbeat=398 uptime_us=398372207
+rust_sd_owner reads=20880 denied_commands=0 stack_free=5224
+heartbeat=399 uptime_us=399372546
+rust_sd_owner reads=20960 denied_commands=0 stack_free=5224
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=52 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=157 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=262 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=367 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=472 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=594 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=682 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=787 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=892 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=997 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1119 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1224 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1329 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1451 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1591 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1713 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1853 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=1993 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=2133 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=2290 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=2448 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=2605 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=2763 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=2920 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=3077 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=3252 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=3427 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=3584 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=3759 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=3934 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=4109 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=4301 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=4494 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=4686 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=4878 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=5088 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=5298 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=5508 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=5700 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=5875 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=6067 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=6277 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=6504 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=6749 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=7011 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=7274 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=7518 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=7763 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=8008 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=8253 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=8480 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=8725 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=8952 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=9179 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=9407 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=9634 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=9861 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=10071 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=10281 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=10473 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=10683 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=10875 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=11085 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=11278 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=11470 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=11662 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=11837 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=12012 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=12187 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=12362 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=12536 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=12694 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=12869 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=13026 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=13201 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=13358 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=13533 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=13690 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=13865 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=14040 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=14215 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=14390 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=14565 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=14722 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=14897 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=15072 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=15229 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=15386 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=15561 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=15719 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=15876 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=16033 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=16191 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=16348 max=16383
+midi_event deck=2 control=ChannelVolume(30) kind=3 value=16383 max=16383
+heartbeat=400 uptime_us=400372208
+rust_sd_owner reads=21040 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+rust_sd_owner reads=21120 denied_commands=0 stack_free=5224
+heartbeat=401 uptime_us=401372464
+rust_sd_owner reads=21200 denied_commands=0 stack_free=5224
+rust_sd_owner reads=21280 denied_commands=0 stack_free=5224
+heartbeat=402 uptime_us=402374377
+rust_sd_owner reads=21360 denied_commands=0 stack_free=5224
+rust_sd_owner reads=21440 denied_commands=0 stack_free=5224
+heartbeat=403 uptime_us=403372204
+rust_sd_owner reads=21520 denied_commands=0 stack_free=5224
+rust_sd_owner reads=21600 denied_commands=0 stack_free=5224
+producer_water low_us=343718/345782 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=67000 packets=402024 frames=19297152 tone_packets=168252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=19297152 underruns=0/0 buffered=15158/15931 rate=44100/44100 limited=0 fill_max_us=3618
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=67000 first_us=1309 first_after_iso_submit=1 max_us=3618 max_after_iso_submit=1 gt_3000=24 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=91242 d1_flags=3 d2_ms=79887 d2_flags=3 unsupported=0 refused_loads=0
+heartbeat=404 uptime_us=404376969
+rust_sd_owner reads=21680 denied_commands=0 stack_free=5224
+rust_sd_owner reads=21760 denied_commands=0 stack_free=5224
+rust_sd_owner reads=21840 denied_commands=0 stack_free=5224
+heartbeat=405 uptime_us=405373118
+rust_sd_owner reads=21920 denied_commands=0 stack_free=5224
+rust_sd_owner reads=22000 denied_commands=0 stack_free=5224
+heartbeat=406 uptime_us=406372359
+rust_sd_owner reads=22080 denied_commands=0 stack_free=5224
+rust_sd_owner reads=22160 denied_commands=0 stack_free=5224
+heartbeat=407 uptime_us=407372207
+rust_sd_owner reads=22240 denied_commands=0 stack_free=5224
+rust_load pass=1 event=13 value=270015 stack_free=28468 psram_free=28532804 psram_min=28054272
+producer_stats max_gap_us=270015
+rust_sd_owner reads=22320 denied_commands=0 stack_free=5224
+rust_sd_owner reads=22400 denied_commands=0 stack_free=5224
+heartbeat=408 uptime_us=408373235
+rust_sd_owner reads=22480 denied_commands=0 stack_free=5224
+rust_sd_owner reads=22560 denied_commands=0 stack_free=5224
+heartbeat=409 uptime_us=409372224
+rust_sd_owner reads=22640 denied_commands=0 stack_free=5224
+producer_water low_us=0/0 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=68000 packets=408024 frames=19585152 tone_packets=174252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=19585152 underruns=780/774 buffered=0/682 rate=44100/44100 limited=0 fill_max_us=4213
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=68000 first_us=1309 first_after_iso_submit=1 max_us=4213 max_after_iso_submit=1 gt_3000=44 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=95452 d1_flags=3 d2_ms=84047 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=22720 denied_commands=0 stack_free=5224
+heartbeat=410 uptime_us=410372205
+rust_sd_owner reads=22800 denied_commands=0 stack_free=5224
+rust_sd_owner reads=22880 denied_commands=0 stack_free=5224
+heartbeat=411 uptime_us=411373210
+rust_sd_owner reads=22960 denied_commands=0 stack_free=5224
+rust_sd_owner reads=23040 denied_commands=0 stack_free=5224
+rust_sd_owner reads=23120 denied_commands=0 stack_free=5224
+heartbeat=412 uptime_us=412372205
+rust_sd_owner reads=23200 denied_commands=0 stack_free=5224
+rust_sd_owner reads=23280 denied_commands=0 stack_free=5224
+heartbeat=413 uptime_us=413372215
+rust_sd_owner reads=23360 denied_commands=0 stack_free=5224
+rust_sd_owner reads=23440 denied_commands=0 stack_free=5224
+heartbeat=414 uptime_us=414372528
+rust_sd_owner reads=23520 denied_commands=0 stack_free=5224
+rust_sd_owner reads=23600 denied_commands=0 stack_free=5224
+rust_sd_owner reads=23680 denied_commands=0 stack_free=5224
+midi_event deck=0 control=MasterCue(56) kind=1 value=1 max=1
+heartbeat=415 uptime_us=415372205
+midi_event deck=0 control=MasterCue(56) kind=1 value=0 max=1
+rust_sd_owner reads=23760 denied_commands=0 stack_free=5224
+producer_water low_us=0/0 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=69000 packets=414024 frames=19873152 tone_packets=180252 iso_errors=0 packet_errors=0 submit_errors=0
+deck_mix_stats rendered=19873152 underruns=1691/1675 buffered=0/775 rate=44100/44100 limited=0 fill_max_us=4213
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=0 first_us=0 first_after_iso_submit=0 max_us=0 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=69000 first_us=1309 first_after_iso_submit=1 max_us=4213 max_after_iso_submit=1 gt_3000=58 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=99344 d1_flags=3 d2_ms=87885 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=23840 denied_commands=0 stack_free=5224
+usb_uac stream=STARTED transfers=4 packets_per_transfer=6 generation=1
+heartbeat=416 uptime_us=416373717
+rust_sd_owner reads=23920 denied_commands=0 stack_free=5224
+rust_sd_owner reads=24000 denied_commands=0 stack_free=5224
+heartbeat=417 uptime_us=417372208
+rust_sd_owner reads=24080 denied_commands=0 stack_free=5224
+rust_sd_owner reads=24160 denied_commands=0 stack_free=5224
+rust_sd_owner reads=24240 denied_commands=0 stack_free=5224
+heartbeat=418 uptime_us=418372210
+rust_sd_owner reads=24320 denied_commands=0 stack_free=5224
+rust_sd_owner reads=24400 denied_commands=0 stack_free=5224
+heartbeat=419 uptime_us=419373921
+rust_sd_owner reads=24480 denied_commands=0 stack_free=5224
+rust_sd_owner reads=24560 denied_commands=0 stack_free=5224
+heartbeat=420 uptime_us=420372209
+rust_sd_owner reads=24640 denied_commands=0 stack_free=5224
+rust_sd_owner reads=24720 denied_commands=0 stack_free=5224
+rust_sd_owner reads=24800 denied_commands=0 stack_free=5224
+heartbeat=421 uptime_us=421372577
+rust_sd_owner reads=24880 denied_commands=0 stack_free=5224
+producer_water low_us=0/0 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=70000 packets=420042 frames=20162016 tone_packets=186270 iso_errors=0 packet_errors=1 submit_errors=0
+deck_mix_stats rendered=20162048 underruns=2602/2578 buffered=682/0 rate=44100/44100 limited=0 fill_max_us=4982
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=4 first_us=1420 first_after_iso_submit=1 max_us=1553 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=69999 first_us=1309 first_after_iso_submit=1 max_us=4982 max_after_iso_submit=1 gt_3000=73 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=103273 d1_flags=3 d2_ms=91743 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=24960 denied_commands=0 stack_free=5224
+heartbeat=422 uptime_us=422375077
+rust_sd_owner reads=25040 denied_commands=0 stack_free=5224
+rust_load pass=1 event=13 value=270015 stack_free=28468 psram_free=28532804 psram_min=28054272
+producer_stats max_gap_us=270015
+rust_sd_owner reads=25120 denied_commands=0 stack_free=5224
+heartbeat=423 uptime_us=423372210
+rust_sd_owner reads=25200 denied_commands=0 stack_free=5224
+rust_sd_owner reads=25280 denied_commands=0 stack_free=5224
+rust_sd_owner reads=25360 denied_commands=0 stack_free=5224
+heartbeat=424 uptime_us=424372219
+rust_sd_owner reads=25440 denied_commands=0 stack_free=5224
+rust_sd_owner reads=25520 denied_commands=0 stack_free=5224
+heartbeat=425 uptime_us=425374098
+rust_sd_owner reads=25600 denied_commands=0 stack_free=5224
+rust_sd_owner reads=25680 denied_commands=0 stack_free=5224
+heartbeat=426 uptime_us=426372205
+rust_sd_owner reads=25760 denied_commands=0 stack_free=5224
+rust_sd_owner reads=25840 denied_commands=0 stack_free=5224
+rust_sd_owner reads=25920 denied_commands=0 stack_free=5224
+heartbeat=427 uptime_us=427372208
+rust_sd_owner reads=26000 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Pfl(37) kind=1 value=1 max=1
+midi_event deck=1 control=Pfl(37) kind=1 value=0 max=1
+producer_water low_us=0/0 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=71000 packets=426042 frames=20450016 tone_packets=192270 iso_errors=0 packet_errors=1 submit_errors=0
+deck_mix_stats rendered=20450048 underruns=3517/3466 buffered=329/1246 rate=44100/44100 limited=0 fill_max_us=4982
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=4 first_us=1420 first_after_iso_submit=1 max_us=1553 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=70999 first_us=1309 first_after_iso_submit=1 max_us=4982 max_after_iso_submit=1 gt_3000=97 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=107174 d1_flags=3 d2_ms=95607 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=26080 denied_commands=0 stack_free=5224
+heartbeat=428 uptime_us=428375260
+rust_sd_owner reads=26160 denied_commands=0 stack_free=5224
+rust_sd_owner reads=26240 denied_commands=0 stack_free=5224
+midi_event deck=0 control=MasterCue(56) kind=1 value=1 max=1
+heartbeat=429 uptime_us=429372208
+midi_event deck=0 control=MasterCue(56) kind=1 value=0 max=1
+rust_sd_owner reads=26320 denied_commands=0 stack_free=5224
+rust_sd_owner reads=26400 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Pfl(37) kind=1 value=1 max=1
+midi_event deck=1 control=Pfl(37) kind=1 value=0 max=1
+rust_sd_owner reads=26480 denied_commands=0 stack_free=5224
+heartbeat=430 uptime_us=430372906
+rust_sd_owner reads=26560 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Pfl(37) kind=1 value=1 max=1
+rust_sd_owner reads=26640 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Pfl(37) kind=1 value=0 max=1
+heartbeat=431 uptime_us=431375217
+rust_sd_owner reads=26720 denied_commands=0 stack_free=5224
+rust_sd_owner reads=26800 denied_commands=0 stack_free=5224
+heartbeat=432 uptime_us=432372205
+rust_sd_owner reads=26880 denied_commands=0 stack_free=5224
+rust_sd_owner reads=26960 denied_commands=0 stack_free=5224
+heartbeat=433 uptime_us=433373558
+rust_sd_owner reads=27040 denied_commands=0 stack_free=5224
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+rust_sd_owner reads=27120 denied_commands=0 stack_free=5224
+producer_water low_us=0/0 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=72000 packets=432042 frames=20738016 tone_packets=198270 iso_errors=0 packet_errors=1 submit_errors=0
+deck_mix_stats rendered=20738048 underruns=4359/4375 buffered=15540/917 rate=44100/44100 limited=0 fill_max_us=4982
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=4 first_us=1420 first_after_iso_submit=1 max_us=1553 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=71999 first_us=1309 first_after_iso_submit=1 max_us=4982 max_after_iso_submit=1 gt_3000=118 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=110721 d1_flags=1 d2_ms=99454 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=27200 denied_commands=0 stack_free=5224
+heartbeat=434 uptime_us=434373141
+rust_sd_owner reads=27280 denied_commands=0 stack_free=5224
+rust_sd_owner reads=27360 denied_commands=0 stack_free=5224
+heartbeat=435 uptime_us=435372207
+rust_sd_owner reads=27440 denied_commands=0 stack_free=5224
+rust_sd_owner reads=27520 denied_commands=0 stack_free=5224
+heartbeat=436 uptime_us=436372208
+rust_load pass=1 event=13 value=270015 stack_free=28468 psram_free=28532804 psram_min=28054272
+producer_stats max_gap_us=270015
+rust_sd_owner reads=27600 denied_commands=0 stack_free=5224
+midi_event deck=2 control=Play(0) kind=1 value=1 max=1
+midi_event deck=2 control=Play(0) kind=1 value=0 max=1
+heartbeat=437 uptime_us=437373125
+midi_event deck=1 control=Play(0) kind=1 value=1 max=1
+midi_event deck=1 control=Play(0) kind=1 value=0 max=1
+rust_sd_owner reads=27680 denied_commands=0 stack_free=5224
+heartbeat=438 uptime_us=438372205
+rust_sd_owner reads=27760 denied_commands=0 stack_free=5224
+heartbeat=439 uptime_us=439372208
+midi_event deck=2 control=Play(0) kind=1 value=1 max=1
+midi_event deck=2 control=Play(0) kind=1 value=0 max=1
+rust_sd_owner reads=27840 denied_commands=0 stack_free=5224
+producer_water low_us=0/0 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=73000 packets=438042 frames=21026016 tone_packets=203664 iso_errors=0 packet_errors=1 submit_errors=0
+deck_mix_stats rendered=21026048 underruns=4359/4607 buffered=58335/58930 rate=44100/44100 limited=0 fill_max_us=4982
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=4 first_us=1420 first_after_iso_submit=1 max_us=1553 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=72999 first_us=1309 first_after_iso_submit=1 max_us=4982 max_after_iso_submit=1 gt_3000=124 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=112963 d1_flags=3 d2_ms=102423 d2_flags=3 unsupported=0 refused_loads=0
+rust_sd_owner reads=27920 denied_commands=0 stack_free=5224
+heartbeat=440 uptime_us=440373887
+rust_sd_owner reads=28000 denied_commands=0 stack_free=5224
+rust_sd_owner reads=28080 denied_commands=0 stack_free=5224
+heartbeat=441 uptime_us=441372204
+rust_sd_owner reads=28160 denied_commands=0 stack_free=5224
+rust_sd_owner reads=28240 denied_commands=0 stack_free=5224
+heartbeat=442 uptime_us=442372577
+rust_sd_owner reads=28320 denied_commands=0 stack_free=5224
+rust_sd_owner reads=28400 denied_commands=0 stack_free=5224
+rust_sd_owner reads=28480 denied_commands=0 stack_free=5224
+heartbeat=443 uptime_us=443373970
+rust_sd_owner reads=28560 denied_commands=0 stack_free=5224
+rust_sd_owner reads=28640 denied_commands=0 stack_free=5224
+heartbeat=444 uptime_us=444372519
+rust_sd_owner reads=28720 denied_commands=0 stack_free=5224
+rust_sd_owner reads=28800 denied_commands=0 stack_free=5224
+heartbeat=445 uptime_us=445377972
+rust_sd_owner reads=28880 denied_commands=0 stack_free=5224
+rust_sd_owner reads=28960 denied_commands=0 stack_free=5224
+producer_water low_us=0/0 prime_max_us=44429/44616 log_drops=0
+usb_uac_stats transfers=74000 packets=444042 frames=21314016 tone_packets=209664 iso_errors=0 packet_errors=1 submit_errors=0
+deck_mix_stats rendered=21314048 underruns=4765/5003 buffered=0/682 rate=44100/44100 limited=0 fill_max_us=4982
+uac_fill_first generation=1 seen=1 phase=0 us=1871 after_iso_submit=0
+uac_fill_phase phase=initial_prefill generation=1 scope=BOOT count=4 first_us=1871 first_after_iso_submit=0 max_us=1871 max_after_iso_submit=0 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=recovery_prefill generation=1 scope=BOOT count=4 first_us=1420 first_after_iso_submit=1 max_us=1553 max_after_iso_submit=1 gt_3000=0 ge_6000=0 failures=0
+uac_fill_phase phase=callback generation=1 scope=BOOT count=73999 first_us=1309 first_after_iso_submit=1 max_us=4982 max_after_iso_submit=1 gt_3000=172 ge_6000=0 failures=0
+engine_resources generation=1 usb_stack_free=4820 logger_stack_free=2140 internal_free=415736 internal_min=415720 internal_largest=249856 psram_free=28532804 psram_min=28054272 psram_largest=28311552
+deck_engine_stats d1_ms=118022 d1_flags=3 d2_ms=107479 d2_flags=3 unsupported=0 refused_loads=0

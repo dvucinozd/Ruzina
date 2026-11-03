@@ -1,0 +1,10 @@
+{
+  "case": "N01/I01",
+  "owner_reply": "vraća",
+  "library_visible": true,
+  "requested_action": "USB power removal 5-10 seconds, reconnect without BOOT/RESET; FLX4 left connected; no load/control",
+  "normal_cold_admission_pass": true,
+  "normal_idle_admission_pass": true,
+  "all_fill_max_us": 2397,
+  "physical_acceptance": "Library only; no playback acceptance yet"
+}

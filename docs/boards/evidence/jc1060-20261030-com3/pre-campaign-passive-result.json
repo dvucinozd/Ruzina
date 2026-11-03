@@ -1,0 +1,10 @@
+{
+  "mode": "PASSIVE_NO_RESET_NO_SERIAL_WRITE",
+  "port": "COM3",
+  "usb_serial": "E8:F6:0A:E7:22:1D",
+  "bytes": 1601,
+  "sha256": "932ee65d54790bb600fa156776c4bc19302f4c0b35465bea30dc9fd024247390",
+  "duration_seconds": 20,
+  "full_image_identity": "NOT_READ",
+  "flash_written": false
+}

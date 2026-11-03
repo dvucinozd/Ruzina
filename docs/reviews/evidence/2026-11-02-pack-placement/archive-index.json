@@ -1,0 +1,184 @@
+{
+  "status": "BUILD_ONLY_NOT_QUALIFIED",
+  "archive_sha256": "37297bac9ff82c26222302f0319d84dd02133868b4985a8b38ed64ea2c3ce1a2",
+  "archive_bytes": 16750017,
+  "secondary_sha256": "37297bac9ff82c26222302f0319d84dd02133868b4985a8b38ed64ea2c3ce1a2",
+  "files": {
+    "build.ps1": {
+      "bytes": 1128,
+      "sha256": "bdeba95fb9f65720747c910be80d301830dc07ecc6f3473706fb9cf16fecc261"
+    },
+    "c-tests.log": {
+      "bytes": 9115,
+      "sha256": "9eb1a7212d07d2cea9c020671e15b9b734ba446aebed806675b2cf9a3ef8ce61"
+    },
+    "check_relocation.py": {
+      "bytes": 765,
+      "sha256": "36cb3ba3a618b32fddd28219d339ec8728b3ce02164539d87cd0bf7fcaa8bf8f"
+    },
+    "clean-control/build/bootloader/bootloader.bin": {
+      "bytes": 23296,
+      "sha256": "48d8f66ce656a795451a7e2e18576e7fb58930cce3f6af0ac96df638a853f195"
+    },
+    "clean-control/build/flasher_args.json": {
+      "bytes": 961,
+      "sha256": "6b679ee19b1e7eefcf1ca8d9dafbfe0d90785299b62dd8a2f2d63653b8834423"
+    },
+    "clean-control/build/partition_table/partition-table.bin": {
+      "bytes": 3072,
+      "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "clean-control/build/ruzina_legacy_probe.bin": {
+      "bytes": 823024,
+      "sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea"
+    },
+    "clean-control/build/ruzina_legacy_probe.elf": {
+      "bytes": 8226016,
+      "sha256": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f"
+    },
+    "clean-control/build/ruzina_legacy_probe.map": {
+      "bytes": 5480909,
+      "sha256": "8c53a728fc719b94e4ffc60f2f2ce9e48deb0658e75ec0d6bc31a4adfe5f6810"
+    },
+    "clean-control/elf-sections.json": {
+      "bytes": 988,
+      "sha256": "868938c3cf15834708632b0d33ae6f5d5906b7d0ee576c82e424faaa61b5b189"
+    },
+    "clean-control/idf-build.log": {
+      "bytes": 123767,
+      "sha256": "3a804ca3666aaa6ac6f21af8a5d325e1adc7db3e5ac8e42ceaf3670c533de71a"
+    },
+    "clean-control/load-run-stack.log": {
+      "bytes": 685,
+      "sha256": "6614f76e6ee745c1c6c3234bb98db1c1c82b523450a7118b6328f63271eaf3cf"
+    },
+    "clean-control/manifest.json": {
+      "bytes": 44080,
+      "sha256": "02ee49abef32bd853bcca9bdd06c29fed19634acbdce47a0038383b6dacf64a5"
+    },
+    "clean-control/pack-disassembly.log": {
+      "bytes": 14977,
+      "sha256": "cb0e54b21bdc2675244e076303da2d801838cf92ca81bc34fbc45fea247c0b9e"
+    },
+    "clean-control/pack-placement.json": {
+      "bytes": 473,
+      "sha256": "ca7446a91f3b2ec89bba90a435fb43dec6ff36d52b714135c0b7a47dda4439b4"
+    },
+    "clean-control/rust-build.log": {
+      "bytes": 3073,
+      "sha256": "b46994c67c062d2bddddf36e40a50e30c8d9090c89c9c71e755960b95b4050c5"
+    },
+    "clean-control/rust/riscv32imafc-unknown-none-elf/release/libruzina_legacy_idf_core_probe.a": {
+      "bytes": 10681736,
+      "sha256": "70f8e038e66b53d4b1f739a599f8cfdac21068c6db4c859b77a3c4c76f335ebb"
+    },
+    "clean-control/sdkconfig": {
+      "bytes": 70564,
+      "sha256": "09350f7f1fd53b1e2b087b86519952480c48787578356216613dadbe8feb4f1c"
+    },
+    "clean-control/uac-fill-stack.log": {
+      "bytes": 551,
+      "sha256": "0d412d5d145ffd412c20db4705e1cadb4b99a8cf1ae40cd7f7619dd7ae1e1b68"
+    },
+    "clean-iram/build/bootloader/bootloader.bin": {
+      "bytes": 23296,
+      "sha256": "2a1a85b37d382a7cec1f126e904c598044d323fa59b3e79e1e2e6019375db7e6"
+    },
+    "clean-iram/build/flasher_args.json": {
+      "bytes": 961,
+      "sha256": "6b679ee19b1e7eefcf1ca8d9dafbfe0d90785299b62dd8a2f2d63653b8834423"
+    },
+    "clean-iram/build/partition_table/partition-table.bin": {
+      "bytes": 3072,
+      "sha256": "7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820"
+    },
+    "clean-iram/build/ruzina_legacy_probe.bin": {
+      "bytes": 823024,
+      "sha256": "b38488e5b1987398e0d9a095357547d14b87eac5d36008e8eab65d2179618ec6"
+    },
+    "clean-iram/build/ruzina_legacy_probe.elf": {
+      "bytes": 8226016,
+      "sha256": "cc47d1eed3fd76e8673e2fbe17ed3d540eabe35cb94409770a9b805d04ce7094"
+    },
+    "clean-iram/build/ruzina_legacy_probe.map": {
+      "bytes": 5044213,
+      "sha256": "fc4a4488011002aa35e5216358347534709f2d60d39d772f3415d74f52c91bbc"
+    },
+    "clean-iram/elf-sections.json": {
+      "bytes": 989,
+      "sha256": "209822d4c135c4e69fecba3e32cd6c37ecbf3f2356b368673720e33ded6cda0a"
+    },
+    "clean-iram/idf-build.log": {
+      "bytes": 123685,
+      "sha256": "670d4e96e31fdc1270664d774362bb8da27f08da8a0fc8adebcedb1063ee3e16"
+    },
+    "clean-iram/libruzina_pack_iram.a": {
+      "bytes": 10993248,
+      "sha256": "2bb869fbda6b65ff884c49c0f185614840bbb58faf876c4be6cf9de09a7b7957"
+    },
+    "clean-iram/load-run-stack.log": {
+      "bytes": 685,
+      "sha256": "6614f76e6ee745c1c6c3234bb98db1c1c82b523450a7118b6328f63271eaf3cf"
+    },
+    "clean-iram/manifest.json": {
+      "bytes": 44274,
+      "sha256": "a95912187bb9e1183542c31e291a312b1250b890825a30933b8bfc3c6b005afe"
+    },
+    "clean-iram/pack-disassembly.log": {
+      "bytes": 14988,
+      "sha256": "30eaf741ee8168d2e632af587eab464614f94122cb116fac2f61d77eef8820f2"
+    },
+    "clean-iram/pack-placement.json": {
+      "bytes": 473,
+      "sha256": "6be0d0983442eeb56d1dbc1ad2f923f9a7892d96682987338cd76ff7c42527e2"
+    },
+    "clean-iram/pack-relocation.json": {
+      "bytes": 348,
+      "sha256": "adbb1a0658f5fd7aa4410eb2fa1d5a672940352eb9219fb2c07646278fe5a96d"
+    },
+    "clean-iram/rust-build.log": {
+      "bytes": 3073,
+      "sha256": "07d2081f8b23db8c66ef5d3774995fa4e5f7bcce0fa6d01215fa26726d2bc9dd"
+    },
+    "clean-iram/rust/riscv32imafc-unknown-none-elf/release/libruzina_legacy_idf_core_probe.a": {
+      "bytes": 10681736,
+      "sha256": "70f8e038e66b53d4b1f739a599f8cfdac21068c6db4c859b77a3c4c76f335ebb"
+    },
+    "clean-iram/sdkconfig": {
+      "bytes": 70564,
+      "sha256": "09350f7f1fd53b1e2b087b86519952480c48787578356216613dadbe8feb4f1c"
+    },
+    "clean-iram/uac-fill-stack.log": {
+      "bytes": 551,
+      "sha256": "0d412d5d145ffd412c20db4705e1cadb4b99a8cf1ae40cd7f7619dd7ae1e1b68"
+    },
+    "coderabbit.raw.log": {
+      "bytes": 1339,
+      "sha256": "95a053581228e5a93f17d5cc3bfd5b4b4340ac9b6a24cc74aa04fc068790ff50"
+    },
+    "compare-pair.log": {
+      "bytes": 4998,
+      "sha256": "c499ee0d0f011f5ca81487ca90d0bfa565cb1908c289d77d0bc8ce1390d3dc29"
+    },
+    "compare_pair.py": {
+      "bytes": 2575,
+      "sha256": "0b9750ebd8fd480a861ca049298224c81ac8c411ca5ad45b11021c1dd3da5b2a"
+    },
+    "pair-verification.json": {
+      "bytes": 4998,
+      "sha256": "c499ee0d0f011f5ca81487ca90d0bfa565cb1908c289d77d0bc8ce1390d3dc29"
+    },
+    "pilot-iram-console.log": {
+      "bytes": 123241,
+      "sha256": "874e01e606b7596bd599d3c04401d386578f5bb1c565e6dea2f45aac322caa9a"
+    },
+    "python-tests-final.log": {
+      "bytes": 5596,
+      "sha256": "c9889d1c9f2d9f2130e39a2a9338b9310e308f712183bd909becfc7577efbfa3"
+    },
+    "rust-tests.log": {
+      "bytes": 6149,
+      "sha256": "bd178d022157c06ff945fd8cacb1c6413e03e7520ba45694cc5e54bc5f128bab"
+    }
+  }
+}

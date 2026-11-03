@@ -1,0 +1,16 @@
+   Compiling libm v0.2.16
+   Compiling ruzina-audio-dsp v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-dsp)
+   Compiling ruzina-audio-keylock v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-keylock)
+   Compiling ruzina-mixer v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-mixer)
+   Compiling ruzina-audio-scratch v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-scratch)
+   Compiling ruzina-uac v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-uac)
+   Compiling ruzina-audio-runtime v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-rust/crates/ruzina-audio-runtime)
+   Compiling ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/BoardEvidence/JC1060-20261030-COM3/review-fixes-20261101/baseline/firmware-idf/legacy-jc1060/rust-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 21.73s
+     Running unittests src/lib.rs (firmware-idf/legacy-jc1060/rust-core/target/debug/deps/ruzina_legacy_idf_core_probe-6cc85426fe57d1c3)
+
+running 1 test
+test deck_play::tests::review_ring_epoch_metadata_snapshot_is_coherent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 55 filtered out; finished in 0.03s
+

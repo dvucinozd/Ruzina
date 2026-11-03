@@ -1,0 +1,15 @@
+{
+  "status": "COMPLETED_COLD_STEADY_IDLE_TIMING_PASS_S07_RESTORED_AND_OWNER_CONFIRMED",
+  "executed_predecessors_now": 38,
+  "new_executed_plan": "candidate-plan/plan.json then return-s07-plan/plan.json",
+  "installed_app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+  "independent_full_postwrite_sha256": "1a45683632f9951f1121ad0866fd7b3050d146022bfc6c719be18346848ad4fe",
+  "entry": "Owner-requested software USB Serial/JTAG ROM entry succeeded; no physical cold evidence from that reset",
+  "programmer": "WRITTEN_FULL_READBACK_MATCH_ROM_HELD; no reset/eFuse operation; all written spans and full flash match",
+  "physical_measurement": "3x7000 cold callbacks max 2008/1847/1757 us; gt3000=ge6000=0, both calibrations valid, USB/idle errors zero. Steady 9000->18000: 9000 new callbacks with no new crossings/max",
+  "acceptance": "NOT_QUALIFIED",
+  "required_return": "return-s07-plan/plan.json has executed against 37 predecessors with independent full before/after equality",
+  "restore_status": "S07 flash/full readback, cold boot and owner listening/Pause/CUE confirmed; captured 13.566 playback seconds, zero USB/underrun errors; all monitors closed",
+  "normal_engine_write": "NOT_REGISTERED",
+  "native_minimum": 302
+}

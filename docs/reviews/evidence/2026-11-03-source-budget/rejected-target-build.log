@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\build_legacy.py", line 387, in <module>
+    main()
+    ~~~~^^
+  File "D:\AI\M1_PCB\firmware-idf\legacy-jc1060\tools\build_legacy.py", line 358, in main
+    raise ValueError('Rust stack frame over task budget: ' + repr(oversized))
+ValueError: Rust stack frame over task budget: {'_ZN12nanomp3_core7Decoder3new17h0e9cbf313492d5baE.llvm.10938343087519479093': 39008}

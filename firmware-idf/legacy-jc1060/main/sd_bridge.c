@@ -5,6 +5,7 @@
 #include "driver/sdmmc_host.h"
 #include "esp_heap_caps.h"
 #include "esp_psram.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdmmc_cmd.h"
@@ -69,26 +70,44 @@ extern void ruzina_load_display_detail(uint32_t index, uint32_t bpm_x100, uint32
 
 void ruzina_bridge_load_report(uint32_t pass, uint32_t event, uint32_t value)
 {
+#if CONFIG_RUZINA_UAC_PROFILE
+    extern void ruzina_uac_catalog_event(uint32_t event);
+    ruzina_uac_catalog_event(event);
+#endif
     unsigned stack=(unsigned)uxTaskGetStackHighWaterMark(NULL);
     unsigned free_now=(unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     unsigned free_min=(unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
     printf("rust_load pass=%" PRIu32 " event=%" PRIu32 " value=%" PRIu32 " stack_free=%u psram_free=%u psram_min=%u\n",
            pass,event,value,stack,free_now,free_min);
+#if CONFIG_RUZINA_DECK_ENGINE
+    if(event==14 || event==15) {
+        printf("resource_prepare state=%s uptime_us=%" PRIi64 " psram_free=%u psram_largest=%u internal_free=%u stack_free=%u\n",
+               event==14 ? "PREPARING" : "READY",esp_timer_get_time(),free_now,
+               (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),stack);
+    }
+#endif
     fflush(stdout);
 #if CONFIG_RUZINA_LOAD_DISPLAY
     ruzina_load_display_event(pass,event,value,stack,free_now,free_min);
 #endif
 #if CONFIG_RUZINA_DECK_PLAY
-    /* Deck 1 playback: 7 ready index<<8|codec, 8 rate, 9 failed index<<8|stage,
-     * 10 ended index<<8|faulted. The note is the display's status line. */
+    /* Deck playback, deck (0/1) in bits 24+: 7 ready index<<8|codec, 8 rate,
+     * 9 failed index<<8|stage, 10 ended index<<8|faulted. The note is the
+     * display's status line. */
     static const char *const codecs[] = {"?", "WAV", "MP3", "FLAC"};
-    static uint32_t codec;
+    static uint32_t codec[2];
+    const uint32_t deck = (value >> 24) & 1, low = value & 0xffffff;
     char note[64];
     switch (event) {
-        case 7: codec = (value & 255) < 4 ? (value & 255) : 0; return;
-        case 8: snprintf(note, sizeof(note), "D1 %s %" PRIu32 " Hz - press Play", codecs[codec], value); break;
-        case 9: snprintf(note, sizeof(note), "D1 load failed, stage %" PRIu32, value & 255); break;
-        case 10: snprintf(note, sizeof(note), "%s", (value & 1) ? "D1 read/decode fault" : "D1 track ended"); break;
+        case 7: codec[deck] = (low & 255) < 4 ? (low & 255) : 0; return;
+        case 8: snprintf(note, sizeof(note), "D%" PRIu32 " %s %" PRIu32 " Hz - press Play", deck + 1,
+                         codecs[codec[deck]], low); break;
+        case 9: snprintf(note, sizeof(note), "D%" PRIu32 " load failed, stage %" PRIu32, deck + 1, low & 255); break;
+        case 10: snprintf(note, sizeof(note), "D%" PRIu32 " %s", deck + 1,
+                          (low & 1) ? "read/decode fault" : "track ended"); break;
+        case 12: snprintf(note,sizeof(note),"Detail pending - pause decks to view"); break;
+        case 13: printf("producer_stats max_gap_us=%" PRIu32 "\n",value); return;
         default: return;
     }
     LOAD_NOTE(note);
@@ -197,7 +216,7 @@ static void owner(void *unused)
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
            (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 #if CONFIG_RUZINA_DECK_PLAY
-    /* The deck 1 decoder runs on this task: nanomp3 builds its 24 KiB state
+    /* The deck decoders run on this task: nanomp3 builds its 24 KiB state
      * by value, several frames under the load run (build: load-run-stack.log). */
     const uint32_t client_stack=98304;
 #else
@@ -225,7 +244,7 @@ static void owner(void *unused)
         if(count!=1 || first>=card.csd.capacity) err=ESP_ERR_INVALID_ARG;
         else { reads++;err=sdmmc_read_sectors(&card,bounce,first,count); }
         /* sdmmc_read_sectors is synchronous: transfer has ended on return. Rust
-         * copies exactly512 bytes while holding its short state critical section. */
+         * copies exactly 512 bytes while holding its short state critical section. */
         int32_t completed=ruzina_legacy_bridge_complete(err,err==ESP_OK?bounce:NULL,err==ESP_OK?512:0);
         if(completed!=0) {err=ESP_ERR_INVALID_STATE;break;}
         if(err!=ESP_OK) break;

@@ -1,0 +1,62 @@
+{
+  "scenario": "control-cold-1",
+  "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+  "log_sha256": "2ff313be0b8448d2245f8d7fbd31130f45759b7b6502d2289d3f17098de55776",
+  "boot_elf": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f",
+  "bytes": 54886,
+  "monitor_closed": true,
+  "library_owner_confirmation": "vra\u0107a",
+  "callback_last": "uac_fill_phase phase=callback generation=1 scope=BOOT count=7000 first_us=990 first_after_iso_submit=1 max_us=15827 max_after_iso_submit=1 gt_3000=3 ge_6000=2 failures=0",
+  "calibrations": "PASS",
+  "histograms": 7,
+  "records": [
+    {
+      "kind": "worst",
+      "generation": "1",
+      "ordinal": "472",
+      "partition_verified": true,
+      "scheduler_usable": true,
+      "irq_dispatch_usable": true,
+      "scheduler_away_inside_whole_bounds_us": [
+        0,
+        0
+      ],
+      "irq_dispatch_inside_whole_bounds_us": [
+        1046,
+        1102
+      ]
+    },
+    {
+      "kind": "latest_over",
+      "generation": "1",
+      "ordinal": "472",
+      "partition_verified": true,
+      "scheduler_usable": true,
+      "irq_dispatch_usable": true,
+      "scheduler_away_inside_whole_bounds_us": [
+        0,
+        0
+      ],
+      "irq_dispatch_inside_whole_bounds_us": [
+        1046,
+        1102
+      ]
+    },
+    {
+      "kind": "latest_headroom",
+      "generation": "1",
+      "ordinal": "473",
+      "partition_verified": true,
+      "scheduler_usable": true,
+      "irq_dispatch_usable": true,
+      "scheduler_away_inside_whole_bounds_us": [
+        0,
+        0
+      ],
+      "irq_dispatch_inside_whole_bounds_us": [
+        0,
+        0
+      ]
+    }
+  ]
+}

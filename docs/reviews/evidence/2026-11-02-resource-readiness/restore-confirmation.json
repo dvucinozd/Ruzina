@@ -1,0 +1,11 @@
+{
+  "library_visible": true,
+  "library_owner_reply": "vraća",
+  "physical_cold_power_cycle": true,
+  "clean_both_ears": true,
+  "pause_cue_controls_normal": true,
+  "playback_owner_reply": "sve je ok",
+  "requested_smoke": "Known track on deck 1, about 20 seconds, Pause/CUE at unchanged accepted level",
+  "duration_note": "Request is not measured duration; captured played-frame delta is reported separately",
+  "scope": "Exact accepted s07 recovery confirmation only; not engine or two-deck qualification"
+}

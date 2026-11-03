@@ -1,0 +1,40 @@
+{
+  "source_commit": "2f11f2f53e83ecc4589bbb274b1e08e281d29afa",
+  "tests": {
+    "windows-tests-final": {
+      "command": [
+        "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tools/source_supply/tests",
+        "-v"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "c2e88c2a4f6b1f8e7d867f7a60dc7995c6f6007fa57789f3cea9e111350a0f4f"
+    },
+    "linux-tests-final": {
+      "command": [
+        "wsl",
+        "-d",
+        "Ubuntu",
+        "bash",
+        "-lc",
+        "cd /mnt/d/AI/M1_PCB && python3 -m unittest discover -s tools/source_supply/tests -v"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "de6b0fe9d070a6bc24bf57dc8c6220bf1758b3acfffea432baee1a856c2d9108"
+    },
+    "docs-final": {
+      "command": [
+        "D:\\BoardEvidence\\JC1060-20261030-COM3\\toolchain\\python-idf61\\Scripts\\python.exe",
+        "firmware-rust/tools/check_docs.py"
+      ],
+      "exit_code": 0,
+      "raw_sha256": "0a310e39041a2359522e509c53fab45ea452bddc32bf0669647815395f8425fc"
+    }
+  },
+  "historical_four_tools_and_shared_guard_unchanged": true,
+  "firmware_sources_verified": 289
+}

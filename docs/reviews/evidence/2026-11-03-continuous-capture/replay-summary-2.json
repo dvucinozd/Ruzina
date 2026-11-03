@@ -1,0 +1,55 @@
+{
+  "replay_only": true,
+  "device_access": false,
+  "status": "INVALID",
+  "error": "Missing/duplicate/out-of-order report line",
+  "frames": 0,
+  "source": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\cold-1\\boot-window.log",
+  "raw_sha256": "5a15fa7ddd10d3eebc8f78bcd89f8407cd87be92febaafb62a6f9d146e0d8c83",
+  "incomplete_frame": {
+    "start": 12617,
+    "received_start": 0.004,
+    "rows": 21,
+    "decks": {
+      "1": {
+        "generation": 1,
+        "schema": 1,
+        "seq": 8,
+        "uptime_us": 7887191,
+        "epoch": 0,
+        "index": 4294967295,
+        "rate": 0,
+        "playing": 0,
+        "pitch": 0,
+        "supply_us": 0,
+        "busy": 0,
+        "frames": 0,
+        "logical_read_bytes": 0,
+        "invalid": 0,
+        "saturated": 0,
+        "max_service_gap_us": 10055,
+        "deck": 1
+      },
+      "2": {
+        "generation": 1,
+        "schema": 1,
+        "seq": 8,
+        "uptime_us": 7887191,
+        "epoch": 0,
+        "index": 4294967295,
+        "rate": 0,
+        "playing": 0,
+        "pitch": 0,
+        "supply_us": 0,
+        "busy": 0,
+        "frames": 0,
+        "logical_read_bytes": 0,
+        "invalid": 0,
+        "saturated": 0,
+        "max_service_gap_us": 10068,
+        "deck": 2
+      }
+    }
+  },
+  "unterminated_bytes": 1511
+}

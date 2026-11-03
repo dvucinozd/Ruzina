@@ -1,0 +1,459 @@
+{
+  "status": "OFFLINE_VALIDATED_NOT_FLASHED",
+  "source_commit": "d28abd0414a264cce96de4be2a2b783dc58cfd60",
+  "packages": {
+    "clean-normal-d28abd0": {
+      "source_commit": "d28abd0414a264cce96de4be2a2b783dc58cfd60",
+      "manifest_sha256": "9c410eced0e7019567ea1e97e246ce77dd7e38d57ba3e9074033b45fd910dce4",
+      "app_sha256": "a4379cec9665fec098d68d056e1885502c577609972d25cdcc1dd11bd32de06e",
+      "app_bytes": 819424,
+      "sources_verified": 285,
+      "artifacts_verified": 8,
+      "elf_sha256": "ffc27b14dbe6d1971936b384bdd001adc6a9f763f4aaa2186a940bcbc3548fcd",
+      "sections": {
+        ".rtc.text": 104,
+        ".rtc.force_fast": 0,
+        ".rtc_noinit": 0,
+        ".rtc.force_slow": 36,
+        ".rtc_reserved": 24,
+        ".spm.text": 114,
+        ".spm.data": 64,
+        ".iram0.text": 54198,
+        ".iram0.text_end": 74,
+        ".iram0.data": 0,
+        ".iram0.bss": 0,
+        ".iram0.end": 0,
+        ".dram0.dummy": 0,
+        ".dram0.data": 24946,
+        ".noinit": 2,
+        ".dram0.bss": 19600,
+        ".dram1.data": 0,
+        ".dram1.bss": 0,
+        ".dram1.heap_start": 0,
+        ".flash.text": 464750,
+        ".flash_rodata_dummy": 524288,
+        ".flash.appdesc": 256,
+        ".flash.rodata": 274676,
+        ".flash.init_array": 236,
+        ".flash.tdata": 16,
+        ".dram0.heap_start": 0,
+        ".noload": 4,
+        ".debug_aranges": 33128,
+        ".debug_info": 3001257,
+        ".debug_abbrev": 225394,
+        ".debug_line": 1431130,
+        ".debug_frame": 99108,
+        ".debug_str": 777548,
+        ".debug_loc": 824765,
+        ".debug_ranges": 170384,
+        ".debug_line_str": 2780,
+        ".debug_loclists": 15178,
+        ".debug_rnglists": 1360,
+        ".comment": 91,
+        ".riscv.attributes": 138
+      },
+      "rust_largest_frames": [
+        [
+          "_ZN12nanomp3_core7minimp36Mp3Dec3new17hf67105b5c12744a5E",
+          24160
+        ],
+        [
+          "_ZN82_$LT$nanoaudio_mp3..Mp3Decoder$LT$S$GT$$u20$as$u20$nanoaudio_core..codec..Seek$GT$4seek17h2f242c9cd4607118E",
+          23792
+        ],
+        [
+          "_ZN20ruzina_audio_runtime6decode14DecoderStorage11capture_mp317hb6e43208a230fa43E",
+          23776
+        ],
+        [
+          "_ZN20ruzina_audio_runtime6decode14DecoderStorage11restore_mp317ha04a9c91b4915568E",
+          23776
+        ],
+        [
+          "_ZN20ruzina_audio_runtime6decode14DecoderStorage5reset17he8a049c742c41aaaE",
+          22816
+        ],
+        [
+          "_ZN28ruzina_legacy_idf_core_probe10media_load14import_catalog28_$u7b$$u7b$closure$u7d$$u7d$17h8e7ab7af1058a8b7E.llvm.18368757902845078883",
+          16048
+        ],
+        [
+          "_ZN72_$LT$core..pin..Pin$LT$P$GT$$u20$as$u20$core..future..future..Future$GT$4poll17h8227b38a127a90b9E",
+          15504
+        ],
+        [
+          "ruzina_legacy_load_run",
+          12160
+        ]
+      ],
+      "entry_frames": {
+        "ruzina_legacy_load_run": 12160,
+        "ruzina_legacy_uac_fill": 512,
+        "ruzina_legacy_resources_state": 0
+      },
+      "direct_call_stack_estimates": {
+        "ruzina_legacy_load_run": [
+          74640,
+          [
+            "ruzina_legacy_load_run",
+            "_ZN28ruzina_legacy_idf_core_probe16idf_media_bridge11serve_decks17h8d1ffef9c4794f26E",
+            "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$4poll17h0eac20b164a44309E",
+            "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$6decode17h002887656474f9e2E",
+            "_ZN20ruzina_audio_runtime6decode13SourceDecoder4step17hc4b9a320be6956f8E",
+            "_ZN20ruzina_audio_runtime6decode13SourceDecoder7restart17h8df6cee011ce98d3E",
+            "_ZN82_$LT$nanoaudio_mp3..Mp3Decoder$LT$S$GT$$u20$as$u20$nanoaudio_core..codec..Seek$GT$4seek17h2f242c9cd4607118E",
+            "_ZN12nanomp3_core7Decoder3new17hcc35af5ee11e028eE",
+            "_ZN12nanomp3_core7minimp36Mp3Dec3new17hf67105b5c12744a5E",
+            "memset"
+          ]
+        ],
+        "ruzina_legacy_uac_fill": [
+          3120,
+          [
+            "ruzina_legacy_uac_fill",
+            "_ZN28ruzina_legacy_idf_core_probe8deck_mix4with17h229e95e4b141d4dfE",
+            "_ZN20ruzina_audio_runtime6render20FixedRateRenderGraph12render_block17h0bc81a0f4756e5deE",
+            "_ZN20ruzina_audio_runtime2fx6DeckFx7process17h439e3995c328d2c2E",
+            "_ZN16ruzina_audio_dsp11FilterState13process_frame17h0d9205f8bb1ffd66E",
+            "_ZN4libm4math4tanf4tanf17h521017bcc14cf17eE",
+            "_ZN4libm4math9rem_pio2f9rem_pio2f17h8b0c724e8771e7a4E",
+            "_ZN4libm4math14rem_pio2_large14rem_pio2_large17h1b178a29f08864c7E",
+            "_ZN4libm4math6scalbn6scalbn17hfafd3e4a6e20598aE",
+            "__muldf3"
+          ]
+        ],
+        "ruzina_legacy_resources_state": [
+          0,
+          [
+            "ruzina_legacy_resources_state"
+          ]
+        ]
+      },
+      "stack_budgets": {
+        "sd_configured_bytes": 98304,
+        "sd_static_chain_limit": 90112,
+        "sd_chain": 74640,
+        "usb_configured_bytes": 8192,
+        "usb_static_chain_limit": 4096,
+        "usb_chain": 3120
+      },
+      "stack_note": "Static direct-call estimates omit indirect calls and do not establish target high-water marks."
+    },
+    "clean-profile-d28abd0": {
+      "source_commit": "d28abd0414a264cce96de4be2a2b783dc58cfd60",
+      "manifest_sha256": "4aaed8bfd24eb19117be80927841a0c5f5cb91670c725190d79befe8bd82ed65",
+      "app_sha256": "7e62af397730d604b86991a6848f9f58c6705b414c5d124e3ce1019e419f099e",
+      "app_bytes": 825008,
+      "sources_verified": 285,
+      "artifacts_verified": 10,
+      "elf_sha256": "f7be1c0d1ae52e9be3554ed20bd3ff9870e5f32b5ede34c87c0623e0400d3c1f",
+      "sections": {
+        ".rtc.text": 104,
+        ".rtc.force_fast": 0,
+        ".rtc_noinit": 0,
+        ".rtc.force_slow": 36,
+        ".rtc_reserved": 24,
+        ".spm.text": 114,
+        ".spm.data": 64,
+        ".iram0.text": 54614,
+        ".iram0.text_end": 42,
+        ".iram0.data": 0,
+        ".iram0.bss": 0,
+        ".iram0.end": 0,
+        ".dram0.dummy": 0,
+        ".dram0.data": 25162,
+        ".noinit": 2,
+        ".dram0.bss": 20616,
+        ".dram1.data": 0,
+        ".dram1.bss": 0,
+        ".dram1.heap_start": 0,
+        ".flash.text": 468272,
+        ".flash_rodata_dummy": 524288,
+        ".flash.appdesc": 256,
+        ".flash.rodata": 276116,
+        ".flash.init_array": 236,
+        ".flash.tdata": 16,
+        ".dram0.heap_start": 8,
+        ".noload": 4,
+        ".debug_aranges": 33280,
+        ".debug_info": 3009218,
+        ".debug_abbrev": 226389,
+        ".debug_line": 1438724,
+        ".debug_frame": 99680,
+        ".debug_str": 778929,
+        ".debug_loc": 827982,
+        ".debug_ranges": 170848,
+        ".debug_line_str": 2780,
+        ".debug_loclists": 15178,
+        ".debug_rnglists": 1360,
+        ".comment": 91,
+        ".riscv.attributes": 138
+      },
+      "rust_largest_frames": [
+        [
+          "_ZN12nanomp3_core7minimp36Mp3Dec3new17hf67105b5c12744a5E",
+          24160
+        ],
+        [
+          "_ZN82_$LT$nanoaudio_mp3..Mp3Decoder$LT$S$GT$$u20$as$u20$nanoaudio_core..codec..Seek$GT$4seek17h2f242c9cd4607118E",
+          23792
+        ],
+        [
+          "_ZN20ruzina_audio_runtime6decode14DecoderStorage11capture_mp317hb6e43208a230fa43E",
+          23776
+        ],
+        [
+          "_ZN20ruzina_audio_runtime6decode14DecoderStorage11restore_mp317ha04a9c91b4915568E",
+          23776
+        ],
+        [
+          "_ZN20ruzina_audio_runtime6decode14DecoderStorage5reset17he8a049c742c41aaaE",
+          22816
+        ],
+        [
+          "_ZN28ruzina_legacy_idf_core_probe10media_load14import_catalog28_$u7b$$u7b$closure$u7d$$u7d$17he0d5d872ce4308abE.llvm.1399537376613456752",
+          16048
+        ],
+        [
+          "_ZN72_$LT$core..pin..Pin$LT$P$GT$$u20$as$u20$core..future..future..Future$GT$4poll17h636e8fa7211a4a62E",
+          15504
+        ],
+        [
+          "ruzina_legacy_load_run",
+          12160
+        ]
+      ],
+      "entry_frames": {
+        "ruzina_legacy_load_run": 12160,
+        "ruzina_legacy_uac_fill": 512,
+        "ruzina_legacy_resources_state": 0
+      },
+      "direct_call_stack_estimates": {
+        "ruzina_legacy_load_run": [
+          74640,
+          [
+            "ruzina_legacy_load_run",
+            "_ZN28ruzina_legacy_idf_core_probe16idf_media_bridge11serve_decks17h63dc394f74840bcdE",
+            "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$4poll17h8a747a2d5d9726dfE",
+            "_ZN28ruzina_legacy_idf_core_probe9deck_play20Producer$LT$File$GT$6decode17h6d5b58baabcaa34fE",
+            "_ZN20ruzina_audio_runtime6decode13SourceDecoder4step17hc4b9a320be6956f8E",
+            "_ZN20ruzina_audio_runtime6decode13SourceDecoder7restart17h8df6cee011ce98d3E",
+            "_ZN82_$LT$nanoaudio_mp3..Mp3Decoder$LT$S$GT$$u20$as$u20$nanoaudio_core..codec..Seek$GT$4seek17h2f242c9cd4607118E",
+            "_ZN12nanomp3_core7Decoder3new17hcc35af5ee11e028eE",
+            "_ZN12nanomp3_core7minimp36Mp3Dec3new17hf67105b5c12744a5E",
+            "memset"
+          ]
+        ],
+        "ruzina_legacy_uac_fill": [
+          3120,
+          [
+            "ruzina_legacy_uac_fill",
+            "_ZN28ruzina_legacy_idf_core_probe8deck_mix4with17h83ba5cd33c370fdeE",
+            "_ZN20ruzina_audio_runtime6render20FixedRateRenderGraph12render_block17h51c2dc0198f927a5E",
+            "_ZN20ruzina_audio_runtime2fx6DeckFx7process17h439e3995c328d2c2E",
+            "_ZN16ruzina_audio_dsp11FilterState13process_frame17h0d9205f8bb1ffd66E",
+            "_ZN4libm4math4tanf4tanf17h521017bcc14cf17eE",
+            "_ZN4libm4math9rem_pio2f9rem_pio2f17h8b0c724e8771e7a4E",
+            "_ZN4libm4math14rem_pio2_large14rem_pio2_large17h1b178a29f08864c7E",
+            "_ZN4libm4math6scalbn6scalbn17hfafd3e4a6e20598aE",
+            "__muldf3"
+          ]
+        ],
+        "ruzina_legacy_resources_state": [
+          0,
+          [
+            "ruzina_legacy_resources_state"
+          ]
+        ]
+      },
+      "stack_budgets": {
+        "sd_configured_bytes": 98304,
+        "sd_static_chain_limit": 90112,
+        "sd_chain": 74640,
+        "usb_configured_bytes": 8192,
+        "usb_static_chain_limit": 4096,
+        "usb_chain": 3120
+      },
+      "stack_note": "Static direct-call estimates omit indirect calls and do not establish target high-water marks."
+    }
+  },
+  "profile_baseline": {
+    "source_commit": "605abe78f596dc7f94ccaf04e5e0936ac25a4750",
+    "app_sha256": "0718c73af20982719904070fc14fcd4c3778ce2924e3798e8a1d55c01b79a4ea",
+    "app_bytes": 823024,
+    "elf_sha256": "5981be59bdbf6c5d77d8f35e8bcc3f466268b9cd84a4764fe74151262354678f",
+    "sections": {
+      ".rtc.text": 104,
+      ".rtc.force_fast": 0,
+      ".rtc_noinit": 0,
+      ".rtc.force_slow": 36,
+      ".rtc_reserved": 24,
+      ".spm.text": 114,
+      ".spm.data": 64,
+      ".iram0.text": 54614,
+      ".iram0.text_end": 42,
+      ".iram0.data": 0,
+      ".iram0.bss": 0,
+      ".iram0.end": 0,
+      ".dram0.dummy": 0,
+      ".dram0.data": 25162,
+      ".noinit": 2,
+      ".dram0.bss": 20616,
+      ".dram1.data": 0,
+      ".dram1.bss": 0,
+      ".dram1.heap_start": 0,
+      ".flash.text": 466360,
+      ".flash_rodata_dummy": 524288,
+      ".flash.appdesc": 256,
+      ".flash.rodata": 276044,
+      ".flash.init_array": 236,
+      ".flash.tdata": 16,
+      ".dram0.heap_start": 8,
+      ".noload": 4,
+      ".debug_aranges": 33272,
+      ".debug_info": 3008600,
+      ".debug_abbrev": 226365,
+      ".debug_line": 1437797,
+      ".debug_frame": 99520,
+      ".debug_str": 778834,
+      ".debug_loc": 827802,
+      ".debug_ranges": 170704,
+      ".debug_line_str": 2780,
+      ".debug_loclists": 15178,
+      ".debug_rnglists": 1360,
+      ".comment": 91,
+      ".riscv.attributes": 138
+    },
+    "candidate_section_delta": {
+      ".debug_abbrev": 24,
+      ".debug_aranges": 8,
+      ".debug_frame": 160,
+      ".debug_info": 618,
+      ".debug_line": 927,
+      ".debug_loc": 180,
+      ".debug_ranges": 144,
+      ".debug_str": 95,
+      ".flash.rodata": 72,
+      ".flash.text": 1912
+    },
+    "note": "Prior clean flash-placement control profile; metadata/code offsets also differ. This is static accounting, not a timing comparison."
+  },
+  "host_tests": {
+    "profiles": {
+      "idf-media-load": 39,
+      "idf-controller-audio": 2,
+      "idf-deck-play": 56,
+      "idf-deck-mix": 57,
+      "idf-deck-engine": 70,
+      "idf-uac-profile": 75
+    },
+    "host_clippy": "PASS",
+    "riscv_release_clippy_configurations": 9,
+    "windows_python": {
+      "passed": 40,
+      "skipped_c_compiler": 6
+    },
+    "wsl_actual_c": 6
+  },
+  "physical": {
+    "status": "NOT_RUN",
+    "com3_access": false,
+    "installed": "accepted s07",
+    "recovery_predecessors": 36,
+    "heap": "NOT_RUN",
+    "stack_high_water": "NOT_RUN",
+    "timing": "NOT_RUN"
+  },
+  "review": {
+    "source_commit": "d28abd0414a264cce96de4be2a2b783dc58cfd60",
+    "base_commit": "8449b95bd869ec34b0be0f3167d92f142d2deaba",
+    "issues": 0,
+    "files": [
+      "docs/reviews/2026-11-02-resource-readiness.md",
+      "firmware-idf/legacy-jc1060/README.md",
+      "firmware-idf/legacy-jc1060/main/sd_bridge.c",
+      "firmware-idf/legacy-jc1060/main/uac_driver.inc",
+      "firmware-idf/legacy-jc1060/main/usb_host_enum.c",
+      "firmware-idf/legacy-jc1060/rust-core/src/deck_play.rs",
+      "firmware-idf/legacy-jc1060/rust-core/src/deck_resources.rs",
+      "firmware-idf/legacy-jc1060/rust-core/src/idf_media_bridge.rs",
+      "firmware-idf/legacy-jc1060/rust-core/src/lib.rs",
+      "firmware-idf/legacy-jc1060/tools/tests/uac_driver_test.c"
+    ],
+    "status": "completed"
+  },
+  "logs": {
+    "build.ps1": {
+      "bytes": 1062,
+      "sha256": "0044673008fa3ff92aa87e5b384fe60a0bfdaa945b86b8c2d70bda59040c53a3"
+    },
+    "c-harness.log": {
+      "bytes": 10824,
+      "sha256": "ac68dba2578ac6d5693cd2c0c4a2a2d0fedda61758396d412d6a7dee5dd92005"
+    },
+    "checks.sh": {
+      "bytes": 802,
+      "sha256": "3b528044479fe31245639812c6807bdbfc51d482c6c7d1899f39a9f2f2a2b79a"
+    },
+    "clean-normal-d28abd0-console.log": {
+      "bytes": 121,
+      "sha256": "1d67e0acb8f837be371b5cd6fae45fcce7d7534228bddcbb7541abe34787c669"
+    },
+    "clean-profile-d28abd0-console.log": {
+      "bytes": 122,
+      "sha256": "b6b4336131e5ec3f233005a08c7334af6743a8f4223ddf1b6656b2e3bde380cb"
+    },
+    "coderabbit-d28abd0.raw.log": {
+      "bytes": 1588,
+      "sha256": "8d75b59d26a8bc985f984b7ef86c57f8423da95457ab5c0d419dd9b79303bd8b"
+    },
+    "host-matrix-fixed.log": {
+      "bytes": 28556,
+      "sha256": "a6af123e6a0b4af50a9e8e0e4dfa9857fbff3689537e35303ea3b9ba695886e9"
+    },
+    "host-matrix.log": {
+      "bytes": 29849,
+      "sha256": "2dbe0d3a27145c8cee343f0c0011517e8113b16b32c8bea5fc45ae5655ba43db"
+    },
+    "host-target-final.log": {
+      "bytes": 29394,
+      "sha256": "b07186281ddf9c140050a40bc59aabbb63970d77fdc0a7fc7f3c91b327d2f596"
+    },
+    "pilot-normal-console.log": {
+      "bytes": 4846,
+      "sha256": "dadc5b411bb24397af7084d8517668bed19f737b2871d14d777e461c26179ca5"
+    },
+    "pilot-normal-fixed-console.log": {
+      "bytes": 119,
+      "sha256": "9ed7f2d2f07e6c01bb5032be543a61030443fb31a0b3edeedba1a8a38e62bb11"
+    },
+    "python-windows-fixed.log": {
+      "bytes": 5596,
+      "sha256": "ecb094fb430b55c91d3ac8df0e49f172558627c7d709a799de72c12560da37db"
+    },
+    "python-windows.log": {
+      "bytes": 28213,
+      "sha256": "0a4a8edcb666fb7988ef1758736480841b52c12c9f0558f403cf966b738252bc"
+    },
+    "python-wsl.log": {
+      "bytes": 17352,
+      "sha256": "e437bb5159def85e8fc96ef70e87cea196c78c6a6f667aa6548b181ed831b321"
+    },
+    "resource-tests-fixed.log": {
+      "bytes": 980,
+      "sha256": "4aa2aadbc1304782c386121e714f2df818711591434d153fb6fc7ce34143b8da"
+    },
+    "resource-tests.log": {
+      "bytes": 1536,
+      "sha256": "9ab2b9b5ac94852cf86a3aa767397f4cf8df4a9e250f3ef953fa6ee41ebc2895"
+    },
+    "stack_followup.py": {
+      "bytes": 1334,
+      "sha256": "8f0c4a70cb81dacac3d32eda4135d1e45ecfff3b7e3e802939f5e30d3abf7833"
+    },
+    "verify_packages.py": {
+      "bytes": 5507,
+      "sha256": "70a5c689c6938c63cc6e731c8be6823749c9a9e5e742ef2e8fe9ce3f73170d3a"
+    }
+  }
+}

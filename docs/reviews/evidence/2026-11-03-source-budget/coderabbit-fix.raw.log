@@ -1,0 +1,3 @@
+Tip: Install CodeRabbit skills for your coding agent with `coderabbit skills`.
+{"type":"review_context","reviewType":"committed","currentBranch":"ogranak/jc1060-source-supply-profile","baseBranch":"main","baseCommit":"844c3b7700a95bda9f379f629c051842363de107","workingDirectory":"/mnt/d/AI/M1_PCB","expectedDuration":"Reviews usually take 2-6 minutes and can take up to 15. Keep this command running for at least 15 minutes or run it in the background; stopping it early discards the review."}
+{"type":"complete","status":"review_completed","findings":0,"reviewedFiles":["tools/source_budget/audit_capture.py","tools/source_budget/tests/test_audit_capture.py"],"outcome":"completed","message":"Review completed"}

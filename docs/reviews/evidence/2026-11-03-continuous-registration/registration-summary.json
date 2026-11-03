@@ -1,0 +1,37 @@
+{
+  "status": "OFFLINE_REGISTERED_NOT_EXECUTED_OR_BOUND",
+  "device_access": false,
+  "registration_sha256": "163d3ecd3e6809710c627b264aa57f5ec924aa76c5e3f74686f10ce1fe192a47",
+  "capture_contract_sha256": "4eb8e011166eb133b13c0296062a1279f6e97bfc673156707833937390a6a3ce",
+  "boot_policy_sha256": "f4a76f15dd1b303a110d568c88f41accb85c656e613c0fac1b520ebc6c0342ff",
+  "transitions": {
+    "candidate": {
+      "plan_dir": "candidate-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\source-supply-20261103\\clean-diagnostic",
+      "manifest_sha256": "80302e06f2bc022604439949bd1bfac3ed43b3668e42176dab5821d4edf8690a",
+      "plan_sha256": "baa23c1709125d34751b2802ea6df621d21579fb841588f12dd5c48a15d56c95",
+      "app_sha256": "173933e100e2de34257beb89013556b0937e8b0e94bd36bf797eb755d505d1cd",
+      "elf_sha256": "54dbdc424791bfc3f3516dd194487bd0a09e009bf7215e380c7a57b10d58af11",
+      "predecessors": 42,
+      "expected_before_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+      "expected_after_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9",
+      "execution": "NOT_RUN"
+    },
+    "return-s07": {
+      "plan_dir": "return-s07-plan",
+      "package": "D:\\BoardEvidence\\JC1060-20261030-COM3\\s07-deck-play-build-1",
+      "manifest_sha256": "09ff098c6cc97681b68322125e5c025b1be845b376b8aa1806ac896d65703752",
+      "plan_sha256": "c39e6f0e3de6783fedbda1d4a37b423cd822ee7fb57d4a0ef825745e4d3a6a56",
+      "app_sha256": "95d45203ec245a9f82455f16f15dd95ed6ad2bb8eaaca9cf85f0816ccd5dbfdd",
+      "elf_sha256": "005f8d1e33aa5f2a8d05af691ce768461f559c917b8804920a912178f5b78ddf",
+      "predecessors": 43,
+      "expected_before_sha256": "95e069e0ebf04452f983f192520789e30d09449d3853f57bd0cb0eaa50a048e9",
+      "expected_after_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+      "execution": "NOT_RUN"
+    }
+  },
+  "source_inputs_verified": 289,
+  "complete_executed_predecessors": 42,
+  "four_factory_copies_verified": true,
+  "new_write_capture_boot_bindings": "NOT_CREATED"
+}

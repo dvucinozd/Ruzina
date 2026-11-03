@@ -206,9 +206,16 @@ The generic controller-audio capability model shall be able to express at least:
 |---|---|
 | M1R-P2-001 | Audio recorder: retain design/test knowledge but do not make R1 release depend on recorder enablement until SD latency and power-loss behavior are qualified. |
 | M1R-P2-002 | General input SysEx matching and MIDI-CI extensions beyond the note/CC profile model. The bounded initial output SysEx required by S3CP v4 is P0-031, not deferred here. |
-| M1R-P2-003 | Excluded by the 2026-10-20 owner decision: controller-independent headphone DAC/codec/amplifier output. Headphones must always use the controller. |
+| M1R-P2-003 | Originally excluded by the 2026-10-20 owner decision. An optional external headphone DAC/amp and independent Settings are now recorded for future development in the [JC1060 external audio plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md), 2026-11-01. NOT_IMPLEMENTED; current routing remains controller-only. |
 
 ## 8. Controller-only headphone policy
+
+**Future extension recorded 2026-11-01:** the owner requested that the
+[JC1060 external MAIN/headphone plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md) be
+kept for later development. It proposes an independent Controller/External
+headphone setting alongside MAIN selection. The rules below still describe
+the current implementation; introducing the optional route requires explicit
+requirement, architecture and test updates as part of that future implementation.
 
 The owner clarified the mandatory headphone policy on 2026-10-20:
 
