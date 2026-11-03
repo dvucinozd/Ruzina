@@ -57,9 +57,11 @@ def audit(raw, capture, adapter):
         inside = [r for r in records if start <= r['start'] and r['end'] <= end]
         crossing = [r for r in records if r['start'] < end and r['end'] > start and r not in inside]
         extra = [r for r in inside if (r['deck'], r['control']) not in ALLOWED[case['name']]]
+        status = ('INCOMPLETE_BOUNDARY_CONTROL_AUDIT' if crossing else
+                  'EXTRA_CONTROLS_OBSERVED' if extra else 'NO_EXTRA_CONTROLS_OBSERVED')
         cases.append(dict(name=case['name'], control_count=len(inside), extra_controls=extra,
                           boundary_crossing_controls=crossing,
-                          status='EXTRA_CONTROLS_OBSERVED' if extra else 'NO_EXTRA_CONTROLS_OBSERVED'))
+                          status=status))
     return dict(status='OFFLINE_CONTROL_AUDIT_NOT_ADMISSION', raw_sha256=sha(raw),
                 device_access=False, previous_admission_modified=False,
                 scope='Allowed pairs describe requested setup; not timing/order or listening qualification',
@@ -78,7 +80,9 @@ def main():
     result.update(capture_result_sha256=sha(result_bytes), adapter_result_sha256=sha(adapter_bytes))
     with args.output.open('x', encoding='utf-8') as output:
         output.write(json.dumps(result, indent=2, ensure_ascii=False)+'\n')
-    print(json.dumps(dict(status=result['status'], cases=[dict(name=c['name'], extra_controls=len(c['extra_controls']))
+    print(json.dumps(dict(status=result['status'], cases=[dict(name=c['name'], status=c['status'],
+                                                        extra_controls=len(c['extra_controls']),
+                                                        boundary_crossing_controls=len(c['boundary_crossing_controls']))
                                                         for c in result['cases']])))
 
 

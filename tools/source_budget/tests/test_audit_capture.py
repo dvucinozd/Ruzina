@@ -1,6 +1,9 @@
 import copy
+import json
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -49,6 +52,18 @@ class ControlAuditTests(unittest.TestCase):
         capture['cases'][0]['raw_sha256'] = sha(raw[1:])
         result = audit(raw, capture, adapter)
         self.assertEqual(len(result['cases'][0]['boundary_crossing_controls']), 1)
+        self.assertEqual(result['cases'][0]['status'], 'INCOMPLETE_BOUNDARY_CONTROL_AUDIT')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root/'stream.log').write_bytes(raw)
+            (root/'result.json').write_text(json.dumps(capture))
+            (root/'adapter-result.json').write_text(json.dumps(adapter))
+            completed = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1]/'audit_capture.py'),
+                                        '--capture', str(root), '--output', str(root/'audit.json')],
+                                       capture_output=True, text=True, check=True)
+            case = json.loads(completed.stdout)['cases'][0]
+            self.assertEqual(case['status'], 'INCOMPLETE_BOUNDARY_CONTROL_AUDIT')
+            self.assertEqual(case['boundary_crossing_controls'], 1)
 
 
 if __name__ == '__main__':
