@@ -9,6 +9,10 @@ and byte-exact PCM comparisons pass. No COM3 access; s07/history **44** remain.
 Review/CI, clean package/archive completion and a fresh explicitly registered
 matched-control/opt3 transition chain precede any device work. Existing old
 writer bindings/plans cannot authorize these new source/image identities.
+Source `a245335` has review 0 issues and three clean source/artifact-verified
+packages; the 31466623-byte/405-member archive `fe94bb23...` passes CRC/member/
+secondary checks. Exact-source host CI #586 passes; legacy #109 is queued.
+Verify that remaining CI gate before preparing any new registered transition.
 
 Latest offline result: [source-budget investigation](reviews/2026-11-03-source-budget.md).
 Real producer/decoder shared-time tests and a release benchmark isolate read

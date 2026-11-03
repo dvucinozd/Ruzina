@@ -13,6 +13,8 @@ is 16 B and opt3's maximum Rust frame is 16048 B. Host PCM remains byte-exact.
 This is build/host evidence only: no new COM3 access, s07/history44 unchanged.
 Exact-source review/CI, clean packages and fresh registered comparison still
 precede any physical campaign. Native minimum 302 and compiler defaults stay.
+Review completed with 0 issues; all three clean packages and their dual-copy
+archive pass. Exact-source host CI passed; legacy CI remains queued.
 
 Latest [offline source-budget investigation](docs/reviews/2026-11-03-source-budget.md)
 adds a deterministic shared-time producer test, release-mode PCM benchmark

@@ -1,0 +1,10 @@
+test_boundary_control_is_not_silently_assigned_to_a_case (test_audit_capture.ControlAuditTests.test_boundary_control_is_not_silently_assigned_to_a_case) ... ok
+test_extra_control_and_counter_are_retained_without_admission_mutation (test_audit_capture.ControlAuditTests.test_extra_control_and_counter_are_retained_without_admission_mutation) ... ok
+test_overlap_and_incomplete_control_are_rejected (test_audit_capture.ControlAuditTests.test_overlap_and_incomplete_control_are_rejected) ... ok
+test_raw_and_case_tampering_are_rejected (test_audit_capture.ControlAuditTests.test_raw_and_case_tampering_are_rejected) ... ok
+test_unmodified_files_patch_and_manifest_are_all_pinned (test_verify_vendor.VendorTests.test_unmodified_files_patch_and_manifest_are_all_pinned) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.391s
+
+OK

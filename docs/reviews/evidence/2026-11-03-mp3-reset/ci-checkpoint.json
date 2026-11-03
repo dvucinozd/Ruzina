@@ -1,0 +1,130 @@
+{
+  "source_commit": "a2453350624bd6c207a921850354c5df4dd23316",
+  "status": "HOST_WORKFLOW_SUCCESS_LEGACY_QUEUED",
+  "host": {
+    "run_id": 41715786400,
+    "run_number": 586,
+    "conclusion": "success",
+    "url": "https://github.com/dvucinozd/Ruzina/actions/runs/41715786400"
+  },
+  "legacy": {
+    "run_id": 41715786264,
+    "run_number": 109,
+    "conclusion": null,
+    "jobs": [
+      {
+        "name": "media-bridge-host",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-audio)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-engine-producer-profile-mp3-core-opt3)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-engine-producer-profile)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-engine-profile)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (usb-host)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (sd-rust-exfat)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (display-touch)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (pure-ram)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (sd-rust-bridge)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (sd-readonly)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (memory-task)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (sd-rust-load-display)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (sd-file-readonly)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-engine-profile-pack-iram)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-mix)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-ui)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (usb-midi)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-engine)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (flash-build-only)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (sd-rust-load)",
+        "status": "queued",
+        "conclusion": null
+      },
+      {
+        "name": "legacy (deck-play)",
+        "status": "queued",
+        "conclusion": null
+      }
+    ],
+    "url": "https://github.com/dvucinozd/Ruzina/actions/runs/41715786264"
+  },
+  "local_checks_do_not_substitute_for_remote": true,
+  "device_access": false
+}

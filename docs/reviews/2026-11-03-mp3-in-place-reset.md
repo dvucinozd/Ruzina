@@ -84,6 +84,48 @@ Exact package/source hashes and the additional matched producer-control build
 are retained with the final validation evidence. Dirty-checkpoint artifacts
 and later clean-source packages must be identified separately.
 
+## Clean package, review and archive completion
+
+Source **`a2453350624bd6c207a921850354c5df4dd23316`** has completed CodeRabbit
+review with **0 issues**, scoped from the separately verified upstream-copy
+baseline `15f46c648837bedf47492dd9eb60a1be459fa680`. The [review record](evidence/2026-11-03-mp3-reset/review.json)
+retains exact scope/raw digest. This is review of the actual reset/dependency/
+test/provenance changes; original copied bytes are independently checked
+against both locked crate archives.
+
+[Qualification](evidence/2026-11-03-mp3-reset/qualification.json) verifies three
+fresh packages from that exact commit, each with **empty dirty_status**, all
+**313 source inputs** and all **8 artifacts** rehashed. Profiles are matched:
+
+| Clean package | Producer profile | Core opt3 | App bytes | Load-chain estimate | Fill-chain estimate |
+|---|---|---|---:|---:|---:|
+| normal | OFF | OFF | 819328 | 50704 B | 3120 B |
+| producer control | ON | OFF | 824320 | 51728 B | 3120 B |
+| producer opt3 | ON | ON | 818784 | 51728 B | 3104 B |
+
+Full app/ELF/manifest digests are in the qualification and retained manifests.
+The initial fresh control attempt failed compiling IDF `pmu_sleep.c` without
+compiler diagnostics; its cause is **UNKNOWN**. Its failed exit/log remain
+separate. A new serial build directory, with identical committed source and
+unchanged guards, produced the accepted clean control package. No failed
+attempt was resumed/relabelled as successful. Earlier dirty checkpoints are
+retained separately and are not the clean packages above.
+
+[Archive](evidence/2026-11-03-mp3-reset/archive.json): `completed-reset-evidence.zip`,
+**31466623 bytes**, **405 members**, SHA-256
+`fe94bb235ffe7fb86fa8074af1c9e7933c0e590361e51f20d0689bf14db533dc`.
+CRC, every member hash and all secondary copies match. Primary:
+`D:/BoardEvidence/JC1060-20261030-COM3/reset-inplace-20261103/`; secondary:
+`C:/Users/Daniel/Documents/BoardBackups/JC1060-20261030-COM3/reset-inplace-20261103/`.
+The archive retains the earlier report checkpoint, source snapshots, three
+clean packages, original crates, tests/PCM/review and failed attempts; this
+subsequent publication records the completed archive and source checks.
+
+[CI checkpoint](evidence/2026-11-03-mp3-reset/ci-checkpoint.json): exact source
+Rust host workflow **#586 passed**; legacy workflow **#109**, including its new
+opt3 job, is still **queued**. Local packages do not turn queued remote jobs
+into PASS. New publication CI remains separate. No image is registered/flashed.
+
 ## Next gates
 
 1. Complete exact-source review/CI and clean normal, producer-control and opt3

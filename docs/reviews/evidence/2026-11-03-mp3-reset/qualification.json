@@ -1,0 +1,102 @@
+{
+  "status": "OFFLINE_RESET_AND_THREE_CLEAN_PACKAGES_PASS_NOT_FLASHED",
+  "device_access": false,
+  "source_commit": "a2453350624bd6c207a921850354c5df4dd23316",
+  "native_minimum": 302,
+  "device_history": 44,
+  "application_running": "NOT_OBSERVED",
+  "installed_full_sha256": "28830827d3e3426bbcd58b9a25d4d2129e28f150bade33fe3c551cd577f93921",
+  "vendor": {
+    "status": "PINNED_VENDOR_BYTES_PASS",
+    "files": 22,
+    "changed_files": 3,
+    "device_access": false
+  },
+  "packages": [
+    {
+      "name": "clean-normal",
+      "status": "BUILD_ONLY_NOT_QUALIFIED",
+      "source_commit": "a2453350624bd6c207a921850354c5df4dd23316",
+      "dirty_status": "",
+      "manifest_sha256": "2053006b47299721867d24608e8cf41d0976d668e118f38a903316f77e49f226",
+      "app_sha256": "e76a94afedaf026c87578db813f606ed12495644f833b5d2bd1e357d2bed5a95",
+      "app_bytes": 819328,
+      "elf_sha256": "2410f8843d99f31087abee671451297b049ebd585c318b866b3c87222569d52e",
+      "source_inputs": 313,
+      "artifacts": 8,
+      "producer_profile": false,
+      "mp3_core_opt3": false,
+      "load_chain_bytes": 50704,
+      "fill_chain_bytes": 3120,
+      "max_rust_frame": 23776,
+      "reset_frames": {
+        "_ZN12nanomp3_core7Decoder5reset17h7475e6a45bbb193dE": 16
+      }
+    },
+    {
+      "name": "clean-producer-control-2",
+      "status": "BUILD_ONLY_NOT_QUALIFIED",
+      "source_commit": "a2453350624bd6c207a921850354c5df4dd23316",
+      "dirty_status": "",
+      "manifest_sha256": "d8c5f65c0b4ef646490ba8d63298d408a28ea01deb689a0eb0499575a0cead37",
+      "app_sha256": "2535f9ccec7a0ae1fb5b1df4a19330050d790317330d35ae4b6618346be96b5d",
+      "app_bytes": 824320,
+      "elf_sha256": "86f6f47d668452811ea925dca17ae48adb95872511d9202e4be22c87d285ab4a",
+      "source_inputs": 313,
+      "artifacts": 8,
+      "producer_profile": true,
+      "mp3_core_opt3": false,
+      "load_chain_bytes": 51728,
+      "fill_chain_bytes": 3120,
+      "max_rust_frame": 23776,
+      "reset_frames": {
+        "_ZN12nanomp3_core7Decoder5reset17h7475e6a45bbb193dE": 16
+      }
+    },
+    {
+      "name": "clean-producer-opt3",
+      "status": "BUILD_ONLY_NOT_QUALIFIED",
+      "source_commit": "a2453350624bd6c207a921850354c5df4dd23316",
+      "dirty_status": "",
+      "manifest_sha256": "a583bc4ecd543dd4a97fab90d19da0a5b816abb0ed2119bd26e2a977b23921c2",
+      "app_sha256": "2fc3180eac6aae781f529589d6fe695b2ba3b72b5d5fd0e44c4a35d3401d44a7",
+      "app_bytes": 818784,
+      "elf_sha256": "5c81ce8c281c96030242957063dc7f46d5d364d40dae491330e880bf39b53c0f",
+      "source_inputs": 313,
+      "artifacts": 8,
+      "producer_profile": true,
+      "mp3_core_opt3": true,
+      "load_chain_bytes": 51728,
+      "fill_chain_bytes": 3104,
+      "max_rust_frame": 16048,
+      "reset_frames": {
+        "_ZN12nanomp3_core7Decoder5reset17h3abc4d2a3028ddc9E": 16
+      }
+    }
+  ],
+  "pcm_sha256": "2fb60aa3d5dc7243d38208d215fa40c13083d062b51c5eeebca8a88c6fd3ddac",
+  "pcm_byte_equality_to_unpatched_reference": true,
+  "checks": {
+    "diagnostic_unit_passed": 79,
+    "normal_unit_passed": 72,
+    "codec_integration_passed_per_policy": 24,
+    "release_opt3_unit_passed": 79,
+    "manual_benchmark_measurements": 20,
+    "manual_ordinary_suite_ignored": 1,
+    "python_tests_per_os": 5,
+    "host_clippy": "PASS",
+    "format": "PASS"
+  },
+  "physical_acceptance": "NOT_RUN",
+  "new_registration": "NOT_PREPARED",
+  "remote_ci": "SEPARATE_PENDING",
+  "failed_build_attempt": {
+    "name": "clean-producer-control",
+    "exit_code": 1,
+    "failed_step": "IDF GCC pmu_sleep.c compilation; no compiler diagnostic emitted",
+    "root_cause": "UNKNOWN",
+    "log_sha256": "57df7fc6595320b9f238f0c83495edb44057bc1cd175cb47b65328048d5c3e94",
+    "passed_retry": "clean-producer-control-2",
+    "retry_scope": "Fresh directory, serial build, same committed source and unchanged guards"
+  }
+}

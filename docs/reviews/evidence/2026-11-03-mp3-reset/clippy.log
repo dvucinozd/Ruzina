@@ -1,0 +1,5 @@
+    Checking nanomp3-core v0.2.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/third_party/nanomp3-core-0.2.0)
+    Checking nanoaudio-mp3 v0.1.1 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/third_party/nanoaudio-mp3-0.1.1)
+    Checking ruzina-audio-runtime v0.1.0 (/mnt/d/AI/M1_PCB/firmware-rust/crates/ruzina-audio-runtime)
+    Checking ruzina-legacy-idf-core-probe v0.1.0 (/mnt/d/AI/M1_PCB/firmware-idf/legacy-jc1060/rust-core)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.73s
