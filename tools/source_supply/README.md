@@ -1,13 +1,13 @@
 # Registered producer-profile campaign tools
 
 Current continuation: [passive adapter/whole-stream analyzer](../../docs/reviews/2026-11-03-continuous-adapter.md).
-37 tests per OS include a synthetic five-case session with one connection.
+39 capture/adapter tests per OS include a synthetic five-case session with one connection.
 `continuous_adapter.py` defaults offline and rejects old bindings/plans;
 `continuous_analyze.py` requires the new receipt journal. No new device
 registration exists yet. Software boot/recovery registration remains separate.
 
 The [standalone s07 boot action](../../docs/reviews/2026-11-03-software-boot.md)
-is implemented and tested without device access. Combined suite: 44 tests per
+is implemented and tested without device access. Combined suite: 46 tests per
 OS. It needs its own new 43-predecessor return proof, policy and reviewed
 binding; it never invokes a writer or claims a running app from a boot pulse.
 

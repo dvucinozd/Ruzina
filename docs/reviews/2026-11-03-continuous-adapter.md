@@ -127,7 +127,7 @@ Outputs are development continuation evidence, not product/PFL acceptance.
 
 ## Offline validation and next work
 
-37 source-supply tests pass on Windows and Linux. The full synthetic five-case
+39 capture/adapter tests pass on Windows and Linux. The full synthetic five-case
 controller run uses exactly one passive port open/close and passes whole-stream
 replay. Negative cases cover altered metadata/slices, receive backlog, silent
 case tails, short source intervals, disjoint both-playing intervals, wrong
@@ -147,7 +147,8 @@ Ruzina's GitHub CodeRabbit installation is confirmed by its PR82 bot response;
 the PR remains draft. Successful repeat review is still required separately.
 
 The separate [software boot action](2026-11-03-software-boot.md) is now
-implemented with seven further tests (44 source-supply tests total per OS).
+implemented with seven further tests (46 source-supply tests total per OS, including the two
+async-admission regressions).
 No boot action or target access was executed. The first review attempt was
 blocked by the CodeRabbit CLI rate limit; dashboard installation and tests do
 not constitute a review pass.

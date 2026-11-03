@@ -12,7 +12,7 @@ continuous evidence and actual owner readiness. No new target access: software
 boot action, fresh 42/43 registration/binding and review/CI still precede use.
 
 The separate [s07 software boot action](docs/reviews/2026-11-03-software-boot.md)
-is also implemented offline; the combined 44-test suite passes per OS.
+is also implemented offline; the combined 46-test suite passes per OS.
 Review/CI and new policies/bindings remain required. No manual s07 recovery
 qualification is reinstated.
 

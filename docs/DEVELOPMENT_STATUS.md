@@ -8,9 +8,9 @@ owner-confirmed; tools closed. Current history 42/full
 The [owner recovery policy](RECOVERY_POLICY.md) removes future repeated s07
 physical cold/listening/Pause/CUE checks; keep automatic full readback.
 The [continuous adapter/analyzer](reviews/2026-11-03-continuous-adapter.md) now has
-37 offline framing/readiness/whole-session tests per OS. No COM3 access. Next:
+39 offline framing/readiness/whole-session tests per OS. No COM3 access. Next:
 review/CI for the adapter and [software boot action](reviews/2026-11-03-software-boot.md),
-new 42/43 plans and exact bindings. Combined suite now has 44 tests per OS. Older checkpoints
+new 42/43 plans and exact bindings. Combined suite now has 46 tests per OS. Older checkpoints
 below retain historical state.
 
 The [producer campaign](reviews/2026-11-03-source-supply-execution.md) is now

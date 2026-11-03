@@ -15,7 +15,7 @@ Pause/CUE recovery checks**. Use automatic readback and the
 boot action if needed. Preserve old frozen runbooks/archives as historical.
 The [continuous adapter/analyzer](reviews/2026-11-03-continuous-adapter.md)
 now extends the offline core with immutable checkpoints, whole-journal replay,
-owner commands and 37 tests per OS, including one synthetic five-case passive
+owner commands and 39 capture/adapter tests per OS, including one synthetic five-case passive
 connection. The separate software boot action is also
 [implemented and host-tested](reviews/2026-11-03-software-boot.md)
 (46 source-supply tests per OS after the async-admission regressions). Target access is still unregistered. Next:
