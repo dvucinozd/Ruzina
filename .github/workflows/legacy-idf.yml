@@ -19,6 +19,7 @@ jobs:
           python3 -m unittest discover -s tools/normal_engine/tests -v
           python3 -m unittest discover -s tools/source_supply/tests -v
           python3 -m unittest discover -s tools/source_budget/tests -v
+          python3 tools/source_budget/verify_vendor.py
       - name: Rust
         run: |
           rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
@@ -61,7 +62,11 @@ jobs:
           - variant: deck-engine
             producer_profile: true
             profile: false
-    name: legacy (${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }})
+          - variant: deck-engine
+            producer_profile: true
+            profile: false
+            mp3_core_opt3: true
+    name: legacy (${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }}${{ matrix.mp3_core_opt3 && '-mp3-core-opt3' || '' }})
     steps:
       - uses: actions/checkout@v4
       - name: Rust
@@ -80,10 +85,10 @@ jobs:
           . "$RUNNER_TEMP/idf/export.sh"
           python firmware-rust/tools/check_docs.py
           python -m unittest discover -s firmware-idf/legacy-jc1060/tools/tests -v
-          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' ${{ matrix.profile && '--uac-profile' || '' }} ${{ matrix.pack_iram && '--uac-pack-iram' || '' }} ${{ matrix.producer_profile && '--producer-profile' || '' }} --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
+          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' ${{ matrix.profile && '--uac-profile' || '' }} ${{ matrix.pack_iram && '--uac-pack-iram' || '' }} ${{ matrix.producer_profile && '--producer-profile' || '' }} ${{ matrix.mp3_core_opt3 && '--mp3-core-opt3' || '' }} --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: legacy-${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }}-BUILD-ONLY
+          name: legacy-${{ matrix.variant }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }}${{ matrix.mp3_core_opt3 && '-mp3-core-opt3' || '' }}-BUILD-ONLY
           path: |
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/manifest.json
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/*build.log

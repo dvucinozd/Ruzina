@@ -18,6 +18,38 @@ const CBR: &[u8] = fixture!("cbr.mp3");
 const VBR_44K: &[u8] = fixture!("vbr.mp3");
 const LONG_ID3: &[u8] = fixture!("long-vbr.mp3");
 
+#[test]
+fn in_place_core_reset_matches_fresh_decoder_across_sources() {
+    fn decode(decoder: &mut nanomp3_core::Decoder, data: &[u8]) -> Vec<i16> {
+        let mut rest = data;
+        let mut output = Vec::new();
+        let mut pcm = [0i16; nanomp3_core::MAX_SAMPLES_PER_FRAME];
+        while !rest.is_empty() {
+            let (consumed, result) = decoder.decode(rest, &mut pcm);
+            if consumed == 0 {
+                break;
+            }
+            assert!(consumed <= rest.len());
+            rest = &rest[consumed..];
+            if let Ok(info) = result {
+                output.extend_from_slice(
+                    &pcm[..info.samples_produced * info.channels.num() as usize],
+                );
+            }
+        }
+        assert!(!output.is_empty());
+        output
+    }
+    let mut reused = nanomp3_core::Decoder::new_minimp3_compat();
+    for data in [CBR, VBR_44K, fixture!("mono.mp3"), LONG_ID3, CBR] {
+        let _dirty_state = decode(&mut reused, LONG_ID3);
+        reused.reset();
+        reused.reset();
+        let mut fresh = nanomp3_core::Decoder::new();
+        assert_eq!(decode(&mut reused, data), decode(&mut fresh, data));
+    }
+}
+
 #[cfg(feature = "producer-profile")]
 mod service_model;
 

@@ -237,7 +237,7 @@ impl<S: Sample + nanomp3_core::Sample> Mp3Decoder<S> {
 
     /// Returns to the state of a new decoder, keeping its input window, to decode another stream.
     pub fn reset(&mut self) {
-        self.decoder = nanomp3_core::Decoder::new();
+        self.decoder.reset();
         self.configuration = None;
         self.finishing = false;
         self.stream = None;
@@ -514,7 +514,7 @@ impl<S: Sample + nanomp3_core::Sample> Seek for Mp3Decoder<S> {
 
         let lead = self.trim().map_or(0, |(lead, _)| lead);
 
-        self.decoder = nanomp3_core::Decoder::new();
+        self.decoder.reset();
         self.finishing = false;
         self.drop = 0;
         self.skip = 0;

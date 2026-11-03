@@ -1,5 +1,15 @@
 # Rust M2.5 development handoff
 
+Latest offline implementation: [legacy MP3 in-place reset](reviews/2026-11-03-mp3-in-place-reset.md).
+Only legacy dependency resolution uses two pinned local crate copies; three
+upstream files change. Safe field resets replace core construction in wrapper
+reset/seek; native workspace and normal compiler defaults remain unchanged.
+Normal/opt3 builds pass old stack guards, reset frame 16 B. Unit/codec tests
+and byte-exact PCM comparisons pass. No COM3 access; s07/history **44** remain.
+Review/CI, clean package/archive completion and a fresh explicitly registered
+matched-control/opt3 transition chain precede any device work. Existing old
+writer bindings/plans cannot authorize these new source/image identities.
+
 Latest offline result: [source-budget investigation](reviews/2026-11-03-source-budget.md).
 Real producer/decoder shared-time tests and a release benchmark isolate read
 pressure and compiler sensitivity; all compared host PCM files match exactly.

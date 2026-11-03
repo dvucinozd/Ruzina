@@ -6,6 +6,14 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 
 ## Development checkpoint — 2026-11-03
 
+Latest [legacy MP3 reset fix](docs/reviews/2026-11-03-mp3-in-place-reset.md)
+removes the large runtime reset/seek temporary through safe in-place clearing.
+Both normal and opt3 builds now pass unchanged stack guards; the reset frame
+is 16 B and opt3's maximum Rust frame is 16048 B. Host PCM remains byte-exact.
+This is build/host evidence only: no new COM3 access, s07/history44 unchanged.
+Exact-source review/CI, clean packages and fresh registered comparison still
+precede any physical campaign. Native minimum 302 and compiler defaults stay.
+
 Latest [offline source-budget investigation](docs/reviews/2026-11-03-source-budget.md)
 adds a deterministic shared-time producer test, release-mode PCM benchmark
 and control audit. S03 contained 74 extra control messages, so its original

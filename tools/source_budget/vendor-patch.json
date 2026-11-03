@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "scope": "Legacy IDF workspace only; native dependencies unchanged",
+  "crates_io_package_checksums": {
+    "nanomp3-core-0.2.0": "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c",
+    "nanoaudio-mp3-0.1.1": "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214"
+  },
+  "baseline_manifest_sha256": "403ca8195d12392ac15937b4331718da57e3e6f20b13cbe4b103571d49c44ffc",
+  "changes": {
+    "nanomp3-core-0.2.0/src/lib.rs": {
+      "upstream_sha256": "c5ffcc622770a80819a8e3de646b37c52c9ee400a43c42cd6b6e140609975bb3",
+      "patched_sha256": "831f1d702c4fa339d9c5e8df3be958fe4bacf888dd873e0fe5e99dd212c9d67e"
+    },
+    "nanomp3-core-0.2.0/src/minimp3.rs": {
+      "upstream_sha256": "944fddd898a7a600da4e4dfe8fb3fd6fe011b8e0ef02a67d3c61a0e136d309c8",
+      "patched_sha256": "33abba4c61cbada454a1e4e9c39a6ea8fc4e38591243db8612f6d9eab7626524"
+    },
+    "nanoaudio-mp3-0.1.1/src/lib.rs": {
+      "upstream_sha256": "6ed4173cc2cb4f22127a60d3c839e90ccfdcbf22c373818a53fa696f9f692beb",
+      "patched_sha256": "9fd3b985d5fbc730da8668823b8087b8c1ad711acf65d42f2457810da039b302"
+    }
+  }
+}

@@ -8,6 +8,11 @@ publish = false
 [lib]
 crate-type = ["staticlib"]
 
+[[test]]
+name = "legacy_codec_streams"
+path = "../../../firmware-rust/crates/ruzina-audio-runtime/tests/codec_streams.rs"
+required-features = ["deck-play"]
+
 [dependencies]
 ruzina-deck = { path = "../../../firmware-rust/crates/ruzina-deck" }
 ruzina-audio-dsp = { path = "../../../firmware-rust/crates/ruzina-audio-dsp", optional = true }
@@ -74,6 +79,11 @@ idf-producer-profile = ["idf-deck-engine", "producer-profile"]
 
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }
+nanomp3-core = { version = "=0.2.0", default-features = false }
+
+[patch.crates-io]
+nanomp3-core = { path = "../third_party/nanomp3-core-0.2.0" }
+nanoaudio-mp3 = { path = "../third_party/nanoaudio-mp3-0.1.1" }
 
 [profile.release]
 panic = "abort"

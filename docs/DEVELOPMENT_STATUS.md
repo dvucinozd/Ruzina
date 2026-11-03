@@ -1,5 +1,12 @@
 # Current development status
 
+Latest [legacy reset implementation](reviews/2026-11-03-mp3-in-place-reset.md)
+eliminates runtime MP3 reset/seek temporaries with safe in-place clearing.
+Normal and opt3 target builds pass unchanged static stack gates; host PCM and
+codec semantics pass. BUILD_ONLY_NOT_QUALIFIED; no new COM3 access. S07/history44
+and native minimum302 persist. Next are exact review/CI, clean artifacts and
+registration of a matched-control experiment; no hardware improvement claimed.
+
 Latest [offline source-budget result](reviews/2026-11-03-source-budget.md):
 host decoder compiler sensitivity is reproduced with exact PCM equality.
 The isolated opt3 core target build is rejected by frame limit (39008/24576)

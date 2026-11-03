@@ -169,6 +169,13 @@ impl core::fmt::Display for DecodeError {
 impl core::error::Error for DecodeError {}
 
 impl Decoder {
+    /// Restore exactly the state of `new` without a large returned temporary.
+    /// This also restores the default sample-rounding compatibility policy.
+    pub fn reset(&mut self) {
+        self.dec.reset();
+        self.minimp3_compat = false;
+    }
+
     /// Instantiates a `Decoder`.
     pub const fn new() -> Self {
         Self { dec: minimp3::Mp3Dec::new(), minimp3_compat: false }

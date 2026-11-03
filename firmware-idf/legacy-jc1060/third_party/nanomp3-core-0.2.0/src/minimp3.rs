@@ -217,6 +217,25 @@ pub struct Mp3Dec {
 }
 
 impl Mp3Dec {
+    /// Restore the constructor's values directly in caller-owned storage.
+    /// Exhaustive patterns keep new fields from silently escaping reset.
+    pub(crate) fn reset(&mut self) {
+        let Self { st, scratch, maindata } = self;
+        let State { mdct_overlap, qmf_state, reserv, free_format_bytes, header, reserv_buf } = st;
+        for row in mdct_overlap { row.fill(0.0); }
+        qmf_state.fill(0.0);
+        *reserv = 0;
+        *free_format_bytes = 0;
+        header.fill(0);
+        reserv_buf.fill(0);
+        let Scratch { grbuf, scf, syn, ist_pos } = scratch;
+        for row in grbuf { row.fill(0.0); }
+        scf.fill(0.0);
+        for row in syn { row.fill(0.0); }
+        for row in ist_pos { row.fill(0); }
+        maindata.fill(0);
+    }
+
     pub const fn new() -> Self {
         Self {
             st: State::new(),

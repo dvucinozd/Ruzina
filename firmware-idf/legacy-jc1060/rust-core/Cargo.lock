@@ -99,8 +99,6 @@ dependencies = [
 [[package]]
 name = "nanoaudio-mp3"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214"
 dependencies = [
  "nanoaudio-core",
  "nanomp3-core",
@@ -109,8 +107,6 @@ dependencies = [
 [[package]]
 name = "nanomp3-core"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c"
 
 [[package]]
 name = "ruzina-audio-dsp"
@@ -211,6 +207,7 @@ dependencies = [
 name = "ruzina-legacy-idf-core-probe"
 version = "0.1.0"
 dependencies = [
+ "nanomp3-core",
  "ruzina-audio-dsp",
  "ruzina-audio-runtime",
  "ruzina-controller-core",
