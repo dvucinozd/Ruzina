@@ -143,15 +143,17 @@ impl AutoPlay {
                         seen: true,
                         waited: 0,
                     };
+                } else if ended {
+                    // The track played out, even if it ended before any
+                    // step saw it playing (a short track): load the next.
+                    self.failures[i] = 0;
+                    self.next[i] = self.next[i].wrapping_add(2);
+                    self.phase[i] = Phase::Idle;
                 } else if !view.loaded && !view.pending_load {
                     // The media went away or the deck was unloaded.
                     self.phase[i] = Phase::Idle;
                 } else if seen {
-                    if ended {
-                        self.next[i] = self.next[i].wrapping_add(2);
-                        self.phase[i] = Phase::Idle;
-                    }
-                    // Otherwise the operator paused: leave the deck paused.
+                    // The operator paused: leave the deck paused.
                 } else if waited >= PLAY_WAIT_STEPS {
                     self.fail(i, Phase::Start);
                 } else {

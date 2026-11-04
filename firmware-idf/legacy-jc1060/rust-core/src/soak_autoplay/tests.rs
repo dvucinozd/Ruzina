@@ -167,3 +167,17 @@ fn losing_the_media_returns_the_deck_to_idle() {
     assert_eq!(auto.step(0, gone, 25), Action::None);
     assert_eq!(auto.step(0, MEDIA, 25), Action::Load(0));
 }
+
+#[test]
+fn a_track_that_ends_before_its_playback_is_seen_still_loads_the_next() {
+    let mut auto = AutoPlay::new();
+    let Action::Load(0) = auto.step(0, MEDIA, 25) else {
+        panic!("load");
+    };
+    auto.step(0, view(true, false, false), 25);
+    assert_eq!(auto.step(0, view(true, false, false), 25), Action::Play);
+    // A short track plays out between two steps: no step saw it playing.
+    auto.track_ended(0);
+    assert_eq!(auto.step(0, view(true, false, false), 25), Action::None);
+    assert_eq!(auto.step(0, view(true, false, false), 25), Action::Load(2));
+}
