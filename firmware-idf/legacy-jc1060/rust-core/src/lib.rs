@@ -65,6 +65,9 @@ mod deck_transport;
 #[cfg(feature = "deck-engine")]
 mod deck_resources;
 
+#[cfg(feature = "soak-autoplay")]
+mod soak_autoplay;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]

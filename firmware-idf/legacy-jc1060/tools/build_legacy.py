@@ -58,7 +58,10 @@ def main():
     parser.add_argument('--uac-pack-iram', action='store_true', help='Single-variable exact-symbol pack placement; requires --uac-profile')
     parser.add_argument('--producer-profile', action='store_true', help='Separate deck-engine source-supply/USB service diagnostic')
     parser.add_argument('--mp3-core-opt3', action='store_true', help='Default-OFF nanomp3-core compiler experiment; requires producer profiling')
+    parser.add_argument('--soak-autoplay', action='store_true', help='Soak diagnostic: an unattended DJ keeps both decks loading and playing')
     args = parser.parse_args()
+    if args.soak_autoplay and (args.variant != 'deck-engine' or args.uac_profile or args.producer_profile):
+        raise ValueError('Soak autoplay is a deck-engine diagnostic and excludes profiling')
     if args.uac_pack_iram and not args.uac_profile:
         raise ValueError('IRAM packetizer experiment requires explicit UAC profiling')
     if args.uac_profile and args.variant != 'deck-engine':
@@ -127,7 +130,8 @@ def main():
         common += ['--features', 'idf-deck-mix']
     elif args.variant == 'deck-engine':
         common += ['--features', 'idf-producer-profile' if args.producer_profile else
-                   ('idf-uac-profile' if args.uac_profile else 'idf-deck-engine')]
+                   ('idf-uac-profile' if args.uac_profile else
+                    ('idf-soak-autoplay' if args.soak_autoplay else 'idf-deck-engine'))]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -369,6 +373,7 @@ def main():
                     raise ValueError(f'Load run call chain needs {depth} bytes of the 96 KiB SD client stack')
     manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, uac_pack_iram=args.uac_pack_iram,
                     producer_profile=args.producer_profile, mp3_core_opt3=args.mp3_core_opt3,
+                    soak_autoplay=args.soak_autoplay,
                     rust_release_overrides={'nanomp3-core': {'opt-level': 3}} if args.mp3_core_opt3 else {},
                     sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],

@@ -195,7 +195,12 @@ impl State {
 #[cfg(feature = "idf-deck-engine")]
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_midi_refresh() {
-    crate::deck_mix::with(|mix| mix.tick());
+    crate::deck_mix::with(|mix| {
+        mix.tick();
+        // The soak DJ runs here, outside the USB audio fill's stack chain.
+        #[cfg(feature = "soak-autoplay")]
+        mix.engine().autoplay();
+    });
     with(|state| {
         if state.profile.is_some() {
             state.sync_play_leds();

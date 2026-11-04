@@ -716,6 +716,8 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         if !current() {
             return -6;
         }
+        #[cfg(feature = "soak-autoplay")]
+        crate::soak_autoplay::publish_catalog(tracks as u32);
         // With deck playback the first pass is the only one: the task then
         // serves selections and decodes deck 1 instead of re-reading the card.
         #[cfg(feature = "idf-deck-play")]
