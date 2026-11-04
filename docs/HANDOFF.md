@@ -17,15 +17,18 @@
   from the bring-up DIO 40 MHz cut the longest USB audio fill from about
   5.5 ms to 3.3 ms. Fills over 3 ms went from 967 to 4. Seeks also prime about
   twice as fast. The owner checked by ear: "sve OK".
-- **On the board:** app `024b4092…` (QIO 80 MHz flash). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0..8}-*-flash`.
+- **PSRAM 200 MHz (2026-11-04):** [the PSRAM speed change](reviews/2026-11-04-psram-200m.md)
+  brought the longest USB audio fill under the 3 ms target: 2.8 ms, with no
+  fill over 3 ms in about 5 minutes. The full PSRAM memory test runs at every
+  boot. The owner checked by ear: "sve OK".
+- **On the board:** app `3931bb7f…` (QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..20}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
   - untagged VBR MP3 seeks still decode from the start;
-  - `fill_max_us` is about 3.3 ms, just above the 3000 µs headroom target;
-    the render graph is most of it. PSRAM at 200 MHz and the graph in IRAM
-    are the next candidates;
+  - `fill_max_us` is about 2.8 ms, under the 3000 µs headroom target; the
+    render graph is most of it;
   - there has been no soak longer than about 30 minutes, and none with
     multi-sector reads.
 - **Older paragraphs** below are historical checkpoints.
