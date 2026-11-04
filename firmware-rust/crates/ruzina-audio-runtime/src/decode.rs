@@ -238,6 +238,14 @@ pub struct SourceDecoder {
     /// learned once from its own seek arithmetic.
     mp3_lead: Option<u64>,
     mp3_resync: Option<Mp3Resync>,
+    /// Walked MP3 frames at the start of the stream that decode to no PCM
+    /// (their bit reservoir lies before the file, as in a frame-aligned
+    /// excerpt). Learned from the linear decode from the stream start; until
+    /// it is known, walked frames cannot be mapped to PCM positions.
+    mp3_pcm_lead: Option<u64>,
+    /// Silent walked frames counted so far while learning `mp3_pcm_lead`;
+    /// `None` once learned, or when the start did not decode frame by frame.
+    mp3_lead_learning: Option<u64>,
 }
 impl SourceDecoder {
     pub fn compressed(
@@ -284,6 +292,8 @@ impl SourceDecoder {
             audio_start: 0,
             mp3_lead: None,
             mp3_resync: None,
+            mp3_pcm_lead: None,
+            mp3_lead_learning: Some(0),
         }
     }
     pub fn wav(
@@ -335,7 +345,12 @@ impl SourceDecoder {
         match self.descriptor.and_then(SourceDescriptor::frames) {
             Some(frames) => SourceDuration::Exact(frames),
             None => match storage.mp3_index.scanned_pcm_frames() {
-                Some(frames) if self.codec == AudioCodec::Mp3 => SourceDuration::Scanned(frames),
+                Some(frames) if self.codec == AudioCodec::Mp3 => {
+                    // Leading walked frames that decode to no PCM add no time.
+                    let silent = self.mp3_pcm_lead.unwrap_or(0)
+                        * storage.mp3_index.samples_per_frame().unwrap_or(0);
+                    SourceDuration::Scanned(frames.saturating_sub(silent))
+                }
                 _ => SourceDuration::Unknown,
             },
         }
@@ -468,6 +483,8 @@ impl SourceDecoder {
         // a target far from every checkpoint resumes at an exact indexed frame
         // through the codec's reservoir preroll instead (RP-08).
         self.mp3_resync = None;
+        // A seek before the first PCM leaves the stream-start mapping unknown.
+        self.mp3_lead_learning = None;
         let checkpoint = self
             .checkpoints
             .iter()
@@ -605,8 +622,15 @@ impl SourceDecoder {
             // change, so it is reset at an indexed frame instead and the
             // decoder counts the walked frames itself (see `Mp3Resync`).
             (Mp3TagKind::Plain, true) if index.complete() => {
-                let start = (target / samples).saturating_sub(MP3_RESYNC_LEAD_FRAMES);
+                // Walked frame `lead + n` holds PCM frame `n * samples`.
+                let Some(lead) = self.mp3_pcm_lead else {
+                    return false;
+                };
+                let start = (target / samples + lead).saturating_sub(MP3_RESYNC_LEAD_FRAMES);
                 let Some((frame, offset)) = index.at_or_before(start) else {
+                    return false;
+                };
+                let Some(pcm_frame) = frame.checked_sub(lead) else {
                     return false;
                 };
                 storage.mp3.reset();
@@ -614,7 +638,7 @@ impl SourceDecoder {
                     samples,
                     settled: 0,
                 });
-                (offset, frame * samples)
+                (offset, pcm_frame * samples)
             }
             _ => return false,
         };
@@ -865,6 +889,19 @@ impl SourceDecoder {
         }
         // An untagged VBR resync feeds one walked frame per call, so every
         // consumed frame is counted whether or not the codec produced audio.
+        let learning = self.codec == AudioCodec::Mp3
+            && self.mp3_resync.is_none()
+            && self.mp3_lead_learning.is_some();
+        let learn_frame = learning
+            .then(|| {
+                (self.input_len >= 4)
+                    .then(|| {
+                        Mp3FrameHeader::parse([encoded[0], encoded[1], encoded[2], encoded[3]])
+                    })
+                    .flatten()
+                    .map(|h| h.size as usize)
+            })
+            .flatten();
         let resync_frame = match self.mp3_resync {
             Some(_) if self.input_len < 4 && self.offset < self.file_bytes => {
                 return self.read(encoded.len());
@@ -954,6 +991,18 @@ impl SourceDecoder {
         self.input_len -= progress.consumed;
         self.pcm_position = 0;
         self.pcm_len = progress.produced;
+        if learning && progress.consumed > 0 {
+            let silent = self.mp3_lead_learning.unwrap_or(0);
+            self.mp3_lead_learning = if progress.produced > 0 {
+                self.mp3_pcm_lead = Some(silent);
+                None
+            } else if learn_frame == Some(progress.consumed) {
+                Some(silent + 1)
+            } else {
+                // Junk or a partial frame: the mapping is not established.
+                None
+            };
+        }
         if let (Some(size), Some(mut resync)) = (resync_frame, self.mp3_resync) {
             if progress.consumed == 0 {
                 // The codec wants more input before it decodes this frame.

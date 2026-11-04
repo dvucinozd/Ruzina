@@ -841,6 +841,30 @@ fn background_index_failure_budget_preserves_playback_and_partial_index() {
 }
 
 #[test]
+fn an_untagged_vbr_excerpt_maps_its_silent_lead_frames_to_no_time() {
+    use ruzina_audio_runtime::decode::SourceDuration;
+    // A frame-aligned excerpt: its first frames point into a bit reservoir
+    // before the file and decode to no PCM, so walked frame n is not PCM
+    // frame n * 1152 there.
+    let file = &LONG_VBR_UNTAGGED[1920..];
+    let mut d = Driver::new(file, AudioCodec::Mp3);
+    let baseline = d.all();
+    d.scan(usize::MAX);
+    assert!(d.storage.mp3_index().complete());
+    assert_eq!(
+        d.stream.duration(&d.storage),
+        SourceDuration::Scanned(baseline.len() as u64)
+    );
+    for ms in [6500, 3100, 777] {
+        let indexed = cold_seek(file, true, ms, &baseline);
+        assert!(
+            indexed < 24,
+            "excerpt ms={ms}: {indexed} reads before audio"
+        );
+    }
+}
+
+#[test]
 fn untagged_vbr_seeks_through_the_index_and_reports_scanned_duration() {
     use ruzina_audio_runtime::{decode::SourceDuration, mp3_index::Mp3TagKind};
     let mut d = Driver::new(LONG_VBR_UNTAGGED, AudioCodec::Mp3);

@@ -42,6 +42,25 @@ the seek itself:
 
 The codec itself is unchanged, so the native firmware benefits too.
 
+**Leading frames with no PCM (review follow-up).**
+
+- **The case:** in a frame-aligned excerpt, the first walked frames point into
+  a bit reservoir that lies before the file, so they decode to no PCM. Walked
+  frame *n* is then not PCM frame *n* × 1152.
+- **What the decoder learns:** the linear decode from the stream start counts
+  these silent frames (`mp3_pcm_lead`). It parses each header, so only whole
+  frames count.
+- **How the seek uses it:** the seek maps walked frame `lead + n` to PCM frame
+  `n × samples`, and the scanned duration subtracts them.
+- **When it is not known:** junk at the start, or a seek before the first PCM,
+  leaves the mapping unknown. The seek then keeps the exact linear fallback.
+- **Test:** `an_untagged_vbr_excerpt_maps_its_silent_lead_frames_to_no_time`
+  uses the fixture from byte 1920, where 6 frames decode to no PCM.
+  - Seeks to 6500, 3100 and 777 ms are sample-identical with fewer than 24
+    reads.
+  - The scanned duration equals the decoded length.
+  - On the previous decoder the duration is 6912 samples too long.
+
 ## Evidence
 
 - **Shared crate:** the test
