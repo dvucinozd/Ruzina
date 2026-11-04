@@ -202,9 +202,10 @@ def main():
             if required not in config:
                 raise ValueError('Wrong memory profile: ' + required)
     if args.variant in ('sd-rust-load', 'sd-rust-load-display', 'deck-ui', 'deck-audio', 'deck-play', 'deck-mix', 'deck-engine'):
-        # The Rust allocator takes every allocation from caps-allocated PSRAM.
-        for required in ('CONFIG_SPIRAM=y', 'CONFIG_SPIRAM_SPEED=80', 'CONFIG_SPIRAM_USE_CAPS_ALLOC=y',
-                         'CONFIG_SPIRAM_BOOT_INIT=y', 'CONFIG_RUZINA_SD_RUST_LOAD=y'):
+        # The Rust allocator takes every allocation from caps-allocated PSRAM,
+        # run at the vendor demo's 200 MHz and memory-tested at every boot.
+        for required in ('CONFIG_SPIRAM=y', 'CONFIG_SPIRAM_SPEED=200', 'CONFIG_SPIRAM_USE_CAPS_ALLOC=y',
+                         'CONFIG_SPIRAM_BOOT_INIT=y', 'CONFIG_SPIRAM_MEMTEST=y', 'CONFIG_RUZINA_SD_RUST_LOAD=y'):
             if required not in config:
                 raise ValueError('Wrong load profile: ' + required)
     # Only the USB host diagnostic may enable and link the USB Host Library.

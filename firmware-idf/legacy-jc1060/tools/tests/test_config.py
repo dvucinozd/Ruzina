@@ -147,7 +147,9 @@ class ConfigTests(unittest.TestCase):
         cases=[({},True),({'CONFIG_RUZINA_SD_RUST_BRIDGE':'OFF'},False),
                ({'CONFIG_RUZINA_SD_RUST_EXFAT':'ON'},False),({'CONFIG_SPIRAM':'OFF'},False),
                ({'CONFIG_SPIRAM_USE_CAPS_ALLOC':'OFF'},False),({'CONFIG_SPIRAM_XIP_FROM_PSRAM':'ON'},False),
-               ({'CONFIG_RUZINA_SD_RUST_LOAD':'OFF'},False)]
+               ({'CONFIG_RUZINA_SD_RUST_LOAD':'OFF'},False),({'CONFIG_SPIRAM_SPEED':'200'},True),
+               ({'CONFIG_SPIRAM_SPEED':'250'},False),({'CONFIG_SPIRAM_SPEED':'20'},False),
+               ({'CONFIG_SPIRAM_SPEED':'200','CONFIG_RUZINA_MEMORY_TASK':'ON'},False)]
         for override,accepted in cases:
             config=base|override
             result=subprocess.run(['cmake',*[f'-D{k}={v}' for k,v in config.items()],'-P',str(guard)],capture_output=True)
