@@ -59,13 +59,45 @@ deck stalled for about 10 s, and the deck then underran 11 times.
   - **Underruns:** 8/6 in total. They come in small bursts, a few render
     blocks right after each seek, and none at other times.
 
+## Follow-up: seek resume cushion
+
+- **Why:** a completed seek used to resume playback on its first block alone,
+  so the next few render blocks underran.
+- **Engine (`deck_engine.rs`):** after a seek, a playing deck stays held until
+  its new epoch has buffered 4096 frames (about 93 ms at 44.1 kHz) or its
+  track has ended. A slow producer can hold the deck for at most 375 render
+  blocks (1 s).
+- **Host test:** `a_seek_resumes_playback_only_after_a_buffered_cushion`.
+  - A Hot Cue jump while playing with only the seek's first block in the ring
+    keeps the deck held with no underrun and no movement. Once the producer
+    catches up, the deck plays on from the target.
+  - The one-second cap releases a starved deck.
+  - With the cushion disabled the test fails with 4 underruns, which matches
+    the device. All feature sets pass: 58, 59+24, 74+24 and 81+24. Clippy
+    passes.
+- **Build:** `BUILD_PACKAGE_PASS`.
+  - The app is 818320 B (78.0 %), SHA-256
+    `09d4f04c2573755465469ab02cb18c553e48e69b0c382f38d22c67e757c45d5d`.
+  - The load chain is 50736 B and the UAC fill chain 3040 B.
+- **Device** (`s13-seek-cushion-*`): deck 1 played FLAC and deck 2 MP3, both
+  playing, with 6 Hot Cue and CUE seeks.
+  - **Owner verdict:** "čini se sve uredno".
+  - **Underruns:** 0/0.
+  - **USB:** `packet_errors=2` with no restart, no faults.
+  - **Deck 1 (FLAC) seeks:** at most 125 ms.
+  - **Deck 2 (MP3) seeks:** 7.9 s and 11.5 s (`prime_max_us`).
+    - That track's walk had not finished about 50 s after its load. The FLAC
+      deck was taking most of the card's read time, about 1.8 ms per 512-byte
+      read.
+    - So those seeks still decoded from the start. In the previous run the
+      same track seeked in 78 ms next to another MP3.
+
 ## Open
 
-- **Short underrun bursts after a seek.**
-  - When a seek completes, the deck resumes as soon as its first block
-    arrives. The new epoch then holds about one block, so the next few render
-    blocks underrun.
-  - The fix is a resume cushion: keep the deck held after a seek until its
-    new epoch has buffered, for example, about 100 ms, or the track has
-    ended.
+- **Card read throughput.** Every read is one 512-byte sector through the SD
+  task, so a whole-file frame walk competes with decoding. Next to a FLAC deck
+  it can take more than a minute.
+  - Multi-sector reads (for example 8 KiB per request) would speed up decode,
+    the walk and cold seeks together.
+  - That is the next step.
 - **Untagged VBR MP3** seeks still decode from the start.

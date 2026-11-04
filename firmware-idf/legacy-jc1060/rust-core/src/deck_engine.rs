@@ -46,6 +46,14 @@ static STATUS: [[AtomicU32; 2]; 2] = [
     [AtomicU32::new(0), AtomicU32::new(0)],
 ];
 
+/// After a seek, a playing deck resumes only once its new epoch holds this
+/// many source frames (about 93 ms at 44.1 kHz), or its track has ended. A
+/// seek's first block alone is a few milliseconds, and resuming on it
+/// underran the next render blocks on the device.
+const SEEK_CUSHION_FRAMES: u32 = 4096;
+/// The longest a cushion holds a deck, in 128-frame render blocks (1 s).
+const SEEK_CUSHION_MAX_BLOCKS: u16 = 375;
+
 pub(crate) struct Engine {
     deck: DeckProductState,
     connected: bool,
@@ -60,6 +68,9 @@ pub(crate) struct Engine {
     seeking: [Option<SeekRequest>; 2],
     unsent_seek: [Option<SeekRequest>; 2],
     seek_epoch: [Option<u32>; 2],
+    /// The epoch a completed seek waits to buffer before playing resumes,
+    /// and the render blocks it has waited.
+    cushion: [Option<(u32, u16)>; 2],
     source: [Option<LoadRequest>; 2],
     next_seek: u32,
     revision: [u32; 2],
@@ -82,6 +93,7 @@ impl Engine {
             seeking: [None; 2],
             unsent_seek: [None; 2],
             seek_epoch: [None; 2],
+            cushion: [None; 2],
             source: [None; 2],
             next_seek: 0,
             revision: [0; 2],
@@ -190,6 +202,7 @@ impl Engine {
                         self.seeking[i] = Some(request);
                         self.unsent_seek[i] = Some(request);
                         self.seek_epoch[i] = None;
+                        self.cushion[i] = None;
                         self.revision[i] = self.revision[i].wrapping_add(1);
                         self.publish_seek(i);
                     }
@@ -221,6 +234,7 @@ impl Engine {
                 self.seeking[i] = None;
                 self.unsent_seek[i] = None;
                 self.seek_epoch[i] = None;
+                self.cushion[i] = None;
                 self.nudge[i].clear();
                 self.deck.unload_track(deck);
                 self.revision[i] = self.revision[i].wrapping_add(1);
@@ -258,6 +272,7 @@ impl Engine {
             self.seeking[i] = None;
             self.unsent_seek[i] = None;
             self.seek_epoch[i] = None;
+            self.cushion[i] = None;
             self.nudge[i].clear();
             TRACK_INDEX[i].store(
                 if committed {
@@ -280,11 +295,13 @@ impl Engine {
                 self.faulted[i] =
                     matches!(result.outcome, SeekOutcome::Failed | SeekOutcome::Cancelled);
                 self.seek_epoch[i] = Some(result.epoch);
+                self.cushion[i] = Some((result.epoch, 0));
                 self.deck.set_position_ms(DECKS[i], result.position_ms);
                 if result.outcome != SeekOutcome::Ready {
                     self.playing[i] = false;
                     self.deck.finish_playback(DECKS[i], result.position_ms);
                     self.seek_epoch[i] = None;
+                    self.cushion[i] = None;
                 }
                 self.revision[i] = self.revision[i].wrapping_add(1);
             }
@@ -292,7 +309,9 @@ impl Engine {
         let pitch = core::array::from_fn(|i| self.nudge[i].apply_centipercent(self.pitch[i]));
         crate::media_signal::playback(self.playing, pitch);
         (
-            core::array::from_fn(|i| self.playing[i] && self.seeking[i].is_none()),
+            core::array::from_fn(|i| {
+                self.playing[i] && self.seeking[i].is_none() && self.cushion[i].is_none()
+            }),
             pitch,
         )
     }
@@ -324,6 +343,13 @@ impl Engine {
             self.nudge[i].advance(frames, RENDER_SAMPLE_RATE_HZ);
             if self.seek_epoch[i] == Some(reader.epoch()) {
                 self.seek_epoch[i] = None;
+            }
+            if let Some((epoch, waited)) = self.cushion[i] {
+                let ready = reader.epoch() == epoch
+                    && (reader.buffered(&RINGS[i]) >= SEEK_CUSHION_FRAMES
+                        || reader.ended(&RINGS[i]));
+                self.cushion[i] =
+                    (!ready && waited < SEEK_CUSHION_MAX_BLOCKS).then_some((epoch, waited + 1));
             }
             let position_ms = reader.position_ms();
             if self.loaded[i]
