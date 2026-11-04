@@ -272,13 +272,20 @@ fn a_long_track_fills_the_ring_then_follows_the_consumer() {
     let mut reader = Reader::new();
     commands.load(0);
     let events = run(&mut producer, &mut files, ring, &commands);
+    // Once the ring is full, the MP3 frame walk runs to the end of the file.
     assert_eq!(
         events,
-        [Event::Ready {
-            index: 0,
-            codec: 2,
-            rate: 44_100
-        }]
+        [
+            Event::Ready {
+                index: 0,
+                codec: 2,
+                rate: 44_100
+            },
+            Event::Indexed {
+                index: 0,
+                elapsed_ms: 0
+            }
+        ]
     );
     reader.sync(ring);
     assert!(reader.buffered(ring) > RING_FRAMES - PCM_STREAM_BLOCK_FRAMES as u32);
@@ -312,13 +319,20 @@ fn cue_restarts_the_track_and_load_replaces_a_full_ring() {
     let first: Vec<_> = (0..1000).filter_map(|_| reader.pop(ring)).collect();
     reader.commit(ring);
     commands.cue();
+    // A reload walks the frames again.
     assert_eq!(
         run(&mut producer, &mut files, ring, &commands),
-        [Event::Ready {
-            index: 0,
-            codec: 2,
-            rate: 44_100
-        }]
+        [
+            Event::Ready {
+                index: 0,
+                codec: 2,
+                rate: 44_100
+            },
+            Event::Indexed {
+                index: 0,
+                elapsed_ms: 0
+            }
+        ]
     );
     let again = drain(&mut reader, ring);
     assert_eq!(again[..1000], first[..]);

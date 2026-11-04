@@ -45,7 +45,7 @@ pub(crate) fn entries(name: &str, cluster: u32, len: u64, dir: bool) -> Vec<[u8;
     out
 }
 
-fn image() -> Vec<u8> {
+pub(crate) fn image() -> Vec<u8> {
     let (mut bytes, heap) = formatted(CLUSTERS);
     assert_eq!((heap, bytes.len()), (HEAP, (VOLUME as usize + 1) * 512));
     for (lba, set) in [

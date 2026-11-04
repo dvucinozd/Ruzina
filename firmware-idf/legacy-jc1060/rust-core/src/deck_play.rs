@@ -363,6 +363,9 @@ pub(crate) enum Event {
         position_ms: u32,
         ok: bool,
     },
+    /// The MP3 frame walk reached the end of the file, `elapsed_ms` after
+    /// the load began.
+    Indexed { index: u32, elapsed_ms: u32 },
 }
 
 fn codec_number(codec: AudioCodec) -> u32 {
@@ -407,6 +410,8 @@ pub(crate) struct Producer<File> {
     prime: Option<PrimeJob>,
     opening: Option<Opening<File>>,
     prime_started_us: u64,
+    /// When the current track's load began, for the frame walk's report.
+    loaded_at_us: u64,
     /// The background MP3 frame walk of the loaded track; stops after three
     /// failed reads in a row, until the next load.
     index_policy: IndexScanPolicy,
@@ -481,6 +486,7 @@ impl<File> Producer<File> {
             prime: None,
             opening: None,
             prime_started_us: 0,
+            loaded_at_us: 0,
             index_policy: IndexScanPolicy::default(),
         })
     }
@@ -501,6 +507,7 @@ impl<File> Producer<File> {
             prime: None,
             opening: None,
             prime_started_us: 0,
+            loaded_at_us: 0,
             index_policy: IndexScanPolicy::default(),
         }
     }
@@ -525,6 +532,7 @@ impl<File> Producer<File> {
     ) -> Option<Event> {
         self.prime = None;
         self.prime_started_us = files.now_us();
+        self.loaded_at_us = self.prime_started_us;
         self.index_policy = IndexScanPolicy::default();
         self.close(files);
         ring.restart(0);
@@ -603,18 +611,18 @@ impl<File> Producer<File> {
     /// walk is complete). With the walk, a seek far from every checkpoint
     /// resumes at an exact indexed frame instead of decoding from the start
     /// of the file, one 512-byte card read at a time.
-    fn index_step<F: SourceFiles<File = File>>(&mut self, files: &mut F) -> bool {
+    fn index_step<F: SourceFiles<File = File>>(&mut self, files: &mut F) -> (bool, Option<Event>) {
         let Some(source) = self.source.as_mut() else {
-            return false;
+            return (false, None);
         };
         if !self.index_policy.can_attempt() {
-            return false;
+            return (false, None);
         }
         let Some((offset, len)) = source
             .stream
             .index_read(&mut self.storage, SOURCE_READ_BYTES)
         else {
-            return false;
+            return (false, None);
         };
         let read = &mut self.read[..len];
         let accepted = files
@@ -626,7 +634,15 @@ impl<File> Producer<File> {
                         .provide_index(&mut self.storage, offset, &read[..bytes])
             });
         self.index_policy.record_result(accepted);
-        true
+        let finished = accepted && self.storage.mp3_index().complete();
+        (
+            true,
+            finished.then(|| Event::Indexed {
+                index: source.index,
+                elapsed_ms: (files.now_us().saturating_sub(self.loaded_at_us) / 1000)
+                    .min(u64::from(u32::MAX)) as u32,
+            }),
+        )
     }
 
     /// The loaded MP3's frame walk has reached the end of the file.
@@ -1007,7 +1023,7 @@ impl<File> Producer<File> {
             // walk. A read counts as work, so the owner polls again without
             // waiting a 10 ms tick and the walk runs at card speed, one read
             // per deck per turn; decoding always comes first.
-            return (self.index_step(files), None);
+            return self.index_step(files);
         }
         let (index, was_ended) = (source.index, source.ended);
         let failed = self.decode(files, ring, POLL_ACTIONS, false).is_none();

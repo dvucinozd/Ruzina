@@ -27,7 +27,11 @@ static portMUX_TYPE bridge_mux = portMUX_INITIALIZER_UNLOCKED;
 static TaskHandle_t worker_task, client_task;
 static atomic_bool stop_requested;
 static esp_err_t (*host_transaction)(int, sdmmc_command_t *);
-static uint32_t reads, denied_commands;
+static uint32_t reads, sectors_read, denied_commands;
+
+/* One request carries up to 16 sectors (8 KiB, Rust's read-ahead line). */
+#define BRIDGE_MAX_SECTORS 16u
+#define BRIDGE_BOUNCE_BYTES (BRIDGE_MAX_SECTORS*512u)
 
 void ruzina_bridge_lock(void) { portENTER_CRITICAL(&bridge_mux); }
 void ruzina_bridge_unlock(void) { portEXIT_CRITICAL(&bridge_mux); }
@@ -190,7 +194,7 @@ static void owner(void *unused)
     err=sd_pwr_ctrl_new_on_chip_ldo(&ldo,&power); if(err!=ESP_OK) goto finish;
     sdmmc_host_t host=SDMMC_HOST_DEFAULT();
     host.slot=SDMMC_HOST_SLOT_0;
-    host.max_freq_khz=10000;
+    host.max_freq_khz=SDMMC_FREQ_HIGHSPEED; /* 40 MHz, as the vendor BSP */
     host.flags=SDMMC_HOST_FLAG_4BIT;
     host.command_timeout_ms=1000;
     host.pwr_ctrl_handle=power;
@@ -204,11 +208,15 @@ static void owner(void *unused)
     err=sdmmc_host_init_slot(host.slot,&slot); if(err!=ESP_OK) goto finish;
     err=sdmmc_card_init(&host,&card); if(err!=ESP_OK) goto finish;
     if(card.csd.sector_size!=512) {err=ESP_ERR_NOT_SUPPORTED;goto finish;}
-    bounce=heap_caps_malloc(512,MALLOC_CAP_INTERNAL|MALLOC_CAP_DMA);
-    if(!bounce || ((uintptr_t)bounce & 3u)) {err=ESP_ERR_NO_MEM;goto finish;}
+    /* Cache-line aligned, so the driver DMAs straight into it; an unaligned
+     * buffer makes it allocate a temporary one per call and split the read. */
+    bounce=heap_caps_malloc(BRIDGE_BOUNCE_BYTES,MALLOC_CAP_INTERNAL|MALLOC_CAP_DMA|MALLOC_CAP_CACHE_ALIGNED);
+    if(!bounce) {err=ESP_ERR_NO_MEM;goto finish;}
+    if(!card.host.check_buffer_alignment(card.host.slot,bounce,512)) {err=ESP_ERR_INVALID_STATE;goto finish;}
     if(ruzina_legacy_bridge_init(card.csd.capacity)!=0) {err=ESP_ERR_INVALID_STATE;goto finish;}
-    printf("S6_RUST_SD_BRIDGE sectors=%" PRIu32 " sector_bytes=512 max_khz=10000 width=4 ldo=4 bounce_bytes=512 readonly=1\n",
-           (uint32_t)card.csd.capacity);
+    printf("S6_RUST_SD_BRIDGE sectors=%" PRIu32 " sector_bytes=512 max_khz=%d real_khz=%d width=4 ldo=4 bounce_bytes=%u dma_direct=1 max_sectors=%u readonly=1\n",
+           (uint32_t)card.csd.capacity,SDMMC_FREQ_HIGHSPEED,card.real_freq_khz,BRIDGE_BOUNCE_BYTES,
+           BRIDGE_MAX_SECTORS);
 #if CONFIG_RUZINA_SD_RUST_LOAD
     /* The Rust allocator has no internal fallback: refuse to start without PSRAM. */
     if(!esp_psram_is_initialized()) {err=ESP_ERR_INVALID_STATE;goto finish;}
@@ -241,16 +249,17 @@ static void owner(void *unused)
         }
         /* C independently validates before touching driver/DMA. Rust only lends
          * scalar coordinates; this C allocation remains the sole DMA buffer. */
-        if(count!=1 || first>=card.csd.capacity) err=ESP_ERR_INVALID_ARG;
-        else { reads++;err=sdmmc_read_sectors(&card,bounce,first,count); }
+        const uint32_t capacity=(uint32_t)card.csd.capacity;
+        if(count==0 || count>BRIDGE_MAX_SECTORS || first>=capacity || count>capacity-first) err=ESP_ERR_INVALID_ARG;
+        else { reads++;sectors_read+=count;err=sdmmc_read_sectors(&card,bounce,first,count); }
         /* sdmmc_read_sectors is synchronous: transfer has ended on return. Rust
-         * copies exactly 512 bytes while holding its short state critical section. */
-        int32_t completed=ruzina_legacy_bridge_complete(err,err==ESP_OK?bounce:NULL,err==ESP_OK?512:0);
+         * copies exactly count*512 bytes, outside its state critical section. */
+        int32_t completed=ruzina_legacy_bridge_complete(err,err==ESP_OK?bounce:NULL,err==ESP_OK?count*512u:0);
         if(completed!=0) {err=ESP_ERR_INVALID_STATE;break;}
         if(err!=ESP_OK) break;
         if(reads%80==0) {
-            printf("rust_sd_owner reads=%" PRIu32 " denied_commands=%" PRIu32 " stack_free=%u\n",
-                   reads,denied_commands,(unsigned)uxTaskGetStackHighWaterMark(NULL));
+            printf("rust_sd_owner reads=%" PRIu32 " sectors=%" PRIu32 " denied_commands=%" PRIu32 " stack_free=%u\n",
+                   reads,sectors_read,denied_commands,(unsigned)uxTaskGetStackHighWaterMark(NULL));
             fflush(stdout);
         }
     }

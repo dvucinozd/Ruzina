@@ -12,7 +12,8 @@ use ruzina_media_block::{BlockGeometry, TransferError};
 use ruzina_media_io::OwnedBlockDevice;
 use ruzina_media_session::{ConnectResult, MediaHandle, MediaLease, MediaSession, MediaSourceId};
 
-pub const MAX_READ_BYTES: usize = 4096;
+/// One read-ahead line: 16 sectors per card request.
+pub const MAX_READ_BYTES: usize = 8192;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {

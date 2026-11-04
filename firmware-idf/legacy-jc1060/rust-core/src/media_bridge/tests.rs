@@ -154,7 +154,7 @@ fn invalid_transfers_never_reach_the_worker() {
         ),
         (99, 2, 1024, Error::Transfer(TransferError::OutOfRange)),
         (u64::MAX, 1, 512, Error::Transfer(TransferError::OutOfRange)),
-        (0, 9, 4608, Error::TooLarge),
+        (0, 17, 8704, Error::TooLarge),
     ] {
         let input = buffer(4, size);
         let pointer = input.bytes.as_ptr();
