@@ -841,7 +841,7 @@ fn background_index_failure_budget_preserves_playback_and_partial_index() {
 }
 
 #[test]
-fn untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration() {
+fn untagged_vbr_seeks_through_the_index_and_reports_scanned_duration() {
     use ruzina_audio_runtime::{decode::SourceDuration, mp3_index::Mp3TagKind};
     let mut d = Driver::new(LONG_VBR_UNTAGGED, AudioCodec::Mp3);
     let baseline = d.all();
@@ -862,9 +862,20 @@ fn untagged_vbr_keeps_the_exact_fallback_and_reports_scanned_duration() {
         Some((baseline.len() as u64 * 1_000 / u64::from(rate)) as u32)
     );
     assert_eq!(SourceDuration::Scanned(1).millis(0), None);
-    // The codec's byte arithmetic would misplace an untagged VBR seek, so it
-    // is never used; the result is the linear-exact fallback.
-    cold_seek(LONG_VBR_UNTAGGED, true, 6500, &baseline);
+    // The codec's byte arithmetic would misplace an untagged VBR seek, so the
+    // decoder resets it at an indexed frame and counts the walked frames
+    // itself. The result is sample-identical and needs few reads.
+    for ms in [7900, 6500, 4999, 3100, 777, 30] {
+        let indexed = cold_seek(LONG_VBR_UNTAGGED, true, ms, &baseline);
+        assert!(
+            indexed < 24,
+            "untagged VBR ms={ms}: {indexed} reads before audio"
+        );
+        if ms >= 3100 {
+            let linear = cold_seek(LONG_VBR_UNTAGGED, false, ms, &baseline);
+            assert!(linear > 3 * indexed, "ms={ms}: {linear} vs {indexed}");
+        }
+    }
 
     // Untagged CBR resumes through the index and scans an exact length.
     let file = include_bytes!("fixtures/codecs/untagged.mp3");

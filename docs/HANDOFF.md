@@ -26,12 +26,14 @@
   showed underruns only right after an automatic load and Play. A load now
   starts with the seek cushion. The next 35-minute run had 16 automatic
   loads, 0/0 underruns, a longest fill of 2.8 ms and no packet errors.
-- **On the board:** app `08b3bff9…` (soak DJ diagnostic with the load cushion; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+- **Untagged VBR MP3 seeks (2026-11-05):** [they now resume through the frame index](reviews/2026-11-05-untagged-vbr-seek.md),
+  sample-identical to a linear decode on the host. On the board, seeks were
+  checked for regressions, and the owner said they were fine ("Sve OK").
+- **On the board:** app `8398c731…` (production: untagged VBR seeks, load cushion, QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..20}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
-  - untagged VBR MP3 seeks still decode from the start;
   - `fill_max_us` is about 2.8 ms, under the 3000 µs headroom target; the
     render graph is most of it;
   - the 35 to 40-minute soaks were unattended: no seeks, scratch or EQ
