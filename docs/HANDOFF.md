@@ -21,7 +21,12 @@
   brought the longest USB audio fill under the 3 ms target: 2.8 ms, with no
   fill over 3 ms in about 5 minutes. The full PSRAM memory test runs at every
   boot. The owner checked by ear: "sve OK".
-- **On the board:** app `3931bb7f…` (QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+- **Soak (2026-11-04):** [a soak DJ diagnostic](reviews/2026-11-04-soak-autoplay.md)
+  kept both decks loading and playing unattended. The first 40-minute run
+  showed underruns only right after an automatic load and Play. A load now
+  starts with the seek cushion. The next 35-minute run had 16 automatic
+  loads, 0/0 underruns, a longest fill of 2.8 ms and no packet errors.
+- **On the board:** app `08b3bff9…` (soak DJ diagnostic with the load cushion; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..20}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
@@ -29,8 +34,8 @@
   - untagged VBR MP3 seeks still decode from the start;
   - `fill_max_us` is about 2.8 ms, under the 3000 µs headroom target; the
     render graph is most of it;
-  - there has been no soak longer than about 30 minutes, and none with
-    multi-sector reads.
+  - the 35 to 40-minute soaks were unattended: no seeks, scratch or EQ
+    during them;
 - **Older paragraphs** below are historical checkpoints.
 
 Latest offline implementation: [legacy MP3 in-place reset](reviews/2026-11-03-mp3-in-place-reset.md).

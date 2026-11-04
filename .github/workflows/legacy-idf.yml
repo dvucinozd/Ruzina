@@ -42,7 +42,9 @@ jobs:
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-uac-profile --tests -- -D warnings
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-producer-profile
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-producer-profile --tests -- -D warnings
-          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi" "idf-media-load idf-controller-audio" idf-deck-play idf-deck-mix idf-deck-engine idf-uac-profile idf-producer-profile; do
+          cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-soak-autoplay
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-soak-autoplay --tests -- -D warnings
+          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi" "idf-media-load idf-controller-audio" idf-deck-play idf-deck-mix idf-deck-engine idf-uac-profile idf-producer-profile idf-soak-autoplay; do
             cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf -- -D warnings
             cargo +1.95.0 build --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf
           done

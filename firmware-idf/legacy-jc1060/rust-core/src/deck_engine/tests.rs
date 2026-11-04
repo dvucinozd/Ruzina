@@ -806,3 +806,41 @@ fn a_seek_resumes_playback_only_after_a_buffered_cushion() {
     run(&mut mix, 200);
     assert!(deck(&mut mix).position_ms > stored);
 }
+
+#[test]
+fn a_play_right_after_a_load_waits_for_a_buffered_cushion() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    // The producer publishes Ready with only the new track's first block.
+    RINGS[0].restart_at(48_000, 0);
+    let first = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 256];
+    assert!(RINGS[0].push(&first));
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 6,
+            bpm_x100: 12_000,
+            track_id: [6; 16],
+        },
+    );
+    run(&mut mix, 1); // the load commits in the first block
+    // Play at once, as the soak DJ does: accepted, but held.
+    press(&mut mix, SemanticControl::Play, true);
+    assert_eq!(mix.engine().playing(), [true, false]);
+    let before = mix.stats()[1];
+    run(&mut mix, 20);
+    assert_eq!(mix.stats()[1], before, "no underrun while held");
+    assert_eq!(mix.stats()[3], 256, "nothing consumed while held");
+    assert_eq!(deck(&mut mix).position_ms, 0);
+    // The producer catches up: the track plays from its start.
+    let rest = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 8_000];
+    assert!(RINGS[0].push(&rest));
+    run(&mut mix, 50);
+    assert!(near(deck(&mut mix).position_ms, 50, 3));
+    assert_eq!(mix.stats()[1], before);
+}

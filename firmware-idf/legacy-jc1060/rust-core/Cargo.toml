@@ -73,6 +73,10 @@ idf-deck-engine = ["idf-deck-mix", "deck-engine"]
 uac-profile = ["deck-engine"]
 idf-uac-profile = ["idf-deck-engine", "uac-profile"]
 
+# Soak diagnostic: an unattended DJ keeps both decks loading and playing.
+soak-autoplay = ["deck-engine"]
+idf-soak-autoplay = ["idf-deck-engine", "soak-autoplay"]
+
 # Separate source-supply diagnostic; no render substage or IRQ profiling.
 producer-profile = ["deck-engine"]
 idf-producer-profile = ["idf-deck-engine", "producer-profile"]

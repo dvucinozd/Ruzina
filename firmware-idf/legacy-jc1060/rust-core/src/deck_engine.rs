@@ -78,6 +78,8 @@ pub(crate) struct Engine {
     pending_load: [Option<LoadPermit>; 2],
     unsupported: u32,
     refused_loads: u32,
+    #[cfg(feature = "soak-autoplay")]
+    auto: crate::soak_autoplay::AutoPlay,
 }
 
 impl Engine {
@@ -101,6 +103,38 @@ impl Engine {
             pending_load: [None; 2],
             unsupported: 0,
             refused_loads: 0,
+            #[cfg(feature = "soak-autoplay")]
+            auto: crate::soak_autoplay::AutoPlay::new(),
+        }
+    }
+
+    /// The soak DJ's turn, once per USB client loop turn after `tick`: loads
+    /// the next track on a deck whose track played out and presses Play.
+    #[cfg(feature = "soak-autoplay")]
+    pub(crate) fn autoplay(&mut self) {
+        use crate::soak_autoplay::{Action, View};
+        let tracks = crate::soak_autoplay::catalog();
+        for deck in DECKS {
+            let i = index(deck);
+            let view = View {
+                media: self.lease.is_some_and(crate::media_signal::current),
+                loaded: self.loaded[i] && !self.faulted[i],
+                playing: self.playing[i],
+                pending_load: self.pending_load[i].is_some(),
+            };
+            match self.auto.step(i, view, tracks) {
+                Action::Load(track) => {
+                    if !self.request_load(deck, track) {
+                        self.auto.load_refused(i);
+                    }
+                }
+                Action::Play => self.control(&ControlEvent {
+                    deck: Some(deck),
+                    control: ruzina_controller_core::SemanticControl::Play,
+                    value: ruzina_controller_core::ControlValue::Pressed(true),
+                }),
+                Action::None => {}
+            }
         }
     }
 
@@ -272,7 +306,11 @@ impl Engine {
             self.seeking[i] = None;
             self.unsent_seek[i] = None;
             self.seek_epoch[i] = None;
-            self.cushion[i] = None;
+            // A new track starts like a seek: its producer published Ready
+            // after opening this epoch with one block, so a Play right after
+            // the load waits for the same buffered cushion. A later Play
+            // finds the ring already full and does not wait.
+            self.cushion[i] = committed.then(|| (RINGS[i].epoch(), 0));
             self.nudge[i].clear();
             TRACK_INDEX[i].store(
                 if committed {
@@ -361,6 +399,8 @@ impl Engine {
                 if self.playing[i] && reader.ended(&RINGS[i]) && reader.buffered(&RINGS[i]) == 0 {
                     self.deck.finish_playback(deck, position_ms);
                     self.playing[i] = false;
+                    #[cfg(feature = "soak-autoplay")]
+                    self.auto.track_ended(i);
                 }
             }
             let flags = u32::from(self.loaded[i]) | u32::from(self.playing[i]) << 1;
