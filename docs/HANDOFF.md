@@ -8,18 +8,20 @@
 - **USB audio follow-up (2026-11-04):** the image with the USB audio fix is
   owner-accepted after about 5 minutes with seeks. A lost isochronous packet
   is now only counted, and the recovery budget refills after clean streaming.
-- **On the board:** app `09d4f04c…` (frame walk and seek cushion). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0,1,2,3}-*-flash`.
+- **SD reads (2026-11-04):** [multi-sector reads](reviews/2026-11-04-sd-multisector.md)
+  of up to 16 sectors, through a read-ahead in PSRAM. Next to a FLAC deck the
+  MP3 frame walk now finishes in 2.2 s instead of 51 s. The worst cold MP3 seek
+  is 55 ms instead of 5.4 s. Underruns 0/0, `packet_errors=0`, and the owner
+  said the run was fine.
+- **On the board:** app `baaa8de9…` (multi-sector SD reads). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0,1,2,3,4,5}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
-  - MP3 seeks are fast once the [frame walk](reviews/2026-11-04-mp3-seek-index.md)
-    has finished, and a 93 ms resume cushion removed the post-seek underruns
-    (0/0 on the board). Next to a FLAC deck the walk can take over a minute,
-    because card reads are single 512-byte sectors; multi-sector reads are
-    next;
-  - `fill_max_us` is 4848 µs, above the 3000 µs headroom target;
-  - there has been no soak longer than 5 minutes.
+  - untagged VBR MP3 seeks still decode from the start;
+  - `fill_max_us` is about 5.5 ms, above the 3000 µs headroom target;
+  - there has been no soak longer than about 30 minutes, and none with
+    multi-sector reads.
 - **Older paragraphs** below are historical checkpoints.
 
 Latest offline implementation: [legacy MP3 in-place reset](reviews/2026-11-03-mp3-in-place-reset.md).

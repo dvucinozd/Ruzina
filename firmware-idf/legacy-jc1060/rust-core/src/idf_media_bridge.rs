@@ -12,11 +12,22 @@ use ruzina_media_block::BlockGeometry;
 use ruzina_media_io::OwnedBlockDevice;
 use ruzina_media_session::{MediaHandle, MediaSourceId};
 
+/// With the load path the transport carries heap read-ahead lines of up to
+/// 16 sectors; the diagnostics without a heap read one stack sector.
+#[cfg(feature = "media-load")]
+type Buffer = crate::read_ahead::Line;
+#[cfg(not(feature = "media-load"))]
 type Buffer = [u8; 512];
+/// What the filesystem reads, one sector at a time.
+#[cfg(feature = "idf-deck-play")]
+type Sector = [u8; 512];
 struct State {
     queue: ReadQueue<Buffer>,
     binding: Binding,
     active: Option<ReadRequest<Buffer>>,
+    /// The worker is copying its DMA bytes into `active`'s buffer outside the
+    /// lock; the request is back in its hands until it completes.
+    copying: bool,
     waker: Option<Waker>,
 }
 struct Shared(UnsafeCell<Option<State>>);
@@ -160,6 +171,7 @@ pub extern "C" fn ruzina_legacy_bridge_init(sectors: u32) -> i32 {
             queue,
             binding,
             active: None,
+            copying: false,
             waker: None,
         });
         0
@@ -183,14 +195,14 @@ pub unsafe extern "C" fn ruzina_legacy_bridge_take(first: *mut u32, count: *mut 
         let Some(s) = state.as_mut() else {
             return -1;
         };
-        if s.active.is_some() {
+        if s.active.is_some() || s.copying {
             return -1;
         }
         let Some(request) = s.queue.take_request() else {
             return 0;
         };
         // SAFETY: caller's task-stack outputs satisfy the contract above. Queue
-        // admission limits geometry to u32 sectors and buffer to one sector.
+        // admission limits geometry to u32 sectors and buffer to 16 sectors.
         unsafe {
             *first = request.first_block() as u32;
             *count = request.block_count();
@@ -202,9 +214,10 @@ pub unsafe extern "C" fn ruzina_legacy_bridge_take(first: *mut u32, count: *mut 
 
 /// # Safety
 /// On success `data` points to `bytes` initialized DMA-complete bytes owned by
-/// the C worker, aligned to4 and disjoint from all Rust static/task storage.
-/// The caller retains allocation/free ownership; Rust copies synchronously and
-/// never retains the pointer. On IO failure data may be null and bytes is zero.
+/// the C worker, aligned to 4 and disjoint from all Rust static/task storage;
+/// `bytes` is the taken request's whole length. The caller retains
+/// allocation/free ownership; Rust copies synchronously and never retains the
+/// pointer. On IO failure data may be null and bytes is zero.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ruzina_legacy_bridge_complete(
     status: i32,
@@ -214,27 +227,49 @@ pub unsafe extern "C" fn ruzina_legacy_bridge_complete(
     if status == 0
         && (data.is_null()
             || !(data as usize).is_multiple_of(4)
-            || bytes != 512
+            || bytes == 0
+            || bytes as usize > crate::media_bridge::MAX_READ_BYTES
             || (data as usize).checked_add(bytes as usize).is_none())
     {
         return -1;
     }
+    // Take the request out to copy up to 8 KiB without holding the lock, which
+    // masks interrupts on this core and spins the client on the other.
+    let taken = with_state(|state| {
+        let s = state.as_mut()?;
+        if s.copying {
+            return None;
+        }
+        let request = s.active.take()?;
+        s.copying = true;
+        Some(request)
+    });
+    let Some(mut request) = taken else {
+        return -1;
+    };
+    if status == 0 && request.buffer_mut().len() != bytes as usize {
+        // A length the request did not ask for: hand it back untouched.
+        with_state(|state| {
+            let s = state.as_mut().expect("a copying request keeps the state");
+            s.active = Some(request);
+            s.copying = false;
+        });
+        return -1;
+    }
+    let io_result = if status == 0 {
+        // SAFETY: C owns a DMA-complete buffer satisfying the contract above.
+        let input = unsafe { core::slice::from_raw_parts(data, bytes as usize) };
+        request.buffer_mut().copy_from_slice(input);
+        Ok(bytes as usize)
+    } else {
+        Err(status)
+    };
     let (result, waker) = with_state(|state| {
-        let Some(s) = state.as_mut() else {
-            return (-1, None);
-        };
-        let Some(mut request) = s.active.take() else {
-            return (-1, None);
-        };
-        let io_result = if status == 0 {
-            // SAFETY: C owns a DMA-complete buffer satisfying the contract above.
-            let input = unsafe { core::slice::from_raw_parts(data, bytes as usize) };
-            request.buffer_mut().copy_from_slice(input);
-            Ok(bytes as usize)
-        } else {
+        let s = state.as_mut().expect("a copying request keeps the state");
+        s.copying = false;
+        if io_result.is_err() {
             s.queue.invalidate();
-            Err(status)
-        };
+        }
         let result = match s.queue.complete(request, io_result) {
             Ok(()) => 0,
             Err(request) => {
@@ -262,7 +297,7 @@ pub extern "C" fn ruzina_legacy_bridge_invalidate() -> i32 {
         };
         s.queue.invalidate();
         (
-            s.queue.can_deinitialize() && s.active.is_none(),
+            s.queue.can_deinitialize() && s.active.is_none() && !s.copying,
             s.waker.take(),
         )
     });
@@ -278,7 +313,9 @@ pub extern "C" fn ruzina_legacy_bridge_run() -> i32 {
         return -1;
     };
     let mut client = ReadClient::new(Port, binding);
-    let mut buffer = [0u8; 512];
+    let Some(mut buffer) = sector_buffer() else {
+        return -1;
+    };
     let mut expected = None;
     for pass in 1..=u32::MAX {
         let mut hash = 2166136261u32;
@@ -291,7 +328,7 @@ pub extern "C" fn ruzina_legacy_bridge_run() -> i32 {
                     return -2;
                 }
             };
-            for &byte in &buffer {
+            for &byte in buffer.as_ref() {
                 hash = (hash ^ u32::from(byte)).wrapping_mul(16777619);
             }
         }
@@ -307,6 +344,29 @@ pub extern "C" fn ruzina_legacy_bridge_run() -> i32 {
         }
     }
     0
+}
+
+/// One sector's transport buffer.
+#[cfg(feature = "media-load")]
+fn sector_buffer() -> Option<Buffer> {
+    crate::read_ahead::Line::try_new(512)
+}
+#[cfg(not(feature = "media-load"))]
+fn sector_buffer() -> Option<Buffer> {
+    Some([0; 512])
+}
+
+/// The client as the filesystem reads it: through the read-ahead lines when
+/// there is a heap, else one sector per request.
+#[cfg(all(feature = "idf-exfat-fixture", feature = "media-load"))]
+fn filesystem_device(
+    client: ReadClient<Port>,
+) -> Option<crate::read_ahead::ReadAhead<ReadClient<Port>>> {
+    crate::read_ahead::ReadAhead::try_new(client).ok()
+}
+#[cfg(all(feature = "idf-exfat-fixture", not(feature = "media-load")))]
+fn filesystem_device(client: ReadClient<Port>) -> Option<ReadClient<Port>> {
+    Some(client)
 }
 
 #[cfg(test)]
@@ -325,7 +385,9 @@ pub extern "C" fn ruzina_legacy_exfat_run() -> i32 {
         return -1;
     };
     let current = || Port.is_current(binding);
-    let mut client = ReadClient::new(Port, binding);
+    let Some(mut client) = filesystem_device(ReadClient::new(Port, binding)) else {
+        return -7;
+    };
     let mut volume = match block_on(crate::exfat_fixture::mount(
         &mut client,
         binding.lease,
@@ -480,7 +542,10 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         report(0, 15, 1); // both rings and permanent producer stores are ready
         producers
     };
-    let mut client = ReadClient::new(Port, binding);
+    let Some(mut client) = filesystem_device(ReadClient::new(Port, binding)) else {
+        report(0, load_event::FAILED, 2 << 8 | 2);
+        return -7;
+    };
     let mut volume = match block_on(crate::exfat_fixture::mount(
         &mut client,
         binding.lease,
@@ -696,13 +761,13 @@ impl AsRef<str> for CatalogPath {
 
 /// Deck audio files on the exFAT volume, each operation under the live lease.
 #[cfg(feature = "idf-deck-play")]
-struct VolumeFiles<'a, D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> {
+struct VolumeFiles<'a, D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool> {
     volume: &'a mut crate::exfat_fixture::Volume<D>,
     current: &'a C,
 }
 
 #[cfg(feature = "idf-deck-play")]
-impl<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool> crate::deck_play::SourceFiles
+impl<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool> crate::deck_play::SourceFiles
     for VolumeFiles<'_, D, C>
 {
     type File = <crate::exfat_fixture::Volume<D> as ruzina_media_fs::AsyncFileSystem>::File;
@@ -762,6 +827,8 @@ mod play_event {
     /// A seek reopened the track; value is `deck << 24 | failed << 23 | ms`
     /// (ms capped at 23 bits).
     pub const SEEKED: u32 = 11;
+    /// The MP3 frame walk finished; value is `deck << 24 | ms since load`.
+    pub const INDEXED: u32 = 16;
 }
 
 /// After the first pass: serve detail selections and the deck producers
@@ -770,7 +837,7 @@ mod play_event {
 /// lease or allocation failure.
 #[cfg(feature = "idf-deck-play")]
 #[cfg_attr(not(feature = "idf-deck-engine"), allow(unused_variables))]
-fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<str>>(
+fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<str>>(
     track: impl Fn(u32) -> Option<([u8; 16], u32)>,
     (pass, tracks): (u32, usize),
     volume: &mut crate::exfat_fixture::Volume<D>,
@@ -993,6 +1060,9 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Buffer>, C: Fn() -> bool, P: AsRef<s
                 ),
                 Some(Event::Ended { index, faulted }) => {
                     report(play_event::ENDED, tag | index << 8 | u32::from(faulted))
+                }
+                Some(Event::Indexed { elapsed_ms, .. }) => {
+                    report(play_event::INDEXED, tag | elapsed_ms.min(0xff_ffff))
                 }
                 None => {}
             }

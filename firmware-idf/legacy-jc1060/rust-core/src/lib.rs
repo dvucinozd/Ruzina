@@ -26,6 +26,9 @@ pub mod exfat_fixture;
 #[cfg(feature = "media-load")]
 pub mod media_load;
 
+#[cfg(feature = "media-load")]
+pub mod read_ahead;
+
 #[cfg(feature = "idf-media-load")]
 mod idf_alloc;
 
