@@ -758,3 +758,85 @@ fn producer_priority_uses_rate_and_pitch_time_coverage() {
     rings[0].record_supply(1000);
     assert!(rings[0].low_supply_us.load(Ordering::Relaxed) < first);
 }
+
+/// A far MP3 seek decodes from the start of the file until the frame walk
+/// has run; with it, a CBR or Xing-tagged VBR seek resumes at an indexed
+/// frame (on these fixtures 187 -> 12 and 101 -> 15 reads). Untagged VBR
+/// has no exact indexed resume in the shared decoder yet and still decodes
+/// from the start. The PCM after the seek is identical either way.
+#[test]
+fn the_mp3_frame_walk_makes_a_far_seek_cheap() {
+    const TARGET_MS: u32 = 7_000;
+    fn seek(
+        producer: &mut Producer<&'static [u8]>,
+        files: &mut Memory,
+        ring: &Ring,
+        commands: &Commands,
+    ) -> (usize, Vec<PcmFrame>) {
+        let before = files.reads;
+        commands.seek(TARGET_MS);
+        let mut reads = None;
+        for _ in 0..100_000 {
+            if let (_, Some(Event::Seeked { ok, .. })) = producer.poll(files, ring, commands, path)
+            {
+                assert!(ok);
+                reads = Some(files.reads - before);
+                break;
+            }
+        }
+        let reads = reads.expect("the seek completes");
+        let mut reader = Reader::new();
+        reader.sync(ring);
+        assert_eq!(reader.position_ms(), TARGET_MS);
+        let mut frames = Vec::new();
+        while frames.len() < 4_096 {
+            run(producer, files, ring, commands);
+            reader.sync(ring);
+            while let Some(frame) = reader.pop(ring) {
+                frames.push(frame);
+            }
+            reader.commit(ring);
+        }
+        (reads, frames)
+    }
+    for (data, indexed_resume) in [
+        (fixture!("long.mp3"), true),
+        (LONG_ID3, true),
+        (fixture!("long-vbr-untagged.mp3"), false),
+    ] {
+        // Cold: seek as soon as the load is ready, before the walk runs
+        // (it only runs while the ring is full).
+        let (ring, commands) = (ring(), Commands::new());
+        let mut files = Memory::new(&[data]);
+        let mut producer = Producer::new();
+        commands.load(0);
+        while !matches!(
+            producer.poll(&mut files, ring, &commands, path).1,
+            Some(Event::Ready { .. })
+        ) {}
+        assert!(!producer.indexed());
+        let (cold_reads, cold) = seek(&mut producer, &mut files, ring, &commands);
+
+        let (ring, commands) = (self::ring(), Commands::new());
+        let mut files = Memory::new(&[data]);
+        let mut producer = Producer::new();
+        commands.load(0);
+        // Once the ring is full the producer stays busy with the walk, one
+        // read per turn, until the end of the file.
+        run(&mut producer, &mut files, ring, &commands);
+        assert!(producer.indexed());
+        let (busy, event) = producer.poll(&mut files, ring, &commands, path);
+        assert!(!busy && event.is_none());
+        let (warm_reads, warm) = seek(&mut producer, &mut files, ring, &commands);
+        if indexed_resume {
+            assert!(
+                warm_reads * 4 < cold_reads,
+                "indexed seek {warm_reads} reads, cold {cold_reads}"
+            );
+        } else {
+            // Still decoded from the start (no indexed resume).
+            assert!(warm_reads * 4 >= cold_reads, "{warm_reads} vs {cold_reads}");
+        }
+        assert_eq!(warm, cold);
+    }
+}

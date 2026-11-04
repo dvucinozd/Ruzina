@@ -22,6 +22,7 @@ use ruzina_audio_runtime::decode::{
     AudioCodec, DecodeAction, DecoderStorage, ENCODED_BUFFER_BYTES, MP3_CHECKPOINTS,
     Mp3CheckpointStorage, SOURCE_READ_BYTES, SourceDecoder, StreamChange,
 };
+use ruzina_audio_runtime::index_scan::IndexScanPolicy;
 use ruzina_audio_runtime::pcm_stream::{PCM_STREAM_BLOCK_FRAMES, PcmStreamBlock};
 use ruzina_audio_runtime::wav::{
     CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16Format,
@@ -406,6 +407,9 @@ pub(crate) struct Producer<File> {
     prime: Option<PrimeJob>,
     opening: Option<Opening<File>>,
     prime_started_us: u64,
+    /// The background MP3 frame walk of the loaded track; stops after three
+    /// failed reads in a row, until the next load.
+    index_policy: IndexScanPolicy,
 }
 struct Opening<File> {
     file: File,
@@ -477,6 +481,7 @@ impl<File> Producer<File> {
             prime: None,
             opening: None,
             prime_started_us: 0,
+            index_policy: IndexScanPolicy::default(),
         })
     }
 
@@ -496,6 +501,7 @@ impl<File> Producer<File> {
             prime: None,
             opening: None,
             prime_started_us: 0,
+            index_policy: IndexScanPolicy::default(),
         }
     }
 
@@ -519,6 +525,7 @@ impl<File> Producer<File> {
     ) -> Option<Event> {
         self.prime = None;
         self.prime_started_us = files.now_us();
+        self.index_policy = IndexScanPolicy::default();
         self.close(files);
         ring.restart(0);
         let failed = |stage| Some(Event::Failed { index, stage });
@@ -590,6 +597,42 @@ impl<File> Producer<File> {
                 })
             }
         }
+    }
+
+    /// One read of the MP3 frame walk (a no-op for other codecs and once the
+    /// walk is complete). With the walk, a seek far from every checkpoint
+    /// resumes at an exact indexed frame instead of decoding from the start
+    /// of the file, one 512-byte card read at a time.
+    fn index_step<F: SourceFiles<File = File>>(&mut self, files: &mut F) -> bool {
+        let Some(source) = self.source.as_mut() else {
+            return false;
+        };
+        if !self.index_policy.can_attempt() {
+            return false;
+        }
+        let Some((offset, len)) = source
+            .stream
+            .index_read(&mut self.storage, SOURCE_READ_BYTES)
+        else {
+            return false;
+        };
+        let read = &mut self.read[..len];
+        let accepted = files
+            .read_at(&mut source.file, offset, read)
+            .is_some_and(|bytes| {
+                bytes != 0
+                    && source
+                        .stream
+                        .provide_index(&mut self.storage, offset, &read[..bytes])
+            });
+        self.index_policy.record_result(accepted);
+        true
+    }
+
+    /// The loaded MP3's frame walk has reached the end of the file.
+    #[cfg(test)]
+    pub(crate) fn indexed(&self) -> bool {
+        self.storage.mp3_index().complete()
     }
 
     pub(crate) fn priming(&self) -> bool {
@@ -960,7 +1003,11 @@ impl<File> Producer<File> {
         };
         if source.ended && source.pending.is_none() || ring.free() < PCM_STREAM_BLOCK_FRAMES as u32
         {
-            return (false, None);
+            // Nothing to decode: spend the turn on one read of the MP3 frame
+            // walk. A read counts as work, so the owner polls again without
+            // waiting a 10 ms tick and the walk runs at card speed, one read
+            // per deck per turn; decoding always comes first.
+            return (self.index_step(files), None);
         }
         let (index, was_ended) = (source.index, source.ended);
         let failed = self.decode(files, ring, POLL_ACTIONS, false).is_none();

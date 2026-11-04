@@ -8,12 +8,14 @@
 - **USB audio follow-up (2026-11-04):** the image with the USB audio fix is
   owner-accepted after about 5 minutes with seeks. A lost isochronous packet
   is now only counted, and the recovery budget refills after clean streaming.
-- **On the board:** app `ec46fa95…`. Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0,1}-*-flash`.
+- **On the board:** app `28fd7e97…` (MP3 frame walk). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0,1,2}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
-  - MP3 seeks still underrun briefly, so the seek index walk is needed;
+  - MP3 seeks are fast with the [frame walk](reviews/2026-11-04-mp3-seek-index.md)
+    (at most 78 ms), but each still underruns for a few render blocks; a
+    resume cushion is next;
   - `fill_max_us` is 4848 µs, above the 3000 µs headroom target;
   - there has been no soak longer than 5 minutes.
 - **Older paragraphs** below are historical checkpoints.
