@@ -13,13 +13,19 @@
   MP3 frame walk now finishes in 2.2 s instead of 51 s. The worst cold MP3 seek
   is 55 ms instead of 5.4 s. Underruns 0/0, `packet_errors=0`, and the owner
   said the run was fine.
-- **On the board:** app `baaa8de9…` (multi-sector SD reads). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0,1,2,3,4,5}-*-flash`.
+- **Flash QIO 80 MHz (2026-11-04):** [the flash mode change](reviews/2026-11-04-flash-qio80.md)
+  from the bring-up DIO 40 MHz cut the longest USB audio fill from about
+  5.5 ms to 3.3 ms. Fills over 3 ms went from 967 to 4. Seeks also prime about
+  twice as fast. The owner checked by ear: "sve OK".
+- **On the board:** app `024b4092…` (QIO 80 MHz flash). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s1{0..8}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
   - untagged VBR MP3 seeks still decode from the start;
-  - `fill_max_us` is about 5.5 ms, above the 3000 µs headroom target;
+  - `fill_max_us` is about 3.3 ms, just above the 3000 µs headroom target;
+    the render graph is most of it. PSRAM at 200 MHz and the graph in IRAM
+    are the next candidates;
   - there has been no soak longer than about 30 minutes, and none with
     multi-sector reads.
 - **Older paragraphs** below are historical checkpoints.
