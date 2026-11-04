@@ -731,3 +731,78 @@ fn controller_disconnect_releases_a_cue_preview_without_resuming_it() {
     mix.engine().connection(true);
     assert!(!mix.engine().playing()[0]);
 }
+
+/// A seek while playing resumes only once the new epoch has buffered a
+/// cushion: resuming on the seek's first block underran on the device. A
+/// producer that never catches up holds the deck for at most a second.
+#[test]
+fn a_seek_resumes_playback_only_after_a_buffered_cushion() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 5,
+            bpm_x100: 12_000,
+            track_id: [5; 16],
+        },
+    );
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 100);
+    let before = mix.stats()[1];
+    // A jog scrub would pause; a Hot Cue jump keeps playing.
+    let pad = |pressed| {
+        event(
+            SemanticControl::PadAction,
+            ControlValue::PadAction(PadAction {
+                pad: 1,
+                mode: PadMode::HotCue,
+                shifted: false,
+                pressed,
+            }),
+        )
+    };
+    mix.control(&pad(true));
+    mix.control(&pad(false));
+    let stored = deck(&mut mix).position_ms;
+    run(&mut mix, 50);
+    mix.control(&pad(true));
+    mix.control(&pad(false));
+    assert_eq!(take_seek(), Some(stored));
+    // The seek completes with only its first block in the ring.
+    let first = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 256];
+    RINGS[0].restart_at(48_000, stored * 48);
+    assert!(RINGS[0].push(&first));
+    acknowledge_seek(&mut mix);
+    assert_eq!(mix.engine().playing(), [true, false]);
+    run(&mut mix, 20);
+    // Held: nothing rendered from the thin epoch, no underrun, no movement.
+    assert_eq!(mix.stats()[1], before);
+    assert_eq!(mix.stats()[3], 256);
+    assert_eq!(deck(&mut mix).position_ms, stored);
+    // The producer catches up: playback resumes from the target.
+    let rest = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 8_000];
+    assert!(RINGS[0].push(&rest));
+    run(&mut mix, 50);
+    assert!(near(deck(&mut mix).position_ms, stored + 50, 3));
+    assert_eq!(mix.stats()[1], before);
+
+    // A producer that never catches up holds the deck for at most a second.
+    mix.control(&pad(true));
+    mix.control(&pad(false));
+    take_seek().expect("hot cue seek");
+    RINGS[0].restart_at(48_000, stored * 48);
+    assert!(RINGS[0].push(&first));
+    acknowledge_seek(&mut mix);
+    run(&mut mix, 900);
+    assert_eq!(deck(&mut mix).position_ms, stored);
+    run(&mut mix, 200);
+    assert!(deck(&mut mix).position_ms > stored);
+}
