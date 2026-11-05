@@ -45,6 +45,9 @@ struct State {
     totals: UsbMidiBatchReport,
     /// Play latch per deck for the echo.
     playing: [bool; 2],
+    /// The Loop In and Out LEDs' last state, per deck.
+    #[cfg(feature = "deck-engine")]
+    loop_leds: [(bool, bool); 2],
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
@@ -155,6 +158,8 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
         semantic_errors: 0,
     },
     playing: [false; 2],
+    #[cfg(feature = "deck-engine")]
+    loop_leds: [(false, false); 2],
     headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
@@ -177,13 +182,24 @@ pub(crate) fn playing() -> [bool; 2] {
 
 #[cfg(feature = "deck-engine")]
 impl State {
-    /// The Play LEDs follow the deck engine's confirmed playback.
+    /// The Play LEDs follow the deck engine's confirmed playback, and the
+    /// Loop In and Out LEDs its marked start and active loop.
     fn sync_play_leds(&mut self) {
-        let playing = crate::deck_mix::with(|mix| mix.engine().playing());
+        let (playing, loop_leds) =
+            crate::deck_mix::with(|mix| (mix.engine().playing(), mix.engine().loop_leds()));
         for (slot, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
             if self.playing[slot] != playing[slot] {
                 self.playing[slot] = playing[slot];
                 self.led(SemanticLedId::PLAY, Some(deck), playing[slot]);
+            }
+            let (was_in, was_out) = self.loop_leds[slot];
+            let (loop_in, loop_out) = loop_leds[slot];
+            self.loop_leds[slot] = (loop_in, loop_out);
+            if was_in != loop_in {
+                self.led(SemanticLedId::LOOP_IN, Some(deck), loop_in);
+            }
+            if was_out != loop_out {
+                self.led(SemanticLedId::LOOP_OUT, Some(deck), loop_out);
             }
         }
     }
@@ -316,6 +332,10 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         state.session.set_connected(true);
         state.totals = UsbMidiBatchReport::default();
         state.playing = [false; 2];
+        #[cfg(feature = "deck-engine")]
+        {
+            state.loop_leds = [(false, false); 2];
+        }
         state.headphone = None;
         state.out_len = 0;
         state.out_overflow = 0;

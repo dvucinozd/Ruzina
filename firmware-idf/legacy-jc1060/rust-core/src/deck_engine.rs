@@ -29,6 +29,17 @@ use ruzina_hot_cues::HotCueBank;
 
 const DECKS: [DeckId; 2] = [DeckId::One, DeckId::Two];
 
+/// The Beat Loop pad whose length is 4 beats.
+const FOUR_BEAT_LOOP_PAD: u8 = 7;
+
+/// A loop change for a deck's reader, applied at the next render block.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum LoopCommand {
+    /// The loop `[start_ms, end_ms)`.
+    Set(u32, u32),
+    Clear,
+}
+
 fn index(deck: DeckId) -> usize {
     usize::from(deck == DeckId::Two)
 }
@@ -78,6 +89,10 @@ pub(crate) struct Engine {
     pending_load: [Option<LoadPermit>; 2],
     unsupported: u32,
     refused_loads: u32,
+    /// Loop changes waiting for the next render block.
+    loop_command: [Option<LoopCommand>; 2],
+    /// The deck's active loop, in milliseconds.
+    loop_ms: [Option<(u32, u32)>; 2],
     #[cfg(feature = "soak-autoplay")]
     auto: crate::soak_autoplay::AutoPlay,
 }
@@ -103,6 +118,8 @@ impl Engine {
             pending_load: [None; 2],
             unsupported: 0,
             refused_loads: 0,
+            loop_command: [None; 2],
+            loop_ms: [None; 2],
             #[cfg(feature = "soak-autoplay")]
             auto: crate::soak_autoplay::AutoPlay::new(),
         }
@@ -159,8 +176,35 @@ impl Engine {
                 DeckClaim::Free => {}
             }
         }
-        let effects = self.deck.handle_control(*event);
+        let effects = self.deck.handle_control(self.four_beat_loop(event));
         self.apply(effects);
+    }
+
+    /// The FLX4's 4 BEAT/EXIT button arrives as Reloop/Exit. With a loop
+    /// running it exits, as the deck state does; with none it starts the
+    /// 4-beat loop the button is labelled with, through the Beat Loop pad of
+    /// that length (beat grid, or the BPM, or the deck state's 120 BPM).
+    fn four_beat_loop(&self, event: &ControlEvent) -> ControlEvent {
+        use ruzina_controller_core::{ControlValue, PadAction, PadMode, SemanticControl};
+        match event.deck {
+            Some(deck)
+                if event.control == SemanticControl::ReloopExit
+                    && event.value == ControlValue::Pressed(true)
+                    && self.deck.deck(deck).loop_state.active.is_none() =>
+            {
+                ControlEvent {
+                    deck: event.deck,
+                    control: SemanticControl::PadAction,
+                    value: ControlValue::PadAction(PadAction {
+                        pad: FOUR_BEAT_LOOP_PAD,
+                        mode: PadMode::BeatLoop,
+                        shifted: false,
+                        pressed: true,
+                    }),
+                }
+            }
+            _ => *event,
+        }
     }
 
     /// Admission and reservation run on the USB control task. Producer must
@@ -224,22 +268,20 @@ impl Engine {
                         .resolve_playback_request(deck, request_id, accepted);
                 }
                 DeckEffect::Pause { deck } => self.playing[index(deck)] = false,
-                DeckEffect::Seek { deck, position_ms } => {
+                DeckEffect::Seek { deck, position_ms } => self.seek(index(deck), position_ms),
+                DeckEffect::SetLoop {
+                    deck,
+                    start_ms,
+                    end_ms,
+                } => {
                     let i = index(deck);
-                    if let Some(source) = self.source[i] {
-                        self.next_seek = self.next_seek.wrapping_add(1).max(1);
-                        let request = SeekRequest {
-                            source,
-                            id: self.next_seek,
-                            target_ms: position_ms,
-                        };
-                        self.seeking[i] = Some(request);
-                        self.unsent_seek[i] = Some(request);
-                        self.seek_epoch[i] = None;
-                        self.cushion[i] = None;
-                        self.revision[i] = self.revision[i].wrapping_add(1);
-                        self.publish_seek(i);
-                    }
+                    self.loop_command[i] = Some(LoopCommand::Set(start_ms, end_ms));
+                    self.loop_ms[i] = Some((start_ms, end_ms));
+                }
+                DeckEffect::ClearLoop { deck } => {
+                    let i = index(deck);
+                    self.loop_command[i] = Some(LoopCommand::Clear);
+                    self.loop_ms[i] = None;
                 }
                 DeckEffect::SetPitchCentipercent { deck, value } => {
                     self.pitch[index(deck)] = value;
@@ -247,6 +289,52 @@ impl Engine {
                 DeckEffect::JogNudge { deck, ticks } => self.nudge[index(deck)].add(ticks),
                 _ => self.unsupported = self.unsupported.wrapping_add(1),
             }
+        }
+    }
+
+    /// Asks deck `i`'s producer to reopen its source at `position_ms`.
+    fn seek(&mut self, i: usize, position_ms: u32) {
+        if let Some(source) = self.source[i] {
+            self.next_seek = self.next_seek.wrapping_add(1).max(1);
+            let request = SeekRequest {
+                source,
+                id: self.next_seek,
+                target_ms: position_ms,
+            };
+            self.seeking[i] = Some(request);
+            self.unsent_seek[i] = Some(request);
+            self.seek_epoch[i] = None;
+            self.cushion[i] = None;
+            self.revision[i] = self.revision[i].wrapping_add(1);
+            self.publish_seek(i);
+        }
+    }
+
+    /// The loop change for deck `i`'s reader, once.
+    pub(crate) fn take_loop_command(&mut self, i: usize) -> Option<LoopCommand> {
+        self.loop_command[i].take()
+    }
+
+    /// Each deck's Loop In and Loop Out LEDs: In from the press that marks
+    /// the start, Out once the loop runs.
+    pub(crate) fn loop_leds(&self) -> [(bool, bool); 2] {
+        DECKS.map(|deck| {
+            let active = self.loop_ms[index(deck)].is_some();
+            let marked = self.deck.deck(deck).loop_state.pending_in_ms.is_some();
+            (active || marked, active)
+        })
+    }
+
+    /// Deck `i`'s active loop start, in milliseconds.
+    pub(crate) fn loop_start_ms(&self, i: usize) -> Option<u32> {
+        self.loop_ms[i].map(|(start, _)| start)
+    }
+
+    /// The reader reached the loop end without the loop start in its
+    /// history: one seek there, after which the loop replays seamlessly.
+    pub(crate) fn seek_loop_start(&mut self, i: usize, start_ms: u32) {
+        if self.seeking[i].is_none_or(|request| request.target_ms != start_ms) {
+            self.seek(i, start_ms);
         }
     }
 
@@ -270,6 +358,8 @@ impl Engine {
                 self.seek_epoch[i] = None;
                 self.cushion[i] = None;
                 self.nudge[i].clear();
+                self.loop_command[i] = Some(LoopCommand::Clear);
+                self.loop_ms[i] = None;
                 self.deck.unload_track(deck);
                 self.revision[i] = self.revision[i].wrapping_add(1);
                 TRACK_INDEX[i].store(u32::MAX, Ordering::Release);
@@ -306,6 +396,8 @@ impl Engine {
             self.seeking[i] = None;
             self.unsent_seek[i] = None;
             self.seek_epoch[i] = None;
+            self.loop_command[i] = Some(LoopCommand::Clear);
+            self.loop_ms[i] = None;
             // A new track starts like a seek: its producer published Ready
             // after opening this epoch with one block, so a Play right after
             // the load waits for the same buffered cushion. A later Play
@@ -396,7 +488,11 @@ impl Engine {
                 && reader.rate() != 0
             {
                 self.deck.set_position_ms(deck, position_ms);
-                if self.playing[i] && reader.ended(&RINGS[i]) && reader.buffered(&RINGS[i]) == 0 {
+                if self.playing[i]
+                    && !reader.looping()
+                    && reader.ended(&RINGS[i])
+                    && reader.buffered(&RINGS[i]) == 0
+                {
                     self.deck.finish_playback(deck, position_ms);
                     self.playing[i] = false;
                     #[cfg(feature = "soak-autoplay")]

@@ -23,6 +23,8 @@ fn press(mix: &mut Mix, control: SemanticControl, pressed: bool) {
 /// epoch's frames until the reader follows).
 fn serve(ms: u32) {
     RINGS[0].restart_at(48_000, ms * 48);
+    // A new source drops what the ring held, whatever an earlier test left.
+    crate::deck_play::Reader::new().sync(&RINGS[0]);
     let frames = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 20_000];
     assert!(RINGS[0].push(&frames));
 }
@@ -843,4 +845,112 @@ fn a_play_right_after_a_load_waits_for_a_buffered_cushion() {
     run(&mut mix, 50);
     assert!(near(deck(&mut mix).position_ms, 50, 3));
     assert_eq!(mix.stats()[1], before);
+}
+
+#[test]
+fn loop_in_and_out_keep_the_deck_inside_the_loop_until_exit() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    // About 1 s more source, so the exit can play on past the loop end.
+    let more = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 30_000];
+    assert!(RINGS[0].push(&more));
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 7,
+            bpm_x100: 12_000,
+            track_id: [7; 16],
+        },
+    );
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 100);
+    assert_eq!(mix.engine().loop_leds()[0], (false, false));
+    press(&mut mix, SemanticControl::LoopIn, true);
+    assert_eq!(
+        mix.engine().loop_leds()[0],
+        (true, false),
+        "In marks the start"
+    );
+    let start = deck(&mut mix).position_ms;
+    run(&mut mix, 150);
+    press(&mut mix, SemanticControl::LoopOut, true);
+    assert_eq!(mix.engine().loop_leds()[0], (true, true), "the loop runs");
+    let end = deck(&mut mix).position_ms;
+    assert!(end > start + 100, "{start}..{end}");
+    // Several passes: the position stays in the loop, with no seek and no
+    // underrun.
+    let underruns = mix.stats()[1];
+    for _ in 0..10 {
+        run(&mut mix, 37);
+        let at = deck(&mut mix).position_ms;
+        assert!((start..end + 3).contains(&at), "{at} not in {start}..{end}");
+    }
+    assert_eq!(take_seek(), None);
+    assert_eq!(mix.stats()[1], underruns);
+    assert_eq!(mix.engine().counters()[0], 0, "loops are executed");
+    // Reloop/Exit leaves the loop: playback runs past its end.
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    assert_eq!(mix.engine().loop_leds()[0], (false, false));
+    run(&mut mix, 300);
+    assert!(deck(&mut mix).position_ms > end + 100);
+    assert_eq!(mix.stats()[1], underruns);
+}
+
+#[test]
+fn the_four_beat_button_starts_a_loop_and_exits_it() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    let more = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 30_000];
+    assert!(RINGS[0].push(&more));
+    // 480 BPM: 4 beats are 500 ms, so the test source covers several passes.
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 8,
+            bpm_x100: 48_000,
+            track_id: [8; 16],
+        },
+    );
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 100);
+    let start = deck(&mut mix).position_ms;
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    press(&mut mix, SemanticControl::ReloopExit, false);
+    let region = deck(&mut mix).loop_state.active.expect("a 4-beat loop");
+    assert_eq!(mix.engine().loop_leds()[0], (true, true));
+    assert_eq!((region.start_ms, region.end_ms), (start, start + 500));
+    let underruns = mix.stats()[1];
+    for _ in 0..20 {
+        run(&mut mix, 90);
+        let at = deck(&mut mix).position_ms;
+        assert!((start..start + 503).contains(&at), "{at} from {start}");
+    }
+    assert_eq!(take_seek(), None);
+    // Pressed again it exits: the track plays on past the loop end.
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    press(&mut mix, SemanticControl::ReloopExit, false);
+    assert_eq!(deck(&mut mix).loop_state.active, None);
+    assert_eq!(mix.engine().loop_leds()[0], (false, false));
+    run(&mut mix, 600);
+    let past = deck(&mut mix).position_ms;
+    assert!(past > start + 500, "{past} from {start}");
+    // And once more it starts a new 4-beat loop where the deck is now.
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    let again = deck(&mut mix).loop_state.active.expect("a new 4-beat loop");
+    assert_eq!((again.start_ms, again.end_ms), (past, past + 500));
+    assert_eq!(mix.stats()[1], underruns);
 }

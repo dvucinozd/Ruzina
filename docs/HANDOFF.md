@@ -26,7 +26,11 @@
   showed underruns only right after an automatic load and Play. A load now
   starts with the seek cushion. The next 35-minute run had 16 automatic
   loads, 0/0 underruns, a longest fill of 2.8 ms and no packet errors.
-- **On the board:** app `08b3bff9…` (soak DJ diagnostic with the load cushion; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+- **Loops (2026-11-05):** [seamless loops from a played-audio history](reviews/2026-11-05-loops.md)
+  in PSRAM. 4 BEAT/EXIT, IN, OUT, halve and double reached the engine on deck 1
+  of the FLX4, and the owner heard the section repeat. Beat Loop pads and deck 2
+  have not been tried on the device.
+- **On the board:** app `d4a4511b…` (production with loops; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..20}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
