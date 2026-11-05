@@ -31,15 +31,17 @@
   checked for regressions, and the owner said they were fine ("Sve OK").
 - **Loops (2026-11-05):** [seamless loops from a played-audio history](reviews/2026-11-05-loops.md)
   in PSRAM, with a 5.8 ms crossfade at the wrap. On the FLX4 the owner heard the
-  section repeat with no click, on both decks. Beat Loop pads have not been
-  tried on the device.
-- **On the board:** app `715c006c…` (production with loops and the wrap crossfade; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..30}-*-flash`.
+  section repeat with no click. 4 BEAT/EXIT, IN, OUT, halve, double and Beat Loop
+  pads work, and Shift + 4 BEAT brings back the last loop.
+- **On the board:** app `e1552815…` (production with loops and reloop; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..32}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
-  - `fill_max_us` is about 2.8 ms, under the 3000 µs headroom target; the
-    render graph is most of it;
+  - `fill_max_us` is 3.2 ms in production and 3.4 ms under profiling while
+    really mixing, over the 3000 µs headroom target, with no underruns. The
+    render graph is most of it. The owner stopped here; IRAM is kept for when
+    FX add render time;
   - the 35 to 40-minute soaks were unattended: no seeks, scratch or EQ
     during them;
 - **Older paragraphs** below are historical checkpoints.

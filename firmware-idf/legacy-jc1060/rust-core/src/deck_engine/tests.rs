@@ -954,3 +954,71 @@ fn the_four_beat_button_starts_a_loop_and_exits_it() {
     assert_eq!((again.start_ms, again.end_ms), (past, past + 500));
     assert_eq!(mix.stats()[1], underruns);
 }
+
+#[test]
+fn shift_four_beat_brings_back_the_last_loop_then_stops_and_forgets_it() {
+    use ruzina_controller_core::{DeckExtAction, DeckExtActionValue};
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    let more = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 30_000];
+    assert!(RINGS[0].push(&more));
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 9,
+            bpm_x100: 48_000,
+            track_id: [9; 16],
+        },
+    );
+    run(&mut mix, 3);
+    let shift_four_beat = |pressed| {
+        event(
+            SemanticControl::DeckExtAction,
+            ControlValue::DeckExtAction(DeckExtActionValue {
+                action: DeckExtAction::ReloopStop,
+                pressed,
+            }),
+        )
+    };
+    // With nothing to bring back it changes nothing.
+    mix.control(&shift_four_beat(true));
+    mix.control(&shift_four_beat(false));
+    assert_eq!(deck(&mut mix).loop_state.active, None);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 100);
+    // A 4-beat loop, then exit: the deck remembers it.
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    let region = deck(&mut mix).loop_state.active.expect("a 4-beat loop");
+    run(&mut mix, 100);
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    assert_eq!(deck(&mut mix).loop_state.active, None);
+    run(&mut mix, 50);
+    // Shift + 4 BEAT brings that same loop back, and the deck stays inside it.
+    mix.control(&shift_four_beat(true));
+    mix.control(&shift_four_beat(false));
+    assert_eq!(deck(&mut mix).loop_state.active, Some(region));
+    assert_eq!(mix.engine().loop_leds()[0], (true, true));
+    for _ in 0..12 {
+        run(&mut mix, 90);
+        let at = deck(&mut mix).position_ms;
+        assert!(
+            (region.start_ms..region.end_ms + 3).contains(&at),
+            "{at} outside {region:?}"
+        );
+    }
+    assert_eq!(take_seek(), None);
+    // With the loop running, it stops the loop and forgets it.
+    mix.control(&shift_four_beat(true));
+    assert_eq!(deck(&mut mix).loop_state.active, None);
+    assert_eq!(deck(&mut mix).loop_state.last, None);
+    assert_eq!(mix.engine().loop_leds()[0], (false, false));
+    mix.control(&shift_four_beat(false));
+    mix.control(&shift_four_beat(true));
+    assert_eq!(deck(&mut mix).loop_state.active, None);
+}
