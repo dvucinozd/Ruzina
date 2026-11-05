@@ -3,8 +3,12 @@
 use crate::deck_play::RING_FRAMES;
 use crate::deck_play::{Producer, RING_STORAGE_FRAMES, Ring, install_ring};
 use alloc::boxed::Box;
+#[cfg(feature = "deck-engine")]
+use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_audio_dsp::PcmFrame;
+#[cfg(feature = "deck-engine")]
+use ruzina_audio_runtime::fx::{FX_DECK_STORAGE_SAMPLES, FX_TOTAL_STORAGE_SAMPLES};
 
 pub(crate) const UNINITIALIZED: u32 = 0;
 pub(crate) const PREPARING: u32 = 1;
@@ -97,9 +101,29 @@ pub(crate) fn try_zeros<T: Default + Copy>(len: usize) -> Option<Box<[T]>> {
     }
     Some(unsafe { Box::from_raw(core::ptr::slice_from_raw_parts_mut(raw, len)) })
 }
+/// The render graph's effect memory, from the SD owner to the USB task, once.
+#[cfg(feature = "deck-engine")]
+pub(crate) static FX_STORAGE: AtomicPtr<f32> = AtomicPtr::new(core::ptr::null_mut());
+
+/// Hands the published effect memory over, split per deck, once.
+#[cfg(feature = "deck-engine")]
+pub(crate) fn take_fx_storage() -> Option<[&'static mut [f32]; 2]> {
+    let storage = FX_STORAGE.swap(core::ptr::null_mut(), Ordering::AcqRel);
+    if storage.is_null() {
+        return None;
+    }
+    // SAFETY: `publish` leaked exactly this many samples, and the swap gives
+    // the pointer to one caller only.
+    let all = unsafe { core::slice::from_raw_parts_mut(storage, FX_TOTAL_STORAGE_SAMPLES) };
+    let (a, b) = all.split_at_mut(FX_DECK_STORAGE_SAMPLES);
+    Some([a, b])
+}
+
 pub(crate) struct Prepared<File> {
     pub(crate) producers: [Producer<File>; 2],
     rings: [Box<[PcmFrame]>; 2],
+    #[cfg(feature = "deck-engine")]
+    fx: Box<[f32]>,
 }
 
 pub(crate) fn prepare<File>(
@@ -134,6 +158,8 @@ impl<File> Prepared<File> {
                 try_zeros(RING_STORAGE_FRAMES)?,
                 try_zeros(RING_STORAGE_FRAMES)?,
             ],
+            #[cfg(feature = "deck-engine")]
+            fx: try_zeros(FX_TOTAL_STORAGE_SAMPLES)?,
         })
     }
     /// Single SD owner publishes once, after every fallible allocation succeeds.
@@ -146,6 +172,8 @@ impl<File> Prepared<File> {
         if !install_ring(&rings[0], a) || !install_ring(&rings[1], b) {
             return None;
         }
+        #[cfg(feature = "deck-engine")]
+        FX_STORAGE.store(Box::leak(self.fx).as_mut_ptr(), Ordering::Release);
         Some(self.producers)
     }
 }

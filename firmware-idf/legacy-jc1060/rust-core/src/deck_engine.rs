@@ -307,6 +307,8 @@ impl Engine {
                     self.pitch[index(deck)] = value;
                 }
                 DeckEffect::JogNudge { deck, ticks } => self.nudge[index(deck)].add(ticks),
+                // The render graph reads the FX from the deck state per block.
+                DeckEffect::ApplyBeatFx { .. } | DeckEffect::ApplyPadFx { .. } => {}
                 DeckEffect::ScratchJog { deck, ticks, epoch } => {
                     if epoch == self.deck.deck(deck).scratch_epoch {
                         let i = index(deck);
@@ -356,6 +358,16 @@ impl Engine {
     /// The loop change for deck `i`'s reader, once.
     pub(crate) fn take_loop_command(&mut self, i: usize) -> Option<LoopCommand> {
         self.loop_command[i].take()
+    }
+
+    /// Each deck's Beat FX and Pad FX for the next render block.
+    pub(crate) fn fx_controls(&self) -> [ruzina_audio_runtime::fx::DeckFxControl; 2] {
+        ruzina_audio_runtime::fx::product_fx_controls(&self.deck)
+    }
+
+    /// The Beat FX On LED.
+    pub(crate) fn beat_fx_on(&self) -> bool {
+        self.deck.beat_fx().enabled
     }
 
     /// Each deck's Loop In and Loop Out LEDs: In from the press that marks
