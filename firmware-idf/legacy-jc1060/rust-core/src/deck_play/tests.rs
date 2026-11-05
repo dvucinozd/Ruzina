@@ -863,11 +863,11 @@ fn feed(ring: &Ring, from: u32, count: u32) {
     assert!(ring.push(&frames));
 }
 
-/// The source frame numbers of the next `count` frames the reader plays.
+/// The source frame numbers of the next `count` frames, before any crossfade.
 fn take(reader: &mut Reader, ring: &Ring, count: u32) -> Vec<u32> {
     let mut out = Vec::new();
     for _ in 0..count {
-        let frame = reader.pop(ring).expect("a frame");
+        let frame = reader.next_source_frame(ring).expect("a frame");
         out.push(frame.left as u32);
     }
     reader.commit(ring);
@@ -1050,4 +1050,94 @@ fn a_seek_past_the_loop_end_returns_to_the_loop() {
         [span(1_000, 1_200), span(1_000, 1_200), span(1_000, 1_100)].concat()
     );
     assert_eq!(reader.take_loop_miss(22), None);
+}
+
+/// The left channel of the next `count` frames as played.
+fn played(reader: &mut Reader, ring: &Ring, count: u32) -> Vec<i32> {
+    let frames: Vec<PcmFrame> = (0..count)
+        .map(|_| reader.pop(ring).expect("a frame"))
+        .collect();
+    reader.commit(ring);
+    frames.iter().map(|frame| i32::from(frame.left)).collect()
+}
+
+fn largest_step(samples: &[i32]) -> i32 {
+    samples
+        .windows(2)
+        .map(|pair| (pair[1] - pair[0]).abs())
+        .max()
+        .unwrap_or(0)
+}
+
+#[test]
+fn a_loop_wrap_crossfades_without_a_step_and_then_plays_exactly() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 8_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    assert_eq!(
+        played(&mut reader, ring, 2_000),
+        (0..2_000).collect::<Vec<i32>>()
+    );
+    // A ramp makes the raw wrap a step of 1000, from 1999 back to 1000.
+    reader.set_loop(1_000, 2_000);
+    let total = i32::from(LOOP_CROSSFADE_FRAMES);
+    let wrap = played(&mut reader, ring, LOOP_CROSSFADE_FRAMES as u32);
+    // It opens on the frame that would have followed the wrap, so nothing steps.
+    assert_eq!(wrap[0], 2_000);
+    assert!(
+        largest_step(&wrap) <= 1_000 / total + 2,
+        "{}",
+        largest_step(&wrap)
+    );
+    // After the fade the loop plays its exact frames, up to the next wrap.
+    let exact = played(&mut reader, ring, 1_000 - LOOP_CROSSFADE_FRAMES as u32);
+    assert_eq!(exact, (1_000 + total..2_000).collect::<Vec<i32>>());
+    // Every later wrap is the same: the history keeps the raw frames.
+    let again = played(&mut reader, ring, LOOP_CROSSFADE_FRAMES as u32);
+    assert_eq!(again, wrap);
+    // The ring still waits at the loop end, and exit plays on from it.
+    assert_eq!(reader.buffered(ring), 6_000);
+    reader.clear_loop();
+    let rest = played(&mut reader, ring, 1_000 - LOOP_CROSSFADE_FRAMES as u32);
+    assert_eq!(rest, (1_000 + total..2_000).collect::<Vec<i32>>());
+    assert_eq!(
+        played(&mut reader, ring, 10),
+        (2_000..2_010).collect::<Vec<i32>>()
+    );
+}
+
+#[test]
+fn a_short_loop_crossfades_over_half_its_length() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    played(&mut reader, ring, 1_100);
+    reader.set_loop(1_000, 1_100);
+    let wrap = played(&mut reader, ring, 100);
+    assert!(
+        largest_step(&wrap) <= 100 / 50 + 2,
+        "{}",
+        largest_step(&wrap)
+    );
+    assert_eq!(&wrap[50..], (1_050..1_100).collect::<Vec<i32>>());
+}
+
+#[test]
+fn a_wrap_at_the_end_of_the_track_fades_from_the_last_frame() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    ring.end();
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    played(&mut reader, ring, 4_000);
+    // No audio follows the wrap point: the last frame played is held.
+    reader.set_loop(2_000, 50_000);
+    let wrap = played(&mut reader, ring, LOOP_CROSSFADE_FRAMES as u32);
+    assert_eq!(wrap[0], 3_999);
+    assert!(largest_step(&wrap) <= 2_000 / i32::from(LOOP_CROSSFADE_FRAMES) + 2);
 }

@@ -30,11 +30,11 @@
   sample-identical to a linear decode on the host. On the board, seeks were
   checked for regressions, and the owner said they were fine ("Sve OK").
 - **Loops (2026-11-05):** [seamless loops from a played-audio history](reviews/2026-11-05-loops.md)
-  in PSRAM. 4 BEAT/EXIT, IN, OUT, halve and double reached the engine on deck 1
-  of the FLX4, and the owner heard the section repeat. Beat Loop pads and deck 2
-  have not been tried on the device.
-- **On the board:** app `d4a4511b…` (production with loops, before the untagged VBR seeks and the loop-end fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..28}-*-flash`.
+  in PSRAM, with a 5.8 ms crossfade at the wrap. On the FLX4 the owner heard the
+  section repeat with no click, on both decks. Beat Loop pads have not been
+  tried on the device.
+- **On the board:** app `715c006c…` (production with loops and the wrap crossfade; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..30}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
