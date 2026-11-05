@@ -992,3 +992,68 @@ fn a_loop_older_than_the_history_is_reported() {
     take(&mut reader, ring, 600);
     assert_eq!(reader.take_loop_miss(2), Some(2));
 }
+
+#[test]
+fn a_loop_end_past_the_end_of_the_track_wraps_at_the_last_frame() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    ring.end();
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 3_800);
+    // 4 BEAT near the end of the track: the loop end is never reached.
+    reader.set_loop(2_000, 50_000);
+    assert_eq!(
+        take(&mut reader, ring, 4_200),
+        [span(3_800, 4_000), span(2_000, 4_000), span(2_000, 4_000)].concat()
+    );
+    assert!(reader.looping());
+    // Exit: the rest of the history, then the track finishes.
+    assert_eq!(take(&mut reader, ring, 100), span(2_000, 2_100));
+    reader.clear_loop();
+    assert_eq!(take(&mut reader, ring, 1_900), span(2_100, 4_000));
+    assert!(!reader.looping());
+    assert_eq!(reader.pop(ring), None);
+}
+
+#[test]
+fn a_loop_set_at_the_very_end_lets_the_track_finish() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    ring.end();
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 3_900);
+    reader.set_loop(3_900, 50_000);
+    assert_eq!(take(&mut reader, ring, 100), span(3_900, 4_000));
+    assert_eq!(reader.pop(ring), None);
+    assert!(!reader.looping());
+}
+
+#[test]
+fn a_seek_past_the_loop_end_returns_to_the_loop() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 1_100);
+    reader.set_loop(1_000, 1_200);
+    // Beat Jump past the loop end: a new epoch, without the loop start.
+    ring.restart_at(44_100, 3_000);
+    feed(ring, 3_000, 4_000);
+    assert!(reader.sync(ring));
+    assert_eq!(take(&mut reader, ring, 10), span(3_000, 3_010));
+    assert_eq!(reader.take_loop_miss(22), Some(22));
+    // The engine's seek to the start: from there the loop replays.
+    ring.restart_at(44_100, 1_000);
+    feed(ring, 1_000, 4_000);
+    assert!(reader.sync(ring));
+    assert_eq!(
+        take(&mut reader, ring, 500),
+        [span(1_000, 1_200), span(1_000, 1_200), span(1_000, 1_100)].concat()
+    );
+    assert_eq!(reader.take_loop_miss(22), None);
+}

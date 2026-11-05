@@ -37,6 +37,10 @@ pub(crate) const HISTORY_FRAMES: u32 = 1 << 20;
 /// Source frames a loop start may lie before the history after a seek to it
 /// (millisecond rounding).
 const LOOP_START_SLACK: u32 = 2;
+/// The shortest loop that may wrap at the end of a track, in source frames
+/// (about 23 ms): a loop set in the last moments lets the track finish
+/// instead of buzzing on a few frames.
+const LOOP_MIN_FRAMES_AT_END: u32 = 1024;
 /// One deck's ring and history storage, in frames.
 pub(crate) const RING_STORAGE_FRAMES: usize = (RING_FRAMES + HISTORY_FRAMES) as usize;
 
@@ -353,10 +357,20 @@ impl Reader {
         self.loop_frames = None;
     }
 
-    /// While a loop is set, or the history is still replaying one.
+    /// Whether a loop can go on at the end of the track: its start lies far
+    /// enough before the last frame.
+    fn loop_wraps_at_end(&self, start: u32) -> bool {
+        start.saturating_add(LOOP_MIN_FRAMES_AT_END) <= self.position
+    }
+
+    /// While audio remains after the ring ran out: the history is replaying,
+    /// or a loop will wrap. A loop that cannot wrap lets the track finish.
     #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
-    pub(crate) const fn looping(&self) -> bool {
-        self.loop_frames.is_some() || self.replay.is_some()
+    pub(crate) fn looping(&self) -> bool {
+        self.replay.is_some()
+            || self
+                .loop_frames
+                .is_some_and(|(start, _)| self.loop_wraps_at_end(start))
     }
 
     /// The loop start in milliseconds, once, after a loop end was reached
@@ -393,8 +407,14 @@ impl Reader {
     }
 
     pub(crate) fn pop(&mut self, ring: &Ring) -> Option<PcmFrame> {
+        // At the loop end, or past it after a seek there; or at the end of the
+        // track, when the loop end lies beyond it and can never be reached.
         if let Some((start, end)) = self.loop_frames
-            && self.cursor() == end
+            && (self.cursor() >= end
+                || (self.replay.is_none()
+                    && self.tail == ring.head.load(Ordering::Acquire)
+                    && self.loop_wraps_at_end(start)
+                    && self.ended(ring)))
         {
             self.wrap(start);
         }
