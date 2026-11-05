@@ -48,6 +48,8 @@ struct State {
     /// The Loop In and Out LEDs' last state, per deck.
     #[cfg(feature = "deck-engine")]
     loop_leds: [(bool, bool); 2],
+    #[cfg(feature = "deck-engine")]
+    beat_fx_led: bool,
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
@@ -160,6 +162,8 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     playing: [false; 2],
     #[cfg(feature = "deck-engine")]
     loop_leds: [(false, false); 2],
+    #[cfg(feature = "deck-engine")]
+    beat_fx_led: false,
     headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
@@ -185,8 +189,14 @@ impl State {
     /// The Play LEDs follow the deck engine's confirmed playback, and the
     /// Loop In and Out LEDs its marked start and active loop.
     fn sync_play_leds(&mut self) {
-        let (playing, loop_leds) =
-            crate::deck_mix::with(|mix| (mix.engine().playing(), mix.engine().loop_leds()));
+        let (playing, loop_leds, beat_fx) = crate::deck_mix::with(|mix| {
+            let engine = mix.engine();
+            (engine.playing(), engine.loop_leds(), engine.beat_fx_on())
+        });
+        if self.beat_fx_led != beat_fx {
+            self.beat_fx_led = beat_fx;
+            self.led(SemanticLedId::BEAT_FX_ON, None, beat_fx);
+        }
         for (slot, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
             if self.playing[slot] != playing[slot] {
                 self.playing[slot] = playing[slot];
@@ -213,6 +223,7 @@ impl State {
 pub extern "C" fn ruzina_legacy_midi_refresh() {
     crate::deck_mix::with(|mix| {
         mix.tick();
+        mix.attach_fx();
         // The soak DJ runs here, outside the USB audio fill's stack chain.
         #[cfg(feature = "soak-autoplay")]
         mix.engine().autoplay();
@@ -335,6 +346,7 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         #[cfg(feature = "deck-engine")]
         {
             state.loop_leds = [(false, false); 2];
+            state.beat_fx_led = false;
         }
         state.headphone = None;
         state.out_len = 0;

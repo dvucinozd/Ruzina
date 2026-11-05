@@ -1103,3 +1103,216 @@ fn the_jog_scratches_a_playing_and_a_paused_deck_and_release_plays_on() {
     assert_eq!(mix.engine().playing(), [false, false]);
     assert_eq!(run(&mut mix, 3), 0);
 }
+
+/// Gives the mix's render graph its effect memory.
+fn attach_fx(mix: &mut Mix) {
+    use ruzina_audio_runtime::fx::FX_TOTAL_STORAGE_SAMPLES;
+    let storage = std::vec![0.0_f32; FX_TOTAL_STORAGE_SAMPLES].leak();
+    crate::deck_resources::FX_STORAGE
+        .store(storage.as_mut_ptr(), core::sync::atomic::Ordering::Release);
+    mix.attach_fx();
+}
+
+fn system_press(mix: &mut Mix, control: SemanticControl) {
+    for pressed in [true, false] {
+        mix.control(&ControlEvent {
+            deck: None,
+            control,
+            value: ControlValue::Pressed(pressed),
+        });
+    }
+}
+
+/// Deck 1 loaded and playing a source that `Tone::feed` keeps going.
+fn playing_mix() -> Mix {
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    attach_fx(&mut mix);
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 11,
+            bpm_x100: 24_000,
+            track_id: [11; 16],
+        },
+    );
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    mix
+}
+
+/// Packets until the deck has played what `serve` put in front of the tone.
+const TONE_AFTER_PACKETS: usize = 450;
+
+/// A 1 kHz tone, pushed as fast as a 48 kHz deck plays it.
+struct Tone(u32);
+impl Tone {
+    fn feed(&mut self) {
+        let frames: std::vec::Vec<PcmFrame> = (0..48)
+            .map(|_| {
+                let angle = self.0 as f32 * 2.0 * core::f32::consts::PI / 48.0;
+                self.0 = (self.0 + 1) % 48;
+                let value = (8_000.0 * angle.sin()) as i16;
+                PcmFrame {
+                    left: value,
+                    right: value,
+                }
+            })
+            .collect();
+        assert!(RINGS[0].push(&frames));
+    }
+
+    /// Plays `packets` 1 ms packets; returns MAIN's left channel.
+    fn play(&mut self, mix: &mut Mix, packets: usize) -> std::vec::Vec<i32> {
+        let (mut main, mut headphones) = ([PcmFrame::default(); 48], [PcmFrame::default(); 48]);
+        let mut out = std::vec::Vec::new();
+        for _ in 0..packets {
+            self.feed();
+            mix.fill(&mut main, &mut headphones, 48_000, [false, false]);
+            out.extend(main.iter().map(|frame| i32::from(frame.left)));
+        }
+        out
+    }
+}
+
+fn largest_step(samples: &[i32]) -> i32 {
+    samples
+        .windows(2)
+        .map(|pair| (pair[1] - pair[0]).abs())
+        .max()
+        .unwrap_or(0)
+}
+
+fn peak(samples: &[i32]) -> i32 {
+    samples.iter().map(|v| v.abs()).max().unwrap_or(0)
+}
+
+/// A clean 1 kHz tone steps by 13 % of its peak per sample; a click steps by far
+/// more, whatever the effect does to the level.
+fn assert_smooth(samples: &[i32], what: &str) {
+    let (step, level) = (largest_step(samples), peak(samples));
+    assert!(step * 10 < level * 3, "{what}: step {step} of peak {level}");
+}
+
+#[test]
+fn beat_fx_echo_rings_on_after_the_deck_stops_and_counts_nothing_as_unsupported() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = playing_mix();
+    let unsupported = mix.engine().counters()[0];
+    let mut tone = Tone(0);
+    tone.play(&mut mix, 200);
+    // Without an effect, a paused deck is silent at once.
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 3);
+    assert_eq!(peak(&tone_silent(&mut mix, 20)), 0);
+    press(&mut mix, SemanticControl::Play, true);
+    tone.play(&mut mix, 50);
+    system_press(&mut mix, SemanticControl::BeatFxSelectNext);
+    system_press(&mut mix, SemanticControl::BeatFxOn);
+    assert!(mix.engine().beat_fx_on());
+    tone.play(&mut mix, 400);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 3);
+    assert!(peak(&tone_silent(&mut mix, 200)) > 100, "the echo rings on");
+    // Clear ends it, and the LED follows.
+    system_press(&mut mix, SemanticControl::BeatFxClear);
+    assert!(!mix.engine().beat_fx_on());
+    run(&mut mix, 3);
+    assert_eq!(peak(&tone_silent(&mut mix, 20)), 0);
+    assert_eq!(mix.engine().counters()[0], unsupported);
+}
+
+/// Plays `packets` with no source frames added; returns MAIN's left channel.
+fn tone_silent(mix: &mut Mix, packets: usize) -> std::vec::Vec<i32> {
+    let (mut main, mut headphones) = ([PcmFrame::default(); 48], [PcmFrame::default(); 48]);
+    let mut out = std::vec::Vec::new();
+    for _ in 0..packets {
+        mix.fill(&mut main, &mut headphones, 48_000, [false, false]);
+        out.extend(main.iter().map(|frame| i32::from(frame.left)));
+    }
+    out
+}
+
+#[test]
+fn pad_fx_reach_the_audio_while_held() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = playing_mix();
+    let unsupported = mix.engine().counters()[0];
+    let mut tone = Tone(0);
+    tone.play(&mut mix, TONE_AFTER_PACKETS);
+    let dry = peak(&tone.play(&mut mix, 100)[2_400..]);
+    assert!(dry > 0);
+    press(&mut mix, SemanticControl::PadModePadFx1, true);
+    let pad = |pad, pressed| {
+        event(
+            SemanticControl::PadAction,
+            ControlValue::PadAction(PadAction {
+                pad,
+                mode: PadMode::PadFx1,
+                shifted: false,
+                pressed,
+            }),
+        )
+    };
+    for number in 0..8 {
+        mix.control(&pad(number, true));
+        assert!(deck(&mut mix).active_pad_fx.is_some(), "pad {number}");
+        let held = tone.play(&mut mix, 700);
+        let level = peak(&held[held.len() - 2_400..]);
+        mix.control(&pad(number, false));
+        assert!(deck(&mut mix).active_pad_fx.is_none(), "pad {number}");
+        let released = tone.play(&mut mix, 100);
+        tone.play(&mut mix, 2_100);
+        // Pads 0 to 3 have effects; the filter pads may lower or raise a 1 kHz
+        // tone, and the echoes raise it once they repeat.
+        if number < 4 {
+            assert!(
+                level.abs_diff(dry) > dry as u32 / 20,
+                "pad {number}: {level}"
+            );
+        } else {
+            assert_eq!(level, dry, "pad {number}");
+        }
+        assert_smooth(&held, "pad press");
+        assert_smooth(&released, "pad release");
+    }
+    assert_eq!(mix.engine().counters()[0], unsupported);
+}
+
+#[test]
+fn turning_each_beat_fx_on_and_off_does_not_click() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = playing_mix();
+    let mut tone = Tone(0);
+    tone.play(&mut mix, TONE_AFTER_PACKETS);
+    let dry = peak(&tone.play(&mut mix, 100)[2_400..]);
+    assert_smooth(&tone.play(&mut mix, 100), "plain");
+    for (effect, changes_level) in [
+        ("filter", true),
+        ("echo", true),
+        ("flanger", true),
+        ("delay", true),
+    ] {
+        system_press(&mut mix, SemanticControl::BeatFxOn);
+        let on = tone.play(&mut mix, 400);
+        // Before the first repeat of the time effects, which arrives whole.
+        assert_smooth(&on[..9_600], effect);
+        // One beat at 240 BPM is 250 ms, so the time effects have repeated.
+        let level = peak(&on[on.len() - 4_800..]);
+        assert_eq!(
+            level.abs_diff(dry) > dry as u32 / 20,
+            changes_level,
+            "{effect}: {level}"
+        );
+        system_press(&mut mix, SemanticControl::BeatFxOn);
+        // The fade and the tail end inside one second.
+        assert_smooth(&tone.play(&mut mix, 100), effect);
+        tone.play(&mut mix, 2_000);
+        system_press(&mut mix, SemanticControl::BeatFxSelectNext);
+    }
+}

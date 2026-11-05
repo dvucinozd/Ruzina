@@ -2,7 +2,7 @@
 use crate::{BeatFxDeckConfig, BeatFxFilterConfig};
 use ruzina_audio_dsp::{
     DelayConfig, DelayFx, DelayMode, DspFrame, FilterState, FlangerConfig, FlangerFx, PadFx,
-    PadFxConfig, PadFxMode,
+    PadFxConfig, PadFxMode, WetFade,
 };
 
 pub const FX_SAMPLE_RATE: u32 = 48_000;
@@ -93,6 +93,7 @@ pub struct FxBufferError;
 pub(crate) struct DeckFx<'a> {
     pad: PadFx<'a>,
     filter: FilterState,
+    filter_fade: WetFade,
     delay: DelayFx<'a>,
     flanger: FlangerFx<'a>,
     scope: Option<(u32, u32)>,
@@ -112,6 +113,7 @@ impl<'a> DeckFx<'a> {
         Ok(Self {
             pad: PadFx::new(FX_SAMPLE_RATE, pad_l, pad_r),
             filter: FilterState::new(FX_SAMPLE_RATE),
+            filter_fade: WetFade::new(),
             delay: DelayFx::new(delay_l, delay_r, FX_SAMPLE_RATE),
             flanger: FlangerFx::new(flanger_l, flanger_r, FX_SAMPLE_RATE),
             scope: None,
@@ -122,6 +124,7 @@ impl<'a> DeckFx<'a> {
     fn reset_beat(&mut self) {
         self.filter.reset();
         self.filter.set_raw(8192);
+        self.filter_fade.reset();
         self.delay.configure(DelayConfig::default());
         self.delay.reset();
         self.flanger.configure(FlangerConfig::default());
@@ -153,10 +156,10 @@ impl<'a> DeckFx<'a> {
             self.reset_beat();
         }
         if control.beat_selected {
-            if previous.is_some_and(|p| p.beat.filter.enabled && !control.beat.filter.enabled) {
-                self.filter.reset();
+            // Turning off keeps the last position through the fade.
+            if control.beat.filter.enabled {
+                self.filter.set_raw(control.beat.filter.raw);
             }
-            self.filter.set_raw(control.beat.filter.raw);
             self.delay.configure(control.beat.time);
             self.flanger.configure(control.beat.flanger);
         }
@@ -183,7 +186,15 @@ impl<'a> DeckFx<'a> {
         }
         let mut out = self.pad.process_frame(input);
         if let Some(control) = self.control.filter(|c| c.beat_selected) {
-            out = self.filter.process_frame(control.beat.filter.enabled, out);
+            let on = control.beat.filter.enabled;
+            if on || !self.filter_fade.is_dry() {
+                let wet = self.filter.process_frame(true, out);
+                out = self.filter_fade.apply(on, out, wet);
+                if self.filter_fade.is_dry() {
+                    // Off, or on but just started: a clean state either way.
+                    self.filter.reset();
+                }
+            }
             out = self.delay.process_frame(out);
             out = self.flanger.process_frame(out);
         }

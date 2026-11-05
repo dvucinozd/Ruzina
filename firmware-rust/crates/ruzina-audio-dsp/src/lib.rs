@@ -1034,13 +1034,16 @@ impl<'a> FlangerFx<'a> {
     }
 
     pub fn process_frame(&mut self, input: DspFrame) -> DspFrame {
-        if !self.allocated || !self.config.enabled {
+        // After turning off the wet level falls to zero, because cutting it
+        // outright clicks.
+        let on = self.config.enabled;
+        if !self.allocated || (!on && self.wet_cur_q15 == 0) {
             return input;
         }
 
-        let wet_target = ((self.config.depth_q15 as u32 * FLANGER_WET_MAX_Q15 as u32) >> 15) as u16;
-        let feedback_target =
-            ((self.config.depth_q15 as u32 * FLANGER_FB_MAX_Q15 as u32) >> 15) as u16;
+        let depth_q15 = if on { self.config.depth_q15 as u32 } else { 0 };
+        let wet_target = ((depth_q15 * FLANGER_WET_MAX_Q15 as u32) >> 15) as u16;
+        let feedback_target = ((depth_q15 * FLANGER_FB_MAX_Q15 as u32) >> 15) as u16;
         self.wet_cur_q15 = smooth_q15(self.wet_cur_q15, wet_target);
         self.feedback_cur_q15 = smooth_q15(self.feedback_cur_q15, feedback_target);
 
@@ -1225,8 +1228,50 @@ const fn pad_fx_preset(mode: PadFxMode, pad: u8) -> PadFxPreset {
     }
 }
 
+/// Frames of the wet/dry fade when a filter effect turns on or off, 5.3 ms at
+/// 48 kHz. Switching outright clicks: the filtered signal is phase-shifted from
+/// the dry one, and a low-pass restarts from empty state.
+pub const FILTER_FADE_FRAMES: u32 = 256;
+
+/// The wet/dry position of a filter effect that turns on and off.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct WetFade {
+    mix: f32,
+}
+
+impl WetFade {
+    pub const fn new() -> Self {
+        Self { mix: 0.0 }
+    }
+
+    pub fn reset(&mut self) {
+        self.mix = 0.0;
+    }
+
+    /// Whether the effect is entirely out of the signal.
+    pub fn is_dry(&self) -> bool {
+        self.mix <= 0.0
+    }
+
+    /// One frame toward fully `on`; returns the crossfaded frame.
+    pub fn apply(&mut self, on: bool, dry: DspFrame, wet: DspFrame) -> DspFrame {
+        let step = 1.0 / FILTER_FADE_FRAMES as f32;
+        self.mix = if on {
+            (self.mix + step).min(1.0)
+        } else {
+            (self.mix - step).max(0.0)
+        };
+        DspFrame {
+            left: dry.left + (wet.left - dry.left) * self.mix,
+            right: dry.right + (wet.right - dry.right) * self.mix,
+        }
+    }
+}
+
 pub struct PadFx<'a> {
     filter: FilterState,
+    filter_fade: WetFade,
+    filter_tail_active: bool,
     echo: DelayFx<'a>,
     sample_rate: u32,
     config: PadFxConfig,
@@ -1245,6 +1290,8 @@ impl<'a> PadFx<'a> {
         };
         Self {
             filter: FilterState::new(sample_rate),
+            filter_fade: WetFade::new(),
+            filter_tail_active: false,
             echo: DelayFx::new(echo_left, echo_right, sample_rate),
             sample_rate,
             config: PadFxConfig::default(),
@@ -1263,6 +1310,8 @@ impl<'a> PadFx<'a> {
         self.config.active = false;
         self.filter.set_raw(FILTER_RAW_CENTER);
         self.filter.reset();
+        self.filter_fade.reset();
+        self.filter_tail_active = false;
         self.echo.configure(DelayConfig::default());
         self.echo.reset();
     }
@@ -1275,6 +1324,13 @@ impl<'a> PadFx<'a> {
                     self.config.active = false;
                     self.echo_tail_active = true;
                     self.echo_tail_frames_remaining = self.sample_rate.saturating_mul(2);
+                    return;
+                }
+                if self.kind == PadFxKind::Filter {
+                    self.active = false;
+                    self.config.active = false;
+                    self.kind = PadFxKind::None;
+                    self.filter_tail_active = true;
                     return;
                 }
                 self.reset();
@@ -1325,7 +1381,16 @@ impl<'a> PadFx<'a> {
 
     pub fn process_frame(&mut self, input: DspFrame) -> DspFrame {
         if self.active && self.kind == PadFxKind::Filter {
-            return self.filter.process_frame(true, input);
+            let wet = self.filter.process_frame(true, input);
+            return self.filter_fade.apply(true, input, wet);
+        }
+        if self.filter_tail_active {
+            let wet = self.filter.process_frame(true, input);
+            let out = self.filter_fade.apply(false, input, wet);
+            if self.filter_fade.is_dry() {
+                self.reset();
+            }
+            return out;
         }
         if self.active && self.kind == PadFxKind::Echo {
             return self.echo.process_frame(input);

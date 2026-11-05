@@ -37,8 +37,12 @@
   about 24 s back and 1.5 s forward, with 5.8 ms fades. On the FLX4 the owner
   heard no click and the speed follows the hand, also on a paused deck and in a
   loop. 1024 ticks per turn is an estimate.
-- **On the board:** app `7c1c7c86…` (production with loops, reloop and scratch; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..34}-*-flash`.
+- **Beat FX and Pad FX (2026-11-05):** [connected to the render graph](reviews/2026-11-05-fx.md),
+  with 1.5 MB of PSRAM and short fades so filters do not click. The owner tried
+  them on the FLX4 ("Radi"). Delay, turning Beat FX off, Pad FX bank 2 and the
+  channel switch are not in the device log.
+- **On the board:** app `c4280a75…` (production with loops, reloop, scratch and FX; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..35}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**

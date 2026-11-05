@@ -79,6 +79,15 @@ impl Mix {
         &mut self.engine
     }
 
+    /// Moves to the render graph with effects once the SD owner published
+    /// their memory, before any track can load. Outside the USB audio fill.
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn attach_fx(&mut self) {
+        if let Some(storage) = crate::deck_resources::take_fx_storage() {
+            self.graph = FixedRateRenderGraph::with_fx(storage).ok();
+        }
+    }
+
     fn start(&mut self) {
         if self.started {
             return;
@@ -122,6 +131,8 @@ impl Mix {
         let mut control = RenderControl::idle();
         control.master_gain = gains.master;
         control.headphones = self.mixer.headphone_gains();
+        #[cfg(feature = "deck-engine")]
+        let fx = self.engine.fx_controls();
         for (index, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
             let mixer_deck = self.mixer.deck(deck);
             let rate = self.readers[index].rate();
@@ -147,6 +158,10 @@ impl Mix {
                 pfl_enabled: mixer_deck.pfl_enabled,
                 ..RenderDeckControl::idle()
             };
+            #[cfg(feature = "deck-engine")]
+            {
+                control.decks[index].fx = fx[index];
+            }
         }
         control
     }
