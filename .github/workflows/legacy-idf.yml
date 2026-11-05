@@ -50,7 +50,11 @@ jobs:
           done
   legacy:
     runs-on: ubuntu-latest
+    env:
+      IDF_COMMIT: fff9895c82d744c7237be8847347bdd1b07c6643
     strategy:
+      # One variant's infrastructure failure must not cancel the others.
+      fail-fast: false
       matrix:
         variant: [pure-ram, flash-build-only, memory-task, display-touch, sd-readonly, sd-file-readonly, sd-rust-bridge, sd-rust-exfat, sd-rust-load, sd-rust-load-display, usb-host, usb-midi, deck-ui, deck-audio, deck-play, deck-mix, deck-engine]
         profile: [false]
@@ -75,12 +79,33 @@ jobs:
         run: |
           rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
           rustup target add --toolchain 1.95.0 riscv32imafc-unknown-none-elf
+      # The downloaded tool archives only: install.sh verifies each archive's
+      # checksum and unpacks it, and builds its Python environment every run.
+      - name: IDF tool archives
+        uses: actions/cache@v4
+        with:
+          path: ~/.espressif/dist
+          key: idf-dist-${{ runner.os }}-${{ env.IDF_COMMIT }}-esp32p4
       - name: Pinned IDF
+        shell: bash
         run: |
-          git clone --no-checkout https://github.com/espressif/esp-idf.git "$RUNNER_TEMP/idf"
-          git -C "$RUNNER_TEMP/idf" checkout fff9895c82d744c7237be8847347bdd1b07c6643
-          git -C "$RUNNER_TEMP/idf" submodule update --init --recursive
-          "$RUNNER_TEMP/idf/install.sh" esp32p4
+          # GitHub downloads fail now and then, on a different file each time.
+          retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              "$@" && return 0
+              [ "$attempt" = 3 ] || { echo "::warning::attempt $attempt failed: $*"; sleep $((attempt * 60)); }
+            done
+            return 1
+          }
+          fresh_clone() {
+            rm -rf "$RUNNER_TEMP/idf"
+            git clone --no-checkout https://github.com/espressif/esp-idf.git "$RUNNER_TEMP/idf"
+          }
+          retry fresh_clone
+          git -C "$RUNNER_TEMP/idf" checkout "$IDF_COMMIT"
+          retry git -C "$RUNNER_TEMP/idf" submodule update --init --recursive
+          retry "$RUNNER_TEMP/idf/install.sh" esp32p4
       - name: Offline tests and fresh build
         shell: bash
         run: |
