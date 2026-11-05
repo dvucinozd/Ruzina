@@ -346,6 +346,7 @@ impl Reader {
     }
 
     /// Whether the jog gesture owns this deck's audio.
+    #[cfg_attr(not(feature = "deck-mix"), allow(dead_code))]
     pub(crate) const fn scratching(&self) -> bool {
         self.scratch.is_some()
     }
