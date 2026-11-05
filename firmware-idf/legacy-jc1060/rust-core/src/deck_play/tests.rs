@@ -1141,3 +1141,239 @@ fn a_wrap_at_the_end_of_the_track_fades_from_the_last_frame() {
     assert_eq!(wrap[0], 3_999);
     assert!(largest_step(&wrap) <= 2_000 / i32::from(LOOP_CROSSFADE_FRAMES) + 2);
 }
+
+/// Plays `samples` output frames of a gesture, moving the platter `ticks` per
+/// 256 frames; returns the left channel. Three ticks are about normal speed.
+fn scratched(reader: &mut Reader, ring: &Ring, samples: u32, ticks: i16) -> Vec<i32> {
+    let mut out = Vec::new();
+    for sample in 0..samples {
+        if sample % 256 == 0 {
+            reader.scratch_jog(ticks);
+        }
+        out.push(i32::from(
+            reader.pop(ring).expect("a gesture never starves").left,
+        ));
+    }
+    reader.commit(ring);
+    out
+}
+
+/// Frames of the fade each change of audio takes.
+const FADE: usize = LOOP_CROSSFADE_FRAMES as usize;
+
+#[test]
+fn a_held_jog_fades_to_silence_and_release_resumes_where_it_was() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 8_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 1_000);
+    let buffered = reader.buffered(ring);
+    reader.begin_scratch(true);
+    assert!(reader.scratching() && reader.looping());
+    let held = scratched(&mut reader, ring, 2_000, 0);
+    assert!(held[0] != 0, "fades out");
+    assert!(held[FADE..].iter().all(|v| *v == 0));
+    assert_eq!(
+        reader.buffered(ring),
+        buffered,
+        "a held platter takes nothing"
+    );
+    assert_eq!(reader.position_ms(), 999 * 1000 / 44_100);
+    reader.end_scratch(true);
+    assert!(!reader.scratching());
+    assert_eq!(take(&mut reader, ring, 3), [999, 1_000, 1_001]);
+}
+
+#[test]
+fn a_backward_gesture_plays_the_history_in_reverse_and_release_plays_on_from_there() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 10_000);
+    reader.begin_scratch(true);
+    scratched(&mut reader, ring, FADE as u32, 0);
+    let played = scratched(&mut reader, ring, 4_096, -3);
+    let moving = &played[FADE + 256..];
+    assert!(
+        moving.windows(2).all(|pair| pair[1] <= pair[0]),
+        "runs backward"
+    );
+    assert!(moving[0] > 9_000, "{}", moving[0]);
+    let head = *moving.last().unwrap();
+    assert!((6_000..7_000).contains(&head), "{head}");
+    assert_eq!(reader.buffered(ring), 10_000, "the ring waits");
+    // The platter coasts to a stop, and the frames from the head on are exact.
+    let coast = scratched(&mut reader, ring, 4_096, 0);
+    assert_eq!(*coast.last().unwrap(), 0, "stopped");
+    let at = reader.cursor();
+    assert!((5_000..head as u32).contains(&at), "{at} from {head}");
+    reader.end_scratch(true);
+    let resumed = take(&mut reader, ring, 10_000 - at + 5);
+    assert_eq!(resumed, span(at, 10_005));
+}
+
+#[test]
+fn a_forward_gesture_takes_the_ring_and_release_plays_on_without_a_gap() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 1_000);
+    reader.begin_scratch(true);
+    scratched(&mut reader, ring, FADE as u32, 0);
+    let played = scratched(&mut reader, ring, 4_096, 3);
+    let moving = &played[FADE + 256..];
+    assert!(
+        moving.windows(2).all(|pair| pair[1] >= pair[0]),
+        "runs forward"
+    );
+    assert!(*moving.last().unwrap() > 4_000);
+    assert!(
+        reader.buffered(ring) < 19_000 - 3_000,
+        "the ring fed the gesture"
+    );
+    scratched(&mut reader, ring, 4_096, 0);
+    let at = reader.cursor();
+    reader.end_scratch(true);
+    assert_eq!(take(&mut reader, ring, 500), span(at, at + 500));
+}
+
+#[test]
+fn half_a_platter_turn_moves_half_a_turn_of_normal_play() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 30_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 30_000);
+    feed(ring, 30_000, 30_000);
+    take(&mut reader, ring, 30_000);
+    reader.begin_scratch(false);
+    // 512 ticks, about 3 per 256 frames: 0.9 s of a 44.1 kHz track.
+    for _ in 0..170 {
+        scratched(&mut reader, ring, 256, -3);
+    }
+    scratched(&mut reader, ring, 2_048, 0);
+    let moved = 60_000 - reader.cursor();
+    assert!(moved.abs_diff(39_690) < 1_500, "{moved}");
+}
+
+#[test]
+fn a_gesture_stops_at_both_edges_of_the_audio() {
+    let ring = ring();
+    ring.restart_at(44_100, 1_000);
+    feed(ring, 1_000, 500);
+    ring.end();
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 200);
+    reader.begin_scratch(false);
+    // Far backward: never before this epoch's first frame.
+    let back = scratched(&mut reader, ring, 4_096, -12);
+    assert!(back.iter().all(|v| *v < 1_500));
+    assert_eq!(*back.last().unwrap(), 0, "silent at the edge");
+    assert!(reader.cursor() <= 1_001);
+    // Far forward: never past the last frame of the track.
+    let forward = scratched(&mut reader, ring, 8_192, 12);
+    assert!(forward.iter().all(|v| *v < 1_500));
+    assert_eq!(*forward.last().unwrap(), 0, "silent at the edge");
+    assert!(reader.cursor() >= 1_498);
+    assert_eq!(reader.buffered(ring), 0);
+    assert!(
+        reader.looping(),
+        "the jog keeps a finished track from stopping"
+    );
+    reader.end_scratch(true);
+}
+
+#[test]
+fn a_new_source_ends_the_gesture_and_a_released_loop_still_wraps() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 8_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 3_000);
+    reader.set_loop(2_000, 3_000);
+    reader.begin_scratch(true);
+    scratched(&mut reader, ring, 2_048, -3);
+    scratched(&mut reader, ring, 4_096, 0);
+    let at = reader.cursor();
+    assert!(at < 2_000, "scratched back past the loop start: {at}");
+    // Release before the loop: it plays up to the end and wraps as usual.
+    reader.end_scratch(true);
+    let until_end = 3_000 - at;
+    assert_eq!(take(&mut reader, ring, until_end), span(at, 3_000));
+    // The loop start stays in this epoch's history, so the wrap replays it.
+    assert_eq!(take(&mut reader, ring, 100), span(2_000, 2_100));
+    reader.begin_scratch(true);
+    ring.restart_at(44_100, 6_000);
+    feed(ring, 6_000, 100);
+    assert!(reader.sync(ring));
+    assert!(!reader.scratching());
+    assert_eq!(reader.position_ms(), 6_000 * 1000 / 44_100);
+}
+
+#[test]
+fn touch_stop_turn_and_release_never_step_the_audio() {
+    let ring = ring();
+    ring.restart_at(44_100, 10_000);
+    feed(ring, 10_000, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    let mut out = played(&mut reader, ring, 5_000);
+    // A hard edge here would step by about 15 000.
+    reader.begin_scratch(true);
+    out.extend(scratched(&mut reader, ring, 1_024, 0));
+    assert_eq!(*out.last().unwrap(), 0, "silent while held");
+    out.extend(scratched(&mut reader, ring, 2_048, -3));
+    out.extend(scratched(&mut reader, ring, 4_096, 0));
+    assert_eq!(*out.last().unwrap(), 0, "silent after the platter stopped");
+    // Release from silence.
+    reader.end_scratch(true);
+    out.extend(played(&mut reader, ring, 1_024));
+    assert!(*out.last().unwrap() != 0);
+    // Touch and turn at once, then release while the platter moves.
+    reader.begin_scratch(true);
+    out.extend(scratched(&mut reader, ring, 2_048, 3));
+    reader.end_scratch(true);
+    out.extend(played(&mut reader, ring, 1_024));
+    assert!(largest_step(&out) < 100, "{}", largest_step(&out));
+}
+
+#[test]
+fn a_paused_deck_starts_from_silence_and_fades_before_it_stops() {
+    let ring = ring();
+    ring.restart_at(44_100, 10_000);
+    feed(ring, 10_000, 8_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    played(&mut reader, ring, 3_000);
+    // The last frame played is long gone when a paused deck is touched.
+    reader.begin_scratch(false);
+    assert!(scratched(&mut reader, ring, 256, 0).iter().all(|v| *v == 0));
+    let mut out = scratched(&mut reader, ring, 1_024, -3);
+    assert!(*out.last().unwrap() != 0);
+    let mut blocks = 0;
+    loop {
+        reader.end_scratch(false);
+        if !reader.scratching() {
+            break;
+        }
+        out.extend(scratched(&mut reader, ring, 128, 0));
+        blocks += 1;
+        assert!(blocks < 5, "ends after its fade");
+    }
+    assert!(
+        out.last().unwrap().abs() < 100,
+        "faded before the frames stop"
+    );
+    assert!(largest_step(&out) < 100, "{}", largest_step(&out));
+    let at = reader.cursor();
+    assert_eq!(take(&mut reader, ring, 50), span(at, at + 50));
+}

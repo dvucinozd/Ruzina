@@ -28,6 +28,7 @@ use ruzina_audio_runtime::wav::{
     CHUNK_HEADER_BYTES, PCM_FORMAT_BYTES, RIFF_HEADER_BYTES, WavPcm16Format,
     WavPcm16SourceDescriptor, parse_chunk_header, parse_pcm16_format, parse_riff_header,
 };
+use ruzina_audio_scratch::{ScratchConfig, ScratchState};
 
 /// Ring capacity in source frames: about 1.5 s at 44.1 kHz, 256 KiB of PSRAM.
 pub(crate) const RING_FRAMES: u32 = 1 << 16;
@@ -44,6 +45,12 @@ const LOOP_MIN_FRAMES_AT_END: u32 = 1024;
 /// Source frames a loop wrap crossfades over (about 5.8 ms at 44.1 kHz). The
 /// wrap is sample-exact, so without this the waveform steps and clicks.
 const LOOP_CROSSFADE_FRAMES: u16 = 256;
+/// Jog ticks in one turn of the FLX4 platter, as the device log suggests.
+const JOG_TICKS_PER_TURN: f32 = 1024.0;
+/// One platter turn at normal speed: a record at 33 1/3 rpm.
+const SECONDS_PER_TURN: f32 = 1.8;
+/// Frames a forward scratch keeps ready past its head, taken from the ring.
+const SCRATCH_LOOKAHEAD_FRAMES: f32 = 64.0;
 /// One deck's ring and history storage, in frames.
 pub(crate) const RING_STORAGE_FRAMES: usize = (RING_FRAMES + HISTORY_FRAMES) as usize;
 
@@ -276,12 +283,14 @@ struct Descriptor {
 /// fades out while the loop start fades in.
 #[derive(Clone, Copy)]
 struct LoopFade {
-    /// The source frame that would have played next without the wrap.
-    from: u32,
+    /// The source frame that would have played next without the wrap;
+    /// `None` fades the held frame instead.
+    from: Option<u32>,
     /// Frames left, and the fade's length.
     left: u16,
     total: u16,
-    /// The last outgoing frame found, held when none follows (track end).
+    /// The last outgoing frame found, held when none follows (track end, or
+    /// a fade that starts from whatever was playing).
     held: PcmFrame,
 }
 
@@ -311,6 +320,11 @@ pub(crate) struct Reader {
     fade: Option<LoopFade>,
     /// The last frame played, for a fade with nothing to fade out.
     last: PcmFrame,
+    /// The platter gesture while the jog is touched: frames then come from
+    /// the history around this head, and the ring only feeds it going forward.
+    scratch: Option<ScratchState>,
+    /// Whether the gesture's last frame was audio rather than silence.
+    scratch_audible: bool,
 }
 
 impl Reader {
@@ -326,12 +340,140 @@ impl Reader {
             loop_missed: false,
             fade: None,
             last: PcmFrame { left: 0, right: 0 },
+            scratch: None,
+            scratch_audible: false,
         }
     }
 
-    /// The source frame playing next: in the history, or from the ring.
+    /// Whether the jog gesture owns this deck's audio.
+    #[cfg_attr(not(feature = "deck-mix"), allow(dead_code))]
+    pub(crate) const fn scratching(&self) -> bool {
+        self.scratch.is_some()
+    }
+
+    /// The jog was touched: playback holds where it is, until the platter
+    /// moves. A deck that was `playing` fades out. Does nothing without a
+    /// source, or during a gesture.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn begin_scratch(&mut self, playing: bool) {
+        if self.rate == 0 || self.scratch.is_some() {
+            return;
+        }
+        let mut scratch = ScratchState::new();
+        scratch.configure(ScratchConfig {
+            frames_per_tick: self.rate as f32 * SECONDS_PER_TURN / JOG_TICKS_PER_TURN,
+            ..ScratchConfig::default()
+        });
+        let cursor = self.cursor();
+        let newest = self.position.saturating_sub(1);
+        scratch.seed(newest.saturating_sub(cursor) as f32);
+        self.scratch = Some(scratch);
+        self.scratch_audible = false;
+        self.fade = playing.then_some(LoopFade {
+            from: Some(cursor),
+            left: LOOP_CROSSFADE_FRAMES,
+            total: LOOP_CROSSFADE_FRAMES,
+            held: self.last,
+        });
+    }
+
+    /// Fades from the last frame played to whatever plays next.
+    fn fade_from_last(&mut self) {
+        self.fade = Some(LoopFade {
+            from: None,
+            left: LOOP_CROSSFADE_FRAMES,
+            total: LOOP_CROSSFADE_FRAMES,
+            held: self.last,
+        });
+    }
+
+    /// Platter movement in jog ticks; backward is negative.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn scratch_jog(&mut self, ticks: i16) {
+        if let Some(scratch) = &mut self.scratch {
+            scratch.jog(ticks);
+        }
+    }
+
+    /// The jog is not touched: playback continues from the head, through the
+    /// history and then the ring, as after a loop. A deck that will not play
+    /// on stops its platter here and ends once that faded out, because its
+    /// frames stop at once when the gesture ends. Called for every block.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn end_scratch(&mut self, playing: bool) {
+        let Some(scratch) = &mut self.scratch else {
+            return;
+        };
+        if !playing && (self.scratch_audible || self.fade.is_some()) {
+            scratch.seed(scratch.head_back());
+            return;
+        }
+        let at = self.cursor().max(self.history_from);
+        self.scratch = None;
+        self.replay = (at < self.position).then_some(at);
+        self.fade_from_last();
+    }
+
+    /// The source frame the gesture's head is on.
+    fn scratch_cursor(&self, scratch: &ScratchState) -> u32 {
+        self.position
+            .saturating_sub(1)
+            .saturating_sub(scratch.head_back() as u32)
+    }
+
+    /// The next frame of the gesture; silence while the platter holds or
+    /// stands at an edge of the audio.
+    fn scratch_frame(&mut self, ring: &Ring, mut scratch: ScratchState) -> PcmFrame {
+        if scratch.velocity() > 0.0 || scratch.velocity_target() > 0.0 {
+            while scratch.head_back() < SCRATCH_LOOKAHEAD_FRAMES && self.ring_frame(ring).is_some()
+            {
+                scratch.advance_reference(1);
+            }
+        }
+        let filled = self
+            .position
+            .saturating_sub(self.history_from)
+            .min(HISTORY_FRAMES);
+        let newest = self.position.wrapping_sub(1);
+        let frame = scratch.render(filled, |back| {
+            let slot = ring.history_slot(newest.wrapping_sub(back))?;
+            // SAFETY: `back` is below `filled`, so the frame is in the
+            // history, which only this consumer reads and writes.
+            Some(unsafe { slot.read() })
+        });
+        self.scratch = Some(scratch);
+        if frame.is_some() != self.scratch_audible {
+            self.scratch_audible = frame.is_some();
+            self.fade_from_last();
+        }
+        frame.unwrap_or_default()
+    }
+
+    /// The next frame from the ring, kept in the history.
+    fn ring_frame(&mut self, ring: &Ring) -> Option<PcmFrame> {
+        if self.tail == ring.head.load(Ordering::Acquire) {
+            return None;
+        }
+        // SAFETY: slots between tail and the published head hold frames
+        // the producer wrote before publishing; it never touches them again
+        // until `tail` passes them.
+        let frame = unsafe { ring.slot(self.tail)?.read() };
+        if let Some(slot) = ring.history_slot(self.position) {
+            // SAFETY: the history is consumer-only storage.
+            unsafe { slot.write(frame) };
+        }
+        self.tail = self.tail.wrapping_add(1);
+        self.position = self.position.wrapping_add(1);
+        Some(frame)
+    }
+
+    /// The source frame playing next: at the jog's head, in the history, or
+    /// from the ring.
     fn cursor(&self) -> u32 {
-        self.replay.unwrap_or(self.position)
+        match &self.scratch {
+            Some(scratch) => self.scratch_cursor(scratch),
+            None => self.replay.unwrap_or(self.position),
+        }
     }
 
     /// Whether every frame from `at` up to `position` is in the history.
@@ -358,7 +500,7 @@ impl Reader {
                 .map_or(0, |(_, end)| end.saturating_sub(start));
             let total = u32::from(LOOP_CROSSFADE_FRAMES).min(length / 2) as u16;
             self.fade = (total > 0).then_some(LoopFade {
-                from,
+                from: Some(from),
                 left: total,
                 total,
                 held: self.last,
@@ -392,7 +534,10 @@ impl Reader {
         let Some(mut fade) = self.fade else {
             return frame;
         };
-        fade.held = self.outgoing(ring, fade.from).unwrap_or(fade.held);
+        if let Some(from) = fade.from {
+            fade.held = self.outgoing(ring, from).unwrap_or(fade.held);
+            fade.from = Some(from.wrapping_add(1));
+        }
         let (out, total) = (i32::from(fade.left), i32::from(fade.total));
         let mix = |outgoing: i16, incoming: i16| {
             ((i32::from(outgoing) * out + i32::from(incoming) * (total - out)) / total) as i16
@@ -401,7 +546,6 @@ impl Reader {
             left: mix(fade.held.left, frame.left),
             right: mix(fade.held.right, frame.right),
         };
-        fade.from = fade.from.wrapping_add(1);
         fade.left -= 1;
         self.fade = (fade.left > 0).then_some(fade);
         mixed
@@ -417,7 +561,8 @@ impl Reader {
         }
         self.loop_frames = Some((start, end));
         self.loop_missed = false;
-        if self.cursor() > end {
+        // During a gesture the wrap waits for the release.
+        if self.scratch.is_none() && self.cursor() > end {
             self.wrap(start);
         }
     }
@@ -435,11 +580,13 @@ impl Reader {
         start.saturating_add(LOOP_MIN_FRAMES_AT_END) <= self.position
     }
 
-    /// While audio remains after the ring ran out: the history is replaying,
-    /// or a loop will wrap. A loop that cannot wrap lets the track finish.
+    /// While audio remains after the ring ran out: the jog holds the deck, the
+    /// history is replaying, or a loop will wrap. A loop that cannot wrap lets
+    /// the track finish.
     #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
     pub(crate) fn looping(&self) -> bool {
-        self.replay.is_some()
+        self.scratch.is_some()
+            || self.replay.is_some()
             || self
                 .loop_frames
                 .is_some_and(|(start, _)| self.loop_wraps_at_end(start))
@@ -470,8 +617,10 @@ impl Reader {
         self.tail = descriptor.start;
         self.rate = descriptor.rate;
         self.position = descriptor.origin;
-        // A new source (load or seek) starts a new history; the loop stays.
+        // A new source (load or seek) starts a new history; the loop stays,
+        // and a touched jog starts a new gesture from it.
         self.history_from = descriptor.origin;
+        self.scratch = None;
         self.replay = None;
         self.loop_missed = false;
         self.fade = None;
@@ -489,6 +638,9 @@ impl Reader {
 
     /// The next source frame, exact: from the history or the ring.
     fn next_source_frame(&mut self, ring: &Ring) -> Option<PcmFrame> {
+        if let Some(scratch) = self.scratch {
+            return Some(self.scratch_frame(ring, scratch));
+        }
         // At the loop end, or past it after a seek there; or at the end of the
         // track, when the loop end lies beyond it and can never be reached.
         if let Some((start, end)) = self.loop_frames
@@ -508,20 +660,7 @@ impl Reader {
             self.replay = (next != self.position).then_some(next);
             return Some(frame);
         }
-        if self.tail == ring.head.load(Ordering::Acquire) {
-            return None;
-        }
-        // SAFETY: slots between tail and the published head hold frames
-        // the producer wrote before publishing; it never touches them again
-        // until `tail` passes them.
-        let frame = unsafe { ring.slot(self.tail)?.read() };
-        if let Some(slot) = ring.history_slot(self.position) {
-            // SAFETY: the history is consumer-only storage.
-            unsafe { slot.write(frame) };
-        }
-        self.tail = self.tail.wrapping_add(1);
-        self.position = self.position.wrapping_add(1);
-        Some(frame)
+        self.ring_frame(ring)
     }
 
     /// Returns the consumed slots to the producer.

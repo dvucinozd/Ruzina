@@ -47,7 +47,7 @@ fn near(value: u32, expected: u32, slack: u32) -> bool {
 }
 
 #[test]
-fn eight_scratch_messages_are_unsupported_effects_not_media_errors() {
+fn scratch_messages_with_no_track_loaded_are_not_errors() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     let mut engine = Engine::new();
     let message = |control, value| ControlEvent {
@@ -70,8 +70,9 @@ fn eight_scratch_messages_are_unsupported_effects_not_media_errors() {
         SemanticControl::JogTouch,
         ControlValue::Pressed(false),
     ));
-    assert_eq!(engine.counters(), [before[0] + 8, before[1]]);
+    assert_eq!(engine.counters(), before);
     assert_eq!(engine.playing(), [false; 2]);
+    assert_eq!(engine.take_scratch(1), None);
 }
 
 // One test: the rings, commands and mailboxes are process-wide statics.
@@ -1021,4 +1022,84 @@ fn shift_four_beat_brings_back_the_last_loop_then_stops_and_forgets_it() {
     mix.control(&shift_four_beat(false));
     mix.control(&shift_four_beat(true));
     assert_eq!(deck(&mut mix).loop_state.active, None);
+}
+
+#[test]
+fn the_jog_scratches_a_playing_and_a_paused_deck_and_release_plays_on() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    let more = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 30_000];
+    assert!(RINGS[0].push(&more));
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 10,
+            bpm_x100: 12_000,
+            track_id: [10; 16],
+        },
+    );
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 300);
+    let before = mix.stats()[1];
+    let unsupported = mix.engine().counters()[0];
+    // Touching the platter holds a playing deck, in silence.
+    press(&mut mix, SemanticControl::JogTouch, true);
+    assert_eq!(mix.engine().playing(), [true, false]);
+    run(&mut mix, 10);
+    assert_eq!(run(&mut mix, 3), 0);
+    let held = deck(&mut mix).position_ms;
+    assert_eq!(run(&mut mix, 50), 0);
+    assert!(near(deck(&mut mix).position_ms, held, 2));
+    // Backward: the position follows the platter, with audio and no underrun.
+    let jog = |ticks| event(SemanticControl::JogScratch, ControlValue::Relative(ticks));
+    let mut audible = 0;
+    for _ in 0..40 {
+        mix.control(&jog(-3));
+        if run(&mut mix, 5) != 0 {
+            audible += 1;
+        }
+    }
+    assert!(audible > 20, "{audible}");
+    let back = deck(&mut mix).position_ms;
+    assert!(back + 100 < held, "{back} from {held}");
+    assert_eq!(mix.stats()[1], before);
+    assert_eq!(
+        mix.engine().counters()[0],
+        unsupported,
+        "scratch is executed"
+    );
+    // Release: the deck plays on from the head.
+    press(&mut mix, SemanticControl::JogTouch, false);
+    run(&mut mix, 100);
+    let after = deck(&mut mix).position_ms;
+    assert!(
+        after > back + 50 && after < back + 200,
+        "{after} from {back}"
+    );
+    assert_eq!(mix.stats()[1], before);
+    // Paused, the platter still moves the audio, and release stays paused.
+    press(&mut mix, SemanticControl::Play, true);
+    assert_eq!(mix.engine().playing(), [false, false]);
+    run(&mut mix, 5);
+    press(&mut mix, SemanticControl::JogTouch, true);
+    run(&mut mix, 3);
+    let paused = deck(&mut mix).position_ms;
+    for _ in 0..30 {
+        mix.control(&jog(-3));
+        run(&mut mix, 5);
+    }
+    let moved = deck(&mut mix).position_ms;
+    assert!(moved + 50 < paused, "{moved} from {paused}");
+    press(&mut mix, SemanticControl::JogTouch, false);
+    run(&mut mix, 50);
+    assert!(near(deck(&mut mix).position_ms, moved, 80));
+    assert_eq!(mix.engine().playing(), [false, false]);
+    assert_eq!(run(&mut mix, 3), 0);
 }
