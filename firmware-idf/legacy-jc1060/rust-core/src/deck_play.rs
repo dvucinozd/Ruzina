@@ -31,6 +31,18 @@ use ruzina_audio_runtime::wav::{
 
 /// Ring capacity in source frames: about 1.5 s at 44.1 kHz, 256 KiB of PSRAM.
 pub(crate) const RING_FRAMES: u32 = 1 << 16;
+/// Source frames of played audio each deck keeps for loops: about 23.8 s at
+/// 44.1 kHz, 4 MiB of PSRAM, behind the ring in the same allocation.
+pub(crate) const HISTORY_FRAMES: u32 = 1 << 20;
+/// Source frames a loop start may lie before the history after a seek to it
+/// (millisecond rounding).
+const LOOP_START_SLACK: u32 = 2;
+/// The shortest loop that may wrap at the end of a track, in source frames
+/// (about 23 ms): a loop set in the last moments lets the track finish
+/// instead of buzzing on a few frames.
+const LOOP_MIN_FRAMES_AT_END: u32 = 1024;
+/// One deck's ring and history storage, in frames.
+pub(crate) const RING_STORAGE_FRAMES: usize = (RING_FRAMES + HISTORY_FRAMES) as usize;
 
 /// Decoder actions one prime may take before its first block (ID3 tags
 /// with artwork are read through 512 bytes at a time).
@@ -122,7 +134,7 @@ impl Ring {
     /// Hands the ring its storage once; later calls keep the first.
     #[cfg(test)]
     pub(crate) fn attach(&self, storage: &'static mut [PcmFrame]) -> bool {
-        storage.len() == RING_FRAMES as usize
+        storage.len() == RING_STORAGE_FRAMES
             && self
                 .frames
                 .compare_exchange(
@@ -138,6 +150,16 @@ impl Ring {
         let base = self.frames.load(Ordering::Acquire);
         // SAFETY: `position & mask` is below the attached length.
         (!base.is_null()).then(|| unsafe { base.add((position % RING_FRAMES) as usize) })
+    }
+
+    /// Consumer-only history slot of source frame `position`; the producer
+    /// never touches the storage past the ring.
+    fn history_slot(&self, position: u32) -> Option<*mut PcmFrame> {
+        let base = self.frames.load(Ordering::Acquire);
+        // SAFETY: the offset stays inside the attached RING_STORAGE_FRAMES.
+        (!base.is_null()).then(|| unsafe {
+            base.add(RING_FRAMES as usize + (position % HISTORY_FRAMES) as usize)
+        })
     }
 
     /// Producer: free slots.
@@ -248,13 +270,27 @@ struct Descriptor {
 }
 
 /// The consumer's view of the ring.
+///
+/// Every frame taken from the ring is also kept in the deck's history,
+/// indexed by source frame. A loop plays its first pass from the ring; at
+/// the loop end the reader replays the history from the loop start while the
+/// ring waits at the loop end, so both the wrap and the exit are seamless.
 #[derive(Clone, Copy)]
 pub(crate) struct Reader {
     epoch: u32,
     tail: u32,
     rate: u32,
-    /// The epoch's first source frame plus the frames taken since.
+    /// The epoch's first source frame plus the frames taken from the ring.
     position: u32,
+    /// The first source frame of this epoch the history holds.
+    history_from: u32,
+    /// The next source frame replayed from the history, while it trails
+    /// `position` (a loop, or the rest of one after its exit).
+    replay: Option<u32>,
+    /// The active loop, in source frames: `[start, end)`.
+    loop_frames: Option<(u32, u32)>,
+    /// A loop end was reached without its start in the history.
+    loop_missed: bool,
 }
 
 impl Reader {
@@ -264,7 +300,90 @@ impl Reader {
             tail: 0,
             rate: 0,
             position: 0,
+            history_from: 0,
+            replay: None,
+            loop_frames: None,
+            loop_missed: false,
         }
+    }
+
+    /// The source frame playing next: in the history, or from the ring.
+    fn cursor(&self) -> u32 {
+        self.replay.unwrap_or(self.position)
+    }
+
+    /// Whether every frame from `at` up to `position` is in the history.
+    fn holds(&self, at: u32) -> bool {
+        at >= self.history_from && at <= self.position && self.position - at <= HISTORY_FRAMES
+    }
+
+    /// Goes back to the loop start. A start the history does not hold (it
+    /// lies before this epoch, or too far back) is reported once through
+    /// `take_loop_miss` and playback runs on; the loop stays set, so after the
+    /// caller's seek to the start every later wrap replays the history.
+    fn wrap(&mut self, start: u32) {
+        // A seek to the loop start may land a frame or two after it.
+        let start = if start < self.history_from && self.history_from - start <= LOOP_START_SLACK {
+            self.history_from
+        } else {
+            start
+        };
+        if self.holds(start) {
+            self.replay = (start != self.position).then_some(start);
+        } else {
+            self.loop_missed = true;
+        }
+    }
+
+    /// Sets the active loop in source frames. A loop whose end is already
+    /// behind (a Loop Out lands up to a millisecond behind the reported
+    /// position) wraps at once.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn set_loop(&mut self, start: u32, end: u32) {
+        if end <= start {
+            return;
+        }
+        self.loop_frames = Some((start, end));
+        self.loop_missed = false;
+        if self.cursor() > end {
+            self.wrap(start);
+        }
+    }
+
+    /// Ends the loop. Playback continues from where it is, through the rest
+    /// of the history and then the ring.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn clear_loop(&mut self) {
+        self.loop_frames = None;
+    }
+
+    /// Whether a loop can go on at the end of the track: its start lies far
+    /// enough before the last frame.
+    fn loop_wraps_at_end(&self, start: u32) -> bool {
+        start.saturating_add(LOOP_MIN_FRAMES_AT_END) <= self.position
+    }
+
+    /// While audio remains after the ring ran out: the history is replaying,
+    /// or a loop will wrap. A loop that cannot wrap lets the track finish.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn looping(&self) -> bool {
+        self.replay.is_some()
+            || self
+                .loop_frames
+                .is_some_and(|(start, _)| self.loop_wraps_at_end(start))
+    }
+
+    /// The loop start in milliseconds, once, after a loop end was reached
+    /// without its start in the history; the caller seeks there.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn take_loop_miss(&mut self, start_ms: u32) -> Option<u32> {
+        core::mem::take(&mut self.loop_missed).then_some(start_ms)
+    }
+
+    /// `ms` in this epoch's source frames; 0 without a rate.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn frame_at_ms(&self, ms: u32) -> u32 {
+        (u64::from(ms) * u64::from(self.rate) / 1000).min(u64::from(u32::MAX)) as u32
     }
 
     /// Follows a new epoch; returns true when the source changed.
@@ -279,11 +398,34 @@ impl Reader {
         self.tail = descriptor.start;
         self.rate = descriptor.rate;
         self.position = descriptor.origin;
+        // A new source (load or seek) starts a new history; the loop stays.
+        self.history_from = descriptor.origin;
+        self.replay = None;
+        self.loop_missed = false;
         ring.tail.store(self.tail, Ordering::Release);
         true
     }
 
     pub(crate) fn pop(&mut self, ring: &Ring) -> Option<PcmFrame> {
+        // At the loop end, or past it after a seek there; or at the end of the
+        // track, when the loop end lies beyond it and can never be reached.
+        if let Some((start, end)) = self.loop_frames
+            && (self.cursor() >= end
+                || (self.replay.is_none()
+                    && self.tail == ring.head.load(Ordering::Acquire)
+                    && self.loop_wraps_at_end(start)
+                    && self.ended(ring)))
+        {
+            self.wrap(start);
+        }
+        if let Some(at) = self.replay {
+            // SAFETY: `holds` kept every frame from `at` up to `position` in
+            // the history, which only this consumer reads and writes.
+            let frame = unsafe { ring.history_slot(at)?.read() };
+            let next = at.wrapping_add(1);
+            self.replay = (next != self.position).then_some(next);
+            return Some(frame);
+        }
         if self.tail == ring.head.load(Ordering::Acquire) {
             return None;
         }
@@ -291,6 +433,10 @@ impl Reader {
         // the producer wrote before publishing; it never touches them again
         // until `tail` passes them.
         let frame = unsafe { ring.slot(self.tail)?.read() };
+        if let Some(slot) = ring.history_slot(self.position) {
+            // SAFETY: the history is consumer-only storage.
+            unsafe { slot.write(frame) };
+        }
         self.tail = self.tail.wrapping_add(1);
         self.position = self.position.wrapping_add(1);
         Some(frame)
@@ -324,7 +470,7 @@ impl Reader {
         if self.rate == 0 {
             return 0;
         }
-        (u64::from(self.position) * 1000 / u64::from(self.rate)) as u32
+        (u64::from(self.cursor()) * 1000 / u64::from(self.rate)) as u32
     }
 
     pub(crate) fn buffered(&self, ring: &Ring) -> u32 {
@@ -1202,12 +1348,12 @@ pub(crate) fn attach_ring(deck: usize) -> bool {
     if !RINGS[deck].frames.load(Ordering::Acquire).is_null() {
         return true;
     }
-    let storage = vec![PcmFrame::default(); RING_FRAMES as usize].into_boxed_slice();
+    let storage = vec![PcmFrame::default(); RING_STORAGE_FRAMES].into_boxed_slice();
     install_ring(&RINGS[deck], storage)
 }
 
 pub(crate) fn install_ring(ring: &Ring, mut storage: Box<[PcmFrame]>) -> bool {
-    if storage.len() != RING_FRAMES as usize {
+    if storage.len() != RING_STORAGE_FRAMES {
         return false;
     }
     if ring

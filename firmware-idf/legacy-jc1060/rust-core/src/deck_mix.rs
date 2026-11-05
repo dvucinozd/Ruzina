@@ -177,6 +177,15 @@ impl Mix {
         #[cfg(feature = "deck-engine")]
         {
             self.engine_revision = self.engine.revision();
+            for (deck, reader) in self.readers.iter_mut().enumerate() {
+                match self.engine.take_loop_command(deck) {
+                    Some(crate::deck_engine::LoopCommand::Set(start, end)) => {
+                        reader.set_loop(reader.frame_at_ms(start), reader.frame_at_ms(end));
+                    }
+                    Some(crate::deck_engine::LoopCommand::Clear) => reader.clear_loop(),
+                    None => {}
+                }
+            }
         }
         uac_profile::stage(Stage::Control);
         let control = self.render_control(playing);
@@ -202,8 +211,17 @@ impl Mix {
         self.limited = self.limited.wrapping_add(report.limiter.limited_samples);
         self.position = 0;
         #[cfg(feature = "deck-engine")]
-        self.engine
-            .progress(&self.readers, u32::from(report.rendered_frames));
+        {
+            for (deck, reader) in self.readers.iter_mut().enumerate() {
+                if let Some(start) = self.engine.loop_start_ms(deck)
+                    && let Some(ms) = reader.take_loop_miss(start)
+                {
+                    self.engine.seek_loop_start(deck, ms);
+                }
+            }
+            self.engine
+                .progress(&self.readers, u32::from(report.rendered_frames));
+        }
     }
 
     #[cfg(feature = "deck-engine")]

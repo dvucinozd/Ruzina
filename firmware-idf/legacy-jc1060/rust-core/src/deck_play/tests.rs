@@ -165,7 +165,7 @@ impl SourceFiles for Memory {
 
 fn ring() -> &'static Ring {
     let ring = Box::leak(Box::new(Ring::new()));
-    let storage = std::vec![PcmFrame::default(); RING_FRAMES as usize].into_boxed_slice();
+    let storage = std::vec![PcmFrame::default(); RING_STORAGE_FRAMES].into_boxed_slice();
     assert!(ring.attach(Box::leak(storage)));
     ring
 }
@@ -512,7 +512,7 @@ fn a_seek_reopens_the_track_at_its_position() {
 #[test]
 fn ring_keeps_its_first_storage() {
     let ring = ring();
-    let other = std::vec![PcmFrame::default(); RING_FRAMES as usize].into_boxed_slice();
+    let other = std::vec![PcmFrame::default(); RING_STORAGE_FRAMES].into_boxed_slice();
     assert!(!ring.attach(Box::leak(other)));
     let short = std::vec![PcmFrame::default(); 8].into_boxed_slice();
     assert!(!Ring::new().attach(Box::leak(short)));
@@ -847,4 +847,207 @@ fn the_mp3_frame_walk_makes_a_far_seek_cheap() {
         );
         assert_eq!(warm, cold);
     }
+}
+
+/// Source frame `n` as a recognizable PCM value.
+fn numbered(n: u32) -> PcmFrame {
+    PcmFrame {
+        left: (n % 30_000) as i16,
+        right: -((n % 30_000) as i16),
+    }
+}
+
+/// Pushes source frames `from..from + count` (fits the ring).
+fn feed(ring: &Ring, from: u32, count: u32) {
+    let frames: Vec<PcmFrame> = (from..from + count).map(numbered).collect();
+    assert!(ring.push(&frames));
+}
+
+/// The source frame numbers of the next `count` frames the reader plays.
+fn take(reader: &mut Reader, ring: &Ring, count: u32) -> Vec<u32> {
+    let mut out = Vec::new();
+    for _ in 0..count {
+        let frame = reader.pop(ring).expect("a frame");
+        out.push(frame.left as u32);
+    }
+    reader.commit(ring);
+    out
+}
+
+fn span(from: u32, to: u32) -> Vec<u32> {
+    (from..to).collect()
+}
+
+#[test]
+fn a_loop_replays_its_history_exactly_and_exits_into_the_ring() {
+    let ring = ring();
+    ring.restart_at(44_100, 1_000);
+    feed(ring, 1_000, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    assert_eq!(take(&mut reader, ring, 500), span(1_000, 1_500));
+    // Loop In behind the playhead, Loop Out ahead of it.
+    reader.set_loop(1_200, 1_600);
+    let played = take(&mut reader, ring, 1_000);
+    let expected = [
+        span(1_500, 1_600),
+        span(1_200, 1_600),
+        span(1_200, 1_600),
+        span(1_200, 1_300),
+    ]
+    .concat();
+    assert_eq!(played, expected);
+    // The ring waits at the loop end while the history replays.
+    assert_eq!(reader.buffered(ring), 20_000 - 600);
+    assert_eq!(reader.position_ms(), 1_300 * 1000 / 44_100);
+    assert!(reader.looping());
+    // Exit: the rest of the loop from the history, then the ring onwards.
+    reader.clear_loop();
+    assert_eq!(take(&mut reader, ring, 400), span(1_300, 1_700));
+    assert!(!reader.looping());
+    assert_eq!(reader.buffered(ring), 20_000 - 700);
+}
+
+#[test]
+fn a_loop_out_just_behind_the_playhead_wraps_at_once() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 1_500);
+    // The reported position rounds down to the millisecond.
+    reader.set_loop(1_000, 1_498);
+    assert_eq!(
+        take(&mut reader, ring, 600),
+        [span(1_000, 1_498), span(1_000, 1_102)].concat()
+    );
+}
+
+#[test]
+fn a_longer_loop_plays_on_from_the_ring_before_it_wraps() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 8_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 1_000);
+    reader.set_loop(500, 1_000);
+    assert_eq!(take(&mut reader, ring, 200), span(500, 700));
+    // Loop Double while replaying: history up to the ring, the ring to the
+    // new end, then the wrap.
+    reader.set_loop(500, 1_500);
+    assert_eq!(
+        take(&mut reader, ring, 1_000),
+        [span(700, 1_500), span(500, 700)].concat()
+    );
+}
+
+#[test]
+fn a_loop_start_before_the_history_is_reported_once_and_played_through() {
+    let ring = ring();
+    ring.restart_at(44_100, 5_000);
+    feed(ring, 5_000, 4_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 100);
+    // Loop In before this epoch (the playhead was seeked past it).
+    reader.set_loop(4_000, 5_200);
+    assert_eq!(take(&mut reader, ring, 150), span(5_100, 5_250));
+    assert_eq!(reader.take_loop_miss(90), Some(90));
+    assert_eq!(reader.take_loop_miss(90), None);
+    // The caller seeks to the loop start (landing one frame late); from then
+    // on the history holds the whole loop and every wrap is seamless.
+    ring.restart_at(44_100, 4_001);
+    feed(ring, 4_001, 4_000);
+    assert!(reader.sync(ring));
+    assert_eq!(
+        take(&mut reader, ring, 1_300),
+        [span(4_001, 5_200), span(4_001, 4_102)].concat()
+    );
+    assert_eq!(reader.take_loop_miss(90), None);
+}
+
+#[test]
+fn a_loop_older_than_the_history_is_reported() {
+    let ring = ring();
+    ring.restart_at(48_000, 0);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    let mut next = 0;
+    while next < HISTORY_FRAMES + 2_000 {
+        feed(ring, next, 1_000);
+        next += 1_000;
+        take(&mut reader, ring, 1_000);
+    }
+    feed(ring, next, 1_000);
+    // [100, HISTORY + 2_500): its start fell out of the history.
+    reader.set_loop(100, next + 500);
+    take(&mut reader, ring, 600);
+    assert_eq!(reader.take_loop_miss(2), Some(2));
+}
+
+#[test]
+fn a_loop_end_past_the_end_of_the_track_wraps_at_the_last_frame() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    ring.end();
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 3_800);
+    // 4 BEAT near the end of the track: the loop end is never reached.
+    reader.set_loop(2_000, 50_000);
+    assert_eq!(
+        take(&mut reader, ring, 4_200),
+        [span(3_800, 4_000), span(2_000, 4_000), span(2_000, 4_000)].concat()
+    );
+    assert!(reader.looping());
+    // Exit: the rest of the history, then the track finishes.
+    assert_eq!(take(&mut reader, ring, 100), span(2_000, 2_100));
+    reader.clear_loop();
+    assert_eq!(take(&mut reader, ring, 1_900), span(2_100, 4_000));
+    assert!(!reader.looping());
+    assert_eq!(reader.pop(ring), None);
+}
+
+#[test]
+fn a_loop_set_at_the_very_end_lets_the_track_finish() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    ring.end();
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 3_900);
+    reader.set_loop(3_900, 50_000);
+    assert_eq!(take(&mut reader, ring, 100), span(3_900, 4_000));
+    assert_eq!(reader.pop(ring), None);
+    assert!(!reader.looping());
+}
+
+#[test]
+fn a_seek_past_the_loop_end_returns_to_the_loop() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 4_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 1_100);
+    reader.set_loop(1_000, 1_200);
+    // Beat Jump past the loop end: a new epoch, without the loop start.
+    ring.restart_at(44_100, 3_000);
+    feed(ring, 3_000, 4_000);
+    assert!(reader.sync(ring));
+    assert_eq!(take(&mut reader, ring, 10), span(3_000, 3_010));
+    assert_eq!(reader.take_loop_miss(22), Some(22));
+    // The engine's seek to the start: from there the loop replays.
+    ring.restart_at(44_100, 1_000);
+    feed(ring, 1_000, 4_000);
+    assert!(reader.sync(ring));
+    assert_eq!(
+        take(&mut reader, ring, 500),
+        [span(1_000, 1_200), span(1_000, 1_200), span(1_000, 1_100)].concat()
+    );
+    assert_eq!(reader.take_loop_miss(22), None);
 }

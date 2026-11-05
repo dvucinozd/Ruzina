@@ -1,5 +1,7 @@
 //! One-shot SD-owner resource preparation. USB sees only a monotonic scalar.
-use crate::deck_play::{Producer, RING_FRAMES, Ring, install_ring};
+#[cfg(test)]
+use crate::deck_play::RING_FRAMES;
+use crate::deck_play::{Producer, RING_STORAGE_FRAMES, Ring, install_ring};
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_audio_dsp::PcmFrame;
@@ -129,8 +131,8 @@ impl<File> Prepared<File> {
         Some(Self {
             producers: [Producer::try_new()?, Producer::try_new()?],
             rings: [
-                try_zeros(RING_FRAMES as usize)?,
-                try_zeros(RING_FRAMES as usize)?,
+                try_zeros(RING_STORAGE_FRAMES)?,
+                try_zeros(RING_STORAGE_FRAMES)?,
             ],
         })
     }
@@ -242,10 +244,7 @@ mod tests {
             data: &'static [u8],
         ) -> alloc::vec::Vec<PcmFrame> {
             let ring = Ring::new();
-            assert!(install_ring(
-                &ring,
-                try_zeros(RING_FRAMES as usize).unwrap()
-            ));
+            assert!(install_ring(&ring, try_zeros(RING_STORAGE_FRAMES).unwrap()));
             let mut files = Memory::new(&[data]);
             let mut reader = Reader::new();
             let mut out = alloc::vec::Vec::new();
