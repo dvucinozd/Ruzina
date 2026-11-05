@@ -774,10 +774,9 @@ fn producer_priority_uses_rate_and_pitch_time_coverage() {
 }
 
 /// A far MP3 seek decodes from the start of the file until the frame walk
-/// has run; with it, a CBR or Xing-tagged VBR seek resumes at an indexed
-/// frame (on these fixtures 187 -> 12 and 101 -> 15 reads). Untagged VBR
-/// has no exact indexed resume in the shared decoder yet and still decodes
-/// from the start. The PCM after the seek is identical either way.
+/// has run; with it, CBR, Xing-tagged VBR and untagged VBR seeks resume at
+/// an indexed frame. Untagged VBR resets the codec there and counts the
+/// walked frames itself. The PCM after the seek is identical either way.
 #[test]
 fn the_mp3_frame_walk_makes_a_far_seek_cheap() {
     const TARGET_MS: u32 = 7_000;
@@ -813,10 +812,10 @@ fn the_mp3_frame_walk_makes_a_far_seek_cheap() {
         }
         (reads, frames)
     }
-    for (data, indexed_resume) in [
-        (fixture!("long.mp3"), true),
-        (LONG_ID3, true),
-        (fixture!("long-vbr-untagged.mp3"), false),
+    for data in [
+        fixture!("long.mp3"),
+        LONG_ID3,
+        fixture!("long-vbr-untagged.mp3"),
     ] {
         // Cold: seek as soon as the load is ready, before the walk runs
         // (it only runs while the ring is full).
@@ -842,15 +841,10 @@ fn the_mp3_frame_walk_makes_a_far_seek_cheap() {
         let (busy, event) = producer.poll(&mut files, ring, &commands, path);
         assert!(!busy && event.is_none());
         let (warm_reads, warm) = seek(&mut producer, &mut files, ring, &commands);
-        if indexed_resume {
-            assert!(
-                warm_reads * 4 < cold_reads,
-                "indexed seek {warm_reads} reads, cold {cold_reads}"
-            );
-        } else {
-            // Still decoded from the start (no indexed resume).
-            assert!(warm_reads * 4 >= cold_reads, "{warm_reads} vs {cold_reads}");
-        }
+        assert!(
+            warm_reads * 4 < cold_reads,
+            "indexed seek {warm_reads} reads, cold {cold_reads}"
+        );
         assert_eq!(warm, cold);
     }
 }
