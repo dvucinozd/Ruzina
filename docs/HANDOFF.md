@@ -41,8 +41,11 @@
   with 1.5 MB of PSRAM and short fades so filters do not click. The owner tried
   them on the FLX4 ("Radi"). Delay, turning Beat FX off, Pad FX bank 2 and the
   channel switch are not in the device log.
-- **On the board:** app `c4280a75…` (production with loops, reloop, scratch and FX; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..35}-*-flash`.
+- **Hot cues (2026-11-06):** [Rekordbox cues on load, own cues in a flash journal](reviews/2026-11-06-hot-cues.md)
+  on a new 1 MB partition, written only while no deck plays. Writes work on the
+  board, longest 11.7 ms. Reading a bank back after a reboot is not in the device log.
+- **On the board:** app `db15d7dc…` (production with loops, reloop, scratch, FX and hot cues; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..37}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**

@@ -6,6 +6,9 @@ use ruzina_audio_dsp::PcmFrame;
 use ruzina_controller_core::{ControlValue, PadAction, PadMode, SemanticControl};
 use ruzina_deck::DeckState;
 
+/// No cues, for a track with no Rekordbox analysis: not this track's bank.
+const NO_CUES: HotCueBank = HotCueBank::empty(MediaTrackId([0; 16]));
+
 fn event(control: SemanticControl, value: ControlValue) -> ControlEvent {
     ControlEvent {
         deck: Some(DeckId::One),
@@ -272,6 +275,8 @@ fn peer_source_changes_preserve_playing_pcm_at_partial_boundaries() {
             GATES[i].begin_replacement(request.permit).unwrap();
             LOAD_RESULTS[i]
                 .put(LoadResult {
+                    source_cues: NO_CUES,
+                    persisted_cues: None,
                     request,
                     ready: true,
                     track_id: [i as u8 + 1; 16],
@@ -328,6 +333,8 @@ fn peer_source_changes_preserve_playing_pcm_at_partial_boundaries() {
             GATES[peer].begin_replacement(request.permit).unwrap();
             LOAD_RESULTS[peer]
                 .put(LoadResult {
+                    source_cues: NO_CUES,
+                    persisted_cues: None,
                     request,
                     ready: action == 5,
                     track_id: [9; 16],
@@ -409,6 +416,15 @@ fn profiled_render_matches_unarmed_pcm_across_blocks_and_partial_blocks() {
     assert!(profiled.1 > 12);
 }
 fn post_load(mix: &mut Mix, fixture: LoadFixture) {
+    post_load_with_cues(mix, fixture, NO_CUES, None);
+}
+
+fn post_load_with_cues(
+    mix: &mut Mix,
+    fixture: LoadFixture,
+    source_cues: HotCueBank,
+    persisted_cues: Option<HotCueBank>,
+) {
     use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
     if mix.engine().lease.is_none() {
         let mut session = MediaSession::new();
@@ -424,6 +440,8 @@ fn post_load(mix: &mut Mix, fixture: LoadFixture) {
     GATES[0].begin_replacement(request.permit).unwrap();
     LOAD_RESULTS[0]
         .put(LoadResult {
+            source_cues,
+            persisted_cues,
             request,
             ready: fixture.ready,
             bpm_x100: fixture.bpm_x100,
@@ -464,6 +482,8 @@ fn load_permit_protects_real_producer_and_rejects_late_results() {
         ));
         LOAD_RESULTS[i]
             .put(LoadResult {
+                source_cues: NO_CUES,
+                persisted_cues: None,
                 request: first,
                 ready: true,
                 track_id: [1; 16],
@@ -489,6 +509,8 @@ fn load_permit_protects_real_producer_and_rejects_late_results() {
         assert_eq!(RINGS[i].epoch(), epoch); // producer did not destroy the old source
         LOAD_RESULTS[i]
             .put(LoadResult {
+                source_cues: NO_CUES,
+                persisted_cues: None,
                 request: canceled,
                 ready: false,
                 track_id: [2; 16],
@@ -514,6 +536,8 @@ fn load_permit_protects_real_producer_and_rejects_late_results() {
         assert!(!engine.playing[i]);
         LOAD_RESULTS[i]
             .put(LoadResult {
+                source_cues: NO_CUES,
+                persisted_cues: None,
                 request: replacing,
                 ready: false,
                 track_id: [2; 16],
@@ -578,6 +602,8 @@ fn seek_receipts_finish_eof_failure_and_ignore_superseded_work() {
         guarded_load(i, source, lease, &mut producer, &mut files, Some("0")).unwrap();
         LOAD_RESULTS[i]
             .put(LoadResult {
+                source_cues: NO_CUES,
+                persisted_cues: None,
                 request: source,
                 ready: true,
                 track_id: [3; 16],
@@ -691,6 +717,8 @@ fn media_revocation_discards_cached_audio_and_late_receipts() {
     assert!(mix.engine().source[0].is_none());
     LOAD_RESULTS[0]
         .put(LoadResult {
+            source_cues: NO_CUES,
+            persisted_cues: None,
             request: old,
             ready: true,
             track_id: [5; 16],
@@ -1315,4 +1343,132 @@ fn turning_each_beat_fx_on_and_off_does_not_click() {
         tone.play(&mut mix, 2_000);
         system_press(&mut mix, SemanticControl::BeatFxSelectNext);
     }
+}
+
+fn hot_cue_pad(pad: u8, pressed: bool) -> ControlEvent {
+    event(
+        SemanticControl::PadAction,
+        ControlValue::PadAction(PadAction {
+            pad,
+            mode: PadMode::HotCue,
+            shifted: false,
+            pressed,
+        }),
+    )
+}
+
+/// A loaded deck 1, with the ring serving, and nothing left from other tests.
+fn mix_with_cues(track: u8, source: HotCueBank, persisted: Option<HotCueBank>) -> Mix {
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    crate::deck_transport::HOT_CUE_SAVES.take();
+    serve(0);
+    post_load_with_cues(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: u32::from(track),
+            bpm_x100: 12_000,
+            track_id: [track; 16],
+        },
+        source,
+        persisted,
+    );
+    run(&mut mix, 3);
+    mix
+}
+
+#[test]
+fn rekordbox_cues_reach_the_pads_and_saved_cues_win_over_them() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let id = MediaTrackId([21; 16]);
+    let mut source = HotCueBank::empty(id).as_source();
+    assert!(source.set_single(0, 1_500));
+    assert!(source.set_single(1, 2_500));
+    let mut mix = mix_with_cues(21, source, None);
+    assert_eq!(mix.engine().hot_cue_masks(), [0b11, 0]);
+    let hot_cue = |mix: &mut Mix| mix.engine().deck.hot_cues(DeckId::One).unwrap();
+    assert_eq!(hot_cue(&mut mix).slot(1).unwrap().pos_ms, 2_500);
+    // The pad jumps to it, which stores nothing.
+    mix.control(&hot_cue_pad(1, true));
+    mix.control(&hot_cue_pad(1, false));
+    assert_eq!(take_seek(), Some(2_500));
+    assert_eq!(mix.engine().hot_cue_saves[0], None);
+
+    // With a saved bank, a track loads with both: the saved slot wins.
+    let mut saved = HotCueBank::empty(id);
+    assert!(saved.set_single(1, 7_000));
+    assert!(saved.set_single(2, 8_000));
+    let mut mix = mix_with_cues(21, source, Some(saved));
+    assert_eq!(mix.engine().hot_cue_masks(), [0b111, 0]);
+    let bank = hot_cue(&mut mix);
+    assert_eq!(bank.slot(0).unwrap().pos_ms, 1_500);
+    assert_eq!(bank.slot(1).unwrap().pos_ms, 7_000);
+}
+
+#[test]
+fn a_new_cue_waits_for_the_flash_owner_and_a_reload_keeps_it() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let saves = &crate::deck_transport::HOT_CUE_SAVES;
+    let id = MediaTrackId([22; 16]);
+    let mut mix = mix_with_cues(22, HotCueBank::empty(id), None);
+    let unsupported = mix.engine().counters()[0];
+    assert_eq!(mix.engine().hot_cue_masks(), [0, 0]);
+
+    // A pad with no cue stores one. Nothing is offered before the flush.
+    mix.control(&hot_cue_pad(0, true));
+    mix.control(&hot_cue_pad(0, false));
+    assert_eq!(mix.engine().hot_cue_masks(), [1, 0]);
+    assert_eq!(mix.engine().counters()[0], unsupported, "it is executed");
+    assert!(saves.take().is_none());
+
+    // A reload before the bank reached flash, whose copy is older, keeps it.
+    post_load_with_cues(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 22,
+            bpm_x100: 12_000,
+            track_id: [22; 16],
+        },
+        HotCueBank::empty(id),
+        None,
+    );
+    run(&mut mix, 3);
+    assert_eq!(mix.engine().hot_cue_masks(), [1, 0]);
+
+    // The flash owner gets the latest bank, one per track.
+    mix.control(&hot_cue_pad(3, true));
+    mix.control(&hot_cue_pad(3, false));
+    mix.engine().flush_hot_cues();
+    let bank = saves.take().expect("offered");
+    assert_eq!(bank.track_id(), id);
+    assert_eq!(bank.exists_mask(), 0b1001);
+    mix.engine().flush_hot_cues();
+    assert!(saves.take().is_none(), "nothing else waits");
+
+    // A busy owner keeps the bank waiting, in order, with the oldest dropped
+    // only when the queue is full.
+    let waiting = |track: u8| {
+        let mut bank = HotCueBank::empty(MediaTrackId([track; 16]));
+        assert!(bank.set_single(0, u32::from(track)));
+        bank
+    };
+    assert!(saves.put(waiting(200)).is_ok());
+    for track in 0..17 {
+        mix.engine().queue_hot_cues(waiting(track));
+    }
+    mix.engine().flush_hot_cues();
+    assert_eq!(saves.take().unwrap().track_id(), MediaTrackId([200; 16]));
+    mix.engine().flush_hot_cues();
+    assert_eq!(saves.take().unwrap().track_id(), MediaTrackId([1; 16]));
+    for track in 2..17 {
+        mix.engine().flush_hot_cues();
+        assert_eq!(saves.take().unwrap().track_id(), MediaTrackId([track; 16]));
+    }
+    mix.engine().flush_hot_cues();
+    assert!(saves.take().is_none());
 }

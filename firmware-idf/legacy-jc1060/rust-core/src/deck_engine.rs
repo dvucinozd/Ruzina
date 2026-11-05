@@ -65,6 +65,9 @@ const SEEK_CUSHION_FRAMES: u32 = 4096;
 /// The longest a cushion holds a deck, in 128-frame render blocks (1 s).
 const SEEK_CUSHION_MAX_BLOCKS: u16 = 375;
 
+/// Tracks whose new Hot Cues can wait for flash at once.
+const HOT_CUE_SAVES_QUEUED: usize = 16;
+
 pub(crate) struct Engine {
     deck: DeckProductState,
     connected: bool,
@@ -95,6 +98,9 @@ pub(crate) struct Engine {
     loop_ms: [Option<(u32, u32)>; 2],
     /// Jog ticks waiting for the next render block.
     scratch_ticks: [i32; 2],
+    /// Banks the flash journal has not taken yet, one per track, oldest first.
+    /// Flash waits until no deck plays, which a long mix can put off.
+    hot_cue_saves: [Option<HotCueBank>; HOT_CUE_SAVES_QUEUED],
     #[cfg(feature = "soak-autoplay")]
     auto: crate::soak_autoplay::AutoPlay,
 }
@@ -123,6 +129,7 @@ impl Engine {
             loop_command: [None; 2],
             loop_ms: [None; 2],
             scratch_ticks: [0; 2],
+            hot_cue_saves: [None; HOT_CUE_SAVES_QUEUED],
             #[cfg(feature = "soak-autoplay")]
             auto: crate::soak_autoplay::AutoPlay::new(),
         }
@@ -309,6 +316,7 @@ impl Engine {
                 DeckEffect::JogNudge { deck, ticks } => self.nudge[index(deck)].add(ticks),
                 // The render graph reads the FX from the deck state per block.
                 DeckEffect::ApplyBeatFx { .. } | DeckEffect::ApplyPadFx { .. } => {}
+                DeckEffect::PersistHotCues { bank, .. } => self.queue_hot_cues(bank),
                 DeckEffect::ScratchJog { deck, ticks, epoch } => {
                     if epoch == self.deck.deck(deck).scratch_epoch {
                         let i = index(deck);
@@ -316,7 +324,6 @@ impl Engine {
                             self.scratch_ticks[i].saturating_add(i32::from(ticks));
                     }
                 }
-                _ => self.unsupported = self.unsupported.wrapping_add(1),
             }
         }
     }
@@ -358,6 +365,47 @@ impl Engine {
     /// The loop change for deck `i`'s reader, once.
     pub(crate) fn take_loop_command(&mut self, i: usize) -> Option<LoopCommand> {
         self.loop_command[i].take()
+    }
+
+    /// Keeps `bank` for the flash journal: it replaces the track's waiting
+    /// bank, or joins the queue, dropping the oldest when the queue is full.
+    fn queue_hot_cues(&mut self, bank: HotCueBank) {
+        let queue = &mut self.hot_cue_saves;
+        if let Some(waiting) = queue
+            .iter_mut()
+            .flatten()
+            .find(|waiting| waiting.track_id() == bank.track_id())
+        {
+            *waiting = bank;
+            return;
+        }
+        if queue[HOT_CUE_SAVES_QUEUED - 1].is_some() {
+            queue.copy_within(1.., 0);
+            queue[HOT_CUE_SAVES_QUEUED - 1] = None;
+        }
+        if let Some(free) = queue.iter_mut().find(|slot| slot.is_none()) {
+            *free = Some(bank);
+        }
+    }
+
+    /// Offers the oldest waiting bank to the SD owner, outside the audio fill.
+    pub(crate) fn flush_hot_cues(&mut self) {
+        let Some(bank) = self.hot_cue_saves[0] else {
+            return;
+        };
+        if crate::deck_transport::HOT_CUE_SAVES.put(bank).is_ok() {
+            self.hot_cue_saves.copy_within(1.., 0);
+            self.hot_cue_saves[HOT_CUE_SAVES_QUEUED - 1] = None;
+        }
+    }
+
+    /// Each deck's Hot Cue pads that hold a cue, as bits.
+    pub(crate) fn hot_cue_masks(&self) -> [u8; 2] {
+        DECKS.map(|deck| {
+            self.deck
+                .hot_cues(deck)
+                .map_or(0, |bank| bank.exists_mask())
+        })
     }
 
     /// Each deck's Beat FX and Pad FX for the next render block.
@@ -435,10 +483,23 @@ impl Engine {
                 continue;
             }
             let id = MediaTrackId(result.track_id);
+            let source = if result.source_cues.track_id() == id {
+                result.source_cues
+            } else {
+                HotCueBank::empty(id)
+            };
+            // A bank still waiting for flash is newer than what flash holds.
+            let persisted = self
+                .hot_cue_saves
+                .iter()
+                .flatten()
+                .find(|waiting| waiting.track_id() == id)
+                .copied()
+                .or(result.persisted_cues.filter(|bank| bank.track_id() == id));
             let committed = result.ready
                 && self
                     .deck
-                    .commit_track_load(deck, id, result.bpm_x100, HotCueBank::empty(id), None)
+                    .commit_track_load(deck, id, result.bpm_x100, source, persisted)
                     .is_ok();
             if !committed {
                 self.deck.unload_track(deck);
