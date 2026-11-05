@@ -26,16 +26,18 @@
   showed underruns only right after an automatic load and Play. A load now
   starts with the seek cushion. The next 35-minute run had 16 automatic
   loads, 0/0 underruns, a longest fill of 2.8 ms and no packet errors.
+- **Untagged VBR MP3 seeks (2026-11-05):** [they now resume through the frame index](reviews/2026-11-05-untagged-vbr-seek.md),
+  sample-identical to a linear decode on the host. On the board, seeks were
+  checked for regressions, and the owner said they were fine ("Sve OK").
 - **Loops (2026-11-05):** [seamless loops from a played-audio history](reviews/2026-11-05-loops.md)
   in PSRAM. 4 BEAT/EXIT, IN, OUT, halve and double reached the engine on deck 1
   of the FLX4, and the owner heard the section repeat. Beat Loop pads and deck 2
   have not been tried on the device.
-- **On the board:** app `d4a4511b…` (production with loops; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..20}-*-flash`.
+- **On the board:** app `d4a4511b…` (production with loops, before the untagged VBR seeks and the loop-end fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..28}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
-  - untagged VBR MP3 seeks still decode from the start;
   - `fill_max_us` is about 2.8 ms, under the 3000 µs headroom target; the
     render graph is most of it;
   - the 35 to 40-minute soaks were unattended: no seeks, scratch or EQ
