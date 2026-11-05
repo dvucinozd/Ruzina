@@ -41,6 +41,9 @@ const LOOP_START_SLACK: u32 = 2;
 /// (about 23 ms): a loop set in the last moments lets the track finish
 /// instead of buzzing on a few frames.
 const LOOP_MIN_FRAMES_AT_END: u32 = 1024;
+/// Source frames a loop wrap crossfades over (about 5.8 ms at 44.1 kHz). The
+/// wrap is sample-exact, so without this the waveform steps and clicks.
+const LOOP_CROSSFADE_FRAMES: u16 = 256;
 /// One deck's ring and history storage, in frames.
 pub(crate) const RING_STORAGE_FRAMES: usize = (RING_FRAMES + HISTORY_FRAMES) as usize;
 
@@ -269,6 +272,19 @@ struct Descriptor {
     ended: u32,
 }
 
+/// A loop wrap's crossfade: the audio that would have followed the wrap point
+/// fades out while the loop start fades in.
+#[derive(Clone, Copy)]
+struct LoopFade {
+    /// The source frame that would have played next without the wrap.
+    from: u32,
+    /// Frames left, and the fade's length.
+    left: u16,
+    total: u16,
+    /// The last outgoing frame found, held when none follows (track end).
+    held: PcmFrame,
+}
+
 /// The consumer's view of the ring.
 ///
 /// Every frame taken from the ring is also kept in the deck's history,
@@ -291,6 +307,10 @@ pub(crate) struct Reader {
     loop_frames: Option<(u32, u32)>,
     /// A loop end was reached without its start in the history.
     loop_missed: bool,
+    /// The crossfade of the latest wrap, while it runs.
+    fade: Option<LoopFade>,
+    /// The last frame played, for a fade with nothing to fade out.
+    last: PcmFrame,
 }
 
 impl Reader {
@@ -304,6 +324,8 @@ impl Reader {
             replay: None,
             loop_frames: None,
             loop_missed: false,
+            fade: None,
+            last: PcmFrame { left: 0, right: 0 },
         }
     }
 
@@ -329,10 +351,60 @@ impl Reader {
             start
         };
         if self.holds(start) {
+            let from = self.cursor();
             self.replay = (start != self.position).then_some(start);
+            let length = self
+                .loop_frames
+                .map_or(0, |(_, end)| end.saturating_sub(start));
+            let total = u32::from(LOOP_CROSSFADE_FRAMES).min(length / 2) as u16;
+            self.fade = (total > 0).then_some(LoopFade {
+                from,
+                left: total,
+                total,
+                held: self.last,
+            });
         } else {
             self.loop_missed = true;
         }
+    }
+
+    /// The frame that would have played at source frame `at` without the
+    /// wrap: from the history, or ahead in the ring, which waits at the loop
+    /// end. `None` past the audio available, as at the end of the track.
+    fn outgoing(&self, ring: &Ring, at: u32) -> Option<PcmFrame> {
+        let slot = if at < self.position {
+            ring.history_slot(at)?
+        } else {
+            let ahead = at - self.position;
+            if ahead >= ring.head.load(Ordering::Acquire).wrapping_sub(self.tail) {
+                return None;
+            }
+            ring.slot(self.tail.wrapping_add(ahead))?
+        };
+        // SAFETY: frames before `position` are in the consumer's history;
+        // slots from tail up to the published head are the producer's written
+        // frames, which it does not touch until `tail` passes them.
+        Some(unsafe { slot.read() })
+    }
+
+    /// Mixes the running wrap crossfade into `frame`.
+    fn crossfade(&mut self, ring: &Ring, frame: PcmFrame) -> PcmFrame {
+        let Some(mut fade) = self.fade else {
+            return frame;
+        };
+        fade.held = self.outgoing(ring, fade.from).unwrap_or(fade.held);
+        let (out, total) = (i32::from(fade.left), i32::from(fade.total));
+        let mix = |outgoing: i16, incoming: i16| {
+            ((i32::from(outgoing) * out + i32::from(incoming) * (total - out)) / total) as i16
+        };
+        let mixed = PcmFrame {
+            left: mix(fade.held.left, frame.left),
+            right: mix(fade.held.right, frame.right),
+        };
+        fade.from = fade.from.wrapping_add(1);
+        fade.left -= 1;
+        self.fade = (fade.left > 0).then_some(fade);
+        mixed
     }
 
     /// Sets the active loop in source frames. A loop whose end is already
@@ -402,11 +474,21 @@ impl Reader {
         self.history_from = descriptor.origin;
         self.replay = None;
         self.loop_missed = false;
+        self.fade = None;
         ring.tail.store(self.tail, Ordering::Release);
         true
     }
 
+    /// The next frame to play, with a loop wrap's crossfade.
     pub(crate) fn pop(&mut self, ring: &Ring) -> Option<PcmFrame> {
+        let frame = self.next_source_frame(ring)?;
+        let mixed = self.crossfade(ring, frame);
+        self.last = mixed;
+        Some(mixed)
+    }
+
+    /// The next source frame, exact: from the history or the ring.
+    fn next_source_frame(&mut self, ring: &Ring) -> Option<PcmFrame> {
         // At the loop end, or past it after a seek there; or at the end of the
         // track, when the loop end lies beyond it and can never be reached.
         if let Some((start, end)) = self.loop_frames
