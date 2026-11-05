@@ -33,8 +33,12 @@
   in PSRAM, with a 5.8 ms crossfade at the wrap. On the FLX4 the owner heard the
   section repeat with no click. 4 BEAT/EXIT, IN, OUT, halve, double and Beat Loop
   pads work, and Shift + 4 BEAT brings back the last loop.
-- **On the board:** app `e1552815…` (production with loops and reloop; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..32}-*-flash`.
+- **Scratch (2026-11-05):** [the jog wheel scratches from the same history](reviews/2026-11-05-scratch.md),
+  about 24 s back and 1.5 s forward, with 5.8 ms fades. On the FLX4 the owner
+  heard no click and the speed follows the hand, also on a paused deck and in a
+  loop. 1024 ticks per turn is an estimate.
+- **On the board:** app `7c1c7c86…` (production with loops, reloop and scratch; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..34}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**
@@ -42,6 +46,8 @@
     really mixing, over the 3000 µs headroom target, with no underruns. The
     render graph is most of it. The owner stopped here; IRAM is kept for when
     FX add render time;
+  - scratching with both decks playing reached 3.4 ms, the same as mixing, with
+    no underruns;
   - the 35 to 40-minute soaks were unattended: no seeks, scratch or EQ
     during them;
 - **Older paragraphs** below are historical checkpoints.

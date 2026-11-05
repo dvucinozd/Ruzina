@@ -125,16 +125,18 @@ impl Mix {
         for (index, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
             let mixer_deck = self.mixer.deck(deck);
             let rate = self.readers[index].rate();
+            // A jog gesture sets its own speed, one frame per output frame.
+            let scratching = self.readers[index].scratching();
             control.decks[index] = RenderDeckControl {
                 source_epoch: 1,
-                playing: playing[index] && rate != 0,
+                playing: (playing[index] || scratching) && rate != 0,
                 stream_generation: 1,
-                source_sample_rate_hz: if rate != 0 {
+                source_sample_rate_hz: if rate != 0 && !scratching {
                     rate
                 } else {
                     RENDER_SAMPLE_RATE_HZ
                 },
-                pitch_centipercent: self.pitch[index],
+                pitch_centipercent: if scratching { 0 } else { self.pitch[index] },
                 pre_gain: gains.pre[index],
                 post_gain: gains.post[index],
                 eq_low: mixer_deck.eq_low,
@@ -184,6 +186,13 @@ impl Mix {
                     }
                     Some(crate::deck_engine::LoopCommand::Clear) => reader.clear_loop(),
                     None => {}
+                }
+                match self.engine.take_scratch(deck) {
+                    Some(ticks) => {
+                        reader.begin_scratch(playing[deck]);
+                        reader.scratch_jog(ticks);
+                    }
+                    None => reader.end_scratch(playing[deck]),
                 }
             }
         }

@@ -93,6 +93,8 @@ pub(crate) struct Engine {
     loop_command: [Option<LoopCommand>; 2],
     /// The deck's active loop, in milliseconds.
     loop_ms: [Option<(u32, u32)>; 2],
+    /// Jog ticks waiting for the next render block.
+    scratch_ticks: [i32; 2],
     #[cfg(feature = "soak-autoplay")]
     auto: crate::soak_autoplay::AutoPlay,
 }
@@ -120,6 +122,7 @@ impl Engine {
             refused_loads: 0,
             loop_command: [None; 2],
             loop_ms: [None; 2],
+            scratch_ticks: [0; 2],
             #[cfg(feature = "soak-autoplay")]
             auto: crate::soak_autoplay::AutoPlay::new(),
         }
@@ -304,6 +307,13 @@ impl Engine {
                     self.pitch[index(deck)] = value;
                 }
                 DeckEffect::JogNudge { deck, ticks } => self.nudge[index(deck)].add(ticks),
+                DeckEffect::ScratchJog { deck, ticks, epoch } => {
+                    if epoch == self.deck.deck(deck).scratch_epoch {
+                        let i = index(deck);
+                        self.scratch_ticks[i] =
+                            self.scratch_ticks[i].saturating_add(i32::from(ticks));
+                    }
+                }
                 _ => self.unsupported = self.unsupported.wrapping_add(1),
             }
         }
@@ -325,6 +335,22 @@ impl Engine {
             self.revision[i] = self.revision[i].wrapping_add(1);
             self.publish_seek(i);
         }
+    }
+
+    /// Deck `i`'s jog ticks for the next render block while its loaded track's
+    /// jog is touched, `None` when no gesture may run.
+    pub(crate) fn take_scratch(&mut self, i: usize) -> Option<i16> {
+        let touched = self.deck.deck(DECKS[i]).jog_touched
+            && self.loaded[i]
+            && !self.faulted[i]
+            && self.seeking[i].is_none();
+        if !touched {
+            self.scratch_ticks[i] = 0;
+            return None;
+        }
+        let ticks = self.scratch_ticks[i].clamp(i32::from(i16::MIN), i32::from(i16::MAX));
+        self.scratch_ticks[i] -= ticks;
+        Some(ticks as i16)
     }
 
     /// The loop change for deck `i`'s reader, once.
