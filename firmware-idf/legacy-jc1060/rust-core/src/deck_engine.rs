@@ -176,33 +176,50 @@ impl Engine {
                 DeckClaim::Free => {}
             }
         }
-        let effects = self.deck.handle_control(self.four_beat_loop(event));
+        let effects = self.deck.handle_control(self.flx4_loop_button(event));
         self.apply(effects);
     }
 
-    /// The FLX4's 4 BEAT/EXIT button arrives as Reloop/Exit. With a loop
-    /// running it exits, as the deck state does; with none it starts the
-    /// 4-beat loop the button is labelled with, through the Beat Loop pad of
-    /// that length (beat grid, or the BPM, or the deck state's 120 BPM).
-    fn four_beat_loop(&self, event: &ControlEvent) -> ControlEvent {
-        use ruzina_controller_core::{ControlValue, PadAction, PadMode, SemanticControl};
-        match event.deck {
-            Some(deck)
-                if event.control == SemanticControl::ReloopExit
-                    && event.value == ControlValue::Pressed(true)
-                    && self.deck.deck(deck).loop_state.active.is_none() =>
-            {
-                ControlEvent {
-                    deck: event.deck,
-                    control: SemanticControl::PadAction,
-                    value: ControlValue::PadAction(PadAction {
-                        pad: FOUR_BEAT_LOOP_PAD,
-                        mode: PadMode::BeatLoop,
-                        shifted: false,
-                        pressed: true,
-                    }),
-                }
-            }
+    /// The FLX4's loop buttons when no loop runs; with one running, both go
+    /// to the deck state unchanged (exit, and stop and forget).
+    ///
+    /// 4 BEAT/EXIT arrives as Reloop/Exit and starts the 4-beat loop the button
+    /// is labelled with, through the Beat Loop pad of that length (beat grid,
+    /// or the BPM, or the deck state's 120 BPM). Reloop Stop, the Shift layer,
+    /// then brings back the last loop, as Reloop/Exit does in the deck state.
+    fn flx4_loop_button(&self, event: &ControlEvent) -> ControlEvent {
+        use ruzina_controller_core::{
+            ControlValue, DeckExtAction, DeckExtActionValue, PadAction, PadMode, SemanticControl,
+        };
+        let Some(deck) = event.deck else {
+            return *event;
+        };
+        let loop_state = self.deck.deck(deck).loop_state;
+        if loop_state.active.is_some() {
+            return *event;
+        }
+        match (event.control, event.value) {
+            (SemanticControl::ReloopExit, ControlValue::Pressed(true)) => ControlEvent {
+                deck: event.deck,
+                control: SemanticControl::PadAction,
+                value: ControlValue::PadAction(PadAction {
+                    pad: FOUR_BEAT_LOOP_PAD,
+                    mode: PadMode::BeatLoop,
+                    shifted: false,
+                    pressed: true,
+                }),
+            },
+            (
+                SemanticControl::DeckExtAction,
+                ControlValue::DeckExtAction(DeckExtActionValue {
+                    action: DeckExtAction::ReloopStop,
+                    pressed: true,
+                }),
+            ) if loop_state.last.is_some() => ControlEvent {
+                deck: event.deck,
+                control: SemanticControl::ReloopExit,
+                value: ControlValue::Pressed(true),
+            },
             _ => *event,
         }
     }
