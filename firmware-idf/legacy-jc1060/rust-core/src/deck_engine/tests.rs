@@ -1242,14 +1242,14 @@ fn beat_fx_echo_rings_on_after_the_deck_stops_and_counts_nothing_as_unsupported(
     tone.play(&mut mix, 50);
     system_press(&mut mix, SemanticControl::BeatFxSelectNext);
     system_press(&mut mix, SemanticControl::BeatFxOn);
-    assert!(mix.engine().beat_fx_on());
+    assert!(mix.engine().deck.beat_fx().enabled);
     tone.play(&mut mix, 400);
     press(&mut mix, SemanticControl::Play, true);
     run(&mut mix, 3);
     assert!(peak(&tone_silent(&mut mix, 200)) > 100, "the echo rings on");
-    // Clear ends it, and the LED follows.
+    // Clear ends it.
     system_press(&mut mix, SemanticControl::BeatFxClear);
-    assert!(!mix.engine().beat_fx_on());
+    assert!(!mix.engine().deck.beat_fx().enabled);
     run(&mut mix, 3);
     assert_eq!(peak(&tone_silent(&mut mix, 20)), 0);
     assert_eq!(mix.engine().counters()[0], unsupported);
@@ -1471,4 +1471,78 @@ fn a_new_cue_waits_for_the_flash_owner_and_a_reload_keeps_it() {
     }
     mix.engine().flush_hot_cues();
     assert!(saves.take().is_none());
+}
+
+#[test]
+fn the_leds_follow_the_deck_and_mixer_and_all_reach_the_flx4() {
+    use ruzina_controller_core::{ControllerLedFrame, LedState, LedUpdate, SemanticLedId as Led};
+    use ruzina_controller_profile::Profile;
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = playing_mix();
+    let mut leds = ControllerLedFrame::new();
+    let on = |mix: &Mix, leds: &mut ControllerLedFrame, led, deck| {
+        mix.refresh_leds(leds);
+        leds.state(led, deck) == Some(LedState::On)
+    };
+    let one = Some(DeckId::One);
+    let two = Some(DeckId::Two);
+
+    // Every LED of a new binding reaches the controller, and none is left out:
+    // a global state for a per-deck LED would map to nothing.
+    mix.refresh_leds(&mut leds);
+    let profile = Profile::parse(crate::controller_midi::FLX4_PROFILE).unwrap();
+    let mut sent = 0;
+    while let Some(update) = leds.take_next_dirty() {
+        assert!(profile.map_led_update(update).is_some(), "{update:?}");
+        sent += 1;
+    }
+    assert!(sent > 60, "{sent}");
+    mix.refresh_leds(&mut leds);
+    assert!(!leds.has_dirty(), "an unchanged state sends nothing");
+
+    // Pad mode buttons: exactly the active mode, per deck.
+    assert!(on(&mix, &mut leds, Led::PAD_MODE_HOT_CUE, one));
+    assert!(!on(&mix, &mut leds, Led::PAD_MODE_SAMPLER, one));
+    press(&mut mix, SemanticControl::PadModePadFx1, true);
+    assert!(on(&mix, &mut leds, Led::PAD_MODE_PAD_FX1, one));
+    assert!(!on(&mix, &mut leds, Led::PAD_MODE_HOT_CUE, one));
+    assert!(on(&mix, &mut leds, Led::PAD_MODE_HOT_CUE, two));
+    press(&mut mix, SemanticControl::PadModeBeatJump, true);
+    assert!(on(&mix, &mut leds, Led::PAD_MODE_BEAT_JUMP, one));
+    assert!(!on(&mix, &mut leds, Led::PAD_MODE_PAD_FX1, one));
+    // The deck state has no Sampler mode, so its button stays off.
+    press(&mut mix, SemanticControl::PadModeSampler, true);
+    assert!(on(&mix, &mut leds, Led::PAD_MODE_BEAT_JUMP, one));
+    assert!(!on(&mix, &mut leds, Led::PAD_MODE_SAMPLER, one));
+
+    // PFL per deck.
+    assert!(!on(&mix, &mut leds, Led::PFL, one));
+    press(&mut mix, SemanticControl::Pfl, true);
+    press(&mut mix, SemanticControl::Pfl, false);
+    assert!(on(&mix, &mut leds, Led::PFL, one));
+    assert!(!on(&mix, &mut leds, Led::PFL, two));
+
+    // The system buttons follow the mixer.
+    let (cfx, fader, master) = (
+        on(&mix, &mut leds, Led::SMART_CFX, None),
+        on(&mix, &mut leds, Led::SMART_FADER, None),
+        on(&mix, &mut leds, Led::MASTER_CUE, None),
+    );
+    system_press(&mut mix, SemanticControl::SmartCfx);
+    system_press(&mut mix, SemanticControl::SmartFader);
+    system_press(&mut mix, SemanticControl::MasterCue);
+    assert_eq!(on(&mix, &mut leds, Led::SMART_CFX, None), !cfx);
+    assert_eq!(on(&mix, &mut leds, Led::SMART_FADER, None), !fader);
+    assert_eq!(on(&mix, &mut leds, Led::MASTER_CUE, None), !master);
+
+    // Beat FX On is per deck on this controller.
+    system_press(&mut mix, SemanticControl::BeatFxOn);
+    assert!(on(&mix, &mut leds, Led::BEAT_FX_ON, one));
+    assert!(on(&mix, &mut leds, Led::BEAT_FX_ON, two));
+    let update = LedUpdate {
+        led: Led::BEAT_FX_ON,
+        deck: one,
+        state: LedState::On,
+    };
+    assert_eq!(profile.map_led_update(update), Some([0x94, 0x47, 0x7f]));
 }

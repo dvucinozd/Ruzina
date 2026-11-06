@@ -77,7 +77,8 @@ fn flx4_play_presses_reach_the_semantic_session() {
 
     // The echo latched both decks' Play LEDs on (the deck 1 release does not
     // toggle): note-on 0x90/0x91 0x0B with a non-zero value, CIN 9, cable 0.
-    // With the deck engine, Play on an empty deck is refused: LEDs stay off.
+    // With the deck engine, Play on an empty deck is refused: the first LED
+    // sync sends them off.
     let out = take_out(512);
     let engine = cfg!(feature = "deck-engine");
     let lit = |status: u8| {
@@ -87,7 +88,7 @@ fn flx4_play_presses_reach_the_semantic_session() {
             .map(|p| (p[0], p[3]))
     };
     if engine {
-        assert_eq!((lit(0x90), lit(0x91)), (None, None));
+        assert_eq!((lit(0x90), lit(0x91)), (Some((0x09, 0)), Some((0x09, 0))));
     } else {
         assert!(matches!(lit(0x90), Some((0x09, value)) if value != 0));
         assert!(matches!(lit(0x91), Some((0x09, value)) if value != 0));
@@ -119,6 +120,28 @@ fn flx4_play_presses_reach_the_semantic_session() {
     assert_eq!(first.len() + rest.len(), 129);
     assert!(first.iter().chain(&rest).all(|p| p[0] == p[1] >> 4));
     assert_eq!(ruzina_legacy_midi_out_overflow(), 0);
+
+    // The lamp test owns the LEDs. Its end clears them all, and the next sync
+    // restores what they showed, or the active pad mode stays dark.
+    #[cfg(feature = "deck-engine")]
+    {
+        with(|state| state.sync_leds());
+        assert!(take_out(512).is_empty(), "the lamp test stays lit");
+        ruzina_legacy_midi_lamp(0);
+        assert_eq!([take_out(512), take_out(512)].concat().len(), 129);
+        with(|state| state.sync_leds());
+        let restored = [take_out(512), take_out(512)].concat();
+        let lit = |status: u8, data1: u8| {
+            restored
+                .iter()
+                .any(|p| p[1] == status && p[2] == data1 && p[3] != 0)
+        };
+        assert!(
+            lit(0x90, 0x1b) && lit(0x91, 0x1b),
+            "Hot Cue mode, both decks"
+        );
+        assert!(lit(0x96, 0x63), "Master Cue");
+    }
 
     assert_eq!(ingest(&[0x09, 0x90, 0x0b]), -1);
     let mut totals = [0u32; 8];
