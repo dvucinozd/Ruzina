@@ -50,6 +50,8 @@ pub(crate) struct Mix {
     /// With `deck-engine`, the product deck engine owns playback and pitch.
     #[cfg(feature = "deck-engine")]
     engine: crate::deck_engine::Engine,
+    #[cfg(feature = "soak-autoplay")]
+    exerciser: crate::soak_autoplay::Exerciser,
     #[cfg(feature = "deck-engine")]
     engine_revision: [u32; 2],
 }
@@ -69,6 +71,8 @@ impl Mix {
             limited: 0,
             #[cfg(feature = "deck-engine")]
             engine: crate::deck_engine::Engine::new(),
+            #[cfg(feature = "soak-autoplay")]
+            exerciser: crate::soak_autoplay::Exerciser::new(),
             #[cfg(feature = "deck-engine")]
             engine_revision: [0; 2],
         }
@@ -77,6 +81,17 @@ impl Mix {
     #[cfg(feature = "deck-engine")]
     pub(crate) fn engine(&mut self) -> &mut crate::deck_engine::Engine {
         &mut self.engine
+    }
+
+    /// The soak DJ's next event, through the mixer and the deck engine as from a
+    /// controller. Returns the gesture that just started, for the log.
+    #[cfg(feature = "soak-autoplay")]
+    pub(crate) fn exercise(&mut self, now_ms: u32) -> Option<u32> {
+        let playing = self.engine.playing();
+        if let Some(event) = self.exerciser.next(now_ms, playing) {
+            self.control(&event);
+        }
+        self.exerciser.take_started()
     }
 
     /// Everything the controller's LEDs show.

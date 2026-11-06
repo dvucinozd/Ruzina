@@ -1606,3 +1606,68 @@ fn in_loop_adjust_the_jog_edits_the_loop_and_does_not_scratch() {
     assert_eq!(mix.engine().take_scratch(0), None);
     press(&mut mix, SemanticControl::JogTouch, false);
 }
+
+#[cfg(feature = "soak-autoplay")]
+#[test]
+fn the_soak_dj_does_everything_and_leaves_nothing_held() {
+    use crate::soak_autoplay::{Exerciser, GESTURES};
+    use std::collections::BTreeSet;
+    let mut dj = Exerciser::new();
+    let mut seen = BTreeSet::new();
+    let mut held: BTreeSet<std::string::String> = BTreeSet::new();
+    let mut idle_with_nothing_held = 0;
+    // An hour at one call per 10 ms, as the USB client loop does at the least.
+    for ms in (0..3_600_000u32).step_by(10) {
+        let event = dj.next(ms, [true, true]);
+        if let Some(started) = dj.take_started() {
+            seen.insert(started >> 8);
+            assert!(held.is_empty(), "a gesture ended with {held:?} held");
+            idle_with_nothing_held += 1;
+        }
+        let Some(event) = event else { continue };
+        let key = match event.value {
+            ControlValue::Pressed(pressed) => Some((
+                std::format!("{:?} {:?}", event.deck, event.control),
+                pressed,
+            )),
+            ControlValue::PadAction(action) => Some((
+                std::format!("{:?} {:?} {}", event.deck, action.mode, action.pad),
+                action.pressed,
+            )),
+            _ => None,
+        };
+        if let Some((key, pressed)) = key {
+            if pressed {
+                held.insert(key);
+            } else {
+                held.remove(&key);
+            }
+        }
+    }
+    assert_eq!(seen.len(), GESTURES.len(), "{seen:?}");
+    assert!(idle_with_nothing_held > 500, "{idle_with_nothing_held}");
+}
+
+#[cfg(feature = "soak-autoplay")]
+#[test]
+fn the_soak_dj_runs_through_the_mix_without_a_stuck_state() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = playing_mix();
+    let unsupported = mix.engine().counters()[0];
+    for ms in 0..120_000u32 {
+        if ms % 10 == 0 {
+            mix.exercise(ms);
+            mix.engine().flush_hot_cues();
+            crate::deck_transport::HOT_CUE_SAVES.take();
+            save_done();
+        }
+        // Serve what the DJ's seeks ask for, as the producer would.
+        if take_seek().is_some() {
+            acknowledge_seek(&mut mix);
+        }
+        if ms % 1_000 == 0 {
+            run(&mut mix, 1);
+        }
+    }
+    assert_eq!(mix.engine().counters()[0], unsupported);
+}
