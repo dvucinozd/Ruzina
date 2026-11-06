@@ -102,6 +102,9 @@ pub(crate) struct Engine {
     /// Banks the flash journal has not taken yet, one per track, oldest first.
     /// Flash waits until no deck plays, which a long mix can put off.
     hot_cue_saves: [Option<HotCueBank>; HOT_CUE_SAVES_QUEUED],
+    /// The bank offered to the flash owner until it reports the save done, and
+    /// the owner's count of finished saves at that moment.
+    hot_cue_in_flight: Option<(HotCueBank, u32)>,
     #[cfg(feature = "soak-autoplay")]
     auto: crate::soak_autoplay::AutoPlay,
 }
@@ -131,6 +134,7 @@ impl Engine {
             loop_ms: [None; 2],
             scratch_ticks: [0; 2],
             hot_cue_saves: [None; HOT_CUE_SAVES_QUEUED],
+            hot_cue_in_flight: None,
             #[cfg(feature = "soak-autoplay")]
             auto: crate::soak_autoplay::AutoPlay::new(),
         }
@@ -350,7 +354,10 @@ impl Engine {
     /// Deck `i`'s jog ticks for the next render block while its loaded track's
     /// jog is touched, `None` when no gesture may run.
     pub(crate) fn take_scratch(&mut self, i: usize) -> Option<i16> {
-        let touched = self.deck.deck(DECKS[i]).jog_touched
+        // In loop adjust the jog edits the loop, and the deck keeps playing it.
+        let state = self.deck.deck(DECKS[i]);
+        let touched = state.jog_touched
+            && state.loop_adjust_mode == ruzina_deck::LoopAdjustMode::None
             && self.loaded[i]
             && !self.faulted[i]
             && self.seeking[i].is_none();
@@ -391,13 +398,32 @@ impl Engine {
 
     /// Offers the oldest waiting bank to the SD owner, outside the audio fill.
     pub(crate) fn flush_hot_cues(&mut self) {
+        use crate::deck_transport::{HOT_CUE_SAVES, HOT_CUE_SAVES_DONE};
+        let done = HOT_CUE_SAVES_DONE.load(core::sync::atomic::Ordering::Acquire);
+        if let Some((_, offered_at)) = self.hot_cue_in_flight {
+            if offered_at == done {
+                return;
+            }
+            self.hot_cue_in_flight = None;
+        }
         let Some(bank) = self.hot_cue_saves[0] else {
             return;
         };
-        if crate::deck_transport::HOT_CUE_SAVES.put(bank).is_ok() {
+        if HOT_CUE_SAVES.put(bank).is_ok() {
+            self.hot_cue_in_flight = Some((bank, done));
             self.hot_cue_saves.copy_within(1.., 0);
             self.hot_cue_saves[HOT_CUE_SAVES_QUEUED - 1] = None;
         }
+    }
+
+    /// The newest bank of `id` that flash may not hold yet.
+    fn unsaved_hot_cues(&self, id: MediaTrackId) -> Option<HotCueBank> {
+        self.hot_cue_saves
+            .iter()
+            .flatten()
+            .copied()
+            .chain(self.hot_cue_in_flight.map(|(bank, _)| bank))
+            .find(|bank| bank.track_id() == id)
     }
 
     /// Each deck's Hot Cue pads that hold a cue, as bits.
@@ -559,11 +585,7 @@ impl Engine {
             };
             // A bank still waiting for flash is newer than what flash holds.
             let persisted = self
-                .hot_cue_saves
-                .iter()
-                .flatten()
-                .find(|waiting| waiting.track_id() == id)
-                .copied()
+                .unsaved_hot_cues(id)
                 .or(result.persisted_cues.filter(|bank| bank.track_id() == id));
             let committed = result.ready
                 && self

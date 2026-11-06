@@ -1345,6 +1345,11 @@ impl<'a> PadFx<'a> {
         self.config.active = self.active;
         self.echo_tail_active = false;
         self.echo_tail_frames_remaining = 0;
+        // Another pad takes over from a filter still fading out.
+        self.filter_tail_active = false;
+        if preset.kind != PadFxKind::Filter {
+            self.filter_fade.reset();
+        }
 
         match preset.kind {
             PadFxKind::Filter => {
@@ -2735,6 +2740,32 @@ mod tests {
         });
         assert!(!fx.is_active());
         assert_eq!(fx.kind(), PadFxKind::None);
+    }
+
+    #[test]
+    fn a_new_pad_is_not_cancelled_by_the_fading_filter_before_it() {
+        let mut left = [0.0; 1_000];
+        let mut right = [0.0; 1_000];
+        let mut fx = PadFx::new(44_100, &mut left, &mut right);
+        let pad = |pad, active| PadFxConfig {
+            mode: PadFxMode::PadFx1,
+            pad,
+            active,
+        };
+        fx.set(pad(0, true));
+        assert_eq!(fx.kind(), PadFxKind::Filter);
+        for _ in 0..512 {
+            fx.process_frame(DspFrame::default());
+        }
+        fx.set(pad(0, false));
+        fx.process_frame(DspFrame::default());
+        fx.set(pad(2, true));
+        assert_eq!(fx.kind(), PadFxKind::Echo);
+        for _ in 0..1_024 {
+            fx.process_frame(DspFrame::default());
+        }
+        assert_eq!(fx.kind(), PadFxKind::Echo);
+        assert!(fx.is_active());
     }
 
     #[test]
