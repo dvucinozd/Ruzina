@@ -67,6 +67,9 @@ pub(crate) struct LoadResult {
 }
 /// The next bank for the flash journal, for the SD owner.
 pub(crate) static HOT_CUE_SAVES: Slot<ruzina_hot_cues::HotCueBank> = Slot::new();
+/// Banks the SD owner finished with, saved or not.
+pub(crate) static HOT_CUE_SAVES_DONE: core::sync::atomic::AtomicU32 =
+    core::sync::atomic::AtomicU32::new(0);
 pub(crate) static GATES: [DeckLoadGate; 2] = [DeckLoadGate::new(), DeckLoadGate::new()];
 pub(crate) static LOAD_REQUESTS: [Slot<LoadRequest>; 2] = [Slot::new(), Slot::new()];
 pub(crate) static LOAD_RESULTS: [Slot<LoadResult>; 2] = [Slot::new(), Slot::new()];

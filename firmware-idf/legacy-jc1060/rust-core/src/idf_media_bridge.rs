@@ -1008,6 +1008,7 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
             }
             .now_us()
             .saturating_sub(now);
+            crate::deck_transport::HOT_CUE_SAVES_DONE.fetch_add(1, Ordering::Release);
             match saved {
                 Some(true) => report(load_event::HOT_CUES_SAVED, took as u32),
                 Some(false) => {

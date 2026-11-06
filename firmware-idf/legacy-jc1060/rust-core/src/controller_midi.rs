@@ -228,6 +228,19 @@ pub extern "C" fn ruzina_legacy_midi_refresh() {
         // The soak DJ runs here, outside the USB audio fill's stack chain.
         #[cfg(feature = "soak-autoplay")]
         mix.engine().autoplay();
+        #[cfg(all(feature = "soak-autoplay", not(test)))]
+        {
+            unsafe extern "C" {
+                fn esp_timer_get_time() -> i64;
+                fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+            }
+            // SAFETY: IDF monotonic task-safe clock.
+            let now_ms = (unsafe { esp_timer_get_time() } / 1_000) as u32;
+            if let Some(gesture) = mix.exercise(now_ms) {
+                // SAFETY: diagnostic telemetry passes three u32 values only.
+                unsafe { ruzina_bridge_load_report(0, 20, gesture) };
+            }
+        }
     });
     with(|state| {
         if state.profile.is_some() {

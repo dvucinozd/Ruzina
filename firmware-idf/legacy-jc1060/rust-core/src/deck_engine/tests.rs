@@ -1345,6 +1345,11 @@ fn turning_each_beat_fx_on_and_off_does_not_click() {
     }
 }
 
+/// What the flash owner does after each bank.
+fn save_done() {
+    crate::deck_transport::HOT_CUE_SAVES_DONE.fetch_add(1, core::sync::atomic::Ordering::Release);
+}
+
 fn hot_cue_pad(pad: u8, pressed: bool) -> ControlEvent {
     event(
         SemanticControl::PadAction,
@@ -1450,6 +1455,25 @@ fn a_new_cue_waits_for_the_flash_owner_and_a_reload_keeps_it() {
     mix.engine().flush_hot_cues();
     assert!(saves.take().is_none(), "nothing else waits");
 
+    // Until the owner reports it done, a load of the track still gets that bank,
+    // because flash may not hold it yet: the owner waits for a silent moment.
+    post_load_with_cues(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 22,
+            bpm_x100: 12_000,
+            track_id: [22; 16],
+        },
+        HotCueBank::empty(id),
+        None,
+    );
+    run(&mut mix, 3);
+    assert_eq!(mix.engine().hot_cue_masks(), [0b1001, 0]);
+    save_done();
+    mix.engine().flush_hot_cues();
+    assert!(mix.engine().hot_cue_in_flight.is_none());
+
     // A busy owner keeps the bank waiting, in order, with the oldest dropped
     // only when the queue is full.
     let waiting = |track: u8| {
@@ -1465,9 +1489,14 @@ fn a_new_cue_waits_for_the_flash_owner_and_a_reload_keeps_it() {
     assert_eq!(saves.take().unwrap().track_id(), MediaTrackId([200; 16]));
     mix.engine().flush_hot_cues();
     assert_eq!(saves.take().unwrap().track_id(), MediaTrackId([1; 16]));
+    // One at a time: the next waits for the owner's report on this one.
+    mix.engine().flush_hot_cues();
+    assert!(saves.take().is_none());
+    save_done();
     for track in 2..17 {
         mix.engine().flush_hot_cues();
         assert_eq!(saves.take().unwrap().track_id(), MediaTrackId([track; 16]));
+        save_done();
     }
     mix.engine().flush_hot_cues();
     assert!(saves.take().is_none());
@@ -1545,4 +1574,100 @@ fn the_leds_follow_the_deck_and_mixer_and_all_reach_the_flx4() {
         state: LedState::On,
     };
     assert_eq!(profile.map_led_update(update), Some([0x94, 0x47, 0x7f]));
+}
+
+#[test]
+fn in_loop_adjust_the_jog_edits_the_loop_and_does_not_scratch() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = mix_with_cues(23, HotCueBank::empty(MediaTrackId([23; 16])), None);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 100);
+    press(&mut mix, SemanticControl::JogTouch, true);
+    assert_eq!(mix.engine().take_scratch(0), Some(0), "a touch scratches");
+    press(&mut mix, SemanticControl::JogTouch, false);
+    assert_eq!(mix.engine().take_scratch(0), None);
+    // With a loop in adjust mode, the same touch leaves the deck playing.
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    press(&mut mix, SemanticControl::ReloopExit, false);
+    mix.control(&event(
+        SemanticControl::DeckExtAction,
+        ControlValue::DeckExtAction(ruzina_controller_core::DeckExtActionValue {
+            action: ruzina_controller_core::DeckExtAction::LoopAdjustIn,
+            pressed: true,
+        }),
+    ));
+    let adjust = deck(&mut mix).loop_adjust_mode;
+    assert_ne!(
+        adjust,
+        ruzina_deck::LoopAdjustMode::None,
+        "needs loop adjust"
+    );
+    press(&mut mix, SemanticControl::JogTouch, true);
+    assert_eq!(mix.engine().take_scratch(0), None);
+    press(&mut mix, SemanticControl::JogTouch, false);
+}
+
+#[cfg(feature = "soak-autoplay")]
+#[test]
+fn the_soak_dj_does_everything_and_leaves_nothing_held() {
+    use crate::soak_autoplay::{Exerciser, GESTURES};
+    use std::collections::BTreeSet;
+    let mut dj = Exerciser::new();
+    let mut seen = BTreeSet::new();
+    let mut held: BTreeSet<std::string::String> = BTreeSet::new();
+    let mut idle_with_nothing_held = 0;
+    // An hour at one call per 10 ms, as the USB client loop does at the least.
+    for ms in (0..3_600_000u32).step_by(10) {
+        let event = dj.next(ms, [true, true]);
+        if let Some(started) = dj.take_started() {
+            seen.insert(started >> 8);
+            assert!(held.is_empty(), "a gesture ended with {held:?} held");
+            idle_with_nothing_held += 1;
+        }
+        let Some(event) = event else { continue };
+        let key = match event.value {
+            ControlValue::Pressed(pressed) => Some((
+                std::format!("{:?} {:?}", event.deck, event.control),
+                pressed,
+            )),
+            ControlValue::PadAction(action) => Some((
+                std::format!("{:?} {:?} {}", event.deck, action.mode, action.pad),
+                action.pressed,
+            )),
+            _ => None,
+        };
+        if let Some((key, pressed)) = key {
+            if pressed {
+                held.insert(key);
+            } else {
+                held.remove(&key);
+            }
+        }
+    }
+    assert_eq!(seen.len(), GESTURES.len(), "{seen:?}");
+    assert!(idle_with_nothing_held > 500, "{idle_with_nothing_held}");
+}
+
+#[cfg(feature = "soak-autoplay")]
+#[test]
+fn the_soak_dj_runs_through_the_mix_without_a_stuck_state() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = playing_mix();
+    let unsupported = mix.engine().counters()[0];
+    for ms in 0..120_000u32 {
+        if ms % 10 == 0 {
+            mix.exercise(ms);
+            mix.engine().flush_hot_cues();
+            crate::deck_transport::HOT_CUE_SAVES.take();
+            save_done();
+        }
+        // Serve what the DJ's seeks ask for, as the producer would.
+        if take_seek().is_some() {
+            acknowledge_seek(&mut mix);
+        }
+        if ms % 1_000 == 0 {
+            run(&mut mix, 1);
+        }
+    }
+    assert_eq!(mix.engine().counters()[0], unsupported);
 }
