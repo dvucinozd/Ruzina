@@ -14,6 +14,8 @@
 //! which C takes with [`ruzina_legacy_midi_take_out`] for one Bulk-OUT.
 use core::cell::UnsafeCell;
 use core::fmt::Write;
+#[cfg(feature = "deck-engine")]
+use ruzina_controller_core::ControllerLedFrame;
 use ruzina_controller_core::{
     ControlEvent, ControlValue, DeckId, LedState, LedUpdate, SemanticControl, SemanticLedId,
 };
@@ -25,7 +27,7 @@ use ruzina_controller_session::{ControllerSession, SessionDelivery, UsbMidiBatch
 const OUT_PACKETS: usize = 256;
 
 /// The owner's controller: the M2.5 golden DDJ-FLX4 profile (S3CP v2).
-const FLX4_PROFILE: &[u8] = include_bytes!(
+pub(crate) const FLX4_PROFILE: &[u8] = include_bytes!(
     "../../../../firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.v2-golden.s3bin"
 );
 
@@ -45,13 +47,9 @@ struct State {
     totals: UsbMidiBatchReport,
     /// Play latch per deck for the echo.
     playing: [bool; 2],
-    /// The Loop In and Out LEDs' last state, per deck.
+    /// What the controller's LEDs show, and which still have to be sent.
     #[cfg(feature = "deck-engine")]
-    loop_leds: [(bool, bool); 2],
-    #[cfg(feature = "deck-engine")]
-    beat_fx_led: bool,
-    #[cfg(feature = "deck-engine")]
-    hot_cue_leds: [u8; 2],
+    leds: ControllerLedFrame,
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
@@ -163,11 +161,7 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     },
     playing: [false; 2],
     #[cfg(feature = "deck-engine")]
-    loop_leds: [(false, false); 2],
-    #[cfg(feature = "deck-engine")]
-    beat_fx_led: false,
-    #[cfg(feature = "deck-engine")]
-    hot_cue_leds: [0; 2],
+    leds: ControllerLedFrame::new(),
     headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
@@ -190,49 +184,23 @@ pub(crate) fn playing() -> [bool; 2] {
 
 #[cfg(feature = "deck-engine")]
 impl State {
-    /// The Play LEDs follow the deck engine's confirmed playback, and the
-    /// Loop In and Out LEDs its marked start and active loop.
-    fn sync_play_leds(&mut self) {
-        let (playing, loop_leds, beat_fx, hot_cues) = crate::deck_mix::with(|mix| {
-            let engine = mix.engine();
-            (
-                engine.playing(),
-                engine.loop_leds(),
-                engine.beat_fx_on(),
-                engine.hot_cue_masks(),
-            )
+    /// The LEDs follow the deck engine and the mixer, as on the native firmware.
+    /// Only the ones that changed are sent; a new binding sends them all.
+    fn sync_leds(&mut self) {
+        self.playing = crate::deck_mix::with(|mix| {
+            mix.refresh_leds(&mut self.leds);
+            mix.engine().playing()
         });
-        if self.beat_fx_led != beat_fx {
-            self.beat_fx_led = beat_fx;
-            self.led(SemanticLedId::BEAT_FX_ON, None, beat_fx);
-        }
-        for (slot, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
-            if self.playing[slot] != playing[slot] {
-                self.playing[slot] = playing[slot];
-                self.led(SemanticLedId::PLAY, Some(deck), playing[slot]);
-            }
-            let (was_in, was_out) = self.loop_leds[slot];
-            let (loop_in, loop_out) = loop_leds[slot];
-            self.loop_leds[slot] = (loop_in, loop_out);
-            if was_in != loop_in {
-                self.led(SemanticLedId::LOOP_IN, Some(deck), loop_in);
-            }
-            if was_out != loop_out {
-                self.led(SemanticLedId::LOOP_OUT, Some(deck), loop_out);
-            }
-            let changed = self.hot_cue_leds[slot] ^ hot_cues[slot];
-            self.hot_cue_leds[slot] = hot_cues[slot];
-            for pad in (0..8).filter(|pad| changed >> pad & 1 != 0) {
-                if let Some(led) = SemanticLedId::hot_cue_pad(pad) {
-                    self.led(led, Some(deck), hot_cues[slot] >> pad & 1 != 0);
-                }
+        while let Some(update) = self.leds.take_next_dirty() {
+            if let Some(message) = self.profile.and_then(|p| p.map_led_update(update)) {
+                self.push_out(message);
             }
         }
     }
 }
 
-/// Brings the Play LEDs up to date with the deck engine (a track that
-/// played out stops without a controller event). USB client task, before
+/// Brings the LEDs up to date with the deck engine (a track that played out
+/// stops without a controller event). USB client task, before
 /// the periodic Bulk-OUT flush.
 #[cfg(feature = "idf-deck-engine")]
 #[unsafe(no_mangle)]
@@ -247,7 +215,7 @@ pub extern "C" fn ruzina_legacy_midi_refresh() {
     });
     with(|state| {
         if state.profile.is_some() {
-            state.sync_play_leds();
+            state.sync_leds();
         }
     });
 }
@@ -362,9 +330,7 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         state.playing = [false; 2];
         #[cfg(feature = "deck-engine")]
         {
-            state.loop_leds = [(false, false); 2];
-            state.beat_fx_led = false;
-            state.hot_cue_leds = [0; 2];
+            state.leds = ControllerLedFrame::new();
         }
         state.headphone = None;
         state.out_len = 0;
@@ -508,7 +474,7 @@ fn drain(state: &mut State) -> i32 {
             #[cfg(feature = "deck-mix")]
             crate::deck_mix::with(|mix| mix.control(&event));
             #[cfg(feature = "deck-engine")]
-            state.sync_play_leds();
+            state.sync_leds();
             if let Some((action, deck, value)) = ui_action(&event) {
                 {
                     // SAFETY: scalars only.

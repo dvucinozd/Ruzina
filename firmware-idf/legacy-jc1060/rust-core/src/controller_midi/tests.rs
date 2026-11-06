@@ -77,7 +77,8 @@ fn flx4_play_presses_reach_the_semantic_session() {
 
     // The echo latched both decks' Play LEDs on (the deck 1 release does not
     // toggle): note-on 0x90/0x91 0x0B with a non-zero value, CIN 9, cable 0.
-    // With the deck engine, Play on an empty deck is refused: LEDs stay off.
+    // With the deck engine, Play on an empty deck is refused: the first LED
+    // sync sends them off.
     let out = take_out(512);
     let engine = cfg!(feature = "deck-engine");
     let lit = |status: u8| {
@@ -87,7 +88,7 @@ fn flx4_play_presses_reach_the_semantic_session() {
             .map(|p| (p[0], p[3]))
     };
     if engine {
-        assert_eq!((lit(0x90), lit(0x91)), (None, None));
+        assert_eq!((lit(0x90), lit(0x91)), (Some((0x09, 0)), Some((0x09, 0))));
     } else {
         assert!(matches!(lit(0x90), Some((0x09, value)) if value != 0));
         assert!(matches!(lit(0x91), Some((0x09, value)) if value != 0));

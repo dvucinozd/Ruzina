@@ -79,6 +79,39 @@ impl Mix {
         &mut self.engine
     }
 
+    /// Everything the controller's LEDs show.
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn refresh_leds(&self, leds: &mut ruzina_controller_core::ControllerLedFrame) {
+        use ruzina_controller_core::{LedState, LedUpdate, SemanticLedId};
+        self.engine.refresh_leds(leds);
+        let mut set = |led, deck, on| {
+            let state = if on { LedState::On } else { LedState::Off };
+            leds.set(LedUpdate { led, deck, state });
+        };
+        for deck in [DeckId::One, DeckId::Two] {
+            set(
+                SemanticLedId::PFL,
+                Some(deck),
+                self.mixer.deck(deck).pfl_enabled,
+            );
+        }
+        set(
+            SemanticLedId::SMART_CFX,
+            None,
+            self.mixer.smart_cfx_enabled(),
+        );
+        set(
+            SemanticLedId::SMART_FADER,
+            None,
+            self.mixer.smart_fader_enabled(),
+        );
+        set(
+            SemanticLedId::MASTER_CUE,
+            None,
+            self.mixer.master_cue_enabled(),
+        );
+    }
+
     /// Moves to the render graph with effects once the SD owner published
     /// their memory, before any track can load. Outside the USB audio fill.
     #[cfg(feature = "deck-engine")]

@@ -44,8 +44,11 @@
 - **Hot cues (2026-11-06):** [Rekordbox cues on load, own cues in a flash journal](reviews/2026-11-06-hot-cues.md)
   on a new 1 MB partition, written only while no deck plays. Writes work on the
   board, longest 11.7 ms, and the owner saw a cue come back after a reset.
-- **On the board:** app `db15d7dc…` (production with loops, reloop, scratch, FX and hot cues; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..37}-*-flash`.
+- **Controller LEDs (2026-11-06):** [pad modes, Sync, PFL, Smart buttons and Beat FX On](reviews/2026-11-06-controller-leds.md)
+  now follow the deck and mixer as on the native firmware. The owner confirmed them on
+  the FLX4; the run had no track loaded.
+- **On the board:** app `b3a1acfd…` (production with loops, reloop, scratch, FX, hot cues and LEDs; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..38}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**

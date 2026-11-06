@@ -22,6 +22,7 @@ use crate::deck_transport::{SEEK_REQUESTS, SEEK_RESULTS, SeekOutcome, SeekReques
 use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_audio_runtime::nudge::TempoNudge;
 use ruzina_audio_runtime::render::RENDER_SAMPLE_RATE_HZ;
+use ruzina_controller_core::ControllerLedFrame;
 use ruzina_controller_core::{ControlEvent, DeckId};
 use ruzina_core::MediaTrackId;
 use ruzina_deck::{DeckEffect, DeckEffects, DeckProductState};
@@ -413,9 +414,77 @@ impl Engine {
         ruzina_audio_runtime::fx::product_fx_controls(&self.deck)
     }
 
-    /// The Beat FX On LED.
-    pub(crate) fn beat_fx_on(&self) -> bool {
-        self.deck.beat_fx().enabled
+    /// The LEDs the deck state decides, as on the native firmware.
+    pub(crate) fn refresh_leds(&self, leds: &mut ControllerLedFrame) {
+        use ruzina_controller_core::{BeatFxTarget, LedState, LedUpdate, PadMode, SemanticLedId};
+        use ruzina_deck::{LoopAdjustMode, PadFxBank};
+        let mut set = |led, deck, on| {
+            let state = if on { LedState::On } else { LedState::Off };
+            leds.set(LedUpdate { led, deck, state });
+        };
+        let (playing, loops, hot_cues) = (self.playing(), self.loop_leds(), self.hot_cue_masks());
+        let beat_fx = self.deck.beat_fx();
+        for (i, deck) in DECKS.into_iter().enumerate() {
+            let state = self.deck.deck(deck);
+            let this = Some(deck);
+            set(SemanticLedId::PLAY, this, playing[i]);
+            set(SemanticLedId::SYNC, this, state.sync_enabled);
+            set(SemanticLedId::LOOP_IN, this, loops[i].0);
+            set(SemanticLedId::LOOP_OUT, this, loops[i].1);
+            set(SemanticLedId::CENSOR, this, state.censor_active);
+            let adjust = state.loop_adjust_mode;
+            set(
+                SemanticLedId::LOOP_ADJUST_IN,
+                this,
+                adjust == LoopAdjustMode::In,
+            );
+            set(
+                SemanticLedId::LOOP_ADJUST_OUT,
+                this,
+                adjust == LoopAdjustMode::Out,
+            );
+            for (led, mode) in [
+                (SemanticLedId::PAD_MODE_HOT_CUE, PadMode::HotCue),
+                (SemanticLedId::PAD_MODE_BEAT_LOOP, PadMode::BeatLoop),
+                (SemanticLedId::PAD_MODE_BEAT_JUMP, PadMode::BeatJump),
+                (SemanticLedId::PAD_MODE_KEY_SHIFT, PadMode::KeyShift),
+                (SemanticLedId::PAD_MODE_KEYBOARD, PadMode::Keyboard),
+                (SemanticLedId::PAD_MODE_PAD_FX1, PadMode::PadFx1),
+                (SemanticLedId::PAD_MODE_PAD_FX2, PadMode::PadFx2),
+                (SemanticLedId::PAD_MODE_SAMPLER, PadMode::Sampler),
+            ] {
+                set(led, this, state.pad_mode == mode);
+            }
+            for pad in 0..8u8 {
+                if let Some(led) = SemanticLedId::hot_cue_pad(pad) {
+                    set(led, this, hot_cues[i] >> pad & 1 != 0);
+                }
+                let fx = |bank| {
+                    state
+                        .active_pad_fx
+                        .is_some_and(|active| active.bank == bank && active.pad == pad)
+                };
+                if let Some(led) = SemanticLedId::pad_fx1_pad(pad) {
+                    set(led, this, fx(PadFxBank::One));
+                }
+                if let Some(led) = SemanticLedId::pad_fx2_pad(pad) {
+                    set(led, this, fx(PadFxBank::Two));
+                }
+            }
+            let target = if i == 0 {
+                BeatFxTarget::ChannelOne
+            } else {
+                BeatFxTarget::ChannelTwo
+            };
+            set(
+                SemanticLedId::BEAT_FX_ON,
+                this,
+                beat_fx.enabled
+                    && (beat_fx.target == BeatFxTarget::Both || beat_fx.target == target),
+            );
+        }
+        set(SemanticLedId::TRACK_LOAD_DECK1, None, self.loaded[0]);
+        set(SemanticLedId::TRACK_LOAD_DECK2, None, self.loaded[1]);
     }
 
     /// Each deck's Loop In and Loop Out LEDs: In from the press that marks
