@@ -47,8 +47,8 @@
 - **Controller LEDs (2026-11-06):** [pad modes, Sync, PFL, Smart buttons and Beat FX On](reviews/2026-11-06-controller-leds.md)
   now follow the deck and mixer as on the native firmware. The owner confirmed them on
   the FLX4; the run had no track loaded.
-- **On the board:** app `b3a1acfd…` (production with loops, reloop, scratch, FX, hot cues and LEDs; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
-  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..38}-*-flash`.
+- **On the board:** app `35872eb5…` (production with loops, reloop, scratch, FX, hot cues and LEDs; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+  `D:\BoardEvidence\JC1060-20261030-COM3\s{10..39}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:**

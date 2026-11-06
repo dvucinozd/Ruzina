@@ -24,8 +24,7 @@ the FLX4 has one per deck, so the message mapped to nothing.
 - **Lamp test (Codex review):** the startup lamp test clears every output 1.5 s after
   binding, which also cleared the first LED state, and the frame saw nothing to resend.
   The active pad mode and Master Cue stayed dark until they changed. The LED sync now
-  waits for the lamp test, and its end sends the whole state again. This came after the
-  device run below, so it is proven on the host only.
+  waits for the lamp test, and its end sends the whole state again.
 
 ## Evidence
 
@@ -37,6 +36,10 @@ the FLX4 has one per deck, so the message mapped to nothing.
   - **In the log:** Hot Cue, Beat Jump and Pad FX 1 mode presses and PFL on both decks,
     Sync on deck 1, Smart CFX, Beat FX On and the channel switch.
   - **Log:** no track load, underruns 0/0, `packet_errors=0`, no faults.
+
+- **Device, with the lamp test fix** (`s39-lamp-leds-*`, app `35872eb5…`, 873616 B): with
+  no button pressed, the owner saw Hot Cue on both decks and Master Cue lit after the
+  lamp test. The other LEDs from the s38 run were not repeated on this image.
 
 ## Not covered
 
