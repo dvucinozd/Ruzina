@@ -50,17 +50,23 @@ none of this.
 
 ## Evidence
 
-- **Host:** 2 new review tests, 1 in `ruzina-audio-dsp` and 2 for the soak DJ. All 8 legacy
-  feature sets, target clippy on 6 of them, and the `ruzina-audio-dsp` and
-  `ruzina-audio-runtime` tests and clippy pass.
+- **Host:** 2 new tests for the fixes, one of them in `ruzina-audio-dsp`, a longer hot cue
+  test, and 2 for the soak DJ. All 8 legacy feature sets, target clippy on 6 of them, and
+  the `ruzina-audio-dsp` and `ruzina-audio-runtime` tests and clippy pass.
 - **Build:** soak `deck-engine`, 876560 B. UAC fill chain 3408 B, load chain 51712 B.
+- **Production image** (`s41-production-*`, app `8a264d4d…`, 874160 B), owner verdict "Radi":
+  - **In the log:** scratch on both decks, Pad FX 1 on deck 1, Hot Cue pads on deck 2, a
+    loop, and the same track loaded on both decks.
+  - **Log:** underruns 0/0, `packet_errors=0`, no faults. Longest fill 4426 µs, 8 of 23029
+    fills over 3 ms, none of 6 ms or more.
 
 ## Not covered
 
-- **Sound:** the run was unattended and nobody listened, so clicks or wrong effects would
-  not show in these numbers.
-- **The review fixes by hand:** the soak DJ never enters loop adjust, and never loads a track
-  that is on the other deck, so two of the three fixes are proven on the host only.
+- **Sound:** nobody listened to the soak. The owner's verdict on the production image rests
+  on a shorter run with no Beat FX in its log.
+- **The review fixes on the device:** two of the three are proven on the host only. The soak
+  DJ does not reach them, and the production log has no entry into loop adjust and no cue
+  set on deck 1 before that track loaded on deck 2.
 - **Sync:** the deck gets no analysis on this firmware, so Sync matches tempo from the BPM
   and does not align beats.
 - **Tempo fader and channel faders:** the soak DJ does not move them.
