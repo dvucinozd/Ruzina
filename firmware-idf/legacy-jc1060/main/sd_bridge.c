@@ -4,6 +4,9 @@
 #include "sdkconfig.h"
 #include "driver/sdmmc_host.h"
 #include "esp_heap_caps.h"
+#if CONFIG_RUZINA_DECK_ENGINE
+#include "esp_partition.h"
+#endif
 #include "esp_psram.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -33,6 +36,31 @@ static uint32_t reads, sectors_read, denied_commands;
 #define BRIDGE_MAX_SECTORS 16u
 #define BRIDGE_BOUNCE_BYTES (BRIDGE_MAX_SECTORS*512u)
 
+#if CONFIG_RUZINA_DECK_ENGINE
+/* The Hot Cue journal partition. SD owner task only; its stack is internal RAM,
+   as flash operations need. Offsets are relative to the partition. */
+static const esp_partition_t *hotcue_partition(void)
+{
+    static const esp_partition_t *partition;
+    if(!partition) partition=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,(esp_partition_subtype_t)0x40,"hotcues");
+    return partition;
+}
+int32_t ruzina_bridge_hotcue_read(uint32_t offset, uint8_t *out, uint32_t len)
+{
+    const esp_partition_t *partition=hotcue_partition();
+    return partition&&esp_partition_read(partition,offset,out,len)==ESP_OK?0:-1;
+}
+int32_t ruzina_bridge_hotcue_write(uint32_t offset, const uint8_t *data, uint32_t len)
+{
+    const esp_partition_t *partition=hotcue_partition();
+    return partition&&esp_partition_write(partition,offset,data,len)==ESP_OK?0:-1;
+}
+int32_t ruzina_bridge_hotcue_erase_sector(uint32_t offset)
+{
+    const esp_partition_t *partition=hotcue_partition();
+    return partition&&esp_partition_erase_range(partition,offset,4096)==ESP_OK?0:-1;
+}
+#endif
 void ruzina_bridge_lock(void) { portENTER_CRITICAL(&bridge_mux); }
 void ruzina_bridge_unlock(void) { portEXIT_CRITICAL(&bridge_mux); }
 void ruzina_bridge_notify_worker(void) { xTaskNotifyGive(worker_task); }

@@ -486,6 +486,52 @@ pub extern "C" fn ruzina_legacy_load_select(index: u32) {
 const DETAIL_PEAKS: usize = 400;
 
 /// Load-path telemetry events; values are scalars only.
+/// The Hot Cue journal on its flash partition, as the native firmware keeps it.
+#[cfg(feature = "idf-deck-engine")]
+mod hot_cue_flash {
+    use ruzina_hot_cues::RecordBackedHotCueStore;
+    use ruzina_hot_cues::journal::{HotCueJournalBackend, HotCueJournalFlash};
+
+    unsafe extern "C" {
+        fn ruzina_bridge_hotcue_read(offset: u32, out: *mut u8, len: u32) -> i32;
+        fn ruzina_bridge_hotcue_write(offset: u32, data: *const u8, len: u32) -> i32;
+        fn ruzina_bridge_hotcue_erase_sector(offset: u32) -> i32;
+    }
+
+    pub(super) struct Flash;
+
+    impl HotCueJournalFlash for Flash {
+        type Error = ();
+
+        fn read(&mut self, offset: u32, output: &mut [u8]) -> Result<(), ()> {
+            // SAFETY: C writes `len` bytes into `output` and keeps no pointer.
+            let status = unsafe {
+                ruzina_bridge_hotcue_read(offset, output.as_mut_ptr(), output.len() as u32)
+            };
+            if status == 0 { Ok(()) } else { Err(()) }
+        }
+
+        fn write_nor(&mut self, offset: u32, data: &[u8]) -> Result<(), ()> {
+            // SAFETY: C reads `len` bytes from `data` and keeps no pointer.
+            let status =
+                unsafe { ruzina_bridge_hotcue_write(offset, data.as_ptr(), data.len() as u32) };
+            if status == 0 { Ok(()) } else { Err(()) }
+        }
+
+        fn erase_sector(&mut self, offset: u32) -> Result<(), ()> {
+            // SAFETY: scalar argument; the partition bounds the erase.
+            let status = unsafe { ruzina_bridge_hotcue_erase_sector(offset) };
+            if status == 0 { Ok(()) } else { Err(()) }
+        }
+    }
+
+    pub(super) type Store = RecordBackedHotCueStore<HotCueJournalBackend<Flash>>;
+
+    pub(super) const fn store() -> Store {
+        RecordBackedHotCueStore::new(HotCueJournalBackend::new(Flash))
+    }
+}
+
 #[cfg(feature = "idf-media-load")]
 mod load_event {
     /// Mounted; value is the partition's first LBA.
@@ -500,6 +546,13 @@ mod load_event {
     pub const PASS: u32 = 5;
     /// Failure; value is the stage (1 mount, 2 allocation, 3 import, 4 stale).
     pub const FAILED: u32 = 6;
+    /// A Hot Cue bank reached flash; value is the time it took in microseconds.
+    #[cfg(feature = "idf-deck-engine")]
+    pub const HOT_CUES_SAVED: u32 = 17;
+    /// The Hot Cue journal failed and is off until the next boot; value is 1
+    /// for a read, 2 for a write.
+    #[cfg(feature = "idf-deck-engine")]
+    pub const HOT_CUES_FAILED: u32 = 18;
 }
 
 /// Mount, import `export.pdb` and preflight every catalog track, repeatedly.
@@ -621,6 +674,19 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         if let Some(playlists) = probe.playlists {
             report(pass, load_event::PLAYLISTS, playlists.nodes);
         }
+        // Each track's Rekordbox cues, kept from the pass below for its loads.
+        // Without the memory a load just starts with no Rekordbox cues.
+        #[cfg(feature = "idf-deck-engine")]
+        let source_cues = {
+            let mut banks = alloc::vec::Vec::new();
+            if banks.try_reserve_exact(tracks).is_ok() {
+                banks.resize(
+                    tracks,
+                    ruzina_hot_cues::HotCueBank::empty(ruzina_core::MediaTrackId([0; 16])),
+                );
+            }
+            core::cell::RefCell::new(banks)
+        };
         let published = |candidate: CatalogPublicationId| {
             candidate == publication
                 && stage.current().is_some_and(|snapshot| {
@@ -677,6 +743,12 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                         columns,
                     )
                 };
+            }
+            #[cfg(feature = "idf-deck-engine")]
+            if let Ok(prepared) = &prepared
+                && let Some(bank) = source_cues.borrow_mut().get_mut(index)
+            {
+                *bank = prepared.source;
             }
             Some(match prepared {
                 Ok(prepared) if prepared.publication.is_some() => 0,
@@ -740,7 +812,9 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                     .map(CatalogPath)
             },
             #[cfg(feature = "idf-deck-engine")]
-            prepared,
+            (prepared, |index| {
+                source_cues.borrow().get(index as usize).copied()
+            }),
         );
         // SAFETY: task-only cooperative delay between passes.
         #[cfg(not(feature = "idf-deck-play"))]
@@ -846,9 +920,12 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
     current: &C,
     detail: impl Fn(&mut crate::exfat_fixture::Volume<D>, usize) -> Option<u32>,
     path: impl Fn(u32) -> Option<P>,
-    #[cfg(feature = "idf-deck-engine")] prepared: [crate::deck_play::Producer<
-        <crate::exfat_fixture::Volume<D> as ruzina_media_fs::AsyncFileSystem>::File,
-    >; 2],
+    #[cfg(feature = "idf-deck-engine")] (prepared, source_cues): (
+        [crate::deck_play::Producer<
+            <crate::exfat_fixture::Volume<D> as ruzina_media_fs::AsyncFileSystem>::File,
+        >; 2],
+        impl Fn(u32) -> Option<ruzina_hot_cues::HotCueBank>,
+    ),
 ) -> i32 {
     use crate::deck_play::{COMMANDS, DECKS, Event, RINGS, SourceFiles};
     #[cfg(not(feature = "idf-deck-engine"))]
@@ -879,6 +956,8 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
     let lease = with_state(|s| s.as_ref().unwrap().binding.lease);
     #[cfg(feature = "idf-deck-engine")]
     let _ = crate::deck_transport::MEDIA.put(lease);
+    #[cfg(feature = "idf-deck-engine")]
+    let mut hot_cues = Some(hot_cue_flash::store());
     let mut deck_two_first = false;
     let mut detail_deferred = false;
     let mut last_turn_us = 0u64;
@@ -913,6 +992,29 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
             if selected < tracks && detail(volume, selected) == Some(3) {
                 report(load_event::FAILED, 4 << 8);
                 return -6;
+            }
+        }
+        // Flash stalls everything running from it, the USB audio task included,
+        // so a bank waits until no deck plays.
+        #[cfg(feature = "idf-deck-engine")]
+        if !playing.into_iter().any(|p| p)
+            && let Some(bank) = crate::deck_transport::HOT_CUE_SAVES.take()
+        {
+            use ruzina_hot_cues::HotCueStore;
+            let saved = hot_cues.as_mut().map(|store| store.save(&bank).is_ok());
+            let took = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            }
+            .now_us()
+            .saturating_sub(now);
+            match saved {
+                Some(true) => report(load_event::HOT_CUES_SAVED, took as u32),
+                Some(false) => {
+                    hot_cues = None;
+                    report(load_event::HOT_CUES_FAILED, 2);
+                }
+                None => {}
             }
         }
         let mut busy = false;
@@ -1025,11 +1127,29 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
                 let ready = matches!(event, Some(Event::Ready { .. }));
                 sources[deck] = ready.then_some(request);
                 let (track_id, bpm_x100) = track(request.index).unwrap_or(([0; 16], 0));
+                let id = ruzina_core::MediaTrackId(track_id);
+                let persisted_cues = if ready {
+                    use ruzina_hot_cues::HotCueStore;
+                    match hot_cues.as_mut().map(|store| store.load(id)) {
+                        Some(Ok(bank)) => bank,
+                        Some(Err(_)) => {
+                            hot_cues = None;
+                            report(load_event::HOT_CUES_FAILED, 1);
+                            None
+                        }
+                        None => None,
+                    }
+                } else {
+                    None
+                };
                 pending_results[deck] = Some(crate::deck_transport::LoadResult {
                     request,
                     ready,
                     track_id,
                     bpm_x100,
+                    source_cues: source_cues(request.index)
+                        .unwrap_or(ruzina_hot_cues::HotCueBank::empty(id)),
+                    persisted_cues,
                 });
             }
             #[cfg(feature = "idf-deck-engine")]

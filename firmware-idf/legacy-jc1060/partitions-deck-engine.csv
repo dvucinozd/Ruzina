@@ -1,0 +1,6 @@
+# The default single-app layout, plus the Hot Cue journal behind the app.
+# Name,   Type, SubType, Offset,   Size
+nvs,      data, nvs,     0x9000,   0x6000
+phy_init, data, phy,     0xf000,   0x1000
+factory,  app,  factory, 0x10000,  1M
+hotcues,  data, 0x40,    0x110000, 1M

@@ -60,7 +60,13 @@ pub(crate) struct LoadResult {
     pub(crate) ready: bool,
     pub(crate) track_id: [u8; 16],
     pub(crate) bpm_x100: u32,
+    /// The track's Rekordbox cues, as the startup pass imported them.
+    pub(crate) source_cues: ruzina_hot_cues::HotCueBank,
+    /// The track's bank in the flash journal.
+    pub(crate) persisted_cues: Option<ruzina_hot_cues::HotCueBank>,
 }
+/// The next bank for the flash journal, for the SD owner.
+pub(crate) static HOT_CUE_SAVES: Slot<ruzina_hot_cues::HotCueBank> = Slot::new();
 pub(crate) static GATES: [DeckLoadGate; 2] = [DeckLoadGate::new(), DeckLoadGate::new()];
 pub(crate) static LOAD_REQUESTS: [Slot<LoadRequest>; 2] = [Slot::new(), Slot::new()];
 pub(crate) static LOAD_RESULTS: [Slot<LoadResult>; 2] = [Slot::new(), Slot::new()];

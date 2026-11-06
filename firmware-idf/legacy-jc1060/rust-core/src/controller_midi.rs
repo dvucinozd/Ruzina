@@ -50,6 +50,8 @@ struct State {
     loop_leds: [(bool, bool); 2],
     #[cfg(feature = "deck-engine")]
     beat_fx_led: bool,
+    #[cfg(feature = "deck-engine")]
+    hot_cue_leds: [u8; 2],
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
@@ -164,6 +166,8 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     loop_leds: [(false, false); 2],
     #[cfg(feature = "deck-engine")]
     beat_fx_led: false,
+    #[cfg(feature = "deck-engine")]
+    hot_cue_leds: [0; 2],
     headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
@@ -189,9 +193,14 @@ impl State {
     /// The Play LEDs follow the deck engine's confirmed playback, and the
     /// Loop In and Out LEDs its marked start and active loop.
     fn sync_play_leds(&mut self) {
-        let (playing, loop_leds, beat_fx) = crate::deck_mix::with(|mix| {
+        let (playing, loop_leds, beat_fx, hot_cues) = crate::deck_mix::with(|mix| {
             let engine = mix.engine();
-            (engine.playing(), engine.loop_leds(), engine.beat_fx_on())
+            (
+                engine.playing(),
+                engine.loop_leds(),
+                engine.beat_fx_on(),
+                engine.hot_cue_masks(),
+            )
         });
         if self.beat_fx_led != beat_fx {
             self.beat_fx_led = beat_fx;
@@ -211,6 +220,13 @@ impl State {
             if was_out != loop_out {
                 self.led(SemanticLedId::LOOP_OUT, Some(deck), loop_out);
             }
+            let changed = self.hot_cue_leds[slot] ^ hot_cues[slot];
+            self.hot_cue_leds[slot] = hot_cues[slot];
+            for pad in (0..8).filter(|pad| changed >> pad & 1 != 0) {
+                if let Some(led) = SemanticLedId::hot_cue_pad(pad) {
+                    self.led(led, Some(deck), hot_cues[slot] >> pad & 1 != 0);
+                }
+            }
         }
     }
 }
@@ -224,6 +240,7 @@ pub extern "C" fn ruzina_legacy_midi_refresh() {
     crate::deck_mix::with(|mix| {
         mix.tick();
         mix.attach_fx();
+        mix.engine().flush_hot_cues();
         // The soak DJ runs here, outside the USB audio fill's stack chain.
         #[cfg(feature = "soak-autoplay")]
         mix.engine().autoplay();
@@ -347,6 +364,7 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         {
             state.loop_leds = [(false, false); 2];
             state.beat_fx_led = false;
+            state.hot_cue_leds = [0; 2];
         }
         state.headphone = None;
         state.out_len = 0;
