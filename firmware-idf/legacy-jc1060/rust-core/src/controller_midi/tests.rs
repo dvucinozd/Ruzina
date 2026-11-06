@@ -121,6 +121,28 @@ fn flx4_play_presses_reach_the_semantic_session() {
     assert!(first.iter().chain(&rest).all(|p| p[0] == p[1] >> 4));
     assert_eq!(ruzina_legacy_midi_out_overflow(), 0);
 
+    // The lamp test owns the LEDs. Its end clears them all, and the next sync
+    // restores what they showed, or the active pad mode stays dark.
+    #[cfg(feature = "deck-engine")]
+    {
+        with(|state| state.sync_leds());
+        assert!(take_out(512).is_empty(), "the lamp test stays lit");
+        ruzina_legacy_midi_lamp(0);
+        assert_eq!([take_out(512), take_out(512)].concat().len(), 129);
+        with(|state| state.sync_leds());
+        let restored = [take_out(512), take_out(512)].concat();
+        let lit = |status: u8, data1: u8| {
+            restored
+                .iter()
+                .any(|p| p[1] == status && p[2] == data1 && p[3] != 0)
+        };
+        assert!(
+            lit(0x90, 0x1b) && lit(0x91, 0x1b),
+            "Hot Cue mode, both decks"
+        );
+        assert!(lit(0x96, 0x63), "Master Cue");
+    }
+
     assert_eq!(ingest(&[0x09, 0x90, 0x0b]), -1);
     let mut totals = [0u32; 8];
     // SAFETY: eight writable slots.

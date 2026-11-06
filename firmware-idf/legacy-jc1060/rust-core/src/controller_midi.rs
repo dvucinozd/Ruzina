@@ -50,6 +50,9 @@ struct State {
     /// What the controller's LEDs show, and which still have to be sent.
     #[cfg(feature = "deck-engine")]
     leds: ControllerLedFrame,
+    /// The lamp test owns the LEDs until it clears them.
+    #[cfg(feature = "deck-engine")]
+    lamp_lit: bool,
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
@@ -81,6 +84,14 @@ impl State {
 
     /// Lights or clears every output in the profile.
     fn lamp(&mut self, on: bool) {
+        // Clearing the outputs clears what the LEDs showed: send it all again.
+        #[cfg(feature = "deck-engine")]
+        {
+            self.lamp_lit = on;
+            if !on {
+                self.leds.mark_all_dirty();
+            }
+        }
         let Some(profile) = self.profile else { return };
         for index in 0..profile.output_count() {
             let Some(entry) = profile.output(index) else {
@@ -162,6 +173,8 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     playing: [false; 2],
     #[cfg(feature = "deck-engine")]
     leds: ControllerLedFrame::new(),
+    #[cfg(feature = "deck-engine")]
+    lamp_lit: false,
     headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
@@ -191,6 +204,9 @@ impl State {
             mix.refresh_leds(&mut self.leds);
             mix.engine().playing()
         });
+        if self.lamp_lit {
+            return;
+        }
         while let Some(update) = self.leds.take_next_dirty() {
             if let Some(message) = self.profile.and_then(|p| p.map_led_update(update)) {
                 self.push_out(message);
@@ -331,6 +347,7 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         #[cfg(feature = "deck-engine")]
         {
             state.leds = ControllerLedFrame::new();
+            state.lamp_lit = false;
         }
         state.headphone = None;
         state.out_len = 0;

@@ -21,6 +21,12 @@ the FLX4 has one per deck, so the message mapped to nothing.
   Why it blinked was not established. The guess is that the controller does it while
   no host has set that LED.
 
+- **Lamp test (Codex review):** the startup lamp test clears every output 1.5 s after
+  binding, which also cleared the first LED state, and the frame saw nothing to resend.
+  The active pad mode and Master Cue stayed dark until they changed. The LED sync now
+  waits for the lamp test, and its end sends the whole state again. This came after the
+  device run below, so it is proven on the host only.
+
 ## Evidence
 
 - **Host:** 1 new test, which also checks that every LED sent maps to an FLX4 message.
