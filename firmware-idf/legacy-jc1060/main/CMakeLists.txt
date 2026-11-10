@@ -2,7 +2,7 @@
 # disabled: CONFIG-dependent REQUIRES would hide its configuration symbols.
 set(probe_requires esp_system esp_hw_support esp_timer esp_psram heap esp_mm esp_lcd esp_driver_gpio esp_driver_ledc esp_driver_i2c sdmmc esp_driver_sdmmc mbedtls usb)
 if(NOT CONFIG_APP_BUILD_TYPE_PURE_RAM_APP)
-    list(APPEND probe_requires spi_flash esp_partition)
+    list(APPEND probe_requires spi_flash esp_partition esp_driver_ppa)
 endif()
 set(probe_sources probe.c)
 if(CONFIG_RUZINA_UAC_PROFILE)

@@ -50,7 +50,11 @@
 - **Soak with every control (2026-11-06):** [45 min with 626 scripted gestures](reviews/2026-11-06-full-control-soak.md),
   0/0 underruns, longest fill 4466 µs, under the 5 ms limit. Nobody listened to it. Three
   defects from a late Codex review of #94 to #96 are fixed in the same branch.
-- **On the board:** app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+- **Deck screen (2026-11-10):** [Slint deck screen with directly drawn waveforms](reviews/2026-11-10-deck-screen.md),
+  a diagnostic with demo data (`--slint-ui`, `--fill-iram`). At 30 frames a second with the
+  soak DJ: longest fill 4505 µs, 0/0 underruns, and the owner saw it smooth.
+- **On the board:** a Slint diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition,
+  journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.

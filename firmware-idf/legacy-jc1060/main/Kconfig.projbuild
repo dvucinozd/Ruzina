@@ -58,6 +58,11 @@ config RUZINA_DECK_ENGINE
     depends on RUZINA_DECK_MIX
     default n
 
+config RUZINA_SLINT_UI
+    bool "Measure the product Slint UI on the panel, instead of the status screen"
+    depends on RUZINA_DECK_ENGINE
+    default n
+
 config RUZINA_LOAD_DISPLAY
     bool "Show the media load status on the New_Panel, with touch track selection"
     depends on RUZINA_SD_RUST_LOAD && !RUZINA_DISPLAY_TOUCH

@@ -312,6 +312,25 @@ static void ui_task(void *unused)
     }
 }
 
+#if CONFIG_RUZINA_SLINT_UI
+/* Rust (slint_ui.rs): renders into the scanned-out framebuffer; never returns. */
+extern void ruzina_legacy_slint_run(uint16_t *shown, uint16_t *back);
+extern uint16_t *ruzina_panel_back(void);
+static void slint_task(void *unused)
+{
+    (void)unused;
+    ruzina_legacy_slint_run(frame, ruzina_panel_back());
+    vTaskDelete(NULL);
+}
+/* Writes rendered rows of `buffer`, one of the two frame buffers, back from cache. */
+void ruzina_panel_flush(uint16_t *buffer, unsigned y, unsigned rows)
+{
+    if (y >= HEIGHT || !rows) return;
+    if (rows > HEIGHT - y) rows = HEIGHT - y;
+    esp_cache_msync(buffer + y * WIDTH, WIDTH * rows * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+}
+#endif
+
 /* Maps a press on a track row to its catalog index, or -1. */
 static int32_t hit(unsigned x, unsigned y, uint32_t tracks)
 {
@@ -398,7 +417,16 @@ esp_err_t ruzina_load_display_start(void)
     shared.deck_track[0] = shared.deck_track[1] = -1;
     esp_err_t err = ruzina_panel_start(dark, &frame);
     if (err != ESP_OK) return err;
+#if CONFIG_RUZINA_SLINT_UI
+    /* On the other core from USB audio, above the SD owner (3): a late frame shows as a
+       jerk, while the decoders have over a second of ring to cover the few milliseconds
+       of CPU a frame takes (the PPA moves the waveforms). Stack in internal RAM: the
+       Slint renderer recurses per item, and the waveform columns live there. */
+    (void)ui_task;
+    if (xTaskCreatePinnedToCore(slint_task, "slint_ui", 49152, NULL, 4, NULL, 1) != pdPASS) return ESP_ERR_NO_MEM;
+#else
     if (xTaskCreatePinnedToCore(ui_task, "load_ui", 4096, NULL, 1, NULL, 0) != pdPASS) return ESP_ERR_NO_MEM;
+#endif
     ready = true;
     printf("S6_LOAD_DISPLAY rows=%u columns=2 font=terminus12x24 max_tracks=%u detail_bands=%u\n",
            TRACK_ROWS, MAX_TRACKS, DETAIL_BANDS);

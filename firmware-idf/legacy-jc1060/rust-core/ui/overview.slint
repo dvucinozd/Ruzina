@@ -1,0 +1,340 @@
+// The deck screen on the JC1060's 1024 x 600 panel. The layout follows the Overview
+// page of the donor firmware (Pajoniiir), with its positions kept in pixels.
+//
+// The waveforms are not here: Rust draws them directly into the framebuffer, in the
+// rectangles left dark below (`slint_ui.rs` keeps the same numbers), because they
+// change many times a second and everything else does not.
+
+component Tab inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    height: 38px;
+    background: active ? #10240c : #0d141b;
+    border-width: active ? 2px : 1px;
+    border-color: active ? #6ee128 : #2f6f8f;
+    Text {
+        text: root.text;
+        color: root.active ? #d8ff8a : #8fd2ee;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component SideButton inherits Rectangle {
+    in property <string> text;
+    in property <color> ink: #101418;
+    width: 58px;
+    height: 38px;
+    border-radius: 3px;
+    Text {
+        text: root.text;
+        color: root.ink;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// Ten segments, from the bottom: green, then amber, then red.
+component Vu inherits Rectangle {
+    in property <int> level;
+    width: 10px;
+    height: 140px;
+    for segment in 10: Rectangle {
+        x: 0px;
+        y: (9 - segment) * 14px;
+        width: 10px;
+        height: 11px;
+        background: segment >= root.level ? #1c2228
+            : segment >= 9 ? #ff1744
+            : segment >= 7 ? #eb870f
+            : #6ee128;
+    }
+}
+
+// Deck badge, play and cue, and the level meter, left of a waveform.
+component DeckSide inherits Rectangle {
+    in property <int> number;
+    in property <color> accent;
+    in property <bool> playing;
+    in property <int> level;
+    width: 82px;
+    height: 201px;
+    Rectangle {
+        x: 4px;
+        y: 12px;
+        width: 58px;
+        height: 38px;
+        border-radius: 3px;
+        background: root.accent;
+        Text {
+            text: "D" + root.number;
+            color: #101418;
+            font-size: 18px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    SideButton {
+        x: 4px;
+        y: 60px;
+        background: root.playing ? #6ee128 : #e8574c;
+        text: root.playing ? "PLAY" : "PAUSE";
+    }
+    SideButton {
+        x: 4px;
+        y: 102px;
+        background: #f3c631;
+        text: "CUE";
+    }
+    Vu {
+        x: 68px;
+        y: 3px;
+        level: root.level;
+    }
+}
+
+// Times, tempo, pitch, Master Tempo and key of one deck, above its overview.
+component DeckInfo inherits Rectangle {
+    in property <string> elapsed;
+    in property <string> remaining;
+    in property <string> bpm;
+    in property <string> pitch;
+    in property <bool> master-tempo;
+    in property <string> key;
+    in property <string> status;
+    width: 512px;
+    height: 40px;
+    Text { x: 8px; y: 2px; text: root.elapsed; color: #eef0f2; font-size: 24px; }
+    Text { x: 90px; y: 2px; text: root.remaining; color: #eef0f2; font-size: 24px; }
+    Text { x: 190px; y: 2px; text: root.bpm; color: #eef0f2; font-size: 24px; }
+    Text { x: 276px; y: 12px; text: "BPM"; color: #9a9ea4; font-size: 12px; }
+    Rectangle {
+        x: 310px;
+        y: 2px;
+        width: 76px;
+        height: 28px;
+        border-width: 2px;
+        border-color: #6ee128;
+        border-radius: 2px;
+        Text {
+            text: root.pitch;
+            color: #9aff5a;
+            font-size: 14px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    Rectangle {
+        x: 394px;
+        y: 2px;
+        width: 36px;
+        height: 28px;
+        border-width: 1px;
+        border-radius: 4px;
+        border-color: root.master-tempo ? #6ee128 : #4a4e54;
+        background: root.master-tempo ? #10240c : #181a1d;
+        Text {
+            text: "MT";
+            color: root.master-tempo ? #d8ff8a : #9a9ea4;
+            font-size: 12px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    Text { x: 438px; y: 8px; text: root.key; color: #eb870f; font-size: 14px; }
+    Text { x: 470px; y: 8px; text: root.status; color: #9a9ea4; font-size: 12px; }
+}
+
+component FxPanel inherits Rectangle {
+    in property <string> effect;
+    in property <string> beat;
+    in property <int> depth;
+    in property <int> target;
+    in property <bool> on;
+    width: 64px;
+    height: 428px;
+    background: #0d141b;
+    border-width: 1px;
+    border-color: #2f6f8f;
+    Rectangle {
+        x: 4px;
+        y: 4px;
+        width: 56px;
+        height: 22px;
+        background: root.on ? #2a6fa8 : #1c2228;
+        Text { text: "FX"; color: #eef0f2; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    Rectangle {
+        x: 4px;
+        y: 30px;
+        width: 56px;
+        height: 34px;
+        border-width: 1px;
+        border-color: #8fd2ee;
+        Text { text: root.effect; color: #eef0f2; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    Text { x: 0px; y: 68px; width: 64px; text: "TARGET"; color: #9a9ea4; font-size: 11px; horizontal-alignment: center; }
+    for pill in 2: Rectangle {
+        x: 5px + pill * 29px;
+        y: 84px;
+        width: 25px;
+        height: 22px;
+        border-radius: 11px;
+        border-width: 1px;
+        border-color: #8fd2ee;
+        background: root.target == 0 || root.target == pill + 1 ? #2a6fa8 : #0d141b;
+        Text { text: pill + 1; color: #eef0f2; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    Text { x: 0px; y: 112px; width: 64px; text: "BEAT"; color: #9a9ea4; font-size: 11px; horizontal-alignment: center; }
+    Rectangle {
+        x: 12px;
+        y: 128px;
+        width: 40px;
+        height: 26px;
+        border-width: 1px;
+        border-color: #8fd2ee;
+        Text { text: root.beat; color: #eef0f2; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    Text { x: 0px; y: 160px; width: 64px; text: "DEPTH"; color: #9a9ea4; font-size: 11px; horizontal-alignment: center; }
+    Rectangle {
+        x: 22px;
+        y: 176px;
+        width: 20px;
+        height: 216px;
+        border-width: 1px;
+        border-color: #4a4e54;
+        Rectangle {
+            x: 1px;
+            y: parent.height - 1px - self.height;
+            width: 18px;
+            height: (parent.height - 2px) * root.depth / 100;
+            background: #2a6fa8;
+        }
+    }
+    Text { x: 0px; y: 398px; width: 64px; text: root.depth + "%"; color: #eef0f2; font-size: 14px; horizontal-alignment: center; }
+}
+
+export component Overview inherits Window {
+    width: 1024px;
+    height: 600px;
+    default-font-family: "DejaVu Sans";
+    background: #0d0f11;
+    in property <string> title-1;
+    in property <string> title-2;
+    in property <string> elapsed-1;
+    in property <string> elapsed-2;
+    in property <string> remaining-1;
+    in property <string> remaining-2;
+    in property <string> bpm-1;
+    in property <string> bpm-2;
+    in property <string> pitch-1;
+    in property <string> pitch-2;
+    in property <string> key-1;
+    in property <string> key-2;
+    in property <string> status-1;
+    in property <string> status-2;
+    in property <bool> master-tempo-1;
+    in property <bool> master-tempo-2;
+    in property <bool> playing-1;
+    in property <bool> playing-2;
+    in property <int> level-1;
+    in property <int> level-2;
+    in property <string> fx-effect;
+    in property <string> fx-beat;
+    in property <int> fx-depth;
+    in property <int> fx-target;
+    in property <bool> fx-on;
+
+    for name[index] in ["OVERVIEW", "LIBRARY", "HOT CUES", "SETTINGS"]: Tab {
+        x: 8px + index * 253px;
+        y: 4px;
+        width: 248px;
+        text: name;
+        active: index == 0;
+    }
+
+    DeckSide {
+        x: 0px;
+        y: 46px;
+        number: 1;
+        accent: #38d6f0;
+        playing: root.playing-1;
+        level: root.level-1;
+    }
+    DeckSide {
+        x: 0px;
+        y: 248px;
+        number: 2;
+        accent: #6ee1a8;
+        playing: root.playing-2;
+        level: root.level-2;
+    }
+    // Rust draws here: the two waveforms.
+    Rectangle { x: 82px; y: 46px; width: 872px; height: 201px; background: #020406; }
+    Rectangle { x: 82px; y: 248px; width: 872px; height: 201px; background: #020406; }
+
+    FxPanel {
+        x: 960px;
+        y: 46px;
+        effect: root.fx-effect;
+        beat: root.fx-beat;
+        depth: root.fx-depth;
+        target: root.fx-target;
+        on: root.fx-on;
+    }
+
+    // Track titles, across the screen: deck 1 from the left, deck 2 to the right.
+    Rectangle {
+        x: 0px;
+        y: 478px;
+        width: 1024px;
+        height: 30px;
+        background: #1565c0;
+        Text {
+            x: 8px;
+            width: 500px;
+            text: root.title-1;
+            color: #ffffff;
+            font-size: 20px;
+            overflow: elide;
+            vertical-alignment: center;
+        }
+        Text {
+            x: 516px;
+            width: 500px;
+            text: root.title-2;
+            color: #ffffff;
+            font-size: 20px;
+            overflow: elide;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+    }
+    DeckInfo {
+        x: 0px;
+        y: 510px;
+        elapsed: root.elapsed-1;
+        remaining: root.remaining-1;
+        bpm: root.bpm-1;
+        pitch: root.pitch-1;
+        master-tempo: root.master-tempo-1;
+        key: root.key-1;
+        status: root.status-1;
+    }
+    DeckInfo {
+        x: 512px;
+        y: 510px;
+        elapsed: root.elapsed-2;
+        remaining: root.remaining-2;
+        bpm: root.bpm-2;
+        pitch: root.pitch-2;
+        master-tempo: root.master-tempo-2;
+        key: root.key-2;
+        status: root.status-2;
+    }
+    // Rust draws here: the two overviews.
+    Rectangle { x: 8px; y: 552px; width: 496px; height: 45px; background: #020406; }
+    Rectangle { x: 520px; y: 552px; width: 496px; height: 45px; background: #020406; }
+}

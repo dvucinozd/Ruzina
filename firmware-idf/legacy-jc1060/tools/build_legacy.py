@@ -59,7 +59,11 @@ def main():
     parser.add_argument('--producer-profile', action='store_true', help='Separate deck-engine source-supply/USB service diagnostic')
     parser.add_argument('--mp3-core-opt3', action='store_true', help='Default-OFF nanomp3-core compiler experiment; requires producer profiling')
     parser.add_argument('--soak-autoplay', action='store_true', help='Soak diagnostic: an unattended DJ keeps both decks loading and playing')
+    parser.add_argument('--slint-ui', action='store_true', help='Diagnostic: the deck screen with demo data, measured against USB audio')
+    parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
     args = parser.parse_args()
+    if args.slint_ui and (args.variant != 'deck-engine' or args.uac_profile or args.producer_profile):
+        raise ValueError('The Slint UI diagnostic is deck-engine only and excludes profiling')
     if args.soak_autoplay and (args.variant != 'deck-engine' or args.uac_profile or args.producer_profile):
         raise ValueError('Soak autoplay is a deck-engine diagnostic and excludes profiling')
     if args.uac_pack_iram and not args.uac_profile:
@@ -131,11 +135,23 @@ def main():
     elif args.variant == 'deck-engine':
         common += ['--features', 'idf-producer-profile' if args.producer_profile else
                    ('idf-uac-profile' if args.uac_profile else
-                    ('idf-soak-autoplay' if args.soak_autoplay else 'idf-deck-engine'))]
+                    ('idf-soak-autoplay' if args.soak_autoplay else 'idf-deck-engine'))
+                   + (' idf-slint-ui' if args.slint_ui else '')]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
     link_archive = archive
+    if args.fill_iram:
+        from fill_placement import relocation_args, verify_relocation
+        link_archive = output / 'libruzina_fill_iram.a'
+        moves = relocation_args(run(['riscv32-esp-elf-objdump', '-t', archive]))
+        # A response file: hundreds of sections exceed a Windows command line.
+        (output / 'fill-relocation.rsp').write_text(' '.join(moves) + '\n')
+        run(['riscv32-esp-elf-objcopy', '@' + str(output / 'fill-relocation.rsp'), archive, link_archive])
+        original_dump = run(['riscv32-esp-elf-objdump', '-dr', archive]).replace(str(archive), 'ARCHIVE')
+        placed_dump = run(['riscv32-esp-elf-objdump', '-dr', link_archive]).replace(str(link_archive), 'ARCHIVE')
+        verify_relocation(original_dump, placed_dump, moves)
+        (output / 'fill-relocation.json').write_text(json.dumps(moves, indent=2) + '\n')
     if args.uac_pack_iram:
         from pack_placement import relocation_args, verify_relocation
         link_archive = output / 'libruzina_pack_iram.a'
@@ -182,6 +198,8 @@ def main():
         defaults += [APP / 'sdkconfig.uac-profile.defaults']
     if args.producer_profile:
         defaults += [APP / 'sdkconfig.producer-profile.defaults']
+    if args.slint_ui:
+        defaults += [APP / 'sdkconfig.slint-ui.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'
     # Offline build: vendored components only; the component manager would
@@ -302,6 +320,9 @@ def main():
             raise ValueError('Deck playback must link the Rust deck 1 player')
         if args.variant in ('deck-mix', 'deck-engine') and any(x not in symbols for x in ('ruzina_legacy_play_load', 'ruzina_legacy_mix_stats')):
             raise ValueError('Deck mix must link the Rust deck players and render graph owner')
+        if args.fill_iram:
+            from fill_placement import verify as verify_fill
+            (output / 'fill-placement.json').write_text(json.dumps(verify_fill(run(['riscv32-esp-elf-objdump', '-t', elf])), indent=2) + '\n')
         if args.variant == 'deck-engine' and any(x not in symbols for x in ('ruzina_legacy_engine_status', 'ruzina_legacy_midi_refresh')):
             raise ValueError('Deck engine must link the Rust deck engine status and LED refresh')
         if any(x not in mapping for x in ('usb_host_enum.c.obj', 'load_display.c.obj', 'sd_bridge.c.obj')):
@@ -359,6 +380,9 @@ def main():
                 raise ValueError('Load display profile mismatch')
             from stack_frames import oversized_rust_frames
             oversized = oversized_rust_frames(run(['riscv32-esp-elf-objdump', '-d', '--no-show-raw-insn', elf]))
+            # The Slint task has its own 32 KiB stack and large renderer frames.
+            if args.slint_ui:
+                oversized = [frame for frame in oversized if 'slint' not in repr(frame).lower()]
             if oversized:
                 raise ValueError('Rust stack frame over task budget: ' + repr(oversized))
             if args.variant in ('deck-play', 'deck-mix', 'deck-engine'):
@@ -374,6 +398,8 @@ def main():
     manifest = dict(schema=1, variant=args.variant, uac_profile=args.uac_profile, uac_pack_iram=args.uac_pack_iram,
                     producer_profile=args.producer_profile, mp3_core_opt3=args.mp3_core_opt3,
                     soak_autoplay=args.soak_autoplay,
+                    slint_ui=args.slint_ui,
+                    fill_iram=args.fill_iram,
                     rust_release_overrides={'nanomp3-core': {'opt-level': 3}} if args.mp3_core_opt3 else {},
                     sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],

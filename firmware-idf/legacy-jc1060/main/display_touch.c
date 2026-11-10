@@ -9,10 +9,14 @@
 #include "esp_lcd_mipi_dsi.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
+#if CONFIG_RUZINA_SLINT_UI
+#include "driver/ppa.h"
+#endif
 #include "esp_ldo_regulator.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "sdkconfig.h"
 #include "new_panel_commands.h"
 
@@ -24,6 +28,67 @@ static esp_lcd_panel_io_handle_t io;
 static esp_lcd_panel_handle_t panel;
 static uint16_t *frame;
 static bool pwm_ready;
+#if CONFIG_RUZINA_SLINT_UI
+/* The deck screen draws into the buffer the panel does not show, then swaps them at the
+   end of a refresh, so the panel never shows a half-drawn frame. */
+static uint16_t *back_frame;
+static SemaphoreHandle_t refreshed;
+static volatile uint32_t refreshes;
+static ppa_client_handle_t mover;
+
+static IRAM_ATTR bool frame_done(esp_lcd_panel_handle_t panel_handle, esp_lcd_dpi_panel_event_data_t *event, void *context)
+{
+    (void)panel_handle; (void)event; (void)context;
+    BaseType_t woken = pdFALSE;
+    refreshes++;
+    xSemaphoreGiveFromISR(refreshed, &woken);
+    return woken == pdTRUE;
+}
+
+uint16_t *ruzina_panel_back(void) { return back_frame; }
+
+/* Panel refreshes since start, about 61 a second: the clock the waveforms scroll by. */
+uint32_t ruzina_panel_refreshes(void) { return refreshes; }
+
+/* Copies the block at (x + dx, y), `w - dx` by `h` pixels, of frame buffer `from` to
+   (x, y) of frame buffer `to`, in hardware: the waveform scrolls by `dx` columns without
+   the CPU touching its pixels. The PPA driver writes `from` back from cache first and
+   invalidates the rows of `to`, so the caller writes those rows back before. */
+int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
+                          uint32_t w, uint32_t h, uint32_t dx)
+{
+    if (dx >= w) return -1;
+    if (!mover) {
+        ppa_client_config_t client = {.oper_type = PPA_OPERATION_SRM, .max_pending_trans_num = 1};
+        if (ppa_register_client(&client, &mover) != ESP_OK) return -1;
+    }
+    ppa_srm_oper_config_t move = {
+        .in = {.buffer = from, .pic_w = 1024, .pic_h = 600, .block_w = w - dx, .block_h = h,
+               .block_offset_x = x + dx, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
+        .out = {.buffer = to, .buffer_size = 1024 * 600 * 2, .pic_w = 1024, .pic_h = 600,
+                .block_offset_x = x, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
+        .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
+        .mode = PPA_TRANS_MODE_BLOCKING,
+    };
+    return ppa_do_scale_rotate_mirror(mover, &move) == ESP_OK ? 0 : -1;
+}
+
+/* Waits for the end of the next refresh. */
+void ruzina_panel_wait_refresh(void)
+{
+    xSemaphoreTake(refreshed, 0);
+    xSemaphoreTake(refreshed, pdMS_TO_TICKS(50));
+}
+
+/* Shows `buffer` from the next refresh on and waits until it is on the panel, so the
+   other buffer is free to draw into. The caller wrote its changed rows back from cache. */
+void ruzina_panel_present(uint16_t *buffer)
+{
+    xSemaphoreTake(refreshed, 0);
+    esp_lcd_panel_draw_bitmap(panel, 0, 0, 1, 1, buffer);
+    xSemaphoreTake(refreshed, pdMS_TO_TICKS(50));
+}
+#endif
 
 static esp_err_t brightness(unsigned duty)
 {
@@ -63,12 +128,29 @@ esp_err_t ruzina_panel_start(void (*fill)(uint16_t *frame), uint16_t **frame_out
     }
     esp_lcd_dpi_panel_config_t dpi = {.virtual_channel=0, .dpi_clk_src=MIPI_DSI_DPI_CLK_SRC_DEFAULT,
         .dpi_clock_freq_mhz=52, .in_color_format=LCD_COLOR_FMT_RGB565,
-        .out_color_format=LCD_COLOR_FMT_RGB565, .num_fbs=1,
+        .out_color_format=LCD_COLOR_FMT_RGB565,
+#if CONFIG_RUZINA_SLINT_UI
+        .num_fbs=2,
+#else
+        .num_fbs=1,
+#endif
         .video_timing={.h_size=1024,.v_size=600,.hsync_back_porch=136,.hsync_pulse_width=24,
             .hsync_front_porch=160,.vsync_back_porch=21,.vsync_pulse_width=2,.vsync_front_porch=12}};
     TRY(esp_lcd_new_panel_dpi(bus, &dpi, &panel));
     void *frame_storage = NULL;
+#if CONFIG_RUZINA_SLINT_UI
+    void *back_storage = NULL;
+    TRY(esp_lcd_dpi_panel_get_frame_buffer(panel, 2, &frame_storage, &back_storage));
+    back_frame = back_storage;
+    fill(back_frame);
+    TRY(esp_cache_msync(back_frame, 1024*600*2, ESP_CACHE_MSYNC_FLAG_DIR_C2M));
+    refreshed = xSemaphoreCreateBinary();
+    if (!refreshed) { err = ESP_ERR_NO_MEM; goto fail; }
+    esp_lcd_dpi_panel_event_callbacks_t callbacks = {.on_frame_buf_complete = frame_done};
+    TRY(esp_lcd_dpi_panel_register_event_callbacks(panel, &callbacks, NULL));
+#else
     TRY(esp_lcd_dpi_panel_get_frame_buffer(panel, 1, &frame_storage));
+#endif
     frame = frame_storage;
     fill(frame);
     TRY(esp_cache_msync(frame, 1024*600*2, ESP_CACHE_MSYNC_FLAG_DIR_C2M));
