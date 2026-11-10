@@ -812,9 +812,39 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                     .map(CatalogPath)
             },
             #[cfg(feature = "idf-deck-engine")]
-            (prepared, |index| {
-                source_cues.borrow().get(index as usize).copied()
-            }),
+            (
+                prepared,
+                |index| source_cues.borrow().get(index as usize).copied(),
+                // The screen's view of a track a deck loaded: its catalog texts and its
+                // analysis, read again because the startup pass keeps none of it.
+                |volume: &mut crate::exfat_fixture::Volume<_>, index: u32| {
+                    use crate::deck_view::LoadedTrack;
+                    let Some(track) = stage
+                        .current()
+                        .and_then(|snapshot| snapshot.get(index as usize).copied())
+                    else {
+                        return LoadedTrack::none();
+                    };
+                    let candidate = CatalogLoadCandidate {
+                        publication,
+                        index: index as u16,
+                        track,
+                    };
+                    let analysis = block_on(Box::pin(preflight(
+                        volume, candidate, pass, &current, &published,
+                    )))
+                    .ok()
+                    .and_then(|prepared| prepared.publication);
+                    LoadedTrack {
+                        index,
+                        title: track.title.as_str().into(),
+                        artist: track.artist.as_str().into(),
+                        key: track.key.as_str().into(),
+                        duration_ms: track.duration_ms,
+                        analysis,
+                    }
+                },
+            ),
         );
         // SAFETY: task-only cooperative delay between passes.
         #[cfg(not(feature = "idf-deck-play"))]
@@ -920,11 +950,12 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
     current: &C,
     detail: impl Fn(&mut crate::exfat_fixture::Volume<D>, usize) -> Option<u32>,
     path: impl Fn(u32) -> Option<P>,
-    #[cfg(feature = "idf-deck-engine")] (prepared, source_cues): (
+    #[cfg(feature = "idf-deck-engine")] (prepared, source_cues, analyse): (
         [crate::deck_play::Producer<
             <crate::exfat_fixture::Volume<D> as ruzina_media_fs::AsyncFileSystem>::File,
         >; 2],
         impl Fn(u32) -> Option<ruzina_hot_cues::HotCueBank>,
+        impl Fn(&mut crate::exfat_fixture::Volume<D>, u32) -> crate::deck_view::LoadedTrack,
     ),
 ) -> i32 {
     use crate::deck_play::{COMMANDS, DECKS, Event, RINGS, SourceFiles};
@@ -952,6 +983,9 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
     let mut active_loads = [None; 2];
     #[cfg(feature = "idf-deck-engine")]
     let mut active_seeks = [None; 2];
+    // Tracks a deck loaded, for the screen: catalog index and whether it is ready.
+    #[cfg(feature = "idf-deck-engine")]
+    let mut screen_tracks: [Option<(u32, bool)>; 2] = [None; 2];
     #[cfg(feature = "idf-deck-engine")]
     let lease = with_state(|s| s.as_ref().unwrap().binding.lease);
     #[cfg(feature = "idf-deck-engine")]
@@ -1028,6 +1062,17 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
             deck_two_first,
         );
         for deck in order.into_iter().filter(|&deck| deck < DECKS) {
+            #[cfg(feature = "idf-deck-engine")]
+            for (screen_deck, pending) in screen_tracks.iter_mut().enumerate() {
+                if let Some((index, ready)) = pending.take() {
+                    let loaded = if ready {
+                        analyse(volume, index)
+                    } else {
+                        crate::deck_view::LoadedTrack::none()
+                    };
+                    crate::deck_view::publish_track(screen_deck, alloc::boxed::Box::new(loaded));
+                }
+            }
             #[cfg(feature = "idf-deck-engine")]
             if let Some(result) = pending_results[deck].take() {
                 if let Err(result) = crate::deck_transport::LOAD_RESULTS[deck].put(result) {
@@ -1152,6 +1197,8 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
                         .unwrap_or(ruzina_hot_cues::HotCueBank::empty(id)),
                     persisted_cues,
                 });
+                // Read once the deck's file handles are done with the volume.
+                screen_tracks[deck] = Some((request.index, ready));
             }
             #[cfg(feature = "idf-deck-engine")]
             if let Some(Event::Seeked { ok, .. }) = event

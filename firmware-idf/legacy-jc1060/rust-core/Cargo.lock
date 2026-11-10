@@ -3416,6 +3416,7 @@ dependencies = [
  "ruzina-media-partition",
  "ruzina-media-session",
  "ruzina-mixer",
+ "ruzina-track-analysis",
  "ruzina-uac",
  "sha2",
  "slint",

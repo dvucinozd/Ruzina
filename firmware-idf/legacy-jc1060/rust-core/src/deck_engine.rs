@@ -191,6 +191,14 @@ impl Engine {
                 DeckClaim::Free => {}
             }
         }
+        // The browse knob zooms the deck screen's waveform, as the donor's overview does.
+        if let (
+            ruzina_controller_core::SemanticControl::BrowseDelta,
+            ruzina_controller_core::ControlValue::Relative(delta),
+        ) = (event.control, event.value)
+        {
+            crate::deck_view::zoom_by(i32::from(delta));
+        }
         let effects = self.deck.handle_control(self.flx4_loop_button(event));
         self.apply(effects);
     }
@@ -563,6 +571,7 @@ impl Engine {
                 TRACK_INDEX[i].store(u32::MAX, Ordering::Release);
                 STATUS[i][0].store(0, Ordering::Relaxed);
                 STATUS[i][1].store(0, Ordering::Relaxed);
+                crate::deck_view::LIVE[i].store(crate::deck_view::DeckSnapshot::default());
             }
             self.lease = None;
         }
@@ -709,6 +718,54 @@ impl Engine {
             let flags = u32::from(self.loaded[i]) | u32::from(self.playing[i]) << 1;
             STATUS[i][0].store(self.deck.deck(deck).position_ms, Ordering::Relaxed);
             STATUS[i][1].store(flags, Ordering::Relaxed);
+            self.publish_view(i);
+        }
+        crate::deck_view::FX.store(self.fx_view().pack(), Ordering::Relaxed);
+    }
+
+    /// Deck `i` as the screen shows it.
+    fn publish_view(&self, i: usize) {
+        use crate::deck_view::{DeckSnapshot, LIVE, LOADED, LOOPING, MASTER_TEMPO, PLAYING, SYNC};
+        let state = self.deck.deck(DECKS[i]);
+        let flag = |on: bool, flag: u32| if on { flag } else { 0 };
+        LIVE[i].store(DeckSnapshot {
+            position_ms: state.position_ms,
+            flags: flag(self.loaded[i] && !self.faulted[i], LOADED)
+                | flag(self.playing[i], PLAYING)
+                | flag(state.sync_enabled, SYNC)
+                | flag(state.master_tempo, MASTER_TEMPO)
+                | flag(self.loop_ms[i].is_some(), LOOPING),
+            pitch_centipercent: i32::from(state.pitch_centipercent),
+            bpm_x100: state.base_bpm_x100,
+        });
+    }
+
+    /// The Beat FX panel as the screen shows it.
+    fn fx_view(&self) -> crate::deck_view::FxSnapshot {
+        use ruzina_controller_core::BeatFxTarget;
+        use ruzina_deck::{BeatFxBeat, BeatFxEffect};
+        let fx = self.deck.beat_fx();
+        crate::deck_view::FxSnapshot {
+            effect: match fx.effect {
+                BeatFxEffect::Filter => 0,
+                BeatFxEffect::Echo => 1,
+                BeatFxEffect::Flanger => 2,
+                BeatFxEffect::Delay => 3,
+            },
+            beat: match fx.beat {
+                BeatFxBeat::Quarter => 0,
+                BeatFxBeat::Half => 1,
+                BeatFxBeat::One => 2,
+                BeatFxBeat::Two => 3,
+                BeatFxBeat::Four => 4,
+            },
+            target: match fx.target {
+                BeatFxTarget::Both => 0,
+                BeatFxTarget::ChannelOne => 1,
+                BeatFxTarget::ChannelTwo => 2,
+            },
+            depth: fx.depth,
+            on: fx.enabled,
         }
     }
 

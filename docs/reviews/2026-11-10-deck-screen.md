@@ -2,8 +2,9 @@
 
 Date: 2026-11-10. Branch: `ogranak/jc1060-slint-spike`, from `main` at `2e6957c`.
 
-A diagnostic image, not yet the product screen: it shows **demo data**, not the decks, and
-touch does nothing yet. It answers whether the deck screen fits next to USB audio.
+A diagnostic image, not yet the product screen: touch does nothing yet. It answered
+whether the deck screen fits next to USB audio (s40-s52, demo data), and since 2026-11-11
+it shows the decks themselves (s53-s56).
 
 ## What it is
 
@@ -27,6 +28,23 @@ touch does nothing yet. It answers whether the deck screen fits next to USB audi
   `0xC10000` for these images. The app is 1.43 MB. The production `deck-engine` image is
   unchanged.
 
+## Live deck data (2026-11-11)
+
+- **From the engine:** after every render block the deck engine stores each deck's
+  position, Play, Sync, Master Tempo, loop, pitch and BPM, and the Beat FX, in atomics
+  (`deck_view.rs`). The UI reads them per frame.
+- **From the load task:** at each load it reads the track's analysis again (beat grid,
+  PWV3 detail, preview, cues) and hands it with title, artist, key and length through a
+  one-place mailbox. The startup pass keeps none of it.
+- **Waveform as the donor draws it:** one solid column per pixel, the loudest of it and
+  its neighbours, at least a centre line, so the shape stays joined; the donor's palette
+  picked by the PWV3 colour hint and loudness, with white tips on loud peaks. The
+  overviews use the same palette.
+- **Zoom:** the browse knob moves the lane through 2, 4, 8, 12, 16, 24 and 32 beats of the
+  track's tempo (the donor's five plus one at each end), 16 at start, 0.5 s to 30 s.
+- **Paused deck:** the hardware copies the whole lane, so both buffers always match; s53
+  skipped it, which made the playhead flicker.
+
 ## How it got there
 
 | Image | Change | Frames/s | Wave frame | Longest fill | Fills over 3 ms | 6 ms+ |
@@ -38,12 +56,20 @@ touch does nothing yet. It answers whether the deck screen fits next to USB audi
 | s50 | two buffers, mirrored rows | 19 | 24 ms | | | |
 | s51 | PPA scroll | 25-29 | 20 ms | 4111 µs | 5.0 % | 0 |
 | s52 | fixed cadence, priority 4 | 30 | 18 ms | **4505 µs** | 6.3 % | **0** |
+| s53 | live deck data | 30 | 9-22 ms | | | |
+| s54 | bars with gaps, paused copy | 30 | 21-36 ms | | | |
+| s55 | donor waveform, browse zoom | 30 | 25-36 ms | | | |
+| s56 | seven zoom steps | 30 | | | | |
 
 All images ran the soak DJ (both decks loading and playing, with its gestures).
 
 - **s52 over about 5 minutes:** underruns 0/0, `packet_errors=0`, no faults. Longest wave
   frame 37 ms early, then about 19 ms.
 - **Owner:** s43 flickered on deck 1, s48 to s51 jerked, and at s52: "sad je glatko, ne trza".
+  s53: the playhead flickered and the waveform had the wrong shape; s54: it lacked colour
+  and broke apart; s55: one zoom step short; s56: "Radi, sve ok".
+- **s53-s56:** underruns 0/0 and no faults; the longest wave frame (about 36 ms) comes
+  with a track load.
   s49 and s50 also showed a wavy "through water" look, from drawing into the buffer on
   the panel.
 
@@ -51,10 +77,11 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
 
 - **Fills over 3 ms:** 6.3 % against 0.6 % without a screen. The longest stays under the
   5 ms limit, but the screen costs margin; the PPA's PSRAM copies are likely part of it.
-- **Two lost USB packets** in s49 and one in s44; none in s51 and s52. Not explained.
+- **Lost USB packets:** two in s49, one each in s44 and s54 (after about 12 minutes); none
+  in s51 and s52. Not explained.
 - **Producer low water:** both decks' rings ran low for 100-130 ms early in s51 and s52,
   near track loads. No underrun. SD will be replaced by a USB stick later, which changes
   this load.
-- **Next:** live deck data (titles, times, BPM, pitch, playhead, analysis waveforms and
-  cues), then touch, then Master Tempo. The 7 MB of images and non-ASCII titles are not in
+- **Not on the lane yet:** hot cue and loop markers. Shift + browse does not zoom faster.
+- **Next:** touch, then Master Tempo. The 7 MB of images and non-ASCII titles are not in
   this screen yet.

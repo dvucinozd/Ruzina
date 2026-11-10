@@ -66,6 +66,9 @@ mod deck_engine;
 mod deck_transport;
 
 #[cfg(feature = "deck-engine")]
+mod deck_view;
+
+#[cfg(feature = "deck-engine")]
 mod deck_resources;
 
 #[cfg(feature = "soak-autoplay")]
