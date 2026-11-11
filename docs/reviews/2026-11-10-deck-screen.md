@@ -102,6 +102,12 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
 - **Without the lanes (s64, diagnostic only):** worst fill 4693 µs, 7.3 % of fills over
   3 ms (11.3 % in s63), worst graph 3923 µs. The lane copies cost about 1.1 ms of the worst
   fill; the rest of the screen and the scratch cost the remainder.
+- **What the deck was doing (s66, s67):** the profile's deck flags now also carry scratch
+  (4), Beat FX (8), Pad FX (16), loop (32) and history replay (64). In ten minutes the
+  worst fills (6337 and 6348 µs) both came during a scratch; without one the worst was
+  4197 µs. A forward scratch takes the ring up to six times as fast, each frame read from
+  the ring and written to the history in PSRAM. Keeping the newest 16384 history frames
+  in internal RAM for the scratch's reads (s67) did not help (6495 µs) and was reverted.
 - **32-byte PPA bursts (s65, reverted):** worse, 6165 µs worst with three fills of 6 ms or
   more, and the lanes took 21.6 ms a frame instead of 17.3.
 - **Fills over 3 ms (s52):** 6.3 % against 0.6 % without a screen. The longest stays under the

@@ -351,6 +351,12 @@ impl Reader {
         self.scratch.is_some()
     }
 
+    /// Whether playback comes from the history (after a loop or a scratch).
+    #[cfg(feature = "uac-profile")]
+    pub(crate) const fn replaying(&self) -> bool {
+        self.replay.is_some()
+    }
+
     /// The jog was touched: playback holds where it is, until the platter
     /// moves. A deck that was `playing` fades out. Does nothing without a
     /// source, or during a gesture.
