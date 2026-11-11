@@ -2,7 +2,7 @@
 
 Date: 2026-11-10. Branch: `ogranak/jc1060-slint-spike`, from `main` at `2e6957c`.
 
-A diagnostic image, not yet the product screen: touch does nothing yet. It answered
+A diagnostic image, not yet the product screen. It answered
 whether the deck screen fits next to USB audio (s40-s52, demo data), and since 2026-11-11
 it shows the decks themselves (s53-s56).
 
@@ -51,6 +51,11 @@ it shows the decks themselves (s53-s56).
   second. Each is written back at once, because the PPA driver invalidates the lane's
   rows before its copy and dropped unwritten meter pixels (s59 flickered). The FLX4's channel meters get the donor's
   CC 0x02, linear 0 to 127, every 30 ms, rising at once and falling 12 a step.
+- **Touch (s72):** the Slint task reads the GT911 each frame and hands Slint presses,
+  moves and releases. PLAY toggles its deck and CUE goes down and up as the controller's
+  buttons do, through a small queue the USB task empties before the mix's turn. The tabs
+  only highlight yet: Overview is the one page. The old load screen's touch task, which
+  took taps as track picks, no longer runs with this screen.
 - **Paused deck:** the hardware copies the whole lane, so both buffers always match; s53
   skipped it, which made the playhead flicker. Since s59 a lane that each buffer already
   holds is left alone.

@@ -135,6 +135,69 @@ impl FxSnapshot {
 
 pub(crate) static FX: AtomicU32 = AtomicU32::new(0);
 
+/// What a touch on the deck screen asks of a deck.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum TouchControl {
+    /// The PLAY button was pressed.
+    Play,
+    /// The CUE button went down (`true`) or up.
+    Cue(bool),
+}
+
+const TOUCH_SLOTS: u32 = 16;
+
+/// Touch requests from the UI task to the USB task, oldest first. A full queue drops the
+/// newest request.
+pub(crate) struct TouchQueue {
+    slots: [AtomicU32; TOUCH_SLOTS as usize],
+    head: AtomicU32,
+    tail: AtomicU32,
+}
+
+impl TouchQueue {
+    pub(crate) const fn new() -> Self {
+        Self {
+            slots: [const { AtomicU32::new(0) }; TOUCH_SLOTS as usize],
+            head: AtomicU32::new(0),
+            tail: AtomicU32::new(0),
+        }
+    }
+
+    /// The UI task's side: queues `control` for deck `deck` (0 or 1).
+    pub(crate) fn push(&self, deck: usize, control: TouchControl) -> bool {
+        let head = self.head.load(Ordering::Relaxed);
+        if head.wrapping_sub(self.tail.load(Ordering::Acquire)) >= TOUCH_SLOTS {
+            return false;
+        }
+        let word = (deck as u32 & 1)
+            | match control {
+                TouchControl::Play => 0,
+                TouchControl::Cue(down) => 2 | u32::from(down) << 2,
+            };
+        self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
+        self.head.store(head.wrapping_add(1), Ordering::Release);
+        true
+    }
+
+    /// The USB task's side: the oldest request.
+    pub(crate) fn pop(&self) -> Option<(usize, TouchControl)> {
+        let tail = self.tail.load(Ordering::Relaxed);
+        if tail == self.head.load(Ordering::Acquire) {
+            return None;
+        }
+        let word = self.slots[(tail % TOUCH_SLOTS) as usize].load(Ordering::Relaxed);
+        self.tail.store(tail.wrapping_add(1), Ordering::Release);
+        let control = if word & 2 == 0 {
+            TouchControl::Play
+        } else {
+            TouchControl::Cue(word & 4 != 0)
+        };
+        Some(((word & 1) as usize, control))
+    }
+}
+
+pub(crate) static TOUCH: TouchQueue = TouchQueue::new();
+
 /// Each channel's loudest pre-fader sample since the UI last looked, 32 767 for full
 /// scale.
 pub(crate) struct Peaks([AtomicU32; 2]);

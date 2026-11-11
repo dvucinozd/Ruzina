@@ -90,6 +90,24 @@ fn the_controller_meter_rises_at_once_and_falls_by_steps() {
 }
 
 #[test]
+fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
+    let queue = TouchQueue::new();
+    assert!(queue.push(0, TouchControl::Play));
+    assert!(queue.push(1, TouchControl::Cue(true)));
+    assert!(queue.push(1, TouchControl::Cue(false)));
+    assert_eq!(queue.pop(), Some((0, TouchControl::Play)));
+    assert_eq!(queue.pop(), Some((1, TouchControl::Cue(true))));
+    assert_eq!(queue.pop(), Some((1, TouchControl::Cue(false))));
+    assert_eq!(queue.pop(), None);
+    for _ in 0..TOUCH_SLOTS {
+        assert!(queue.push(0, TouchControl::Play));
+    }
+    assert!(!queue.push(1, TouchControl::Play), "full");
+    assert_eq!(queue.pop(), Some((0, TouchControl::Play)));
+    assert!(queue.push(1, TouchControl::Cue(true)));
+}
+
+#[test]
 fn the_mailbox_hands_over_the_latest_track_once() {
     // Deck 2 only: deck 1's slot belongs to the engine tests that load tracks.
     while take_track(1).is_some() {}
