@@ -92,8 +92,11 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
 
 - **Fills since the live decks:** the longest went over the 5 ms limit again (s55 6449 µs,
   s57 6234 µs with two of 6 ms or more, s58 5866 µs) and 5 to 9 % of fills take over 3 ms.
-  Still no underrun, but this needs work before the screen ships. Neither the deck
-  engine in IRAM (s60) nor the SD owner below the fill (s61) changed it.
+  Still no underrun. Neither the deck engine in IRAM (s60) nor the SD owner below the
+  fill (s61) changed it.
+- **Accepted for now (owner, 2026-11-11):** fills of up to about 6.3 ms during a fast
+  forward scratch, with no underrun; without a scratch the worst is about 4.2 ms. To be
+  looked at again with the USB stick media path, which changes how the decks are fed.
 - **Fill profile next to the screen (s63, `--uac-profile --soak-autoplay --slint-ui`):**
   the worst fill, 5814 µs at 58.7 s, came just after the soak DJ started a scratch. It
   was not preempted (2 µs away, 34 µs of interrupts): 4761 µs of it was the render
