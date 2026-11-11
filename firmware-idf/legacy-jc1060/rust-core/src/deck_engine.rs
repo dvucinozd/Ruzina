@@ -22,6 +22,11 @@
 //! both decks play, the synced deck jumps within its buffered audio to the reference's
 //! place in the bar, by the two tracks' beat grids, rather than seeking: a seek would
 //! leave it behind by the time it takes.
+//!
+//! Quantize starts on, as in rekordbox, and the deck state gets the loaded tracks' beat
+//! grids: with it CUE, Loop In and Out, Beat Loops and new Hot Cues land on the nearest
+//! beat. Beat Jump keeps to the BPM, which moves by whole beats from wherever the deck is
+//! and so keeps its place in the beat; the deck state's grid jump would land on a beat.
 use crate::deck_play::{RINGS, Reader};
 use crate::deck_transport::{SEEK_REQUESTS, SEEK_RESULTS, SeekOutcome, SeekRequest};
 use crate::deck_view::Grid;
@@ -30,11 +35,13 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_audio_runtime::nudge::TempoNudge;
 use ruzina_audio_runtime::render::RENDER_SAMPLE_RATE_HZ;
 use ruzina_controller_core::ControllerLedFrame;
-use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, PadMode, SemanticControl};
+use ruzina_controller_core::{
+    ControlEvent, ControlValue, DeckExtAction, DeckExtActionValue, DeckId, PadMode, SemanticControl,
+};
 use ruzina_core::MediaTrackId;
 use ruzina_deck::{DeckEffect, DeckEffects, DeckProductState};
 use ruzina_hot_cues::HotCueBank;
-use ruzina_track_analysis::Beat;
+use ruzina_track_analysis::{AnalysisProvider, Beat, BeatGrid, TrackAnalysis};
 
 const DECKS: [DeckId; 2] = [DeckId::One, DeckId::Two];
 
@@ -134,6 +141,8 @@ pub(crate) struct Engine {
     pads_held: [(Option<PadMode>, u8); 2],
     /// The Beat Loop pad that set the running loop, and that loop.
     loop_pad: [Option<(u8, (u32, u32))>; 2],
+    /// Whether Quantize was turned on for both decks, on the first event.
+    quantize_set: bool,
     /// Banks the flash journal has not taken yet, one per track, oldest first.
     /// Flash waits until no deck plays, which a long mix can put off.
     hot_cue_saves: [Option<HotCueBank>; HOT_CUE_SAVES_QUEUED],
@@ -175,6 +184,7 @@ impl Engine {
             phase_report: None,
             pads_held: [(None, 0); 2],
             loop_pad: [None; 2],
+            quantize_set: false,
             hot_cue_saves: [None; HOT_CUE_SAVES_QUEUED],
             hot_cue_in_flight: None,
             #[cfg(feature = "soak-autoplay")]
@@ -220,6 +230,22 @@ impl Engine {
                 self.apply(effects);
             }
         }
+        if !self.quantize_set {
+            self.quantize_set = true;
+            for deck in DECKS {
+                if !self.deck.deck(deck).quantize_enabled {
+                    let quantize = ControlValue::DeckExtAction(DeckExtActionValue {
+                        action: DeckExtAction::Quantize,
+                        pressed: true,
+                    });
+                    self.deck.handle_control(ControlEvent {
+                        deck: Some(deck),
+                        control: SemanticControl::DeckExtAction,
+                        value: quantize,
+                    });
+                }
+            }
+        }
         if let Some(deck) = event.deck
             && matches!(
                 event.control,
@@ -255,7 +281,23 @@ impl Engine {
             }
         }
         let event = self.flx4_loop_button(event);
-        let effects = self.deck.handle_control(event);
+        // SYNC's phase is the engine's, and Beat Jump keeps to the BPM.
+        let on_grid = !matches!(
+            event.control,
+            SemanticControl::Sync
+                | SemanticControl::BeatJumpBack
+                | SemanticControl::BeatJumpForward
+        ) && !matches!(event.value, ControlValue::PadAction(pad) if pad.mode == PadMode::BeatJump);
+        let analysis: [_; 2] = core::array::from_fn(|i| {
+            let beats = grid_of(&self.grids[i], self.source[i]).filter(|_| on_grid)?;
+            Some(TrackAnalysis::new(
+                AnalysisProvider::RekordboxImport,
+                0,
+                0,
+                Some(BeatGrid::new(beats)),
+            ))
+        });
+        let effects = self.deck.handle_control_with_analysis(event, analysis);
         self.apply(effects);
         let Some(deck) = event.deck else {
             return;
@@ -286,11 +328,7 @@ impl Engine {
 
     /// Deck `i`'s beat grid, when it belongs to the loaded track and has beats.
     fn grid(&self, i: usize) -> Option<&[Beat]> {
-        let loaded = self.source[i].map(|source| source.index);
-        self.grids[i]
-            .as_deref()
-            .filter(|grid| Some(grid.index) == loaded && !grid.beats.is_empty())
-            .map(|grid| &*grid.beats)
+        grid_of(&self.grids[i], self.source[i])
     }
 
     /// Whether deck `i` plays its loaded track from a settled source.
@@ -380,7 +418,7 @@ impl Engine {
     /// or the BPM, or the deck state's 120 BPM). Reloop Stop, the Shift layer,
     /// then brings back the last loop, as Reloop/Exit does in the deck state.
     fn flx4_loop_button(&self, event: &ControlEvent) -> ControlEvent {
-        use ruzina_controller_core::{DeckExtAction, DeckExtActionValue, PadAction};
+        use ruzina_controller_core::PadAction;
         let Some(deck) = event.deck else {
             return *event;
         };
@@ -1006,6 +1044,14 @@ pub unsafe extern "C" fn ruzina_legacy_engine_status(out: *mut u32) {
     ];
     // SAFETY: the caller provides four writable u32 slots.
     unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
+}
+
+/// `grid`'s beats, when it belongs to the track `source` loaded and has beats.
+fn grid_of(grid: &Option<Box<Grid>>, source: Option<LoadRequest>) -> Option<&[Beat]> {
+    let loaded = source.map(|source| source.index);
+    grid.as_deref()
+        .filter(|grid| Some(grid.index) == loaded && !grid.beats.is_empty())
+        .map(|grid| &*grid.beats)
 }
 
 /// `ms` for a beat sync report: offset so that a negative value stays positive.

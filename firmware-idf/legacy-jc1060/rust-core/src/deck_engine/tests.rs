@@ -1914,3 +1914,34 @@ fn sync_on_a_paused_deck_waits_for_its_grid_and_then_aligns() {
     assert_eq!((deck, event), (1, PHASE_ERROR));
     assert!((value as i32 - PHASE_REPORT_ZERO).abs() <= 2, "{value}");
 }
+
+#[test]
+fn quantize_puts_loops_and_new_cues_on_the_grid_and_beat_jump_keeps_the_offset() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    load_with_grid(&mut mix, DeckId::One, 33);
+    run_fed(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run_fed(&mut mix, 330);
+    assert!(deck(&mut mix).quantize_enabled, "on from the first event");
+    let at = deck(&mut mix).position_ms;
+    assert!(near(at, 330, 30), "{at}");
+    // Loop In marks the nearest beat, 500 ms.
+    press(&mut mix, SemanticControl::LoopIn, true);
+    assert_eq!(deck(&mut mix).loop_state.pending_in_ms, Some(500));
+    // A new Hot Cue lands on it too.
+    mix.control(&hot_cue_pad(0, true));
+    mix.control(&hot_cue_pad(0, false));
+    let bank = mix.engine().hot_cue_saves[0].expect("a new cue");
+    assert_eq!(bank.slot(0).unwrap().pos_ms, 500);
+    // Beat Jump moves by a beat from where the deck is, not to a beat.
+    let at = deck(&mut mix).position_ms;
+    press(&mut mix, SemanticControl::BeatJumpForward, true);
+    assert_eq!(
+        SEEK_REQUESTS[0].take().map(|seek| seek.target_ms),
+        Some(at + 500)
+    );
+}
