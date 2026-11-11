@@ -5,7 +5,8 @@
 //!   and the Beat FX, in atomics after every render block. The UI reads them when it
 //!   draws; a torn read between fields lasts one frame.
 //! - **Loaded track:** the load task hands over the title, key and the track's analysis
-//!   once per load, through a one-place mailbox the UI empties.
+//!   once per load, through a one-place mailbox the UI empties, and the beat grid to
+//!   the deck engine through another, for the beat sync.
 // Without the screen only the engine's side and the tests use this module.
 #![cfg_attr(not(feature = "slint-ui"), allow(dead_code))]
 
@@ -13,6 +14,7 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use core::fmt::Write;
 use core::sync::atomic::{AtomicI32, AtomicPtr, AtomicU32, Ordering};
+use ruzina_track_analysis::Beat;
 use ruzina_track_analysis::owned::AnalysisPublication;
 
 pub(crate) const LOADED: u32 = 1;
@@ -290,26 +292,65 @@ impl LoadedTrack {
     }
 }
 
-static TRACKS: [AtomicPtr<LoadedTrack>; 2] = [
-    AtomicPtr::new(core::ptr::null_mut()),
-    AtomicPtr::new(core::ptr::null_mut()),
-];
+/// A one-place mailbox: the newest value waits for its reader, and one the reader never
+/// took is dropped by the writer.
+struct Mailbox<T>(AtomicPtr<T>);
 
-/// Hands deck `deck`'s new track to the UI. One the UI never took is dropped here.
-pub(crate) fn publish_track(deck: usize, track: Box<LoadedTrack>) {
-    let old = TRACKS[deck].swap(Box::into_raw(track), Ordering::AcqRel);
-    if !old.is_null() {
-        // SAFETY: only `publish_track` stores into the slot, from `Box::into_raw`, and
-        // the swap gave this caller sole ownership of the pointer it replaced.
-        drop(unsafe { Box::from_raw(old) });
+impl<T> Mailbox<T> {
+    const fn new() -> Self {
+        Self(AtomicPtr::new(core::ptr::null_mut()))
     }
+
+    fn put(&self, value: Box<T>) {
+        let old = self.0.swap(Box::into_raw(value), Ordering::AcqRel);
+        if !old.is_null() {
+            // SAFETY: only `put` stores into the slot, from `Box::into_raw`, and the swap
+            // gave this caller sole ownership of the pointer it replaced.
+            drop(unsafe { Box::from_raw(old) });
+        }
+    }
+
+    fn take(&self) -> Option<Box<T>> {
+        let value = self.0.swap(core::ptr::null_mut(), Ordering::AcqRel);
+        // SAFETY: as in `put`: the swap hands the pointer to this caller alone.
+        (!value.is_null()).then(|| unsafe { Box::from_raw(value) })
+    }
+}
+
+static TRACKS: [Mailbox<LoadedTrack>; 2] = [Mailbox::new(), Mailbox::new()];
+
+/// Hands deck `deck`'s new track to the UI, and its beat grid to the deck engine.
+pub(crate) fn publish_track(deck: usize, track: Box<LoadedTrack>) {
+    let beats = track
+        .analysis
+        .as_ref()
+        .and_then(|analysis| analysis.view().beat_grid())
+        .map_or(&[][..], |grid| grid.beats());
+    GRIDS[deck].put(Box::new(Grid {
+        index: track.index,
+        beats: beats.into(),
+    }));
+    TRACKS[deck].put(track);
 }
 
 /// Deck `deck`'s track, if a new one arrived since the last call.
 pub(crate) fn take_track(deck: usize) -> Option<Box<LoadedTrack>> {
-    let track = TRACKS[deck].swap(core::ptr::null_mut(), Ordering::AcqRel);
-    // SAFETY: as in `publish_track`: the swap hands the pointer to this caller alone.
-    (!track.is_null()).then(|| unsafe { Box::from_raw(track) })
+    TRACKS[deck].take()
+}
+
+/// The beat grid of the track a deck loaded, for the deck engine's beat sync.
+pub(crate) struct Grid {
+    /// Catalog index; `u32::MAX` for no track.
+    pub(crate) index: u32,
+    /// Empty when the track has no analysis.
+    pub(crate) beats: Box<[Beat]>,
+}
+
+static GRIDS: [Mailbox<Grid>; 2] = [Mailbox::new(), Mailbox::new()];
+
+/// Deck `deck`'s beat grid, if a new track arrived since the last call.
+pub(crate) fn take_grid(deck: usize) -> Option<Box<Grid>> {
+    GRIDS[deck].take()
 }
 
 /// `mm:ss`; an hour or more shows as `h:mm:ss`.

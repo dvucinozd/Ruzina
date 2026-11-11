@@ -1377,3 +1377,91 @@ fn a_paused_deck_starts_from_silence_and_fades_before_it_stops() {
     let at = reader.cursor();
     assert_eq!(take(&mut reader, ring, 50), span(at, at + 50));
 }
+
+#[test]
+fn a_phase_jump_back_replays_the_history_and_plays_on_into_the_ring() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    assert_eq!(take(&mut reader, ring, 5_000), span(0, 5_000));
+    assert!(reader.shift(ring, -3_000));
+    assert_eq!(take(&mut reader, ring, 4_000), span(2_000, 6_000));
+    // From the history while it trails, then the ring takes over.
+    assert_eq!(reader.buffered(ring), 20_000 - 6_000);
+    // Before the start of the history there is nothing to jump to.
+    assert!(!reader.shift(ring, -6_001));
+    assert_eq!(take(&mut reader, ring, 10), span(6_000, 6_010));
+}
+
+#[test]
+fn a_phase_jump_forward_skips_buffered_frames_and_the_history_starts_there() {
+    let ring = ring();
+    ring.restart_at(44_100, 1_000);
+    feed(ring, 1_000, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    assert_eq!(take(&mut reader, ring, 1_000), span(1_000, 2_000));
+    // More than the ring holds is refused.
+    assert!(!reader.shift(ring, 19_001));
+    assert!(reader.shift(ring, 4_000));
+    assert_eq!(take(&mut reader, ring, 1_000), span(6_000, 7_000));
+    assert_eq!(reader.buffered(ring), 20_000 - 6_000);
+    // The skipped frames are not in the history: a jump back stops at the jump.
+    assert!(!reader.shift(ring, -1_001));
+    assert!(reader.shift(ring, -1_000));
+    assert_eq!(take(&mut reader, ring, 10), span(6_000, 6_010));
+}
+
+#[test]
+fn a_phase_jump_waits_out_a_loop_and_a_gesture() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    take(&mut reader, ring, 3_000);
+    reader.set_loop(1_000, 4_000);
+    assert!(!reader.shift(ring, -500));
+    reader.clear_loop();
+    reader.begin_scratch(true);
+    assert!(!reader.shift(ring, -500));
+    reader.end_scratch(true);
+    assert!(reader.shift(ring, -500));
+}
+
+#[test]
+fn a_phase_jump_crossfades_without_a_step_both_ways() {
+    let ring = ring();
+    ring.restart_at(44_100, 0);
+    feed(ring, 0, 20_000);
+    let mut reader = Reader::new();
+    assert!(reader.sync(ring));
+    played(&mut reader, ring, 5_000);
+    let total = i32::from(LOOP_CROSSFADE_FRAMES);
+    // Back by 1000 frames: the ramp would step by 1000.
+    assert!(reader.shift(ring, -1_000));
+    let back = played(&mut reader, ring, 2 * LOOP_CROSSFADE_FRAMES as u32);
+    assert_eq!(
+        back[0], 5_000,
+        "opens on the frame that would have followed"
+    );
+    assert!(
+        largest_step(&back) <= 1_000 / total + 2,
+        "{}",
+        largest_step(&back)
+    );
+    assert_eq!(*back.last().unwrap(), 4_000 + 2 * total - 1);
+    // Forward by 3000: the held last frame ramps into the frames after the jump, which
+    // run on by a frame a frame meanwhile.
+    let at = 4_000 + 2 * total as u32;
+    assert!(reader.shift(ring, 3_000));
+    let ahead = played(&mut reader, ring, 2 * LOOP_CROSSFADE_FRAMES as u32);
+    assert!(
+        largest_step(&ahead) <= (3_000 + 2 * total) / total + 2,
+        "{}",
+        largest_step(&ahead)
+    );
+    assert_eq!(*ahead.last().unwrap(), (at + 3_000) as i32 + 2 * total - 1);
+}

@@ -580,6 +580,44 @@ impl Reader {
         self.loop_frames = None;
     }
 
+    /// Moves playback `frames` source frames, the beat sync's jump to the other deck's
+    /// phase: backward through the history, or forward through it and then the ring,
+    /// with a crossfade. A jump past the history's newest frame skips ring frames
+    /// without keeping them, so the history starts again there. Returns false,
+    /// changing nothing, during a gesture or a loop, or when the history does not hold
+    /// the frame or the ring has not buffered it.
+    #[cfg_attr(not(feature = "deck-engine"), allow(dead_code))]
+    pub(crate) fn shift(&mut self, ring: &Ring, frames: i32) -> bool {
+        if self.rate == 0 || self.scratch.is_some() || self.loop_frames.is_some() {
+            return false;
+        }
+        let from = self.cursor();
+        let Some(target) = from.checked_add_signed(frames) else {
+            return false;
+        };
+        if self.holds(target) {
+            self.replay = (target != self.position).then_some(target);
+            self.fade = Some(LoopFade {
+                from: Some(from),
+                left: LOOP_CROSSFADE_FRAMES,
+                total: LOOP_CROSSFADE_FRAMES,
+                held: self.last,
+            });
+            return true;
+        }
+        let ahead = target.wrapping_sub(self.position);
+        if target < self.position || ahead > self.buffered(ring) {
+            return false;
+        }
+        self.tail = self.tail.wrapping_add(ahead);
+        self.position = target;
+        self.history_from = target;
+        self.replay = None;
+        // The skipped slots are the producer's again, so the fade holds the last frame.
+        self.fade_from_last();
+        true
+    }
+
     /// Whether a loop can go on at the end of the track: its start lies far
     /// enough before the last frame.
     fn loop_wraps_at_end(&self, start: u32) -> bool {

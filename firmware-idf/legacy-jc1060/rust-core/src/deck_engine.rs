@@ -17,21 +17,41 @@
 //! committed with `commit_track_load` when its producer has decoded the
 //! first block, through the `LOADED` mailbox; Load is refused while the deck
 //! plays (the product's load lock).
+//!
+//! SYNC matches the tempo in the deck state; the engine then matches the phase. Once
+//! both decks play, the synced deck jumps within its buffered audio to the reference's
+//! place in the bar, by the two tracks' beat grids, rather than seeking: a seek would
+//! leave it behind by the time it takes.
 use crate::deck_play::{RINGS, Reader};
 use crate::deck_transport::{SEEK_REQUESTS, SEEK_RESULTS, SeekOutcome, SeekRequest};
+use crate::deck_view::Grid;
+use alloc::boxed::Box;
 use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_audio_runtime::nudge::TempoNudge;
 use ruzina_audio_runtime::render::RENDER_SAMPLE_RATE_HZ;
 use ruzina_controller_core::ControllerLedFrame;
-use ruzina_controller_core::{ControlEvent, DeckId};
+use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, PadMode, SemanticControl};
 use ruzina_core::MediaTrackId;
 use ruzina_deck::{DeckEffect, DeckEffects, DeckProductState};
 use ruzina_hot_cues::HotCueBank;
+use ruzina_track_analysis::Beat;
 
 const DECKS: [DeckId; 2] = [DeckId::One, DeckId::Two];
 
 /// The Beat Loop pad whose length is 4 beats.
 const FOUR_BEAT_LOOP_PAD: u8 = 7;
+
+/// Render blocks from a beat sync's jump to its check of the remaining phase error
+/// (about 1 s).
+const PHASE_CHECK_BLOCKS: u16 = 375;
+
+/// Load events the beat sync reports, with the deck as the pass and the milliseconds
+/// offset by `PHASE_REPORT_ZERO`: 40 the jump, 41 a jump the audio could not make, 42
+/// the phase error a second later.
+const PHASE_JUMPED: u32 = 40;
+const PHASE_REFUSED: u32 = 41;
+const PHASE_ERROR: u32 = 42;
+const PHASE_REPORT_ZERO: i32 = 10_000;
 
 /// A loop change for a deck's reader, applied at the next render block.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -99,6 +119,21 @@ pub(crate) struct Engine {
     loop_ms: [Option<(u32, u32)>; 2],
     /// Jog ticks waiting for the next render block.
     scratch_ticks: [i32; 2],
+    /// Each deck's beat grid, from the load task.
+    grids: [Option<Box<Grid>>; 2],
+    /// A synced deck waiting for both decks to play before it matches the phase.
+    phase_pending: [bool; 2],
+    /// The phase jump for the next render block, in milliseconds: the nearest, and the
+    /// nearest the other way.
+    phase_jump: [Option<(i32, i32)>; 2],
+    /// Render blocks until the phase error is checked after a jump.
+    phase_check: [Option<u16>; 2],
+    /// The latest beat sync event for the log: deck, event, value.
+    phase_report: Option<(u32, u32, u32)>,
+    /// The pads held, and the mode they were pressed in.
+    pads_held: [(Option<PadMode>, u8); 2],
+    /// The Beat Loop pad that set the running loop, and that loop.
+    loop_pad: [Option<(u8, (u32, u32))>; 2],
     /// Banks the flash journal has not taken yet, one per track, oldest first.
     /// Flash waits until no deck plays, which a long mix can put off.
     hot_cue_saves: [Option<HotCueBank>; HOT_CUE_SAVES_QUEUED],
@@ -133,6 +168,13 @@ impl Engine {
             loop_command: [None; 2],
             loop_ms: [None; 2],
             scratch_ticks: [0; 2],
+            grids: [None, None],
+            phase_pending: [false; 2],
+            phase_jump: [None; 2],
+            phase_check: [None; 2],
+            phase_report: None,
+            pads_held: [(None, 0); 2],
+            loop_pad: [None; 2],
             hot_cue_saves: [None; HOT_CUE_SAVES_QUEUED],
             hot_cue_in_flight: None,
             #[cfg(feature = "soak-autoplay")]
@@ -199,8 +241,134 @@ impl Engine {
         {
             crate::deck_view::zoom_by(i32::from(delta));
         }
-        let effects = self.deck.handle_control(self.flx4_loop_button(event));
+        // Pads as pressed: the 4 BEAT button's Beat Loop pad has no release.
+        if let (Some(deck), ControlValue::PadAction(pad)) = (event.deck, event.value) {
+            let (mode, held) = &mut self.pads_held[index(deck)];
+            if *mode != Some(pad.mode) {
+                *mode = Some(pad.mode);
+                *held = 0;
+            }
+            if pad.pressed {
+                *held |= 1 << (pad.pad & 7);
+            } else {
+                *held &= !(1 << (pad.pad & 7));
+            }
+        }
+        let event = self.flx4_loop_button(event);
+        let effects = self.deck.handle_control(event);
         self.apply(effects);
+        let Some(deck) = event.deck else {
+            return;
+        };
+        let i = index(deck);
+        match (event.control, event.value) {
+            (SemanticControl::Sync, ControlValue::Pressed(true)) => {
+                self.phase_pending[i] = self.deck.deck(deck).sync_enabled;
+            }
+            (SemanticControl::PadAction, ControlValue::PadAction(pad))
+                if pad.mode == PadMode::BeatLoop && pad.pressed && !pad.shifted =>
+            {
+                self.loop_pad[i] = self.loop_ms[i].map(|region| (pad.pad, region));
+            }
+            _ => {}
+        }
+    }
+
+    /// Takes the beat grids of tracks the load task read. USB client task, outside the
+    /// audio fill, which then only reads them.
+    pub(crate) fn take_grids(&mut self) {
+        for (i, grid) in self.grids.iter_mut().enumerate() {
+            if let Some(new) = crate::deck_view::take_grid(i) {
+                *grid = Some(new);
+            }
+        }
+    }
+
+    /// Deck `i`'s beat grid, when it belongs to the loaded track and has beats.
+    fn grid(&self, i: usize) -> Option<&[Beat]> {
+        let loaded = self.source[i].map(|source| source.index);
+        self.grids[i]
+            .as_deref()
+            .filter(|grid| Some(grid.index) == loaded && !grid.beats.is_empty())
+            .map(|grid| &*grid.beats)
+    }
+
+    /// Whether deck `i` plays its loaded track from a settled source.
+    fn settled(&self, i: usize) -> bool {
+        self.loaded[i]
+            && !self.faulted[i]
+            && self.playing[i]
+            && self.seeking[i].is_none()
+            && self.cushion[i].is_none()
+    }
+
+    /// A synced deck's phase jump, once both decks play, and a second later the phase
+    /// error that remains, for the log. After each render block.
+    fn align_phase(&mut self, readers: &[Reader; 2]) {
+        for i in 0..2 {
+            let reference = 1 - i;
+            if !self.deck.deck(DECKS[i]).sync_enabled {
+                self.phase_pending[i] = false;
+                self.phase_check[i] = None;
+                continue;
+            }
+            if let Some(blocks) = self.phase_check[i] {
+                self.phase_check[i] = blocks.checked_sub(1);
+            }
+            let check = self.phase_check[i] == Some(0);
+            if !(self.phase_pending[i] || check)
+                || !self.settled(i)
+                || !self.settled(reference)
+                || self.loop_ms[i].is_some()
+                || readers[i].scratching()
+                || readers[reference].scratching()
+            {
+                continue;
+            }
+            let (Some(target), Some(beats)) = (self.grid(i), self.grid(reference)) else {
+                // Without both grids SYNC matches the tempo only.
+                self.phase_pending[i] = false;
+                continue;
+            };
+            let jump = phase_jump_ms(
+                target,
+                readers[i].position_ms(),
+                beats,
+                readers[reference].position_ms(),
+            );
+            if check {
+                self.phase_check[i] = None;
+                if let Some((error, _)) = jump {
+                    self.phase_report = Some((i as u32, PHASE_ERROR, report_ms(error)));
+                }
+            } else {
+                self.phase_pending[i] = false;
+                self.phase_jump[i] = jump;
+            }
+        }
+    }
+
+    /// Deck `i`'s phase jump for this render block, once.
+    pub(crate) fn take_phase_jump(&mut self, i: usize) -> Option<(i32, i32)> {
+        self.phase_jump[i].take()
+    }
+
+    /// What the reader made of deck `i`'s phase jump: `jumped` by that many
+    /// milliseconds, or `None` when the audio held it neither way.
+    pub(crate) fn phase_jumped(&mut self, i: usize, jumped: Option<i32>) {
+        self.phase_report = Some(match jumped {
+            Some(ms) => {
+                self.phase_check[i] = Some(PHASE_CHECK_BLOCKS);
+                (i as u32, PHASE_JUMPED, report_ms(ms))
+            }
+            None => (i as u32, PHASE_REFUSED, 0),
+        });
+    }
+
+    /// The latest beat sync event for the log, once: deck, event, value.
+    #[cfg_attr(test, allow(dead_code))]
+    pub(crate) fn take_phase_report(&mut self) -> Option<(u32, u32, u32)> {
+        self.phase_report.take()
     }
 
     /// The FLX4's loop buttons when no loop runs; with one running, both go
@@ -211,9 +379,7 @@ impl Engine {
     /// or the BPM, or the deck state's 120 BPM). Reloop Stop, the Shift layer,
     /// then brings back the last loop, as Reloop/Exit does in the deck state.
     fn flx4_loop_button(&self, event: &ControlEvent) -> ControlEvent {
-        use ruzina_controller_core::{
-            ControlValue, DeckExtAction, DeckExtActionValue, PadAction, PadMode, SemanticControl,
-        };
+        use ruzina_controller_core::{DeckExtAction, DeckExtActionValue, PadAction};
         let Some(deck) = event.deck else {
             return *event;
         };
@@ -450,7 +616,7 @@ impl Engine {
 
     /// The LEDs the deck state decides, as on the native firmware.
     pub(crate) fn refresh_leds(&self, leds: &mut ControllerLedFrame) {
-        use ruzina_controller_core::{BeatFxTarget, LedState, LedUpdate, PadMode, SemanticLedId};
+        use ruzina_controller_core::{BeatFxTarget, LedState, LedUpdate, SemanticLedId};
         use ruzina_deck::{LoopAdjustMode, PadFxBank};
         let mut set = |led, deck, on| {
             let state = if on { LedState::On } else { LedState::Off };
@@ -489,9 +655,26 @@ impl Engine {
             ] {
                 set(led, this, state.pad_mode == mode);
             }
+            let (held_mode, held) = self.pads_held[i];
+            let held = |mode, pad: u8| held_mode == Some(mode) && held >> pad & 1 != 0;
+            // The Beat Loop pad lights while its loop runs unchanged; any pad of the
+            // Beat Loop and Beat Jump banks lights while it is held.
+            let loop_pad = self.loop_pad[i]
+                .filter(|(_, region)| self.loop_ms[i] == Some(*region))
+                .map(|(pad, _)| pad);
             for pad in 0..8u8 {
                 if let Some(led) = SemanticLedId::hot_cue_pad(pad) {
                     set(led, this, hot_cues[i] >> pad & 1 != 0);
+                }
+                if let Some(led) = SemanticLedId::beat_loop_pad(pad) {
+                    set(
+                        led,
+                        this,
+                        loop_pad == Some(pad) || held(PadMode::BeatLoop, pad),
+                    );
+                }
+                if let Some(led) = SemanticLedId::beat_jump_pad(pad) {
+                    set(led, this, held(PadMode::BeatJump, pad));
                 }
                 let fx = |bank| {
                     state
@@ -736,6 +919,7 @@ impl Engine {
             STATUS[i][1].store(flags, Ordering::Relaxed);
             self.publish_view(i);
         }
+        self.align_phase(readers);
         crate::deck_view::FX.store(self.fx_view().pack(), Ordering::Relaxed);
     }
 
@@ -821,6 +1005,49 @@ pub unsafe extern "C" fn ruzina_legacy_engine_status(out: *mut u32) {
     ];
     // SAFETY: the caller provides four writable u32 slots.
     unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
+}
+
+/// `ms` for a beat sync report: offset so that a negative value stays positive.
+fn report_ms(ms: i32) -> u32 {
+    (ms + PHASE_REPORT_ZERO).max(0) as u32
+}
+
+/// Where `beats` puts `ms`: the beat at or before it, and how far into that beat, as a
+/// fraction. `None` before the first beat or from the last one on.
+fn beat_at(beats: &[Beat], ms: u32) -> Option<(usize, f32)> {
+    let next = beats.partition_point(|beat| beat.time_ms <= ms);
+    let at = next.checked_sub(1)?;
+    let (start, end) = (beats[at].time_ms, beats.get(next)?.time_ms);
+    Some((at, (ms - start) as f32 / (end - start) as f32))
+}
+
+/// The jumps, in milliseconds of the target's track, that put the target at the
+/// reference's place in the bar: on a beat with the reference beat's number, as far into
+/// that beat. Returns the nearest, and the nearest the other way (the nearest again
+/// when there is none); the reader takes the second when it cannot make the first.
+/// `None` when either position lies outside its grid.
+pub(crate) fn phase_jump_ms(
+    target: &[Beat],
+    target_ms: u32,
+    reference: &[Beat],
+    reference_ms: u32,
+) -> Option<(i32, i32)> {
+    let (beat, fraction) = beat_at(reference, reference_ms)?;
+    let phase = reference[beat].phase;
+    let (at, _) = beat_at(target, target_ms)?;
+    let jumps = (at.saturating_sub(8)..(at + 9).min(target.len() - 1))
+        .filter(|&j| target[j].phase == phase)
+        .map(|j| {
+            let length = target[j + 1].time_ms - target[j].time_ms;
+            let ms = target[j].time_ms as f32 + fraction * length as f32;
+            (ms + 0.5) as i64 - i64::from(target_ms)
+        });
+    let nearest = jumps.clone().min_by_key(|jump| jump.abs())?;
+    let other = jumps
+        .filter(|jump| jump.signum() != nearest.signum())
+        .min_by_key(|jump| jump.abs())
+        .unwrap_or(nearest);
+    Some((nearest as i32, other as i32))
 }
 
 #[cfg(test)]

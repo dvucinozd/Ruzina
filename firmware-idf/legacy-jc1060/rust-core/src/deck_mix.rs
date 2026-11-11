@@ -250,6 +250,15 @@ impl Mix {
                     Some(crate::deck_engine::LoopCommand::Clear) => reader.clear_loop(),
                     None => {}
                 }
+                // The beat sync's phase jump: the nearest, else the nearest the other
+                // way, whichever the history or the ring holds.
+                if let Some((nearest, other)) = self.engine.take_phase_jump(deck) {
+                    let rate = i64::from(reader.rate());
+                    let jumped = [nearest, other].into_iter().find(|&ms| {
+                        reader.shift(&RINGS[deck], (i64::from(ms) * rate / 1000) as i32)
+                    });
+                    self.engine.phase_jumped(deck, jumped);
+                }
                 match self.engine.take_scratch(deck) {
                     Some(ticks) => {
                         reader.begin_scratch(playing[deck]);
