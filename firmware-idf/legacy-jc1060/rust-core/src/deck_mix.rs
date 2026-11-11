@@ -293,6 +293,8 @@ impl Mix {
             }
             self.engine
                 .progress(&self.readers, u32::from(report.rendered_frames));
+            crate::deck_view::PEAKS.add(report.channel_peak);
+            crate::deck_view::LED_PEAKS.add(report.channel_peak);
         }
     }
 

@@ -135,6 +135,51 @@ impl FxSnapshot {
 
 pub(crate) static FX: AtomicU32 = AtomicU32::new(0);
 
+/// Each channel's loudest pre-fader sample since the UI last looked, 32 767 for full
+/// scale.
+pub(crate) struct Peaks([AtomicU32; 2]);
+
+impl Peaks {
+    const fn new() -> Self {
+        Self([AtomicU32::new(0), AtomicU32::new(0)])
+    }
+
+    /// Adds a render block's channel peaks.
+    pub(crate) fn add(&self, peaks: [u16; 2]) {
+        for (slot, peak) in self.0.iter().zip(peaks) {
+            slot.fetch_max(u32::from(peak), Ordering::Relaxed);
+        }
+    }
+
+    /// Channel `deck`'s loudest sample since the last call.
+    pub(crate) fn take(&self, deck: usize) -> u32 {
+        self.0[deck].swap(0, Ordering::Relaxed)
+    }
+}
+
+/// The screen's channel meters.
+pub(crate) static PEAKS: Peaks = Peaks::new();
+/// The controller's channel meters, read on their own so neither takes the other's
+/// peaks.
+pub(crate) static LED_PEAKS: Peaks = Peaks::new();
+
+/// The controller's channel meter level, as the donor drives the FLX4's: the loudest
+/// sample on a linear 0 to 127 scale, rising at once and falling 12 an update.
+pub(crate) fn meter_led(previous: u8, peak: u32) -> u8 {
+    let level = (peak * 127 / 32_768).min(127) as u8;
+    level.max(previous.saturating_sub(12))
+}
+
+/// The channel meter's lit segments for `peak`, out of ten: green to -9 dBFS, amber at
+/// -6 and -3, red from -0.5.
+pub(crate) fn meter_segments(peak: u32) -> i32 {
+    // -40, -32, -26, -20, -16, -12, -9, -6, -3 and -0.5 dBFS.
+    const STEPS: [u32; 10] = [
+        328, 823, 1_641, 3_277, 5_193, 8_231, 11_627, 16_423, 23_197, 30_934,
+    ];
+    STEPS.iter().filter(|&&step| peak >= step).count() as i32
+}
+
 /// The lane zoom: how many beats the lane shows, the donor's steps with one more at each
 /// end. The browse knob moves it.
 const ZOOM_BEATS: [u32; 7] = [2, 4, 8, 12, 16, 24, 32];
