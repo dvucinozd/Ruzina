@@ -32,6 +32,9 @@ pub mod read_ahead;
 #[cfg(feature = "idf-media-load")]
 mod idf_alloc;
 
+#[cfg(all(feature = "idf-slint-ui", not(test)))]
+mod slint_ui;
+
 #[cfg(feature = "controller-midi")]
 mod controller_midi;
 
@@ -61,6 +64,9 @@ mod deck_engine;
 
 #[cfg(feature = "deck-engine")]
 mod deck_transport;
+
+#[cfg(feature = "deck-engine")]
+mod deck_view;
 
 #[cfg(feature = "deck-engine")]
 mod deck_resources;

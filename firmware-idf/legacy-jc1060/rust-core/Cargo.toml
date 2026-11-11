@@ -34,7 +34,12 @@ ruzina-audio-scratch = { path = "../../../firmware-rust/crates/ruzina-audio-scra
 ruzina-mixer = { path = "../../../firmware-rust/crates/ruzina-mixer", optional = true }
 ruzina-hot-cues = { path = "../../../firmware-rust/crates/ruzina-hot-cues", optional = true }
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core", optional = true }
+ruzina-track-analysis = { path = "../../../firmware-rust/crates/ruzina-track-analysis", optional = true, features = ["owned"] }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
+slint = { version = "=1.18.1", default-features = false, features = ["compat-1-18", "unsafe-single-threaded", "libm", "renderer-software"], optional = true }
+
+[build-dependencies]
+slint-build = { version = "=1.18.1", optional = true }
 
 [features]
 memory-task = ["dep:ruzina-audio-dsp"]
@@ -71,7 +76,12 @@ idf-deck-play = ["idf-controller-audio", "idf-media-load", "deck-play"]
 deck-mix = ["deck-play", "dep:ruzina-mixer"]
 # Both decks through the product render graph to MAIN and the headphones.
 idf-deck-mix = ["idf-deck-play", "deck-mix"]
-deck-engine = ["deck-mix", "dep:ruzina-hot-cues", "dep:ruzina-core"]
+deck-engine = [
+    "deck-mix",
+    "dep:ruzina-hot-cues",
+    "dep:ruzina-core",
+    "dep:ruzina-track-analysis",
+]
 # The product deck engine (ruzina-deck) owns transport: CUE, seek, pitch, jog.
 idf-deck-engine = ["idf-deck-mix", "deck-engine"]
 
@@ -86,6 +96,10 @@ idf-soak-autoplay = ["idf-deck-engine", "soak-autoplay"]
 # Separate source-supply diagnostic; no render substage or IRQ profiling.
 producer-profile = ["deck-engine"]
 idf-producer-profile = ["idf-deck-engine", "producer-profile"]
+
+# The product Slint UI on the panel, measured against USB audio.
+slint-ui = ["deck-engine", "dep:slint", "dep:slint-build"]
+idf-slint-ui = ["idf-deck-engine", "slint-ui"]
 
 [dev-dependencies]
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core" }
