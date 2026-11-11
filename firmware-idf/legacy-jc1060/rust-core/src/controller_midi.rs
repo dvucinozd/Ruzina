@@ -53,6 +53,11 @@ struct State {
     /// The lamp test owns the LEDs until it clears them.
     #[cfg(feature = "deck-engine")]
     lamp_lit: bool,
+    /// The channel meters' levels and when they were last set.
+    #[cfg(feature = "deck-engine")]
+    meters: [u8; 2],
+    #[cfg(feature = "deck-engine")]
+    meters_at_ms: u32,
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
@@ -175,6 +180,10 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     leds: ControllerLedFrame::new(),
     #[cfg(feature = "deck-engine")]
     lamp_lit: false,
+    #[cfg(feature = "deck-engine")]
+    meters: [0; 2],
+    #[cfg(feature = "deck-engine")]
+    meters_at_ms: 0,
     headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
@@ -197,9 +206,29 @@ pub(crate) fn playing() -> [bool; 2] {
 
 #[cfg(feature = "deck-engine")]
 impl State {
+    /// The channel meters, as the donor drives them: every 30 ms, from the loudest
+    /// pre-fader sample since the last update.
+    fn meter_leds(&mut self, now_ms: u32) {
+        const METER_MS: u32 = 30;
+        if now_ms.wrapping_sub(self.meters_at_ms) < METER_MS {
+            return;
+        }
+        self.meters_at_ms = now_ms;
+        for (i, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
+            let peak = crate::deck_view::LED_PEAKS.take(i);
+            self.meters[i] = crate::deck_view::meter_led(self.meters[i], peak);
+            self.leds.set(LedUpdate {
+                led: SemanticLedId::VU_METER,
+                deck: Some(deck),
+                state: LedState::Value(self.meters[i]),
+            });
+        }
+    }
+
     /// The LEDs follow the deck engine and the mixer, as on the native firmware.
     /// Only the ones that changed are sent; a new binding sends them all.
     fn sync_leds(&mut self) {
+        self.meter_leds(now_ms());
         self.playing = crate::deck_mix::with(|mix| {
             mix.refresh_leds(&mut self.leds);
             mix.engine().playing()
@@ -215,12 +244,40 @@ impl State {
     }
 }
 
+/// Milliseconds since boot; 0 in host tests.
+#[cfg(feature = "deck-engine")]
+fn now_ms() -> u32 {
+    #[cfg(all(feature = "idf-deck-engine", not(test)))]
+    {
+        unsafe extern "C" {
+            fn esp_timer_get_time() -> i64;
+        }
+        // SAFETY: IDF monotonic task-safe clock.
+        (unsafe { esp_timer_get_time() } / 1_000) as u32
+    }
+    #[cfg(not(all(feature = "idf-deck-engine", not(test))))]
+    0
+}
+
 /// Brings the LEDs up to date with the deck engine (a track that played out
 /// stops without a controller event). USB client task, before
 /// the periodic Bulk-OUT flush.
 #[cfg(feature = "idf-deck-engine")]
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_midi_refresh() {
+    refresh_mix();
+    with(|state| {
+        if state.profile.is_some() {
+            state.sync_leds();
+        }
+    });
+}
+
+/// The mix's turn on the USB client task. Kept out of line, as the mix's frame (about
+/// 2.3 KiB) was before the channel meters, so the export's own frame stays small.
+#[cfg(feature = "idf-deck-engine")]
+#[inline(never)]
+fn refresh_mix() {
     crate::deck_mix::with(|mix| {
         mix.tick();
         mix.attach_fx();
@@ -240,11 +297,6 @@ pub extern "C" fn ruzina_legacy_midi_refresh() {
                 // SAFETY: diagnostic telemetry passes three u32 values only.
                 unsafe { ruzina_bridge_load_report(0, 20, gesture) };
             }
-        }
-    });
-    with(|state| {
-        if state.profile.is_some() {
-            state.sync_leds();
         }
     });
 }

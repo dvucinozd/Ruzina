@@ -81,6 +81,11 @@ const CYAN: u16 = rgb(0x26, 0xe0, 0xff);
 const GREEN: u16 = rgb(0x38, 0xf5, 0x8c);
 const AMBER: u16 = rgb(0xff, 0xb7, 0x33);
 const PURPLE: u16 = rgb(0xb5, 0x7c, 0xff);
+/// The red triangle on each bar line, for beat matching: its base at the lane's edge
+/// towards the other deck, pointing into the lane.
+const BAR_CAP: u16 = rgb(0xff, 0x17, 0x44);
+const BAR_CAP_REACH: i64 = 6;
+const BAR_CAP_HEIGHT: usize = 8;
 /// The white edge on loud peaks.
 const TIP: u16 = rgb(0xff, 0xff, 0xff);
 const TIP_LOUDNESS: u8 = 26;
@@ -342,6 +347,41 @@ fn draw_columns(
             }
         }
     }
+    draw_bar_caps(frame, area, wave, left, columns);
+}
+
+/// Draws the red triangles of the bar lines near columns `columns`, clipped to them and
+/// clear of the playhead. Deck 1's lane has them at the bottom, deck 2's at the top.
+fn draw_bar_caps(
+    frame: &mut [u16],
+    area: Area,
+    wave: Wave<'_>,
+    left: i64,
+    columns: core::ops::Range<usize>,
+) {
+    let at_bottom = area.y == LANES[0].y;
+    let (first, end) = (columns.start as i64, columns.end as i64);
+    for centre in first - BAR_CAP_REACH..end + BAR_CAP_REACH {
+        if wave.grid(left + centre) != BAR_LINE {
+            continue;
+        }
+        for row in 0..BAR_CAP_HEIGHT {
+            // Widest at the edge, a point towards the middle.
+            let reach = BAR_CAP_REACH * (BAR_CAP_HEIGHT - row) as i64 / BAR_CAP_HEIGHT as i64;
+            let y = if at_bottom {
+                LANE_HEIGHT - 1 - row
+            } else {
+                row
+            };
+            let line = (area.y + y) * WIDTH + area.x;
+            for x in (centre - reach).max(first)..=(centre + reach).min(end - 1) {
+                let x = x as usize;
+                if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
+                    frame[line + x] = BAR_CAP;
+                }
+            }
+        }
+    }
 }
 
 /// Brings the lane in `back` to show track pixel `left` at its left edge. When `shown`
@@ -577,6 +617,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let mut tracks: [Option<Box<LoadedTrack>>; 2] = [None, None];
     let mut shown_texts: [Option<DeckTexts>; 2] = [None, None];
     let mut shown_fx = None;
+    // The channel meters' lit segments; they fall a segment a frame.
+    let mut meters = [0i32; 2];
     // Per buffer and deck: the lane's left column and time span, and the overview's track
     // and playhead.
     let mut lane_at: [[Option<(i64, i64)>; 2]; 2] = [[None; 2]; 2];
@@ -610,6 +652,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             if shown_texts[deck].as_ref() != Some(&texts) {
                 show_texts(&ui, deck, &texts);
                 shown_texts[deck] = Some(texts);
+            }
+        }
+        for (deck, meter) in meters.iter_mut().enumerate() {
+            let lit = deck_view::meter_segments(deck_view::PEAKS.take(deck)).max(*meter - 1);
+            if lit != *meter {
+                *meter = lit;
+                if deck == 0 {
+                    ui.set_level_1(lit);
+                } else {
+                    ui.set_level_2(lit);
+                }
             }
         }
         let fx = FxSnapshot::unpack(deck_view::FX.load(core::sync::atomic::Ordering::Relaxed));

@@ -42,6 +42,12 @@ it shows the decks themselves (s53-s56).
   overviews use the same palette.
 - **Zoom:** the browse knob moves the lane through 2, 4, 8, 12, 16, 24 and 32 beats of the
   track's tempo (the donor's five plus one at each end), 16 at start, 0.5 s to 30 s.
+- **Bar lines:** a red triangle on each bar line, deck 1 at the bottom of its lane and
+  deck 2 at the top, so the two meet in the middle for beat matching.
+- **Channel meters (s57, s58):** the render graph reports each channel's loudest sample
+  before its fader (after trim, EQ, filter and FX). The screen shows ten segments (green
+  to -9 dBFS, amber at -6 and -3, red from -0.5). The FLX4's channel meters get the donor's
+  CC 0x02, linear 0 to 127, every 30 ms, rising at once and falling 12 a step.
 - **Paused deck:** the hardware copies the whole lane, so both buffers always match; s53
   skipped it, which made the playhead flicker.
 
@@ -59,7 +65,9 @@ it shows the decks themselves (s53-s56).
 | s53 | live deck data | 30 | 9-22 ms | | | |
 | s54 | bars with gaps, paused copy | 30 | 21-36 ms | | | |
 | s55 | donor waveform, browse zoom | 30 | 25-36 ms | | | |
-| s56 | seven zoom steps | 30 | | | | |
+| s56 | seven zoom steps | 30 | | 5789 µs | 5.0 % | 0 |
+| s57 | screen meters, bar triangles | 30 | 22-27 ms | 6234 µs | 8.8 % | 2 |
+| s58 | controller meters | 30 | 22-27 ms | 5866 µs | 9.2 % | 0 |
 
 All images ran the soak DJ (both decks loading and playing, with its gestures).
 
@@ -75,10 +83,13 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
 
 ## Open
 
-- **Fills over 3 ms:** 6.3 % against 0.6 % without a screen. The longest stays under the
+- **Fills since the live decks:** the longest went over the 5 ms limit again (s55 6449 µs,
+  s57 6234 µs with two of 6 ms or more, s58 5866 µs) and 5 to 9 % of fills take over 3 ms.
+  Still no underrun, but this needs work before the screen ships.
+- **Fills over 3 ms (s52):** 6.3 % against 0.6 % without a screen. The longest stays under the
   5 ms limit, but the screen costs margin; the PPA's PSRAM copies are likely part of it.
 - **Lost USB packets:** two in s49, one each in s44 and s54 (after about 12 minutes); none
-  in s51 and s52. Not explained.
+  in s51, s52 and s58. Not explained.
 - **Producer low water:** both decks' rings ran low for 100-130 ms early in s51 and s52,
   near track loads. No underrun. SD will be replaced by a USB stick later, which changes
   this load.

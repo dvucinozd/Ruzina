@@ -61,6 +61,35 @@ fn the_browse_knob_steps_the_zoom_through_the_donors_beats() {
 }
 
 #[test]
+fn the_meter_reads_the_loudest_peak_since_it_last_looked() {
+    let peaks = Peaks::new();
+    peaks.add([0, 1_000]);
+    peaks.add([200, 23_197]);
+    peaks.add([0, 500]);
+    assert_eq!(peaks.take(1), 23_197);
+    assert_eq!(peaks.take(1), 0);
+    assert_eq!(peaks.take(0), 200);
+    assert_eq!(meter_segments(0), 0);
+    assert_eq!(meter_segments(327), 0, "below -40 dBFS");
+    assert_eq!(meter_segments(328), 1);
+    assert_eq!(meter_segments(11_627), 7, "-9 dBFS: all green");
+    assert_eq!(meter_segments(23_197), 9, "-3 dBFS: the amber");
+    assert_eq!(meter_segments(30_934), 10, "-0.5 dBFS: red");
+    assert_eq!(meter_segments(u32::from(u16::MAX)), 10);
+}
+
+#[test]
+fn the_controller_meter_rises_at_once_and_falls_by_steps() {
+    assert_eq!(meter_led(0, 32_767), 126);
+    assert_eq!(meter_led(0, u32::from(u16::MAX)), 127, "clipped at the top");
+    assert_eq!(meter_led(0, 16_384), 63, "-6 dBFS: half way");
+    assert_eq!(meter_led(100, 0), 88, "falls 12 an update");
+    assert_eq!(meter_led(100, 16_384), 88);
+    assert_eq!(meter_led(60, 16_384), 63, "a louder peak wins");
+    assert_eq!(meter_led(5, 0), 0);
+}
+
+#[test]
 fn the_mailbox_hands_over_the_latest_track_once() {
     // Deck 2 only: deck 1's slot belongs to the engine tests that load tracks.
     while take_track(1).is_some() {}

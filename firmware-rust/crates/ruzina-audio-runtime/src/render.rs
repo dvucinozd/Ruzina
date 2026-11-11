@@ -132,6 +132,10 @@ pub struct RenderBlockReport {
     pub underflow_frames: [u32; 2],
     pub deferred_mode_frames: [u32; 2],
     pub limiter: LimiterStats,
+    /// Each channel's loudest sample in the block, before its fader: after trim, EQ,
+    /// filter and FX, where a mixer's channel meter reads. Saturates at `u16::MAX`,
+    /// 6 dB over full scale.
+    pub channel_peak: [u16; 2],
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -373,6 +377,9 @@ impl<'a> FixedRateRenderGraph<'a> {
                 if let Some(fx) = &mut self.fx {
                     dsp = fx[deck].process(dsp);
                 }
+                // A NaN reads as silence.
+                let peak = dsp.left.abs().max(dsp.right.abs()) as u16;
+                report.channel_peak[deck] = report.channel_peak[deck].max(peak);
 
                 if deck_control.pfl_enabled {
                     output.pfl[deck][frame_index] = PcmFrame::from(dsp);
@@ -787,6 +794,48 @@ mod tests {
         assert!(output.main.iter().any(|frame| frame.left < 0));
         assert!(output.main.iter().all(|frame| frame.left <= 0));
         assert_eq!(output.main, output.pfl[0]);
+    }
+
+    #[test]
+    fn channel_peak_reads_before_the_fader_with_the_trim() {
+        let mut graph = FixedRateRenderGraph::new();
+        let mut output = RenderOutputBlock::default();
+        let mut deck = active_deck();
+        deck.post_gain = 0.0;
+        deck.pre_gain = 2.0;
+        let control = RenderControl {
+            decks: [deck, RenderDeckControl::idle()],
+            master_gain: 1.0,
+            ..RenderControl::idle()
+        };
+
+        let report = graph.render_block(control, &mut output, |deck| {
+            (deck == 0).then_some(PcmFrame {
+                left: 2_000,
+                right: -3_000,
+            })
+        });
+
+        assert!(
+            output
+                .main
+                .iter()
+                .all(|frame| *frame == PcmFrame::default())
+        );
+        assert_eq!(report.channel_peak, [6_000, 0]);
+
+        deck.pre_gain = 4.0;
+        let control = RenderControl {
+            decks: [deck, RenderDeckControl::idle()],
+            ..control
+        };
+        let report = graph.render_block(control, &mut output, |deck| {
+            (deck == 0).then_some(PcmFrame {
+                left: 20_000,
+                right: 0,
+            })
+        });
+        assert_eq!(report.channel_peak[0], u16::MAX, "saturates over 6 dB");
     }
 
     #[test]
