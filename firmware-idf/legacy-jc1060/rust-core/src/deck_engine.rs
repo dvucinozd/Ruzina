@@ -341,7 +341,8 @@ impl Engine {
                 if let Some((error, _)) = jump {
                     self.phase_report = Some((i as u32, PHASE_ERROR, report_ms(error)));
                 }
-            } else {
+            } else if jump.is_some() {
+                // Before either grid's first beat there is no phase yet: it waits for one.
                 self.phase_pending[i] = false;
                 self.phase_jump[i] = jump;
             }

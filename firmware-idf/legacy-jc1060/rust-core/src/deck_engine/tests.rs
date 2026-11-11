@@ -1881,3 +1881,36 @@ fn sync_puts_the_deck_in_the_reference_bar_at_once_without_a_seek() {
     run_fed(&mut mix, 1_000);
     assert_eq!(mix.engine().take_phase_report(), None);
 }
+
+#[test]
+fn sync_on_a_paused_deck_waits_for_its_grid_and_then_aligns() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_REQUESTS[1].take();
+    load_with_grid(&mut mix, DeckId::One, 34);
+    load_with_grid(&mut mix, DeckId::Two, 35);
+    // Deck 2's first beat comes 300 ms into its track.
+    mix.engine().grids[1].as_mut().unwrap().beats = grid(300, 500, 60, 0).into();
+    run_fed(&mut mix, 3);
+    press_on(&mut mix, DeckId::One, SemanticControl::Play);
+    run_fed(&mut mix, 400);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Sync);
+    assert!(mix.engine().deck(DeckId::Two).sync_enabled);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Play);
+    run_fed(&mut mix, 200);
+    assert_eq!(
+        mix.engine().take_phase_report(),
+        None,
+        "no phase before the grid"
+    );
+    run_fed(&mut mix, 200);
+    let (deck, event, _) = mix.engine().take_phase_report().expect("a jump");
+    assert_eq!((deck, event), (1, PHASE_JUMPED));
+    run_fed(&mut mix, 1_000);
+    let (deck, event, value) = mix.engine().take_phase_report().expect("a check");
+    assert_eq!((deck, event), (1, PHASE_ERROR));
+    assert!((value as i32 - PHASE_REPORT_ZERO).abs() <= 2, "{value}");
+}
