@@ -36,29 +36,11 @@ component SideButton inherits Rectangle {
     }
 }
 
-// Ten segments, from the bottom: green, then amber, then red.
-component Vu inherits Rectangle {
-    in property <int> level;
-    width: 10px;
-    height: 140px;
-    for segment in 10: Rectangle {
-        x: 0px;
-        y: (9 - segment) * 14px;
-        width: 10px;
-        height: 11px;
-        background: segment >= root.level ? #1c2228
-            : segment >= 9 ? #ff1744
-            : segment >= 7 ? #eb870f
-            : #6ee128;
-    }
-}
-
-// Deck badge, play and cue, and the level meter, left of a waveform.
+// Deck badge, play and cue, left of a waveform. Rust draws the level meter beside them.
 component DeckSide inherits Rectangle {
     in property <int> number;
     in property <color> accent;
     in property <bool> playing;
-    in property <int> level;
     width: 82px;
     height: 201px;
     Rectangle {
@@ -87,11 +69,6 @@ component DeckSide inherits Rectangle {
         y: 102px;
         background: #f3c631;
         text: "CUE";
-    }
-    Vu {
-        x: 68px;
-        y: 3px;
-        level: root.level;
     }
 }
 
@@ -239,8 +216,6 @@ export component Overview inherits Window {
     in property <bool> master-tempo-2;
     in property <bool> playing-1;
     in property <bool> playing-2;
-    in property <int> level-1;
-    in property <int> level-2;
     in property <string> fx-effect;
     in property <string> fx-beat;
     in property <int> fx-depth;
@@ -261,7 +236,6 @@ export component Overview inherits Window {
         number: 1;
         accent: #38d6f0;
         playing: root.playing-1;
-        level: root.level-1;
     }
     DeckSide {
         x: 0px;
@@ -269,7 +243,6 @@ export component Overview inherits Window {
         number: 2;
         accent: #6ee1a8;
         playing: root.playing-2;
-        level: root.level-2;
     }
     // Rust draws here: the two waveforms.
     Rectangle { x: 82px; y: 46px; width: 872px; height: 201px; background: #020406; }

@@ -62,10 +62,12 @@ def main():
     parser.add_argument('--slint-ui', action='store_true', help='Diagnostic: the deck screen with demo data, measured against USB audio')
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
     args = parser.parse_args()
-    if args.slint_ui and (args.variant != 'deck-engine' or args.uac_profile or args.producer_profile):
-        raise ValueError('The Slint UI diagnostic is deck-engine only and excludes profiling')
-    if args.soak_autoplay and (args.variant != 'deck-engine' or args.uac_profile or args.producer_profile):
-        raise ValueError('Soak autoplay is a deck-engine diagnostic and excludes profiling')
+    # The UAC profile may watch the fill next to the screen and the soak DJ; the producer
+    # profile stays on its own.
+    if args.slint_ui and (args.variant != 'deck-engine' or args.producer_profile):
+        raise ValueError('The Slint UI diagnostic is deck-engine only and excludes producer profiling')
+    if args.soak_autoplay and (args.variant != 'deck-engine' or args.producer_profile):
+        raise ValueError('Soak autoplay is a deck-engine diagnostic and excludes producer profiling')
     if args.uac_pack_iram and not args.uac_profile:
         raise ValueError('IRAM packetizer experiment requires explicit UAC profiling')
     if args.uac_profile and args.variant != 'deck-engine':
@@ -134,9 +136,10 @@ def main():
         common += ['--features', 'idf-deck-mix']
     elif args.variant == 'deck-engine':
         common += ['--features', 'idf-producer-profile' if args.producer_profile else
-                   ('idf-uac-profile' if args.uac_profile else
-                    ('idf-soak-autoplay' if args.soak_autoplay else 'idf-deck-engine'))
-                   + (' idf-slint-ui' if args.slint_ui else '')]
+                   ' '.join(['idf-deck-engine']
+                            + (['idf-uac-profile'] if args.uac_profile else [])
+                            + (['idf-soak-autoplay'] if args.soak_autoplay else [])
+                            + (['idf-slint-ui'] if args.slint_ui else []))]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -265,7 +268,8 @@ def main():
         raise ValueError('Producer profiling symbol/default isolation mismatch')
     if args.uac_profile:
         from pack_placement import verify
-        placement = verify(run(['riscv32-esp-elf-objdump', '-t', elf]), args.uac_pack_iram)
+        # --fill-iram moves the packetizer with the rest of the fill path.
+        placement = verify(run(['riscv32-esp-elf-objdump', '-t', elf]), args.uac_pack_iram or args.fill_iram)
         (output / 'pack-placement.json').write_text(json.dumps(placement, indent=2) + '\n')
         (output / 'pack-disassembly.log').write_text('\n'.join(
             run(['riscv32-esp-elf-objdump', '-d', '--disassemble=' + item['symbol'], elf]) for item in placement))

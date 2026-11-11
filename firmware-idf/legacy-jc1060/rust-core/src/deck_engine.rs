@@ -683,6 +683,8 @@ impl Engine {
     /// After a render block of `frames`: reports positions, decays the jog
     /// bend and stops a deck whose track has played out.
     pub(crate) fn progress(&mut self, readers: &[Reader; 2], frames: u32) {
+        #[cfg(feature = "uac-profile")]
+        let fx = self.fx_controls();
         for deck in DECKS {
             let i = index(deck);
             let reader = &readers[i];
@@ -716,6 +718,20 @@ impl Engine {
                 }
             }
             let flags = u32::from(self.loaded[i]) | u32::from(self.playing[i]) << 1;
+            // The fill profile also records what the deck was doing: scratch, Beat FX,
+            // Pad FX, a loop, and playback from the history.
+            #[cfg(feature = "uac-profile")]
+            let flags = {
+                let beat = &fx[i].beat;
+                let beat_on = fx[i].beat_selected
+                    && (beat.filter.enabled || beat.time.enabled || beat.flanger.enabled);
+                flags
+                    | u32::from(reader.scratching()) << 2
+                    | u32::from(beat_on) << 3
+                    | u32::from(fx[i].pad.active) << 4
+                    | u32::from(self.loop_ms[i].is_some()) << 5
+                    | u32::from(reader.replaying()) << 6
+            };
             STATUS[i][0].store(self.deck.deck(deck).position_ms, Ordering::Relaxed);
             STATUS[i][1].store(flags, Ordering::Relaxed);
             self.publish_view(i);
