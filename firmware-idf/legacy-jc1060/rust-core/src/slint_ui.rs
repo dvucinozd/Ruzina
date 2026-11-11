@@ -60,7 +60,27 @@ const MINIS: [Area; 2] = [
         height: 45,
     },
 ];
-const DIRECT: [Area; 4] = [LANES[0], LANES[1], MINIS[0], MINIS[1]];
+/// The channel meters, left of the lanes: ten segments, 11 pixels high and 14 apart.
+const METERS: [Area; 2] = [
+    Area {
+        x: 68,
+        y: 49,
+        width: 10,
+        height: 140,
+    },
+    Area {
+        x: 68,
+        y: 251,
+        width: 10,
+        height: 140,
+    },
+];
+const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1]];
+const PANEL: u16 = rgb(0x0d, 0x0f, 0x11);
+const METER_OFF: u16 = rgb(0x1c, 0x22, 0x28);
+const METER_GREEN: u16 = rgb(0x6e, 0xe1, 0x28);
+const METER_AMBER: u16 = rgb(0xeb, 0x87, 0x0f);
+const METER_RED: u16 = rgb(0xff, 0x17, 0x44);
 
 const BACKGROUND: u16 = rgb(0x02, 0x04, 0x06);
 const BEAT_LINE: u16 = rgb(0x30, 0x34, 0x3b);
@@ -427,6 +447,31 @@ fn draw_lane(
     flush(back, area.y, LANE_HEIGHT);
 }
 
+/// Draws a channel meter with `lit` of its ten segments lit from the bottom: green, then
+/// amber from the eighth, red at the top. Flushed at once: its cache lines reach into
+/// the lane, which the PPA driver invalidates before it copies, and would drop the
+/// meter's unwritten pixels.
+fn draw_meter(frame: &mut [u16], area: Area, lit: i32) {
+    for row in 0..area.height {
+        // Segment 9 is at the top; each is 11 rows with a 3-row gap below.
+        let segment = 9 - (row / 14) as i32;
+        let color = if row % 14 >= 11 {
+            PANEL
+        } else if segment >= lit {
+            METER_OFF
+        } else if segment >= 9 {
+            METER_RED
+        } else if segment >= 7 {
+            METER_AMBER
+        } else {
+            METER_GREEN
+        };
+        let start = (area.y + row) * WIDTH + area.x;
+        frame[start..start + area.width].fill(color);
+    }
+    flush(frame, area.y, area.height);
+}
+
 /// Draws the whole-track overview, shaded up to the playhead at `x`.
 fn draw_mini(frame: &mut [u16], area: Area, preview: &[WaveformColumn], x: Option<usize>) {
     let middle = area.height / 2;
@@ -619,6 +664,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let mut shown_fx = None;
     // The channel meters' lit segments; they fall a segment a frame.
     let mut meters = [0i32; 2];
+    // Per buffer and deck: the meter's lit segments.
+    let mut meter_at: [[Option<i32>; 2]; 2] = [[None; 2]; 2];
     // Per buffer and deck: the lane's left column and time span, and the overview's track
     // and playhead.
     let mut lane_at: [[Option<(i64, i64)>; 2]; 2] = [[None; 2]; 2];
@@ -655,15 +702,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             }
         }
         for (deck, meter) in meters.iter_mut().enumerate() {
-            let lit = deck_view::meter_segments(deck_view::PEAKS.take(deck)).max(*meter - 1);
-            if lit != *meter {
-                *meter = lit;
-                if deck == 0 {
-                    ui.set_level_1(lit);
-                } else {
-                    ui.set_level_2(lit);
-                }
-            }
+            *meter = deck_view::meter_segments(deck_view::PEAKS.take(deck)).max(*meter - 1);
         }
         let fx = FxSnapshot::unpack(deck_view::FX.load(core::sync::atomic::Ordering::Relaxed));
         if shown_fx != Some(fx) {
@@ -699,12 +738,21 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             let track = tracks[deck].as_deref();
             let wave = wave(track, deck_view::window_ms(decks[deck].bpm_x100));
             let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
+            if meter_at[drawing][deck] != Some(meters[deck]) {
+                draw_meter(buffer, METERS[deck], meters[deck]);
+                meter_at[drawing][deck] = Some(meters[deck]);
+            }
             // After a zoom the shown lane is at another scale: draw it all.
-            let shown_left = lane_at[1 - drawing][deck]
-                .filter(|&(_, window_ms)| window_ms == wave.window_ms)
-                .map(|(left, _)| left);
-            draw_lane(buffer, shown, shown_left, LANES[deck], wave, left);
-            lane_at[drawing][deck] = Some((left, wave.window_ms));
+            let at_scale = |at: Option<(i64, i64)>| {
+                at.filter(|&(_, window_ms)| window_ms == wave.window_ms)
+                    .map(|(left, _)| left)
+            };
+            // A paused or empty deck's lane is drawn once into each buffer, then left.
+            if at_scale(lane_at[drawing][deck]) != Some(left) {
+                let shown_left = at_scale(lane_at[1 - drawing][deck]);
+                draw_lane(buffer, shown, shown_left, LANES[deck], wave, left);
+                lane_at[drawing][deck] = Some((left, wave.window_ms));
+            }
             let index = track.map_or(u32::MAX, |track| track.index);
             let duration = track.map_or(0, |track| track.duration_ms);
             let playhead = (duration != 0).then(|| {

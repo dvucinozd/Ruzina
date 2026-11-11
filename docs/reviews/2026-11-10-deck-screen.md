@@ -46,10 +46,14 @@ it shows the decks themselves (s53-s56).
   deck 2 at the top, so the two meet in the middle for beat matching.
 - **Channel meters (s57, s58):** the render graph reports each channel's loudest sample
   before its fader (after trim, EQ, filter and FX). The screen shows ten segments (green
-  to -9 dBFS, amber at -6 and -3, red from -0.5). The FLX4's channel meters get the donor's
+  to -9 dBFS, amber at -6 and -3, red from -0.5). Since s59 Rust draws them, only when
+  they change: in Slint they cost 2.3 ms a frame and dropped it below 30 frames a
+  second. Each is written back at once, because the PPA driver invalidates the lane's
+  rows before its copy and dropped unwritten meter pixels (s59 flickered). The FLX4's channel meters get the donor's
   CC 0x02, linear 0 to 127, every 30 ms, rising at once and falling 12 a step.
 - **Paused deck:** the hardware copies the whole lane, so both buffers always match; s53
-  skipped it, which made the playhead flicker.
+  skipped it, which made the playhead flicker. Since s59 a lane that each buffer already
+  holds is left alone.
 
 ## How it got there
 
@@ -68,6 +72,9 @@ it shows the decks themselves (s53-s56).
 | s56 | seven zoom steps | 30 | | 5789 µs | 5.0 % | 0 |
 | s57 | screen meters, bar triangles | 30 | 22-27 ms | 6234 µs | 8.8 % | 2 |
 | s58 | controller meters | 30 | 22-27 ms | 5866 µs | 9.2 % | 0 |
+| s59 | meters drawn by Rust | 30 | 17 ms | 6149 µs | 8.3 % | 1 |
+| s60 | (deck engine in IRAM, reverted) | 30 | 18 ms | 5737 µs | 8.2 % | 0 |
+| s61 | (SD owner below the fill, reverted) | 30 | | 6137 µs | 8.2 % | 1 |
 
 All images ran the soak DJ (both decks loading and playing, with its gestures).
 
@@ -85,7 +92,9 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
 
 - **Fills since the live decks:** the longest went over the 5 ms limit again (s55 6449 µs,
   s57 6234 µs with two of 6 ms or more, s58 5866 µs) and 5 to 9 % of fills take over 3 ms.
-  Still no underrun, but this needs work before the screen ships.
+  Still no underrun, but this needs work before the screen ships. Neither the deck
+  engine in IRAM (s60) nor the SD owner below the fill (s61) changed it. Next: the
+  fill's stage profile next to the screen, which the build does not allow yet.
 - **Fills over 3 ms (s52):** 6.3 % against 0.6 % without a screen. The longest stays under the
   5 ms limit, but the screen costs margin; the PPA's PSRAM copies are likely part of it.
 - **Lost USB packets:** two in s49, one each in s44 and s54 (after about 12 minutes); none
