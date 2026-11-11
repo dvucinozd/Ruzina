@@ -423,6 +423,9 @@ esp_err_t ruzina_load_display_start(void)
        of CPU a frame takes (the PPA moves the waveforms). Stack in internal RAM: the
        Slint renderer recurses per item, and the waveform columns live there. */
     (void)ui_task;
+    /* The Slint task reads the touch controller itself, so it starts first. */
+    err = ruzina_touch_start();
+    if (err != ESP_OK) printf("load_touch=INIT_FAILED error=%s\n", esp_err_to_name(err));
     if (xTaskCreatePinnedToCore(slint_task, "slint_ui", 49152, NULL, 4, NULL, 1) != pdPASS) return ESP_ERR_NO_MEM;
 #else
     if (xTaskCreatePinnedToCore(ui_task, "load_ui", 4096, NULL, 1, NULL, 0) != pdPASS) return ESP_ERR_NO_MEM;
@@ -430,11 +433,15 @@ esp_err_t ruzina_load_display_start(void)
     ready = true;
     printf("S6_LOAD_DISPLAY rows=%u columns=2 font=terminus12x24 max_tracks=%u detail_bands=%u\n",
            TRACK_ROWS, MAX_TRACKS, DETAIL_BANDS);
+#if !CONFIG_RUZINA_SLINT_UI
     /* The screen still reports status when touch is absent. */
     err = ruzina_touch_start();
     if (err != ESP_OK) printf("load_touch=INIT_FAILED error=%s\n", esp_err_to_name(err));
     else if (xTaskCreatePinnedToCore(touch_task, "load_touch", 3072, NULL, 1, NULL, 0) != pdPASS)
         printf("load_touch=TASK_FAILED\n");
+#else
+    (void)touch_task;
+#endif
     return ESP_OK;
 }
 

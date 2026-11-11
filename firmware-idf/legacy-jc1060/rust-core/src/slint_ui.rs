@@ -130,6 +130,49 @@ unsafe extern "C" {
         dx: u32,
     ) -> i32;
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+    /// GT911 touches now (0 when none or no touch controller), the first one mapped to
+    /// the screen in `x` and `y`.
+    fn ruzina_touch_poll(
+        raw_x: *mut u32,
+        raw_y: *mut u32,
+        x: *mut u32,
+        y: *mut u32,
+        errors: *mut u32,
+    ) -> u32;
+}
+
+/// Reads the touch controller and hands Slint a press, a move or a release; `down`
+/// holds the last touched point.
+fn touch(window: &slint::Window, down: &mut Option<slint::LogicalPosition>, errors: &mut u32) {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let (mut raw_x, mut raw_y, mut x, mut y) = (0, 0, 0, 0);
+    // SAFETY: five writable locals; C reads I2C on this task only.
+    let touches = unsafe { ruzina_touch_poll(&mut raw_x, &mut raw_y, &mut x, &mut y, errors) };
+    let event = match (touches > 0, *down) {
+        (true, None) => {
+            let position = slint::LogicalPosition::new(x as f32, y as f32);
+            *down = Some(position);
+            WindowEvent::PointerPressed {
+                position,
+                button: PointerEventButton::Left,
+            }
+        }
+        (true, Some(_)) => {
+            let position = slint::LogicalPosition::new(x as f32, y as f32);
+            *down = Some(position);
+            WindowEvent::PointerMoved { position }
+        }
+        (false, Some(position)) => {
+            *down = None;
+            let _ = window.dispatch_event_with_result(WindowEvent::PointerReleased {
+                position,
+                button: PointerEventButton::Left,
+            });
+            WindowEvent::PointerExited
+        }
+        (false, None) => return,
+    };
+    let _ = window.dispatch_event_with_result(event);
 }
 
 fn now_us() -> u64 {
@@ -652,6 +695,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     if ui.show().is_err() {
         return;
     }
+    ui.on_play(|deck| {
+        deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Play);
+    });
+    ui.on_cue(|deck, down| {
+        deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Cue(down));
+    });
+    let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over both frame buffers.
     let mut buffers = unsafe {
         [
@@ -683,6 +733,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             wave_times.report(22);
             next_report = ms + REPORT_MS;
         }
+        touch(ui.window(), &mut touched, &mut touch_errors);
         let decks = [deck_view::LIVE[0].load(), deck_view::LIVE[1].load()];
         for deck in 0..2 {
             if let Some(track) = deck_view::take_track(deck) {

@@ -8,6 +8,7 @@
 component Tab inherits Rectangle {
     in property <string> text;
     in property <bool> active;
+    callback clicked();
     height: 38px;
     background: active ? #10240c : #0d141b;
     border-width: active ? 2px : 1px;
@@ -19,14 +20,23 @@ component Tab inherits Rectangle {
         horizontal-alignment: center;
         vertical-alignment: center;
     }
+    TouchArea {
+        clicked => { root.clicked(); }
+    }
 }
 
+// A button that reports going down and up, as the controller's buttons do.
 component SideButton inherits Rectangle {
     in property <string> text;
     in property <color> ink: #101418;
+    callback down(bool);
     width: 58px;
     height: 38px;
     border-radius: 3px;
+    opacity: touch.pressed ? 0.6 : 1.0;
+    touch := TouchArea {
+        changed pressed => { root.down(self.pressed); }
+    }
     Text {
         text: root.text;
         color: root.ink;
@@ -41,6 +51,8 @@ component DeckSide inherits Rectangle {
     in property <int> number;
     in property <color> accent;
     in property <bool> playing;
+    callback play();
+    callback cue(bool);
     width: 82px;
     height: 201px;
     Rectangle {
@@ -63,12 +75,18 @@ component DeckSide inherits Rectangle {
         y: 60px;
         background: root.playing ? #6ee128 : #e8574c;
         text: root.playing ? "PLAY" : "PAUSE";
+        down(pressed) => {
+            if (pressed) {
+                root.play();
+            }
+        }
     }
     SideButton {
         x: 4px;
         y: 102px;
         background: #f3c631;
         text: "CUE";
+        down(pressed) => { root.cue(pressed); }
     }
 }
 
@@ -222,12 +240,19 @@ export component Overview inherits Window {
     in property <int> fx-target;
     in property <bool> fx-on;
 
+    // Deck 0 or 1: PLAY pressed, CUE down or up.
+    callback play(int);
+    callback cue(int, bool);
+    // Only the Overview page exists yet; a tap marks the tab.
+    in-out property <int> active-tab: 0;
+
     for name[index] in ["OVERVIEW", "LIBRARY", "HOT CUES", "SETTINGS"]: Tab {
         x: 8px + index * 253px;
         y: 4px;
         width: 248px;
         text: name;
-        active: index == 0;
+        active: index == root.active-tab;
+        clicked => { root.active-tab = index; }
     }
 
     DeckSide {
@@ -236,6 +261,8 @@ export component Overview inherits Window {
         number: 1;
         accent: #38d6f0;
         playing: root.playing-1;
+        play => { root.play(0); }
+        cue(down) => { root.cue(0, down); }
     }
     DeckSide {
         x: 0px;
@@ -243,6 +270,8 @@ export component Overview inherits Window {
         number: 2;
         accent: #6ee1a8;
         playing: root.playing-2;
+        play => { root.play(1); }
+        cue(down) => { root.cue(1, down); }
     }
     // Rust draws here: the two waveforms.
     Rectangle { x: 82px; y: 46px; width: 872px; height: 201px; background: #020406; }

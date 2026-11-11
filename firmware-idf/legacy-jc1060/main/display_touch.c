@@ -207,6 +207,7 @@ esp_err_t ruzina_touch_start(void)
  * raw and panel coordinates, and adds failed transfers to `errors`. */
 unsigned ruzina_touch_poll(unsigned *raw_x, unsigned *raw_y, unsigned *x, unsigned *y, uint32_t *errors)
 {
+    if (!touch) return 0; /* not started, or its start failed */
     uint8_t status;
     unsigned count = 0;
     esp_err_t err = read_touch(0x814e, &status, 1);

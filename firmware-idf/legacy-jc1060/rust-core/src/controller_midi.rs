@@ -279,6 +279,26 @@ pub extern "C" fn ruzina_legacy_midi_refresh() {
 #[inline(never)]
 fn refresh_mix() {
     crate::deck_mix::with(|mix| {
+        // Taps on the deck screen, as the controller's buttons would send them.
+        #[cfg(feature = "slint-ui")]
+        while let Some((deck, control)) = crate::deck_view::TOUCH.pop() {
+            use crate::deck_view::TouchControl;
+            let deck = Some(if deck == 0 { DeckId::One } else { DeckId::Two });
+            let presses: &[(SemanticControl, bool)] = match control {
+                TouchControl::Play => &[
+                    (SemanticControl::Play, true),
+                    (SemanticControl::Play, false),
+                ],
+                TouchControl::Cue(down) => &[(SemanticControl::Cue, down)],
+            };
+            for &(control, down) in presses {
+                mix.control(&ControlEvent {
+                    deck,
+                    control,
+                    value: ControlValue::Pressed(down),
+                });
+            }
+        }
         mix.tick();
         mix.attach_fx();
         mix.engine().flush_hot_cues();
