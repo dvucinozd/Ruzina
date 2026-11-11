@@ -302,6 +302,15 @@ fn refresh_mix() {
         mix.tick();
         mix.attach_fx();
         mix.engine().flush_hot_cues();
+        mix.engine().take_grids();
+        #[cfg(not(test))]
+        if let Some((deck, event, value)) = mix.engine().take_phase_report() {
+            unsafe extern "C" {
+                fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+            }
+            // SAFETY: diagnostic telemetry passes three u32 values only.
+            unsafe { ruzina_bridge_load_report(deck, event, value) };
+        }
         // The soak DJ runs here, outside the USB audio fill's stack chain.
         #[cfg(feature = "soak-autoplay")]
         mix.engine().autoplay();

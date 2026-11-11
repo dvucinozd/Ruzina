@@ -1671,3 +1671,246 @@ fn the_soak_dj_runs_through_the_mix_without_a_stuck_state() {
     }
     assert_eq!(mix.engine().counters()[0], unsupported);
 }
+
+/// A grid of `count` beats `length` ms apart from `first`, numbered 0 to 3 in the bar
+/// from `bar_from`.
+fn grid(first: u32, length: u32, count: u32, bar_from: u16) -> std::vec::Vec<Beat> {
+    (0..count)
+        .map(|n| Beat {
+            time_ms: first + n * length,
+            phase: (bar_from + n as u16) % 4,
+            bpm_x100: 6_000_000 / length,
+        })
+        .collect()
+}
+
+#[test]
+fn the_phase_jump_lands_on_the_reference_beat_of_the_bar_at_its_place_in_the_beat() {
+    // Reference: 500 ms beats; at 2_250 ms it is a quarter into beat 4, the bar's first.
+    let reference = grid(125, 500, 40, 0);
+    assert_eq!(beat_at(&reference, 2_250), Some((4, 0.25)));
+    // Target: 480 ms beats from 50 ms. At 3_000 ms it is in beat 6 (number 2); the
+    // bar starts around it are beats 4 (1_970 ms) and 8 (3_890 ms), the first nearer.
+    let target = grid(50, 480, 40, 0);
+    let jump = phase_jump_ms(&target, 3_000, &reference, 2_250);
+    assert_eq!(jump, Some((1_970 + 120 - 3_000, 3_890 + 120 - 3_000)));
+    // Already in phase: no jump, and the other way is a bar.
+    assert_eq!(
+        phase_jump_ms(&target, 4_010, &reference, 2_250),
+        Some((0, 1_970 + 120 - 4_010))
+    );
+    // Beats numbered from another place in the bar shift the target's bars.
+    let shifted = grid(50, 480, 40, 1);
+    assert_eq!(
+        phase_jump_ms(&shifted, 3_000, &reference, 2_250),
+        Some((3_410 + 120 - 3_000, 1_490 + 120 - 3_000))
+    );
+    // Outside either grid there is no phase.
+    assert_eq!(phase_jump_ms(&target, 10, &reference, 2_250), None);
+    assert_eq!(phase_jump_ms(&target, 3_000, &reference, 100), None);
+    assert_eq!(phase_jump_ms(&target, 3_000, &reference, 60_000), None);
+}
+
+fn pad(mode: PadMode, pad: u8, pressed: bool) -> ControlEvent {
+    event(
+        SemanticControl::PadAction,
+        ControlValue::PadAction(PadAction {
+            pad,
+            mode,
+            shifted: false,
+            pressed,
+        }),
+    )
+}
+
+fn pad_leds(mix: &mut Mix) -> (u8, u8) {
+    use ruzina_controller_core::{LedState, SemanticLedId};
+    let mut leds = ControllerLedFrame::new();
+    mix.refresh_leds(&mut leds);
+    let lit = |led: fn(u8) -> Option<SemanticLedId>| {
+        (0..8u8).fold(0, |mask, pad| {
+            let on = leds.state(led(pad).unwrap(), Some(DeckId::One)) == Some(LedState::On);
+            mask | u8::from(on) << pad
+        })
+    };
+    (
+        lit(SemanticLedId::beat_loop_pad),
+        lit(SemanticLedId::beat_jump_pad),
+    )
+}
+
+#[test]
+fn beat_loop_pads_light_their_running_loop_and_beat_jump_pads_while_held() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = playing_mix();
+    run(&mut mix, 100);
+    assert_eq!(pad_leds(&mut mix), (0, 0));
+    // A Beat Loop pad starts its loop and stays lit while the loop runs.
+    mix.control(&pad(PadMode::BeatLoop, 3, true));
+    assert_eq!(pad_leds(&mut mix), (1 << 3, 0));
+    mix.control(&pad(PadMode::BeatLoop, 3, false));
+    assert_eq!(pad_leds(&mut mix), (1 << 3, 0));
+    // The 4 BEAT button's loop lights its pad, and exit puts it out.
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    press(&mut mix, SemanticControl::ReloopExit, false);
+    assert_eq!(pad_leds(&mut mix), (0, 0));
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    press(&mut mix, SemanticControl::ReloopExit, false);
+    assert_eq!(pad_leds(&mut mix), (1 << FOUR_BEAT_LOOP_PAD, 0));
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    press(&mut mix, SemanticControl::ReloopExit, false);
+    assert_eq!(pad_leds(&mut mix), (0, 0));
+    // A Beat Jump pad lights while it is held.
+    mix.control(&pad(PadMode::BeatJump, 5, true));
+    assert_eq!(pad_leds(&mut mix), (0, 1 << 5));
+    mix.control(&pad(PadMode::BeatJump, 5, false));
+    assert_eq!(pad_leds(&mut mix), (0, 0));
+    // It jumped, through a seek no producer serves here: drop it for the next test.
+    assert!(SEEK_REQUESTS[0].take().is_some());
+}
+
+/// Deck `deck` loaded with catalog track `index` at 120 BPM, its ring serving a 48 kHz
+/// source from the start, and a beat grid of 500 ms beats numbered from the bar's first.
+fn load_with_grid(mix: &mut Mix, deck: DeckId, index: u32) {
+    use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+    if mix.engine().lease.is_none() {
+        let mut session = MediaSession::new();
+        let ConnectResult::Accepted(lease) = session.on_connect(MediaSourceId::new(7).unwrap())
+        else {
+            panic!()
+        };
+        crate::media_signal::activate(lease);
+        mix.engine().lease = Some(lease);
+    }
+    let i = usize::from(deck == DeckId::Two);
+    RINGS[i].restart_at(48_000, 0);
+    crate::deck_play::Reader::new().sync(&RINGS[i]);
+    let frames = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 20_000];
+    assert!(RINGS[i].push(&frames));
+    assert!(mix.engine().request_load(deck, index));
+    let request = LOAD_REQUESTS[i].take().unwrap();
+    GATES[i].begin_replacement(request.permit).unwrap();
+    LOAD_RESULTS[i]
+        .put(LoadResult {
+            source_cues: NO_CUES,
+            persisted_cues: None,
+            request,
+            ready: true,
+            bpm_x100: 12_000,
+            track_id: [index as u8; 16],
+        })
+        .unwrap();
+    mix.engine().grids[i] = Some(Box::new(Grid {
+        index,
+        beats: grid(0, 500, 60, 0).into(),
+    }));
+}
+
+/// Renders `packets` 1 ms packets while both decks' producers keep 48 frames a packet
+/// coming.
+fn run_fed(mix: &mut Mix, packets: usize) {
+    let (mut main, mut headphones) = ([PcmFrame::default(); 48], [PcmFrame::default(); 48]);
+    let frames = [PcmFrame {
+        left: 10_000,
+        right: 10_000,
+    }; 48];
+    for _ in 0..packets {
+        for ring in &RINGS {
+            if ring.free() >= 48 {
+                assert!(ring.push(&frames));
+            }
+        }
+        mix.fill(&mut main, &mut headphones, 48_000, [false, false]);
+    }
+}
+
+fn press_on(mix: &mut Mix, deck: DeckId, control: SemanticControl) {
+    for pressed in [true, false] {
+        mix.control(&ControlEvent {
+            deck: Some(deck),
+            control,
+            value: ControlValue::Pressed(pressed),
+        });
+    }
+}
+
+#[test]
+fn sync_puts_the_deck_in_the_reference_bar_at_once_without_a_seek() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_REQUESTS[1].take();
+    load_with_grid(&mut mix, DeckId::One, 31);
+    load_with_grid(&mut mix, DeckId::Two, 32);
+    run_fed(&mut mix, 3);
+    press_on(&mut mix, DeckId::One, SemanticControl::Play);
+    run_fed(&mut mix, 330);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Play);
+    run_fed(&mut mix, 200);
+    let positions = |mix: &mut Mix| {
+        let engine = mix.engine();
+        [DeckId::One, DeckId::Two].map(|deck| engine.deck(deck).position_ms)
+    };
+    let [one, two] = positions(&mut mix);
+    assert!(near(one - two, 330, 30), "{one} {two}");
+    press_on(&mut mix, DeckId::Two, SemanticControl::Sync);
+    assert!(mix.engine().deck(DeckId::Two).sync_enabled);
+    run_fed(&mut mix, 10);
+    let (deck, event, value) = mix.engine().take_phase_report().expect("a jump");
+    assert_eq!((deck, event), (1, PHASE_JUMPED));
+    // Deck 2 has no earlier beat with deck 1's number, so it skips forward through its
+    // ring to deck 1's place: by the distance between them.
+    let jumped = value as i32 - PHASE_REPORT_ZERO;
+    assert!(
+        near(jumped as u32, one - two, 3),
+        "{jumped} for {one} {two}"
+    );
+    let [one, two] = positions(&mut mix);
+    assert!(two.abs_diff(one) <= 2, "{one} {two}");
+    assert_eq!(SEEK_REQUESTS[1].take(), None, "no seek");
+    // A second later the phase error is reported, and it is none.
+    run_fed(&mut mix, 1_000);
+    let (deck, event, value) = mix.engine().take_phase_report().expect("a check");
+    assert_eq!((deck, event), (1, PHASE_ERROR));
+    assert!((value as i32 - PHASE_REPORT_ZERO).abs() <= 2, "{value}");
+    // A second SYNC press turns it off, and nothing more happens.
+    press_on(&mut mix, DeckId::Two, SemanticControl::Sync);
+    assert!(!mix.engine().deck(DeckId::Two).sync_enabled);
+    run_fed(&mut mix, 1_000);
+    assert_eq!(mix.engine().take_phase_report(), None);
+}
+
+#[test]
+fn sync_on_a_paused_deck_waits_for_its_grid_and_then_aligns() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_REQUESTS[1].take();
+    load_with_grid(&mut mix, DeckId::One, 34);
+    load_with_grid(&mut mix, DeckId::Two, 35);
+    // Deck 2's first beat comes 300 ms into its track.
+    mix.engine().grids[1].as_mut().unwrap().beats = grid(300, 500, 60, 0).into();
+    run_fed(&mut mix, 3);
+    press_on(&mut mix, DeckId::One, SemanticControl::Play);
+    run_fed(&mut mix, 400);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Sync);
+    assert!(mix.engine().deck(DeckId::Two).sync_enabled);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Play);
+    run_fed(&mut mix, 200);
+    assert_eq!(
+        mix.engine().take_phase_report(),
+        None,
+        "no phase before the grid"
+    );
+    run_fed(&mut mix, 200);
+    let (deck, event, _) = mix.engine().take_phase_report().expect("a jump");
+    assert_eq!((deck, event), (1, PHASE_JUMPED));
+    run_fed(&mut mix, 1_000);
+    let (deck, event, value) = mix.engine().take_phase_report().expect("a check");
+    assert_eq!((deck, event), (1, PHASE_ERROR));
+    assert!((value as i32 - PHASE_REPORT_ZERO).abs() <= 2, "{value}");
+}
