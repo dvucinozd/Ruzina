@@ -108,6 +108,10 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
   4197 µs. A forward scratch takes the ring up to six times as fast, each frame read from
   the ring and written to the history in PSRAM. Keeping the newest 16384 history frames
   in internal RAM for the scratch's reads (s67) did not help (6495 µs) and was reverted.
+- **Lane copies in strips that wait for the fill (s68, reverted):** typical fills
+  improved (6.6 % over 3 ms instead of 11.3 %), but the worst stayed during a scratch
+  (6280 µs) and the screen fell to 11 frames a second. The worst case is the fast
+  scratch itself, which takes up to six source frames for each one played.
 - **32-byte PPA bursts (s65, reverted):** worse, 6165 µs worst with three fills of 6 ms or
   more, and the lanes took 21.6 ms a frame instead of 17.3.
 - **Fills over 3 ms (s52):** 6.3 % against 0.6 % without a screen. The longest stays under the
