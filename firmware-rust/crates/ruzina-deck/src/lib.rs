@@ -1617,7 +1617,7 @@ impl DeckProductState {
         match action.mode {
             PadMode::HotCue => {
                 if action.pressed {
-                    self.handle_hot_cue_pad_action(deck, action.pad, action.shifted)
+                    self.handle_hot_cue_pad_action(deck, action.pad, action.shifted, analysis)
                 } else {
                     DeckEffects::NONE
                 }
@@ -1689,7 +1689,13 @@ impl DeckProductState {
         })
     }
 
-    fn handle_hot_cue_pad_action(&mut self, deck: DeckId, pad: u8, shifted: bool) -> DeckEffects {
+    fn handle_hot_cue_pad_action(
+        &mut self,
+        deck: DeckId,
+        pad: u8,
+        shifted: bool,
+        analysis: [Option<TrackAnalysis<'_>>; 2],
+    ) -> DeckEffects {
         let index = deck_index(deck);
         let (Some(source), Some(mut local)) =
             (self.hot_cue_sources[index], self.hot_cue_locals[index])
@@ -1712,7 +1718,8 @@ impl DeckProductState {
             return self.recall_hot_cue(deck, cue);
         }
 
-        let position_ms = self.decks[index].position_ms;
+        // With Quantize a new cue lands on the nearest beat, as Loop In does.
+        let position_ms = self.quantized_position_ms(deck, analysis);
         if !local.set_single(pad, position_ms) {
             return DeckEffects::NONE;
         }
@@ -1796,17 +1803,14 @@ impl DeckProductState {
             .filter(|value| *value > 0)
             .unwrap_or(state.base_bpm_x100);
         let beat_grid = track_analysis.and_then(|item| item.beat_grid());
-        let duration_ms = beat_loop_duration_ms(
-            state.position_ms,
-            bpm_x100,
-            numerator,
-            denominator,
-            beat_grid,
-        );
-        let Some(end_ms) = state.position_ms.checked_add(duration_ms) else {
+        // With Quantize the loop starts on the nearest beat, as Loop In does.
+        let start_ms = self.quantized_position_ms(deck, analysis);
+        let duration_ms =
+            beat_loop_duration_ms(start_ms, bpm_x100, numerator, denominator, beat_grid);
+        let Some(end_ms) = start_ms.checked_add(duration_ms) else {
             return DeckEffects::NONE;
         };
-        let Some(region) = LoopRegion::new(state.position_ms, end_ms) else {
+        let Some(region) = LoopRegion::new(start_ms, end_ms) else {
             return DeckEffects::NONE;
         };
         if !self.loop_admitted(deck, region) {
@@ -3580,6 +3584,70 @@ mod tests {
                 end_ms: 1_511,
             })
         );
+    }
+
+    #[test]
+    fn quantize_starts_beat_loops_and_sets_hot_cues_on_the_nearest_beat() {
+        let beats = [
+            Beat {
+                time_ms: 1_000,
+                phase: 0,
+                bpm_x100: 12_000,
+            },
+            Beat {
+                time_ms: 1_500,
+                phase: 1,
+                bpm_x100: 12_000,
+            },
+            Beat {
+                time_ms: 2_000,
+                phase: 2,
+                bpm_x100: 12_000,
+            },
+        ];
+        let analysis = beat_jump_analysis(&beats, 12_000);
+        let mut state = DeckProductState::new();
+        state.handle_control(ext(DeckId::One, DeckExtAction::Quantize, true));
+        state.set_position_ms(DeckId::One, 1_430);
+        // Pad 6 is a 1-beat loop: from the beat at 1500, one grid beat long.
+        let effects = state.handle_control_with_analysis(
+            beat_loop_pad(DeckId::One, 5, false, true),
+            [Some(analysis), None],
+        );
+        assert_eq!(
+            effects.items[0],
+            Some(DeckEffect::SetLoop {
+                deck: DeckId::One,
+                start_ms: 1_500,
+                end_ms: 2_000,
+            })
+        );
+
+        let mut state = DeckProductState::new();
+        let id = MediaTrackId([5; 16]);
+        state
+            .commit_track_load(DeckId::One, id, 12_000, HotCueBank::empty(id), None)
+            .unwrap();
+        state.handle_control(ext(DeckId::One, DeckExtAction::Quantize, true));
+        state.set_position_ms(DeckId::One, 1_180);
+        let hot_cue = PadAction {
+            pad: 2,
+            mode: PadMode::HotCue,
+            shifted: false,
+            pressed: true,
+        };
+        let effects = state.handle_control_with_analysis(
+            ControlEvent {
+                deck: Some(DeckId::One),
+                control: SemanticControl::PadAction,
+                value: ControlValue::PadAction(hot_cue),
+            },
+            [Some(analysis), None],
+        );
+        let Some(DeckEffect::PersistHotCues { bank, .. }) = effects.items[0] else {
+            panic!("{effects:?}");
+        };
+        assert_eq!(bank.slot(2).unwrap().pos_ms, 1_000);
     }
 
     #[test]
