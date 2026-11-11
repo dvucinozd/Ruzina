@@ -99,6 +99,11 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
   was not preempted (2 µs away, 34 µs of interrupts): 4761 µs of it was the render
   graph, against 2158 µs at worst without a screen (s19) and 2559 µs in a typical fill
   now. The graph waits on memory, most likely PSRAM shared with the screen's lane copies.
+- **Without the lanes (s64, diagnostic only):** worst fill 4693 µs, 7.3 % of fills over
+  3 ms (11.3 % in s63), worst graph 3923 µs. The lane copies cost about 1.1 ms of the worst
+  fill; the rest of the screen and the scratch cost the remainder.
+- **32-byte PPA bursts (s65, reverted):** worse, 6165 µs worst with three fills of 6 ms or
+  more, and the lanes took 21.6 ms a frame instead of 17.3.
 - **Fills over 3 ms (s52):** 6.3 % against 0.6 % without a screen. The longest stays under the
   5 ms limit, but the screen costs margin; the PPA's PSRAM copies are likely part of it.
 - **Lost USB packets:** two in s49, one each in s44 and s54 (after about 12 minutes); none
