@@ -93,8 +93,12 @@ All images ran the soak DJ (both decks loading and playing, with its gestures).
 - **Fills since the live decks:** the longest went over the 5 ms limit again (s55 6449 µs,
   s57 6234 µs with two of 6 ms or more, s58 5866 µs) and 5 to 9 % of fills take over 3 ms.
   Still no underrun, but this needs work before the screen ships. Neither the deck
-  engine in IRAM (s60) nor the SD owner below the fill (s61) changed it. Next: the
-  fill's stage profile next to the screen, which the build does not allow yet.
+  engine in IRAM (s60) nor the SD owner below the fill (s61) changed it.
+- **Fill profile next to the screen (s63, `--uac-profile --soak-autoplay --slint-ui`):**
+  the worst fill, 5814 µs at 58.7 s, came just after the soak DJ started a scratch. It
+  was not preempted (2 µs away, 34 µs of interrupts): 4761 µs of it was the render
+  graph, against 2158 µs at worst without a screen (s19) and 2559 µs in a typical fill
+  now. The graph waits on memory, most likely PSRAM shared with the screen's lane copies.
 - **Fills over 3 ms (s52):** 6.3 % against 0.6 % without a screen. The longest stays under the
   5 ms limit, but the screen costs margin; the PPA's PSRAM copies are likely part of it.
 - **Lost USB packets:** two in s49, one each in s44 and s54 (after about 12 minutes); none
