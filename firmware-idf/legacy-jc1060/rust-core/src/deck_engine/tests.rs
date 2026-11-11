@@ -1806,6 +1806,12 @@ fn load_with_grid(mix: &mut Mix, deck: DeckId, index: u32) {
     }));
 }
 
+/// Empties deck `i`'s ring of whatever an earlier test left in it.
+fn empty_ring(i: usize) {
+    RINGS[i].restart_at(48_000, 0);
+    crate::deck_play::Reader::new().sync(&RINGS[i]);
+}
+
 /// Renders `packets` 1 ms packets while both decks' producers keep 48 frames a packet
 /// coming.
 fn run_fed(mix: &mut Mix, packets: usize) {
@@ -1922,6 +1928,7 @@ fn quantize_puts_loops_and_new_cues_on_the_grid_and_beat_jump_keeps_the_offset()
     attach_ring(1);
     let mut mix = Mix::new();
     SEEK_REQUESTS[0].take();
+    empty_ring(1);
     load_with_grid(&mut mix, DeckId::One, 33);
     run_fed(&mut mix, 3);
     press(&mut mix, SemanticControl::Play, true);
@@ -1944,4 +1951,46 @@ fn quantize_puts_loops_and_new_cues_on_the_grid_and_beat_jump_keeps_the_offset()
         SEEK_REQUESTS[0].take().map(|seek| seek.target_ms),
         Some(at + 500)
     );
+}
+
+#[test]
+fn the_screen_gets_hot_cues_and_the_loop_and_shift_browse_zooms_faster() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    empty_ring(1);
+    load_with_grid(&mut mix, DeckId::One, 36);
+    run_fed(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run_fed(&mut mix, 330);
+    mix.control(&hot_cue_pad(3, true));
+    mix.control(&hot_cue_pad(3, false));
+    mix.control(&pad(PadMode::BeatLoop, 7, true));
+    mix.engine().publish_marks();
+    let (_, marks) = crate::deck_view::MARKS[0].load();
+    assert_eq!(marks.cues[3], Some(500), "on the beat");
+    assert_eq!(marks.cues.iter().flatten().count(), 1);
+    assert_eq!(marks.looped, Some((500, 2_500)), "4 beats from the beat");
+    assert!(
+        crate::deck_view::LIVE[0]
+            .load()
+            .has(crate::deck_view::QUANTIZE)
+    );
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    mix.engine().publish_marks();
+    assert_eq!(crate::deck_view::MARKS[0].load().1.looped, None);
+
+    // Shift + browse moves the zoom three steps a detent, from 16 beats to 4.
+    crate::deck_view::zoom_by(-10);
+    crate::deck_view::zoom_by(4);
+    assert_eq!(crate::deck_view::window_ms(12_000), 8_000);
+    mix.control(&ControlEvent {
+        deck: None,
+        control: SemanticControl::ShiftBrowseDelta,
+        value: ControlValue::Relative(-1),
+    });
+    assert_eq!(crate::deck_view::window_ms(12_000), 2_000);
+    crate::deck_view::zoom_by(3);
 }

@@ -4,7 +4,7 @@
 //! It shows the decks: what the engine publishes in `deck_view::LIVE`, and each
 //! loaded track's title, key and analysis. It logs draw times as load events: 21 the
 //! Slint parts (worst, then 31 the average), 22 a waveform frame (32).
-use crate::deck_view::{self, DeckSnapshot, FxSnapshot, LoadedTrack};
+use crate::deck_view::{self, DeckSnapshot, FxSnapshot, LoadedTrack, Marks};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use ruzina_track_analysis::{Beat, WaveformColumn};
@@ -106,6 +106,23 @@ const PURPLE: u16 = rgb(0xb5, 0x7c, 0xff);
 const BAR_CAP: u16 = rgb(0xff, 0x17, 0x44);
 const BAR_CAP_REACH: i64 = 6;
 const BAR_CAP_HEIGHT: usize = 8;
+/// Hot Cues A to H: a line through the lane and a flag at the edge away from the bar
+/// triangles.
+const CUE_COLORS: [u16; 8] = [
+    rgb(0x28, 0xe2, 0x14),
+    rgb(0x30, 0xd2, 0xe8),
+    rgb(0x30, 0x5a, 0xff),
+    rgb(0xaa, 0x72, 0xff),
+    rgb(0xff, 0x12, 0x7b),
+    rgb(0xff, 0x8c, 0x00),
+    rgb(0xe0, 0xff, 0x00),
+    rgb(0x10, 0xb1, 0x76),
+];
+const CUE_FLAG_WIDTH: i64 = 7;
+const CUE_FLAG_HEIGHT: usize = 7;
+/// The running loop: its ends as lines, and its span shaded behind the waveform.
+const LOOP_EDGE: u16 = rgb(0xff, 0x8c, 0x00);
+const LOOP_SHADE: u16 = rgb(0x30, 0x1c, 0x00);
 /// The white edge on loud peaks.
 const TIP: u16 = rgb(0xff, 0xff, 0xff);
 const TIP_LOUDNESS: u8 = 26;
@@ -242,6 +259,7 @@ struct Wave<'a> {
     rate_hz: u16,
     /// The time the lane shows.
     window_ms: i64,
+    marks: Marks,
 }
 
 impl Wave<'_> {
@@ -301,8 +319,35 @@ impl Wave<'_> {
         match self.beats.get(next) {
             Some(beat) if beat.time_ms < end && beat.phase == 0 => BAR_LINE,
             Some(beat) if beat.time_ms < end => BEAT_LINE,
+            _ if self
+                .marks
+                .looped
+                .is_some_and(|(from, to)| (from..to).contains(&start)) =>
+            {
+                LOOP_SHADE
+            }
             _ => BACKGROUND,
         }
+    }
+
+    /// Whether `ms` falls in track pixel `at`.
+    fn holds(&self, at: i64, ms: u32) -> bool {
+        at >= 0 && (self.pixel_ms(at)..self.pixel_ms(at + 1)).contains(&i64::from(ms))
+    }
+
+    /// The Hot Cue at track pixel `at`, by pad.
+    fn cue(&self, at: i64) -> Option<usize> {
+        (0..8).find(|&pad| self.marks.cues[pad].is_some_and(|ms| self.holds(at, ms)))
+    }
+
+    /// The colour of a mark through the whole of track pixel `at`: a Hot Cue, else an
+    /// end of the running loop.
+    fn mark(&self, at: i64) -> Option<u16> {
+        if let Some(pad) = self.cue(at) {
+            return Some(CUE_COLORS[pad]);
+        }
+        let (start, end) = self.marks.looped?;
+        (self.holds(at, start) || self.holds(at, end)).then_some(LOOP_EDGE)
     }
 }
 
@@ -333,8 +378,8 @@ fn ink(column: WaveformColumn) -> (u8, u16) {
     (loudness, color)
 }
 
-/// The lane's view of `track`, showing `window_ms` of it.
-fn wave(track: Option<&LoadedTrack>, window_ms: u32) -> Wave<'_> {
+/// The lane's view of `track` with `marks`, showing `window_ms` of it.
+fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks) -> Wave<'_> {
     let window_ms = i64::from(window_ms);
     let Some(view) = track
         .and_then(|track| track.analysis.as_ref())
@@ -345,6 +390,7 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32) -> Wave<'_> {
             beats: &[],
             rate_hz: 0,
             window_ms,
+            marks,
         };
     };
     Wave {
@@ -352,6 +398,7 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32) -> Wave<'_> {
         beats: view.beat_grid().map_or(&[], |grid| grid.beats()),
         rate_hz: view.detail_rate_hz(),
         window_ms,
+        marks,
     }
 }
 
@@ -380,6 +427,10 @@ fn draw_columns(
             continue;
         }
         back[i] = wave.grid(at);
+        if let Some(mark) = wave.mark(at) {
+            back[i] = mark;
+            continue;
+        }
         if let Some((height, ink, tipped)) = wave.column(at) {
             (half[i], color[i]) = (height, ink);
             if tipped {
@@ -410,7 +461,37 @@ fn draw_columns(
             }
         }
     }
-    draw_bar_caps(frame, area, wave, left, columns);
+    draw_bar_caps(frame, area, wave, left, columns.clone());
+    draw_cue_flags(frame, area, wave, left, columns);
+}
+
+/// Draws the flags of the Hot Cues near columns `columns`, clipped to them and clear of
+/// the playhead: a square right of the cue's line, at the edge away from the bar
+/// triangles (the top of deck 1's lane, the bottom of deck 2's).
+fn draw_cue_flags(
+    frame: &mut [u16],
+    area: Area,
+    wave: Wave<'_>,
+    left: i64,
+    columns: core::ops::Range<usize>,
+) {
+    let at_top = area.y == LANES[0].y;
+    let (first, end) = (columns.start as i64, columns.end as i64);
+    for line in first - CUE_FLAG_WIDTH..end {
+        let Some(pad) = wave.cue(left + line) else {
+            continue;
+        };
+        for row in 0..CUE_FLAG_HEIGHT {
+            let y = if at_top { row } else { LANE_HEIGHT - 1 - row };
+            let start = (area.y + y) * WIDTH + area.x;
+            for x in line.max(first)..(line + CUE_FLAG_WIDTH).min(end) {
+                let x = x as usize;
+                if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
+                    frame[start + x] = CUE_COLORS[pad];
+                }
+            }
+        }
+    }
 }
 
 /// Draws the red triangles of the bar lines near columns `columns`, clipped to them and
@@ -593,6 +674,7 @@ struct DeckTexts {
     status: &'static str,
     playing: bool,
     master_tempo: bool,
+    quantize: bool,
 }
 
 fn texts(track: Option<&LoadedTrack>, deck: DeckSnapshot) -> DeckTexts {
@@ -631,6 +713,7 @@ fn texts(track: Option<&LoadedTrack>, deck: DeckSnapshot) -> DeckTexts {
         },
         playing: deck.has(deck_view::PLAYING),
         master_tempo: deck.has(deck_view::MASTER_TEMPO),
+        quantize: deck.has(deck_view::QUANTIZE),
     }
 }
 
@@ -652,6 +735,7 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
         ui.set_status_1(status);
         ui.set_playing_1(texts.playing);
         ui.set_master_tempo_1(texts.master_tempo);
+        ui.set_quantize_1(texts.quantize);
     } else {
         ui.set_title_2(title);
         ui.set_elapsed_2(elapsed);
@@ -662,6 +746,7 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
         ui.set_status_2(status);
         ui.set_playing_2(texts.playing);
         ui.set_master_tempo_2(texts.master_tempo);
+        ui.set_quantize_2(texts.quantize);
     }
 }
 
@@ -720,6 +805,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // and playhead.
     let mut lane_at: [[Option<(i64, i64)>; 2]; 2] = [[None; 2]; 2];
     let mut mini_at: [[Option<MiniState>; 2]; 2] = [[None; 2]; 2];
+    // Per buffer and deck: the revision of the marks its lane shows.
+    let mut marks_at: [[Option<u32>; 2]; 2] = [[None; 2]; 2];
     let (mut slint_times, mut wave_times) = (Times::default(), Times::default());
     let start = now_us() / 1_000;
     let mut next_report = REPORT_MS;
@@ -787,7 +874,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         slint_times.add((drawn - started) as u32);
         for deck in 0..2 {
             let track = tracks[deck].as_deref();
-            let wave = wave(track, deck_view::window_ms(decks[deck].bpm_x100));
+            // New marks redraw the whole lane, once in each buffer.
+            let (revision, marks) = deck_view::MARKS[deck].load();
+            if marks_at[drawing][deck] != Some(revision) {
+                lane_at[drawing][deck] = None;
+                marks_at[drawing][deck] = Some(revision);
+            }
+            let wave = wave(track, deck_view::window_ms(decks[deck].bpm_x100), marks);
             let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
             if meter_at[drawing][deck] != Some(meters[deck]) {
                 draw_meter(buffer, METERS[deck], meters[deck]);
@@ -800,7 +893,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             };
             // A paused or empty deck's lane is drawn once into each buffer, then left.
             if at_scale(lane_at[drawing][deck]) != Some(left) {
-                let shown_left = at_scale(lane_at[1 - drawing][deck]);
+                // The shown lane is copied only when it has the same marks.
+                let shown_left = at_scale(lane_at[1 - drawing][deck])
+                    .filter(|_| marks_at[1 - drawing][deck] == Some(revision));
                 draw_lane(buffer, shown, shown_left, LANES[deck], wave, left);
                 lane_at[drawing][deck] = Some((left, wave.window_ms));
             }

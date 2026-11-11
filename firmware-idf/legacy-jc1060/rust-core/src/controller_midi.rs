@@ -303,6 +303,7 @@ fn refresh_mix() {
         mix.attach_fx();
         mix.engine().flush_hot_cues();
         mix.engine().take_grids();
+        mix.engine().publish_marks();
         #[cfg(not(test))]
         if let Some((deck, event, value)) = mix.engine().take_phase_report() {
             unsafe extern "C" {
