@@ -1026,7 +1026,7 @@ impl Engine {
     }
 
     /// The Beat FX panel as the screen shows it.
-    fn fx_view(&self) -> crate::deck_view::FxSnapshot {
+    pub(crate) fn fx_view(&self) -> crate::deck_view::FxSnapshot {
         use ruzina_controller_core::BeatFxTarget;
         use ruzina_deck::{BeatFxBeat, BeatFxEffect};
         let fx = self.deck.beat_fx();

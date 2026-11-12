@@ -76,8 +76,8 @@ const METERS: [Area; 2] = [
     },
 ];
 const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1]];
-/// The Library and Hot Cues pages cover the lanes and meters; Rust then draws only the
-/// overviews.
+/// The Library, Hot Cues and FX pages cover the lanes and meters; Rust then draws only
+/// the overviews.
 const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
 /// The Library page's rows.
 const LIBRARY_ROWS: u32 = 12;
@@ -916,6 +916,25 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     ui.on_load(|deck| {
         deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Load);
     });
+    ui.on_fx(|kind, value| {
+        use deck_view::FxTouch;
+        let value = value.clamp(0.0, 127.0) as u8;
+        let fx = match kind {
+            0 => FxTouch::Effect(value),
+            1 => FxTouch::Beat(value),
+            2 => FxTouch::Target(value),
+            // A drag along the depth bar sends only depths the engine does not have.
+            3 if FxSnapshot::unpack(deck_view::FX.load(core::sync::atomic::Ordering::Relaxed))
+                .depth
+                == value =>
+            {
+                return;
+            }
+            3 => FxTouch::Depth(value),
+            _ => FxTouch::On,
+        };
+        deck_view::TOUCH.push(0, deck_view::TouchControl::Fx(fx));
+    });
     ui.on_hot_cue(|deck, pad, down, delete| {
         let pad = (pad & 7) as u8;
         let control = deck_view::TouchControl::HotCue { pad, delete, down };
@@ -988,8 +1007,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let tab = ui.get_active_tab();
         let library_open = tab == 1;
         deck_view::LIBRARY_OPEN.store(library_open, core::sync::atomic::Ordering::Relaxed);
-        // The Library and Hot Cues pages cover the lanes and meters.
-        let covered = matches!(tab, 1 | 2);
+        // The Library, Hot Cues and FX pages cover the lanes and meters.
+        let covered = matches!(tab, 1 | 2 | 4);
         if covered != was_covered {
             // A page covered the lanes and meters, or uncovered them: Rust draws them
             // again in each buffer.
@@ -1074,7 +1093,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 decks[deck].position_ms,
             );
             let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
-            // Under the Library and Hot Cues pages only the overviews are Rust's.
+            // Under the Library, Hot Cues and FX pages only the overviews are Rust's.
             if !covered && meter_at[drawing][deck] != Some(meters[deck]) {
                 draw_meter(buffer, METERS[deck], meters[deck]);
                 meter_at[drawing][deck] = Some(meters[deck]);

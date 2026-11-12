@@ -2018,7 +2018,8 @@ fn the_hot_cues_page_sets_and_deletes_cues_as_the_pads_do() {
     let tap = |mix: &mut Mix, pad, delete| {
         for down in [true, false] {
             let control = TouchControl::HotCue { pad, delete, down };
-            for event in touch_events(0, control).into_iter().flatten() {
+            let fx = mix.engine().fx_view();
+            for event in touch_events(0, control, fx).into_iter().flatten() {
                 mix.control(&event);
             }
         }
@@ -2047,6 +2048,55 @@ fn the_hot_cues_page_sets_and_deletes_cues_as_the_pads_do() {
     mix.engine().publish_marks();
     assert_eq!(crate::deck_view::MARKS[0].load().1.cues, [None; 8]);
     SEEK_REQUESTS[0].take();
+}
+
+#[test]
+fn the_fx_page_picks_the_effect_beat_channel_and_depth_and_turns_fx_on() {
+    use crate::controller_midi::touch_events;
+    use crate::deck_view::{FxSnapshot, FxTouch, TouchControl};
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = Mix::new();
+    let touch = |mix: &mut Mix, fx: FxTouch| {
+        let now = mix.engine().fx_view();
+        for event in touch_events(0, TouchControl::Fx(fx), now)
+            .into_iter()
+            .flatten()
+        {
+            mix.control(&event);
+        }
+        mix.engine().fx_view()
+    };
+    let start = mix.engine().fx_view();
+    assert!(!start.on);
+    for effect in [3, 1, 0, 2] {
+        assert_eq!(touch(&mut mix, FxTouch::Effect(effect)).effect, effect);
+    }
+    for beat in [4, 0, 3, 1] {
+        assert_eq!(touch(&mut mix, FxTouch::Beat(beat)).beat, beat);
+    }
+    for target in [1, 2, 0] {
+        assert_eq!(touch(&mut mix, FxTouch::Target(target)).target, target);
+    }
+    assert_eq!(touch(&mut mix, FxTouch::Depth(127)).depth, 127);
+    assert_eq!(touch(&mut mix, FxTouch::Depth(40)).depth, 40);
+    assert!(touch(&mut mix, FxTouch::On).on);
+    let fx = touch(&mut mix, FxTouch::On);
+    assert_eq!(
+        fx,
+        FxSnapshot {
+            effect: 2,
+            beat: 1,
+            target: 0,
+            depth: 40,
+            on: false,
+        }
+    );
+    // Back to how the other tests expect it.
+    mix.control(&ControlEvent {
+        deck: None,
+        control: SemanticControl::BeatFxClear,
+        value: ControlValue::Pressed(true),
+    });
 }
 
 #[test]

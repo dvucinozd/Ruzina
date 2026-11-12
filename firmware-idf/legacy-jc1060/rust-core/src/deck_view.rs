@@ -232,6 +232,19 @@ pub(crate) enum TouchControl {
     /// A pad on the Hot Cues page went down (`true`) or up. With `delete` it clears its
     /// cue, as Shift and the pad do.
     HotCue { pad: u8, delete: bool, down: bool },
+    /// A Beat FX setting on the FX page; it belongs to no deck.
+    Fx(FxTouch),
+}
+
+/// What the FX page sets: an effect (0 Filter to 3 Delay), a beat (0 for 1/4 to 4 for 4
+/// beats), a channel (0 both, 1 deck 1, 2 deck 2), a depth (0 to 127), or FX ON pressed.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum FxTouch {
+    Effect(u8),
+    Beat(u8),
+    Target(u8),
+    Depth(u8),
+    On,
 }
 
 const TOUCH_SLOTS: u32 = 16;
@@ -267,6 +280,16 @@ impl TouchQueue {
                 TouchControl::HotCue { pad, delete, down } => {
                     16 | u32::from(down) << 2 | u32::from(pad & 7) << 5 | u32::from(delete) << 8
                 }
+                TouchControl::Fx(fx) => {
+                    let (kind, value) = match fx {
+                        FxTouch::Effect(value) => (0, value),
+                        FxTouch::Beat(value) => (1, value),
+                        FxTouch::Target(value) => (2, value),
+                        FxTouch::Depth(value) => (3, value),
+                        FxTouch::On => (4, 0),
+                    };
+                    512 | kind << 10 | u32::from(value & 0x7f) << 13
+                }
             };
         self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
         self.head.store(head.wrapping_add(1), Ordering::Release);
@@ -281,7 +304,16 @@ impl TouchQueue {
         }
         let word = self.slots[(tail % TOUCH_SLOTS) as usize].load(Ordering::Relaxed);
         self.tail.store(tail.wrapping_add(1), Ordering::Release);
-        let control = if word & 16 != 0 {
+        let control = if word & 512 != 0 {
+            let value = (word >> 13 & 0x7f) as u8;
+            TouchControl::Fx(match word >> 10 & 7 {
+                0 => FxTouch::Effect(value),
+                1 => FxTouch::Beat(value),
+                2 => FxTouch::Target(value),
+                3 => FxTouch::Depth(value),
+                _ => FxTouch::On,
+            })
+        } else if word & 16 != 0 {
             TouchControl::HotCue {
                 pad: (word >> 5 & 7) as u8,
                 delete: word & 256 != 0,
