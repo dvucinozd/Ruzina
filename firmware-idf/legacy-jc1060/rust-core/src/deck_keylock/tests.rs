@@ -126,3 +126,26 @@ fn the_lead_on_the_heard_position_stays_within_two_grains() {
     }
     assert!(most <= 2 * GRAIN as u32 + SEEK as u32, "lead {most}");
 }
+
+#[test]
+#[ignore = "timing on the host, run by hand"]
+fn bench_keylock_cost() {
+    for tempo in [1.0f32, 1.13] {
+        let mut keylocks = Keylock::boxed_pair();
+        let keylock = &mut keylocks[0];
+        let mut tone = source(chord);
+        let frames: Vec<PcmFrame> = (0..800_000).map(|_| tone().unwrap()).collect();
+        let mut at = 0;
+        let mut pull = || {
+            at += 1;
+            Some(frames[at - 1])
+        };
+        let start = std::time::Instant::now();
+        let mut sum = 0i64;
+        for _ in 0..480_000 {
+            sum += i64::from(keylock.next(tempo, &mut pull).unwrap().left);
+        }
+        let per = start.elapsed().as_nanos() as f64 / 480_000.0;
+        std::println!("tempo {tempo}: {per:.1} ns a frame ({sum})");
+    }
+}

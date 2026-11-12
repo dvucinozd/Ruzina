@@ -96,9 +96,10 @@
   - a tap on MT toggles it (`DeckExtAction::MasterTempo`);
   - a JC1060 WSOLA keylock keeps the key; the shared donor keylock sounded distorted.
 
-  Owner: "Radi". Open: the fill cost. Longest fill 8.4 ms, with 35 % of fills over
-  3 ms; the grain search should get cheaper.
-- **On the board:** s82 (app `1d223d1d…`), Master Tempo with the fill profile. Earlier: a Slint
+  Owner: "Radi". The grain search is spread over each hop. With Master Tempo on both
+  decks, fills peak at about 6.2 ms, within the scratch exception; about 26 % of fills
+  run over 3 ms.
+- **On the board:** s83 (app `b77f945a…`), Master Tempo with the fill profile. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

@@ -26,6 +26,13 @@ So the tempo fader always moved the key with the tempo.
     frames best match the grain it takes over from:
     - a coarse search on every 4th frame, by normalised cross-correlation;
     - then frame by frame around the best match.
+  - The search runs during the hop before the grain starts, one candidate an output
+    frame, so the fill's cost stays even:
+    - the coarse search tries every 8th start, on a mono copy of every 4th frame kept as
+      frames arrive;
+    - the fine search tries ±3 frames around the best.
+  - A search the deck cannot feed yet (just after a seek) leaves the grain where the
+    tempo puts it.
   - At the track's own tempo the output is the input, frame for frame.
 - **Why not the shared keylock:** `ruzina-audio-keylock` was tried first (s81) and kept
   the key, but sounded distorted on music. It is the donor's low-budget design: 5 ms
@@ -63,15 +70,22 @@ So the tempo fader always moved the key with the tempo.
     - In 15 minutes, 157/9 underrun blocks, most likely after the soak DJ's jumps: the
       shared keylock needed frames ahead that a fresh seek did not yet have.
     - Longest fill 7.3 ms.
-  - s82 (this keylock, app `1d223d1d…`, fill profile): owner verdict "Radi".
-    - In the first minutes: underruns 0/0, `packet_errors=0`, no panics.
-    - Longest fill **8.4 ms**, with deck 1 in Master Tempo and deck 2 replaying a loop.
-    - **Fills over 3 ms rose to 35 %** (about 9 % before), and 421 fills reached 6 ms,
-      against a handful without Master Tempo. The graph stage carries it: the
-      per-frame crossfade, plus the grain search once every 512 frames per deck.
-  - This is over the accepted ~6.3 ms scratch exception. The ring's cushion has covered
-    it so far, but the search should be made cheaper (or spread over the hop) before
-    Master Tempo is relied on.
+  - s82 (first version of this keylock, app `1d223d1d…`, fill profile): owner verdict
+    "Radi", but costly.
+    - In 15 minutes: underruns 0/0, `packet_errors=0`, no panics.
+    - Longest fill 8.7 ms; 54 % of fills over 3 ms (about 9 % without Master Tempo);
+      6095 fills of 6 ms or more.
+    - The whole grain search fell into one render block every 512 frames per deck.
+  - s83 (the search spread over the hop, app `b77f945a…`, fill profile): owner verdict
+    "Radi".
+    - In the first two minutes: underruns 0/0, `packet_errors=0`, no panics.
+    - With Master Tempo on both decks, and Beat FX, fills peaked at about 6.2 ms. The
+      run's longest, 6.5 ms, was a scratch without Master Tempo.
+    - 26 % of fills over 3 ms, and 4 fills of 6 ms or more.
+  - On the host, the stretch costs 18 ns a frame off the track's tempo (59 ns before
+    the change) and 8 ns at it (15 ns).
+  - Master Tempo now stays within the accepted ~6.3 ms scratch exception. It still
+    lifts the share of fills over 3 ms, from about 9 % to about 26 %.
 
 ## Test plan
 
