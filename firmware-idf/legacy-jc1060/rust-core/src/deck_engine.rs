@@ -418,6 +418,12 @@ impl Engine {
                         .map(|cue| cue.pos_ms)
                 }),
                 looped: self.loop_ms[i],
+                pending_in: self
+                    .deck
+                    .deck(deck)
+                    .loop_state
+                    .pending_in_ms
+                    .filter(|_| self.loaded[i] && self.loop_ms[i].is_none()),
             };
             crate::deck_view::MARKS[i].store(marks);
         }

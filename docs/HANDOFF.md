@@ -67,18 +67,15 @@
   - underruns 0/0.
 
   The owner accepted both exceptions until the USB stick media path.
-- **Where we stopped (2026-11-12):**
-  - [lane marks](reviews/2026-11-12-lane-marks.md) are on branch
-    `ogranak/jc1060-lane-markers`, pushed with no PR yet:
-    - Hot Cue lines and flags, the running loop's ends and shading;
-    - a Q label for Quantize;
-    - Shift + browse zooming three steps.
-  - Host tests and target clippy pass.
-  - The board has image s76 (app `c3656040…`), not yet tried.
-  - Next: the owner tries the four points in the doc's test plan. If they work, open the
-    PR, turn on Auto-fix, and merge on the owner's word.
-- **On the board:** s76, the lane marks image above. Earlier: a Slint diagnostic image
-  (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+- **Lane marks (2026-11-12):** [Hot Cues, the loop and Quantize on the deck screen](reviews/2026-11-12-lane-marks.md):
+  - Hot Cue lines and flags;
+  - the loop's ends, with shading that grows from Loop In;
+  - a Q label for Quantize;
+  - Shift + browse zooming three steps.
+
+  Owner: "Radi".
+- **On the board:** s77 (app `fc0aac16…`), the lane marks image. Earlier: a Slint
+  diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.

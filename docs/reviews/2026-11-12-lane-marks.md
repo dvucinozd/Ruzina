@@ -25,6 +25,9 @@ the screen. The browse knob zoomed one step a detent only.
     deck 2.
   - The running loop's ends are orange lines, and its span is shaded behind the
     waveform; beat lines stay visible.
+  - After Loop In, an orange line marks the In. The shading grows from it to the
+    playhead until Out, as the owner asked. The columns the playhead passes are drawn
+    again every frame anyway, so the growing shade costs no extra drawing.
 - **Q:** a Q label next to MT lights orange while Quantize is on. To fit it, MT, the key
   and the status (SYNC, LOOP, EMPTY) moved, and the status is a little smaller.
 - **Shift + browse** moves the zoom three steps a detent.
@@ -37,7 +40,14 @@ the screen. The browse knob zoomed one step a detent only.
     exit, and Shift + browse zooms three steps.
 
   The legacy feature sets and target clippy (including `idf-slint-ui`) pass.
-- **Build:** s76, app `c3656040…`, flashed on 2026-11-12. Not yet tried by the owner.
+- **Device:**
+  - s76 (app `c3656040…`): the owner tried all four points ("radi sve") and asked for the
+    shading to start at Loop In.
+  - s77 (app `fc0aac16…`) adds that; owner verdict "Radi".
+  - Underruns 0/0, `packet_errors=0`.
+  - Longest fill 5.6 ms with the soak DJ, within the accepted scratch exception.
+  - The worst waveform frame was 29 ms, which is a full lane redraw; new marks cause one.
+    With Slint's worst of 9 ms, such a frame can miss one 30 Hz refresh.
 
 ## Test plan
 

@@ -130,6 +130,7 @@ fn marks_change_their_revision_only_when_they_change() {
     let mut cued = Marks::NONE;
     cued.cues[2] = Some(1_500);
     cued.looped = Some((2_000, 4_000));
+    cued.pending_in = Some(7_000);
     slot.store(cued);
     let (second, marks) = slot.load();
     assert_eq!(marks, cued);

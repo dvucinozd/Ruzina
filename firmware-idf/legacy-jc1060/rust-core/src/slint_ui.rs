@@ -260,6 +260,8 @@ struct Wave<'a> {
     /// The time the lane shows.
     window_ms: i64,
     marks: Marks,
+    /// The playhead, where the shading from a Loop In ends.
+    position_ms: u32,
 }
 
 impl Wave<'_> {
@@ -319,15 +321,22 @@ impl Wave<'_> {
         match self.beats.get(next) {
             Some(beat) if beat.time_ms < end && beat.phase == 0 => BAR_LINE,
             Some(beat) if beat.time_ms < end => BEAT_LINE,
-            _ if self
-                .marks
-                .looped
-                .is_some_and(|(from, to)| (from..to).contains(&start)) =>
-            {
-                LOOP_SHADE
-            }
+            _ if self.shaded(start) => LOOP_SHADE,
             _ => BACKGROUND,
         }
+    }
+
+    /// Whether the lane shades `ms`: inside the running loop, or from a Loop In waiting
+    /// for its Out up to the playhead. Columns the playhead passes are drawn again each
+    /// frame, so the shading follows it.
+    fn shaded(&self, ms: u32) -> bool {
+        self.marks
+            .looped
+            .is_some_and(|(from, to)| (from..to).contains(&ms))
+            || self
+                .marks
+                .pending_in
+                .is_some_and(|from| (from..self.position_ms).contains(&ms))
     }
 
     /// Whether `ms` falls in track pixel `at`.
@@ -345,6 +354,9 @@ impl Wave<'_> {
     fn mark(&self, at: i64) -> Option<u16> {
         if let Some(pad) = self.cue(at) {
             return Some(CUE_COLORS[pad]);
+        }
+        if let Some(from) = self.marks.pending_in {
+            return self.holds(at, from).then_some(LOOP_EDGE);
         }
         let (start, end) = self.marks.looped?;
         (self.holds(at, start) || self.holds(at, end)).then_some(LOOP_EDGE)
@@ -378,8 +390,9 @@ fn ink(column: WaveformColumn) -> (u8, u16) {
     (loudness, color)
 }
 
-/// The lane's view of `track` with `marks`, showing `window_ms` of it.
-fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks) -> Wave<'_> {
+/// The lane's view of `track` with `marks` and the playhead at `position_ms`, showing
+/// `window_ms` of it.
+fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks, position_ms: u32) -> Wave<'_> {
     let window_ms = i64::from(window_ms);
     let Some(view) = track
         .and_then(|track| track.analysis.as_ref())
@@ -391,6 +404,7 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks) -> Wave<'_> {
             rate_hz: 0,
             window_ms,
             marks,
+            position_ms,
         };
     };
     Wave {
@@ -399,6 +413,7 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks) -> Wave<'_> {
         rate_hz: view.detail_rate_hz(),
         window_ms,
         marks,
+        position_ms,
     }
 }
 
@@ -880,7 +895,12 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 lane_at[drawing][deck] = None;
                 marks_at[drawing][deck] = Some(revision);
             }
-            let wave = wave(track, deck_view::window_ms(decks[deck].bpm_x100), marks);
+            let wave = wave(
+                track,
+                deck_view::window_ms(decks[deck].bpm_x100),
+                marks,
+                decks[deck].position_ms,
+            );
             let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
             if meter_at[drawing][deck] != Some(meters[deck]) {
                 draw_meter(buffer, METERS[deck], meters[deck]);

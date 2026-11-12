@@ -1967,12 +1967,17 @@ fn the_screen_gets_hot_cues_and_the_loop_and_shift_browse_zooms_faster() {
     run_fed(&mut mix, 330);
     mix.control(&hot_cue_pad(3, true));
     mix.control(&hot_cue_pad(3, false));
+    // Loop In shades from its beat while the loop waits for its Out.
+    press(&mut mix, SemanticControl::LoopIn, true);
+    mix.engine().publish_marks();
+    assert_eq!(crate::deck_view::MARKS[0].load().1.pending_in, Some(500));
     mix.control(&pad(PadMode::BeatLoop, 7, true));
     mix.engine().publish_marks();
     let (_, marks) = crate::deck_view::MARKS[0].load();
     assert_eq!(marks.cues[3], Some(500), "on the beat");
     assert_eq!(marks.cues.iter().flatten().count(), 1);
     assert_eq!(marks.looped, Some((500, 2_500)), "4 beats from the beat");
+    assert_eq!(marks.pending_in, None, "a running loop has no pending In");
     assert!(
         crate::deck_view::LIVE[0]
             .load()

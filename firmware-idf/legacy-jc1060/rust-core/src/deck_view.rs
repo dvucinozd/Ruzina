@@ -84,6 +84,8 @@ pub(crate) struct Marks {
     pub(crate) cues: [Option<u32>; 8],
     /// The running loop, `[start_ms, end_ms)`.
     pub(crate) looped: Option<(u32, u32)>,
+    /// Loop In while the loop waits for its Out: the lane shades from it to the playhead.
+    pub(crate) pending_in: Option<u32>,
 }
 
 impl Marks {
@@ -91,6 +93,7 @@ impl Marks {
     pub(crate) const NONE: Self = Self {
         cues: [None; 8],
         looped: None,
+        pending_in: None,
     };
 }
 
@@ -102,6 +105,7 @@ pub(crate) struct MarksSlot {
     revision: AtomicU32,
     cues: [AtomicU32; 8],
     looped: [AtomicU32; 2],
+    pending_in: AtomicU32,
 }
 
 impl MarksSlot {
@@ -110,6 +114,7 @@ impl MarksSlot {
             revision: AtomicU32::new(0),
             cues: [const { AtomicU32::new(NO_MARK) }; 8],
             looped: [const { AtomicU32::new(NO_MARK) }; 2],
+            pending_in: AtomicU32::new(NO_MARK),
         }
     }
 
@@ -125,6 +130,8 @@ impl MarksSlot {
         let (start, end) = marks.looped.unwrap_or((NO_MARK, NO_MARK));
         self.looped[0].store(start, Ordering::Relaxed);
         self.looped[1].store(end, Ordering::Relaxed);
+        self.pending_in
+            .store(marks.pending_in.unwrap_or(NO_MARK), Ordering::Relaxed);
         self.revision.fetch_add(1, Ordering::Release);
     }
 
@@ -139,6 +146,7 @@ impl MarksSlot {
             let marks = Marks {
                 cues: core::array::from_fn(|i| mark(&self.cues[i])),
                 looped: mark(&self.looped[0]).zip(mark(&self.looped[1])),
+                pending_in: mark(&self.pending_in),
             };
             core::sync::atomic::fence(Ordering::Acquire);
             if before & 1 == 0 && self.revision.load(Ordering::Relaxed) == before {
