@@ -100,6 +100,8 @@ component DeckInfo inherits Rectangle {
     in property <bool> quantize;
     in property <string> key;
     in property <string> status;
+    // MT tapped: Master Tempo on or off.
+    callback mt-tapped();
     width: 512px;
     height: 40px;
     Text { x: 8px; y: 2px; text: root.elapsed; color: #eef0f2; font-size: 24px; }
@@ -137,6 +139,14 @@ component DeckInfo inherits Rectangle {
             font-size: 12px;
             horizontal-alignment: center;
             vertical-alignment: center;
+        }
+        // A finger is wider than the box: the tap counts a few pixels around it.
+        TouchArea {
+            x: -6px;
+            y: -2px;
+            width: parent.width + 12px;
+            height: parent.height + 10px;
+            clicked => { root.mt-tapped(); }
         }
     }
     // Quantize: loops and cues land on the beat grid.
@@ -644,6 +654,8 @@ export component Overview inherits Window {
     callback hot-cue(int, int, bool, bool);
     // The FX page: what changed (0 effect, 1 beat, 2 channel, 3 depth, 4 FX ON) and to.
     callback fx(int, float);
+    // MT tapped on deck 0 or 1.
+    callback master-tempo(int);
     // Overview, Library and Hot Cues have pages; Settings only marks itself yet. The FX
     // panel opens page 4, which no tab marks.
     in-out property <int> active-tab: 0;
@@ -778,6 +790,7 @@ export component Overview inherits Window {
         quantize: root.quantize-1;
         key: root.key-1;
         status: root.status-1;
+        mt-tapped => { root.master-tempo(0); }
     }
     DeckInfo {
         x: 512px;
@@ -790,6 +803,7 @@ export component Overview inherits Window {
         quantize: root.quantize-2;
         key: root.key-2;
         status: root.status-2;
+        mt-tapped => { root.master-tempo(1); }
     }
     // Rust draws here: the two overviews.
     Rectangle { x: 8px; y: 552px; width: 496px; height: 45px; background: #020406; }

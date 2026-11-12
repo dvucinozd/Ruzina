@@ -60,6 +60,9 @@ mod producer_profile;
 mod deck_mix;
 
 #[cfg(feature = "deck-engine")]
+mod deck_keylock;
+
+#[cfg(feature = "deck-engine")]
 mod deck_engine;
 
 #[cfg(feature = "deck-engine")]

@@ -234,6 +234,8 @@ pub(crate) enum TouchControl {
     HotCue { pad: u8, delete: bool, down: bool },
     /// A Beat FX setting on the FX page; it belongs to no deck.
     Fx(FxTouch),
+    /// MT tapped: Master Tempo on or off.
+    MasterTempo,
 }
 
 /// What the FX page sets: an effect (0 Filter to 3 Delay), a beat (0 for 1/4 to 4 for 4
@@ -290,6 +292,7 @@ impl TouchQueue {
                     };
                     512 | kind << 10 | u32::from(value & 0x7f) << 13
                 }
+                TouchControl::MasterTempo => 1 << 20,
             };
         self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
         self.head.store(head.wrapping_add(1), Ordering::Release);
@@ -304,7 +307,9 @@ impl TouchQueue {
         }
         let word = self.slots[(tail % TOUCH_SLOTS) as usize].load(Ordering::Relaxed);
         self.tail.store(tail.wrapping_add(1), Ordering::Release);
-        let control = if word & 512 != 0 {
+        let control = if word & 1 << 20 != 0 {
+            TouchControl::MasterTempo
+        } else if word & 512 != 0 {
             let value = (word >> 13 & 0x7f) as u8;
             TouchControl::Fx(match word >> 10 & 7 {
                 0 => FxTouch::Effect(value),

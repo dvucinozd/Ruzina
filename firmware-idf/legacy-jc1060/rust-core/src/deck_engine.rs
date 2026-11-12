@@ -809,6 +809,11 @@ impl Engine {
         }
     }
 
+    /// Each deck's Master Tempo, for the mix's keylock.
+    pub(crate) fn master_tempo(&self) -> [bool; 2] {
+        DECKS.map(|deck| self.deck.deck(deck).master_tempo)
+    }
+
     /// Commits loads the producers published; returns each deck's playback
     /// and pitch (with the jog bend) for the next render block.
     pub(crate) fn transport(&mut self) -> ([bool; 2], [i16; 2]) {
@@ -996,6 +1001,7 @@ impl Engine {
                     | u32::from(fx[i].pad.active) << 4
                     | u32::from(self.loop_ms[i].is_some()) << 5
                     | u32::from(reader.replaying()) << 6
+                    | u32::from(self.deck.deck(deck).master_tempo) << 7
             };
             STATUS[i][0].store(self.deck.deck(deck).position_ms, Ordering::Relaxed);
             STATUS[i][1].store(flags, Ordering::Relaxed);

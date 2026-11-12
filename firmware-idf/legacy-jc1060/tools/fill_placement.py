@@ -13,6 +13,7 @@ FILL_PATH = re.compile(
     r'|_ZN20ruzina_audio_runtime6render'
     r'|_ZN20ruzina_audio_runtime2fx'
     r'|_ZN20ruzina_audio_scratch'
+    r'|_ZN28ruzina_legacy_idf_core_probe12deck_keylock'
     r'|_ZN12ruzina_mixer'
     r'|_ZN10ruzina_uac6packet'
     r'|_ZN28ruzina_legacy_idf_core_probe8deck_mix'

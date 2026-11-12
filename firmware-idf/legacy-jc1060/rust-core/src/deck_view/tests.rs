@@ -109,6 +109,8 @@ fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
     while queue.pop().is_some() {}
     assert!(queue.push(1, TouchControl::Load));
     assert_eq!(queue.pop(), Some((1, TouchControl::Load)));
+    assert!(queue.push(0, TouchControl::MasterTempo));
+    assert_eq!(queue.pop(), Some((0, TouchControl::MasterTempo)));
     for fx in [
         FxTouch::Effect(3),
         FxTouch::Beat(4),

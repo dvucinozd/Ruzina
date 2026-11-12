@@ -2020,6 +2020,10 @@ impl DeckProductState {
                 let state = &mut self.decks[deck_index(deck)];
                 state.quantize_enabled = !state.quantize_enabled;
             }
+            DeckExtAction::MasterTempo if action.pressed => {
+                let state = &mut self.decks[deck_index(deck)];
+                state.master_tempo = !state.master_tempo;
+            }
             DeckExtAction::SyncOff if action.pressed => {
                 self.decks[deck_index(deck)].sync_enabled = false;
             }
@@ -4690,6 +4694,18 @@ mod tests {
         state.set_decoded_duration_ms(DeckId::One, Some(7_000));
         assert!(!state.learn_decoded_duration_ms(DeckId::One, next, 5_000));
         assert_eq!(state.decoded_duration_ms(DeckId::One), Some(7_000));
+    }
+
+    #[test]
+    fn master_tempo_toggles_per_deck_on_press_only() {
+        let mut state = DeckProductState::new();
+        assert!(!state.deck(DeckId::One).master_tempo);
+        state.handle_control(ext(DeckId::One, DeckExtAction::MasterTempo, true));
+        state.handle_control(ext(DeckId::One, DeckExtAction::MasterTempo, false));
+        assert!(state.deck(DeckId::One).master_tempo);
+        assert!(!state.deck(DeckId::Two).master_tempo);
+        state.handle_control(ext(DeckId::One, DeckExtAction::MasterTempo, true));
+        assert!(!state.deck(DeckId::One).master_tempo);
     }
 
     #[test]
