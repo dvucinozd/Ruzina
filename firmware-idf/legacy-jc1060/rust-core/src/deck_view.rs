@@ -229,6 +229,9 @@ pub(crate) enum TouchControl {
     Cue(bool),
     /// LOAD on the Library page: the selected track onto this deck.
     Load,
+    /// A pad on the Hot Cues page went down (`true`) or up. With `delete` it clears its
+    /// cue, as Shift and the pad do.
+    HotCue { pad: u8, delete: bool, down: bool },
 }
 
 const TOUCH_SLOTS: u32 = 16;
@@ -261,6 +264,9 @@ impl TouchQueue {
                 TouchControl::Play => 0,
                 TouchControl::Cue(down) => 2 | u32::from(down) << 2,
                 TouchControl::Load => 8,
+                TouchControl::HotCue { pad, delete, down } => {
+                    16 | u32::from(down) << 2 | u32::from(pad & 7) << 5 | u32::from(delete) << 8
+                }
             };
         self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
         self.head.store(head.wrapping_add(1), Ordering::Release);
@@ -275,7 +281,13 @@ impl TouchQueue {
         }
         let word = self.slots[(tail % TOUCH_SLOTS) as usize].load(Ordering::Relaxed);
         self.tail.store(tail.wrapping_add(1), Ordering::Release);
-        let control = if word & 8 != 0 {
+        let control = if word & 16 != 0 {
+            TouchControl::HotCue {
+                pad: (word >> 5 & 7) as u8,
+                delete: word & 256 != 0,
+                down: word & 4 != 0,
+            }
+        } else if word & 8 != 0 {
             TouchControl::Load
         } else if word & 2 == 0 {
             TouchControl::Play

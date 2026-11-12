@@ -169,6 +169,118 @@ component DeckInfo inherits Rectangle {
     }
 }
 
+// One Hot Cue pad as the Hot Cues page shows it.
+export struct CueTile {
+    letter: string,
+    time: string,
+    set: bool,
+    tint: color,
+}
+
+// One deck's eight Hot Cues, laid out as its pads: A to D above, E to H below. A tap is
+// the pad pressed; with DELETE lit it clears the cue, as Shift and the pad do.
+component CueDeck inherits Rectangle {
+    in property <int> number;
+    in property <color> accent;
+    in property <string> title;
+    in property <bool> loaded;
+    in property <[CueTile]> tiles;
+    // Pad 0 to 7 down or up, and whether it deletes.
+    callback pad(int, bool, bool);
+    property <bool> deleting: false;
+    width: 512px;
+    height: 430px;
+    Rectangle {
+        x: 10px;
+        y: 6px;
+        width: 58px;
+        height: 34px;
+        border-radius: 3px;
+        background: root.accent;
+        Text {
+            text: "D" + root.number;
+            color: #101418;
+            font-size: 18px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    Text {
+        x: 78px;
+        y: 6px;
+        width: 300px;
+        height: 34px;
+        text: root.loaded ? root.title : "NO TRACK";
+        color: root.loaded ? #eef0f2 : #9a9ea4;
+        font-size: 15px;
+        overflow: elide;
+        vertical-alignment: center;
+    }
+    Rectangle {
+        x: 392px;
+        y: 6px;
+        width: 110px;
+        height: 34px;
+        border-radius: 3px;
+        border-width: 1px;
+        border-color: #e8574c;
+        background: root.deleting ? #e8574c : #181a1d;
+        Text {
+            text: "DELETE";
+            color: root.deleting ? #101418 : #e8574c;
+            font-size: 14px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        TouchArea {
+            enabled: root.loaded;
+            clicked => { root.deleting = !root.deleting; }
+        }
+    }
+    for tile[i] in root.tiles: Rectangle {
+        x: 10px + Math.mod(i, 4) * 124px;
+        y: 52px + Math.floor(i / 4) * 188px;
+        width: 116px;
+        height: 180px;
+        border-radius: 4px;
+        border-width: root.deleting && tile.set ? 4px : 2px;
+        border-color: root.deleting && tile.set ? #e8574c : tile.tint;
+        background: tile.set ? tile.tint : #14181c;
+        opacity: !root.loaded ? 0.4 : touch.pressed ? 0.6 : 1.0;
+        Text {
+            y: 24px;
+            width: parent.width;
+            text: tile.letter;
+            color: tile.set ? #101418 : tile.tint;
+            font-size: 44px;
+            horizontal-alignment: center;
+        }
+        Text {
+            y: 120px;
+            width: parent.width;
+            text: tile.time;
+            color: tile.set ? #101418 : #9a9ea4;
+            font-size: tile.set ? 20px : 13px;
+            horizontal-alignment: center;
+        }
+        touch := TouchArea {
+            enabled: root.loaded;
+            // DELETE goes out with the press that deletes: by the release the cue may
+            // already be gone from the tile.
+            changed pressed => {
+                if (self.pressed) {
+                    root.pad(i, true, root.deleting);
+                    if (root.deleting && tile.set) {
+                        root.deleting = false;
+                    }
+                } else {
+                    root.pad(i, false, false);
+                }
+            }
+        }
+    }
+}
+
 // One row of the Library page.
 export struct LibraryLine {
     number: string,
@@ -373,6 +485,10 @@ export component Overview inherits Window {
 
     in property <[LibraryLine]> library-rows;
     in property <string> library-count;
+    in property <[CueTile]> cues-1;
+    in property <[CueTile]> cues-2;
+    in property <bool> loaded-1;
+    in property <bool> loaded-2;
 
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
@@ -380,7 +496,9 @@ export component Overview inherits Window {
     // The Library: a row of the page tapped, LOAD tapped for deck 0 or 1.
     callback pick(int);
     callback load(int);
-    // Overview and Library have pages yet; the other tabs only mark themselves.
+    // The Hot Cues page: deck 0 or 1, its pad 0 to 7 down or up, and whether it deletes.
+    callback hot-cue(int, int, bool, bool);
+    // Overview, Library and Hot Cues have pages; Settings only marks itself yet.
     in-out property <int> active-tab: 0;
 
     for name[index] in ["OVERVIEW", "LIBRARY", "HOT CUES", "SETTINGS"]: Tab {
@@ -431,6 +549,35 @@ export component Overview inherits Window {
         count: root.library-count;
         pick(row) => { root.pick(row); }
         load(deck) => { root.load(deck); }
+    }
+
+    if root.active-tab == 2: Rectangle {
+        x: 0px;
+        y: 46px;
+        width: 1024px;
+        height: 430px;
+        background: #0d0f11;
+        // Takes the taps that miss the pads and buttons, away from the page below.
+        TouchArea { }
+        CueDeck {
+            x: 0px;
+            number: 1;
+            accent: #38d6f0;
+            title: root.title-1;
+            loaded: root.loaded-1;
+            tiles: root.cues-1;
+            pad(pad, down, delete) => { root.hot-cue(0, pad, down, delete); }
+        }
+        Rectangle { x: 511px; y: 8px; width: 2px; height: 414px; background: #2f6f8f; }
+        CueDeck {
+            x: 512px;
+            number: 2;
+            accent: #6ee1a8;
+            title: root.title-2;
+            loaded: root.loaded-2;
+            tiles: root.cues-2;
+            pad(pad, down, delete) => { root.hot-cue(1, pad, down, delete); }
+        }
     }
 
     // Track titles, across the screen: deck 1 from the left, deck 2 to the right.

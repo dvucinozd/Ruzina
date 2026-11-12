@@ -80,7 +80,13 @@
   - a tap selects a row, and LOAD on the controller or the screen loads it.
 
   Owner: "Radi".
-- **On the board:** s78 (app `9d776987…`), the Library image. Earlier: a Slint
+- **Hot Cues page (2026-11-12):** [the Hot Cues page on the deck screen](reviews/2026-11-12-hot-cues-page.md):
+  - each deck's eight pads, A to H in the pads' layout and colours, with the cue times;
+  - a tap sets or recalls a cue, as the pad does;
+  - DELETE then a tap clears a cue.
+
+  Owner: "Radi".
+- **On the board:** s79 (app `8b22feab…`), the Hot Cues image. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

@@ -109,6 +109,11 @@ fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
     while queue.pop().is_some() {}
     assert!(queue.push(1, TouchControl::Load));
     assert_eq!(queue.pop(), Some((1, TouchControl::Load)));
+    for (pad, delete, down) in [(0, false, true), (7, true, false), (5, true, true)] {
+        let control = TouchControl::HotCue { pad, delete, down };
+        assert!(queue.push(0, control));
+        assert_eq!(queue.pop(), Some((0, control)));
+    }
 }
 
 #[test]
