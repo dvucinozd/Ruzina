@@ -265,10 +265,16 @@ component CueDeck inherits Rectangle {
         }
         touch := TouchArea {
             enabled: root.loaded;
+            // DELETE goes out with the press that deletes: by the release the cue may
+            // already be gone from the tile.
             changed pressed => {
-                root.pad(i, self.pressed, root.deleting);
-                if (!self.pressed && root.deleting && tile.set) {
-                    root.deleting = false;
+                if (self.pressed) {
+                    root.pad(i, true, root.deleting);
+                    if (root.deleting && tile.set) {
+                        root.deleting = false;
+                    }
+                } else {
+                    root.pad(i, false, false);
                 }
             }
         }
