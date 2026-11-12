@@ -322,7 +322,10 @@ def main():
             raise ValueError('Deck audio must link the Rust UAC packer')
         if args.variant == 'deck-play' and any(x not in symbols for x in ('ruzina_legacy_play_load', 'ruzina_legacy_play_stats')):
             raise ValueError('Deck playback must link the Rust deck 1 player')
-        if args.variant in ('deck-mix', 'deck-engine') and any(x not in symbols for x in ('ruzina_legacy_play_load', 'ruzina_legacy_mix_stats')):
+        # The deck screen's Library loads tracks in Rust, so the C load screen's entry
+        # point is left out of that link.
+        mix_symbols = ('ruzina_legacy_mix_stats',) if args.slint_ui else ('ruzina_legacy_play_load', 'ruzina_legacy_mix_stats')
+        if args.variant in ('deck-mix', 'deck-engine') and any(x not in symbols for x in mix_symbols):
             raise ValueError('Deck mix must link the Rust deck players and render graph owner')
         if args.fill_iram:
             from fill_placement import verify as verify_fill

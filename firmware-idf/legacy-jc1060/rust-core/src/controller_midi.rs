@@ -290,6 +290,10 @@ fn refresh_mix() {
                     (SemanticControl::Play, false),
                 ],
                 TouchControl::Cue(down) => &[(SemanticControl::Cue, down)],
+                TouchControl::Load => &[
+                    (SemanticControl::Load, true),
+                    (SemanticControl::Load, false),
+                ],
             };
             for &(control, down) in presses {
                 mix.control(&ControlEvent {
@@ -392,6 +396,7 @@ pub(crate) mod ui {
 }
 
 /// The library action a semantic event asks for: `(action, deck, value)`.
+#[cfg_attr(feature = "slint-ui", allow(dead_code))]
 pub(crate) fn ui_action(event: &ControlEvent) -> Option<(u32, u32, i32)> {
     let deck = match event.deck {
         None => 0,
@@ -413,6 +418,7 @@ pub(crate) fn ui_action(event: &ControlEvent) -> Option<(u32, u32, i32)> {
 #[cfg(feature = "idf-controller-midi")]
 unsafe extern "C" {
     /// One library UI action (browse, choose, load); scalars only.
+    #[cfg(not(feature = "slint-ui"))]
     fn ruzina_bridge_midi_ui(action: u32, deck: u32, value: i32);
     /// One semantic event; `name` is lent for the call only.
     fn ruzina_bridge_midi_event(
@@ -587,6 +593,9 @@ fn drain(state: &mut State) -> i32 {
             crate::deck_mix::with(|mix| mix.control(&event));
             #[cfg(feature = "deck-engine")]
             state.sync_leds();
+            // The deck screen's Library takes browse and load in Rust; the old load
+            // screen keeps its own selection in C.
+            #[cfg(not(feature = "slint-ui"))]
             if let Some((action, deck, value)) = ui_action(&event) {
                 {
                     // SAFETY: scalars only.

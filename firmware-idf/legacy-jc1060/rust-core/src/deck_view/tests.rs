@@ -106,6 +106,34 @@ fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
     assert!(!queue.push(1, TouchControl::Play), "full");
     assert_eq!(queue.pop(), Some((0, TouchControl::Play)));
     assert!(queue.push(1, TouchControl::Cue(true)));
+    while queue.pop().is_some() {}
+    assert!(queue.push(1, TouchControl::Load));
+    assert_eq!(queue.pop(), Some((1, TouchControl::Load)));
+}
+
+#[test]
+fn the_library_selection_stays_within_the_list() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let row = |title: &str| LibraryRow {
+        title: title.into(),
+        ..LibraryRow::default()
+    };
+    publish_library(std::vec![row("a"), row("b"), row("c")]);
+    assert_eq!(take_library().map(|library| library.rows.len()), Some(3));
+    assert!(take_library().is_none());
+    select(0);
+    browse(1);
+    assert_eq!(selected(), Some(1));
+    browse(SHIFT_BROWSE_ROWS);
+    assert_eq!(selected(), Some(2), "stops at the last");
+    browse(-SHIFT_BROWSE_ROWS);
+    assert_eq!(selected(), Some(0), "stops at the first");
+    select(9);
+    assert_eq!(selected(), Some(2));
+    publish_library(std::vec![row("a")]);
+    assert_eq!(selected(), Some(0), "a shorter list keeps it inside");
+    publish_library(std::vec::Vec::new());
+    assert_eq!(selected(), None);
 }
 
 #[test]

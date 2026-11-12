@@ -1999,3 +1999,52 @@ fn the_screen_gets_hot_cues_and_the_loop_and_shift_browse_zooms_faster() {
     assert_eq!(crate::deck_view::window_ms(12_000), 2_000);
     crate::deck_view::zoom_by(3);
 }
+
+#[test]
+fn on_the_library_page_browse_moves_the_selection_and_load_loads_it() {
+    use crate::deck_view::{LIBRARY_OPEN, LibraryRow, publish_library, select, selected};
+    use core::sync::atomic::Ordering;
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = Mix::new();
+    let browse = |mix: &mut Mix, control, delta| {
+        mix.control(&ControlEvent {
+            deck: None,
+            control,
+            value: ControlValue::Relative(delta),
+        });
+    };
+    publish_library(std::vec![LibraryRow::default(); 40]);
+    select(3);
+    let window = crate::deck_view::window_ms(12_000);
+    LIBRARY_OPEN.store(true, Ordering::Relaxed);
+    browse(&mut mix, SemanticControl::BrowseDelta, 2);
+    assert_eq!(selected(), Some(5));
+    browse(&mut mix, SemanticControl::ShiftBrowseDelta, 1);
+    assert_eq!(selected(), Some(15));
+    assert_eq!(crate::deck_view::window_ms(12_000), window, "no zoom");
+    LIBRARY_OPEN.store(false, Ordering::Relaxed);
+    browse(&mut mix, SemanticControl::BrowseDelta, 1);
+    assert_eq!(selected(), Some(15), "the Overview zooms instead");
+    browse(&mut mix, SemanticControl::BrowseDelta, -1);
+    assert_eq!(crate::deck_view::window_ms(12_000), window);
+    // LOAD asks for the selected track on its deck, from any page.
+    use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+    let ConnectResult::Accepted(lease) =
+        MediaSession::new().on_connect(MediaSourceId::new(7).unwrap())
+    else {
+        panic!()
+    };
+    crate::media_signal::activate(lease);
+    mix.engine().lease = Some(lease);
+    LOAD_REQUESTS[1].take();
+    mix.control(&ControlEvent {
+        deck: Some(DeckId::Two),
+        control: SemanticControl::Load,
+        value: ControlValue::Pressed(true),
+    });
+    let request = LOAD_REQUESTS[1].take().expect("a load");
+    assert_eq!(request.index, 15);
+    GATES[1].finish(request.permit);
+    publish_library(std::vec::Vec::new());
+    crate::deck_view::take_library();
+}
