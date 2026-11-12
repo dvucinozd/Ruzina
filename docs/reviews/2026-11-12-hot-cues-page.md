@@ -42,7 +42,10 @@ mode.
   The legacy feature sets and target clippy (including `idf-slint-ui` and the profile
   build) pass.
 - **Device:** s79 (app `8b22feab…`), owner verdict "Radi".
-  - Underruns 0/0, `packet_errors=0`, no panics in the capture.
+  - The 15-minute capture: underruns 0/0, no panics, longest fill 4.4 ms.
+  - One lost USB packet (`packet_errors=1`), the open lost-packet issue; the sound did
+    not drop out.
+  - DELETE's release-time fix (Codex review) came after s79 and is not on the board yet.
 
 ## Test plan
 
