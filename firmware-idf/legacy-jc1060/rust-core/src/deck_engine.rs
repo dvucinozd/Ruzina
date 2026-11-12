@@ -259,13 +259,16 @@ impl Engine {
                 DeckClaim::Free => {}
             }
         }
-        // The browse knob zooms the deck screen's waveform, as the donor's overview does.
-        if let (
-            ruzina_controller_core::SemanticControl::BrowseDelta,
-            ruzina_controller_core::ControlValue::Relative(delta),
-        ) = (event.control, event.value)
-        {
-            crate::deck_view::zoom_by(i32::from(delta));
+        // The browse knob zooms the deck screen's waveform, as the donor's overview does;
+        // with Shift, several steps a detent.
+        match (event.control, event.value) {
+            (SemanticControl::BrowseDelta, ControlValue::Relative(delta)) => {
+                crate::deck_view::zoom_by(i32::from(delta));
+            }
+            (SemanticControl::ShiftBrowseDelta, ControlValue::Relative(delta)) => {
+                crate::deck_view::zoom_by(i32::from(delta) * crate::deck_view::SHIFT_ZOOM_STEPS);
+            }
+            _ => {}
         }
         // Pads as pressed: the 4 BEAT button's Beat Loop pad has no release.
         if let (Some(deck), ControlValue::PadAction(pad)) = (event.deck, event.value) {
@@ -402,6 +405,28 @@ impl Engine {
             }
             None => (i as u32, PHASE_REFUSED, 0),
         });
+    }
+
+    /// Hands the screen each deck's Hot Cues and running loop when they change. USB
+    /// client task, outside the audio fill.
+    pub(crate) fn publish_marks(&self) {
+        for (i, deck) in DECKS.into_iter().enumerate() {
+            let bank = self.deck.hot_cues(deck).filter(|_| self.loaded[i]);
+            let marks = crate::deck_view::Marks {
+                cues: core::array::from_fn(|pad| {
+                    bank.and_then(|bank| bank.slot(pad as u8))
+                        .map(|cue| cue.pos_ms)
+                }),
+                looped: self.loop_ms[i],
+                pending_in: self
+                    .deck
+                    .deck(deck)
+                    .loop_state
+                    .pending_in_ms
+                    .filter(|_| self.loaded[i] && self.loop_ms[i].is_none()),
+            };
+            crate::deck_view::MARKS[i].store(marks);
+        }
     }
 
     /// The latest beat sync event for the log, once: deck, event, value.
@@ -964,7 +989,9 @@ impl Engine {
 
     /// Deck `i` as the screen shows it.
     fn publish_view(&self, i: usize) {
-        use crate::deck_view::{DeckSnapshot, LIVE, LOADED, LOOPING, MASTER_TEMPO, PLAYING, SYNC};
+        use crate::deck_view::{
+            DeckSnapshot, LIVE, LOADED, LOOPING, MASTER_TEMPO, PLAYING, QUANTIZE, SYNC,
+        };
         let state = self.deck.deck(DECKS[i]);
         let flag = |on: bool, flag: u32| if on { flag } else { 0 };
         LIVE[i].store(DeckSnapshot {
@@ -973,7 +1000,8 @@ impl Engine {
                 | flag(self.playing[i], PLAYING)
                 | flag(state.sync_enabled, SYNC)
                 | flag(state.master_tempo, MASTER_TEMPO)
-                | flag(self.loop_ms[i].is_some(), LOOPING),
+                | flag(self.loop_ms[i].is_some(), LOOPING)
+                | flag(state.quantize_enabled, QUANTIZE),
             pitch_centipercent: i32::from(state.pitch_centipercent),
             bpm_x100: state.base_bpm_x100,
         });

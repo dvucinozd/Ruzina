@@ -22,6 +22,7 @@ pub(crate) const PLAYING: u32 = 1 << 1;
 pub(crate) const SYNC: u32 = 1 << 2;
 pub(crate) const MASTER_TEMPO: u32 = 1 << 3;
 pub(crate) const LOOPING: u32 = 1 << 4;
+pub(crate) const QUANTIZE: u32 = 1 << 5;
 
 /// One deck at one moment.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -75,6 +76,87 @@ impl Live {
 }
 
 pub(crate) static LIVE: [Live; 2] = [Live::new(), Live::new()];
+
+/// What the lane marks on a deck's track: the Hot Cues by pad, and the running loop.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct Marks {
+    /// Each pad's cue in milliseconds; `None` for an empty pad.
+    pub(crate) cues: [Option<u32>; 8],
+    /// The running loop, `[start_ms, end_ms)`.
+    pub(crate) looped: Option<(u32, u32)>,
+    /// Loop In while the loop waits for its Out: the lane shades from it to the playhead.
+    pub(crate) pending_in: Option<u32>,
+}
+
+impl Marks {
+    #[cfg(test)]
+    pub(crate) const NONE: Self = Self {
+        cues: [None; 8],
+        looped: None,
+        pending_in: None,
+    };
+}
+
+const NO_MARK: u32 = u32::MAX;
+
+/// One deck's marks, written by the USB task when they change and read by the UI task.
+/// The revision is odd while a write runs; a read that sees it change tries again.
+pub(crate) struct MarksSlot {
+    revision: AtomicU32,
+    cues: [AtomicU32; 8],
+    looped: [AtomicU32; 2],
+    pending_in: AtomicU32,
+}
+
+impl MarksSlot {
+    const fn new() -> Self {
+        Self {
+            revision: AtomicU32::new(0),
+            cues: [const { AtomicU32::new(NO_MARK) }; 8],
+            looped: [const { AtomicU32::new(NO_MARK) }; 2],
+            pending_in: AtomicU32::new(NO_MARK),
+        }
+    }
+
+    /// Publishes `marks` when they differ from what the slot holds. One writer.
+    pub(crate) fn store(&self, marks: Marks) {
+        if self.load().1 == marks {
+            return;
+        }
+        self.revision.fetch_add(1, Ordering::AcqRel);
+        for (slot, cue) in self.cues.iter().zip(marks.cues) {
+            slot.store(cue.unwrap_or(NO_MARK), Ordering::Relaxed);
+        }
+        let (start, end) = marks.looped.unwrap_or((NO_MARK, NO_MARK));
+        self.looped[0].store(start, Ordering::Relaxed);
+        self.looped[1].store(end, Ordering::Relaxed);
+        self.pending_in
+            .store(marks.pending_in.unwrap_or(NO_MARK), Ordering::Relaxed);
+        self.revision.fetch_add(1, Ordering::Release);
+    }
+
+    /// The marks and their revision, which changes with each change of the marks.
+    pub(crate) fn load(&self) -> (u32, Marks) {
+        loop {
+            let before = self.revision.load(Ordering::Acquire);
+            let mark = |slot: &AtomicU32| {
+                let value = slot.load(Ordering::Relaxed);
+                (value != NO_MARK).then_some(value)
+            };
+            let marks = Marks {
+                cues: core::array::from_fn(|i| mark(&self.cues[i])),
+                looped: mark(&self.looped[0]).zip(mark(&self.looped[1])),
+                pending_in: mark(&self.pending_in),
+            };
+            core::sync::atomic::fence(Ordering::Acquire);
+            if before & 1 == 0 && self.revision.load(Ordering::Relaxed) == before {
+                return (before, marks);
+            }
+        }
+    }
+}
+
+pub(crate) static MARKS: [MarksSlot; 2] = [MarksSlot::new(), MarksSlot::new()];
 
 /// The Beat FX panel: effect, beat, target, depth and on, packed in one word so the UI
 /// never sees half a change.
@@ -249,6 +331,9 @@ pub(crate) fn meter_segments(peak: u32) -> i32 {
 /// end. The browse knob moves it.
 const ZOOM_BEATS: [u32; 7] = [2, 4, 8, 12, 16, 24, 32];
 static ZOOM_STEP: AtomicU32 = AtomicU32::new(4);
+
+/// Steps one Shift + browse detent moves the zoom.
+pub(crate) const SHIFT_ZOOM_STEPS: i32 = 3;
 
 /// Moves the zoom `delta` steps; clockwise shows more beats.
 pub(crate) fn zoom_by(delta: i32) {

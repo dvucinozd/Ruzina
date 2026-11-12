@@ -55,8 +55,27 @@
   longest fill 4505 µs, 0/0 underruns, and the owner saw it smooth. Since 2026-11-11 it
   shows the live decks, with the donor's waveform and browse-knob zoom (s56, owner: "Radi,
   sve ok").
-- **On the board:** a Slint diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition,
-  journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
+- **Deck screen, continued (2026-11-11/12):**
+  - channel meters on the screen and on the FLX4 (#100, #101);
+  - touch for PLAY, CUE and the tabs (#102);
+  - [beat sync](reviews/2026-11-11-beat-sync.md) with Beat Loop and Beat Jump pad LEDs (#103);
+  - [quantize on the beat grid](reviews/2026-11-12-quantize.md) (#104).
+
+  All are owner-confirmed on the board ("Radi"). A 15-minute fill profile (s75) showed:
+  - up to 6.0 ms during a scratch;
+  - 4.2 ms otherwise, with one exception of 5.2 ms right after a SYNC jump back;
+  - underruns 0/0.
+
+  The owner accepted both exceptions until the USB stick media path.
+- **Lane marks (2026-11-12):** [Hot Cues, the loop and Quantize on the deck screen](reviews/2026-11-12-lane-marks.md):
+  - Hot Cue lines and flags;
+  - the loop's ends, with shading that grows from Loop In;
+  - a Q label for Quantize;
+  - Shift + browse zooming three steps.
+
+  Owner: "Radi".
+- **On the board:** s77 (app `fc0aac16…`), the lane marks image. Earlier: a Slint
+  diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.

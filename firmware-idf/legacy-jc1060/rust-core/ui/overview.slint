@@ -97,6 +97,7 @@ component DeckInfo inherits Rectangle {
     in property <string> bpm;
     in property <string> pitch;
     in property <bool> master-tempo;
+    in property <bool> quantize;
     in property <string> key;
     in property <string> status;
     width: 512px;
@@ -124,7 +125,7 @@ component DeckInfo inherits Rectangle {
     Rectangle {
         x: 394px;
         y: 2px;
-        width: 36px;
+        width: 28px;
         height: 28px;
         border-width: 1px;
         border-radius: 4px;
@@ -138,8 +139,34 @@ component DeckInfo inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    Text { x: 438px; y: 8px; text: root.key; color: #eb870f; font-size: 14px; }
-    Text { x: 470px; y: 8px; text: root.status; color: #9a9ea4; font-size: 12px; }
+    // Quantize: loops and cues land on the beat grid.
+    Rectangle {
+        x: 426px;
+        y: 2px;
+        width: 22px;
+        height: 28px;
+        border-width: 1px;
+        border-radius: 4px;
+        border-color: root.quantize ? #ff8c00 : #4a4e54;
+        background: root.quantize ? #2a1700 : #181a1d;
+        Text {
+            text: "Q";
+            color: root.quantize ? #ffc266 : #9a9ea4;
+            font-size: 12px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+    Text { x: 452px; y: 8px; text: root.key; color: #eb870f; font-size: 14px; }
+    Text {
+        x: 476px;
+        y: 9px;
+        width: 34px;
+        text: root.status;
+        color: #9a9ea4;
+        font-size: 11px;
+        horizontal-alignment: right;
+    }
 }
 
 component FxPanel inherits Rectangle {
@@ -232,6 +259,8 @@ export component Overview inherits Window {
     in property <string> status-2;
     in property <bool> master-tempo-1;
     in property <bool> master-tempo-2;
+    in property <bool> quantize-1;
+    in property <bool> quantize-2;
     in property <bool> playing-1;
     in property <bool> playing-2;
     in property <string> fx-effect;
@@ -322,6 +351,7 @@ export component Overview inherits Window {
         bpm: root.bpm-1;
         pitch: root.pitch-1;
         master-tempo: root.master-tempo-1;
+        quantize: root.quantize-1;
         key: root.key-1;
         status: root.status-1;
     }
@@ -333,6 +363,7 @@ export component Overview inherits Window {
         bpm: root.bpm-2;
         pitch: root.pitch-2;
         master-tempo: root.master-tempo-2;
+        quantize: root.quantize-2;
         key: root.key-2;
         status: root.status-2;
     }

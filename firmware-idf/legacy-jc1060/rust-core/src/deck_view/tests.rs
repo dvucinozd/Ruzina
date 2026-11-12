@@ -42,7 +42,8 @@ fn the_fx_word_round_trips() {
 
 #[test]
 fn the_browse_knob_steps_the_zoom_through_the_donors_beats() {
-    // The only test that moves the zoom.
+    // The zoom is shared: the engine's Shift + browse test moves it too.
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     assert_eq!(window_ms(12_000), 8_000, "16 beats at 120 BPM by default");
     zoom_by(-1);
     assert_eq!(window_ms(12_000), 6_000);
@@ -119,4 +120,24 @@ fn the_mailbox_hands_over_the_latest_track_once() {
     publish_track(1, Box::new(second));
     assert_eq!(take_track(1).map(|track| track.index), Some(2));
     assert!(take_track(1).is_none());
+}
+
+#[test]
+fn marks_change_their_revision_only_when_they_change() {
+    let slot = MarksSlot::new();
+    let (first, marks) = slot.load();
+    assert_eq!(marks, Marks::NONE);
+    let mut cued = Marks::NONE;
+    cued.cues[2] = Some(1_500);
+    cued.looped = Some((2_000, 4_000));
+    cued.pending_in = Some(7_000);
+    slot.store(cued);
+    let (second, marks) = slot.load();
+    assert_eq!(marks, cued);
+    assert_ne!(second, first);
+    assert_eq!(second % 2, 0, "even once written");
+    slot.store(cued);
+    assert_eq!(slot.load().0, second, "the same marks keep the revision");
+    slot.store(Marks::NONE);
+    assert_eq!(slot.load().1, Marks::NONE);
 }
