@@ -2001,6 +2001,55 @@ fn the_screen_gets_hot_cues_and_the_loop_and_shift_browse_zooms_faster() {
 }
 
 #[test]
+fn the_hot_cues_page_sets_and_deletes_cues_as_the_pads_do() {
+    use crate::controller_midi::touch_events;
+    use crate::deck_view::TouchControl;
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    empty_ring(1);
+    load_with_grid(&mut mix, DeckId::One, 36);
+    run_fed(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run_fed(&mut mix, 330);
+    // A tap is the pad going down and then up.
+    let tap = |mix: &mut Mix, pad, delete| {
+        for down in [true, false] {
+            let control = TouchControl::HotCue { pad, delete, down };
+            for event in touch_events(0, control).into_iter().flatten() {
+                mix.control(&event);
+            }
+        }
+    };
+    tap(&mut mix, 5, false);
+    mix.engine().publish_marks();
+    assert_eq!(
+        crate::deck_view::MARKS[0].load().1.cues[5],
+        Some(500),
+        "set on the beat, with Quantize"
+    );
+    tap(&mut mix, 2, true);
+    mix.engine().publish_marks();
+    assert_eq!(
+        crate::deck_view::MARKS[0]
+            .load()
+            .1
+            .cues
+            .iter()
+            .flatten()
+            .count(),
+        1,
+        "deleting an empty pad changes nothing"
+    );
+    tap(&mut mix, 5, true);
+    mix.engine().publish_marks();
+    assert_eq!(crate::deck_view::MARKS[0].load().1.cues, [None; 8]);
+    SEEK_REQUESTS[0].take();
+}
+
+#[test]
 fn on_the_library_page_browse_moves_the_selection_and_load_loads_it() {
     use crate::deck_view::{LIBRARY_OPEN, LibraryRow, publish_library, select, selected};
     use core::sync::atomic::Ordering;

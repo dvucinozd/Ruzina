@@ -76,8 +76,9 @@ const METERS: [Area; 2] = [
     },
 ];
 const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1]];
-/// The Library page covers the lanes and meters; Rust then draws only the overviews.
-const LIBRARY_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
+/// The Library and Hot Cues pages cover the lanes and meters; Rust then draws only the
+/// overviews.
+const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
 /// The Library page's rows.
 const LIBRARY_ROWS: u32 = 12;
 const PANEL: u16 = rgb(0x0d, 0x0f, 0x11);
@@ -112,16 +113,26 @@ const BAR_CAP_REACH: i64 = 6;
 const BAR_CAP_HEIGHT: usize = 8;
 /// Hot Cues A to H: a line through the lane and a flag at the edge away from the bar
 /// triangles.
-const CUE_COLORS: [u16; 8] = [
-    rgb(0x28, 0xe2, 0x14),
-    rgb(0x30, 0xd2, 0xe8),
-    rgb(0x30, 0x5a, 0xff),
-    rgb(0xaa, 0x72, 0xff),
-    rgb(0xff, 0x12, 0x7b),
-    rgb(0xff, 0x8c, 0x00),
-    rgb(0xe0, 0xff, 0x00),
-    rgb(0x10, 0xb1, 0x76),
+const CUE_RGB: [[u8; 3]; 8] = [
+    [0x28, 0xe2, 0x14],
+    [0x30, 0xd2, 0xe8],
+    [0x30, 0x5a, 0xff],
+    [0xaa, 0x72, 0xff],
+    [0xff, 0x12, 0x7b],
+    [0xff, 0x8c, 0x00],
+    [0xe0, 0xff, 0x00],
+    [0x10, 0xb1, 0x76],
 ];
+const CUE_COLORS: [u16; 8] = {
+    let mut colors = [0; 8];
+    let mut pad = 0;
+    while pad < 8 {
+        let [red, green, blue] = CUE_RGB[pad];
+        colors[pad] = rgb(red, green, blue);
+        pad += 1;
+    }
+    colors
+};
 const CUE_FLAG_WIDTH: i64 = 7;
 const CUE_FLAG_HEIGHT: usize = 7;
 /// The running loop: its ends as lines, and its span shaded behind the waveform.
@@ -828,6 +839,40 @@ fn library_first(first: u32, selected: u32, len: u32) -> u32 {
     first.min(len.saturating_sub(LIBRARY_ROWS))
 }
 
+/// The Hot Cues page as shown: each deck's cues by pad, and whether it has a track.
+type CueState = [([Option<u32>; 8], bool); 2];
+
+/// Shows each deck's eight pads: the cue's time, or how to set one.
+fn show_cues(ui: &Overview, state: CueState) {
+    for (deck, (cues, loaded)) in state.into_iter().enumerate() {
+        let tiles: alloc::vec::Vec<CueTile> = (0..8)
+            .map(|pad| {
+                let [red, green, blue] = CUE_RGB[pad];
+                CueTile {
+                    letter: alloc::format!("{}", char::from(b'A' + pad as u8)).into(),
+                    time: match cues[pad] {
+                        Some(ms) => {
+                            alloc::format!("{}.{}", deck_view::clock(ms), ms / 100 % 10).into()
+                        }
+                        None if loaded => "TAP TO SET".into(),
+                        None => "".into(),
+                    },
+                    set: cues[pad].is_some(),
+                    tint: slint::Color::from_rgb_u8(red, green, blue),
+                }
+            })
+            .collect();
+        let tiles = slint::ModelRc::new(slint::VecModel::from(tiles));
+        if deck == 0 {
+            ui.set_cues_1(tiles);
+            ui.set_loaded_1(loaded);
+        } else {
+            ui.set_cues_2(tiles);
+            ui.set_loaded_2(loaded);
+        }
+    }
+}
+
 fn show_fx(ui: &Overview, fx: FxSnapshot) {
     ui.set_fx_effect(fx.effect_name().into());
     ui.set_fx_beat(fx.beat_name().into());
@@ -871,12 +916,18 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     ui.on_load(|deck| {
         deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Load);
     });
+    ui.on_hot_cue(|deck, pad, down, delete| {
+        let pad = (pad & 7) as u8;
+        let control = deck_view::TouchControl::HotCue { pad, delete, down };
+        deck_view::TOUCH.push(deck as usize & 1, control);
+    });
     let mut library = Box::new(Library {
         rows: alloc::vec::Vec::new(),
     });
     let mut library_version = 0u32;
     let mut shown_library: Option<LibraryState> = None;
-    let mut library_was_open = false;
+    let mut shown_cues: Option<CueState> = None;
+    let mut was_covered = false;
     let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over both frame buffers.
     let mut buffers = unsafe {
@@ -934,14 +985,27 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             *meter = deck_view::meter_segments(deck_view::PEAKS.take(deck)).max(*meter - 1);
         }
         // The Library page: the browse knob's target, and the list around the selection.
-        let library_open = ui.get_active_tab() == 1;
+        let tab = ui.get_active_tab();
+        let library_open = tab == 1;
         deck_view::LIBRARY_OPEN.store(library_open, core::sync::atomic::Ordering::Relaxed);
-        if library_open != library_was_open {
-            // The page covered the lanes and meters, or uncovered them: Rust draws them
+        // The Library and Hot Cues pages cover the lanes and meters.
+        let covered = matches!(tab, 1 | 2);
+        if covered != was_covered {
+            // A page covered the lanes and meters, or uncovered them: Rust draws them
             // again in each buffer.
             lane_at = [[None; 2]; 2];
             meter_at = [[None; 2]; 2];
-            library_was_open = library_open;
+            was_covered = covered;
+        }
+        if tab == 2 {
+            let state = core::array::from_fn(|deck| {
+                let loaded = decks[deck].has(deck_view::LOADED);
+                (deck_view::MARKS[deck].load().1.cues, loaded)
+            });
+            if shown_cues != Some(state) {
+                show_cues(&ui, state);
+                shown_cues = Some(state);
+            }
         }
         if let Some(rows) = deck_view::take_library() {
             library = rows;
@@ -983,11 +1047,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         window.draw_if_needed(|renderer| {
             let mut lines = Lines {
                 frame: &mut *buffer,
-                direct: if library_open {
-                    &LIBRARY_DIRECT
-                } else {
-                    &DIRECT
-                },
+                direct: if covered { &COVERED_DIRECT } else { &DIRECT },
                 top: HEIGHT,
                 bottom: 0,
             };
@@ -1014,8 +1074,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 decks[deck].position_ms,
             );
             let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
-            // Under the Library page only the overviews are Rust's.
-            if !library_open && meter_at[drawing][deck] != Some(meters[deck]) {
+            // Under the Library and Hot Cues pages only the overviews are Rust's.
+            if !covered && meter_at[drawing][deck] != Some(meters[deck]) {
                 draw_meter(buffer, METERS[deck], meters[deck]);
                 meter_at[drawing][deck] = Some(meters[deck]);
             }
@@ -1025,7 +1085,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     .map(|(left, _)| left)
             };
             // A paused or empty deck's lane is drawn once into each buffer, then left.
-            if !library_open && at_scale(lane_at[drawing][deck]) != Some(left) {
+            if !covered && at_scale(lane_at[drawing][deck]) != Some(left) {
                 // The shown lane is copied only when it has the same marks.
                 let shown_left = at_scale(lane_at[1 - drawing][deck])
                     .filter(|_| marks_at[1 - drawing][deck] == Some(revision));
