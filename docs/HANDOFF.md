@@ -86,7 +86,13 @@
   - DELETE then a tap clears a cue.
 
   Owner: "Radi".
-- **On the board:** s79 (app `8b22feab…`), the Hot Cues image. Earlier: a Slint
+- **Beat FX by touch (2026-11-12):** [Beat FX by touch](reviews/2026-11-12-fx-touch.md):
+  - a tap on the FX panel opens a BEAT FX page: effect, beat, channel, a depth bar,
+    FX ON and CLOSE;
+  - each tap goes through the controller's Beat FX events.
+
+  Owner: "Radi".
+- **On the board:** s80 (app `31a4b3d2…`), the Beat FX by touch image. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

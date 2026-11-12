@@ -383,17 +383,161 @@ component LibraryPage inherits Rectangle {
     }
 }
 
+// A choice on the FX page, lit while it is the one in use.
+component Choice inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected;
+    callback clicked();
+    height: 56px;
+    border-radius: 4px;
+    border-width: root.selected ? 2px : 1px;
+    border-color: root.selected ? #8fd2ee : #2f6f8f;
+    background: root.selected ? #2a6fa8 : #12161a;
+    opacity: touch.pressed ? 0.6 : 1.0;
+    Text {
+        text: root.text;
+        color: root.selected ? #ffffff : #c6cad0;
+        font-size: 18px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// Beat FX by touch: the effect, its beat and channel, the depth, and FX ON. Each choice
+// does what the controller's Beat FX buttons and knob do.
+component FxPage inherits Rectangle {
+    in property <string> effect;
+    in property <string> beat;
+    in property <int> depth;
+    in property <int> target;
+    in property <bool> on;
+    // What changed (0 effect, 1 beat, 2 channel, 3 depth from 0 to 127, 4 FX ON) and to.
+    callback set(int, float);
+    callback close();
+    width: 1024px;
+    height: 430px;
+    background: #0d0f11;
+    // Takes the taps that miss the buttons, away from the page below.
+    TouchArea { }
+    Text { x: 16px; y: 12px; text: "BEAT FX"; color: #eef0f2; font-size: 20px; }
+    Text { x: 16px; y: 54px; text: "EFFECT"; color: #9a9ea4; font-size: 12px; }
+    for name[i] in ["FILTER", "ECHO", "FLANGER", "DELAY"]: Choice {
+        x: 16px + i * 198px;
+        y: 72px;
+        width: 190px;
+        text: name;
+        selected: name == root.effect;
+        clicked => { root.set(0, i); }
+    }
+    Text { x: 16px; y: 140px; text: "BEAT"; color: #9a9ea4; font-size: 12px; }
+    for name[i] in ["1/4", "1/2", "1", "2", "4"]: Choice {
+        x: 16px + i * 158px;
+        y: 158px;
+        width: 150px;
+        text: name;
+        selected: name == root.beat;
+        clicked => { root.set(1, i); }
+    }
+    Text { x: 16px; y: 226px; text: "CHANNEL"; color: #9a9ea4; font-size: 12px; }
+    for name[i] in ["DECK 1", "DECK 2", "BOTH"]: Choice {
+        x: 16px + i * 198px;
+        y: 244px;
+        width: 190px;
+        text: name;
+        // Deck 1, deck 2 and both are channels 1, 2 and 0.
+        selected: Math.mod(i + 1, 3) == root.target;
+        clicked => { root.set(2, Math.mod(i + 1, 3)); }
+    }
+    Text { x: 16px; y: 312px; text: "DEPTH"; color: #9a9ea4; font-size: 12px; }
+    Rectangle {
+        x: 16px;
+        y: 330px;
+        width: 700px;
+        height: 64px;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: #2f6f8f;
+        background: #12161a;
+        Rectangle {
+            x: 1px;
+            y: 1px;
+            width: (parent.width - 2px) * root.depth / 100;
+            height: parent.height - 2px;
+            border-radius: 3px;
+            background: #2a6fa8;
+        }
+        // Down on the bar and dragged along it, as the depth knob turns.
+        slide := TouchArea {
+            changed pressed => {
+                if (self.pressed) {
+                    root.set(3, max(0, min(1, self.mouse-x / self.width)) * 127);
+                }
+            }
+            moved => { root.set(3, max(0, min(1, self.mouse-x / self.width)) * 127); }
+        }
+    }
+    Text {
+        x: 724px;
+        y: 330px;
+        width: 76px;
+        height: 64px;
+        text: root.depth + "%";
+        color: #eef0f2;
+        font-size: 22px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Choice {
+        x: 824px;
+        y: 8px;
+        width: 184px;
+        height: 48px;
+        text: "CLOSE";
+        selected: false;
+        clicked => { root.close(); }
+    }
+    Rectangle {
+        x: 824px;
+        y: 72px;
+        width: 184px;
+        height: 322px;
+        border-radius: 6px;
+        border-width: 2px;
+        border-color: #6ee128;
+        background: root.on ? #6ee128 : #181a1d;
+        opacity: toggle.pressed ? 0.6 : 1.0;
+        Text {
+            text: root.on ? "FX ON" : "FX OFF";
+            color: root.on ? #101418 : #6ee128;
+            font-size: 28px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        toggle := TouchArea {
+            clicked => { root.set(4, 0); }
+        }
+    }
+}
+
+// The Beat FX at a glance, right of the lanes; a tap opens the FX page.
 component FxPanel inherits Rectangle {
     in property <string> effect;
     in property <string> beat;
     in property <int> depth;
     in property <int> target;
     in property <bool> on;
+    callback open();
     width: 64px;
     height: 428px;
     background: #0d141b;
     border-width: 1px;
     border-color: #2f6f8f;
+    TouchArea {
+        clicked => { root.open(); }
+    }
     Rectangle {
         x: 4px;
         y: 4px;
@@ -498,7 +642,10 @@ export component Overview inherits Window {
     callback load(int);
     // The Hot Cues page: deck 0 or 1, its pad 0 to 7 down or up, and whether it deletes.
     callback hot-cue(int, int, bool, bool);
-    // Overview, Library and Hot Cues have pages; Settings only marks itself yet.
+    // The FX page: what changed (0 effect, 1 beat, 2 channel, 3 depth, 4 FX ON) and to.
+    callback fx(int, float);
+    // Overview, Library and Hot Cues have pages; Settings only marks itself yet. The FX
+    // panel opens page 4, which no tab marks.
     in-out property <int> active-tab: 0;
 
     for name[index] in ["OVERVIEW", "LIBRARY", "HOT CUES", "SETTINGS"]: Tab {
@@ -540,6 +687,7 @@ export component Overview inherits Window {
         depth: root.fx-depth;
         target: root.fx-target;
         on: root.fx-on;
+        open => { root.active-tab = 4; }
     }
 
     if root.active-tab == 1: LibraryPage {
@@ -549,6 +697,18 @@ export component Overview inherits Window {
         count: root.library-count;
         pick(row) => { root.pick(row); }
         load(deck) => { root.load(deck); }
+    }
+
+    if root.active-tab == 4: FxPage {
+        x: 0px;
+        y: 46px;
+        effect: root.fx-effect;
+        beat: root.fx-beat;
+        depth: root.fx-depth;
+        target: root.fx-target;
+        on: root.fx-on;
+        set(kind, value) => { root.fx(kind, value); }
+        close => { root.active-tab = 0; }
     }
 
     if root.active-tab == 2: Rectangle {

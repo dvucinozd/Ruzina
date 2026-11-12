@@ -282,7 +282,10 @@ fn refresh_mix() {
         // Taps on the deck screen, as the controller's buttons would send them.
         #[cfg(feature = "slint-ui")]
         while let Some((deck, control)) = crate::deck_view::TOUCH.pop() {
-            for event in touch_events(deck, control).into_iter().flatten() {
+            // The FX page picks an effect or a beat; the engine steps to it from where
+            // it is now.
+            let fx = mix.engine().fx_view();
+            for event in touch_events(deck, control, fx).into_iter().flatten() {
                 mix.control(&event);
             }
         }
@@ -378,47 +381,95 @@ pub(crate) mod ui {
     pub const LOAD: u32 = 3;
 }
 
-/// The controller events a tap on the deck screen stands for, in order.
+/// The most controller events one tap stands for: four beat steps and a release.
+#[cfg(all(feature = "deck-engine", any(feature = "slint-ui", test)))]
+pub(crate) const TOUCH_EVENTS: usize = 8;
+
+/// The controller events a tap on the deck screen stands for, in order. `fx` is the
+/// Beat FX as the engine has it now: the controller only steps the effect and the beat,
+/// so a picked one is reached in steps from there.
 #[cfg(all(feature = "deck-engine", any(feature = "slint-ui", test)))]
 pub(crate) fn touch_events(
     deck: usize,
     control: crate::deck_view::TouchControl,
-) -> [Option<ControlEvent>; 2] {
-    use crate::deck_view::TouchControl;
-    use ruzina_controller_core::{PadAction, PadMode};
-    let deck = Some(if deck == 0 { DeckId::One } else { DeckId::Two });
-    let press = |control, down| {
-        Some(ControlEvent {
-            deck,
-            control,
-            value: ControlValue::Pressed(down),
-        })
-    };
-    match control {
-        TouchControl::Play => [
-            press(SemanticControl::Play, true),
-            press(SemanticControl::Play, false),
-        ],
-        TouchControl::Cue(down) => [press(SemanticControl::Cue, down), None],
-        TouchControl::Load => [
-            press(SemanticControl::Load, true),
-            press(SemanticControl::Load, false),
-        ],
-        // The pad in Hot Cue mode, whatever mode the controller's pads are in.
-        TouchControl::HotCue { pad, delete, down } => [
-            Some(ControlEvent {
-                deck,
-                control: SemanticControl::PadAction,
-                value: ControlValue::PadAction(PadAction {
-                    pad,
-                    mode: PadMode::HotCue,
-                    shifted: delete,
-                    pressed: down,
-                }),
-            }),
-            None,
-        ],
+    fx: crate::deck_view::FxSnapshot,
+) -> [Option<ControlEvent>; TOUCH_EVENTS] {
+    use crate::deck_view::{FxTouch, TouchControl};
+    use ruzina_controller_core::{BeatFxTarget, PadAction, PadMode};
+    struct Events([Option<ControlEvent>; TOUCH_EVENTS], usize);
+    impl Events {
+        fn push(&mut self, deck: Option<DeckId>, control: SemanticControl, value: ControlValue) {
+            if let Some(slot) = self.0.get_mut(self.1) {
+                *slot = Some(ControlEvent {
+                    deck,
+                    control,
+                    value,
+                });
+                self.1 += 1;
+            }
+        }
+
+        /// A button pressed `times` times and then released; nothing for no presses.
+        fn presses(&mut self, deck: Option<DeckId>, control: SemanticControl, times: u8) {
+            for _ in 0..times {
+                self.push(deck, control, ControlValue::Pressed(true));
+            }
+            if times != 0 {
+                self.push(deck, control, ControlValue::Pressed(false));
+            }
+        }
     }
+    let mut events = Events([None; TOUCH_EVENTS], 0);
+    let on = Some(if deck == 0 { DeckId::One } else { DeckId::Two });
+    match control {
+        TouchControl::Play => events.presses(on, SemanticControl::Play, 1),
+        TouchControl::Cue(down) => {
+            events.push(on, SemanticControl::Cue, ControlValue::Pressed(down))
+        }
+        TouchControl::Load => events.presses(on, SemanticControl::Load, 1),
+        // The pad in Hot Cue mode, whatever mode the controller's pads are in.
+        TouchControl::HotCue { pad, delete, down } => events.push(
+            on,
+            SemanticControl::PadAction,
+            ControlValue::PadAction(PadAction {
+                pad,
+                mode: PadMode::HotCue,
+                shifted: delete,
+                pressed: down,
+            }),
+        ),
+        TouchControl::Fx(FxTouch::Effect(effect)) => {
+            let steps = (effect & 3).wrapping_sub(fx.effect) & 3;
+            events.presses(None, SemanticControl::BeatFxSelectNext, steps);
+        }
+        TouchControl::Fx(FxTouch::Beat(beat)) => {
+            let beat = beat.min(4);
+            if beat > fx.beat {
+                events.presses(None, SemanticControl::BeatFxBeatInc, beat - fx.beat);
+            } else {
+                events.presses(None, SemanticControl::BeatFxBeatDec, fx.beat - beat);
+            }
+        }
+        TouchControl::Fx(FxTouch::Target(target)) => events.push(
+            None,
+            SemanticControl::BeatFxTarget,
+            ControlValue::BeatFxTarget(match target {
+                1 => BeatFxTarget::ChannelOne,
+                2 => BeatFxTarget::ChannelTwo,
+                _ => BeatFxTarget::Both,
+            }),
+        ),
+        TouchControl::Fx(FxTouch::Depth(depth)) => events.push(
+            None,
+            SemanticControl::BeatFxDepth,
+            ControlValue::Absolute {
+                value: u16::from(depth.min(127)),
+                max: 127,
+            },
+        ),
+        TouchControl::Fx(FxTouch::On) => events.presses(None, SemanticControl::BeatFxOn, 1),
+    }
+    events.0
 }
 
 /// The library action a semantic event asks for: `(action, deck, value)`.
