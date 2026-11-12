@@ -4,7 +4,7 @@
 //! It shows the decks: what the engine publishes in `deck_view::LIVE`, and each
 //! loaded track's title, key and analysis. It logs draw times as load events: 21 the
 //! Slint parts (worst, then 31 the average), 22 a waveform frame (32).
-use crate::deck_view::{self, DeckSnapshot, FxSnapshot, LoadedTrack, Marks};
+use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use ruzina_track_analysis::{Beat, WaveformColumn};
@@ -76,6 +76,10 @@ const METERS: [Area; 2] = [
     },
 ];
 const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1]];
+/// The Library page covers the lanes and meters; Rust then draws only the overviews.
+const LIBRARY_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
+/// The Library page's rows.
+const LIBRARY_ROWS: u32 = 12;
 const PANEL: u16 = rgb(0x0d, 0x0f, 0x11);
 const METER_OFF: u16 = rgb(0x1c, 0x22, 0x28);
 const METER_GREEN: u16 = rgb(0x6e, 0xe1, 0x28);
@@ -215,6 +219,8 @@ impl Platform for Board {
 /// redraw cannot flicker.
 struct Lines<'a> {
     frame: &'a mut [u16],
+    /// The rectangles Rust draws, which Slint leaves alone.
+    direct: &'a [Area],
     top: usize,
     bottom: usize,
 }
@@ -234,7 +240,8 @@ impl LineBufferProvider for &mut Lines<'_> {
         let mut x = range.start;
         while x < range.end {
             // The first direct rectangle on this line at or after `x`.
-            let next = DIRECT
+            let next = self
+                .direct
                 .iter()
                 .filter(|area| {
                     (area.y..area.y + area.height).contains(&line) && area.x + area.width > x
@@ -765,6 +772,62 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
     }
 }
 
+/// The Library page as shown: the list's version, the first row, the selection and
+/// each deck's track.
+type LibraryState = (u32, u32, Option<u32>, [u32; 2]);
+
+/// Shows the Library page from row `first`: the selected row, and each row's decks.
+fn show_library(ui: &Overview, rows: &[LibraryRow], state: LibraryState) {
+    let (_, first, selected, decks) = state;
+    let lines: alloc::vec::Vec<LibraryLine> = rows
+        .iter()
+        .enumerate()
+        .skip(first as usize)
+        .take(LIBRARY_ROWS as usize)
+        .map(|(index, row)| {
+            let index = index as u32;
+            let on = |deck: usize| decks[deck] == index;
+            LibraryLine {
+                number: alloc::format!("{}", index + 1).into(),
+                title: if row.title.is_empty() {
+                    row.artist.as_str().into()
+                } else {
+                    row.title.as_str().into()
+                },
+                artist: row.artist.as_str().into(),
+                bpm: deck_view::bpm(row.bpm_x100, 0).into(),
+                key: row.key.as_str().into(),
+                time: deck_view::clock(row.duration_ms).into(),
+                decks: match (on(0), on(1)) {
+                    (true, true) => "D1 D2",
+                    (true, false) => "D1",
+                    (false, true) => "D2",
+                    (false, false) => "",
+                }
+                .into(),
+                selected: selected == Some(index),
+            }
+        })
+        .collect();
+    ui.set_library_rows(slint::ModelRc::new(slint::VecModel::from(lines)));
+    ui.set_library_count(match selected {
+        Some(index) => alloc::format!("{} / {}", index + 1, rows.len()).into(),
+        None => "NO TRACKS".into(),
+    });
+}
+
+/// The Library page's first row: the page moves only when the selection leaves it.
+fn library_first(first: u32, selected: u32, len: u32) -> u32 {
+    let first = if selected < first {
+        selected
+    } else if selected >= first + LIBRARY_ROWS {
+        selected + 1 - LIBRARY_ROWS
+    } else {
+        first
+    };
+    first.min(len.saturating_sub(LIBRARY_ROWS))
+}
+
 fn show_fx(ui: &Overview, fx: FxSnapshot) {
     ui.set_fx_effect(fx.effect_name().into());
     ui.set_fx_beat(fx.beat_name().into());
@@ -801,6 +864,19 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     ui.on_cue(|deck, down| {
         deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Cue(down));
     });
+    // The Library page's first row, which a tap counts from.
+    let library_top = Rc::new(core::cell::Cell::new(0u32));
+    let top = library_top.clone();
+    ui.on_pick(move |row| deck_view::select(top.get() + row.max(0) as u32));
+    ui.on_load(|deck| {
+        deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Load);
+    });
+    let mut library = Box::new(Library {
+        rows: alloc::vec::Vec::new(),
+    });
+    let mut library_version = 0u32;
+    let mut shown_library: Option<LibraryState> = None;
+    let mut library_was_open = false;
     let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over both frame buffers.
     let mut buffers = unsafe {
@@ -857,6 +933,37 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         for (deck, meter) in meters.iter_mut().enumerate() {
             *meter = deck_view::meter_segments(deck_view::PEAKS.take(deck)).max(*meter - 1);
         }
+        // The Library page: the browse knob's target, and the list around the selection.
+        let library_open = ui.get_active_tab() == 1;
+        deck_view::LIBRARY_OPEN.store(library_open, core::sync::atomic::Ordering::Relaxed);
+        if library_open != library_was_open {
+            // The page covered the lanes and meters, or uncovered them: Rust draws them
+            // again in each buffer.
+            lane_at = [[None; 2]; 2];
+            meter_at = [[None; 2]; 2];
+            library_was_open = library_open;
+        }
+        if let Some(rows) = deck_view::take_library() {
+            library = rows;
+            library_version = library_version.wrapping_add(1);
+        }
+        if library_open {
+            let selected = deck_view::selected();
+            let first = library_first(
+                library_top.get(),
+                selected.unwrap_or(0),
+                library.rows.len() as u32,
+            );
+            library_top.set(first);
+            let decks = core::array::from_fn(|deck| {
+                tracks[deck].as_ref().map_or(u32::MAX, |track| track.index)
+            });
+            let state = (library_version, first, selected, decks);
+            if shown_library != Some(state) {
+                show_library(&ui, &library.rows, state);
+                shown_library = Some(state);
+            }
+        }
         let fx = FxSnapshot::unpack(deck_view::FX.load(core::sync::atomic::Ordering::Relaxed));
         if shown_fx != Some(fx) {
             show_fx(&ui, fx);
@@ -876,6 +983,11 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         window.draw_if_needed(|renderer| {
             let mut lines = Lines {
                 frame: &mut *buffer,
+                direct: if library_open {
+                    &LIBRARY_DIRECT
+                } else {
+                    &DIRECT
+                },
                 top: HEIGHT,
                 bottom: 0,
             };
@@ -902,7 +1014,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 decks[deck].position_ms,
             );
             let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
-            if meter_at[drawing][deck] != Some(meters[deck]) {
+            // Under the Library page only the overviews are Rust's.
+            if !library_open && meter_at[drawing][deck] != Some(meters[deck]) {
                 draw_meter(buffer, METERS[deck], meters[deck]);
                 meter_at[drawing][deck] = Some(meters[deck]);
             }
@@ -912,7 +1025,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     .map(|(left, _)| left)
             };
             // A paused or empty deck's lane is drawn once into each buffer, then left.
-            if at_scale(lane_at[drawing][deck]) != Some(left) {
+            if !library_open && at_scale(lane_at[drawing][deck]) != Some(left) {
                 // The shown lane is copied only when it has the same marks.
                 let shown_left = at_scale(lane_at[1 - drawing][deck])
                     .filter(|_| marks_at[1 - drawing][deck] == Some(revision));

@@ -259,14 +259,32 @@ impl Engine {
                 DeckClaim::Free => {}
             }
         }
-        // The browse knob zooms the deck screen's waveform, as the donor's overview does;
-        // with Shift, several steps a detent.
+        // The browse knob moves the Library's selection while that page is open, and
+        // otherwise zooms the deck screen's waveform, as the donor's overview does; with
+        // Shift, several steps a detent. LOAD loads the Library's selection, once the
+        // deck screen has published a list.
+        use crate::deck_view::{SHIFT_BROWSE_ROWS, SHIFT_ZOOM_STEPS, browse, library_open};
         match (event.control, event.value) {
             (SemanticControl::BrowseDelta, ControlValue::Relative(delta)) => {
-                crate::deck_view::zoom_by(i32::from(delta));
+                let delta = i32::from(delta);
+                if library_open() {
+                    browse(delta);
+                } else {
+                    crate::deck_view::zoom_by(delta);
+                }
             }
             (SemanticControl::ShiftBrowseDelta, ControlValue::Relative(delta)) => {
-                crate::deck_view::zoom_by(i32::from(delta) * crate::deck_view::SHIFT_ZOOM_STEPS);
+                let delta = i32::from(delta);
+                if library_open() {
+                    browse(delta * SHIFT_BROWSE_ROWS);
+                } else {
+                    crate::deck_view::zoom_by(delta * SHIFT_ZOOM_STEPS);
+                }
+            }
+            (SemanticControl::Load, ControlValue::Pressed(true)) => {
+                if let (Some(deck), Some(track)) = (event.deck, crate::deck_view::selected()) {
+                    self.request_load(deck, track);
+                }
             }
             _ => {}
         }

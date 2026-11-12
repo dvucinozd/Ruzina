@@ -169,6 +169,108 @@ component DeckInfo inherits Rectangle {
     }
 }
 
+// One row of the Library page.
+export struct LibraryLine {
+    number: string,
+    title: string,
+    artist: string,
+    bpm: string,
+    key: string,
+    time: string,
+    decks: string,
+    selected: bool,
+}
+
+// The catalog, a page at a time around the selection, which the browse knob or a tap
+// moves. LOAD on the controller or here loads the selected track.
+component LibraryPage inherits Rectangle {
+    in property <[LibraryLine]> rows;
+    in property <string> count;
+    callback pick(int);
+    callback load(int);
+    width: 1024px;
+    height: 430px;
+    background: #0d0f11;
+    // Takes the taps that miss the rows and buttons, away from the page below.
+    TouchArea { }
+    Text { x: 8px; y: 6px; text: "#"; color: #9a9ea4; font-size: 11px; }
+    Text { x: 48px; y: 6px; text: "TITLE"; color: #9a9ea4; font-size: 11px; }
+    Text { x: 470px; y: 6px; text: "ARTIST"; color: #9a9ea4; font-size: 11px; }
+    Text { x: 700px; y: 6px; text: "BPM"; color: #9a9ea4; font-size: 11px; }
+    Text { x: 770px; y: 6px; text: "KEY"; color: #9a9ea4; font-size: 11px; }
+    Text { x: 820px; y: 6px; text: "TIME"; color: #9a9ea4; font-size: 11px; }
+    for row[i] in root.rows: Rectangle {
+        x: 0px;
+        y: 26px + i * 33px;
+        width: 900px;
+        height: 32px;
+        background: row.selected ? #10240c : #12161a;
+        border-width: row.selected ? 1px : 0px;
+        border-color: #6ee128;
+        Text {
+            x: 8px;
+            width: 36px;
+            text: row.number;
+            color: #9a9ea4;
+            font-size: 13px;
+            vertical-alignment: center;
+        }
+        Text {
+            x: 48px;
+            width: 412px;
+            text: row.title;
+            color: row.selected ? #d8ff8a : #eef0f2;
+            font-size: 15px;
+            overflow: elide;
+            vertical-alignment: center;
+        }
+        Text {
+            x: 470px;
+            width: 222px;
+            text: row.artist;
+            color: #c6cad0;
+            font-size: 14px;
+            overflow: elide;
+            vertical-alignment: center;
+        }
+        Text { x: 700px; width: 64px; text: row.bpm; color: #eef0f2; font-size: 14px; vertical-alignment: center; }
+        Text { x: 770px; width: 46px; text: row.key; color: #eb870f; font-size: 14px; vertical-alignment: center; }
+        Text { x: 820px; width: 46px; text: row.time; color: #eef0f2; font-size: 14px; vertical-alignment: center; }
+        Text { x: 866px; width: 32px; text: row.decks; color: #38d6f0; font-size: 11px; vertical-alignment: center; }
+        TouchArea {
+            clicked => { root.pick(i); }
+        }
+    }
+    for deck[i] in [1, 2]: Rectangle {
+        x: 912px;
+        y: 40px + i * 96px;
+        width: 104px;
+        height: 84px;
+        border-radius: 4px;
+        background: i == 0 ? #38d6f0 : #6ee1a8;
+        opacity: load.pressed ? 0.6 : 1.0;
+        Text {
+            text: "LOAD\nD" + deck;
+            color: #101418;
+            font-size: 18px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        load := TouchArea {
+            clicked => { root.load(i); }
+        }
+    }
+    Text {
+        x: 912px;
+        y: 400px;
+        width: 104px;
+        text: root.count;
+        color: #9a9ea4;
+        font-size: 13px;
+        horizontal-alignment: center;
+    }
+}
+
 component FxPanel inherits Rectangle {
     in property <string> effect;
     in property <string> beat;
@@ -269,10 +371,16 @@ export component Overview inherits Window {
     in property <int> fx-target;
     in property <bool> fx-on;
 
+    in property <[LibraryLine]> library-rows;
+    in property <string> library-count;
+
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
     callback cue(int, bool);
-    // Only the Overview page exists yet; a tap marks the tab.
+    // The Library: a row of the page tapped, LOAD tapped for deck 0 or 1.
+    callback pick(int);
+    callback load(int);
+    // Overview and Library have pages yet; the other tabs only mark themselves.
     in-out property <int> active-tab: 0;
 
     for name[index] in ["OVERVIEW", "LIBRARY", "HOT CUES", "SETTINGS"]: Tab {
@@ -314,6 +422,15 @@ export component Overview inherits Window {
         depth: root.fx-depth;
         target: root.fx-target;
         on: root.fx-on;
+    }
+
+    if root.active-tab == 1: LibraryPage {
+        x: 0px;
+        y: 46px;
+        rows: root.library-rows;
+        count: root.library-count;
+        pick(row) => { root.pick(row); }
+        load(deck) => { root.load(deck); }
     }
 
     // Track titles, across the screen: deck 1 from the left, deck 2 to the right.

@@ -670,6 +670,23 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                     )
                 };
             }
+            // The deck screen's Library, by catalog index.
+            #[cfg(feature = "idf-slint-ui")]
+            crate::deck_view::publish_library(
+                (0..tracks)
+                    .map(|i| {
+                        snapshot.get(i).map_or_else(Default::default, |track| {
+                            crate::deck_view::LibraryRow {
+                                title: track.title.as_str().into(),
+                                artist: track.artist.as_str().into(),
+                                key: track.key.as_str().into(),
+                                bpm_x100: track.bpm_x100,
+                                duration_ms: track.duration_ms,
+                            }
+                        })
+                    })
+                    .collect(),
+            );
         }
         if let Some(playlists) = probe.playlists {
             report(pass, load_event::PLAYLISTS, playlists.nodes);

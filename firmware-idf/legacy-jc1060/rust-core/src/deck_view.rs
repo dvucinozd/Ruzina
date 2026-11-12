@@ -12,8 +12,9 @@
 
 use alloc::boxed::Box;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt::Write;
-use core::sync::atomic::{AtomicI32, AtomicPtr, AtomicU32, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicI32, AtomicPtr, AtomicU32, Ordering};
 use ruzina_track_analysis::Beat;
 use ruzina_track_analysis::owned::AnalysisPublication;
 
@@ -226,6 +227,8 @@ pub(crate) enum TouchControl {
     Play,
     /// The CUE button went down (`true`) or up.
     Cue(bool),
+    /// LOAD on the Library page: the selected track onto this deck.
+    Load,
 }
 
 const TOUCH_SLOTS: u32 = 16;
@@ -257,6 +260,7 @@ impl TouchQueue {
             | match control {
                 TouchControl::Play => 0,
                 TouchControl::Cue(down) => 2 | u32::from(down) << 2,
+                TouchControl::Load => 8,
             };
         self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
         self.head.store(head.wrapping_add(1), Ordering::Release);
@@ -271,7 +275,9 @@ impl TouchQueue {
         }
         let word = self.slots[(tail % TOUCH_SLOTS) as usize].load(Ordering::Relaxed);
         self.tail.store(tail.wrapping_add(1), Ordering::Release);
-        let control = if word & 2 == 0 {
+        let control = if word & 8 != 0 {
+            TouchControl::Load
+        } else if word & 2 == 0 {
             TouchControl::Play
         } else {
             TouchControl::Cue(word & 4 != 0)
@@ -281,6 +287,69 @@ impl TouchQueue {
 }
 
 pub(crate) static TOUCH: TouchQueue = TouchQueue::new();
+
+/// One catalog track as the Library page lists it.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct LibraryRow {
+    pub(crate) title: String,
+    pub(crate) artist: String,
+    pub(crate) key: String,
+    pub(crate) bpm_x100: u32,
+    pub(crate) duration_ms: u32,
+}
+
+/// The catalog's tracks by catalog index.
+pub(crate) struct Library {
+    pub(crate) rows: Vec<LibraryRow>,
+}
+
+static LIBRARY: Mailbox<Library> = Mailbox::new();
+static LIBRARY_LEN: AtomicU32 = AtomicU32::new(0);
+static SELECTED: AtomicU32 = AtomicU32::new(0);
+/// Whether the Library page is open: the browse knob then moves the selection rather
+/// than the lanes' zoom. Written by the UI task.
+pub(crate) static LIBRARY_OPEN: AtomicBool = AtomicBool::new(false);
+
+/// Rows one Shift + browse detent moves the selection.
+pub(crate) const SHIFT_BROWSE_ROWS: i32 = 10;
+
+/// Hands the catalog's tracks, by catalog index, to the Library page. The selection
+/// stays, within the new list.
+pub(crate) fn publish_library(rows: Vec<LibraryRow>) {
+    LIBRARY_LEN.store(rows.len() as u32, Ordering::Release);
+    LIBRARY.put(Box::new(Library { rows }));
+}
+
+/// The catalog's tracks, if a new list arrived since the last call.
+pub(crate) fn take_library() -> Option<Box<Library>> {
+    LIBRARY.take()
+}
+
+/// The selected track's catalog index; `None` while there is no list.
+pub(crate) fn selected() -> Option<u32> {
+    let len = LIBRARY_LEN.load(Ordering::Acquire);
+    (len != 0).then(|| SELECTED.load(Ordering::Relaxed).min(len - 1))
+}
+
+/// Selects catalog track `index`, within the list.
+pub(crate) fn select(index: u32) {
+    let len = LIBRARY_LEN.load(Ordering::Acquire);
+    if len != 0 {
+        SELECTED.store(index.min(len - 1), Ordering::Relaxed);
+    }
+}
+
+/// Moves the selection `delta` rows, stopping at both ends.
+pub(crate) fn browse(delta: i32) {
+    if let Some(index) = selected() {
+        select(index.saturating_add_signed(delta));
+    }
+}
+
+/// Whether the Library page is open.
+pub(crate) fn library_open() -> bool {
+    LIBRARY_OPEN.load(Ordering::Relaxed)
+}
 
 /// Each channel's loudest pre-fader sample since the UI last looked, 32 767 for full
 /// scale.

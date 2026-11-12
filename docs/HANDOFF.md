@@ -74,7 +74,13 @@
   - Shift + browse zooming three steps.
 
   Owner: "Radi".
-- **On the board:** s77 (app `fc0aac16…`), the lane marks image. Earlier: a Slint
+- **Library page (2026-11-12):** [the Library page on the deck screen](reviews/2026-11-12-library.md):
+  - the catalog as a list of 12 rows around the selection, with D1/D2 tags;
+  - browse (Shift + browse ten rows) moves the selection only while the page is open;
+  - a tap selects a row, and LOAD on the controller or the screen loads it.
+
+  Owner: "Radi".
+- **On the board:** s78 (app `9d776987…`), the Library image. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
