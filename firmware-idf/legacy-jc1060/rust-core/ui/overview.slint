@@ -291,6 +291,43 @@ component CueDeck inherits Rectangle {
     }
 }
 
+// One figure on the Settings page.
+export struct SettingLine {
+    label: string,
+    value: string,
+}
+
+// What the deck reports about itself: the decks' audio, the mix and the firmware.
+component SettingsPage inherits Rectangle {
+    in property <[SettingLine]> left;
+    in property <[SettingLine]> right;
+    width: 1024px;
+    height: 430px;
+    background: #0d0f11;
+    // Takes the taps, away from the page below.
+    TouchArea { }
+    Text { x: 24px; y: 10px; text: "DECKS"; color: #8fd2ee; font-size: 16px; }
+    Text { x: 536px; y: 10px; text: "MIX AND SYSTEM"; color: #8fd2ee; font-size: 16px; }
+    for line[i] in root.left: Rectangle {
+        x: 16px;
+        y: 40px + i * 34px;
+        width: 488px;
+        height: 32px;
+        background: Math.mod(i, 2) == 0 ? #12161a : #0f1215;
+        Text { x: 8px; width: 220px; text: line.label; color: #9a9ea4; font-size: 15px; vertical-alignment: center; }
+        Text { x: 230px; width: 250px; text: line.value; color: #eef0f2; font-size: 16px; overflow: elide; vertical-alignment: center; }
+    }
+    for line[i] in root.right: Rectangle {
+        x: 520px;
+        y: 40px + i * 34px;
+        width: 488px;
+        height: 32px;
+        background: Math.mod(i, 2) == 0 ? #12161a : #0f1215;
+        Text { x: 8px; width: 160px; text: line.label; color: #9a9ea4; font-size: 15px; vertical-alignment: center; }
+        Text { x: 170px; width: 310px; text: line.value; color: #eef0f2; font-size: 16px; overflow: elide; vertical-alignment: center; }
+    }
+}
+
 // One row of the Library page.
 export struct LibraryLine {
     number: string,
@@ -643,6 +680,8 @@ export component Overview inherits Window {
     in property <[CueTile]> cues-2;
     in property <bool> loaded-1;
     in property <bool> loaded-2;
+    in property <[SettingLine]> settings-left;
+    in property <[SettingLine]> settings-right;
 
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
@@ -656,8 +695,7 @@ export component Overview inherits Window {
     callback fx(int, float);
     // MT tapped on deck 0 or 1.
     callback master-tempo(int);
-    // Overview, Library and Hot Cues have pages; Settings only marks itself yet. The FX
-    // panel opens page 4, which no tab marks.
+    // Each tab has a page. The FX panel opens page 4, which no tab marks.
     in-out property <int> active-tab: 0;
 
     for name[index] in ["OVERVIEW", "LIBRARY", "HOT CUES", "SETTINGS"]: Tab {
@@ -721,6 +759,13 @@ export component Overview inherits Window {
         on: root.fx-on;
         set(kind, value) => { root.fx(kind, value); }
         close => { root.active-tab = 0; }
+    }
+
+    if root.active-tab == 3: SettingsPage {
+        x: 0px;
+        y: 46px;
+        left: root.settings-left;
+        right: root.settings-right;
     }
 
     if root.active-tab == 2: Rectangle {

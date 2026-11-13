@@ -130,6 +130,13 @@ fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
 }
 
 #[test]
+fn the_settings_page_gets_the_mix_figures() {
+    publish_stats([1, 2, 3, 4, 5, 6, 7, 8]);
+    let read: [u32; 8] = core::array::from_fn(|i| STATS[i].load(Ordering::Relaxed));
+    assert_eq!(read, [1, 2, 3, 4, 5, 6, 7, 8]);
+}
+
+#[test]
 fn the_library_selection_stays_within_the_list() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     let row = |title: &str| LibraryRow {

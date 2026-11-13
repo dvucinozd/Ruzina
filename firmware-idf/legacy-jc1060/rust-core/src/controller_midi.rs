@@ -295,6 +295,8 @@ fn refresh_mix() {
         mix.engine().flush_hot_cues();
         mix.engine().take_grids();
         mix.engine().publish_marks();
+        #[cfg(feature = "slint-ui")]
+        crate::deck_view::publish_stats(mix.stats());
         #[cfg(not(test))]
         if let Some((deck, event, value)) = mix.engine().take_phase_report() {
             unsafe extern "C" {

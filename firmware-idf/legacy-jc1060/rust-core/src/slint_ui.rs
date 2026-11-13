@@ -76,7 +76,7 @@ const METERS: [Area; 2] = [
     },
 ];
 const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1]];
-/// The Library, Hot Cues and FX pages cover the lanes and meters; Rust then draws only
+/// The Library, Hot Cues, Settings and FX pages cover the lanes and meters; Rust then draws only
 /// the overviews.
 const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
 /// The Library page's rows.
@@ -162,6 +162,8 @@ unsafe extern "C" {
         dx: u32,
     ) -> i32;
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+    /// The running app's description (IDF `esp_app_desc_t`).
+    fn esp_app_get_description() -> *const AppDescription;
     /// GT911 touches now (0 when none or no touch controller), the first one mapped to
     /// the screen in `x` and `y`.
     fn ruzina_touch_poll(
@@ -205,6 +207,117 @@ fn touch(window: &slint::Window, down: &mut Option<slint::LogicalPosition>, erro
         (false, None) => return,
     };
     let _ = window.dispatch_event_with_result(event);
+}
+
+/// The start of IDF's `esp_app_desc_t` at v6.1, which the Settings page shows.
+#[repr(C)]
+struct AppDescription {
+    magic_word: u32,
+    secure_version: u32,
+    reserved: [u32; 2],
+    version: [u8; 32],
+    project_name: [u8; 32],
+    time: [u8; 16],
+    date: [u8; 16],
+    idf_version: [u8; 32],
+    elf_sha256: [u8; 32],
+}
+
+/// A C string field as text, up to its first zero.
+fn c_text(bytes: &[u8]) -> &str {
+    let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    core::str::from_utf8(&bytes[..end]).unwrap_or("?")
+}
+
+/// The Settings page's two columns: the decks, then the mix and the firmware.
+fn show_settings(ui: &Overview, uptime_ms: u64) {
+    use core::sync::atomic::Ordering::Relaxed;
+    let stats: [u32; 8] = core::array::from_fn(|i| deck_view::STATS[i].load(Relaxed));
+    let line = |label: &str, value: alloc::string::String| SettingLine {
+        label: label.into(),
+        value: value.into(),
+    };
+    let mut left = alloc::vec![line(
+        "Tracks",
+        alloc::format!("{}", deck_view::library_len())
+    )];
+    for deck in 0..2 {
+        let rate = stats[5 + deck];
+        let buffered = stats[3 + deck];
+        left.push(line(
+            if deck == 0 {
+                "Deck 1 source"
+            } else {
+                "Deck 2 source"
+            },
+            if rate == 0 {
+                "no track".into()
+            } else {
+                alloc::format!("{}.{} kHz", rate / 1_000, rate % 1_000 / 100)
+            },
+        ));
+        left.push(line(
+            if deck == 0 {
+                "Deck 1 buffered"
+            } else {
+                "Deck 2 buffered"
+            },
+            match buffered.checked_mul(100).and_then(|b| b.checked_div(rate)) {
+                Some(centiseconds) => {
+                    alloc::format!("{}.{:02} s", centiseconds / 100, centiseconds % 100)
+                }
+                None => "-".into(),
+            },
+        ));
+        left.push(line(
+            if deck == 0 {
+                "Deck 1 underruns"
+            } else {
+                "Deck 2 underruns"
+            },
+            alloc::format!("{}", stats[1 + deck]),
+        ));
+    }
+    // SAFETY: IDF returns its static app description, valid for the program's life.
+    let app = unsafe { &*esp_app_get_description() };
+    let right = alloc::vec![
+        line("Output", "48 kHz to the FLX4".into()),
+        line(
+            "Played",
+            deck_view::clock((u64::from(stats[0]) * 1_000 / 48_000) as u32),
+        ),
+        line("Limiter", alloc::format!("{} samples", stats[7])),
+        line(
+            "Uptime",
+            deck_view::clock(uptime_ms.min(u64::from(u32::MAX)) as u32)
+        ),
+        line("Firmware", c_text(&app.version).into()),
+        line(
+            "Built",
+            alloc::format!("{} {}", c_text(&app.date), c_text(&app.time)),
+        ),
+        line(
+            "ELF",
+            alloc::format!(
+                "{:02x}{:02x}{:02x}{:02x}",
+                app.elf_sha256[0],
+                app.elf_sha256[1],
+                app.elf_sha256[2],
+                app.elf_sha256[3]
+            ),
+        ),
+        line(
+            "Soak DJ",
+            if cfg!(feature = "soak-autoplay") {
+                "on"
+            } else {
+                "off"
+            }
+            .into(),
+        ),
+    ];
+    ui.set_settings_left(slint::ModelRc::new(slint::VecModel::from(left)));
+    ui.set_settings_right(slint::ModelRc::new(slint::VecModel::from(right)));
 }
 
 fn now_us() -> u64 {
@@ -949,6 +1062,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let mut library_version = 0u32;
     let mut shown_library: Option<LibraryState> = None;
     let mut shown_cues: Option<CueState> = None;
+    // When the Settings page next refreshes its figures.
+    let mut settings_at = 0u64;
     let mut was_covered = false;
     let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over both frame buffers.
@@ -1010,14 +1125,23 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let tab = ui.get_active_tab();
         let library_open = tab == 1;
         deck_view::LIBRARY_OPEN.store(library_open, core::sync::atomic::Ordering::Relaxed);
-        // The Library, Hot Cues and FX pages cover the lanes and meters.
-        let covered = matches!(tab, 1 | 2 | 4);
+        // The Library, Hot Cues, Settings and FX pages cover the lanes and meters.
+        let covered = matches!(tab, 1..=4);
         if covered != was_covered {
             // A page covered the lanes and meters, or uncovered them: Rust draws them
             // again in each buffer.
             lane_at = [[None; 2]; 2];
             meter_at = [[None; 2]; 2];
             was_covered = covered;
+        }
+        // The Settings page's figures, twice a second while it is open.
+        if tab == 3 {
+            if ms >= settings_at {
+                show_settings(&ui, ms);
+                settings_at = ms + 500;
+            }
+        } else {
+            settings_at = 0;
         }
         if tab == 2 {
             let state = core::array::from_fn(|deck| {
@@ -1096,7 +1220,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 decks[deck].position_ms,
             );
             let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
-            // Under the Library, Hot Cues and FX pages only the overviews are Rust's.
+            // Under the pages only the overviews are Rust's.
             if !covered && meter_at[drawing][deck] != Some(meters[deck]) {
                 draw_meter(buffer, METERS[deck], meters[deck]);
                 meter_at[drawing][deck] = Some(meters[deck]);
