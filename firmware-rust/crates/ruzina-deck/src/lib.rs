@@ -1333,10 +1333,37 @@ impl DeckProductState {
         state.pitch_raw = raw;
         state.pitch_centipercent = tempo_centipercent_from_raw(raw, state.tempo_range_percent);
 
-        DeckEffects::one(DeckEffect::SetPitchCentipercent {
+        let pitch = DeckEffect::SetPitchCentipercent {
             deck,
             value: state.pitch_centipercent,
-        })
+        };
+        self.with_synced_follower(deck, pitch)
+    }
+
+    /// `effect`, the new tempo of `deck`, and the other deck's own when SYNC holds it to
+    /// `deck`: a synced deck keeps matching its reference's tempo after the press, until
+    /// its own tempo moves or SYNC goes off.
+    fn with_synced_follower(&mut self, deck: DeckId, effect: DeckEffect) -> DeckEffects {
+        let follower = other_deck(deck);
+        let follower_idx = deck_index(follower);
+        if !self.decks[follower_idx].sync_enabled {
+            return DeckEffects::one(effect);
+        }
+        let value = centipercent_for_bpm_match(
+            self.decks[follower_idx].base_bpm_x100,
+            self.decks[deck_index(deck)],
+        );
+        if value == self.decks[follower_idx].pitch_centipercent {
+            return DeckEffects::one(effect);
+        }
+        self.decks[follower_idx].pitch_centipercent = value;
+        DeckEffects::two(
+            effect,
+            DeckEffect::SetPitchCentipercent {
+                deck: follower,
+                value,
+            },
+        )
     }
 
     fn handle_tempo_range(&mut self, deck: DeckId, value: ControlValue) -> DeckEffects {
@@ -1350,10 +1377,11 @@ impl DeckProductState {
         state.pitch_centipercent =
             tempo_centipercent_from_raw(state.pitch_raw, state.tempo_range_percent);
 
-        DeckEffects::one(DeckEffect::SetPitchCentipercent {
+        let pitch = DeckEffect::SetPitchCentipercent {
             deck,
             value: state.pitch_centipercent,
-        })
+        };
+        self.with_synced_follower(deck, pitch)
     }
 
     fn handle_sync(
@@ -2657,6 +2685,43 @@ mod tests {
                 value: 800,
             })
         );
+    }
+
+    #[test]
+    fn a_synced_deck_follows_its_references_tempo_until_its_own_moves() {
+        let mut state = DeckProductState::new();
+        state.set_base_bpm_x100(DeckId::One, 12_000);
+        state.set_base_bpm_x100(DeckId::Two, 12_800);
+        state.handle_control(pressed(DeckId::Two, SemanticControl::Sync, true));
+        assert_eq!(state.deck(DeckId::Two).pitch_centipercent, -625);
+
+        // Deck 1's tempo fader at +4 % of its 10 % range: deck 2 follows to 120 * 1.04.
+        let effects = state.handle_control(absolute(DeckId::One, SemanticControl::Tempo, 5_406));
+        let one = state.deck(DeckId::One).pitch_centipercent;
+        let expected = ((12_000i64 * (10_000 + i64::from(one)) + 6_400) / 12_800 - 10_000) as i16;
+        assert_eq!(state.deck(DeckId::Two).pitch_centipercent, expected);
+        assert!(state.deck(DeckId::Two).sync_enabled);
+        assert_eq!(
+            effects.items[1],
+            Some(DeckEffect::SetPitchCentipercent {
+                deck: DeckId::Two,
+                value: expected,
+            })
+        );
+
+        // A new tempo range on deck 1 moves its tempo, and deck 2 with it.
+        state.handle_control(pressed(DeckId::One, SemanticControl::TempoRange, true));
+        let one = state.deck(DeckId::One).pitch_centipercent;
+        let expected = ((12_000i64 * (10_000 + i64::from(one)) + 6_400) / 12_800 - 10_000) as i16;
+        assert_eq!(state.deck(DeckId::Two).pitch_centipercent, expected);
+
+        // Deck 2's own fader takes it out of SYNC; it no longer follows.
+        state.handle_control(absolute(DeckId::Two, SemanticControl::Tempo, PITCH_MAX / 2));
+        assert!(!state.deck(DeckId::Two).sync_enabled);
+        let own = state.deck(DeckId::Two).pitch_centipercent;
+        let effects = state.handle_control(absolute(DeckId::One, SemanticControl::Tempo, 9_000));
+        assert_eq!(state.deck(DeckId::Two).pitch_centipercent, own);
+        assert_eq!(effects.items[1], None);
     }
 
     #[test]
