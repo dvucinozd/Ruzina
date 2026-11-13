@@ -151,27 +151,31 @@ fn flx4_play_presses_reach_the_semantic_session() {
     assert_eq!(totals[1], 6);
 
     // Library UI: browse encoder +1 and -1 (CC 0xB6 0x40, two's complement),
-    // browse press (0x96 0x41) and load deck 1 / deck 2 (0x96 0x46 / 0x47).
-    UI.lock().unwrap().clear();
-    ingest(&[
-        0x0b, 0xb6, 0x40, 0x01, //
-        0x0b, 0xb6, 0x40, 0x7f, //
-        0x09, 0x96, 0x41, 0x7f, //
-        0x09, 0x96, 0x41, 0x00, //
-        0x09, 0x96, 0x46, 0x7f, //
-        0x09, 0x96, 0x47, 0x7f,
-    ]);
-    let actions = UI.lock().unwrap().clone();
-    assert_eq!(
-        actions,
-        [
-            (ui::BROWSE, 0, 1),
-            (ui::BROWSE, 0, -1),
-            (ui::CHOOSE, 0, 0),
-            (ui::LOAD, 1, 0),
-            (ui::LOAD, 2, 0),
-        ]
-    );
+    // browse press (0x96 0x41) and load deck 1 / deck 2 (0x96 0x46 / 0x47). The deck
+    // screen's Library takes these in Rust instead of the C load screen.
+    #[cfg(not(feature = "slint-ui"))]
+    {
+        UI.lock().unwrap().clear();
+        ingest(&[
+            0x0b, 0xb6, 0x40, 0x01, //
+            0x0b, 0xb6, 0x40, 0x7f, //
+            0x09, 0x96, 0x41, 0x7f, //
+            0x09, 0x96, 0x41, 0x00, //
+            0x09, 0x96, 0x46, 0x7f, //
+            0x09, 0x96, 0x47, 0x7f,
+        ]);
+        let actions = UI.lock().unwrap().clone();
+        assert_eq!(
+            actions,
+            [
+                (ui::BROWSE, 0, 1),
+                (ui::BROWSE, 0, -1),
+                (ui::CHOOSE, 0, 0),
+                (ui::LOAD, 1, 0),
+                (ui::LOAD, 2, 0),
+            ]
+        );
+    }
 
     #[cfg(all(feature = "deck-play", not(feature = "deck-engine")))]
     {

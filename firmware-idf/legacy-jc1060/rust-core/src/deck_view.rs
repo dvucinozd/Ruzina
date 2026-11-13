@@ -396,6 +396,7 @@ pub(crate) fn browse(delta: i32) {
 }
 
 /// Tracks in the Library's list.
+#[cfg_attr(test, allow(dead_code))]
 pub(crate) fn library_len() -> u32 {
     LIBRARY_LEN.load(Ordering::Acquire)
 }
@@ -488,7 +489,9 @@ pub(crate) fn window_ms(bpm_x100: u32) -> u32 {
     beat_ms.saturating_mul(ZOOM_BEATS[step]).clamp(500, 30_000)
 }
 
-/// What the load task knows about a track a deck has just loaded.
+/// What the load task knows about a track a deck has just loaded. Host tests have no
+/// deck screen to read the texts.
+#[cfg_attr(test, allow(dead_code))]
 pub(crate) struct LoadedTrack {
     /// Catalog index; `u32::MAX` for no track.
     pub(crate) index: u32,
