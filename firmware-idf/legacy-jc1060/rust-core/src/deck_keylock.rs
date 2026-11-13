@@ -99,7 +99,7 @@ impl Keylock {
             pair.assume_init()
         };
         for keylock in pair.iter_mut() {
-            keylock.fade = raised_cosine();
+            fill_raised_cosine(&mut keylock.fade);
             keylock.stop();
         }
         pair
@@ -329,8 +329,9 @@ fn mono(frame: PcmFrame) -> f32 {
 
 /// `0.5 - 0.5 cos(pi p / HOP)` for each frame `p` of a hop: with the same curve falling,
 /// the two grains' weights add up to one at every frame. The cosine comes from a rotation
-/// by small steps, so no libm is needed.
-fn raised_cosine() -> [f32; HOP as usize] {
+/// by small steps, so no libm is needed. Written in place: the 2 KiB table must not pass
+/// through the USB task's stack.
+fn fill_raised_cosine(fade: &mut [f32; HOP as usize]) {
     let step = core::f64::consts::PI / f64::from(HOP);
     let square = step * step;
     let (step_cos, step_sin) = (
@@ -338,7 +339,6 @@ fn raised_cosine() -> [f32; HOP as usize] {
         step * (1.0 - square / 6.0 + square * square / 120.0),
     );
     let (mut cos, mut sin) = (1.0f64, 0.0f64);
-    let mut fade = [0.0; HOP as usize];
     for value in fade.iter_mut() {
         *value = (0.5 - 0.5 * cos) as f32;
         (cos, sin) = (
@@ -346,7 +346,6 @@ fn raised_cosine() -> [f32; HOP as usize] {
             sin * step_cos + cos * step_sin,
         );
     }
-    fade
 }
 
 #[cfg(test)]

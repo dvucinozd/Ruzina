@@ -1889,6 +1889,54 @@ fn sync_puts_the_deck_in_the_reference_bar_at_once_without_a_seek() {
 }
 
 #[test]
+fn a_synced_deck_follows_the_other_decks_tempo_and_stays_in_phase() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_REQUESTS[1].take();
+    load_with_grid(&mut mix, DeckId::One, 33);
+    load_with_grid(&mut mix, DeckId::Two, 34);
+    run_fed(&mut mix, 3);
+    press_on(&mut mix, DeckId::One, SemanticControl::Play);
+    run_fed(&mut mix, 200);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Play);
+    run_fed(&mut mix, 100);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Sync);
+    run_fed(&mut mix, 10);
+    mix.engine().take_phase_report();
+    // Deck 1's Tempo fader to its top end, +10 %: deck 2 follows at once, in SYNC.
+    mix.control(&ControlEvent {
+        deck: Some(DeckId::One),
+        control: SemanticControl::Tempo,
+        value: ControlValue::Absolute {
+            value: 0,
+            max: 16_383,
+        },
+    });
+    assert_eq!(mix.engine().transport().1, [1_000, 1_000]);
+    assert!(mix.engine().deck(DeckId::Two).sync_enabled);
+    let positions = |mix: &mut Mix| {
+        let engine = mix.engine();
+        [DeckId::One, DeckId::Two].map(|deck| engine.deck(deck).position_ms)
+    };
+    let [one, two] = positions(&mut mix);
+    run_fed(&mut mix, 500);
+    let [one_later, two_later] = positions(&mut mix);
+    assert!(near(one_later - one, 550, 10), "{one} {one_later}");
+    assert!(
+        (two_later - two).abs_diff(one_later - one) <= 2,
+        "deck 2 keeps pace: {two} {two_later}"
+    );
+    // Nothing left for the next test: requests taken, both rings emptied.
+    SEEK_REQUESTS[0].take();
+    SEEK_REQUESTS[1].take();
+    empty_ring(0);
+    empty_ring(1);
+}
+
+#[test]
 fn sync_on_a_paused_deck_waits_for_its_grid_and_then_aligns() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     attach_ring(0);
