@@ -20,6 +20,12 @@ extern int32_t ruzina_legacy_bridge_take(uint32_t *first, uint32_t *count);
 extern int32_t ruzina_legacy_bridge_complete(int32_t status, const uint8_t *data, uint32_t bytes);
 extern int32_t ruzina_legacy_bridge_invalidate(void);
 extern int32_t ruzina_legacy_bridge_run(void);
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+/* usb_msc.inc (USB host client): the stick on the FS port, read on this owner task. */
+extern esp_err_t ruzina_msc_open(uint32_t *sectors);
+extern esp_err_t ruzina_msc_read(uint32_t first, uint32_t count, uint8_t *data);
+extern bool ruzina_msc_present(void);
+#endif
 #if CONFIG_RUZINA_SD_RUST_LOAD
 extern int32_t ruzina_legacy_load_run(void);
 #elif CONFIG_RUZINA_SD_RUST_EXFAT
@@ -29,7 +35,9 @@ extern int32_t ruzina_legacy_exfat_run(void);
 static portMUX_TYPE bridge_mux = portMUX_INITIALIZER_UNLOCKED;
 static TaskHandle_t worker_task, client_task;
 static atomic_bool stop_requested;
+#if !CONFIG_RUZINA_MEDIA_USB_STICK
 static esp_err_t (*host_transaction)(int, sdmmc_command_t *);
+#endif
 static uint32_t reads, sectors_read, denied_commands;
 
 /* One request carries up to 16 sectors (8 KiB, Rust's read-ahead line). */
@@ -176,6 +184,7 @@ void ruzina_bridge_load_detail(uint32_t index, uint32_t bpm_x100, uint32_t durat
 #endif
 }
 
+#if !CONFIG_RUZINA_MEDIA_USB_STICK
 static esp_err_t readonly_transaction(int slot, sdmmc_command_t *command)
 {
     switch (command->opcode) {
@@ -186,6 +195,7 @@ static esp_err_t readonly_transaction(int slot, sdmmc_command_t *command)
         default: return host_transaction(slot, command);
     }
 }
+#endif
 
 static void client(void *unused)
 {
@@ -213,11 +223,22 @@ static void owner(void *unused)
 {
     (void)unused;
     worker_task=xTaskGetCurrentTaskHandle();
+    uint8_t *bounce=NULL;
+    esp_err_t err;
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    /* The media come from the stick: wait for it, make it ready, read its size. */
+    uint32_t capacity=0;
+    err=ruzina_msc_open(&capacity); if(err!=ESP_OK) goto finish;
+    /* The USB transfer has its own DMA buffer; this one only receives the copy. */
+    bounce=heap_caps_malloc(BRIDGE_BOUNCE_BYTES,MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
+    if(!bounce) {err=ESP_ERR_NO_MEM;goto finish;}
+    if(ruzina_legacy_bridge_init(capacity)!=0) {err=ESP_ERR_INVALID_STATE;goto finish;}
+    printf("S6_RUST_USB_STICK sectors=%" PRIu32 " sector_bytes=512 max_sectors=%u readonly=1\n",
+           capacity,BRIDGE_MAX_SECTORS);
+#else
     sdmmc_card_t card;
     sd_pwr_ctrl_handle_t power=NULL;
-    uint8_t *bounce=NULL;
     bool host_up=false;
-    esp_err_t err;
     sd_pwr_ctrl_ldo_config_t ldo={.ldo_chan_id=4};
     err=sd_pwr_ctrl_new_on_chip_ldo(&ldo,&power); if(err!=ESP_OK) goto finish;
     sdmmc_host_t host=SDMMC_HOST_DEFAULT();
@@ -245,6 +266,8 @@ static void owner(void *unused)
     printf("S6_RUST_SD_BRIDGE sectors=%" PRIu32 " sector_bytes=512 max_khz=%d real_khz=%d width=4 ldo=4 bounce_bytes=%u dma_direct=1 max_sectors=%u readonly=1\n",
            (uint32_t)card.csd.capacity,SDMMC_FREQ_HIGHSPEED,card.real_freq_khz,BRIDGE_BOUNCE_BYTES,
            BRIDGE_MAX_SECTORS);
+    const uint32_t capacity=(uint32_t)card.csd.capacity;
+#endif
 #if CONFIG_RUZINA_SD_RUST_LOAD
     /* The Rust allocator has no internal fallback: refuse to start without PSRAM. */
     if(!esp_psram_is_initialized()) {err=ESP_ERR_INVALID_STATE;goto finish;}
@@ -271,15 +294,22 @@ static void owner(void *unused)
         int32_t taken=ruzina_legacy_bridge_take(&first,&count);
         if(taken<0) {err=ESP_ERR_INVALID_STATE;break;}
         if(!taken) {
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+            err=ruzina_msc_present()?ESP_OK:ESP_ERR_NOT_FOUND;
+#else
             err=sdmmc_get_status(&card);
+#endif
             if(err!=ESP_OK) break;
             continue;
         }
         /* C independently validates before touching driver/DMA. Rust only lends
          * scalar coordinates; this C allocation remains the sole DMA buffer. */
-        const uint32_t capacity=(uint32_t)card.csd.capacity;
         if(count==0 || count>BRIDGE_MAX_SECTORS || first>=capacity || count>capacity-first) err=ESP_ERR_INVALID_ARG;
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+        else { reads++;sectors_read+=count;err=ruzina_msc_read(first,count,bounce); }
+#else
         else { reads++;sectors_read+=count;err=sdmmc_read_sectors(&card,bounce,first,count); }
+#endif
         /* sdmmc_read_sectors is synchronous: transfer has ended on return. Rust
          * copies exactly count*512 bytes, outside its state critical section. */
         int32_t completed=ruzina_legacy_bridge_complete(err,err==ESP_OK?bounce:NULL,err==ESP_OK?count*512u:0);
@@ -298,8 +328,10 @@ finish:
         printf("rust_sd_owner=FAULT_HELD_NO_TEARDOWN error=%s\n",esp_err_to_name(err));
         fflush(stdout);vTaskSuspend(NULL);
     }
+#if !CONFIG_RUZINA_MEDIA_USB_STICK
     if(host_up) sdmmc_host_deinit();
     if(power) sd_pwr_ctrl_del_on_chip_ldo(power);
+#endif
     heap_caps_free(bounce);
     printf("rust_sd_owner=QUIESCED error=%s reads=%" PRIu32 " denied_commands=%" PRIu32 " reinsert=APP_RESTART_REQUIRED\n",
            esp_err_to_name(err),reads,denied_commands);

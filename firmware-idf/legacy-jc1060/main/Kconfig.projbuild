@@ -74,6 +74,15 @@ config RUZINA_UAC_PROFILE
     select ESP_TIMER_IN_IRAM
     default n
 
+config RUZINA_MEDIA_USB_STICK
+    bool "Read the media from a USB stick on the FS port instead of the SD card"
+    depends on RUZINA_SD_RUST_BRIDGE && RUZINA_USB_HOST_ENUM
+    default n
+    help
+        The USB host runs on both ports: the controller on HS, a mass-storage stick
+        on FS. The FS PHY then leaves USB Serial/JTAG, so the console must be on
+        UART0, and the board must not be powered from a PC on the FS port.
+
 config RUZINA_PRODUCER_PROFILE
     bool "Diagnostic producer wall partitions and USB service observations"
     depends on RUZINA_DECK_ENGINE && !RUZINA_UAC_PROFILE

@@ -19,9 +19,16 @@
 
 static usb_host_client_handle_t client;
 static usb_device_handle_t device;
-static volatile uint8_t pending_address;
+/* New devices not yet looked at; a stick and the controller may attach together. */
+static volatile uint8_t pending_addresses[4];
+static volatile unsigned pending_count;
 static volatile bool gone;
 static uint32_t attaches, detaches;
+
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+#include "usb_msc.inc"
+static volatile bool stick_gone;
+#endif
 
 #if CONFIG_RUZINA_USB_HOST_MIDI
 /* Rust (controller_midi.rs); every call runs on the client task. */
@@ -250,8 +257,17 @@ static void lib_task(void *unused)
 static void on_event(const usb_host_client_event_msg_t *msg, void *arg)
 {
     (void)arg;
-    if (msg->event == USB_HOST_CLIENT_EVENT_NEW_DEV) pending_address = msg->new_dev.address;
-    else if (msg->event == USB_HOST_CLIENT_EVENT_DEV_GONE) gone = true;
+    if (msg->event == USB_HOST_CLIENT_EVENT_NEW_DEV) {
+        if (pending_count < sizeof pending_addresses) pending_addresses[pending_count++] = msg->new_dev.address;
+    } else if (msg->event == USB_HOST_CLIENT_EVENT_DEV_GONE) {
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+        if (msc_dev && msg->dev_gone.dev_hdl == msc_dev) {
+            stick_gone = true;
+            return;
+        }
+#endif
+        gone = true;
+    }
 }
 
 /* Prints a string descriptor's UTF-16LE code units as ASCII ('?' otherwise). */
@@ -272,6 +288,14 @@ static void report(uint8_t address)
     const usb_config_desc_t *config;
     usb_device_info_t info;
     esp_err_t err = usb_host_device_open(client, address, &device);
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    /* A mass-storage device is the stick, not the controller. */
+    if (err == ESP_OK && usb_host_get_active_config_descriptor(device, &config) == ESP_OK &&
+        msc_bind(device, config)) {
+        device = NULL;
+        return;
+    }
+#endif
     if (err == ESP_OK) err = usb_host_device_info(device, &info);
     if (err == ESP_OK) err = usb_host_get_device_descriptor(device, &dev);
     if (err == ESP_OK) err = usb_host_get_active_config_descriptor(device, &config);
@@ -341,11 +365,27 @@ static void client_task(void *unused)
 #if CONFIG_RUZINA_PRODUCER_PROFILE
         uint64_t service_handled=(uint64_t)esp_timer_get_time();
 #endif
-        if (pending_address) {
-            uint8_t address = pending_address;
-            pending_address = 0;
+        while (pending_count) {
+            const uint8_t address = pending_addresses[--pending_count];
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+            /* With the controller attached, only a stick can still bind. */
+            if (device) {
+                usb_device_handle_t other;
+                const usb_config_desc_t *config;
+                if (usb_host_device_open(client, address, &other) != ESP_OK) continue;
+                if (usb_host_get_active_config_descriptor(other, &config) != ESP_OK || !msc_bind(other, config))
+                    usb_host_device_close(client, other);
+                continue;
+            }
+#endif
             if (!device) report(address);
         }
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+        if (stick_gone) {
+            stick_gone = false;
+            msc_unbind();
+        }
+#endif
         if (gone && device) {
 #if CONFIG_RUZINA_USB_HOST_UAC
             if (!uac_stop()) continue;
@@ -376,14 +416,23 @@ static void client_task(void *unused)
 
 esp_err_t ruzina_usb_host_enum_start(void)
 {
-    /* peripheral_map 0 selects the default, high-speed (UTMI) peripheral. */
-    const usb_host_config_t host = {.skip_phy_setup = false, .intr_flags = ESP_INTR_FLAG_LEVEL1};
+    /* peripheral_map 0 selects the default, high-speed (UTMI) peripheral. With the stick,
+     * the full-speed peripheral too: it takes the FS PHY from USB Serial/JTAG. */
+    const usb_host_config_t host = {
+        .skip_phy_setup = false,
+        .intr_flags = ESP_INTR_FLAG_LEVEL1,
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+        .peripheral_map = BIT0 | BIT1,
+#endif
+    };
     esp_err_t err = usb_host_install(&host);
     if (err != ESP_OK) return err;
     if (xTaskCreatePinnedToCore(lib_task, "usb_lib", 4096, NULL, 5, NULL, 0) != pdPASS ||
         xTaskCreatePinnedToCore(client_task, "usb_client", 8192, NULL, 4, NULL, 0) != pdPASS)
         return ESP_ERR_NO_MEM;
-#if CONFIG_RUZINA_USB_HOST_MIDI
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    printf("S6_USB_HOST ports=HS+FS stick=FS claim=MIDI_STREAMING+MSC vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
+#elif CONFIG_RUZINA_USB_HOST_MIDI
     printf("S6_USB_HOST port=HS phy=UTMI claim=MIDI_STREAMING vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
 #else
     printf("S6_USB_HOST port=HS phy=UTMI claim=NONE vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
