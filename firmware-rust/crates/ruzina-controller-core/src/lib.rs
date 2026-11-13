@@ -38,6 +38,9 @@ pub enum DeckExtAction {
     /// Idempotent per-deck jog mode selection (M2.5 B13a/B18); release is ignored.
     JogVinyl,
     JogCdj,
+    /// Toggles the deck's Master Tempo, which keeps the key while the tempo moves;
+    /// release is ignored. No controller profile maps it yet: the deck screen sends it.
+    MasterTempo,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -291,6 +291,7 @@ fn refresh_mix() {
         }
         mix.tick();
         mix.attach_fx();
+        mix.attach_keylocks();
         mix.engine().flush_hot_cues();
         mix.engine().take_grids();
         mix.engine().publish_marks();
@@ -395,7 +396,9 @@ pub(crate) fn touch_events(
     fx: crate::deck_view::FxSnapshot,
 ) -> [Option<ControlEvent>; TOUCH_EVENTS] {
     use crate::deck_view::{FxTouch, TouchControl};
-    use ruzina_controller_core::{BeatFxTarget, PadAction, PadMode};
+    use ruzina_controller_core::{
+        BeatFxTarget, DeckExtAction, DeckExtActionValue, PadAction, PadMode,
+    };
     struct Events([Option<ControlEvent>; TOUCH_EVENTS], usize);
     impl Events {
         fn push(&mut self, deck: Option<DeckId>, control: SemanticControl, value: ControlValue) {
@@ -468,6 +471,18 @@ pub(crate) fn touch_events(
             },
         ),
         TouchControl::Fx(FxTouch::On) => events.presses(None, SemanticControl::BeatFxOn, 1),
+        TouchControl::MasterTempo => {
+            for pressed in [true, false] {
+                events.push(
+                    on,
+                    SemanticControl::DeckExtAction,
+                    ControlValue::DeckExtAction(DeckExtActionValue {
+                        action: DeckExtAction::MasterTempo,
+                        pressed,
+                    }),
+                );
+            }
+        }
     }
     events.0
 }

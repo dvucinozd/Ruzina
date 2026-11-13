@@ -92,7 +92,14 @@
   - each tap goes through the controller's Beat FX events.
 
   Owner: "Radi".
-- **On the board:** s80 (app `31a4b3d2…`), the Beat FX by touch image. Earlier: a Slint
+- **Master Tempo (2026-11-13):** [Master Tempo](reviews/2026-11-13-master-tempo.md):
+  - a tap on MT toggles it (`DeckExtAction::MasterTempo`);
+  - a JC1060 WSOLA keylock keeps the key; the shared donor keylock sounded distorted.
+
+  Owner: "Radi". The grain search is spread over each hop. Master Tempo alone peaks at
+  about 6.2 ms. With a scratch on the other deck it reached 6.7 ms (s83, 0/0
+  underruns), and 44 % of fills ran over 3 ms.
+- **On the board:** s83 (app `b77f945a…`), Master Tempo with the fill profile. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

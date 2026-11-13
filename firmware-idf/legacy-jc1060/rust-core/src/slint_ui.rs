@@ -935,6 +935,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         };
         deck_view::TOUCH.push(0, deck_view::TouchControl::Fx(fx));
     });
+    ui.on_master_tempo(|deck| {
+        deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::MasterTempo);
+    });
     ui.on_hot_cue(|deck, pad, down, delete| {
         let pad = (pad & 7) as u8;
         let control = deck_view::TouchControl::HotCue { pad, delete, down };

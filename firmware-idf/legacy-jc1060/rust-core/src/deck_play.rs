@@ -325,6 +325,9 @@ pub(crate) struct Reader {
     scratch: Option<ScratchState>,
     /// Whether the gesture's last frame was audio rather than silence.
     scratch_audible: bool,
+    /// Frames handed out but not heard yet: Master Tempo's lead, which the position
+    /// leaves out.
+    lag: u32,
 }
 
 impl Reader {
@@ -342,7 +345,14 @@ impl Reader {
             last: PcmFrame { left: 0, right: 0 },
             scratch: None,
             scratch_audible: false,
+            lag: 0,
         }
+    }
+
+    /// Frames handed out that are not heard yet, as Master Tempo's stretch holds them.
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn set_lag(&mut self, frames: u32) {
+        self.lag = frames;
     }
 
     /// Whether the jog gesture owns this deck's audio.
@@ -735,7 +745,7 @@ impl Reader {
         if self.rate == 0 {
             return 0;
         }
-        (u64::from(self.cursor()) * 1000 / u64::from(self.rate)) as u32
+        (u64::from(self.cursor().saturating_sub(self.lag)) * 1000 / u64::from(self.rate)) as u32
     }
 
     pub(crate) fn buffered(&self, ring: &Ring) -> u32 {

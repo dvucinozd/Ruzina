@@ -2051,6 +2051,28 @@ fn the_hot_cues_page_sets_and_deletes_cues_as_the_pads_do() {
 }
 
 #[test]
+fn a_tap_on_mt_turns_master_tempo_on_and_off_for_its_deck() {
+    use crate::controller_midi::touch_events;
+    use crate::deck_view::TouchControl;
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = Mix::new();
+    let tap = |mix: &mut Mix, deck| {
+        let fx = mix.engine().fx_view();
+        for event in touch_events(deck, TouchControl::MasterTempo, fx)
+            .into_iter()
+            .flatten()
+        {
+            mix.control(&event);
+        }
+        mix.engine().master_tempo()
+    };
+    assert_eq!(mix.engine().master_tempo(), [false; 2]);
+    assert_eq!(tap(&mut mix, 1), [false, true]);
+    assert_eq!(tap(&mut mix, 0), [true, true]);
+    assert_eq!(tap(&mut mix, 1), [true, false]);
+}
+
+#[test]
 fn the_fx_page_picks_the_effect_beat_channel_and_depth_and_turns_fx_on() {
     use crate::controller_midi::touch_events;
     use crate::deck_view::{FxSnapshot, FxTouch, TouchControl};

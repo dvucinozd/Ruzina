@@ -14,6 +14,8 @@
 //! - The headphone output keeps a fixed -12 dB ceiling.
 use crate::deck_play::{RINGS, Reader};
 use crate::uac_profile::{self, Stage};
+#[cfg(feature = "deck-engine")]
+use alloc::boxed::Box;
 use core::cell::UnsafeCell;
 use ruzina_audio_dsp::PcmFrame;
 use ruzina_audio_runtime::render::{
@@ -54,6 +56,11 @@ pub(crate) struct Mix {
     exerciser: crate::soak_autoplay::Exerciser,
     #[cfg(feature = "deck-engine")]
     engine_revision: [u32; 2],
+    /// Master Tempo: each deck's keylock, once allocated outside the fill.
+    #[cfg(feature = "deck-engine")]
+    keylocks: Option<Box<[crate::deck_keylock::Keylock; 2]>>,
+    /// Which decks play through their keylock this block.
+    keylocked: [bool; 2],
 }
 
 impl Mix {
@@ -75,6 +82,9 @@ impl Mix {
             exerciser: crate::soak_autoplay::Exerciser::new(),
             #[cfg(feature = "deck-engine")]
             engine_revision: [0; 2],
+            #[cfg(feature = "deck-engine")]
+            keylocks: None,
+            keylocked: [false; 2],
         }
     }
 
@@ -136,6 +146,14 @@ impl Mix {
         }
     }
 
+    /// Allocates the decks' keylocks for Master Tempo, once, outside the USB audio fill.
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn attach_keylocks(&mut self) {
+        if self.keylocks.is_none() {
+            self.keylocks = Some(crate::deck_keylock::Keylock::boxed_pair());
+        }
+    }
+
     fn start(&mut self) {
         if self.started {
             return;
@@ -186,6 +204,9 @@ impl Mix {
             let rate = self.readers[index].rate();
             // A jog gesture sets its own speed, one frame per output frame.
             let scratching = self.readers[index].scratching();
+            // Master Tempo's stretch moves the track at the tempo; the graph then only
+            // resamples.
+            let keylocked = self.keylocked[index];
             control.decks[index] = RenderDeckControl {
                 source_epoch: 1,
                 playing: (playing[index] || scratching) && rate != 0,
@@ -195,7 +216,11 @@ impl Mix {
                 } else {
                     RENDER_SAMPLE_RATE_HZ
                 },
-                pitch_centipercent: if scratching { 0 } else { self.pitch[index] },
+                pitch_centipercent: if scratching || keylocked {
+                    0
+                } else {
+                    self.pitch[index]
+                },
                 pre_gain: gains.pre[index],
                 post_gain: gains.post[index],
                 eq_low: mixer_deck.eq_low,
@@ -231,11 +256,15 @@ impl Mix {
         }
         let graph = self.graph.get_or_insert_with(FixedRateRenderGraph::new);
         uac_profile::stage(Stage::Transport);
+        #[cfg_attr(not(feature = "deck-engine"), allow(unused_variables))]
+        let mut changed = [false; 2];
         for (deck, reader) in self.readers.iter_mut().enumerate() {
-            let changed = reader.sync(&RINGS[deck]);
+            changed[deck] = reader.sync(&RINGS[deck]);
             #[cfg(feature = "deck-engine")]
-            let changed = changed || self.engine_revision[deck] != self.engine.revision()[deck];
-            if changed {
+            {
+                changed[deck] |= self.engine_revision[deck] != self.engine.revision()[deck];
+            }
+            if changed[deck] {
                 graph.reset_deck(deck);
             }
         }
@@ -268,15 +297,55 @@ impl Mix {
                 }
             }
         }
+        // Master Tempo plays a deck through its keylock, but not while it scratches; a
+        // keylock starts over when the deck's source jumped or it was off.
+        #[cfg(feature = "deck-engine")]
+        {
+            let master_tempo = self.engine.master_tempo();
+            for (deck, reader) in self.readers.iter().enumerate() {
+                let keylocked = master_tempo[deck]
+                    && !reader.scratching()
+                    && reader.rate() != 0
+                    && self.keylocks.is_some();
+                if let Some(keylocks) = self.keylocks.as_mut()
+                    && (keylocked != self.keylocked[deck] || changed[deck])
+                {
+                    keylocks[deck].stop();
+                }
+                self.keylocked[deck] = keylocked;
+            }
+        }
         uac_profile::stage(Stage::Control);
         let control = self.render_control(playing);
         let graph = self.graph.as_mut().expect("graph built above");
         let readers = &mut self.readers;
+        #[cfg(feature = "deck-engine")]
+        let (keylocks, keylocked) = (&mut self.keylocks, self.keylocked);
+        #[cfg(feature = "deck-engine")]
+        let tempo = self
+            .pitch
+            .map(ruzina_audio_runtime::render::tempo_factor_from_centipercent);
         uac_profile::stage(Stage::Graph);
         let report = graph.render_block(control, &mut self.block, |deck| {
-            readers[deck].pop(&RINGS[deck])
+            let reader = &mut readers[deck];
+            #[cfg(feature = "deck-engine")]
+            if keylocked[deck]
+                && let Some(keylocks) = keylocks.as_mut()
+            {
+                return keylocks[deck].next(tempo[deck], || reader.pop(&RINGS[deck]));
+            }
+            reader.pop(&RINGS[deck])
         });
         uac_profile::stage(Stage::Progress);
+        // The deck's position is what is heard, behind what the stretch already took.
+        #[cfg(feature = "deck-engine")]
+        for (deck, reader) in readers.iter_mut().enumerate() {
+            let lag = match keylocks.as_ref() {
+                Some(keylocks) if keylocked[deck] => keylocks[deck].lag(),
+                _ => 0,
+            };
+            reader.set_lag(lag);
+        }
         for (deck, reader) in readers.iter().enumerate() {
             reader.commit(&RINGS[deck]);
             if playing[deck] {
