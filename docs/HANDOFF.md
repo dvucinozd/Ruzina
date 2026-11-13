@@ -109,8 +109,14 @@
 - **Master Tempo stops (2026-11-13):** [Master Tempo stops that skip nothing](reviews/2026-11-13-mt-phase.md).
   A keylock stopping on the same source (a scratch, Master Tempo off) used to skip
   about 30 ms ahead. The reader now steps back over its lag. Owner: "Radi". SYNC
-  against a Master Tempo deck checks within −12 to +5 ms, the grain search's jitter.
-- **On the board:** s86 (app `d97934e1…`), Master Tempo stops without a skip. Earlier: a Slint
+  against a Master Tempo deck checks within −12 to +7 ms, the grain search's jitter.
+- **Settings page (2026-11-13):** [the Settings page](reviews/2026-11-13-settings-page.md):
+  - the decks' sources, buffers and underruns;
+  - the mix's played time and limiter;
+  - the uptime and the firmware's version and build.
+
+  Owner: "Radi".
+- **On the board:** s87 (app `ee29e6be…`), the Settings page. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

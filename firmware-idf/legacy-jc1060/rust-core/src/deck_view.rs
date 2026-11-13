@@ -395,6 +395,24 @@ pub(crate) fn browse(delta: i32) {
     }
 }
 
+/// Tracks in the Library's list.
+pub(crate) fn library_len() -> u32 {
+    LIBRARY_LEN.load(Ordering::Acquire)
+}
+
+/// The mix's figures for the Settings page, as `Mix::stats` gives them: rendered frames,
+/// underrun blocks per deck, buffered frames per deck, source rate per deck, limited
+/// MAIN samples. Written by the USB task outside the fill; a reader may see a mix of
+/// two refreshes, which the page does not mind.
+pub(crate) static STATS: [AtomicU32; 8] = [const { AtomicU32::new(0) }; 8];
+
+/// Hands the Settings page the mix's latest figures.
+pub(crate) fn publish_stats(stats: [u32; 8]) {
+    for (slot, value) in STATS.iter().zip(stats) {
+        slot.store(value, Ordering::Relaxed);
+    }
+}
+
 /// Whether the Library page is open.
 pub(crate) fn library_open() -> bool {
     LIBRARY_OPEN.load(Ordering::Relaxed)
