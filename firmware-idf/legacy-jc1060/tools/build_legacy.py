@@ -62,6 +62,7 @@ def main():
     parser.add_argument('--slint-ui', action='store_true', help='Diagnostic: the deck screen with demo data, measured against USB audio')
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
     parser.add_argument('--no-wifi', action='store_true', help="Leave out the deck screen image's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted)")
+    parser.add_argument('--usb-stick', action='store_true', help='Media from a USB stick on the FS port instead of the SD card')
     args = parser.parse_args()
     # The deck screen image carries the deck's Wi-Fi and Web Remote unless asked not to.
     args.wifi = args.slint_ui and args.variant == 'deck-engine' and not args.no_wifi
@@ -69,6 +70,8 @@ def main():
     # profile stays on its own.
     if args.slint_ui and (args.variant != 'deck-engine' or args.producer_profile):
         raise ValueError('The Slint UI diagnostic is deck-engine only and excludes producer profiling')
+    if args.usb_stick and args.variant != 'deck-engine':
+        raise ValueError('The USB stick media path is deck-engine only')
     if args.soak_autoplay and (args.variant != 'deck-engine' or args.producer_profile):
         raise ValueError('Soak autoplay is a deck-engine diagnostic and excludes producer profiling')
     if args.uac_pack_iram and not args.uac_profile:
@@ -209,6 +212,8 @@ def main():
         defaults += [APP / 'sdkconfig.slint-ui.defaults']
     if args.wifi:
         defaults += [APP / 'sdkconfig.wifi.defaults']
+    if args.usb_stick:
+        defaults += [APP / 'sdkconfig.usb-stick.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'
     # Offline build: vendored components only; the component manager would
@@ -416,6 +421,7 @@ def main():
                     slint_ui=args.slint_ui,
                     fill_iram=args.fill_iram,
                     wifi=args.wifi,
+                    usb_stick=args.usb_stick,
                     rust_release_overrides={'nanomp3-core': {'opt-level': 3}} if args.mp3_core_opt3 else {},
                     sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],
