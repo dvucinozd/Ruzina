@@ -153,11 +153,21 @@ struct ActiveSector {
 
 pub struct HotCueJournalBackend<F> {
     flash: F,
+    /// The next sector `erase_spare` looks at.
+    spare_cursor: u32,
 }
+
+/// Sectors in the journal partition.
+const SECTOR_COUNT: u32 = HOT_CUE_JOURNAL_BUCKET_COUNT * HOT_CUE_JOURNAL_SECTORS_PER_BUCKET;
+/// Bytes `sector_erased` reads at a time.
+const BLANK_CHECK_CHUNK: usize = 256;
 
 impl<F> HotCueJournalBackend<F> {
     pub const fn new(flash: F) -> Self {
-        Self { flash }
+        Self {
+            flash,
+            spare_cursor: 0,
+        }
     }
 
     pub const fn flash(&self) -> &F {
@@ -253,9 +263,7 @@ where
                 return Ok(());
             }
             let base = sector_base(bucket, 0)?;
-            self.flash
-                .erase_sector(base)
-                .map_err(HotCueJournalError::Flash)?;
+            self.erase_if_needed(base)?;
             self.write_header_uncommitted(base, bucket, 1)?;
             self.write_entry(base, 0, key, record)?;
             self.commit_header(base)?;
@@ -316,9 +324,7 @@ where
             return Err(HotCueJournalError::BucketFull);
         }
 
-        self.flash
-            .erase_sector(new_base)
-            .map_err(HotCueJournalError::Flash)?;
+        self.erase_if_needed(new_base)?;
         self.write_header_uncommitted(new_base, bucket, active.generation.wrapping_add(1))?;
 
         let mut next_slot = 0usize;
@@ -338,6 +344,65 @@ where
         // entry and the incoming operation are durably committed.
         self.commit_header(new_base)?;
         Ok(())
+    }
+
+    /// Erases the sector at `base` unless it already reads erased. On NOR flash an
+    /// erase stalls everything that runs from flash for tens of milliseconds; reading
+    /// the sector first costs far less, and a spare erased ahead of time
+    /// (`erase_spare`) then needs no erase at all.
+    fn erase_if_needed(&mut self, base: u32) -> Result<(), HotCueJournalError<F::Error>> {
+        if !self.sector_erased(base)? {
+            self.flash
+                .erase_sector(base)
+                .map_err(HotCueJournalError::Flash)?;
+        }
+        Ok(())
+    }
+
+    /// Whether every byte of the sector at `base` reads erased.
+    fn sector_erased(&mut self, base: u32) -> Result<bool, HotCueJournalError<F::Error>> {
+        let mut chunk = [0u8; BLANK_CHECK_CHUNK];
+        for offset in (0..HOT_CUE_JOURNAL_SECTOR_SIZE).step_by(BLANK_CHECK_CHUNK) {
+            self.read(base + offset, &mut chunk)?;
+            if !is_erased(&chunk) {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// Erases, ahead of time, one sector that a later write would otherwise have to
+    /// erase: a bucket's side that is not its active one and still holds data (an
+    /// older generation, or an uncommitted one). The caller picks a moment when an
+    /// erase stalls nothing that matters. Returns the erased sector's offset, or
+    /// `None` when every spare already reads erased. A bucket whose two sides are
+    /// inconsistent is left for the writes to report.
+    pub fn erase_spare(&mut self) -> Result<Option<u32>, HotCueJournalError<F::Error>> {
+        for _ in 0..SECTOR_COUNT {
+            let index = self.spare_cursor;
+            self.spare_cursor = (index + 1) % SECTOR_COUNT;
+            let (bucket, side) = (
+                index / HOT_CUE_JOURNAL_SECTORS_PER_BUCKET,
+                index % HOT_CUE_JOURNAL_SECTORS_PER_BUCKET,
+            );
+            let active = match self.active_sector(bucket) {
+                Ok(active) => active,
+                Err(HotCueJournalError::Corrupt) => continue,
+                Err(error) => return Err(error),
+            };
+            if active.is_some_and(|active| active.side == side) {
+                continue;
+            }
+            let base = sector_base(bucket, side)?;
+            if self.sector_erased(base)? {
+                continue;
+            }
+            self.flash
+                .erase_sector(base)
+                .map_err(HotCueJournalError::Flash)?;
+            return Ok(Some(base));
+        }
+        Ok(None)
     }
 
     fn active_sector(
@@ -635,6 +700,7 @@ mod tests {
     struct FakeFlash {
         bytes: std::vec::Vec<u8>,
         partial_next_write: Option<usize>,
+        erases: usize,
     }
 
     impl FakeFlash {
@@ -642,6 +708,7 @@ mod tests {
             Self {
                 bytes: vec![0xff; HOT_CUE_JOURNAL_PARTITION_SIZE as usize],
                 partial_next_write: None,
+                erases: 0,
             }
         }
 
@@ -701,6 +768,7 @@ mod tests {
                 .get_mut(start..end)
                 .ok_or(FakeError::OutOfBounds)?;
             target.fill(0xff);
+            self.erases += 1;
             Ok(())
         }
     }
@@ -726,6 +794,56 @@ mod tests {
         assert_eq!(ENTRY_SIZE as usize, 168);
         assert_eq!(ENTRIES_PER_SECTOR, 24);
         assert_eq!(HOT_CUE_JOURNAL_PARTITION_SIZE, 1024 * 1024);
+    }
+
+    #[test]
+    fn blank_sectors_are_written_without_an_erase_and_spares_are_erased_ahead() {
+        let mut journal = HotCueJournalBackend::new(FakeFlash::new());
+        let key = key(7);
+        let mut output = [0u8; HOT_CUE_RECORD_V4_SIZE];
+        // A fresh bucket's first record needs no erase.
+        journal.write_record_atomic(key, &record(1)).unwrap();
+        assert_eq!(journal.flash().erases, 0);
+        // Filling the sector and rotating into the blank other side needs none either.
+        for seed in 2..=(ENTRIES_PER_SECTOR as u8 + 1) {
+            journal.write_record_atomic(key, &record(seed)).unwrap();
+        }
+        assert_eq!(journal.flash().erases, 0);
+        assert!(journal.read_record(key, &mut output).unwrap());
+        assert_eq!(output, record(ENTRIES_PER_SECTOR as u8 + 1));
+
+        // The old side now holds an older generation: erase_spare clears it, once.
+        let bucket = bucket_for(key);
+        let active = journal.active_sector(bucket).unwrap().unwrap();
+        let spare = sector_base::<FakeError>(bucket, active.side ^ 1).unwrap();
+        assert_eq!(journal.erase_spare().unwrap(), Some(spare));
+        assert_eq!(journal.flash().erases, 1);
+        assert_eq!(journal.erase_spare().unwrap(), None);
+        assert_eq!(journal.flash().erases, 1);
+
+        // The next rotation lands on the erased spare without an erase of its own.
+        for seed in 0..ENTRIES_PER_SECTOR as u8 {
+            journal.write_record_atomic(key, &record(seed)).unwrap();
+        }
+        assert_eq!(journal.flash().erases, 1);
+        assert!(journal.read_record(key, &mut output).unwrap());
+        assert_eq!(output, record(ENTRIES_PER_SECTOR as u8 - 1));
+
+        // Without erase_spare, a rotation onto a used side still erases it.
+        let used_side = journal.active_sector(bucket).unwrap().unwrap().side ^ 1;
+        assert!(
+            !journal
+                .sector_erased(sector_base::<FakeError>(bucket, used_side).unwrap())
+                .unwrap()
+        );
+        for seed in 0..ENTRIES_PER_SECTOR as u8 {
+            journal
+                .write_record_atomic(key, &record(seed.wrapping_add(50)))
+                .unwrap();
+        }
+        assert_eq!(journal.flash().erases, 2);
+        assert!(journal.read_record(key, &mut output).unwrap());
+        assert_eq!(output, record(ENTRIES_PER_SECTOR as u8 - 1 + 50));
     }
 
     #[test]

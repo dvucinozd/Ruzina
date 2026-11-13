@@ -118,7 +118,13 @@
   Owner: "Radi".
   - s87's 15 minutes again showed one 21.6 ms fill, right after a 46 ms Hot Cue journal
     save during the soak DJ's Pause All, as on s80. Underruns were 0/0.
-  - Open: a long journal write stalls the fill.
+- **Hot Cue saves without long erases (2026-11-13):** [Hot Cue erase-ahead](reviews/2026-11-13-hot-cue-erase-ahead.md):
+  - the ~21 ms fills and the lost USB packets both came from journal flash writes;
+  - the journal now skips erasing blank sectors, and erases stale spares ahead of time
+    while no USB audio flows.
+
+  s88: 18 saves of 5 to 24 ms, longest fill 5.9 ms, one lost packet in 15 minutes
+  (5 on s87).
 - **CI (2026-11-13):** the legacy workflow now builds the deck screen image:
   - host tests and clippy with `idf-soak-autoplay idf-slint-ui`;
   - target clippy and build for it, with and without `idf-uac-profile`;
@@ -128,7 +134,7 @@
   Turning it on found two things the board images had hidden:
   - with the deck screen, a controller test still expected the old C Library actions;
   - host clippy flagged the screen-only texts as dead code.
-- **On the board:** s87 (app `ee29e6be…`), the Settings page. Earlier: a Slint
+- **On the board:** s88 (app `4b43bca9…`), Hot Cue erase-ahead. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

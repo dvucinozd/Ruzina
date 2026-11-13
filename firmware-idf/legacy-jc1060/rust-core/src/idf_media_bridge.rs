@@ -485,6 +485,10 @@ pub extern "C" fn ruzina_legacy_load_select(index: u32) {
 #[cfg(feature = "idf-media-load")]
 const DETAIL_PEAKS: usize = 400;
 
+/// How long USB audio fills must stand still before the journal may erase ahead.
+#[cfg(feature = "idf-deck-engine")]
+const AUDIO_IDLE_US: u64 = 200_000;
+
 /// Load-path telemetry events; values are scalars only.
 /// The Hot Cue journal on its flash partition, as the native firmware keeps it.
 #[cfg(feature = "idf-deck-engine")]
@@ -550,9 +554,13 @@ mod load_event {
     #[cfg(feature = "idf-deck-engine")]
     pub const HOT_CUES_SAVED: u32 = 17;
     /// The Hot Cue journal failed and is off until the next boot; value is 1
-    /// for a read, 2 for a write.
+    /// for a read, 2 for a write, 3 for erasing a spare sector ahead of time.
     #[cfg(feature = "idf-deck-engine")]
     pub const HOT_CUES_FAILED: u32 = 18;
+    /// A spare journal sector was erased ahead of time, while no USB audio flowed;
+    /// value is the time it took in microseconds.
+    #[cfg(feature = "idf-deck-engine")]
+    pub const HOT_CUES_SPARE_ERASED: u32 = 19;
 }
 
 /// Mount, import `export.pdb` and preflight every catalog track, repeatedly.
@@ -1009,6 +1017,10 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
     let _ = crate::deck_transport::MEDIA.put(lease);
     #[cfg(feature = "idf-deck-engine")]
     let mut hot_cues = Some(hot_cue_flash::store());
+    // USB audio fills as last seen, and when they last moved; whether spare journal
+    // sectors may still hold data.
+    #[cfg(feature = "idf-deck-engine")]
+    let (mut audio_fills, mut audio_seen_us, mut spares_left) = (u32::MAX, 0u64, true);
     let mut deck_two_first = false;
     let mut detail_deferred = false;
     let mut last_turn_us = 0u64;
@@ -1060,6 +1072,8 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
             .now_us()
             .saturating_sub(now);
             crate::deck_transport::HOT_CUE_SAVES_DONE.fetch_add(1, Ordering::Release);
+            // A rotation may have left a spare with data.
+            spares_left = true;
             match saved {
                 Some(true) => report(load_event::HOT_CUES_SAVED, took as u32),
                 Some(false) => {
@@ -1067,6 +1081,35 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
                     report(load_event::HOT_CUES_FAILED, 2);
                 }
                 None => {}
+            }
+        }
+        // Erasing a flash sector stalls everything running from flash and PSRAM for
+        // tens of milliseconds, the USB audio fill included. With no audio flowing
+        // (no controller yet, or it is unplugged), the journal erases one spare sector
+        // ahead of time per turn, so that later saves need no erase.
+        #[cfg(feature = "idf-deck-engine")]
+        {
+            let fills = crate::controller_audio::FILLS.load(Ordering::Relaxed);
+            if fills != audio_fills {
+                audio_fills = fills;
+                audio_seen_us = now;
+            } else if spares_left && now.saturating_sub(audio_seen_us) >= AUDIO_IDLE_US {
+                use ruzina_hot_cues::journal::HotCueJournalError;
+                let clock = |volume: &mut _| VolumeFiles { volume, current }.now_us();
+                let started = clock(&mut *volume);
+                let erased = hot_cues
+                    .as_mut()
+                    .map(|store| store.backend_mut().erase_spare());
+                let took = clock(&mut *volume).saturating_sub(started);
+                match erased {
+                    Some(Ok(Some(_))) => report(load_event::HOT_CUES_SPARE_ERASED, took as u32),
+                    Some(Ok(None)) | None => spares_left = false,
+                    Some(Err(HotCueJournalError::Flash(()) | HotCueJournalError::OutOfBounds)) => {
+                        hot_cues = None;
+                        report(load_event::HOT_CUES_FAILED, 3);
+                    }
+                    Some(Err(_)) => spares_left = false,
+                }
             }
         }
         let mut busy = false;

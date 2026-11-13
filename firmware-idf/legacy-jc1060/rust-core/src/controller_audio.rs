@@ -168,9 +168,15 @@ pub unsafe extern "C" fn ruzina_legacy_uac_control(step: u32, out: *mut u8) -> u
 
 /// Fills `packets` consecutive 1 ms packets into `buffer` (`capacity` bytes)
 /// and their sizes into `sizes`; returns the total bytes, 0 on any error.
+/// Each call counts in `FILLS`.
 ///
 /// # Safety
 /// `buffer` must be valid for `capacity` writes and `sizes` for `packets`.
+/// USB audio fills since boot. While it stands still, no audio is streaming to the
+/// controller, so a long flash operation stalls nothing that is heard.
+#[cfg(feature = "idf-controller-audio")]
+pub(crate) static FILLS: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
 #[cfg(feature = "idf-controller-audio")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ruzina_legacy_uac_fill(
@@ -180,6 +186,7 @@ pub unsafe extern "C" fn ruzina_legacy_uac_fill(
     packets: u32,
 ) -> u32 {
     let _fill_profile = crate::uac_profile::fill_scope();
+    FILLS.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
     if buffer.is_null() || sizes.is_null() {
         return 0;
     }
