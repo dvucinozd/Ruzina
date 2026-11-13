@@ -142,7 +142,19 @@
     baud, checked by the chip's MD5.
 
   This prepares the USB stick on the FS port.
-- **On the board:** s89 (app `1f239487…`), the UART0 console, flashed over UART0. Earlier: a Slint
+- **USB stick (2026-11-13, not on main):** branch `ogranak/jc1060-usb-stick` adds
+  `--usb-stick`:
+  - the host on HS and FS;
+  - a SCSI Bulk-Only reader;
+  - the media owner reading the stick under the SD contract.
+
+  Both builds compile; it is untested until the board is powered from CN2 VIN with the
+  PC off the FS port.
+- **Latin letters (2026-11-13):** [Croatian and other Latin letters](reviews/2026-11-13-latin-glyphs.md)
+  on the deck screen. Slint embeds only ASCII and literal characters, so an invisible
+  text now carries Latin-1, Latin Extended-A and typographic quotes (+641 KB). Owner:
+  "Radi".
+- **On the board:** s91 (app `1b61c536…`), Latin glyphs. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
