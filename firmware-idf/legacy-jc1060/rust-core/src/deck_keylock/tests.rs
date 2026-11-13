@@ -107,7 +107,7 @@ fn a_starved_keylock_waits_and_a_stopped_one_starts_over() {
         }
     }
     assert!(produced > 2_000);
-    assert!(keylock.lag() <= 2 * GRAIN as u32);
+    assert!(keylock.lag() <= 2 * GRAIN);
     keylock.stop();
     assert_eq!(keylock.lag(), 0);
     assert!(keylock.next(1.2, || None).is_none());
@@ -124,7 +124,7 @@ fn the_lead_on_the_heard_position_stays_within_two_grains() {
         keylock.next(1.5, &mut pull).unwrap();
         most = most.max(keylock.lag());
     }
-    assert!(most <= 2 * GRAIN as u32 + SEEK as u32, "lead {most}");
+    assert!(most <= 2 * GRAIN + SEEK, "lead {most}");
 }
 
 #[test]

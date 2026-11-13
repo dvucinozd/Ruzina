@@ -78,14 +78,17 @@ So the tempo fader always moved the key with the tempo.
     - The whole grain search fell into one render block every 512 frames per deck.
   - s83 (the search spread over the hop, app `b77f945a…`, fill profile): owner verdict
     "Radi".
-    - In the first two minutes: underruns 0/0, `packet_errors=0`, no panics.
-    - With Master Tempo on both decks, and Beat FX, fills peaked at about 6.2 ms. The
-      run's longest, 6.5 ms, was a scratch without Master Tempo.
-    - 26 % of fills over 3 ms, and 4 fills of 6 ms or more.
+    - In 15 minutes: underruns 0/0, `packet_errors=0`, no panics.
+    - Longest fill 6.7 ms: deck 1 playing in Master Tempo while deck 2 scratched, also
+      in Master Tempo. With Master Tempo alone, and Beat FX, fills peaked at about
+      6.2 ms.
+    - 44 % of fills over 3 ms (Master Tempo was on for most of the run), and 18 fills
+      of 6 ms or more.
   - On the host, the stretch costs 18 ns a frame off the track's tempo (59 ns before
     the change) and 8 ns at it (15 ns).
-  - Master Tempo now stays within the accepted ~6.3 ms scratch exception. It still
-    lifts the share of fills over 3 ms, from about 9 % to about 26 %.
+  - Master Tempo with a scratch on the other deck runs 0.4 ms over the accepted
+    ~6.3 ms scratch exception. It also lifts the share of fills over 3 ms, from about
+    9 % to over 40 %.
 
 ## Test plan
 
