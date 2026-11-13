@@ -853,4 +853,17 @@ export component Overview inherits Window {
     // Rust draws here: the two overviews.
     Rectangle { x: 8px; y: 552px; width: 496px; height: 45px; background: #020406; }
     Rectangle { x: 520px; y: 552px; width: 496px; height: 45px; background: #020406; }
+
+    // Track titles and artists use more than ASCII. The software renderer only has
+    // the glyphs it embedded at build time: ASCII, plus every character in a string
+    // literal. This invisible text puts Latin-1, Latin Extended-A (with the Croatian
+    // letters) and typographic quotes and dashes into every embedded size.
+    Text {
+        x: 0px;
+        y: 0px;
+        width: 0px;
+        height: 0px;
+        color: transparent;
+        text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™";
+    }
 }
