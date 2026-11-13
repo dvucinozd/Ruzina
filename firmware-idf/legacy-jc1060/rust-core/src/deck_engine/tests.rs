@@ -1936,6 +1936,118 @@ fn a_synced_deck_follows_the_other_decks_tempo_and_stays_in_phase() {
     empty_ring(1);
 }
 
+/// SYNC with Master Tempo on `mt_deck`, the deck at +8 %: the phase error a second later.
+fn sync_phase_with_master_tempo(mt_deck: DeckId, synced: DeckId) -> i32 {
+    use crate::deck_view::TouchControl;
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    mix.attach_keylocks();
+    SEEK_REQUESTS[0].take();
+    SEEK_REQUESTS[1].take();
+    load_with_grid(&mut mix, DeckId::One, 35);
+    load_with_grid(&mut mix, DeckId::Two, 36);
+    run_fed(&mut mix, 3);
+    let mt = usize::from(mt_deck == DeckId::Two);
+    let fx = mix.engine().fx_view();
+    for event in crate::controller_midi::touch_events(mt, TouchControl::MasterTempo, fx)
+        .into_iter()
+        .flatten()
+    {
+        mix.control(&event);
+    }
+    // The fader at +8 % of its 10 % range.
+    mix.control(&ControlEvent {
+        deck: Some(mt_deck),
+        control: SemanticControl::Tempo,
+        value: ControlValue::Absolute {
+            value: 1_638,
+            max: 16_383,
+        },
+    });
+    press_on(&mut mix, DeckId::One, SemanticControl::Play);
+    run_fed(&mut mix, 300);
+    press_on(&mut mix, DeckId::Two, SemanticControl::Play);
+    run_fed(&mut mix, 200);
+    mix.engine().take_phase_report();
+    press_on(&mut mix, synced, SemanticControl::Sync);
+    let mut error = None;
+    for _ in 0..1_500 {
+        run_fed(&mut mix, 1);
+        if let Some((_, event, value)) = mix.engine().take_phase_report()
+            && event == PHASE_ERROR
+        {
+            error = Some(value as i32 - PHASE_REPORT_ZERO);
+            break;
+        }
+    }
+    SEEK_REQUESTS[0].take();
+    SEEK_REQUESTS[1].take();
+    empty_ring(0);
+    empty_ring(1);
+    error.expect("a phase check")
+}
+
+#[test]
+fn master_tempo_going_off_loses_no_audio() {
+    use crate::deck_view::TouchControl;
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    mix.attach_keylocks();
+    SEEK_REQUESTS[0].take();
+    empty_ring(1);
+    load_with_grid(&mut mix, DeckId::One, 37);
+    run_fed(&mut mix, 3);
+    let toggle = |mix: &mut Mix| {
+        let fx = mix.engine().fx_view();
+        for event in crate::controller_midi::touch_events(0, TouchControl::MasterTempo, fx)
+            .into_iter()
+            .flatten()
+        {
+            mix.control(&event);
+        }
+    };
+    toggle(&mut mix);
+    mix.control(&ControlEvent {
+        deck: Some(DeckId::One),
+        control: SemanticControl::Tempo,
+        value: ControlValue::Absolute {
+            value: 1_638,
+            max: 16_383,
+        },
+    });
+    press_on(&mut mix, DeckId::One, SemanticControl::Play);
+    run_fed(&mut mix, 500);
+    let before = mix.engine().deck(DeckId::One).position_ms;
+    // Master Tempo off: the frames the stretch took but did not play are played now.
+    toggle(&mut mix);
+    run_fed(&mut mix, 100);
+    let after = mix.engine().deck(DeckId::One).position_ms;
+    assert!(
+        near(after - before, 108, 4),
+        "100 ms at +8 % moved {} ms",
+        after - before
+    );
+    SEEK_REQUESTS[0].take();
+    empty_ring(0);
+    empty_ring(1);
+}
+
+#[test]
+fn sync_against_or_from_a_master_tempo_deck_lands_in_phase() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let against = sync_phase_with_master_tempo(DeckId::One, DeckId::Two);
+    let from = sync_phase_with_master_tempo(DeckId::Two, DeckId::Two);
+    std::println!("phase error: against MT {against} ms, from MT {from} ms");
+    assert!(
+        against.abs() <= 3,
+        "against a Master Tempo deck: {against} ms"
+    );
+    assert!(from.abs() <= 3, "from a Master Tempo deck: {from} ms");
+}
+
 #[test]
 fn sync_on_a_paused_deck_waits_for_its_grid_and_then_aligns() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());

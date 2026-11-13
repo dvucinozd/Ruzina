@@ -271,6 +271,7 @@ impl Mix {
         #[cfg(feature = "deck-engine")]
         {
             self.engine_revision = self.engine.revision();
+            let master_tempo = self.engine.master_tempo();
             for (deck, reader) in self.readers.iter_mut().enumerate() {
                 match self.engine.take_loop_command(deck) {
                     Some(crate::deck_engine::LoopCommand::Set(start, end)) => {
@@ -288,27 +289,35 @@ impl Mix {
                     });
                     self.engine.phase_jumped(deck, jumped);
                 }
-                match self.engine.take_scratch(deck) {
+                let scratch = self.engine.take_scratch(deck);
+                // A keylock that stops on the same source, as a scratch takes the deck
+                // or Master Tempo goes off, gives back the frames it took but did not
+                // play: the reader steps back over them, so nothing is skipped. On a
+                // new source (load, seek) it simply starts over.
+                let was = self.keylocked[deck];
+                if was
+                    && !changed[deck]
+                    && (scratch.is_some() || !master_tempo[deck])
+                    && let Some(keylocks) = self.keylocks.as_ref()
+                {
+                    let lag = keylocks[deck].lag();
+                    reader.shift(&RINGS[deck], -(lag.min(i32::MAX as u32) as i32));
+                }
+                match scratch {
                     Some(ticks) => {
                         reader.begin_scratch(playing[deck]);
                         reader.scratch_jog(ticks);
                     }
                     None => reader.end_scratch(playing[deck]),
                 }
-            }
-        }
-        // Master Tempo plays a deck through its keylock, but not while it scratches; a
-        // keylock starts over when the deck's source jumped or it was off.
-        #[cfg(feature = "deck-engine")]
-        {
-            let master_tempo = self.engine.master_tempo();
-            for (deck, reader) in self.readers.iter().enumerate() {
+                // Master Tempo plays a deck through its keylock, but not while it
+                // scratches.
                 let keylocked = master_tempo[deck]
                     && !reader.scratching()
                     && reader.rate() != 0
                     && self.keylocks.is_some();
                 if let Some(keylocks) = self.keylocks.as_mut()
-                    && (keylocked != self.keylocked[deck] || changed[deck])
+                    && (keylocked != was || changed[deck])
                 {
                     keylocks[deck].stop();
                 }
