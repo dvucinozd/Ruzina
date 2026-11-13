@@ -134,7 +134,15 @@
   Turning it on found two things the board images had hidden:
   - with the deck screen, a controller test still expected the old C Library actions;
   - host clippy flagged the screen-only texts as dead code.
-- **On the board:** s88 (app `4b43bca9…`), Hot Cue erase-ahead. Earlier: a Slint
+- **UART0 service link (2026-11-13):** [JC1060 UART0 service link](boards/JC1060_UART0_SERVICE.md):
+  - the console is UART0 on CN2 (connector 10) at 921600 baud, COM8 on the owner's PC;
+  - USB Serial/JTAG (COM3) keeps an output-only copy of the app log; the `R` restart
+    works only on COM8;
+  - flashing over UART0 works: hold BOOT, press Reset, then `uart0-flash.py` at 460800
+    baud, checked by the chip's MD5.
+
+  This prepares the USB stick on the FS port.
+- **On the board:** s89 (app `1f239487…`), the UART0 console, flashed over UART0. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
