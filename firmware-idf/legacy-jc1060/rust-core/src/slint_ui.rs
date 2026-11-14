@@ -5,7 +5,8 @@
 //! loaded track's title, key and analysis. It logs draw times as load events: 21 the
 //! Slint parts (worst, then 31 the average), 22 a waveform frame (32). A Slint frame over
 //! `SLOW_FRAME_US` also logs 23 its draw (pass: the rows drawn) and 24 the page updates
-//! before it (pass: the open page).
+//! before it (pass: the open page), then 25 each area drawn (pass: first and last row,
+//! value: first and last column, 16 bits each) and 26 the lines (pass) and pixels drawn.
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -351,6 +352,38 @@ struct Lines<'a> {
     direct: &'a [Area],
     top: usize,
     bottom: usize,
+    /// Diagnostics: the lines Slint drew, their pixels, and the first areas: runs of
+    /// consecutive lines with the same columns.
+    calls: u32,
+    pixels: u32,
+    runs: [(u16, u16, u16, u16); RUNS],
+    run_count: usize,
+}
+
+/// The areas a slow frame logs.
+const RUNS: usize = 6;
+
+impl Lines<'_> {
+    fn note(&mut self, line: usize, range: &core::ops::Range<usize>) {
+        self.calls += 1;
+        self.pixels += range.len() as u32;
+        let (line, start, end) = (line as u16, range.start as u16, range.end as u16);
+        if let Some(run) = self
+            .run_count
+            .checked_sub(1)
+            .and_then(|i| self.runs.get_mut(i))
+            && run.2 == start
+            && run.3 == end
+            && run.1 + 1 == line
+        {
+            run.1 = line;
+            return;
+        }
+        if let Some(run) = self.runs.get_mut(self.run_count) {
+            *run = (line, line, start, end);
+        }
+        self.run_count += 1;
+    }
 }
 
 impl LineBufferProvider for &mut Lines<'_> {
@@ -364,25 +397,39 @@ impl LineBufferProvider for &mut Lines<'_> {
     ) {
         let mut pixels = [Rgb565Pixel(0); WIDTH];
         render_fn(&mut pixels[range.clone()]);
+        self.note(line, &range);
         let row = &mut self.frame[line * WIDTH..(line + 1) * WIDTH];
-        let mut x = range.start;
-        while x < range.end {
-            // The first direct rectangle on this line at or after `x`.
-            let next = self
-                .direct
-                .iter()
-                .filter(|area| {
-                    (area.y..area.y + area.height).contains(&line) && area.x + area.width > x
-                })
-                .min_by_key(|area| area.x);
-            let end = next.map_or(range.end, |area| area.x.clamp(x, range.end));
-            for (out, pixel) in row[x..end].iter_mut().zip(&pixels[x..end]) {
+        outside(self.direct, line, range.clone(), |span| {
+            for (out, pixel) in row[span.clone()].iter_mut().zip(&pixels[span]) {
                 *out = pixel.0;
             }
-            x = next.map_or(range.end, |area| (area.x + area.width).max(end));
-        }
+        });
         self.top = self.top.min(line);
         self.bottom = self.bottom.max(line + 1);
+    }
+}
+
+/// Calls `f` for each part of `range` on `line` outside the rectangles Rust draws.
+fn outside(
+    direct: &[Area],
+    line: usize,
+    range: core::ops::Range<usize>,
+    mut f: impl FnMut(core::ops::Range<usize>),
+) {
+    let mut x = range.start;
+    while x < range.end {
+        // The first direct rectangle on this line at or after `x`.
+        let next = direct
+            .iter()
+            .filter(|area| {
+                (area.y..area.y + area.height).contains(&line) && area.x + area.width > x
+            })
+            .min_by_key(|area| area.x);
+        let end = next.map_or(range.end, |area| area.x.clamp(x, range.end));
+        if end > x {
+            f(x..end);
+        }
+        x = next.map_or(range.end, |area| (area.x + area.width).max(end));
     }
 }
 
@@ -963,12 +1010,12 @@ fn show_library(
     });
 }
 
-/// The Library page's first row: the page moves only when the selection leaves it.
+/// The Library page's first row: when the selection leaves the page, the list turns a
+/// whole page, so scrolling redraws every row once a page rather than at every step (a
+/// page of text takes about 100 ms to draw).
 fn library_first(first: u32, selected: u32, len: u32) -> u32 {
-    let first = if selected < first {
-        selected
-    } else if selected >= first + LIBRARY_ROWS {
-        selected + 1 - LIBRARY_ROWS
+    let first = if selected < first || selected >= first + LIBRARY_ROWS {
+        selected - selected % LIBRARY_ROWS
     } else {
         first
     };
@@ -1026,6 +1073,9 @@ fn show_fx(ui: &Overview, fx: FxSnapshot) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16) {
     // Slint redraws in each buffer what changed since that buffer was last shown.
+    // Slint redraws in each buffer what changed since that buffer was last shown. Copying
+    // the other buffer instead (s97) took a PSRAM-to-PSRAM burst that delayed the USB
+    // audio fill on the other core by up to 4 ms.
     let window = MinimalSoftwareWindow::new(RepaintBufferType::SwappedBuffers);
     window.set_size(PhysicalSize::new(WIDTH as u32, HEIGHT as u32));
     if slint::platform::set_platform(Box::new(Board {
@@ -1214,17 +1264,24 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         };
         let started = now_us();
         let mut rows_drawn = 0;
+        let mut drawn_areas = None;
+        let direct: &[Area] = if covered { &COVERED_DIRECT } else { &DIRECT };
         // Every frame goes through Slint, which then also brings this buffer up to date
         // with what changed while the other one was shown.
         window.request_redraw();
         window.draw_if_needed(|renderer| {
             let mut lines = Lines {
                 frame: &mut *buffer,
-                direct: if covered { &COVERED_DIRECT } else { &DIRECT },
+                direct,
                 top: HEIGHT,
                 bottom: 0,
+                calls: 0,
+                pixels: 0,
+                runs: [(0, 0, 0, 0); RUNS],
+                run_count: 0,
             };
             renderer.render_by_line(&mut lines);
+            drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));
             if lines.bottom > lines.top {
                 let (top, bottom) = (lines.top, lines.bottom);
                 flush(buffer, top, bottom - top);
@@ -1239,6 +1296,16 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             unsafe {
                 ruzina_bridge_load_report(rows_drawn as u32, 23, slint_us);
                 ruzina_bridge_load_report(tab as u32, 24, (started - updates_started) as u32);
+                if let Some((calls, pixels, runs, count)) = drawn_areas {
+                    for &(first, last, start, end) in runs.iter().take(count) {
+                        ruzina_bridge_load_report(
+                            u32::from(first) << 16 | u32::from(last),
+                            25,
+                            u32::from(start) << 16 | u32::from(end),
+                        );
+                    }
+                    ruzina_bridge_load_report(calls, 26, pixels);
+                }
             }
         }
         for deck in 0..2 {
@@ -1290,6 +1357,16 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             }
         }
         wave_times.add((now_us() - drawn) as u32);
+        // The screen runs above the decoding client on its core. After a long frame (a
+        // page full of text) it steps aside for two refreshes, so a run of them cannot
+        // hold the decoders off: on s97 such a run kept them out for 250 ms, and a deck
+        // that had just loaded ran dry.
+        if slint_us > SLOW_FRAME_US {
+            for _ in 0..2 {
+                // SAFETY: waits on the panel's refresh.
+                unsafe { ruzina_panel_wait_refresh() };
+            }
+        }
         // The refresh this frame goes on the panel at; a frame that ran late shows at the
         // next one.
         // SAFETY: reads a counter and waits on the panel's refresh.
