@@ -485,6 +485,26 @@ pub extern "C" fn ruzina_legacy_load_select(index: u32) {
 #[cfg(feature = "idf-media-load")]
 const DETAIL_PEAKS: usize = 400;
 
+/// Erases every stale spare sector of the Hot Cue journal, at boot, before the screen
+/// and USB audio start: an erase then stalls nothing. Returns the sectors erased. App main
+/// task, before the load task exists.
+#[cfg(feature = "idf-deck-engine")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_hotcues_erase_spares() -> u32 {
+    let mut store = hot_cue_flash::store();
+    let mut erased = 0;
+    // At most every sector once; a failing erase or read ends it.
+    for _ in 0..ruzina_hot_cues::journal::HOT_CUE_JOURNAL_PARTITION_SIZE
+        / ruzina_hot_cues::journal::HOT_CUE_JOURNAL_SECTOR_SIZE
+    {
+        match store.backend_mut().erase_spare() {
+            Ok(Some(_)) => erased += 1,
+            _ => break,
+        }
+    }
+    erased
+}
+
 /// How long USB audio fills must stand still before the journal may erase ahead.
 #[cfg(feature = "idf-deck-engine")]
 const AUDIO_IDLE_US: u64 = 200_000;
