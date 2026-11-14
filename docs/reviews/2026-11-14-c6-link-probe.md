@@ -67,9 +67,13 @@ on the board:
 ## Open
 
 - **The C6 firmware is 2.3.0 against a 2.11 host.** ESP-Hosted warns that RPC calls may
-  time out until the C6 is upgraded. The scan records report a signal of 0 for every
-  network, likely from the same mismatch. The archive holds the C6 firmware sources;
+  time out until the C6 is upgraded. The archive holds the C6 firmware sources, and
   ESP-Hosted can update the C6 over the SDIO link.
+- **The signal of 0 on s101 was the probe's fault** (Codex review). ESP-Hosted's
+  `rpc_wifi_scan_get_ap_records` copies the records but leaves the count at the
+  caller's capacity, so the probe read empty records too, with a signal and a channel of
+  0. The probe now reads only the networks the scan found. This is not yet run on the
+  board.
 - **The probe asked for the C6 version too early.** It asked before the link was up
   (`ESP_FAIL`); the version above comes from ESP-Hosted's own log line.
 - **One USB host error at boot:** `Enqueue URB error: ESP_ERR_INVALID_STATE`, at 2.8 s.

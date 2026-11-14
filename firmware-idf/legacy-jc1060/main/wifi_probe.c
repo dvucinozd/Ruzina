@@ -61,6 +61,9 @@ static void scan_once(void)
         printf("wifi_scan records_error=%s found=%u\n", esp_err_to_name(err), found);
         return;
     }
+    /* ESP-Hosted's wrapper copies the records but leaves `count` at the capacity
+     * (rpc_wrap.c): only the first `found` hold networks. */
+    if (count > found) count = found;
     int best = -127;
     uint32_t channels = 0;
     for (uint16_t i = 0; i < count; ++i) {
