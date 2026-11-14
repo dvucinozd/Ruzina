@@ -2215,6 +2215,10 @@ fn shift_sync_held_a_second_turns_master_tempo_over_and_a_short_press_steps_the_
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     attach_ring(0);
     attach_ring(1);
+    // A fresh source on each ring: the new readers must not sync to a source an earlier
+    // test left, whose start the ring has long passed.
+    empty_ring(0);
+    empty_ring(1);
     let mut mix = Mix::new();
     let tempo_range = |mix: &mut Mix, down| {
         mix.control(&ControlEvent {
