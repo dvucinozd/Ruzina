@@ -32,14 +32,22 @@ whole list.
     600 rows, 53 and 43 ms. The page updates before them took under 0.5 ms. Drawing
     itself costs about 85 µs per full row.
   - **Owner's test:** browsing across pages and loading tracks with the Library open.
-    There was no frame over 30 ms; the worst per 20 s was 14 to 15 ms.
+    - Browsing: no frame over 30 ms; the worst per 20 s was 14 to 15 ms.
+    - **A track load** with the Library open still makes two slow frames, one in each
+      buffer: 49 and 44 ms (236 pixel rows), and later 40 and 35 ms (231 rows). The page
+      updates before them took 0.5 to 2 ms. A load changes rows far apart: the deck
+      marks in the list and the deck's title. The redrawn area spans them, at about
+      190 µs per row of text.
   - Over 15 + 30 minutes before that, with the soak DJ: underruns 0/0,
     `packet_errors=0`, longest fill 6.3 ms, 25 Hot Cue saves.
-  - The board ran on without a capture between 45 and 71 minutes. In that time one fill
-    reached 24 ms and 2 USB packets were lost. A third packet was lost later, during the
-    Library test, with no save near it. None of this is in a capture, so the cause is
-    not shown. After 70 minutes of soak saves, the journal erasing during play again is
-    the likely one ([Hot Cue erase-ahead, Open](2026-11-13-hot-cue-erase-ahead.md#open)).
+  - **Lost USB packets:**
+    - The board ran on without a capture between 45 and 71 minutes. In that time one
+      fill reached 24 ms and 2 USB packets were lost; the cause is not in a capture.
+    - In the third capture (71 to 86 minutes) 4 more packets were lost. Most came within
+      seconds of a soak Hot Cue save; one came after a SYNC.
+    - After 70 minutes of soak saves the journal is past one rotation per bucket, and
+      erases during play again ([Hot Cue erase-ahead, Open](2026-11-13-hot-cue-erase-ahead.md#open)).
+      The change here does not touch flash or audio.
 
 ## Test plan
 
@@ -50,5 +58,6 @@ whole list.
 
 ## Open
 
+- A track load with the Library open still draws two frames of 35 to 49 ms.
 - With the Library open, the average Slint frame is about 9 ms, against 4.4 ms on the
   Overview (s91 showed the same). Something on that page is redrawn every frame.
