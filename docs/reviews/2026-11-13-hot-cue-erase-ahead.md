@@ -61,9 +61,23 @@ save. The long fills came right after saves that took 45 to 50 ms.
     while no deck plays.
   - Underruns 0/0, the USB task's free stack 2832 bytes, no panics.
 
+## Follow-up: erase at boot (2026-11-14)
+
+s91 showed a 22 ms fill after a 49 ms save that erased again. Saves had refilled stale
+spares since the FLX4 was last unplugged.
+
+- **Change:** before the screen and USB audio start, `app_main` calls
+  `ruzina_legacy_hotcues_erase_spares()`. It runs `erase_spare()` until no stale spare is
+  left, and logs `hotcue_spares erased=N us=T`. Erasing while the FLX4 is unplugged stays.
+- **s93** (app `19f9bc16…`):
+  - At boot, 5 spares were erased in 655 ms.
+  - Over 15 minutes there were 14 saves of 4 to 23 ms, none with an erase.
+  - Longest fill 6.1 ms.
+  - **`packet_errors=0`**, the first save-bearing capture with no lost packet.
+  - Underruns 0/0, 2832 bytes of free stack.
+
 ## Open
 
-- A save can still lose an odd USB packet of silence.
-- Spares are only erased while USB audio is off. Unplugging the FLX4 for half a minute
-  now and then keeps saves short.
+- A run longer than one journal rotation per bucket (24 saves into the same bucket)
+  erases during play again, until the next boot.
 - The Hot Cues could later move to the USB stick, where writing stalls nothing.

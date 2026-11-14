@@ -95,6 +95,16 @@ void app_main(void)
         printf("sd_result=INIT_FAILED\nreadiness=NOT_QUALIFIED\n");
     }
 #endif
+#if CONFIG_RUZINA_DECK_ENGINE
+    /* Erasing flash stalls everything that runs from flash and PSRAM, the USB audio fill
+     * included. Before the screen and USB audio start, the Hot Cue journal erases its
+     * stale spare sectors, so that saves later need no erase. */
+    extern uint32_t ruzina_legacy_hotcues_erase_spares(void);
+    const int64_t spares_start = esp_timer_get_time();
+    const uint32_t spares = ruzina_legacy_hotcues_erase_spares();
+    printf("hotcue_spares erased=%" PRIu32 " us=%" PRId64 "\n", spares, esp_timer_get_time() - spares_start);
+    fflush(stdout);
+#endif
 #if CONFIG_RUZINA_LOAD_DISPLAY
     /* Panel first, so the screen shows the mount; the load runs without it. */
     extern esp_err_t ruzina_load_display_start(void);
