@@ -3,7 +3,9 @@
 //!
 //! It shows the decks: what the engine publishes in `deck_view::LIVE`, and each
 //! loaded track's title, key and analysis. It logs draw times as load events: 21 the
-//! Slint parts (worst, then 31 the average), 22 a waveform frame (32).
+//! Slint parts (worst, then 31 the average), 22 a waveform frame (32). A Slint frame over
+//! `SLOW_FRAME_US` also logs 23 its draw (pass: the rows drawn) and 24 the page updates
+//! before it (pass: the open page).
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -19,6 +21,8 @@ slint::include_modules!();
 const WIDTH: usize = 1024;
 const HEIGHT: usize = 600;
 const REPORT_MS: u64 = 20_000;
+/// A Slint frame longer than this is logged on its own.
+const SLOW_FRAME_US: u32 = 30_000;
 
 /// A rectangle Rust draws, which Slint must never write over. The numbers match the
 /// dark rectangles in `overview.slint`.
@@ -901,9 +905,18 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
 type LibraryState = (u32, u32, Option<u32>, [u32; 2]);
 
 /// Shows the Library page from row `first`: the selected row, and each row's decks.
-fn show_library(ui: &Overview, rows: &[LibraryRow], state: LibraryState) {
+///
+/// The page's model lasts: only the lines that differ are replaced, so moving the
+/// selection redraws two rows, not the page.
+fn show_library(
+    ui: &Overview,
+    model: &slint::VecModel<LibraryLine>,
+    rows: &[LibraryRow],
+    state: LibraryState,
+) {
+    use slint::Model;
     let (_, first, selected, decks) = state;
-    let lines: alloc::vec::Vec<LibraryLine> = rows
+    let lines = rows
         .iter()
         .enumerate()
         .skip(first as usize)
@@ -931,9 +944,19 @@ fn show_library(ui: &Overview, rows: &[LibraryRow], state: LibraryState) {
                 .into(),
                 selected: selected == Some(index),
             }
-        })
-        .collect();
-    ui.set_library_rows(slint::ModelRc::new(slint::VecModel::from(lines)));
+        });
+    let mut count = 0;
+    for (row, line) in lines.enumerate() {
+        count = row + 1;
+        if row >= model.row_count() {
+            model.push(line);
+        } else if model.row_data(row).as_ref() != Some(&line) {
+            model.set_row_data(row, line);
+        }
+    }
+    while model.row_count() > count {
+        model.remove(model.row_count() - 1);
+    }
     ui.set_library_count(match selected {
         Some(index) => alloc::format!("{} / {}", index + 1, rows.len()).into(),
         None => "NO TRACKS".into(),
@@ -1061,6 +1084,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     });
     let mut library_version = 0u32;
     let mut shown_library: Option<LibraryState> = None;
+    let library_model = Rc::new(slint::VecModel::<LibraryLine>::default());
+    ui.set_library_rows(slint::ModelRc::from(library_model.clone()));
     let mut shown_cues: Option<CueState> = None;
     // When the Settings page next refreshes its figures.
     let mut settings_at = 0u64;
@@ -1100,6 +1125,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             next_report = ms + REPORT_MS;
         }
         touch(ui.window(), &mut touched, &mut touch_errors);
+        let updates_started = now_us();
         let decks = [deck_view::LIVE[0].load(), deck_view::LIVE[1].load()];
         for deck in 0..2 {
             if let Some(track) = deck_view::take_track(deck) {
@@ -1170,7 +1196,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             });
             let state = (library_version, first, selected, decks);
             if shown_library != Some(state) {
-                show_library(&ui, &library.rows, state);
+                show_library(&ui, &library_model, &library.rows, state);
                 shown_library = Some(state);
             }
         }
@@ -1187,6 +1213,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             (&mut **second, &**first)
         };
         let started = now_us();
+        let mut rows_drawn = 0;
         // Every frame goes through Slint, which then also brings this buffer up to date
         // with what changed while the other one was shown.
         window.request_redraw();
@@ -1201,10 +1228,19 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             if lines.bottom > lines.top {
                 let (top, bottom) = (lines.top, lines.bottom);
                 flush(buffer, top, bottom - top);
+                rows_drawn = bottom - top;
             }
         });
         let drawn = now_us();
-        slint_times.add((drawn - started) as u32);
+        let slint_us = (drawn - started) as u32;
+        slint_times.add(slint_us);
+        if slint_us > SLOW_FRAME_US {
+            // SAFETY: diagnostic telemetry passes three u32 values only.
+            unsafe {
+                ruzina_bridge_load_report(rows_drawn as u32, 23, slint_us);
+                ruzina_bridge_load_report(tab as u32, 24, (started - updates_started) as u32);
+            }
+        }
         for deck in 0..2 {
             let track = tracks[deck].as_deref();
             // New marks redraw the whole lane, once in each buffer.
