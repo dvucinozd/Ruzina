@@ -161,7 +161,17 @@
 - **Master Tempo on the controller (2026-11-14):** [Master Tempo on the controller](reviews/2026-11-14-mt-on-controller.md).
   Holding Shift + BEAT SYNC for a second turns the deck's Master Tempo over; a short
   press still steps the tempo range, now on release. Owner: "Radi".
-- **On the board:** s94 (app `06714ef5…`), Master Tempo on Shift + BEAT SYNC held. Earlier: a Slint
+- **Smoother Library (2026-11-14):** [a smoother Library page](reviews/2026-11-14-library-smooth.md).
+  - The page is made once and keeps one model.
+  - The list turns a page at a time.
+  - After a Slint frame over 30 ms the screen waits two refreshes, so the decoders get
+    their core.
+  - Slow frames are logged with their areas (events 23 to 26).
+
+  On s97 a run of 110 ms frames had starved a freshly loaded deck (57 underruns). On s100
+  there were 0 underruns, 0 lost packets and a longest fill of 5.7 ms while browsing.
+  Owner: "Radi".
+- **On the board:** s100 (app `b22cf0ea…`), the paged Library. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

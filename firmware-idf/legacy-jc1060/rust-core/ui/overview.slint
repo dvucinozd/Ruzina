@@ -740,7 +740,9 @@ export component Overview inherits Window {
         open => { root.active-tab = 4; }
     }
 
-    if root.active-tab == 1: LibraryPage {
+    // Made once and kept: opening the page then only draws it.
+    LibraryPage {
+        visible: root.active-tab == 1;
         x: 0px;
         y: 46px;
         rows: root.library-rows;
