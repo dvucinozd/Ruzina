@@ -126,6 +126,13 @@ void app_main(void)
         printf("usb_host=INIT_FAILED error=%s\n", esp_err_to_name(usb_err));
     }
 #endif
+#if CONFIG_RUZINA_WIFI_PROBE
+    /* Last, once USB audio runs: the probe measures what Wi-Fi costs it. */
+    extern esp_err_t ruzina_wifi_probe_start(void);
+    if (ruzina_wifi_probe_start() != ESP_OK) {
+        printf("wifi_probe=INIT_FAILED\n");
+    }
+#endif
 #if !CONFIG_APP_BUILD_TYPE_PURE_RAM_APP
     if (xTaskCreate(restart_console, "probe_restart", 2048, NULL, 1, NULL) != pdPASS) {
         printf("result=CONSOLE_TASK_CREATE_FAILED\n");

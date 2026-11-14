@@ -171,7 +171,14 @@
   On s97 a run of 110 ms frames had starved a freshly loaded deck (57 underruns). On s100
   there were 0 underruns, 0 lost packets and a longest fill of 5.7 ms while browsing.
   Owner: "Radi".
-- **On the board:** s100 (app `b22cf0ea…`), the paged Library. Earlier: a Slint
+- **C6 link probe (2026-11-14):** [the ESP32-C6 link, a first probe](reviews/2026-11-14-c6-link-probe.md).
+  - ESP-Hosted 2.11.7 is vendored and only built with `--wifi-probe`.
+  - The C6 answers over SDIO slot 1 (GPIO14 to 19, reset 54) and scans Wi-Fi while the
+    deck plays.
+  - s101: 28 scans in 15 minutes, underruns 0/0, `packet_errors=0`, longest fill 6.1 ms.
+  - The C6 runs ESP-Hosted 2.3.0 and needs an upgrade.
+- **On the board:** s101 (app `28972f9f…`), the C6 link probe. Before it, s100, the paged
+  Library. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
