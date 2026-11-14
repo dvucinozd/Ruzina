@@ -72,12 +72,13 @@ on the board:
 - **The signal of 0 on s101 was the probe's fault** (Codex review). ESP-Hosted's
   `rpc_wifi_scan_get_ap_records` copies the records but leaves the count at the
   caller's capacity, so the probe read empty records too, with a signal and a channel of
-  0. The probe now reads only the networks the scan found. This is not yet run on the
-  board.
+  0. The probe now reads only the networks the scan found. On s102 (app `1dd745f5…`) the
+  scans found 7 to 9 networks, with a best signal of −46 to −50 dBm on channels 1, 2,
+  6, 7 and 11. Audio stayed clean, and the boot had no USB host error this time.
 - **The probe asked for the C6 version too early.** It asked before the link was up
   (`ESP_FAIL`); the version above comes from ESP-Hosted's own log line.
-- **One USB host error at boot:** `Enqueue URB error: ESP_ERR_INVALID_STATE`, at 2.8 s.
-  s100 had none. Audio started normally after it.
+- **One USB host error at boot on s101:** `Enqueue URB error: ESP_ERR_INVALID_STATE`, at
+  2.8 s. s100 and s102 had none. Audio started normally after it.
 - **An SD error cuts the C6 link.** `sd_bridge.c`'s error path calls
   `sdmmc_host_deinit()`, which removes both slots.
 - **Next steps:** joining a network (credentials from the owner, kept out of the
