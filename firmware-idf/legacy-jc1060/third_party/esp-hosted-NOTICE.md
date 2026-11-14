@@ -1,12 +1,13 @@
 # Vendored ESP-Hosted host (`espressif/esp_hosted` 2.11.7)
 
-`esp-hosted-2.11.7/esp_hosted/` holds 177 files of the Espressif component registry
+`esp-hosted-2.11.7/esp_hosted/` holds 176 files of the Espressif component registry
 archive `espressif__esp_hosted-v2.11.7.zip`, unmodified:
 - the root build files: `CMakeLists.txt`, `Kconfig`, `LICENSE`, `README.md`,
   `CHANGELOG.md`, `idf_component.yml` and `sdkconfig.rename`;
 - `host/` and `common/`.
 
-The archive's docs, examples, tools and C6 firmware sources (`slave/`) are left out.
+The archive's docs, examples, tools and C6 firmware sources (`slave/`) are left out, and
+so is `common/protobuf-c/.git`, a submodule pointer git cannot track.
 The owner approved the download on 2026-11-14, from
 `https://components-file.espressif.com/components/espressif/esp_hosted/2.11.7/`. The
 archive itself is kept outside the repository, in `D:\BoardEvidence\downloads`.

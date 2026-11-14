@@ -18,7 +18,6 @@
     "common/proto/esp_hosted_rpc.pb-c.h": "3d6f4f4693e58cb80eb8abcb9a0c9c87f075d8aaaff66c4eb234626799202e1f",
     "common/proto/esp_hosted_rpc.proto": "ac5fa3825e8401710b2d17235a00c758f99a41388bc5ad364b10ae97445de7f9",
     "common/protobuf-c/.commit_docs.sh": "333504e5b25b78a44b90a7a69529941cf50ffc440d9a96235c2b1858e13515fb",
-    "common/protobuf-c/.git": "b9a66aea81aa130621b42560ad6224a9b9d6d3de2a6816f875f42cfc2b954d2a",
     "common/protobuf-c/.gitignore": "fc14bbcd364840736d8762e68db3f60274707193f572597f6926de9644b6413d",
     "common/protobuf-c/CONTRIBUTING.md": "e90bb0a6b23f44cbc366d8ba8edf49a56227171fa31c3665285f1bdc2638b068",
     "common/protobuf-c/ChangeLog": "8b0996d03afab43239483c232c1fda51c0056a4c5632c97ddc91c7e9042a2fb9",
@@ -181,5 +180,8 @@
     "host/utils/stats.h": "9264660137717a222b984b847d5d8cd17e85cb9061948d2d51992f4288261ab0",
     "idf_component.yml": "867d49f66ec46bf7df8893bbf2ae82798a6f4dec561e14d2f572713e739e9099",
     "sdkconfig.rename": "cf18e72dd16ab155ba2ccf1345bd0bb1b83fabc0aef979d3dc0f02cebc831340"
+  },
+  "left_out": {
+    "common/protobuf-c/.git": "a git submodule pointer; git cannot track a file named .git"
   }
 }
