@@ -96,6 +96,12 @@ const SEEK_CUSHION_MAX_BLOCKS: u16 = 375;
 /// Tracks whose new Hot Cues can wait for flash at once.
 const HOT_CUE_SAVES_QUEUED: usize = 16;
 
+/// Shift + BEAT SYNC held this long, in rendered frames (one second), turns Master
+/// Tempo over instead of stepping the tempo range.
+const TEMPO_RANGE_HOLD_FRAMES: u32 = RENDER_SAMPLE_RATE_HZ;
+/// The hold has turned Master Tempo over; the release then does nothing.
+const TEMPO_RANGE_FIRED: u32 = u32::MAX;
+
 pub(crate) struct Engine {
     deck: DeckProductState,
     connected: bool,
@@ -143,6 +149,9 @@ pub(crate) struct Engine {
     loop_pad: [Option<(u8, (u32, u32))>; 2],
     /// Whether Quantize was turned on for both decks, on the first event.
     quantize_set: bool,
+    /// Shift + BEAT SYNC (the tempo range) held down: the frames rendered since, or
+    /// `TEMPO_RANGE_FIRED` once the hold turned Master Tempo over.
+    tempo_range_held: [Option<u32>; 2],
     /// Banks the flash journal has not taken yet, one per track, oldest first.
     /// Flash waits until no deck plays, which a long mix can put off.
     hot_cue_saves: [Option<HotCueBank>; HOT_CUE_SAVES_QUEUED],
@@ -185,6 +194,7 @@ impl Engine {
             pads_held: [(None, 0); 2],
             loop_pad: [None; 2],
             quantize_set: false,
+            tempo_range_held: [None; 2],
             hot_cue_saves: [None; HOT_CUE_SAVES_QUEUED],
             hot_cue_in_flight: None,
             #[cfg(feature = "soak-autoplay")]
@@ -287,6 +297,25 @@ impl Engine {
                 }
             }
             _ => {}
+        }
+        // Shift + BEAT SYNC: a short press steps the tempo range, as before; held for a
+        // second it turns Master Tempo over instead (`progress` counts the hold).
+        if let (Some(deck), SemanticControl::TempoRange, ControlValue::Pressed(down)) =
+            (event.deck, event.control, event.value)
+        {
+            let i = index(deck);
+            if down {
+                self.tempo_range_held[i] = Some(0);
+            } else if let Some(held) = self.tempo_range_held[i].take()
+                && held != TEMPO_RANGE_FIRED
+            {
+                let effects = self.deck.handle_control(ControlEvent {
+                    value: ControlValue::Pressed(true),
+                    ..*event
+                });
+                self.apply(effects);
+            }
+            return;
         }
         // Pads as pressed: the 4 BEAT button's Beat Loop pad has no release.
         if let (Some(deck), ControlValue::PadAction(pad)) = (event.deck, event.value) {
@@ -955,6 +984,28 @@ impl Engine {
     pub(crate) fn progress(&mut self, readers: &[Reader; 2], frames: u32) {
         #[cfg(feature = "uac-profile")]
         let fx = self.fx_controls();
+        // Shift + BEAT SYNC held for a second turns the deck's Master Tempo over, once.
+        for deck in DECKS {
+            let i = index(deck);
+            if let Some(held) = self.tempo_range_held[i]
+                && held != TEMPO_RANGE_FIRED
+            {
+                let held = held.saturating_add(frames);
+                self.tempo_range_held[i] = Some(held);
+                if held >= TEMPO_RANGE_HOLD_FRAMES {
+                    self.tempo_range_held[i] = Some(TEMPO_RANGE_FIRED);
+                    let effects = self.deck.handle_control(ControlEvent {
+                        deck: Some(deck),
+                        control: SemanticControl::DeckExtAction,
+                        value: ControlValue::DeckExtAction(DeckExtActionValue {
+                            action: DeckExtAction::MasterTempo,
+                            pressed: true,
+                        }),
+                    });
+                    self.apply(effects);
+                }
+            }
+        }
         for deck in DECKS {
             let i = index(deck);
             let reader = &readers[i];

@@ -2211,6 +2211,52 @@ fn the_hot_cues_page_sets_and_deletes_cues_as_the_pads_do() {
 }
 
 #[test]
+fn shift_sync_held_a_second_turns_master_tempo_over_and_a_short_press_steps_the_range() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    let tempo_range = |mix: &mut Mix, down| {
+        mix.control(&ControlEvent {
+            deck: Some(DeckId::Two),
+            control: SemanticControl::TempoRange,
+            value: ControlValue::Pressed(down),
+        });
+    };
+    let range = |mix: &mut Mix| mix.engine().deck(DeckId::Two).tempo_range_percent;
+    let start = range(&mut mix);
+    // A short press steps the range on release, and leaves Master Tempo alone.
+    tempo_range(&mut mix, true);
+    run_fed(&mut mix, 200);
+    assert_eq!(range(&mut mix), start, "nothing until the release");
+    tempo_range(&mut mix, false);
+    let stepped = range(&mut mix);
+    assert_ne!(stepped, start);
+    assert_eq!(mix.engine().master_tempo(), [false, false]);
+    // Held for a second: Master Tempo turns over while it is still held, the range stays.
+    tempo_range(&mut mix, true);
+    run_fed(&mut mix, 990);
+    assert_eq!(
+        mix.engine().master_tempo(),
+        [false, false],
+        "not before a second"
+    );
+    run_fed(&mut mix, 20);
+    assert_eq!(mix.engine().master_tempo(), [false, true]);
+    run_fed(&mut mix, 1_000);
+    tempo_range(&mut mix, false);
+    assert_eq!(mix.engine().master_tempo(), [false, true], "once per hold");
+    assert_eq!(range(&mut mix), stepped);
+    // Held again: Master Tempo off.
+    tempo_range(&mut mix, true);
+    run_fed(&mut mix, 1_010);
+    tempo_range(&mut mix, false);
+    assert_eq!(mix.engine().master_tempo(), [false, false]);
+    empty_ring(0);
+    empty_ring(1);
+}
+
+#[test]
 fn a_tap_on_mt_turns_master_tempo_on_and_off_for_its_deck() {
     use crate::controller_midi::touch_events;
     use crate::deck_view::TouchControl;
