@@ -2252,6 +2252,15 @@ fn shift_sync_held_a_second_turns_master_tempo_over_and_a_short_press_steps_the_
     run_fed(&mut mix, 1_010);
     tempo_range(&mut mix, false);
     assert_eq!(mix.engine().master_tempo(), [false, false]);
+    // A hold cut short by a disconnect does nothing, not after the reconnect either.
+    tempo_range(&mut mix, true);
+    run_fed(&mut mix, 200);
+    mix.engine().connection(false);
+    mix.engine().connection(true);
+    run_fed(&mut mix, 1_010);
+    tempo_range(&mut mix, false);
+    assert_eq!(mix.engine().master_tempo(), [false, false]);
+    assert_eq!(range(&mut mix), stepped);
     empty_ring(0);
     empty_ring(1);
 }

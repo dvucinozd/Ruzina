@@ -17,6 +17,8 @@ The owner chose Shift + BEAT SYNC. The FLX4 sends it as the deck's `TempoRange` 
   lights at once; the release then does nothing, and the range stays.
 - **Timing:** the engine counts the hold in rendered frames, in `Engine::progress`
   (48 000 frames is one second).
+- **Disconnect:** a hold still pending when the controller disconnects is dropped, so no
+  range step or Master Tempo follows after the reconnect (Codex review).
 - **Scope:** the FLX4 profile is unchanged; this is the legacy engine only.
 
 ## Evidence

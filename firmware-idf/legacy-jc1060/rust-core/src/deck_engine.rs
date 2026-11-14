@@ -963,6 +963,11 @@ impl Engine {
 
     pub(crate) fn connection(&mut self, connected: bool) {
         self.connected = connected;
+        // A Shift + BEAT SYNC still held when the controller goes away is dropped: no
+        // release will come, and neither a range step nor Master Tempo should follow.
+        if !connected {
+            self.tempo_range_held = [None; 2];
+        }
         for effects in self.deck.set_controller_connected(connected) {
             self.apply(effects);
         }
