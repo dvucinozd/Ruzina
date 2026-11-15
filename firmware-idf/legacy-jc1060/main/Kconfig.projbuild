@@ -78,3 +78,8 @@ config RUZINA_PRODUCER_PROFILE
     bool "Diagnostic producer wall partitions and USB service observations"
     depends on RUZINA_DECK_ENGINE && !RUZINA_UAC_PROFILE
     default n
+
+config RUZINA_WIFI_PROBE
+    bool "Diagnostic: the ESP32-C6 link over ESP-Hosted and Wi-Fi scans, while the deck plays"
+    depends on RUZINA_DECK_ENGINE && ESP_HOSTED_ENABLED
+    default n
