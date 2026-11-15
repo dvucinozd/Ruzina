@@ -437,6 +437,163 @@ pub(crate) static WEB_LOADS: [AtomicU32; 2] = [const { AtomicU32::new(0) }; 2];
 #[cfg(feature = "web-remote")]
 pub(crate) static LOAD_PENDING: [AtomicBool; 2] = [const { AtomicBool::new(false) }; 2];
 
+/// Seeks the Web Remote asks for: the position in ms plus one per deck, 0 for none. The
+/// latest wins; the USB task takes it.
+#[cfg(feature = "web-remote")]
+pub(crate) static WEB_SEEKS: [AtomicU32; 2] = [const { AtomicU32::new(0) }; 2];
+
+/// The Web Remote's other controls (the mixer, SYNC, PFL, Tempo, loops), from the web task
+/// to the USB task as the controller sends them, oldest first.
+#[cfg(feature = "web-remote")]
+pub(crate) struct EventQueue {
+    slots: [core::cell::UnsafeCell<Option<ruzina_controller_core::ControlEvent>>;
+        EVENT_SLOTS as usize],
+    head: AtomicU32,
+    tail: AtomicU32,
+}
+
+#[cfg(feature = "web-remote")]
+const EVENT_SLOTS: u32 = 32;
+
+// SAFETY: one producer (the web task) writes a slot before publishing `head`, and one
+// consumer (the USB task) reads it before releasing `tail`; neither touches the other's
+// slots.
+#[cfg(feature = "web-remote")]
+unsafe impl Sync for EventQueue {}
+
+#[cfg(feature = "web-remote")]
+impl EventQueue {
+    const fn new() -> Self {
+        Self {
+            slots: [const { core::cell::UnsafeCell::new(None) }; EVENT_SLOTS as usize],
+            head: AtomicU32::new(0),
+            tail: AtomicU32::new(0),
+        }
+    }
+
+    /// The web task's side: how many events still fit.
+    pub(crate) fn free(&self) -> u32 {
+        EVENT_SLOTS
+            - self
+                .head
+                .load(Ordering::Relaxed)
+                .wrapping_sub(self.tail.load(Ordering::Acquire))
+    }
+
+    /// The web task's side: queues `event`; false when full.
+    pub(crate) fn push(&self, event: ruzina_controller_core::ControlEvent) -> bool {
+        if self.free() == 0 {
+            return false;
+        }
+        let head = self.head.load(Ordering::Relaxed);
+        // SAFETY: the slot at `head` is the producer's until `head` moves past it.
+        unsafe { *self.slots[(head % EVENT_SLOTS) as usize].get() = Some(event) };
+        self.head.store(head.wrapping_add(1), Ordering::Release);
+        true
+    }
+
+    /// The USB task's side: the oldest event.
+    pub(crate) fn pop(&self) -> Option<ruzina_controller_core::ControlEvent> {
+        let tail = self.tail.load(Ordering::Relaxed);
+        if tail == self.head.load(Ordering::Acquire) {
+            return None;
+        }
+        // SAFETY: the producer published this slot before `head`; it is the consumer's
+        // until `tail` moves past it.
+        let event = unsafe { (*self.slots[(tail % EVENT_SLOTS) as usize].get()).take() };
+        self.tail.store(tail.wrapping_add(1), Ordering::Release);
+        event
+    }
+}
+
+#[cfg(feature = "web-remote")]
+pub(crate) static WEB_EVENTS: EventQueue = EventQueue::new();
+
+/// The mix as the Web Remote shows it, stored by the USB task after every turn:
+/// [`MixView`]'s fields in order. A reader may see two turns mixed.
+#[cfg(feature = "web-remote")]
+pub(crate) static MIX_VIEW: [AtomicU32; MIX_VIEW_LEN] = [const { AtomicU32::new(0) }; MIX_VIEW_LEN];
+
+#[cfg(feature = "web-remote")]
+const MIX_VIEW_LEN: usize = 15;
+
+/// The mixer and SYNC as the Web Remote reports them.
+#[cfg(feature = "web-remote")]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct MixView {
+    pub(crate) volume: [u16; 2],
+    pub(crate) crossfader: u16,
+    pub(crate) master_volume: u16,
+    pub(crate) headphone_mix: u16,
+    /// Low, mid, high per channel.
+    pub(crate) eq: [[u16; 3]; 2],
+    pub(crate) filter: [u16; 2],
+    pub(crate) pfl: [bool; 2],
+    pub(crate) smart_cfx: bool,
+    pub(crate) smart_fader: bool,
+    pub(crate) sync: [bool; 2],
+    pub(crate) sync_master: [bool; 2],
+}
+
+#[cfg(feature = "web-remote")]
+impl MixView {
+    pub(crate) fn store(&self) {
+        let flags = u32::from(self.pfl[0])
+            | u32::from(self.pfl[1]) << 1
+            | u32::from(self.smart_cfx) << 2
+            | u32::from(self.smart_fader) << 3
+            | u32::from(self.sync[0]) << 4
+            | u32::from(self.sync[1]) << 5
+            | u32::from(self.sync_master[0]) << 6
+            | u32::from(self.sync_master[1]) << 7;
+        let values = [
+            u32::from(self.volume[0]),
+            u32::from(self.volume[1]),
+            u32::from(self.crossfader),
+            u32::from(self.master_volume),
+            u32::from(self.headphone_mix),
+            u32::from(self.eq[0][0]),
+            u32::from(self.eq[0][1]),
+            u32::from(self.eq[0][2]),
+            u32::from(self.eq[1][0]),
+            u32::from(self.eq[1][1]),
+            u32::from(self.eq[1][2]),
+            u32::from(self.filter[0]),
+            u32::from(self.filter[1]),
+            flags,
+            1, // published
+        ];
+        for (slot, value) in MIX_VIEW.iter().zip(values) {
+            slot.store(value, Ordering::Relaxed);
+        }
+    }
+
+    /// The latest view, or `None` before the USB task stored one.
+    pub(crate) fn load() -> Option<Self> {
+        let v: [u32; MIX_VIEW_LEN] = core::array::from_fn(|i| MIX_VIEW[i].load(Ordering::Relaxed));
+        if v[14] == 0 {
+            return None;
+        }
+        let bit = |n: u32| v[13] & 1 << n != 0;
+        Some(Self {
+            volume: [v[0] as u16, v[1] as u16],
+            crossfader: v[2] as u16,
+            master_volume: v[3] as u16,
+            headphone_mix: v[4] as u16,
+            eq: [
+                [v[5] as u16, v[6] as u16, v[7] as u16],
+                [v[8] as u16, v[9] as u16, v[10] as u16],
+            ],
+            filter: [v[11] as u16, v[12] as u16],
+            pfl: [bit(0), bit(1)],
+            smart_cfx: bit(2),
+            smart_fader: bit(3),
+            sync: [bit(4), bit(5)],
+            sync_master: [bit(6), bit(7)],
+        })
+    }
+}
+
 /// The catalog's tracks, if a new list arrived since the last call.
 pub(crate) fn take_library() -> Option<Box<Library>> {
     LIBRARY.take()

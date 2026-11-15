@@ -530,6 +530,33 @@ impl Engine {
         self.pending_load[index(deck)].is_some()
     }
 
+    /// Whether deck `deck` is playing inside a loop, for the Web Remote's LOOP CLEAR.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn loop_active(&self, deck: DeckId) -> bool {
+        self.deck.deck(deck).loop_state.active.is_some()
+    }
+
+    /// Deck `deck`'s SYNC and whether it is the master, for the Web Remote.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn sync_flags(&self, deck: DeckId) -> (bool, bool) {
+        let state = self.deck.deck(deck);
+        (state.sync_enabled, state.sync_master)
+    }
+
+    /// A seek the Web Remote asked for: the deck moves there as a beat jump does, and the
+    /// producer reopens its source at it. Nothing during a scratch, a loop or without a
+    /// track.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn web_seek(&mut self, deck: DeckId, position_ms: u32) {
+        let i = index(deck);
+        let state = self.deck.deck(deck);
+        if self.source[i].is_none() || state.jog_touched || state.loop_state.active.is_some() {
+            return;
+        }
+        self.deck.set_position_ms(deck, position_ms);
+        self.seek(i, position_ms);
+    }
+
     /// Admission and reservation run on the USB control task. Producer must
     /// begin replacement with this exact permit before closing the old file.
     pub(crate) fn request_load(&mut self, deck: DeckId, catalog_index: u32) -> bool {
