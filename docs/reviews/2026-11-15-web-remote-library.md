@@ -59,8 +59,10 @@ reported back.
     counters over that time show 19 lost USB packets and a longest fill of 25.8 ms. The
     first 20 minutes, captured, had none and 6.1 ms. After hours of soak Hot Cue saves
     the journal erases during play again
-    ([Hot Cue erase-ahead, Open](2026-11-13-hot-cue-erase-ahead.md#open)), which is the
-    likely cause, not shown.
+    ([Hot Cue erase-ahead, Open](2026-11-13-hot-cue-erase-ahead.md#open)).
+  - The test's own capture, after those hours, shows that path: 5 USB packets lost at
+    once, right after a Hot Cue save of 56 ms, the time of a save that erases. There were
+    490 requests in those 15 minutes, and no packet was lost near them.
 
 ## Open
 
