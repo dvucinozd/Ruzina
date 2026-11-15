@@ -299,6 +299,13 @@ impl TouchQueue {
         true
     }
 
+    /// The producer's side: how many requests still fit.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn free(&self) -> u32 {
+        let head = self.head.load(Ordering::Relaxed);
+        TOUCH_SLOTS - head.wrapping_sub(self.tail.load(Ordering::Acquire))
+    }
+
     /// The USB task's side: the oldest request.
     pub(crate) fn pop(&self) -> Option<(usize, TouchControl)> {
         let tail = self.tail.load(Ordering::Relaxed);

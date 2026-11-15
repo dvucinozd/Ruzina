@@ -63,3 +63,24 @@ fn the_page_and_the_status_answer_for_the_access_point_only() {
     let foreign = handle("GET /api/status HTTP/1.1\r\nHost: example.com\r\n\r\n");
     assert!(!foreign.starts_with("HTTP/1.1 200"), "{foreign}");
 }
+
+#[test]
+fn a_cue_tap_is_queued_whole_or_not_at_all() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    drain_web();
+    // One free slot: the press would fit, its release would not.
+    while deck_view::WEB.free() > 1 {
+        assert!(deck_view::WEB.push(0, TouchControl::Play));
+    }
+    let cue = handle(
+        "POST /api/control?action=cue&deck=1 HTTP/1.1\r\nHost: 192.168.4.1\r\nOrigin: http://192.168.4.1\r\nX-DDJ-Control: 1\r\nContent-Length: 0\r\n\r\n",
+    );
+    assert!(cue.starts_with("HTTP/1.1 503"), "{cue}");
+    let queued = drain_web();
+    assert!(
+        queued
+            .iter()
+            .all(|&(_, control)| control == TouchControl::Play),
+        "no CUE edge: {queued:?}"
+    );
+}

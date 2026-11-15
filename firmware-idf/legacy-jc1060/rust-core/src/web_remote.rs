@@ -94,11 +94,19 @@ impl WebBackend for Backend {
         if events.len() > requests.len() {
             return ControlOutcome::Busy;
         }
+        // Room for the whole command first: a CUE press queued without its release would
+        // leave the deck holding a preview. Only this task pushes, so the room stays.
+        let needed = requests
+            .iter()
+            .flatten()
+            .filter(|(_, c)| c.is_some())
+            .count() as u32;
+        if deck_view::WEB.free() < needed {
+            return ControlOutcome::Busy;
+        }
         for (deck, control) in requests.into_iter().flatten() {
-            if let Some(control) = control
-                && !deck_view::WEB.push(deck, control)
-            {
-                return ControlOutcome::Busy;
+            if let Some(control) = control {
+                deck_view::WEB.push(deck, control);
             }
         }
         ControlOutcome::Applied

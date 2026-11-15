@@ -54,6 +54,19 @@ the mixer and the other buttons come later.
   - In the first minutes: underruns 0/0, `packet_errors=0`, longest fill 5.0 ms, USB task
     free stack 2832 bytes. 13 requests, the longest 69 ms.
 
+## Review fixes (Codex)
+
+- **The request reader searched beyond the received head.** The buffer is reused and never
+  NUL-terminated, so `strcasestr` could read stale bytes past its 2 KiB end (P1).
+  `content_length()` now searches only the received head bytes and caps the value. A host
+  harness under AddressSanitizer passes five cases, the buffer exactly as long as each
+  request.
+- **A CUE tap could leave a held preview** when the web queue had room for its press only
+  (P2). The backend now checks that the whole command fits before queueing any of it; a
+  new test fills the queue to one free slot.
+- Both fixes are host-tested and build into s107 (app `43cb3b6b…`); s107 is not yet run on
+  the board.
+
 ## Open
 
 - **The mixer, SYNC, PFL, the faders, the library, loads and seeks.** The page offers them,

@@ -11,10 +11,12 @@
  * ESP-Hosted starts its own tasks at priority 23 with no core affinity, above the USB
  * audio tasks (4 and 5). The probe lowers each one it knows to 2 as soon as it exists.
  * The server and lwIP run on the screen's core at priority 2. */
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -121,6 +123,28 @@ static esp_err_t start_access_point(void)
     return err;
 }
 
+/* The Content-Length value in a request head of `len` bytes, or 0. Searches only those
+ * bytes: the buffer is reused and never NUL-terminated. */
+static size_t content_length(const uint8_t *head, size_t len)
+{
+    static const char field[] = "\r\ncontent-length:";
+    const size_t field_len = sizeof field - 1;
+    for (size_t at = 0; at + field_len <= len; ++at) {
+        size_t i = 0;
+        while (i < field_len && tolower(head[at + i]) == field[i]) ++i;
+        if (i < field_len) continue;
+        size_t value = 0;
+        for (size_t j = at + field_len; j < len; ++j) {
+            if (head[j] == ' ' || head[j] == '\t') continue;
+            if (head[j] < '0' || head[j] > '9') break;
+            if (value > REQUEST_MAX) return SIZE_MAX;
+            value = value * 10 + (size_t)(head[j] - '0');
+        }
+        return value;
+    }
+    return 0;
+}
+
 /* One request: the head, then a body up to Content-Length, both within REQUEST_MAX. */
 static size_t read_request(int sock, uint8_t *buffer)
 {
@@ -134,11 +158,9 @@ static size_t read_request(int sock, uint8_t *buffer)
             const uint8_t *end = memmem(buffer, len, "\r\n\r\n", 4);
             if (end == NULL) continue;
             size_t head = (size_t)(end - buffer) + 4;
-            size_t body = 0;
-            const char *field = strcasestr((const char *)buffer, "\r\nContent-Length:");
-            if (field != NULL && (const uint8_t *)field < end) body = strtoul(field + 17, NULL, 10);
+            size_t body = content_length(buffer, head);
+            if (body > REQUEST_MAX - head) return 0;
             want = head + body;
-            if (want > REQUEST_MAX) return 0;
         }
         if (len >= want) return len;
     }
