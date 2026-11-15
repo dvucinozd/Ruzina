@@ -80,6 +80,6 @@ config RUZINA_PRODUCER_PROFILE
     default n
 
 config RUZINA_WIFI_PROBE
-    bool "Diagnostic: the ESP32-C6 link over ESP-Hosted and Wi-Fi scans, while the deck plays"
+    bool "Diagnostic: the ESP32-C6 link over ESP-Hosted, an access point and a status page"
     depends on RUZINA_DECK_ENGINE && ESP_HOSTED_ENABLED
     default n

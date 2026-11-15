@@ -61,7 +61,7 @@ def main():
     parser.add_argument('--soak-autoplay', action='store_true', help='Soak diagnostic: an unattended DJ keeps both decks loading and playing')
     parser.add_argument('--slint-ui', action='store_true', help='Diagnostic: the deck screen with demo data, measured against USB audio')
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
-    parser.add_argument('--wifi-probe', action='store_true', help='Diagnostic: the ESP32-C6 link over ESP-Hosted, Wi-Fi scans only')
+    parser.add_argument('--wifi-probe', action='store_true', help='Diagnostic: the ESP32-C6 link over ESP-Hosted, an open access point and a status page')
     args = parser.parse_args()
     # The UAC profile may watch the fill next to the screen and the soak DJ; the producer
     # profile stays on its own.
