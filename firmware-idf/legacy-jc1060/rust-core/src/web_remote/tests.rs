@@ -84,3 +84,120 @@ fn a_cue_tap_is_queued_whole_or_not_at_all() {
         "no CUE edge: {queued:?}"
     );
 }
+
+fn get(path: &str) -> std::string::String {
+    handle(&std::format!(
+        "GET {path} HTTP/1.1\r\nHost: 192.168.4.1\r\n\r\n"
+    ))
+}
+
+fn load(track: u32, generation: u32, deck: u32) -> std::string::String {
+    handle(&std::format!(
+        "POST /api/load?track_key={track}&generation={generation}&deck={deck} HTTP/1.1\r\nHost: 192.168.4.1\r\nOrigin: http://192.168.4.1\r\nX-DDJ-Control: 1\r\nContent-Length: 0\r\n\r\n"
+    ))
+}
+
+/// The library revision the status reports.
+fn revision() -> u32 {
+    let status = get("/api/status");
+    let at = status
+        .find("\"library_revision\":")
+        .expect("revision field")
+        + 19;
+    status[at..]
+        .split(|c: char| !c.is_ascii_digit())
+        .next()
+        .and_then(|digits| digits.parse().ok())
+        .expect("a revision")
+}
+
+#[test]
+fn the_page_lists_the_library_and_loads_a_track_without_the_screens_selection() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let row = |title: &str, artist: &str| deck_view::LibraryRow {
+        title: title.into(),
+        artist: artist.into(),
+        bpm_x100: 12_450,
+        duration_ms: 241_000,
+        ..deck_view::LibraryRow::default()
+    };
+    deck_view::publish_library(std::vec![
+        row("Alpha", "A"),
+        row("Beta", "B"),
+        row("", "Only")
+    ]);
+    deck_view::select(0);
+    for deck in &deck_view::LIVE {
+        deck.store(deck_view::DeckSnapshot::default());
+    }
+    for slot in &deck_view::WEB_LOADS {
+        slot.store(0, Ordering::Relaxed);
+    }
+    let library = get("/api/library");
+    assert!(library.starts_with("HTTP/1.1 200"), "{library}");
+    for expected in [
+        "\"Alpha\"",
+        "\"Beta\"",
+        "\"Only\"",
+        "\"track_key\":2",
+        "\"bpm\":125",
+    ] {
+        assert!(library.contains(expected), "{expected} in {library}");
+    }
+    let generation = revision();
+    let loaded = load(2, generation, 2);
+    assert!(loaded.starts_with("HTTP/1.1 200"), "{loaded}");
+    assert_eq!(
+        deck_view::WEB_LOADS[1].load(Ordering::Relaxed),
+        2,
+        "catalog index 1"
+    );
+    assert_eq!(
+        deck_view::selected(),
+        Some(0),
+        "the screen's selection stays"
+    );
+    let busy = load(3, generation, 2);
+    assert!(
+        busy.starts_with("HTTP/1.1 409"),
+        "one load per deck: {busy}"
+    );
+    deck_view::WEB_LOADS[1].store(0, Ordering::Relaxed);
+    let stale = load(2, generation.wrapping_add(1), 2);
+    assert!(stale.starts_with("HTTP/1.1 409"), "{stale}");
+    let missing = load(4, generation, 2);
+    assert!(missing.starts_with("HTTP/1.1 404"), "{missing}");
+    deck_view::LIVE[0].store(deck_view::DeckSnapshot {
+        flags: deck_view::LOADED | deck_view::PLAYING,
+        ..deck_view::DeckSnapshot::default()
+    });
+    let locked = load(1, generation, 1);
+    assert!(locked.starts_with("HTTP/1.1 409"), "{locked}");
+    assert_eq!(deck_view::WEB_LOADS[0].load(Ordering::Relaxed), 0);
+    deck_view::LIVE[0].store(deck_view::DeckSnapshot::default());
+}
+
+#[test]
+fn the_status_shows_the_loaded_tracks_title_and_duration() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut track = deck_view::LoadedTrack::none();
+    track.index = 0;
+    track.title = "Gamma".into();
+    track.artist = "Artist".into();
+    track.duration_ms = 200_000;
+    deck_view::publish_track(0, Box::new(track));
+    deck_view::LIVE[0].store(deck_view::DeckSnapshot {
+        flags: deck_view::LOADED,
+        position_ms: 1_000,
+        ..deck_view::DeckSnapshot::default()
+    });
+    let status = get("/api/status");
+    assert!(status.contains("\"title\":\"Gamma\""), "{status}");
+    assert!(status.contains("\"duration_ms\":200000"), "{status}");
+    // Unloaded, the deck shows nothing again.
+    deck_view::LIVE[0].store(deck_view::DeckSnapshot::default());
+    let status = get("/api/status");
+    assert!(!status.contains("Gamma"), "{status}");
+    while deck_view::take_track(0).is_some() {}
+    while deck_view::take_grid(0).is_some() {}
+}

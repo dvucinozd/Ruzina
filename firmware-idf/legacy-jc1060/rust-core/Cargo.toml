@@ -103,7 +103,7 @@ slint-ui = ["deck-engine", "dep:slint", "dep:slint-build"]
 idf-slint-ui = ["idf-deck-engine", "slint-ui"]
 
 # The Web Remote on the deck's own Wi-Fi (the C6 probe): ruzina-web over the engine.
-web-remote = ["slint-ui", "dep:ruzina-web"]
+web-remote = ["slint-ui", "dep:ruzina-web", "dep:ruzina-media-catalog", "dep:ruzina-media-session"]
 idf-web-remote = ["idf-slint-ui", "web-remote"]
 
 [dev-dependencies]

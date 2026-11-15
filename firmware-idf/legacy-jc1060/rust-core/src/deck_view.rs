@@ -377,8 +377,60 @@ pub(crate) const SHIFT_BROWSE_ROWS: i32 = 10;
 /// stays, within the new list.
 pub(crate) fn publish_library(rows: Vec<LibraryRow>) {
     LIBRARY_LEN.store(rows.len() as u32, Ordering::Release);
+    #[cfg(feature = "web-remote")]
+    WEB_LIBRARY.put(Box::new(WebLibrary {
+        revision: WEB_REVISION
+            .fetch_add(1, Ordering::Relaxed)
+            .wrapping_add(1)
+            .max(1),
+        rows: rows.clone(),
+    }));
     LIBRARY.put(Box::new(Library { rows }));
 }
+
+/// The catalog as the Web Remote lists it: its own copy, as the screen owns the other.
+/// `revision` changes with each new list, so a page loads only what it listed.
+#[cfg(feature = "web-remote")]
+pub(crate) struct WebLibrary {
+    pub(crate) revision: u32,
+    pub(crate) rows: Vec<LibraryRow>,
+}
+
+#[cfg(feature = "web-remote")]
+static WEB_LIBRARY: Mailbox<WebLibrary> = Mailbox::new();
+#[cfg(feature = "web-remote")]
+static WEB_REVISION: AtomicU32 = AtomicU32::new(0);
+
+/// The catalog for the Web Remote, if a new list arrived since the last call. Web task.
+#[cfg(feature = "web-remote")]
+pub(crate) fn take_web_library() -> Option<Box<WebLibrary>> {
+    WEB_LIBRARY.take()
+}
+
+/// A deck's loaded track as the Web Remote shows it.
+#[cfg(feature = "web-remote")]
+pub(crate) struct WebTrack {
+    /// Catalog index; `u32::MAX` for no track.
+    pub(crate) index: u32,
+    pub(crate) title: String,
+    pub(crate) artist: String,
+    pub(crate) duration_ms: u32,
+}
+
+#[cfg(feature = "web-remote")]
+static WEB_TRACKS: [Mailbox<WebTrack>; 2] = [Mailbox::new(), Mailbox::new()];
+
+/// Deck `deck`'s new track for the Web Remote, if it loaded one since the last call.
+/// Web task.
+#[cfg(feature = "web-remote")]
+pub(crate) fn take_web_track(deck: usize) -> Option<Box<WebTrack>> {
+    WEB_TRACKS[deck].take()
+}
+
+/// Loads the Web Remote asks for: the catalog index plus one per deck, 0 for none. The
+/// web task stores, the USB task takes; they do not go through the screen's selection.
+#[cfg(feature = "web-remote")]
+pub(crate) static WEB_LOADS: [AtomicU32; 2] = [const { AtomicU32::new(0) }; 2];
 
 /// The catalog's tracks, if a new list arrived since the last call.
 pub(crate) fn take_library() -> Option<Box<Library>> {
@@ -564,6 +616,13 @@ pub(crate) fn publish_track(deck: usize, track: Box<LoadedTrack>) {
     GRIDS[deck].put(Box::new(Grid {
         index: track.index,
         beats: beats.into(),
+    }));
+    #[cfg(feature = "web-remote")]
+    WEB_TRACKS[deck].put(Box::new(WebTrack {
+        index: track.index,
+        title: track.title.clone(),
+        artist: track.artist.clone(),
+        duration_ms: track.duration_ms,
     }));
     TRACKS[deck].put(track);
 }
