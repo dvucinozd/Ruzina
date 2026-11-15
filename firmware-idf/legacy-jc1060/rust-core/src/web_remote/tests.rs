@@ -20,7 +20,7 @@ fn drain_web() -> std::vec::Vec<(usize, TouchControl)> {
 }
 
 #[test]
-fn play_and_cue_take_the_touch_path_and_other_controls_are_refused() {
+fn play_and_cue_take_the_touch_path_and_other_controls_go_as_events() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     drain_web();
     let post = |query: &str| {
@@ -37,9 +37,78 @@ fn play_and_cue_take_the_touch_path_and_other_controls_are_refused() {
         drain_web(),
         [(0, TouchControl::Cue(true)), (0, TouchControl::Cue(false))]
     );
-    let volume = post("action=volume&deck=1&value=16383");
-    assert!(volume.starts_with("HTTP/1.1 503"), "{volume}");
-    assert_eq!(drain_web(), []);
+    while deck_view::WEB_EVENTS.pop().is_some() {}
+    let volume = post("action=volume&deck=1&value=4000");
+    assert!(volume.starts_with("HTTP/1.1 200"), "{volume}");
+    assert_eq!(drain_web(), [], "not the touch path");
+    let event = deck_view::WEB_EVENTS.pop().expect("the volume event");
+    assert_eq!(event.deck, Some(DeckId::One));
+    assert_eq!(event.control, SemanticControl::ChannelVolume);
+    assert!(deck_view::WEB_EVENTS.pop().is_none());
+}
+
+fn post(query: &str) -> std::string::String {
+    handle(&std::format!(
+        "POST /api/control?{query} HTTP/1.1\r\nHost: 192.168.4.1\r\nOrigin: http://192.168.4.1\r\nX-DDJ-Control: 1\r\nContent-Length: 0\r\n\r\n"
+    ))
+}
+
+#[test]
+fn the_mixer_and_sync_reach_the_mix_and_come_back_in_the_status() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    drain_web();
+    while deck_view::WEB_EVENTS.pop().is_some() {}
+    let mut mix = crate::deck_mix::Mix::new();
+    for query in [
+        "action=volume&deck=2&value=4000",
+        "action=crossfader&value=12000",
+        "action=eq_low&deck=1&value=1000",
+        "action=filter&deck=2&value=3000",
+        "action=pfl&deck=1",
+    ] {
+        let answer = post(query);
+        assert!(answer.starts_with("HTTP/1.1 200"), "{query}: {answer}");
+    }
+    service(&mut mix);
+    let view = MixView::load().expect("published");
+    assert_eq!(view.volume[1], 4000);
+    assert_eq!(view.crossfader, 12000);
+    assert_eq!(view.eq[0][0], 1000);
+    assert_eq!(view.filter[1], 3000);
+    assert!(view.pfl[0]);
+    let status = get("/api/status");
+    assert!(status.contains("\"crossfader\":12000"), "{status}");
+}
+
+#[test]
+fn a_seek_needs_a_loaded_track_and_keeps_inside_it() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    for slot in &deck_view::WEB_SEEKS {
+        slot.store(0, Ordering::Relaxed);
+    }
+    deck_view::LIVE[0].store(deck_view::DeckSnapshot::default());
+    let refused = post("action=seek&deck=1&value=5000");
+    assert!(!refused.starts_with("HTTP/1.1 200"), "no track: {refused}");
+    assert_eq!(deck_view::WEB_SEEKS[0].load(Ordering::Relaxed), 0);
+    let mut track = deck_view::LoadedTrack::none();
+    track.index = 0;
+    track.duration_ms = 60_000;
+    deck_view::publish_track(0, Box::new(track));
+    deck_view::LIVE[0].store(deck_view::DeckSnapshot {
+        flags: deck_view::LOADED,
+        ..deck_view::DeckSnapshot::default()
+    });
+    let seek = post("action=seek&deck=1&value=90000");
+    assert!(seek.starts_with("HTTP/1.1 200"), "{seek}");
+    assert_eq!(
+        deck_view::WEB_SEEKS[0].load(Ordering::Relaxed),
+        60_000,
+        "the last ms, plus one"
+    );
+    deck_view::WEB_SEEKS[0].store(0, Ordering::Relaxed);
+    deck_view::LIVE[0].store(deck_view::DeckSnapshot::default());
+    while deck_view::take_track(0).is_some() {}
+    while deck_view::take_grid(0).is_some() {}
 }
 
 #[test]

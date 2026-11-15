@@ -93,6 +93,12 @@ impl Mix {
         &mut self.engine
     }
 
+    /// The mixer's settings, for the Web Remote's status.
+    #[cfg(feature = "web-remote")]
+    pub(crate) const fn mixer(&self) -> &MixerState {
+        &self.mixer
+    }
+
     /// The soak DJ's next event, through the mixer and the deck engine as from a
     /// controller. Returns the gesture that just started, for the log.
     #[cfg(feature = "soak-autoplay")]

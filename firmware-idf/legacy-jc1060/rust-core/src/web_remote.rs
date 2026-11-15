@@ -2,15 +2,18 @@
 //!
 //! The C side (`main/wifi_probe.c`) accepts one connection at a time, reads a request and
 //! hands its bytes to [`ruzina_web_handle`], which answers with `ruzina-web`'s page and
-//! API. Controls take the touch path to the USB task: [`deck_view::WEB`] is a second touch
-//! queue, so they pass the same admission as the deck screen's buttons.
+//! API. PLAY and CUE take the touch path to the USB task: [`deck_view::WEB`] is a second
+//! touch queue, so they pass the same admission as the deck screen's buttons. The other
+//! controls (the mixer, SYNC, PFL, Tempo, loops) go as the controller sends them, through
+//! [`deck_view::WEB_EVENTS`]. Seeks go through [`deck_view::WEB_SEEKS`]. The USB task's
+//! side of all of it is [`service`].
 //!
 //! The page lists the catalog from the Web Remote's own copy
 //! ([`deck_view::take_web_library`]) and shows each deck's title and duration
 //! ([`deck_view::take_web_track`]). A load goes to the USB task through
 //! [`deck_view::WEB_LOADS`], into the same admission as a LOAD, without moving the
-//! screen's selection. Controls are PLAY and CUE; others and seeks are refused.
-use crate::deck_view::{self, TouchControl, WebLibrary, WebTrack};
+//! screen's selection.
+use crate::deck_view::{self, MixView, TouchControl, WebLibrary, WebTrack};
 use alloc::boxed::Box;
 use core::cell::UnsafeCell;
 use core::sync::atomic::Ordering;
@@ -100,7 +103,10 @@ impl WebBackend for Backend<'_> {
             let playing = live.has(deck_view::PLAYING);
             let pitch = live.pitch_centipercent;
             let track = state.track(i);
+            let view = MixView::load().unwrap_or_default();
             DeckStatus {
+                sync_enabled: view.sync[i],
+                sync_master: view.sync_master[i],
                 title: track.map_or("", |track| track.title.as_str()),
                 artist: track.map_or("", |track| track.artist.as_str()),
                 duration_ms: track.map_or(0, |track| track.duration_ms),
@@ -123,31 +129,29 @@ impl WebBackend for Backend<'_> {
             }),
             load_generations: [0, 0],
             decks: [deck(0), deck(1)],
-            mixer: MixerStatus {
-                volume: [0; 2],
-                crossfader: 8192,
-                master_volume: 0,
-                headphone_mix: 0,
-                eq: [[8192; 3]; 2],
-                filter: [8192; 2],
-                smart_cfx: false,
-                smart_fader: false,
-                pfl: [false; 2],
-            },
+            mixer: mixer_status(),
         }
     }
 
     fn control(&mut self, events: &[ControlEvent]) -> ControlOutcome {
-        // All or nothing: a command with a control this step does not carry is refused.
+        // PLAY and CUE as the screen's buttons; anything else as the controller sends it.
+        // A command is one action, so it goes one way, whole or not at all.
         let mut requests = [None; 2];
+        let mut touched = events.len() <= requests.len();
         for (slot, event) in requests.iter_mut().zip(events) {
-            let Some(request) = touch(event) else {
-                return ControlOutcome::Busy;
-            };
-            *slot = Some(request);
+            match touch(event) {
+                Some(request) => *slot = Some(request),
+                None => touched = false,
+            }
         }
-        if events.len() > requests.len() {
-            return ControlOutcome::Busy;
+        if !touched {
+            if deck_view::WEB_EVENTS.free() < events.len() as u32 {
+                return ControlOutcome::Busy;
+            }
+            for event in events {
+                deck_view::WEB_EVENTS.push(*event);
+            }
+            return ControlOutcome::Applied;
         }
         // Room for the whole command first: a CUE press queued without its release would
         // leave the deck holding a preview. Only this task pushes, so the room stays.
@@ -167,8 +171,17 @@ impl WebBackend for Backend<'_> {
         ControlOutcome::Applied
     }
 
-    fn seek(&mut self, _deck: DeckId, _position_ms: u32) -> SeekOutcome {
-        SeekOutcome::NotSeekable
+    /// A seek onto a loaded deck with a known duration; the latest one wins.
+    fn seek(&mut self, deck: DeckId, position_ms: u32) -> SeekOutcome {
+        let i = deck_index(deck);
+        let Some(duration) = self.state.track(i).map(|track| track.duration_ms) else {
+            return SeekOutcome::NotSeekable;
+        };
+        if duration == 0 {
+            return SeekOutcome::NotSeekable;
+        }
+        deck_view::WEB_SEEKS[i].store(position_ms.min(duration - 1) + 1, Ordering::Release);
+        SeekOutcome::Applied
     }
 
     /// `track` is the row's `track_key`: the catalog index plus one.
@@ -230,6 +243,79 @@ impl WebBackend for Backend<'_> {
             duration_ms: row.duration_ms,
         })
     }
+}
+
+/// The mixer as the page shows it; neutral until the USB task published its first view.
+fn mixer_status() -> MixerStatus {
+    let view = MixView::load().unwrap_or(MixView {
+        volume: [0; 2],
+        crossfader: 8192,
+        eq: [[8192; 3]; 2],
+        filter: [8192; 2],
+        ..MixView::default()
+    });
+    MixerStatus {
+        volume: view.volume,
+        crossfader: view.crossfader,
+        master_volume: view.master_volume,
+        headphone_mix: view.headphone_mix,
+        eq: view.eq,
+        filter: view.filter,
+        smart_cfx: view.smart_cfx,
+        smart_fader: view.smart_fader,
+        pfl: view.pfl,
+    }
+}
+
+/// The USB task's side, once a turn before the mix ticks: the Web Remote's taps, controls,
+/// loads and seeks, then the loads in flight and the mix for its status.
+pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
+    const DECKS: [DeckId; 2] = [DeckId::One, DeckId::Two];
+    while let Some((deck, control)) = deck_view::WEB.pop() {
+        let fx = mix.engine().fx_view();
+        for event in crate::controller_midi::touch_events(deck, control, fx)
+            .into_iter()
+            .flatten()
+        {
+            mix.control(&event);
+        }
+    }
+    while let Some(event) = deck_view::WEB_EVENTS.pop() {
+        mix.control(&event);
+    }
+    for (i, deck) in DECKS.into_iter().enumerate() {
+        let track = deck_view::WEB_LOADS[i].swap(0, Ordering::AcqRel);
+        if track != 0 {
+            mix.engine().request_load(deck, track - 1);
+        }
+        let seek = deck_view::WEB_SEEKS[i].swap(0, Ordering::AcqRel);
+        if seek != 0 {
+            mix.engine().web_seek(deck, seek - 1);
+        }
+    }
+    for (i, deck) in DECKS.into_iter().enumerate() {
+        deck_view::LOAD_PENDING[i].store(mix.engine().load_pending(deck), Ordering::Release);
+    }
+    let mixer = *mix.mixer();
+    let sync = DECKS.map(|deck| mix.engine().sync_flags(deck));
+    let channel = |deck| mixer.deck(deck);
+    MixView {
+        volume: DECKS.map(|deck| channel(deck).channel_volume),
+        crossfader: mixer.crossfader(),
+        master_volume: mixer.master_volume(),
+        headphone_mix: mixer.headphone_mix(),
+        eq: DECKS.map(|deck| {
+            let c = channel(deck);
+            [c.eq_low, c.eq_mid, c.eq_high]
+        }),
+        filter: DECKS.map(|deck| channel(deck).filter),
+        pfl: DECKS.map(|deck| channel(deck).pfl_enabled),
+        smart_cfx: mixer.smart_cfx_enabled(),
+        smart_fader: mixer.smart_fader_enabled(),
+        sync: sync.map(|(on, _)| on),
+        sync_master: sync.map(|(_, master)| master),
+    }
+    .store();
 }
 
 struct Server(UnsafeCell<Option<(WebServer, WebState)>>);
