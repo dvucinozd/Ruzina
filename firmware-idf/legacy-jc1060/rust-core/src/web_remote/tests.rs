@@ -163,6 +163,12 @@ fn the_page_lists_the_library_and_loads_a_track_without_the_screens_selection() 
         "one load per deck: {busy}"
     );
     deck_view::WEB_LOADS[1].store(0, Ordering::Relaxed);
+    // A load the engine is still running, whoever asked for it, is busy too.
+    deck_view::LOAD_PENDING[1].store(true, Ordering::Relaxed);
+    let running = load(3, generation, 2);
+    assert!(running.starts_with("HTTP/1.1 409"), "{running}");
+    assert_eq!(deck_view::WEB_LOADS[1].load(Ordering::Relaxed), 0);
+    deck_view::LOAD_PENDING[1].store(false, Ordering::Relaxed);
     let stale = load(2, generation.wrapping_add(1), 2);
     assert!(stale.starts_with("HTTP/1.1 409"), "{stale}");
     let missing = load(4, generation, 2);

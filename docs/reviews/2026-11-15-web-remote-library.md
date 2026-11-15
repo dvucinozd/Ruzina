@@ -27,6 +27,20 @@ Date: 2026-11-15. Branch: `ogranak/jc1060-web-library`, from `main` at `a081d0b`
   - The screen's selection does not move.
 - The web task keeps the catalog and the tracks between requests (`WebState`).
 
+## Review fix (Codex)
+
+**A load the engine was still running was missed.** `WEB_LOADS` empties as soon as the
+USB task takes a request, not when the engine finishes the load. So a second web load,
+or one after a controller LOAD, answered 200 while `Engine::request_load` refused it
+silently.
+
+The USB task now publishes `deck_view::LOAD_PENDING` per deck after every turn, from the
+engine's own pending load, whoever asked for it. While it is set, the Web Remote answers
+409 Busy. The library test covers it.
+
+What remains is a controller LOAD in the same millisecond as a web load. That is not
+reported back.
+
 ## Evidence
 
 - **Host:** two new tests.

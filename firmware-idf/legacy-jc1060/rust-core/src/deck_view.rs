@@ -432,6 +432,11 @@ pub(crate) fn take_web_track(deck: usize) -> Option<Box<WebTrack>> {
 #[cfg(feature = "web-remote")]
 pub(crate) static WEB_LOADS: [AtomicU32; 2] = [const { AtomicU32::new(0) }; 2];
 
+/// Whether the engine has a load onto each deck in flight, from any source: the USB task
+/// stores it after every turn, and the Web Remote answers Busy meanwhile.
+#[cfg(feature = "web-remote")]
+pub(crate) static LOAD_PENDING: [AtomicBool; 2] = [const { AtomicBool::new(false) }; 2];
+
 /// The catalog's tracks, if a new list arrived since the last call.
 pub(crate) fn take_library() -> Option<Box<Library>> {
     LIBRARY.take()

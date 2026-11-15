@@ -309,6 +309,17 @@ fn refresh_mix() {
                 }
             }
         }
+        // Loads in flight, after this turn's requests, for the Web Remote's Busy.
+        #[cfg(feature = "web-remote")]
+        for (pending, deck) in crate::deck_view::LOAD_PENDING
+            .iter()
+            .zip([DeckId::One, DeckId::Two])
+        {
+            pending.store(
+                mix.engine().load_pending(deck),
+                core::sync::atomic::Ordering::Release,
+            );
+        }
         mix.tick();
         mix.attach_fx();
         mix.attach_keylocks();

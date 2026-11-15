@@ -187,7 +187,11 @@ impl WebBackend for Backend<'_> {
         if deck_view::LIVE[i].load().has(deck_view::PLAYING) {
             return LoadOutcome::Locked;
         }
-        // One load per deck in flight; the USB task takes it on its next turn.
+        // One load per deck in flight, from any source: one the engine is still running
+        // (`LOAD_PENDING`) or one the USB task has not taken yet (`WEB_LOADS`).
+        if deck_view::LOAD_PENDING[i].load(Ordering::Acquire) {
+            return LoadOutcome::Busy;
+        }
         match deck_view::WEB_LOADS[i].compare_exchange(
             0,
             track,

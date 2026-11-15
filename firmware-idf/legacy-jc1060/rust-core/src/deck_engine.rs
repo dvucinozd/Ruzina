@@ -524,6 +524,12 @@ impl Engine {
         }
     }
 
+    /// Whether a load onto `deck` is in flight, from admission until it finishes or fails.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn load_pending(&self, deck: DeckId) -> bool {
+        self.pending_load[index(deck)].is_some()
+    }
+
     /// Admission and reservation run on the USB control task. Producer must
     /// begin replacement with this exact permit before closing the old file.
     pub(crate) fn request_load(&mut self, deck: DeckId, catalog_index: u32) -> bool {
