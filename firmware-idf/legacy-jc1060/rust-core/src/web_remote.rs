@@ -295,7 +295,7 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         {
             continue;
         }
-        mix.control(&event);
+        mix.web_control(&event);
     }
     for (i, deck) in DECKS.into_iter().enumerate() {
         let track = deck_view::WEB_LOADS[i].swap(0, Ordering::AcqRel);
@@ -330,6 +330,110 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         sync_master: sync.map(|(_, master)| master),
     }
     .store();
+}
+
+/// Faders and knobs a page can set, which the controller's then takes over softly.
+const TAKEN_OVER: [SemanticControl; 9] = [
+    SemanticControl::ChannelVolume,
+    SemanticControl::Crossfader,
+    SemanticControl::Tempo,
+    SemanticControl::EqLow,
+    SemanticControl::EqMid,
+    SemanticControl::EqHigh,
+    SemanticControl::Filter,
+    SemanticControl::MasterVolume,
+    SemanticControl::HeadphoneMix,
+];
+
+/// How near the controller's fader must come to the page's value to take it back:
+/// 2 % of the travel.
+const PICKUP_TOLERANCE: u16 = 328;
+
+/// A fader seen from either side: where the controller's own sits, and the page's value
+/// while it holds the fader.
+#[derive(Clone, Copy)]
+struct Fader {
+    deck: Option<DeckId>,
+    control: SemanticControl,
+    /// The controller's last value, held or not, so the first move after a hold can be
+    /// seen to pass the page's value.
+    physical: Option<u16>,
+    /// The page's value, until the controller's fader picks it up.
+    target: Option<u16>,
+}
+
+/// Soft takeover after the Web Remote moved a fader. The controller's fader still sits
+/// where it was; its events count again once it comes within [`PICKUP_TOLERANCE`] of
+/// the page's value, or passes it, so the level never jumps. USB task only (in `Mix`).
+pub(crate) struct Takeover {
+    faders: [Option<Fader>; 16],
+}
+
+/// A fader event's value on the shared 14-bit scale, if it is one this takes over.
+fn fader(event: &ControlEvent) -> Option<u16> {
+    let ControlValue::Absolute { value, max } = event.value else {
+        return None;
+    };
+    if max == 0 || !TAKEN_OVER.contains(&event.control) {
+        return None;
+    }
+    Some(
+        (u32::from(value.min(max)) * u32::from(ruzina_web::remote::REMOTE_ABSOLUTE_MAX)
+            / u32::from(max)) as u16,
+    )
+}
+
+impl Takeover {
+    pub(crate) const fn new() -> Self {
+        Self { faders: [None; 16] }
+    }
+
+    /// This event's fader, made on first sight; `None` only if every slot is taken.
+    fn entry(&mut self, event: &ControlEvent) -> Option<&mut Fader> {
+        let index = self
+            .faders
+            .iter()
+            .position(|f| f.is_some_and(|f| f.deck == event.deck && f.control == event.control))
+            .or_else(|| self.faders.iter().position(Option::is_none))?;
+        Some(self.faders[index].get_or_insert(Fader {
+            deck: event.deck,
+            control: event.control,
+            physical: None,
+            target: None,
+        }))
+    }
+
+    /// The page set a fader: the controller's must reach this value again. Where the
+    /// controller's fader sits is kept.
+    pub(crate) fn claim(&mut self, event: &ControlEvent) {
+        if let Some(target) = fader(event)
+            && let Some(entry) = self.entry(event)
+        {
+            entry.target = Some(target);
+        }
+    }
+
+    /// Whether a controller event counts: anything but a held fader, and a held one once
+    /// it reaches or passes the page's value, which ends the hold.
+    pub(crate) fn admit(&mut self, event: &ControlEvent) -> bool {
+        let Some(value) = fader(event) else {
+            return true;
+        };
+        let Some(entry) = self.entry(event) else {
+            return true;
+        };
+        let last = entry.physical.replace(value);
+        let Some(target) = entry.target else {
+            return true;
+        };
+        let near = value.abs_diff(target) <= PICKUP_TOLERANCE;
+        let passed = last.is_some_and(|last| (last <= target) != (value <= target));
+        if near || passed {
+            entry.target = None;
+            return true;
+        }
+        false
+    }
 }
 
 struct Server(UnsafeCell<Option<(WebServer, WebState)>>);

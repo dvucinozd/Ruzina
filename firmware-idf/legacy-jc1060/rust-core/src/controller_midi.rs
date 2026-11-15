@@ -686,8 +686,10 @@ fn drain(state: &mut State) -> i32 {
                 )
             };
             state.echo(&event);
-            #[cfg(feature = "deck-mix")]
+            #[cfg(all(feature = "deck-mix", not(feature = "web-remote")))]
             crate::deck_mix::with(|mix| mix.control(&event));
+            #[cfg(feature = "web-remote")]
+            crate::deck_mix::with(|mix| mix.controller_control(&event));
             #[cfg(feature = "deck-engine")]
             state.sync_leds();
             // The deck screen's Library takes browse and load in Rust; the old load
