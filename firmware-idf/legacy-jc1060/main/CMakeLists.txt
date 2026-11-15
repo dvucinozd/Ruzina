@@ -7,9 +7,9 @@ endif()
 set(probe_sources probe.c)
 # An environment variable, not a CONFIG: the components must be in the graph for their
 # Kconfig, and the requirement scan sees the environment but no -D variables.
-if("$ENV{RUZINA_WIFI_PROBE}" STREQUAL "1")
+if("$ENV{RUZINA_WIFI}" STREQUAL "1")
     list(APPEND probe_requires esp_hosted esp_wifi esp_netif esp_event lwip)
-    list(APPEND probe_sources wifi_probe.c)
+    list(APPEND probe_sources wifi_remote.c)
 endif()
 if(CONFIG_RUZINA_UAC_PROFILE)
     list(APPEND probe_sources uac_profile_sched.c uac_profile_irq.c)

@@ -61,8 +61,10 @@ def main():
     parser.add_argument('--soak-autoplay', action='store_true', help='Soak diagnostic: an unattended DJ keeps both decks loading and playing')
     parser.add_argument('--slint-ui', action='store_true', help='Diagnostic: the deck screen with demo data, measured against USB audio')
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
-    parser.add_argument('--wifi-probe', action='store_true', help='Diagnostic: the ESP32-C6 link over ESP-Hosted, an open access point and a status page')
+    parser.add_argument('--no-wifi', action='store_true', help="Leave out the deck screen image's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted)")
     args = parser.parse_args()
+    # The deck screen image carries the deck's Wi-Fi and Web Remote unless asked not to.
+    args.wifi = args.slint_ui and args.variant == 'deck-engine' and not args.no_wifi
     # The UAC profile may watch the fill next to the screen and the soak DJ; the producer
     # profile stays on its own.
     if args.slint_ui and (args.variant != 'deck-engine' or args.producer_profile):
@@ -141,7 +143,7 @@ def main():
                             + (['idf-uac-profile'] if args.uac_profile else [])
                             + (['idf-soak-autoplay'] if args.soak_autoplay else [])
                             + (['idf-slint-ui'] if args.slint_ui else [])
-                            + (['idf-web-remote'] if args.wifi_probe else []))]
+                            + (['idf-web-remote'] if args.wifi else []))]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -205,19 +207,15 @@ def main():
         defaults += [APP / 'sdkconfig.producer-profile.defaults']
     if args.slint_ui:
         defaults += [APP / 'sdkconfig.slint-ui.defaults']
-    if args.wifi_probe:
-        if args.variant != 'deck-engine':
-            raise ValueError('--wifi-probe requires the deck-engine variant')
-        if not args.slint_ui:
-            raise ValueError('--wifi-probe shows its password on the Slint Settings page')
-        defaults += [APP / 'sdkconfig.wifi-probe.defaults']
+    if args.wifi:
+        defaults += [APP / 'sdkconfig.wifi.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'
     # Offline build: vendored components only; the component manager would
     # otherwise resolve their manifests and write dependencies.lock here.
     os.environ['IDF_COMPONENT_MANAGER'] = '0'
-    # The C6 probe's components (CMakeLists.txt, main/CMakeLists.txt).
-    os.environ['RUZINA_WIFI_PROBE'] = '1' if args.wifi_probe else '0'
+    # The Wi-Fi components (CMakeLists.txt, main/CMakeLists.txt).
+    os.environ['RUZINA_WIFI'] = '1' if args.wifi else '0'
     command = [sys.executable, idf / 'tools/idf.py', '-C', APP, '-B', output / 'build',
                '-DSDKCONFIG=' + (output / 'sdkconfig').as_posix(),
                '-DSDKCONFIG_DEFAULTS=' + ';'.join(x.as_posix() for x in defaults),
@@ -417,7 +415,7 @@ def main():
                     soak_autoplay=args.soak_autoplay,
                     slint_ui=args.slint_ui,
                     fill_iram=args.fill_iram,
-                    wifi_probe=args.wifi_probe,
+                    wifi=args.wifi,
                     rust_release_overrides={'nanomp3-core': {'opt-level': 3}} if args.mp3_core_opt3 else {},
                     sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],

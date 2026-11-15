@@ -1,6 +1,6 @@
 //! The Web Remote on the deck's own Wi-Fi: `ruzina-web` over the engine.
 //!
-//! The C side (`main/wifi_probe.c`) accepts one connection at a time, reads a request and
+//! The C side (`main/wifi_remote.c`) accepts one connection at a time, reads a request and
 //! hands its bytes to [`ruzina_web_handle`], which answers with `ruzina-web`'s page and
 //! API. PLAY and CUE take the touch path to the USB task: [`deck_view::WEB`] is a second
 //! touch queue, so they pass the same admission as the deck screen's buttons. The other

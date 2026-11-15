@@ -1,6 +1,6 @@
-# C6 link probe: ESP-Hosted over SDIO slot 1 to the board's ESP32-C6, the deck's own
-# access point and a status page. Pins, reset and bus as in Guition's IDF 6.1 demo.
-CONFIG_RUZINA_WIFI_PROBE=y
+# The deck's Wi-Fi: ESP-Hosted over SDIO slot 1 to the board's ESP32-C6, the deck's own
+# access point and the Web Remote. Pins, reset and bus as in Guition's IDF 6.1 demo.
+CONFIG_RUZINA_WIFI_REMOTE=y
 
 CONFIG_ESP_WIFI_REMOTE_ENABLED=y
 CONFIG_ESP_WIFI_REMOTE_LIBRARY_HOSTED=y

@@ -9,7 +9,7 @@
  * join, and never the password.
  *
  * ESP-Hosted starts its own tasks at priority 23 with no core affinity, above the USB
- * audio tasks (4 and 5). The probe lowers each one it knows to 2 as soon as it exists.
+ * audio tasks (4 and 5). Each one it knows is lowered to 2 as soon as it exists.
  * The server and lwIP run on the screen's core at priority 2. */
 #include <ctype.h>
 #include <errno.h>
@@ -31,7 +31,7 @@
 #include "freertos/task.h"
 #include "lwip/sockets.h"
 
-#define PROBE_PRIORITY 2
+#define LOW_PRIORITY 2
 #define REPORT_PERIOD_MS 30000
 #define AP_CHANNEL 6
 #define AP_MAX_CLIENTS 4
@@ -63,12 +63,12 @@ static void lower_hosted_tasks(const char *when)
             ++missing;
             continue;
         }
-        if (uxTaskPriorityGet(task) != PROBE_PRIORITY) {
-            vTaskPrioritySet(task, PROBE_PRIORITY);
+        if (uxTaskPriorityGet(task) != LOW_PRIORITY) {
+            vTaskPrioritySet(task, LOW_PRIORITY);
         }
         ++lowered;
     }
-    printf("wifi_probe tasks when=%s lowered=%u missing=%u\n", when, lowered, missing);
+    printf("wifi tasks when=%s lowered=%u missing=%u\n", when, lowered, missing);
 }
 
 /* The Settings page's network and password; false until the access point runs. */
@@ -215,7 +215,7 @@ static void server_task(void *unused)
     for (;;) serve(listener, request, response, response_cap, boot);
 }
 
-static void probe_task(void *unused)
+static void wifi_task(void *unused)
 {
     (void)unused;
     lower_hosted_tasks("start");
@@ -223,17 +223,17 @@ static void probe_task(void *unused)
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_loop_create_default());
     esp_err_t err = start_access_point();
     if (err == ESP_OK &&
-        xTaskCreatePinnedToCore(server_task, "web_remote", 6144, NULL, PROBE_PRIORITY, NULL, 1) != pdPASS) {
+        xTaskCreatePinnedToCore(server_task, "web_remote", 6144, NULL, LOW_PRIORITY, NULL, 1) != pdPASS) {
         err = ESP_ERR_NO_MEM;
     }
     /* By now the link is up: the C6's firmware version. */
     esp_hosted_coprocessor_fwver_t version = {0};
     if (esp_hosted_get_coprocessor_fwversion(&version) == ESP_OK) {
-        printf("wifi_probe c6_firmware=%" PRIu32 ".%" PRIu32 ".%" PRIu32 "\n",
+        printf("wifi c6_firmware=%" PRIu32 ".%" PRIu32 ".%" PRIu32 "\n",
                version.major1, version.minor1, version.patch1);
     }
     if (err != ESP_OK) {
-        printf("wifi_probe error=%s\n", esp_err_to_name(err));
+        printf("wifi error=%s\n", esp_err_to_name(err));
         vTaskDelete(NULL);
         return;
     }
@@ -246,10 +246,10 @@ static void probe_task(void *unused)
     }
 }
 
-esp_err_t ruzina_wifi_probe_start(void)
+esp_err_t ruzina_wifi_start(void)
 {
     /* The screen's core, below the decoders and the screen. */
-    return xTaskCreatePinnedToCore(probe_task, "wifi_probe", 6144, NULL, PROBE_PRIORITY, NULL, 1) == pdPASS
+    return xTaskCreatePinnedToCore(wifi_task, "wifi", 6144, NULL, LOW_PRIORITY, NULL, 1) == pdPASS
                ? ESP_OK
                : ESP_ERR_NO_MEM;
 }
