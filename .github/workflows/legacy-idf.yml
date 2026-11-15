@@ -44,10 +44,13 @@ jobs:
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-producer-profile --tests -- -D warnings
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-soak-autoplay
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-soak-autoplay --tests -- -D warnings
-          # The deck screen image, as flashed on the board.
+          # The deck screen image without Wi-Fi, and as flashed on the board, with its Wi-Fi
+          # and Web Remote.
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features "idf-soak-autoplay idf-slint-ui"
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features "idf-soak-autoplay idf-slint-ui" --tests -- -D warnings
-          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi" "idf-media-load idf-controller-audio" idf-deck-play idf-deck-mix idf-deck-engine idf-uac-profile idf-producer-profile idf-soak-autoplay "idf-soak-autoplay idf-slint-ui" "idf-uac-profile idf-soak-autoplay idf-slint-ui"; do
+          cargo +1.95.0 test --locked --manifest-path "$manifest" --features "idf-soak-autoplay idf-web-remote"
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features "idf-soak-autoplay idf-web-remote" --tests -- -D warnings
+          for features in idf-exfat-fixture idf-media-load idf-controller-midi "idf-media-load idf-controller-midi" "idf-media-load idf-controller-audio" idf-deck-play idf-deck-mix idf-deck-engine idf-uac-profile idf-producer-profile idf-soak-autoplay "idf-soak-autoplay idf-slint-ui" "idf-soak-autoplay idf-slint-ui idf-web-remote" "idf-uac-profile idf-soak-autoplay idf-slint-ui" "idf-uac-profile idf-soak-autoplay idf-slint-ui idf-web-remote"; do
             cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf -- -D warnings
             cargo +1.95.0 build --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf
           done

@@ -201,7 +201,15 @@
   - The status shows the real mixer and SYNC (`MIX_VIEW`).
   - A seek moves the deck as a beat jump does.
   - s109: owner "sve radi ok". Underruns 0/0, `packet_errors=0`.
-- **On the board:** s109 (app `80bbb245…`), the full Web Remote. Earlier: a Slint
+- **Wi-Fi in the deck image (2026-11-15):** [Wi-Fi and the Web Remote in the deck image](reviews/2026-11-15-wifi-in-the-deck-image.md).
+  - `--slint-ui` builds the deck's Wi-Fi and Web Remote in; `--no-wifi` leaves them out,
+    and `--wifi-probe` is gone. The probe names are replaced (`wifi_remote.c`,
+    `CONFIG_RUZINA_WIFI_REMOTE`).
+  - CI covers `idf-web-remote`.
+  - The boot's `Enqueue URB error` is the FLX4's drop and second enumeration, which
+    happens on every boot, with or without Wi-Fi.
+  - s110: owner "radi".
+- **On the board:** s110 (app `e0ac39b5…`), the deck image with Wi-Fi built in. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

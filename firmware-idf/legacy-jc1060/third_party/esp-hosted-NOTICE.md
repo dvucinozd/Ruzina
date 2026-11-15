@@ -29,14 +29,14 @@ Review notes:
   `host/port/esp/freertos/src/port_esp_hosted_host_init.c` calls `esp_hosted_init()`
   before `app_main`, with `ESP_ERROR_CHECK`. That init resets the C6 (GPIO54) and
   starts SDIO on slot 1 of the SDMMC host the SD card also uses (slot 0). The
-  component is therefore only in the build with `--wifi-probe`
-  (`RUZINA_WIFI_PROBE=1` in the environment): `CMakeLists.txt` and
-  `main/CMakeLists.txt`.
+  component is therefore only in the images with Wi-Fi: the deck screen image, unless built
+  with `--no-wifi` (`RUZINA_WIFI=1` in the environment; `CMakeLists.txt` and
+  `main/CMakeLists.txt`).
 - **Its tasks start at priority 23, with no core affinity.** That is above the USB audio
   tasks (4 and 5), and the value is fixed in
   `host/port/esp/freertos/include/port_esp_hosted_host_os.h`. The probe lowers each
-  task by name (`main/wifi_probe.c`).
-- **The probe image turns off three things:**
+  task by name (`main/wifi_remote.c`).
+- **The Wi-Fi images turn off three things:**
   - restart on transport failure, which would reboot the deck;
   - the hosted console, which would take over ours;
   - auto-connect on station start.
