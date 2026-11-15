@@ -281,6 +281,20 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         }
     }
     while let Some(event) = deck_view::WEB_EVENTS.pop() {
+        // LOOP CLEAR arrives as the FLX4's Shift + 4 BEAT (`ReloopStop`), which brings the
+        // last loop back when none plays. From the page it only clears: without a loop
+        // playing there is nothing to clear, so it goes no further.
+        if let (
+            Some(deck),
+            ControlValue::DeckExtAction(ruzina_controller_core::DeckExtActionValue {
+                action: ruzina_controller_core::DeckExtAction::ReloopStop,
+                ..
+            }),
+        ) = (event.deck, event.value)
+            && !mix.engine().loop_active(deck)
+        {
+            continue;
+        }
         mix.control(&event);
     }
     for (i, deck) in DECKS.into_iter().enumerate() {

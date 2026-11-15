@@ -530,6 +530,12 @@ impl Engine {
         self.pending_load[index(deck)].is_some()
     }
 
+    /// Whether deck `deck` is playing inside a loop, for the Web Remote's LOOP CLEAR.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn loop_active(&self, deck: DeckId) -> bool {
+        self.deck.deck(deck).loop_state.active.is_some()
+    }
+
     /// Deck `deck`'s SYNC and whether it is the master, for the Web Remote.
     #[cfg(feature = "web-remote")]
     pub(crate) fn sync_flags(&self, deck: DeckId) -> (bool, bool) {

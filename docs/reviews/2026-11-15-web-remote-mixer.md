@@ -30,6 +30,17 @@ Date: 2026-11-15. Branch: `ogranak/jc1060-web-mixer`, from `main` at `fc26de0`
 - **USB task side:** all its Web Remote work is now one function, `web_remote::service`,
   called from `refresh_mix`: taps, events, loads, seeks, pending loads and the mix view.
 
+## Review fix (Codex)
+
+**LOOP CLEAR could bring an exited loop back.** The page's `loop_clear` arrives as the
+FLX4's Shift + 4 BEAT (`ReloopStop`). When no loop plays but one is remembered, the
+engine's FLX4 mapping turns that into RELOOP, which brings the loop back.
+
+`web_remote::service` now passes the page's clear only while a loop plays
+(`Engine::loop_active`). Without one there is nothing to clear, and the remembered loop
+stays as it is. An engine test exits a loop, sends the page's clear and checks that no
+loop comes back. It then checks that a clear inside a loop still stops it.
+
 ## Evidence
 
 - **Host:** three new or changed tests.

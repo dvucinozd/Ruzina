@@ -984,6 +984,65 @@ fn the_four_beat_button_starts_a_loop_and_exits_it() {
     assert_eq!(mix.stats()[1], underruns);
 }
 
+#[cfg(feature = "web-remote")]
+#[test]
+fn the_web_loop_clear_does_not_bring_back_an_exited_loop() {
+    use ruzina_controller_core::{DeckExtAction, DeckExtActionValue};
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    let more = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 30_000];
+    assert!(RINGS[0].push(&more));
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 9,
+            bpm_x100: 48_000,
+            track_id: [9; 16],
+        },
+    );
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 100);
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    assert!(deck(&mut mix).loop_state.active.is_some(), "a 4-beat loop");
+    run(&mut mix, 100);
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    assert_eq!(deck(&mut mix).loop_state.active, None, "exited, remembered");
+    let clear = |pressed| ControlEvent {
+        deck: Some(DeckId::One),
+        control: SemanticControl::DeckExtAction,
+        value: ControlValue::DeckExtAction(DeckExtActionValue {
+            action: DeckExtAction::ReloopStop,
+            pressed,
+        }),
+    };
+    while crate::deck_view::WEB_EVENTS.pop().is_some() {}
+    assert!(crate::deck_view::WEB_EVENTS.push(clear(true)));
+    assert!(crate::deck_view::WEB_EVENTS.push(clear(false)));
+    crate::web_remote::service(&mut mix);
+    run(&mut mix, 20);
+    assert_eq!(
+        deck(&mut mix).loop_state.active,
+        None,
+        "the page's clear never resumes it"
+    );
+    // Inside a loop, the page's clear stops it, as Shift + 4 BEAT does.
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    assert!(deck(&mut mix).loop_state.active.is_some(), "the loop again");
+    assert!(crate::deck_view::WEB_EVENTS.push(clear(true)));
+    assert!(crate::deck_view::WEB_EVENTS.push(clear(false)));
+    crate::web_remote::service(&mut mix);
+    assert_eq!(deck(&mut mix).loop_state.active, None);
+    empty_ring(0);
+    empty_ring(1);
+}
+
 #[test]
 fn shift_four_beat_brings_back_the_last_loop_then_stops_and_forgets_it() {
     use ruzina_controller_core::{DeckExtAction, DeckExtActionValue};
