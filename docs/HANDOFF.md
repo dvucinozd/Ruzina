@@ -189,7 +189,14 @@
   - `ruzina-web` serves the Web Remote. PLAY and CUE take the touch path; other controls
     answer 503.
   - s106: owner "sve je ok". Underruns 0/0, `packet_errors=0`.
-- **On the board:** s106 (app `0eaa4502…`), the Web Remote with PLAY and CUE. Earlier: a Slint
+- **Web Remote, titles and library (2026-11-15):** [titles and the library](reviews/2026-11-15-web-remote-library.md).
+  - The Web Remote shows each deck's title and duration, and lists the catalog from its
+    own copy.
+  - It loads a track through the same admission as LOAD, without moving the screen's
+    selection.
+  - s108: owner "sve je uredno".
+- **On the board:** s108 (app `af4a00be…`), the Web Remote with titles, library and
+  loads. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

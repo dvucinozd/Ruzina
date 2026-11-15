@@ -289,13 +289,36 @@ fn refresh_mix() {
                 mix.control(&event);
             }
         }
-        // The Web Remote's taps, the same way.
+        // The Web Remote's taps, the same way, and its loads, through the same
+        // admission as a LOAD.
         #[cfg(feature = "web-remote")]
-        while let Some((deck, control)) = crate::deck_view::WEB.pop() {
-            let fx = mix.engine().fx_view();
-            for event in touch_events(deck, control, fx).into_iter().flatten() {
-                mix.control(&event);
+        {
+            while let Some((deck, control)) = crate::deck_view::WEB.pop() {
+                let fx = mix.engine().fx_view();
+                for event in touch_events(deck, control, fx).into_iter().flatten() {
+                    mix.control(&event);
+                }
             }
+            for (slot, deck) in crate::deck_view::WEB_LOADS
+                .iter()
+                .zip([DeckId::One, DeckId::Two])
+            {
+                let track = slot.swap(0, core::sync::atomic::Ordering::AcqRel);
+                if track != 0 {
+                    mix.engine().request_load(deck, track - 1);
+                }
+            }
+        }
+        // Loads in flight, after this turn's requests, for the Web Remote's Busy.
+        #[cfg(feature = "web-remote")]
+        for (pending, deck) in crate::deck_view::LOAD_PENDING
+            .iter()
+            .zip([DeckId::One, DeckId::Two])
+        {
+            pending.store(
+                mix.engine().load_pending(deck),
+                core::sync::atomic::Ordering::Release,
+            );
         }
         mix.tick();
         mix.attach_fx();
