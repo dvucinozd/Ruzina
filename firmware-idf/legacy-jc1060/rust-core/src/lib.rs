@@ -77,6 +77,9 @@ mod deck_resources;
 #[cfg(feature = "soak-autoplay")]
 mod soak_autoplay;
 
+#[cfg(feature = "web-remote")]
+mod web_remote;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]

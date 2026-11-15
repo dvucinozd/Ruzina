@@ -183,7 +183,13 @@
   - s103 and s104: the owner's phone showed the decks live. Underruns 0/0,
     `packet_errors=0`, longest fill 6.2 ms.
   - The C6 stays on its firmware for now.
-- **On the board:** s104 (app `3f3474f5…`), the deck's access point and status page. Earlier: a Slint
+- **Web Remote, PLAY and CUE (2026-11-15):** [the Web Remote, PLAY and CUE](reviews/2026-11-15-web-remote-play-cue.md).
+  - The deck's network is WPA2 (`CONFIG_RUZINA_WIFI_PASSWORD`, `12345678` by default),
+    shown on the Settings page.
+  - `ruzina-web` serves the Web Remote. PLAY and CUE take the touch path; other controls
+    answer 503.
+  - s106: owner "sve je ok". Underruns 0/0, `packet_errors=0`.
+- **On the board:** s106 (app `0eaa4502…`), the Web Remote with PLAY and CUE. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

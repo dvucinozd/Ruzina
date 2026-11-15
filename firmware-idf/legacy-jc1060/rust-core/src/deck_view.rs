@@ -337,6 +337,10 @@ impl TouchQueue {
 
 pub(crate) static TOUCH: TouchQueue = TouchQueue::new();
 
+/// The Web Remote's requests, from the web task: a second queue, as each has one producer.
+#[cfg(feature = "web-remote")]
+pub(crate) static WEB: TouchQueue = TouchQueue::new();
+
 /// One catalog track as the Library page lists it.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct LibraryRow {

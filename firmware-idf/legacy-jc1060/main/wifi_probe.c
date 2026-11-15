@@ -1,43 +1,53 @@
-/* C6 link probe: the deck's own Wi-Fi network and a status page, while the deck plays.
+/* The deck's own Wi-Fi and the Web Remote, over the board's ESP32-C6.
  *
- * ESP-Hosted carries Wi-Fi from the board's ESP32-C6 over SDIO. The probe starts an
- * access point, "Ruzina-XXXX", open and for the probe only, and an HTTP server on
- * 192.168.4.1:
- * - "/" is a page that shows both decks;
- * - "/status" is their state as JSON, which the page fetches every second.
- * The log carries counts and timings only: no addresses or names of the devices that join.
+ * ESP-Hosted carries Wi-Fi from the C6 over SDIO. The deck starts a WPA2 access point,
+ * "Ruzina-XXXX", with the password CONFIG_RUZINA_WIFI_PASSWORD (the owner's choice), shown
+ * on the Settings page (ruzina_wifi_credentials). On 192.168.4.1 a small
+ * server takes one connection at a time and hands each request to ruzina-web
+ * (ruzina_web_handle): the Web Remote page, its status and its controls.
+ * The log carries counts and timings only: no addresses or names of the devices that
+ * join, and never the password.
  *
  * ESP-Hosted starts its own tasks at priority 23 with no core affinity, above the USB
  * audio tasks (4 and 5). The probe lowers each one it knows to 2 as soon as it exists.
- * The HTTP server and lwIP run on the screen's core at priority 2. */
+ * The server and lwIP run on the screen's core at priority 2. */
+#include <errno.h>
 #include <inttypes.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "esp_event.h"
 #include "esp_heap_caps.h"
 #include "esp_hosted.h"
-#include "esp_http_server.h"
-#include "esp_mac.h"
 #include "esp_netif.h"
+#include "esp_random.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "lwip/sockets.h"
 
 #define PROBE_PRIORITY 2
 #define REPORT_PERIOD_MS 30000
 #define AP_CHANNEL 6
 #define AP_MAX_CLIENTS 4
+#define REQUEST_MAX 2048
 
-extern void ruzina_legacy_engine_status(uint32_t *out);
-extern int32_t ruzina_legacy_engine_track(uint32_t deck);
+extern size_t ruzina_web_handle(uint32_t boot, const uint8_t *request, size_t request_len, uint8_t *out,
+                                size_t out_len);
+extern size_t ruzina_web_largest_asset(void);
 
 static const char *const hosted_tasks[] = {
     "rpc_rx", "rpc_tx", "rpc_supp_cb", "sdio_rx_buf", "sdio_read", "sdio_process_rx", "sdio_write",
 };
 
+static char ap_ssid[33];
+static const char ap_password[] = CONFIG_RUZINA_WIFI_PASSWORD;
+_Static_assert(sizeof ap_password <= sizeof(((wifi_ap_config_t *)0)->password),
+               "CONFIG_RUZINA_WIFI_PASSWORD is longer than WPA2 allows");
+static atomic_bool ap_ready;
 static atomic_int clients;
 static atomic_uint requests;
 static atomic_uint request_max_us;
@@ -59,6 +69,15 @@ static void lower_hosted_tasks(const char *when)
     printf("wifi_probe tasks when=%s lowered=%u missing=%u\n", when, lowered, missing);
 }
 
+/* The Settings page's network and password; false until the access point runs. */
+bool ruzina_wifi_credentials(char *ssid, size_t ssid_len, char *password, size_t password_len)
+{
+    if (!atomic_load(&ap_ready) || ssid_len == 0 || password_len == 0) return false;
+    snprintf(ssid, ssid_len, "%s", ap_ssid);
+    snprintf(password, password_len, "%s", ap_password);
+    return true;
+}
+
 static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg;
@@ -69,89 +88,6 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
     } else if (id == WIFI_EVENT_AP_STADISCONNECTED) {
         printf("wifi_ap left clients=%d\n", atomic_fetch_sub(&clients, 1) - 1);
     }
-}
-
-static void note_request(int64_t start)
-{
-    const unsigned took = (unsigned)(esp_timer_get_time() - start);
-    atomic_fetch_add(&requests, 1);
-    unsigned seen = atomic_load(&request_max_us);
-    while (took > seen && !atomic_compare_exchange_weak(&request_max_us, &seen, took)) {
-    }
-}
-
-static const char page[] =
-    "<!doctype html><html><head><meta charset=utf-8>"
-    "<meta name=viewport content='width=device-width,initial-scale=1'><title>Ruzina</title>"
-    "<style>body{font-family:sans-serif;background:#0d0f11;color:#eef0f2;margin:16px}"
-    ".d{background:#12161a;border-radius:8px;padding:12px;margin:8px 0}"
-    ".n{color:#38d6f0;font-weight:bold}.t{font-size:28px}.s{color:#9a9ea4}</style></head>"
-    "<body><h2>Ruzina</h2><div class=d id=d1></div><div class=d id=d2></div>"
-    "<p class=s id=u></p><script>"
-    "function c(ms){var s=Math.floor(ms/1000);return Math.floor(s/60)+':'+('0'+s%60).slice(-2)}"
-    "function d(e,n,x){e.innerHTML='<span class=n>DECK '+n+'</span> '+(x.loaded?"
-    "(x.playing?'&#9654; PLAY':'&#10074;&#10074; PAUSE')+' &middot; track '+(x.track+1)+"
-    "'<div class=t>'+c(x.ms)+'</div>':'<span class=s>empty</span>')}"
-    "function p(){fetch('/status').then(r=>r.json()).then(j=>{"
-    "d(document.getElementById('d1'),1,j.decks[0]);d(document.getElementById('d2'),2,j.decks[1]);"
-    "document.getElementById('u').textContent='uptime '+c(j.uptime_ms)}).catch(()=>{})}"
-    "p();setInterval(p,1000)</script></body></html>";
-
-static esp_err_t serve_page(httpd_req_t *req)
-{
-    const int64_t start = esp_timer_get_time();
-    httpd_resp_set_type(req, "text/html");
-    esp_err_t err = httpd_resp_send(req, page, sizeof page - 1);
-    note_request(start);
-    return err;
-}
-
-static esp_err_t serve_status(httpd_req_t *req)
-{
-    const int64_t start = esp_timer_get_time();
-    uint32_t status[4] = {0};
-    ruzina_legacy_engine_status(status);
-    char body[256];
-    int len = snprintf(body, sizeof body,
-                       "{\"uptime_ms\":%" PRId64 ",\"decks\":["
-                       "{\"ms\":%" PRIu32 ",\"loaded\":%s,\"playing\":%s,\"track\":%" PRId32 "},"
-                       "{\"ms\":%" PRIu32 ",\"loaded\":%s,\"playing\":%s,\"track\":%" PRId32 "}]}",
-                       esp_timer_get_time() / 1000,
-                       status[0], (status[1] & 1) ? "true" : "false", (status[1] & 2) ? "true" : "false",
-                       ruzina_legacy_engine_track(1),
-                       status[2], (status[3] & 1) ? "true" : "false", (status[3] & 2) ? "true" : "false",
-                       ruzina_legacy_engine_track(2));
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    esp_err_t err = httpd_resp_send(req, body, len);
-    note_request(start);
-    return err;
-}
-
-/* Browsers ask for an icon: no content, rather than a 404 warning in the log. */
-static esp_err_t serve_no_icon(httpd_req_t *req)
-{
-    httpd_resp_set_status(req, "204 No Content");
-    return httpd_resp_send(req, NULL, 0);
-}
-
-static esp_err_t start_server(void)
-{
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.task_priority = PROBE_PRIORITY;
-    config.core_id = 1;
-    config.max_open_sockets = 4;
-    config.lru_purge_enable = true;
-    httpd_handle_t server = NULL;
-    esp_err_t err = httpd_start(&server, &config);
-    if (err != ESP_OK) return err;
-    const httpd_uri_t root = {.uri = "/", .method = HTTP_GET, .handler = serve_page};
-    const httpd_uri_t status = {.uri = "/status", .method = HTTP_GET, .handler = serve_status};
-    const httpd_uri_t icon = {.uri = "/favicon.ico", .method = HTTP_GET, .handler = serve_no_icon};
-    httpd_register_uri_handler(server, &root);
-    httpd_register_uri_handler(server, &status);
-    httpd_register_uri_handler(server, &icon);
-    return ESP_OK;
 }
 
 static esp_err_t start_access_point(void)
@@ -165,17 +101,96 @@ static esp_err_t start_access_point(void)
     /* The P4 has no Wi-Fi MAC of its own: the access point's address is the C6's. */
     uint8_t mac[6] = {0};
     esp_wifi_get_mac(WIFI_IF_AP, mac);
+    snprintf(ap_ssid, sizeof ap_ssid, "Ruzina-%02X%02X", mac[4], mac[5]);
     wifi_config_t config = {0};
-    int len = snprintf((char *)config.ap.ssid, sizeof config.ap.ssid, "Ruzina-%02X%02X", mac[4], mac[5]);
-    config.ap.ssid_len = (uint8_t)len;
+    memcpy(config.ap.ssid, ap_ssid, strlen(ap_ssid));
+    config.ap.ssid_len = (uint8_t)strlen(ap_ssid);
+    memcpy(config.ap.password, ap_password, strlen(ap_password));
     config.ap.channel = AP_CHANNEL;
     config.ap.max_connection = AP_MAX_CLIENTS;
-    config.ap.authmode = WIFI_AUTH_OPEN;
+    /* WPA2 needs 8 to 63 characters; anything else leaves the network open. */
+    const size_t password_len = strlen(ap_password);
+    config.ap.authmode = password_len >= 8 && password_len <= 63 ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    config.ap.pmf_cfg.capable = true;
     err = esp_wifi_set_mode(WIFI_MODE_AP);
     if (err == ESP_OK) err = esp_wifi_set_config(WIFI_IF_AP, &config);
     if (err == ESP_OK) err = esp_wifi_start();
-    printf("wifi_ap start=%s ssid=%s channel=%d\n", esp_err_to_name(err), (const char *)config.ap.ssid, AP_CHANNEL);
+    printf("wifi_ap start=%s ssid=%s channel=%d auth=%s\n", esp_err_to_name(err), ap_ssid, AP_CHANNEL,
+           config.ap.authmode == WIFI_AUTH_WPA2_PSK ? "wpa2" : "open");
+    if (err == ESP_OK) atomic_store(&ap_ready, true);
     return err;
+}
+
+/* One request: the head, then a body up to Content-Length, both within REQUEST_MAX. */
+static size_t read_request(int sock, uint8_t *buffer)
+{
+    size_t len = 0;
+    size_t want = 0;
+    while (len < REQUEST_MAX) {
+        int got = recv(sock, buffer + len, REQUEST_MAX - len, 0);
+        if (got <= 0) return want && len >= want ? len : 0;
+        len += (size_t)got;
+        if (want == 0) {
+            const uint8_t *end = memmem(buffer, len, "\r\n\r\n", 4);
+            if (end == NULL) continue;
+            size_t head = (size_t)(end - buffer) + 4;
+            size_t body = 0;
+            const char *field = strcasestr((const char *)buffer, "\r\nContent-Length:");
+            if (field != NULL && (const uint8_t *)field < end) body = strtoul(field + 17, NULL, 10);
+            want = head + body;
+            if (want > REQUEST_MAX) return 0;
+        }
+        if (len >= want) return len;
+    }
+    return 0;
+}
+
+static void serve(int listener, uint8_t *request, uint8_t *response, size_t response_cap, uint32_t boot)
+{
+    struct sockaddr_storage peer;
+    socklen_t peer_len = sizeof peer;
+    int sock = accept(listener, (struct sockaddr *)&peer, &peer_len);
+    if (sock < 0) return;
+    const struct timeval timeout = {.tv_sec = 2, .tv_usec = 0};
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof timeout);
+    const int64_t start = esp_timer_get_time();
+    size_t len = read_request(sock, request);
+    if (len > 0) {
+        size_t out = ruzina_web_handle(boot, request, len, response, response_cap);
+        for (size_t sent = 0; sent < out;) {
+            int n = send(sock, response + sent, out - sent, 0);
+            if (n <= 0) break;
+            sent += (size_t)n;
+        }
+        const unsigned took = (unsigned)(esp_timer_get_time() - start);
+        atomic_fetch_add(&requests, 1);
+        if (took > atomic_load(&request_max_us)) atomic_store(&request_max_us, took);
+    }
+    shutdown(sock, SHUT_RDWR);
+    close(sock);
+}
+
+static void server_task(void *unused)
+{
+    (void)unused;
+    const size_t response_cap = ruzina_web_largest_asset() + 1024;
+    uint8_t *request = heap_caps_malloc(REQUEST_MAX, MALLOC_CAP_SPIRAM);
+    uint8_t *response = heap_caps_malloc(response_cap, MALLOC_CAP_SPIRAM);
+    int listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    struct sockaddr_in address = {.sin_family = AF_INET, .sin_port = htons(80), .sin_addr.s_addr = htonl(INADDR_ANY)};
+    const int yes = 1;
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+    bool ok = request && response && listener >= 0 &&
+              bind(listener, (struct sockaddr *)&address, sizeof address) == 0 && listen(listener, 4) == 0;
+    printf("web_remote listen=%s response_cap=%u\n", ok ? "ok" : "failed", (unsigned)response_cap);
+    if (!ok) {
+        vTaskDelete(NULL);
+        return;
+    }
+    /* Differs on each start, so the page notices a reboot. */
+    const uint32_t boot = esp_random();
+    for (;;) serve(listener, request, response, response_cap, boot);
 }
 
 static void probe_task(void *unused)
@@ -185,8 +200,10 @@ static void probe_task(void *unused)
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_init());
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_loop_create_default());
     esp_err_t err = start_access_point();
-    if (err == ESP_OK) err = start_server();
-    printf("wifi_probe http=%s\n", esp_err_to_name(err));
+    if (err == ESP_OK &&
+        xTaskCreatePinnedToCore(server_task, "web_remote", 6144, NULL, PROBE_PRIORITY, NULL, 1) != pdPASS) {
+        err = ESP_ERR_NO_MEM;
+    }
     /* By now the link is up: the C6's firmware version. */
     esp_hosted_coprocessor_fwver_t version = {0};
     if (esp_hosted_get_coprocessor_fwversion(&version) == ESP_OK) {
@@ -194,6 +211,7 @@ static void probe_task(void *unused)
                version.major1, version.minor1, version.patch1);
     }
     if (err != ESP_OK) {
+        printf("wifi_probe error=%s\n", esp_err_to_name(err));
         vTaskDelete(NULL);
         return;
     }

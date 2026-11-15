@@ -83,3 +83,8 @@ config RUZINA_WIFI_PROBE
     bool "Diagnostic: the ESP32-C6 link over ESP-Hosted, an access point and a status page"
     depends on RUZINA_DECK_ENGINE && ESP_HOSTED_ENABLED
     default n
+
+config RUZINA_WIFI_PASSWORD
+    string "The deck's Wi-Fi password (WPA2, 8 to 63 characters; otherwise the network is open)"
+    depends on RUZINA_WIFI_PROBE
+    default "12345678"
