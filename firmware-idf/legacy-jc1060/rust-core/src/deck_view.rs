@@ -299,6 +299,13 @@ impl TouchQueue {
         true
     }
 
+    /// The producer's side: how many requests still fit.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn free(&self) -> u32 {
+        let head = self.head.load(Ordering::Relaxed);
+        TOUCH_SLOTS - head.wrapping_sub(self.tail.load(Ordering::Acquire))
+    }
+
     /// The USB task's side: the oldest request.
     pub(crate) fn pop(&self) -> Option<(usize, TouchControl)> {
         let tail = self.tail.load(Ordering::Relaxed);
@@ -336,6 +343,10 @@ impl TouchQueue {
 }
 
 pub(crate) static TOUCH: TouchQueue = TouchQueue::new();
+
+/// The Web Remote's requests, from the web task: a second queue, as each has one producer.
+#[cfg(feature = "web-remote")]
+pub(crate) static WEB: TouchQueue = TouchQueue::new();
 
 /// One catalog track as the Library page lists it.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

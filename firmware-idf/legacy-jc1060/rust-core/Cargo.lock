@@ -3357,6 +3357,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzina-controller-profile-storage"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-profile",
+ "ruzina-media-fs",
+]
+
+[[package]]
 name = "ruzina-controller-session"
 version = "0.1.0"
 dependencies = [
@@ -3418,6 +3426,7 @@ dependencies = [
  "ruzina-mixer",
  "ruzina-track-analysis",
  "ruzina-uac",
+ "ruzina-web",
  "sha2",
  "slint",
  "slint-build",
@@ -3521,6 +3530,17 @@ name = "ruzina-uac"
 version = "0.1.0"
 dependencies = [
  "ruzina-audio-dsp",
+]
+
+[[package]]
+name = "ruzina-web"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+ "ruzina-controller-profile",
+ "ruzina-controller-profile-storage",
+ "ruzina-core",
+ "ruzina-media-catalog",
 ]
 
 [[package]]

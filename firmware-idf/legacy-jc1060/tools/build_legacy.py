@@ -140,7 +140,8 @@ def main():
                    ' '.join(['idf-deck-engine']
                             + (['idf-uac-profile'] if args.uac_profile else [])
                             + (['idf-soak-autoplay'] if args.soak_autoplay else [])
-                            + (['idf-slint-ui'] if args.slint_ui else []))]
+                            + (['idf-slint-ui'] if args.slint_ui else [])
+                            + (['idf-web-remote'] if args.wifi_probe else []))]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
     archive = output / 'rust' / TARGET / 'release/libruzina_legacy_idf_core_probe.a'
@@ -207,6 +208,8 @@ def main():
     if args.wifi_probe:
         if args.variant != 'deck-engine':
             raise ValueError('--wifi-probe requires the deck-engine variant')
+        if not args.slint_ui:
+            raise ValueError('--wifi-probe shows its password on the Slint Settings page')
         defaults += [APP / 'sdkconfig.wifi-probe.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'

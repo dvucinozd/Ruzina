@@ -289,6 +289,14 @@ fn refresh_mix() {
                 mix.control(&event);
             }
         }
+        // The Web Remote's taps, the same way.
+        #[cfg(feature = "web-remote")]
+        while let Some((deck, control)) = crate::deck_view::WEB.pop() {
+            let fx = mix.engine().fx_view();
+            for event in touch_events(deck, control, fx).into_iter().flatten() {
+                mix.control(&event);
+            }
+        }
         mix.tick();
         mix.attach_fx();
         mix.attach_keylocks();

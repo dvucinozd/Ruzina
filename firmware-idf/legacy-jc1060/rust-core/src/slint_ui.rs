@@ -321,8 +321,43 @@ fn show_settings(ui: &Overview, uptime_ms: u64) {
             .into(),
         ),
     ];
+    #[cfg(feature = "idf-web-remote")]
+    let right = {
+        let mut right = right;
+        let (network, password) = wifi_credentials();
+        right.push(line("Wi-Fi", network));
+        right.push(line("Password", password));
+        right
+    };
     ui.set_settings_left(slint::ModelRc::new(slint::VecModel::from(left)));
     ui.set_settings_right(slint::ModelRc::new(slint::VecModel::from(right)));
+}
+
+/// The deck's own Wi-Fi network and its password, from the C6 probe.
+#[cfg(feature = "idf-web-remote")]
+fn wifi_credentials() -> (alloc::string::String, alloc::string::String) {
+    unsafe extern "C" {
+        fn ruzina_wifi_credentials(
+            ssid: *mut u8,
+            ssid_len: usize,
+            password: *mut u8,
+            password_len: usize,
+        ) -> bool;
+    }
+    let (mut ssid, mut password) = ([0u8; 33], [0u8; 65]);
+    // SAFETY: both buffers are writable for their lengths; C writes NUL-terminated text.
+    let ready = unsafe {
+        ruzina_wifi_credentials(
+            ssid.as_mut_ptr(),
+            ssid.len(),
+            password.as_mut_ptr(),
+            password.len(),
+        )
+    };
+    if !ready {
+        return ("starting".into(), "-".into());
+    }
+    (c_text(&ssid).into(), c_text(&password).into())
 }
 
 fn now_us() -> u64 {
