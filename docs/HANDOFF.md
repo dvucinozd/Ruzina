@@ -177,8 +177,13 @@
     deck plays.
   - s101: 28 scans in 15 minutes, underruns 0/0, `packet_errors=0`, longest fill 6.1 ms.
   - The C6 runs ESP-Hosted 2.3.0 and needs an upgrade.
-- **On the board:** s101 (app `28972f9f…`), the C6 link probe. Before it, s100, the paged
-  Library. Earlier: a Slint
+- **The deck's own Wi-Fi (2026-11-15):** [the deck's own Wi-Fi and a status page](reviews/2026-11-15-softap-status-page.md).
+  - `--wifi-probe` now starts an open access point, `Ruzina-XXXX`, and a page at
+    192.168.4.1 that shows both decks.
+  - s103 and s104: the owner's phone showed the decks live. Underruns 0/0,
+    `packet_errors=0`, longest fill 6.2 ms.
+  - The C6 stays on its firmware for now.
+- **On the board:** s104 (app `3f3474f5…`), the deck's access point and status page. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
