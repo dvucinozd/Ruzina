@@ -349,20 +349,24 @@ const TAKEN_OVER: [SemanticControl; 9] = [
 /// 2 % of the travel.
 const PICKUP_TOLERANCE: u16 = 328;
 
-/// A fader the page set: its value, and the controller's last value since.
+/// A fader seen from either side: where the controller's own sits, and the page's value
+/// while it holds the fader.
 #[derive(Clone, Copy)]
-struct Held {
+struct Fader {
     deck: Option<DeckId>,
     control: SemanticControl,
-    target: u16,
-    last: Option<u16>,
+    /// The controller's last value, held or not, so the first move after a hold can be
+    /// seen to pass the page's value.
+    physical: Option<u16>,
+    /// The page's value, until the controller's fader picks it up.
+    target: Option<u16>,
 }
 
 /// Soft takeover after the Web Remote moved a fader. The controller's fader still sits
 /// where it was; its events count again once it comes within [`PICKUP_TOLERANCE`] of
 /// the page's value, or passes it, so the level never jumps. USB task only (in `Mix`).
 pub(crate) struct Takeover {
-    held: [Option<Held>; 16],
+    faders: [Option<Fader>; 16],
 }
 
 /// A fader event's value on the shared 14-bit scale, if it is one this takes over.
@@ -381,30 +385,31 @@ fn fader(event: &ControlEvent) -> Option<u16> {
 
 impl Takeover {
     pub(crate) const fn new() -> Self {
-        Self { held: [None; 16] }
+        Self { faders: [None; 16] }
     }
 
-    fn slot(&mut self, event: &ControlEvent) -> Option<&mut Option<Held>> {
-        self.held.iter_mut().find(|held| {
-            held.is_some_and(|held| held.deck == event.deck && held.control == event.control)
-        })
-    }
-
-    /// The page set a fader: the controller's must reach this value again.
-    pub(crate) fn claim(&mut self, event: &ControlEvent) {
-        let Some(target) = fader(event) else {
-            return;
-        };
-        let held = Held {
+    /// This event's fader, made on first sight; `None` only if every slot is taken.
+    fn entry(&mut self, event: &ControlEvent) -> Option<&mut Fader> {
+        let index = self
+            .faders
+            .iter()
+            .position(|f| f.is_some_and(|f| f.deck == event.deck && f.control == event.control))
+            .or_else(|| self.faders.iter().position(Option::is_none))?;
+        Some(self.faders[index].get_or_insert(Fader {
             deck: event.deck,
             control: event.control,
-            target,
-            last: None,
-        };
-        if let Some(slot) = self.slot(event) {
-            *slot = Some(held);
-        } else if let Some(free) = self.held.iter_mut().find(|held| held.is_none()) {
-            *free = Some(held);
+            physical: None,
+            target: None,
+        }))
+    }
+
+    /// The page set a fader: the controller's must reach this value again. Where the
+    /// controller's fader sits is kept.
+    pub(crate) fn claim(&mut self, event: &ControlEvent) {
+        if let Some(target) = fader(event)
+            && let Some(entry) = self.entry(event)
+        {
+            entry.target = Some(target);
         }
     }
 
@@ -414,21 +419,19 @@ impl Takeover {
         let Some(value) = fader(event) else {
             return true;
         };
-        let Some(slot) = self.slot(event) else {
+        let Some(entry) = self.entry(event) else {
             return true;
         };
-        let Some(held) = slot.as_mut() else {
+        let last = entry.physical.replace(value);
+        let Some(target) = entry.target else {
             return true;
         };
-        let near = value.abs_diff(held.target) <= PICKUP_TOLERANCE;
-        let passed = held
-            .last
-            .is_some_and(|last| (last <= held.target) != (value <= held.target));
+        let near = value.abs_diff(target) <= PICKUP_TOLERANCE;
+        let passed = last.is_some_and(|last| (last <= target) != (value <= target));
         if near || passed {
-            *slot = None;
+            entry.target = None;
             return true;
         }
-        held.last = Some(value);
         false
     }
 }

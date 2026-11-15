@@ -115,6 +115,17 @@ fn the_controllers_fader_takes_over_only_once_it_reaches_the_pages_value() {
     service(&mut mix);
     assert_eq!(physical(&mut mix, 2_000), 8_000);
     assert_eq!(physical(&mut mix, 12_000), 12_000, "jumped past 8000");
+    // A fader that sat below the page's value and moves past it in its first move after
+    // the page set it takes over: where it sat is kept across the page's update.
+    assert_eq!(physical(&mut mix, 6_000), 6_000);
+    let answer = post("action=volume&deck=2&value=8000");
+    assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
+    service(&mut mix);
+    assert_eq!(
+        physical(&mut mix, 12_000),
+        12_000,
+        "6000 to 12000 passes 8000"
+    );
     // Another channel's fader and other controls are never held.
     let other = ControlEvent {
         deck: Some(DeckId::One),

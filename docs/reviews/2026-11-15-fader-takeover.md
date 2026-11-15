@@ -21,6 +21,12 @@ touch of the physical fader jumped the level to wherever that fader sat.
 - **Limits:** the hold is per deck and control, at most 16 at once, and only in images
   with the Web Remote.
 
+**Review fix (Codex).** A new value from the page cleared where the controller's fader
+last sat. So a first move that passed the target without coming near it was missed. In
+the example, a fader at 6000, the page set to 8000, and a move to 12000 stayed blocked.
+The takeover now keeps each fader's last physical value whether or not it is held, and a
+new value from the page leaves it alone.
+
 ## The FLX4 at boot
 
 Every capture from s95 to s110 showed the FLX4 enumerate, stream for about 160 ms, drop
@@ -42,6 +48,7 @@ own with the FLX4 powered would be ready about a second later.
   - With nothing held, the physical fader counts.
   - After the page sets 4000, moves at 11800 and 9000 do not count, and 4200 takes over.
   - After the page sets 8000, a jump from 2000 to 12000 passes it and takes over.
+  - A fader at 6000 whose first move after the page set 8000 lands on 12000 takes over.
   - The other deck's fader is never held.
 
   The legacy CI matrix, the Slint checks, the Web Remote tests and target clippy pass.
