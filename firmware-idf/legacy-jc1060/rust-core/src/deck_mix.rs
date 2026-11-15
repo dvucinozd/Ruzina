@@ -38,6 +38,9 @@ const TEMPO_RANGE_PERCENT: u16 = 10;
 pub(crate) struct Mix {
     graph: Option<FixedRateRenderGraph<'static>>,
     mixer: MixerState,
+    /// Faders the Web Remote moved, which the controller's own picks up again.
+    #[cfg(feature = "web-remote")]
+    takeover: crate::web_remote::Takeover,
     /// Start levels are applied once, before the first control or block.
     started: bool,
     pitch: [i16; 2],
@@ -68,6 +71,8 @@ impl Mix {
         Self {
             graph: None,
             mixer: MixerState::new(),
+            #[cfg(feature = "web-remote")]
+            takeover: crate::web_remote::Takeover::new(),
             started: false,
             pitch: [0; 2],
             readers: [Reader::new(), Reader::new()],
@@ -91,6 +96,23 @@ impl Mix {
     #[cfg(feature = "deck-engine")]
     pub(crate) fn engine(&mut self) -> &mut crate::deck_engine::Engine {
         &mut self.engine
+    }
+
+    /// A controller event: as [`Mix::control`], except a fader the Web Remote moved, which
+    /// counts again only once the physical one reaches it (soft takeover).
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn controller_control(&mut self, event: &ControlEvent) {
+        if self.takeover.admit(event) {
+            self.control(event);
+        }
+    }
+
+    /// A Web Remote event: as [`Mix::control`], and a fader's value is the one the
+    /// controller's must reach before it counts again.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn web_control(&mut self, event: &ControlEvent) {
+        self.takeover.claim(event);
+        self.control(event);
     }
 
     /// The mixer's settings, for the Web Remote's status.

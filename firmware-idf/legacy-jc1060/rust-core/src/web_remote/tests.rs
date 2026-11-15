@@ -81,6 +81,54 @@ fn the_mixer_and_sync_reach_the_mix_and_come_back_in_the_status() {
 }
 
 #[test]
+fn the_controllers_fader_takes_over_only_once_it_reaches_the_pages_value() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    drain_web();
+    while deck_view::WEB_EVENTS.pop().is_some() {}
+    let mut mix = crate::deck_mix::Mix::new();
+    let physical = |mix: &mut crate::deck_mix::Mix, value: u16| {
+        mix.controller_control(&ControlEvent {
+            deck: Some(DeckId::Two),
+            control: SemanticControl::ChannelVolume,
+            value: ControlValue::Absolute { value, max: 16_383 },
+        });
+        mix.mixer().deck(DeckId::Two).channel_volume
+    };
+    assert_eq!(
+        physical(&mut mix, 12_000),
+        12_000,
+        "nothing held: the fader counts"
+    );
+    let answer = post("action=volume&deck=2&value=4000");
+    assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
+    service(&mut mix);
+    assert_eq!(mix.mixer().deck(DeckId::Two).channel_volume, 4000);
+    // The fader still sits high: its moves there do not count.
+    assert_eq!(physical(&mut mix, 11_800), 4000);
+    assert_eq!(physical(&mut mix, 9_000), 4000);
+    // Within 2 % of the page's value it takes over.
+    assert_eq!(physical(&mut mix, 4_200), 4_200);
+    assert_eq!(physical(&mut mix, 6_000), 6_000, "and stays in charge");
+    // Passing the page's value in one jump also takes over.
+    let answer = post("action=volume&deck=2&value=8000");
+    assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
+    service(&mut mix);
+    assert_eq!(physical(&mut mix, 2_000), 8_000);
+    assert_eq!(physical(&mut mix, 12_000), 12_000, "jumped past 8000");
+    // Another channel's fader and other controls are never held.
+    let other = ControlEvent {
+        deck: Some(DeckId::One),
+        control: SemanticControl::ChannelVolume,
+        value: ControlValue::Absolute {
+            value: 1_000,
+            max: 16_383,
+        },
+    };
+    mix.controller_control(&other);
+    assert_eq!(mix.mixer().deck(DeckId::One).channel_volume, 1_000);
+}
+
+#[test]
 fn a_seek_needs_a_loaded_track_and_keeps_inside_it() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     for slot in &deck_view::WEB_SEEKS {

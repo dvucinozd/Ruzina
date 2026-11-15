@@ -209,7 +209,13 @@
   - The boot's `Enqueue URB error` is the FLX4's drop and second enumeration, which
     happens on every boot, with or without Wi-Fi.
   - s110: owner "radi".
-- **On the board:** s110 (app `e0ac39b5…`), the deck image with Wi-Fi built in. Earlier: a Slint
+- **Soft takeover (2026-11-15):** [soft takeover and the FLX4 at boot](reviews/2026-11-15-fader-takeover.md).
+  - After the Web Remote moves a fader, the FLX4's fader counts again only once it
+    reaches or passes that value.
+  - The FLX4's drop at boot belongs to resetting the P4 alone; a cold boot enumerates
+    once.
+  - s111: owner "radi sve ok".
+- **On the board:** s111 (app `7b73bd5f…`), the Web Remote with soft takeover. Earlier: a Slint
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

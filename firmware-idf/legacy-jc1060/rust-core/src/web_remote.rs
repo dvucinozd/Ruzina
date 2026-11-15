@@ -295,7 +295,7 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         {
             continue;
         }
-        mix.control(&event);
+        mix.web_control(&event);
     }
     for (i, deck) in DECKS.into_iter().enumerate() {
         let track = deck_view::WEB_LOADS[i].swap(0, Ordering::AcqRel);
@@ -330,6 +330,107 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         sync_master: sync.map(|(_, master)| master),
     }
     .store();
+}
+
+/// Faders and knobs a page can set, which the controller's then takes over softly.
+const TAKEN_OVER: [SemanticControl; 9] = [
+    SemanticControl::ChannelVolume,
+    SemanticControl::Crossfader,
+    SemanticControl::Tempo,
+    SemanticControl::EqLow,
+    SemanticControl::EqMid,
+    SemanticControl::EqHigh,
+    SemanticControl::Filter,
+    SemanticControl::MasterVolume,
+    SemanticControl::HeadphoneMix,
+];
+
+/// How near the controller's fader must come to the page's value to take it back:
+/// 2 % of the travel.
+const PICKUP_TOLERANCE: u16 = 328;
+
+/// A fader the page set: its value, and the controller's last value since.
+#[derive(Clone, Copy)]
+struct Held {
+    deck: Option<DeckId>,
+    control: SemanticControl,
+    target: u16,
+    last: Option<u16>,
+}
+
+/// Soft takeover after the Web Remote moved a fader. The controller's fader still sits
+/// where it was; its events count again once it comes within [`PICKUP_TOLERANCE`] of
+/// the page's value, or passes it, so the level never jumps. USB task only (in `Mix`).
+pub(crate) struct Takeover {
+    held: [Option<Held>; 16],
+}
+
+/// A fader event's value on the shared 14-bit scale, if it is one this takes over.
+fn fader(event: &ControlEvent) -> Option<u16> {
+    let ControlValue::Absolute { value, max } = event.value else {
+        return None;
+    };
+    if max == 0 || !TAKEN_OVER.contains(&event.control) {
+        return None;
+    }
+    Some(
+        (u32::from(value.min(max)) * u32::from(ruzina_web::remote::REMOTE_ABSOLUTE_MAX)
+            / u32::from(max)) as u16,
+    )
+}
+
+impl Takeover {
+    pub(crate) const fn new() -> Self {
+        Self { held: [None; 16] }
+    }
+
+    fn slot(&mut self, event: &ControlEvent) -> Option<&mut Option<Held>> {
+        self.held.iter_mut().find(|held| {
+            held.is_some_and(|held| held.deck == event.deck && held.control == event.control)
+        })
+    }
+
+    /// The page set a fader: the controller's must reach this value again.
+    pub(crate) fn claim(&mut self, event: &ControlEvent) {
+        let Some(target) = fader(event) else {
+            return;
+        };
+        let held = Held {
+            deck: event.deck,
+            control: event.control,
+            target,
+            last: None,
+        };
+        if let Some(slot) = self.slot(event) {
+            *slot = Some(held);
+        } else if let Some(free) = self.held.iter_mut().find(|held| held.is_none()) {
+            *free = Some(held);
+        }
+    }
+
+    /// Whether a controller event counts: anything but a held fader, and a held one once
+    /// it reaches or passes the page's value, which ends the hold.
+    pub(crate) fn admit(&mut self, event: &ControlEvent) -> bool {
+        let Some(value) = fader(event) else {
+            return true;
+        };
+        let Some(slot) = self.slot(event) else {
+            return true;
+        };
+        let Some(held) = slot.as_mut() else {
+            return true;
+        };
+        let near = value.abs_diff(held.target) <= PICKUP_TOLERANCE;
+        let passed = held
+            .last
+            .is_some_and(|last| (last <= held.target) != (value <= held.target));
+        if near || passed {
+            *slot = None;
+            return true;
+        }
+        held.last = Some(value);
+        false
+    }
 }
 
 struct Server(UnsafeCell<Option<(WebServer, WebState)>>);
