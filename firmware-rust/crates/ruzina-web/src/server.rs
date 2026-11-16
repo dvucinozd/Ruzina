@@ -30,6 +30,8 @@ const HEAD_RESERVE: usize = 256;
 /// What a status response reports; the server stamps it.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StatusParts<'a> {
+    /// The deck's name, as its page shows it; empty for none.
+    pub name: &'a str,
     pub catalog: Option<CatalogPublicationId>,
     pub load_generations: [u32; 2],
     pub decks: [DeckStatus<'a>; 2],
@@ -344,6 +346,7 @@ impl WebServer {
         let parts = backend.status();
         let snapshot = StatusSnapshot {
             stamp: self.sequencer.stamp(parts.catalog, parts.load_generations),
+            name: parts.name,
             decks: parts.decks,
             mixer: parts.mixer,
         };

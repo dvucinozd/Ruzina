@@ -87,3 +87,8 @@ test('pitch reflects raw fader, preserves drag and never emits control on render
   h.context.testApi.renderDeck(1,{state_text:'READY',pitch_percent:-5,pitch_raw:100},{});
   assert.equal(slider.value,100); assert.equal(h.calls.length,1);
 });
+test('the page names the deck it drives',async()=>{
+  const h=harness(); h.reply(h.calls[0],{...h.status(10),name:'Ruzina-AB2D'}); await h.flush();
+  assert.equal(h.document.querySelector('#deck-name').textContent,'Ruzina-AB2D');
+  assert.equal(h.document.title,'Ruzina-AB2D · RUZINA');
+});

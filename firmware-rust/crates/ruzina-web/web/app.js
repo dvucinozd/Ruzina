@@ -120,6 +120,11 @@ async function pollStatus() {
     if (!response.ok) throw new Error(String(response.status));
     const status = await response.json();
     $('#conn').classList.add('ok');
+    // The deck's name: which deck this page drives, when there are several.
+    if (status.name && $('#deck-name').textContent !== status.name) {
+      $('#deck-name').textContent = status.name;
+      document.title = `${status.name} · RUZINA`;
+    }
     if (supersedes(status.stamp, applied)) {
       applied = status.stamp;
       renderDeck(1, status.deck1, status.mixer);

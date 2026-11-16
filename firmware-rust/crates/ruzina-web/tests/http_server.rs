@@ -27,6 +27,7 @@ struct Fake {
 impl WebBackend for Fake {
     fn status(&mut self) -> StatusParts<'_> {
         StatusParts {
+            name: "Ruzina-TEST",
             catalog: None,
             load_generations: [2, 0],
             decks: [

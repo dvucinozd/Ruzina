@@ -40,6 +40,7 @@
 extern size_t ruzina_web_handle(uint32_t boot, const uint8_t *request, size_t request_len, uint8_t *out,
                                 size_t out_len);
 extern size_t ruzina_web_largest_asset(void);
+extern void ruzina_web_set_name(const uint8_t *name, size_t len);
 
 static const char *const hosted_tasks[] = {
     "rpc_rx", "rpc_tx", "rpc_supp_cb", "sdio_rx_buf", "sdio_read", "sdio_process_rx", "sdio_write",
@@ -119,7 +120,11 @@ static esp_err_t start_access_point(void)
     if (err == ESP_OK) err = esp_wifi_start();
     printf("wifi_ap start=%s ssid=%s channel=%d auth=%s\n", esp_err_to_name(err), ap_ssid, AP_CHANNEL,
            config.ap.authmode == WIFI_AUTH_WPA2_PSK ? "wpa2" : "open");
-    if (err == ESP_OK) atomic_store(&ap_ready, true);
+    if (err == ESP_OK) {
+        /* The page shows which deck it drives: the network's name. */
+        ruzina_web_set_name((const uint8_t *)ap_ssid, strlen(ap_ssid));
+        atomic_store(&ap_ready, true);
+    }
     return err;
 }
 
