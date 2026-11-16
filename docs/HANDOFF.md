@@ -233,7 +233,15 @@
   - s115: owner "Gotovo, radi", phase checks 0, −1 and +1 ms (were −12 to +7).
   - Open: an SD clock failure at the first boot after a flash now also asserts in
     ESP-Hosted's SDIO bring-up.
-- **On the board:** s115 (app `30a25375…`), SYNC on the tempo's line with Master Tempo.
+- **Screen draw speed (2026-11-16):** [the deck screen draws its big frames faster](reviews/2026-11-16-screen-draw-speed.md).
+  - Covered pages are hidden, Slint's draw is built at `opt-level = 3` in its own crate,
+    and lines go straight into the frame buffer.
+  - The vendored Slint renderer reads glyphs at their own size row by row.
+  - s122: Library page 84 → 70 ms, Settings 50 → 45 ms, underruns 0/0.
+  - Slow frames now log the preparation, line drawing, copy, write-back and allocations
+    (events 27 to 29).
+  - Open: Slint's scene preparation is still half of a big frame.
+- **On the board:** s122 (app `35e2d787…`), the faster screen draw.
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

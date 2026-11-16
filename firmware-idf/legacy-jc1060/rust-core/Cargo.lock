@@ -1647,8 +1647,6 @@ dependencies = [
 [[package]]
 name = "i-slint-renderer-software"
 version = "1.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f8c641e138a2cc96537cac4481f5c7c8bb8dcc66d09acaed269329c8738628a"
 dependencies = [
  "bytemuck",
  "clru",
@@ -3424,6 +3422,7 @@ dependencies = [
  "ruzina-media-partition",
  "ruzina-media-session",
  "ruzina-mixer",
+ "ruzina-screen-lines",
  "ruzina-track-analysis",
  "ruzina-uac",
  "ruzina-web",
@@ -3515,6 +3514,13 @@ dependencies = [
  "ruzina-media-catalog",
  "ruzina-media-identity",
  "ruzina-track-analysis",
+]
+
+[[package]]
+name = "ruzina-screen-lines"
+version = "0.1.0"
+dependencies = [
+ "slint",
 ]
 
 [[package]]

@@ -1,0 +1,10 @@
+[package]
+name = "ruzina-screen-lines"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95.0"
+publish = false
+description = "The deck screen's Slint draw, line by line, made at its own optimisation level."
+
+[dependencies]
+slint = { version = "=1.18.1", default-features = false, features = ["compat-1-18", "unsafe-single-threaded", "libm", "renderer-software"] }

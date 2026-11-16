@@ -707,7 +707,10 @@ export component Overview inherits Window {
         clicked => { root.active-tab = index; }
     }
 
+    // The decks, waveforms and FX panel lie under every other page, which covers them
+    // whole: hidden there, so that Slint does not draw them only to draw over them.
     DeckSide {
+        visible: root.active-tab == 0;
         x: 0px;
         y: 46px;
         number: 1;
@@ -717,6 +720,7 @@ export component Overview inherits Window {
         cue(down) => { root.cue(0, down); }
     }
     DeckSide {
+        visible: root.active-tab == 0;
         x: 0px;
         y: 248px;
         number: 2;
@@ -726,10 +730,11 @@ export component Overview inherits Window {
         cue(down) => { root.cue(1, down); }
     }
     // Rust draws here: the two waveforms.
-    Rectangle { x: 82px; y: 46px; width: 872px; height: 201px; background: #020406; }
-    Rectangle { x: 82px; y: 248px; width: 872px; height: 201px; background: #020406; }
+    Rectangle { visible: root.active-tab == 0; x: 82px; y: 46px; width: 872px; height: 201px; background: #020406; }
+    Rectangle { visible: root.active-tab == 0; x: 82px; y: 248px; width: 872px; height: 201px; background: #020406; }
 
     FxPanel {
+        visible: root.active-tab == 0;
         x: 960px;
         y: 46px;
         effect: root.fx-effect;

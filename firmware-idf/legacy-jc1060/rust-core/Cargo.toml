@@ -38,6 +38,7 @@ ruzina-web = { path = "../../../firmware-rust/crates/ruzina-web", optional = tru
 ruzina-track-analysis = { path = "../../../firmware-rust/crates/ruzina-track-analysis", optional = true, features = ["owned"] }
 sha2 = { version = "=0.10.9", default-features = false, optional = true }
 slint = { version = "=1.18.1", default-features = false, features = ["compat-1-18", "unsafe-single-threaded", "libm", "renderer-software"], optional = true }
+ruzina-screen-lines = { path = "screen-lines", optional = true }
 
 [build-dependencies]
 slint-build = { version = "=1.18.1", optional = true }
@@ -99,7 +100,7 @@ producer-profile = ["deck-engine"]
 idf-producer-profile = ["idf-deck-engine", "producer-profile"]
 
 # The product Slint UI on the panel, measured against USB audio.
-slint-ui = ["deck-engine", "dep:slint", "dep:slint-build"]
+slint-ui = ["deck-engine", "dep:slint", "dep:slint-build", "dep:ruzina-screen-lines"]
 idf-slint-ui = ["idf-deck-engine", "slint-ui"]
 
 # The Web Remote on the deck's own Wi-Fi (the C6 probe): ruzina-web over the engine.
@@ -113,6 +114,8 @@ nanomp3-core = { version = "=0.2.0", default-features = false }
 [patch.crates-io]
 nanomp3-core = { path = "../third_party/nanomp3-core-0.2.0" }
 nanoaudio-mp3 = { path = "../third_party/nanoaudio-mp3-0.1.1" }
+# Draws a glyph at its own size without the general image scaling (see its NOTICE).
+i-slint-renderer-software = { path = "../third_party/i-slint-renderer-software-1.18.1" }
 
 [profile.release]
 panic = "abort"
@@ -138,6 +141,11 @@ opt-level = 3
 opt-level = 3
 
 [profile.release.package.ruzina-audio-scratch]
+opt-level = 3
+
+# The deck screen's Slint draw: the renderer's generic code is made in this crate,
+# so at "s" a Library page took about 1.6 times as long on the host.
+[profile.release.package.ruzina-screen-lines]
 opt-level = 3
 
 [workspace]

@@ -11,9 +11,7 @@ use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, Load
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use ruzina_track_analysis::{Beat, WaveformColumn};
-use slint::platform::software_renderer::{
-    LineBufferProvider, MinimalSoftwareWindow, RepaintBufferType, Rgb565Pixel,
-};
+use slint::platform::software_renderer::{MinimalSoftwareWindow, RepaintBufferType};
 use slint::platform::{Platform, WindowAdapter};
 use slint::{ComponentHandle, PhysicalSize};
 
@@ -25,15 +23,9 @@ const REPORT_MS: u64 = 20_000;
 /// A Slint frame longer than this is logged on its own.
 const SLOW_FRAME_US: u32 = 30_000;
 
-/// A rectangle Rust draws, which Slint must never write over. The numbers match the
-/// dark rectangles in `overview.slint`.
-#[derive(Clone, Copy)]
-struct Area {
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
-}
+// A rectangle Rust draws, which Slint must never write over. The numbers below match
+// the dark rectangles in `overview.slint`.
+use ruzina_screen_lines::Area;
 
 const LANE_WIDTH: usize = 872;
 const LANE_HEIGHT: usize = 201;
@@ -375,96 +367,6 @@ impl Platform for Board {
     }
     fn duration_since_start(&self) -> core::time::Duration {
         core::time::Duration::from_micros(now_us())
-    }
-}
-
-/// Renders each line in internal RAM, then copies it out whole, around the rectangles
-/// Rust draws. Only finished pixels reach the framebuffer the panel is scanning, so a
-/// redraw cannot flicker.
-struct Lines<'a> {
-    frame: &'a mut [u16],
-    /// The rectangles Rust draws, which Slint leaves alone.
-    direct: &'a [Area],
-    top: usize,
-    bottom: usize,
-    /// Diagnostics: the lines Slint drew, their pixels, and the first areas: runs of
-    /// consecutive lines with the same columns.
-    calls: u32,
-    pixels: u32,
-    runs: [(u16, u16, u16, u16); RUNS],
-    run_count: usize,
-}
-
-/// The areas a slow frame logs.
-const RUNS: usize = 6;
-
-impl Lines<'_> {
-    fn note(&mut self, line: usize, range: &core::ops::Range<usize>) {
-        self.calls += 1;
-        self.pixels += range.len() as u32;
-        let (line, start, end) = (line as u16, range.start as u16, range.end as u16);
-        if let Some(run) = self
-            .run_count
-            .checked_sub(1)
-            .and_then(|i| self.runs.get_mut(i))
-            && run.2 == start
-            && run.3 == end
-            && run.1 + 1 == line
-        {
-            run.1 = line;
-            return;
-        }
-        if let Some(run) = self.runs.get_mut(self.run_count) {
-            *run = (line, line, start, end);
-        }
-        self.run_count += 1;
-    }
-}
-
-impl LineBufferProvider for &mut Lines<'_> {
-    type TargetPixel = Rgb565Pixel;
-
-    fn process_line(
-        &mut self,
-        line: usize,
-        range: core::ops::Range<usize>,
-        render_fn: impl FnOnce(&mut [Rgb565Pixel]),
-    ) {
-        let mut pixels = [Rgb565Pixel(0); WIDTH];
-        render_fn(&mut pixels[range.clone()]);
-        self.note(line, &range);
-        let row = &mut self.frame[line * WIDTH..(line + 1) * WIDTH];
-        outside(self.direct, line, range.clone(), |span| {
-            for (out, pixel) in row[span.clone()].iter_mut().zip(&pixels[span]) {
-                *out = pixel.0;
-            }
-        });
-        self.top = self.top.min(line);
-        self.bottom = self.bottom.max(line + 1);
-    }
-}
-
-/// Calls `f` for each part of `range` on `line` outside the rectangles Rust draws.
-fn outside(
-    direct: &[Area],
-    line: usize,
-    range: core::ops::Range<usize>,
-    mut f: impl FnMut(core::ops::Range<usize>),
-) {
-    let mut x = range.start;
-    while x < range.end {
-        // The first direct rectangle on this line at or after `x`.
-        let next = direct
-            .iter()
-            .filter(|area| {
-                (area.y..area.y + area.height).contains(&line) && area.x + area.width > x
-            })
-            .min_by_key(|area| area.x);
-        let end = next.map_or(range.end, |area| area.x.clamp(x, range.end));
-        if end > x {
-            f(x..end);
-        }
-        x = next.map_or(range.end, |area| (area.x + area.width).max(end));
     }
 }
 
@@ -1107,7 +1009,8 @@ fn show_fx(ui: &Overview, fx: FxSnapshot) {
 /// the one on the panel, written by no other code.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16) {
-    // Slint redraws in each buffer what changed since that buffer was last shown.
+    // The slow-frame log counts this task's allocations (`idf_alloc`).
+    crate::idf_alloc::count_task();
     // Slint redraws in each buffer what changed since that buffer was last shown. Copying
     // the other buffer instead (s97) took a PSRAM-to-PSRAM burst that delayed the USB
     // audio fill on the other core by up to 4 ms.
@@ -1297,31 +1200,28 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         } else {
             (&mut **second, &**first)
         };
+        let allocs_before = crate::idf_alloc::counted();
         let started = now_us();
         let mut rows_drawn = 0;
         let mut drawn_areas = None;
+        let mut split = None;
         let direct: &[Area] = if covered { &COVERED_DIRECT } else { &DIRECT };
         // Every frame goes through Slint, which then also brings this buffer up to date
         // with what changed while the other one was shown.
         window.request_redraw();
         window.draw_if_needed(|renderer| {
-            let mut lines = Lines {
-                frame: &mut *buffer,
-                direct,
-                top: HEIGHT,
-                bottom: 0,
-                calls: 0,
-                pixels: 0,
-                runs: [(0, 0, 0, 0); RUNS],
-                run_count: 0,
-            };
-            renderer.render_by_line(&mut lines);
+            // Made in its own crate, built for speed (`ruzina-screen-lines`).
+            let lines = ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us);
             drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));
+            let mut flush_us = 0;
             if lines.bottom > lines.top {
                 let (top, bottom) = (lines.top, lines.bottom);
+                let flushing = now_us();
                 flush(buffer, top, bottom - top);
+                flush_us = (now_us() - flushing) as u32;
                 rows_drawn = bottom - top;
             }
+            split = Some((lines.prepare_us, lines.lines_us, lines.copy_us, flush_us));
         });
         let drawn = now_us();
         let slint_us = (drawn - started) as u32;
@@ -1341,6 +1241,18 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     }
                     ruzina_bridge_load_report(calls, 26, pixels);
                 }
+                // Where the frame's time went: the scene's preparation and Slint's lines,
+                // then the copy into the frame buffer and its write-back for the panel.
+                if let Some((prepare, lines, copy, flush)) = split {
+                    ruzina_bridge_load_report(prepare, 27, lines);
+                    ruzina_bridge_load_report(copy, 28, flush);
+                }
+                // The draw's allocations and frees, and the microseconds they took.
+                let (calls, cycles_8) = crate::idf_alloc::counted();
+                let calls = calls.wrapping_sub(allocs_before.0);
+                // 8-cycle units at the 360 MHz CPU clock.
+                let us = u64::from(cycles_8.wrapping_sub(allocs_before.1)) * 8 / 360;
+                ruzina_bridge_load_report(calls, 29, us as u32);
             }
         }
         for deck in 0..2 {
