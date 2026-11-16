@@ -216,7 +216,7 @@ static void owner(void *unused)
     sdmmc_card_t card;
     sd_pwr_ctrl_handle_t power=NULL;
     uint8_t *bounce=NULL;
-    bool host_up=false;
+    bool slot_up=false;
     esp_err_t err;
     sd_pwr_ctrl_ldo_config_t ldo={.ldo_chan_id=4};
     err=sd_pwr_ctrl_new_on_chip_ldo(&ldo,&power); if(err!=ESP_OK) goto finish;
@@ -229,11 +229,11 @@ static void owner(void *unused)
     host_transaction=host.do_transaction;
     host.do_transaction=readonly_transaction;
     err=sdmmc_host_init(); if(err!=ESP_OK) goto finish;
-    host_up=true;
     sdmmc_slot_config_t slot=SDMMC_SLOT_CONFIG_DEFAULT();
     slot.width=4; slot.clk=43; slot.cmd=44; slot.d0=39; slot.d1=40; slot.d2=41; slot.d3=42;
     slot.cd=SDMMC_SLOT_NO_CD; slot.wp=SDMMC_SLOT_NO_WP; slot.flags=0;
     err=sdmmc_host_init_slot(host.slot,&slot); if(err!=ESP_OK) goto finish;
+    slot_up=true;
     err=sdmmc_card_init(&host,&card); if(err!=ESP_OK) goto finish;
     if(card.csd.sector_size!=512) {err=ESP_ERR_NOT_SUPPORTED;goto finish;}
     /* Cache-line aligned, so the driver DMAs straight into it; an unaligned
@@ -298,7 +298,9 @@ finish:
         printf("rust_sd_owner=FAULT_HELD_NO_TEARDOWN error=%s\n",esp_err_to_name(err));
         fflush(stdout);vTaskSuspend(NULL);
     }
-    if(host_up) sdmmc_host_deinit();
+    /* Only the card's slot: the controller is shared with the Wi-Fi's C6 on slot 1,
+     * and goes only once no slot is left on it. */
+    if(slot_up) sdmmc_host_deinit_slot(SDMMC_HOST_SLOT_0);
     if(power) sd_pwr_ctrl_del_on_chip_ldo(power);
     heap_caps_free(bounce);
     printf("rust_sd_owner=QUIESCED error=%s reads=%" PRIu32 " denied_commands=%" PRIu32 " reinsert=APP_RESTART_REQUIRED\n",
