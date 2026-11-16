@@ -74,7 +74,7 @@ static uint32_t hash_bytes(uint32_t hash, const void *data, size_t size)
 static void sd_owner(void *unused)
 {
     (void)unused;
-    bool host_up=false, mounted=false;
+    bool slot_up=false, mounted=false;
     uint8_t *sample=NULL;
     uint32_t generation=1;
     esp_err_t err;
@@ -90,11 +90,11 @@ static void sd_owner(void *unused)
     host_transaction=host.do_transaction;
     host.do_transaction=readonly_transaction;
     err=sdmmc_host_init(); if(err!=ESP_OK) goto finish;
-    host_up=true;
     sdmmc_slot_config_t slot=SDMMC_SLOT_CONFIG_DEFAULT();
     slot.width=4; slot.clk=43; slot.cmd=44; slot.d0=39; slot.d1=40; slot.d2=41; slot.d3=42;
     slot.cd=SDMMC_SLOT_NO_CD; slot.wp=SDMMC_SLOT_NO_WP; slot.flags=0;
     err=sdmmc_host_init_slot(host.slot, &slot); if(err!=ESP_OK) goto finish;
+    slot_up=true;
     err=sdmmc_card_init(&host, &card); if(err!=ESP_OK) goto finish;
     if (card.csd.sector_size!=512) {err=ESP_ERR_NOT_SUPPORTED;goto finish;}
     ready=true;
@@ -172,7 +172,8 @@ finish:
      * No queued IO/borrowed handles escape. Reinsert requires explicit restart. */
     ready=false;generation++;
     if(mounted) f_mount(NULL,"0:",0);
-    if(host_up) sdmmc_host_deinit();
+    /* Only the card's slot: the controller may be shared with another slot. */
+    if(slot_up) sdmmc_host_deinit_slot(SDMMC_HOST_SLOT_0);
     if(power) {sd_pwr_ctrl_del_on_chip_ldo(power);power=NULL;}
     heap_caps_free(sample);
     printf("sd_state=QUIESCED error=%s generation=%" PRIu32 " reads=%" PRIu32 " write_boundary_rejections=%" PRIu32 " host_denied=%" PRIu32 " reinsert=RESTART_REQUIRED\n",

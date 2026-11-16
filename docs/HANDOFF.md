@@ -219,6 +219,10 @@
   The server reads up to four connections with `select()` and answers each once its
   request is in. A slow phone no longer holds others back. s113: two tabs, 189 requests,
   the longest 63 ms.
+- **SD failure keeps the Wi-Fi (2026-11-16):** [a failed SD card leaves the Wi-Fi's slot alone](reviews/2026-11-16-sd-slot-teardown.md).
+  The SD path removes only its own slot on a failure. Before, `sdmmc_host_deinit()` also
+  took the C6's slot, and ESP-Hosted asserted. s116: without the card the network
+  shows, with it the decks play.
 - **Deck name on the page (2026-11-16):** [the Web Remote names its deck](reviews/2026-11-16-deck-name.md).
   The status carries `name` (the network's, `Ruzina-AB2D`), and the page shows it in its
   header and tab title. s114: owner "radi".
