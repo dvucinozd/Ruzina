@@ -128,6 +128,31 @@ fn the_lead_on_the_heard_position_stays_within_two_grains() {
 }
 
 #[test]
+fn the_heard_position_follows_the_tempo_not_the_grains() {
+    for tempo in [0.92f32, 1.08, 1.5] {
+        let mut keylocks = Keylock::boxed_pair();
+        let keylock = &mut keylocks[0];
+        let mut pull = source(chord);
+        let (mut heard, mut played) = (0.0f64, 0.0f64);
+        for n in 1..=48_000u32 {
+            keylock.next(tempo, &mut pull).unwrap();
+            // Where the deck is after `n` frames at the tempo, as each lead tells it.
+            let line = f64::from(n) * f64::from(tempo);
+            let pulled = keylock.pulled() as f64;
+            heard = heard.max((pulled - f64::from(keylock.heard_lag()) - line).abs());
+            played = played.max((pulled - f64::from(keylock.lag()) - line).abs());
+        }
+        std::println!("tempo {tempo}: heard {heard} frames, grain {played} frames off");
+        assert!(
+            heard <= 2.0,
+            "tempo {tempo}: heard {heard} frames off the line"
+        );
+        // The grains themselves wander about the line by the search's moves.
+        assert!(played > 32.0, "tempo {tempo}: grain {played}");
+    }
+}
+
+#[test]
 #[ignore = "timing on the host, run by hand"]
 fn bench_keylock_cost() {
     for tempo in [1.0f32, 1.13] {

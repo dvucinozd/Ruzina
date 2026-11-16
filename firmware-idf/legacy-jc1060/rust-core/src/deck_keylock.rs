@@ -77,6 +77,12 @@ pub(crate) struct Keylock {
     in_start: u32,
     /// Where the next grain would start at exactly the tempo: the stretch's anchor.
     nominal: f64,
+    /// Where the grain fading in would have started at exactly the tempo, from where it
+    /// does start: the search's move, the other way.
+    in_offset: f32,
+    /// Track frames each output frame moves on through this hop: the tempo, as the anchor
+    /// moves it.
+    hop_rate: f32,
     /// Output frames into the current hop.
     phase: u32,
     search: Search,
@@ -110,8 +116,9 @@ impl Keylock {
         self.running = false;
     }
 
-    /// Frames pulled from the reader but not heard yet: the stretch's lead on the deck's
-    /// position.
+    /// Frames pulled from the reader but not played yet: the stretch's lead on what the
+    /// grain fading in reads. The reader steps back by it when the stretch stops on the
+    /// same source, so the deck goes on from the very frames it played.
     pub(crate) fn lag(&self) -> u32 {
         if !self.running {
             return 0;
@@ -119,6 +126,19 @@ impl Keylock {
         self.pulled
             .wrapping_sub(self.in_start.wrapping_add(self.phase))
             .min(WINDOW)
+    }
+
+    /// The stretch's lead on the deck's position in time: on the tempo's own line, not
+    /// where the search moved the grain fading in (up to `SEEK` frames, about 6 ms,
+    /// either way, grain by grain). The beats a listener hears follow that line, so SYNC
+    /// lines decks up by it, and a grain's move does not stay in the phase.
+    pub(crate) fn heard_lag(&self) -> u32 {
+        if !self.running {
+            return 0;
+        }
+        let ahead = self.in_offset + self.phase as f32 * (self.hop_rate - 1.0);
+        let lag = self.lag() as f32 - ahead;
+        (lag + 0.5).clamp(0.0, WINDOW as f32) as u32
     }
 
     /// The next stretched frame at the track's rate, with `tempo` the deck's tempo
@@ -136,6 +156,7 @@ impl Keylock {
             self.out_start = 0;
             self.in_start = HOP;
             self.nominal = f64::from(HOP);
+            self.in_offset = 0.0;
             self.phase = 0;
             self.running = true;
             self.plan(tempo);
@@ -148,6 +169,7 @@ impl Keylock {
             };
             self.out_start = self.in_start;
             self.in_start = start;
+            self.in_offset = (self.nominal - f64::from(start)) as f32;
             self.phase = 0;
             self.plan(tempo);
         }
@@ -171,6 +193,7 @@ impl Keylock {
     /// on, and its search starts.
     fn plan(&mut self, tempo: f32) {
         let continuation = self.in_start.wrapping_add(HOP);
+        let anchor = self.nominal;
         self.nominal += f64::from(HOP) * f64::from(tempo);
         self.search = if (tempo - 1.0).abs() < 1.0e-4 {
             // At the track's own tempo the next grain simply continues this one, so the
@@ -183,6 +206,7 @@ impl Keylock {
                 nominal: self.nominal as u32,
             }
         };
+        self.hop_rate = ((self.nominal - anchor) / f64::from(HOP)) as f32;
     }
 
     /// One step of the search for the next grain's start.

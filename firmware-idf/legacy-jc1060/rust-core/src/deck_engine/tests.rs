@@ -2081,11 +2081,13 @@ fn master_tempo_going_off_loses_no_audio() {
     run_fed(&mut mix, 500);
     let before = mix.engine().deck(DeckId::One).position_ms;
     // Master Tempo off: the frames the stretch took but did not play are played now.
+    // The deck's place moves from the tempo's line to its last grain's, at most the
+    // search's reach (256 frames, 5.3 ms here) either way.
     toggle(&mut mix);
     run_fed(&mut mix, 100);
     let after = mix.engine().deck(DeckId::One).position_ms;
     assert!(
-        near(after - before, 108, 4),
+        near(after - before, 108, 4 + 6),
         "100 ms at +8 % moved {} ms",
         after - before
     );
