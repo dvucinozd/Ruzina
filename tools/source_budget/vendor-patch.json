@@ -3,9 +3,10 @@
   "scope": "Legacy IDF workspace only; native dependencies unchanged",
   "crates_io_package_checksums": {
     "nanomp3-core-0.2.0": "63fa2238e662d3d3c1a71168b3278f23422cf9bf76f6943ee6b1c2581d74eb5c",
-    "nanoaudio-mp3-0.1.1": "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214"
+    "nanoaudio-mp3-0.1.1": "c35cae35635af5c7008c732f885ec9c3be6246b64ac508420cdab8ca801a2214",
+    "i-slint-renderer-software-1.18.1": "2f8c641e138a2cc96537cac4481f5c7c8bb8dcc66d09acaed269329c8738628a"
   },
-  "baseline_manifest_sha256": "403ca8195d12392ac15937b4331718da57e3e6f20b13cbe4b103571d49c44ffc",
+  "baseline_manifest_sha256": "5e93484e504da648a71bfa3fc9b98329e1a0bb6757234420aebba3fba6c86648",
   "changes": {
     "nanomp3-core-0.2.0/src/lib.rs": {
       "upstream_sha256": "c5ffcc622770a80819a8e3de646b37c52c9ee400a43c42cd6b6e140609975bb3",
@@ -18,6 +19,10 @@
     "nanoaudio-mp3-0.1.1/src/lib.rs": {
       "upstream_sha256": "6ed4173cc2cb4f22127a60d3c839e90ccfdcbf22c373818a53fa696f9f692beb",
       "patched_sha256": "9fd3b985d5fbc730da8668823b8087b8c1ad711acf65d42f2457810da039b302"
+    },
+    "i-slint-renderer-software-1.18.1/draw_functions.rs": {
+      "upstream_sha256": "8d79deb5b757b5b2d177c4bca747340d7008b3de618c434300ef875251a7cf12",
+      "patched_sha256": "506ff4f2418cfdc0cd5177ac6e041ad0d9a605d6e2dd7353d1c37ae5e28e63d4"
     }
   }
 }

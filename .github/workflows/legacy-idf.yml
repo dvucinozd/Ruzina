@@ -54,6 +54,9 @@ jobs:
             cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf -- -D warnings
             cargo +1.95.0 build --locked --release --manifest-path "$manifest" --features "$features" --target riscv32imafc-unknown-none-elf
           done
+          # The deck screen's draw crate, built for speed apart from the core.
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" -p ruzina-screen-lines -- -D warnings
+          cargo +1.95.0 clippy --locked --release --manifest-path "$manifest" -p ruzina-screen-lines --target riscv32imafc-unknown-none-elf -- -D warnings
   legacy:
     runs-on: ubuntu-latest
     env:

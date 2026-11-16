@@ -40,6 +40,11 @@ extern "C" fn heap_caps_free(ptr: *mut c_void) {
     unsafe { std::alloc::dealloc(ptr.cast(), layout) };
 }
 
+#[unsafe(no_mangle)]
+extern "C" fn xTaskGetCurrentTaskHandle() -> *mut c_void {
+    core::ptr::null_mut()
+}
+
 #[test]
 fn allocations_request_psram_with_the_layout_alignment_and_fail_closed() {
     *SHIM.lock().unwrap() = Some(Shim {
