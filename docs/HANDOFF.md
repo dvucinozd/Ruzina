@@ -215,7 +215,11 @@
   - The FLX4's drop at boot belongs to resetting the P4 alone; a cold boot enumerates
     once.
   - s111: owner "radi sve ok".
-- **On the board:** s111 (app `7b73bd5f…`), the Web Remote with soft takeover. Earlier: a Slint
+- **Web Remote connections (2026-11-16):** [four connections at once](reviews/2026-11-16-web-connections.md).
+  The server reads up to four connections with `select()` and answers each once its
+  request is in. A slow phone no longer holds others back. s113: two tabs, 189 requests,
+  the longest 63 ms.
+- **On the board:** s113 (app `9b7576a7…`), the Web Remote with four connections.
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

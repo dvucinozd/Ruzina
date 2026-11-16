@@ -145,74 +145,152 @@ static size_t content_length(const uint8_t *head, size_t len)
     return 0;
 }
 
-/* One request: the head, then a body up to Content-Length, both within REQUEST_MAX. */
-static size_t read_request(int sock, uint8_t *buffer)
+/* Connections the server reads at once, and how long one may take to send its request. */
+#define CLIENTS 4
+#define CLIENT_TIMEOUT_US 2000000
+
+struct client {
+    int sock;
+    uint8_t *buffer;
+    size_t len;
+    /* The whole request's length, once its head is in; 0 before. */
+    size_t want;
+    int64_t start;
+};
+
+static atomic_uint dropped;
+
+static void client_close(struct client *c)
 {
-    size_t len = 0;
-    size_t want = 0;
-    while (len < REQUEST_MAX) {
-        int got = recv(sock, buffer + len, REQUEST_MAX - len, 0);
-        if (got <= 0) return want && len >= want ? len : 0;
-        len += (size_t)got;
-        if (want == 0) {
-            const uint8_t *end = memmem(buffer, len, "\r\n\r\n", 4);
-            if (end == NULL) continue;
-            size_t head = (size_t)(end - buffer) + 4;
-            size_t body = content_length(buffer, head);
-            if (body > REQUEST_MAX - head) return 0;
-            want = head + body;
-        }
-        if (len >= want) return len;
-    }
-    return 0;
+    shutdown(c->sock, SHUT_RDWR);
+    close(c->sock);
+    c->sock = -1;
 }
 
-static void serve(int listener, uint8_t *request, uint8_t *response, size_t response_cap, uint32_t boot)
+/* Reads what arrived on `c`, without waiting: 1 once the request (the head, then a body
+ * up to Content-Length, both within REQUEST_MAX) is complete, -1 to drop the connection,
+ * 0 to wait for more. */
+static int client_read(struct client *c)
 {
-    struct sockaddr_storage peer;
-    socklen_t peer_len = sizeof peer;
-    int sock = accept(listener, (struct sockaddr *)&peer, &peer_len);
-    if (sock < 0) return;
-    const struct timeval timeout = {.tv_sec = 2, .tv_usec = 0};
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
-    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof timeout);
-    const int64_t start = esp_timer_get_time();
-    size_t len = read_request(sock, request);
-    if (len > 0) {
-        size_t out = ruzina_web_handle(boot, request, len, response, response_cap);
-        for (size_t sent = 0; sent < out;) {
-            int n = send(sock, response + sent, out - sent, 0);
-            if (n <= 0) break;
-            sent += (size_t)n;
-        }
-        const unsigned took = (unsigned)(esp_timer_get_time() - start);
-        atomic_fetch_add(&requests, 1);
-        if (took > atomic_load(&request_max_us)) atomic_store(&request_max_us, took);
+    int got = recv(c->sock, c->buffer + c->len, REQUEST_MAX - c->len, MSG_DONTWAIT);
+    if (got < 0) return errno == EAGAIN || errno == EWOULDBLOCK ? 0 : -1;
+    if (got == 0) return c->want && c->len >= c->want ? 1 : -1;
+    c->len += (size_t)got;
+    if (c->want == 0) {
+        const uint8_t *end = memmem(c->buffer, c->len, "\r\n\r\n", 4);
+        if (end == NULL) return c->len >= REQUEST_MAX ? -1 : 0;
+        size_t head = (size_t)(end - c->buffer) + 4;
+        size_t body = content_length(c->buffer, head);
+        if (body > REQUEST_MAX - head) return -1;
+        c->want = head + body;
     }
-    shutdown(sock, SHUT_RDWR);
-    close(sock);
+    return c->len >= c->want ? 1 : 0;
 }
 
+/* Answers `c`'s complete request through ruzina-web, then closes it. */
+static void client_answer(struct client *c, uint8_t *response, size_t response_cap, uint32_t boot)
+{
+    size_t out = ruzina_web_handle(boot, c->buffer, c->len, response, response_cap);
+    for (size_t sent = 0; sent < out;) {
+        int n = send(c->sock, response + sent, out - sent, 0);
+        if (n <= 0) break;
+        sent += (size_t)n;
+    }
+    const unsigned took = (unsigned)(esp_timer_get_time() - c->start);
+    atomic_fetch_add(&requests, 1);
+    if (took > atomic_load(&request_max_us)) atomic_store(&request_max_us, took);
+    client_close(c);
+}
+
+/* One task reads up to CLIENTS connections at once and answers each as soon as its
+ * request is in, so a slow one holds no other back. ruzina-web still sees one request at
+ * a time. A connection that has not sent its request within CLIENT_TIMEOUT_US is
+ * dropped. */
 static void server_task(void *unused)
 {
     (void)unused;
     const size_t response_cap = ruzina_web_largest_asset() + 1024;
-    uint8_t *request = heap_caps_malloc(REQUEST_MAX, MALLOC_CAP_SPIRAM);
     uint8_t *response = heap_caps_malloc(response_cap, MALLOC_CAP_SPIRAM);
+    struct client conns[CLIENTS];
+    bool ok = response != NULL;
+    for (int i = 0; i < CLIENTS; ++i) {
+        conns[i] = (struct client){.sock = -1, .buffer = heap_caps_malloc(REQUEST_MAX, MALLOC_CAP_SPIRAM)};
+        ok = ok && conns[i].buffer != NULL;
+    }
     int listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in address = {.sin_family = AF_INET, .sin_port = htons(80), .sin_addr.s_addr = htonl(INADDR_ANY)};
     const int yes = 1;
     setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-    bool ok = request && response && listener >= 0 &&
-              bind(listener, (struct sockaddr *)&address, sizeof address) == 0 && listen(listener, 4) == 0;
-    printf("web_remote listen=%s response_cap=%u\n", ok ? "ok" : "failed", (unsigned)response_cap);
+    ok = ok && listener >= 0 && bind(listener, (struct sockaddr *)&address, sizeof address) == 0 &&
+         listen(listener, 4) == 0;
+    printf("web_remote listen=%s response_cap=%u clients=%d\n", ok ? "ok" : "failed", (unsigned)response_cap,
+           CLIENTS);
     if (!ok) {
         vTaskDelete(NULL);
         return;
     }
     /* Differs on each start, so the page notices a reboot. */
     const uint32_t boot = esp_random();
-    for (;;) serve(listener, request, response, response_cap, boot);
+    for (;;) {
+        fd_set reads;
+        FD_ZERO(&reads);
+        int top = -1;
+        bool room = false;
+        for (int i = 0; i < CLIENTS; ++i) {
+            if (conns[i].sock >= 0) {
+                FD_SET(conns[i].sock, &reads);
+                if (conns[i].sock > top) top = conns[i].sock;
+            } else {
+                room = true;
+            }
+        }
+        /* With every slot busy, new connections wait in the backlog. */
+        if (room) {
+            FD_SET(listener, &reads);
+            if (listener > top) top = listener;
+        }
+        struct timeval tick = {.tv_sec = 0, .tv_usec = 200000};
+        int ready = select(top + 1, &reads, NULL, NULL, &tick);
+        const int64_t now = esp_timer_get_time();
+        if (ready > 0 && room && FD_ISSET(listener, &reads)) {
+            struct sockaddr_storage peer;
+            socklen_t peer_len = sizeof peer;
+            int sock = accept(listener, (struct sockaddr *)&peer, &peer_len);
+            if (sock >= 0) {
+                const struct timeval send_timeout = {.tv_sec = 2, .tv_usec = 0};
+                setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof send_timeout);
+                for (int i = 0; i < CLIENTS; ++i) {
+                    if (conns[i].sock < 0) {
+                        conns[i].sock = sock;
+                        conns[i].len = 0;
+                        conns[i].want = 0;
+                        conns[i].start = now;
+                        break;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < CLIENTS; ++i) {
+            struct client *c = &conns[i];
+            if (c->sock < 0) continue;
+            if (ready > 0 && FD_ISSET(c->sock, &reads)) {
+                int state = client_read(c);
+                if (state > 0) {
+                    client_answer(c, response, response_cap, boot);
+                    continue;
+                }
+                if (state < 0) {
+                    atomic_fetch_add(&dropped, 1);
+                    client_close(c);
+                    continue;
+                }
+            }
+            if (now - c->start > CLIENT_TIMEOUT_US) {
+                atomic_fetch_add(&dropped, 1);
+                client_close(c);
+            }
+        }
+    }
 }
 
 static void wifi_task(void *unused)
@@ -240,8 +318,9 @@ static void wifi_task(void *unused)
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(REPORT_PERIOD_MS));
         lower_hosted_tasks("report");
-        printf("wifi_ap clients=%d requests=%u request_max_us=%u internal_free=%u\n",
+        printf("wifi_ap clients=%d requests=%u request_max_us=%u dropped=%u internal_free=%u\n",
                atomic_load(&clients), atomic_load(&requests), atomic_exchange(&request_max_us, 0),
+               atomic_load(&dropped),
                (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
     }
 }
