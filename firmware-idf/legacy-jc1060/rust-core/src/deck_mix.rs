@@ -374,11 +374,12 @@ impl Mix {
             reader.pop(&RINGS[deck])
         });
         uac_profile::stage(Stage::Progress);
-        // The deck's position is what is heard, behind what the stretch already took.
+        // The deck's position is what is heard, behind what the stretch already took, on
+        // the tempo's own line.
         #[cfg(feature = "deck-engine")]
         for (deck, reader) in readers.iter_mut().enumerate() {
             let lag = match keylocks.as_ref() {
-                Some(keylocks) if keylocked[deck] => keylocks[deck].lag(),
+                Some(keylocks) if keylocked[deck] => keylocks[deck].heard_lag(),
                 _ => 0,
             };
             reader.set_lag(lag);

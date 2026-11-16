@@ -222,7 +222,14 @@
 - **Deck name on the page (2026-11-16):** [the Web Remote names its deck](reviews/2026-11-16-deck-name.md).
   The status carries `name` (the network's, `Ruzina-AB2D`), and the page shows it in its
   header and tab title. s114: owner "radi".
-- **On the board:** s114 (app `eeaa0ada…`), the Web Remote that names its deck.
+- **SYNC with Master Tempo (2026-11-16):** [lines up on the tempo, not on a grain](reviews/2026-11-16-sync-mt-line.md).
+  - Behind the keylock, the deck's position follows the tempo's line, not the grain
+    search's moves (up to about 6 ms).
+  - A SYNC with Master Tempo on waits two hops before its jump.
+  - s115: owner "Gotovo, radi", phase checks 0, −1 and +1 ms (were −12 to +7).
+  - Open: an SD clock failure at the first boot after a flash now also asserts in
+    ESP-Hosted's SDIO bring-up.
+- **On the board:** s115 (app `30a25375…`), SYNC on the tempo's line with Master Tempo.
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

@@ -52,6 +52,12 @@ const FOUR_BEAT_LOOP_PAD: u8 = 7;
 /// (about 1 s).
 const PHASE_CHECK_BLOCKS: u16 = 375;
 
+/// Render blocks a beat sync waits before its jump while either deck plays in Master
+/// Tempo (about 32 ms): two of the stretch's hops, so that it plays at the tempo the
+/// sync set. A stretch that lands on exactly the track's own tempo keeps its last
+/// grain's place from then on, and the jump must see where that is.
+const KEYLOCK_SETTLE_BLOCKS: u16 = 12;
+
 /// Load events the beat sync reports, with the deck as the pass and the milliseconds
 /// offset by `PHASE_REPORT_ZERO`: 40 the jump, 41 a jump the audio could not make, 42
 /// the phase error a second later.
@@ -136,6 +142,8 @@ pub(crate) struct Engine {
     grids: [Option<Box<Grid>>; 2],
     /// A synced deck waiting for both decks to play before it matches the phase.
     phase_pending: [bool; 2],
+    /// Render blocks a pending phase jump still waits for the Master Tempo stretch.
+    phase_settle: [u16; 2],
     /// The phase jump for the next render block, in milliseconds: the nearest, and the
     /// nearest the other way.
     phase_jump: [Option<(i32, i32)>; 2],
@@ -188,6 +196,7 @@ impl Engine {
             scratch_ticks: [0; 2],
             grids: [None, None],
             phase_pending: [false; 2],
+            phase_settle: [0; 2],
             phase_jump: [None; 2],
             phase_check: [None; 2],
             phase_report: None,
@@ -356,6 +365,11 @@ impl Engine {
         match (event.control, event.value) {
             (SemanticControl::Sync, ControlValue::Pressed(true)) => {
                 self.phase_pending[i] = self.deck.deck(deck).sync_enabled;
+                self.phase_settle[i] = if self.master_tempo().contains(&true) {
+                    KEYLOCK_SETTLE_BLOCKS
+                } else {
+                    0
+                };
             }
             (SemanticControl::PadAction, ControlValue::PadAction(pad))
                 if pad.mode == PadMode::BeatLoop && pad.pressed && !pad.shifted =>
@@ -402,6 +416,10 @@ impl Engine {
             }
             if let Some(blocks) = self.phase_check[i] {
                 self.phase_check[i] = blocks.checked_sub(1);
+            }
+            if self.phase_pending[i] && self.phase_settle[i] > 0 {
+                self.phase_settle[i] -= 1;
+                continue;
             }
             let check = self.phase_check[i] == Some(0);
             if !(self.phase_pending[i] || check)
