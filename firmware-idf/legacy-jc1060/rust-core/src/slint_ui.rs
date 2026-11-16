@@ -1009,8 +1009,9 @@ fn show_fx(ui: &Overview, fx: FxSnapshot) {
 /// the one on the panel, written by no other code.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16) {
-    // The slow-frame log counts this task's allocations (`idf_alloc`).
-    crate::idf_alloc::count_task();
+    // This task's small allocations come from a pool, and the slow-frame log counts
+    // them (`idf_alloc`).
+    crate::idf_alloc::serve_task();
     // Slint redraws in each buffer what changed since that buffer was last shown. Copying
     // the other buffer instead (s97) took a PSRAM-to-PSRAM burst that delayed the USB
     // audio fill on the other core by up to 4 ms.

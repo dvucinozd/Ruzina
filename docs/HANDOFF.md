@@ -241,7 +241,12 @@
   - Slow frames now log the preparation, line drawing, copy, write-back and allocations
     (events 27 to 29).
   - Open: Slint's scene preparation is still half of a big frame.
-- **On the board:** s122 (app `35e2d787…`), the faster screen draw.
+- **Screen task's allocation pool (2026-11-16):** [the deck screen's small allocations come from a pool](reviews/2026-11-16-ui-pool.md).
+  - The screen task's allocations up to 256 bytes come from free lists per size class
+    in a 1 MB PSRAM arena, not IDF's locked heap.
+  - s123: an allocation takes about 0.3 µs, not 2.5 µs. Library page 70 → 61 ms,
+    Settings 45 → 41 ms, underruns 0/0. Owner: "Radi".
+- **On the board:** s123 (app `484b75d4…`), the screen task's allocation pool.
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

@@ -9,9 +9,12 @@
 //! handler aborts into IDF's reset policy. PSRAM placement claims no DMA or
 //! cache coherency: these buffers are CPU-only.
 //!
-//! The deck screen's task may register itself (`count_task`): the allocator then
-//! counts that task's allocations and frees and the CPU cycles they take, for the
-//! slow-frame log.
+//! The deck screen's task may register itself (`serve_task`). Slint allocates and
+//! frees thousands of small objects in each frame, and through IDF's locked heap
+//! each call took about 2.5 µs (s122). The registered task's small allocations
+//! therefore come from `pool`: free lists per size class, carved from one PSRAM
+//! arena the task takes once. The allocator also counts the task's allocations
+//! and frees and the CPU cycles they take, for the slow-frame log.
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ffi::c_void;
@@ -28,16 +31,27 @@ unsafe extern "C" {
     fn xTaskGetCurrentTaskHandle() -> *mut c_void;
 }
 
-/// The counted task, 0 for none.
+mod pool;
+
+/// The PSRAM arena the registered task's small allocations come from, in bytes.
+const ARENA: usize = 1 << 20;
+
+/// The registered task, 0 for none.
 static COUNTED_TASK: AtomicUsize = AtomicUsize::new(0);
 /// The counted task's allocations and frees.
 static CALLS: AtomicU32 = AtomicU32::new(0);
 /// CPU cycles in them, in units of 8 cycles (a frame's worth fits).
 static CYCLES_8: AtomicU32 = AtomicU32::new(0);
 
-/// Counts the calling task's allocations from now on.
+/// Serves the calling task's small allocations from the pool, and counts its
+/// allocations, from now on. Called once, by one task.
 #[cfg_attr(any(test, not(feature = "idf-slint-ui")), allow(dead_code))]
-pub(crate) fn count_task() {
+pub(crate) fn serve_task() {
+    // SAFETY: as for any PSRAM allocation; the arena is never freed.
+    let arena: *mut u8 = unsafe { heap_caps_aligned_alloc(pool::ALIGN, ARENA, PSRAM).cast() };
+    if !arena.is_null() {
+        pool::give(arena, ARENA);
+    }
     // SAFETY: FreeRTOS returns the running task's handle; only its value is kept.
     let task = unsafe { xTaskGetCurrentTaskHandle() } as usize;
     COUNTED_TASK.store(task, Ordering::Relaxed);
@@ -82,24 +96,38 @@ struct IdfPsram;
 // `heap_caps_aligned_alloc` accepts any power-of-two alignment, which `Layout`
 // guarantees, and returns null on failure; `heap_caps_free` releases aligned
 // allocations at this IDF version.
+//
+// The pool's blocks are handed out only to the registered task, which alone takes
+// them back directly; any other task returns one through the pool's lock-free
+// list (`pool::free`).
 unsafe impl GlobalAlloc for IdfPsram {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         if !counting() {
             return unsafe { heap_caps_aligned_alloc(layout.align(), layout.size(), PSRAM).cast() };
         }
         let started = cycles();
-        let ptr = unsafe { heap_caps_aligned_alloc(layout.align(), layout.size(), PSRAM).cast() };
+        // SAFETY: this is the registered task, the only one the pool serves.
+        let mut ptr = unsafe { pool::alloc(layout) };
+        if ptr.is_null() {
+            ptr = unsafe { heap_caps_aligned_alloc(layout.align(), layout.size(), PSRAM).cast() };
+        }
         note(started);
         ptr
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        if !counting() {
-            return unsafe { heap_caps_free(ptr.cast()) };
-        }
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        let counted = counting();
         let started = cycles();
-        unsafe { heap_caps_free(ptr.cast()) };
-        note(started);
+        if pool::owns(ptr) {
+            // SAFETY: `ptr` came from the pool with this layout; `counted` says whether
+            // this is the registered task.
+            unsafe { pool::free(ptr, layout, counted) };
+        } else {
+            unsafe { heap_caps_free(ptr.cast()) };
+        }
+        if counted {
+            note(started);
+        }
     }
 }
 
