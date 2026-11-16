@@ -884,11 +884,12 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
     }
 }
 
-/// The Library page as shown: the list's version, the first row, the selection and
-/// each deck's track.
-type LibraryState = (u32, u32, Option<u32>, [u32; 2]);
+/// The Library page as shown: the list's version, the playlist tree, the level, the
+/// first row, the selection and each deck's track.
+type LibraryState = (u32, usize, deck_view::Level, u32, Option<u32>, [u32; 2]);
 
-/// Shows the Library page from row `first`: the selected row, and each row's decks.
+/// Shows the Library page's level from row `first`: the selected row, and each track's
+/// decks.
 ///
 /// The page's model lasts: only the lines that differ are replaced, so moving the
 /// selection redraws two rows, not the page.
@@ -898,37 +899,59 @@ fn show_library(
     rows: &[LibraryRow],
     state: LibraryState,
 ) {
+    use deck_view::{Level, Row};
     use slint::Model;
-    let (_, first, selected, decks) = state;
-    let lines = rows
-        .iter()
-        .enumerate()
-        .skip(first as usize)
-        .take(LIBRARY_ROWS as usize)
-        .map(|(index, row)| {
-            let index = index as u32;
-            let on = |deck: usize| decks[deck] == index;
-            LibraryLine {
-                number: alloc::format!("{}", index + 1).into(),
-                title: if row.title.is_empty() {
-                    row.artist.as_str().into()
-                } else {
-                    row.title.as_str().into()
-                },
-                artist: row.artist.as_str().into(),
-                bpm: deck_view::bpm(row.bpm_x100, 0).into(),
-                key: row.key.as_str().into(),
-                time: deck_view::clock(row.duration_ms).into(),
-                decks: match (on(0), on(1)) {
-                    (true, true) => "D1 D2",
-                    (true, false) => "D1",
-                    (false, true) => "D2",
-                    (false, false) => "",
+    let (_, _, level, first, selected, decks) = state;
+    let len = deck_view::level_len(level);
+    let shelf = deck_view::shelf();
+    let lines = (first..len.min(first + LIBRARY_ROWS)).filter_map(|index| {
+        let line = match deck_view::row_at(level, index)? {
+            Row::Track(track) => {
+                let row = rows.get(track as usize)?;
+                let on = |deck: usize| decks[deck] == track;
+                LibraryLine {
+                    number: alloc::format!("{}", index + 1).into(),
+                    title: if row.title.is_empty() {
+                        row.artist.as_str().into()
+                    } else {
+                        row.title.as_str().into()
+                    },
+                    artist: row.artist.as_str().into(),
+                    bpm: deck_view::bpm(row.bpm_x100, 0).into(),
+                    key: row.key.as_str().into(),
+                    time: deck_view::clock(row.duration_ms).into(),
+                    decks: match (on(0), on(1)) {
+                        (true, true) => "D1 D2",
+                        (true, false) => "D1",
+                        (false, true) => "D2",
+                        (false, false) => "",
+                    }
+                    .into(),
+                    selected: false,
+                    kind: 0,
                 }
-                .into(),
-                selected: selected == Some(index),
             }
-        });
+            Row::Node(node) => {
+                let node = shelf?.nodes.get(node as usize)?;
+                let (count, what) = if node.folder {
+                    (node.children.len(), "FOLDER")
+                } else {
+                    (node.tracks.len(), "PLAYLIST")
+                };
+                LibraryLine {
+                    number: alloc::format!("{}", index + 1).into(),
+                    title: node.name.as_str().into(),
+                    artist: alloc::format!("{what}  {count}").into(),
+                    kind: if node.folder { 1 } else { 2 },
+                    ..LibraryLine::default()
+                }
+            }
+        };
+        Some(LibraryLine {
+            selected: selected == Some(index),
+            ..line
+        })
+    });
     let mut count = 0;
     for (row, line) in lines.enumerate() {
         count = row + 1;
@@ -942,9 +965,20 @@ fn show_library(
         model.remove(model.row_count() - 1);
     }
     ui.set_library_count(match selected {
-        Some(index) => alloc::format!("{} / {}", index + 1, rows.len()).into(),
-        None => "NO TRACKS".into(),
+        Some(index) => alloc::format!("{} / {}", index + 1, len).into(),
+        None if level == Level::All => "NO TRACKS".into(),
+        None => "EMPTY".into(),
     });
+    let mut heading = alloc::string::String::from(match level {
+        Level::All => "ALL TRACKS",
+        Level::Top | Level::Node(_) => "PLAYLISTS",
+    });
+    for name in deck_view::path_names() {
+        heading.push_str(" / ");
+        heading.push_str(name);
+    }
+    ui.set_library_heading(heading.into());
+    ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
 }
 
 /// The Library page's first row: when the selection leaves the page, the list turns a
@@ -957,6 +991,34 @@ fn library_first(first: u32, selected: u32, len: u32) -> u32 {
         first
     };
     first.min(len.saturating_sub(LIBRARY_ROWS))
+}
+
+/// Shows deck `deck`'s cover, `COVER_EDGE` square in RGB565, or none.
+fn show_cover(ui: &Overview, deck: usize, cover: Option<&[u16]>) {
+    let edge = u32::from(deck_view::COVER_EDGE);
+    let image = cover
+        .filter(|pixels| pixels.len() == (edge * edge) as usize)
+        .map(|pixels| {
+            let mut buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::new(edge, edge);
+            for (out, &pixel) in buffer.make_mut_slice().iter_mut().zip(pixels) {
+                let (r, g, b) = (pixel >> 11, pixel >> 5 & 0x3f, pixel & 0x1f);
+                *out = slint::Rgb8Pixel {
+                    r: (r << 3 | r >> 2) as u8,
+                    g: (g << 2 | g >> 4) as u8,
+                    b: (b << 3 | b >> 2) as u8,
+                };
+            }
+            slint::Image::from_rgb8(buffer)
+        });
+    let shown = image.is_some();
+    let image = image.unwrap_or_default();
+    if deck == 0 {
+        ui.set_cover_1(image);
+        ui.set_has_cover_1(shown);
+    } else {
+        ui.set_cover_2(image);
+        ui.set_has_cover_2(shown);
+    }
 }
 
 /// The Hot Cues page as shown: each deck's cues by pad, and whether it has a track.
@@ -1037,7 +1099,22 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // The Library page's first row, which a tap counts from.
     let library_top = Rc::new(core::cell::Cell::new(0u32));
     let top = library_top.clone();
-    ui.on_pick(move |row| deck_view::select(top.get() + row.max(0) as u32));
+    ui.on_pick(move |row| {
+        let index = top.get() + row.max(0) as u32;
+        // A second tap on a selected folder or playlist opens it.
+        let node = matches!(
+            deck_view::row_at(deck_view::level(), index),
+            Some(deck_view::Row::Node(_))
+        );
+        if node && deck_view::selected() == Some(index) {
+            deck_view::TOUCH.push(0, deck_view::TouchControl::LibraryOpen);
+        } else {
+            deck_view::select(index);
+        }
+    });
+    ui.on_library_back(|| {
+        deck_view::TOUCH.push(0, deck_view::TouchControl::LibraryBack);
+    });
     ui.on_load(|deck| {
         deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Load);
     });
@@ -1118,11 +1195,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let decks = [deck_view::LIVE[0].load(), deck_view::LIVE[1].load()];
         for deck in 0..2 {
             if let Some(track) = deck_view::take_track(deck) {
+                show_cover(&ui, deck, track.cover.as_deref());
                 tracks[deck] = Some(track);
                 lane_at[0][deck] = None;
                 lane_at[1][deck] = None;
             }
             if !decks[deck].has(deck_view::LOADED) && tracks[deck].is_some() {
+                show_cover(&ui, deck, None);
                 tracks[deck] = None;
                 lane_at[0][deck] = None;
                 lane_at[1][deck] = None;
@@ -1173,17 +1252,19 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             library_version = library_version.wrapping_add(1);
         }
         if library_open {
+            let level = deck_view::level();
             let selected = deck_view::selected();
             let first = library_first(
                 library_top.get(),
                 selected.unwrap_or(0),
-                library.rows.len() as u32,
+                deck_view::level_len(level),
             );
             library_top.set(first);
             let decks = core::array::from_fn(|deck| {
                 tracks[deck].as_ref().map_or(u32::MAX, |track| track.index)
             });
-            let state = (library_version, first, selected, decks);
+            let shelf = deck_view::shelf().map_or(0, |shelf| core::ptr::from_ref(shelf) as usize);
+            let state = (library_version, shelf, level, first, selected, decks);
             if shown_library != Some(state) {
                 show_library(&ui, &library_model, &library.rows, state);
                 shown_library = Some(state);

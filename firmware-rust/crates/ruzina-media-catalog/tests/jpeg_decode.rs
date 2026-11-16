@@ -85,7 +85,7 @@ fn baseline_layouts_match_an_independent_decode_within_rounding() {
             (usize::from(info.width), usize::from(info.height)),
             (width, height)
         );
-        for edge in [ARTWORK_DECK_EDGE, 40, 7] {
+        for edge in [ARTWORK_DECK_EDGE, 40, 56, 7] {
             let ours = decode(jpeg, edge).unwrap_or_else(|| panic!("{name} edge {edge}"));
             let expected = reference(rgb, width, height, usize::from(edge));
             let mut worst = 0;
@@ -239,7 +239,7 @@ fn truncated_misordered_or_corrupt_streams_fail_without_panicking() {
     // Edge bounds are enforced by the decoder too.
     let (_, cover, ..) = FIXTURES[0];
     assert_eq!(decode(cover, 0), None);
-    assert_eq!(decode(cover, 41), None);
+    assert_eq!(decode(cover, 65), None);
 }
 
 #[test]

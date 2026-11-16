@@ -51,6 +51,9 @@ component DeckSide inherits Rectangle {
     in property <int> number;
     in property <color> accent;
     in property <bool> playing;
+    // The loaded track's cover, under CUE; nothing without one.
+    in property <image> cover;
+    in property <bool> has-cover;
     callback play();
     callback cue(bool);
     width: 82px;
@@ -87,6 +90,13 @@ component DeckSide inherits Rectangle {
         background: #f3c631;
         text: "CUE";
         down(pressed) => { root.cue(pressed); }
+    }
+    if root.has-cover: Image {
+        x: 5px;
+        y: 143px;
+        width: 56px;
+        height: 56px;
+        source: root.cover;
     }
 }
 
@@ -338,22 +348,37 @@ export struct LibraryLine {
     time: string,
     decks: string,
     selected: bool,
+    // 0 a track, 1 a folder, 2 a playlist.
+    kind: int,
 }
 
-// The catalog, a page at a time around the selection, which the browse knob or a tap
-// moves. LOAD on the controller or here loads the selected track.
+// The catalog or a level of its playlists, a page at a time around the selection, which
+// the browse knob or a tap moves. LOAD on the controller or here loads the selected
+// track; on a folder or playlist it opens it, as the knob's press or a second tap does.
+// BACK, or Shift and the press, goes one level up.
 component LibraryPage inherits Rectangle {
     in property <[LibraryLine]> rows;
     in property <string> count;
+    in property <string> heading;
+    in property <bool> can-back;
     callback pick(int);
     callback load(int);
+    callback back();
     width: 1024px;
     height: 430px;
     background: #0d0f11;
     // Takes the taps that miss the rows and buttons, away from the page below.
     TouchArea { }
     Text { x: 8px; y: 6px; text: "#"; color: #9a9ea4; font-size: 11px; }
-    Text { x: 48px; y: 6px; text: "TITLE"; color: #9a9ea4; font-size: 11px; }
+    Text {
+        x: 48px;
+        y: 4px;
+        width: 412px;
+        text: root.heading;
+        color: #d8ff8a;
+        font-size: 13px;
+        overflow: elide;
+    }
     Text { x: 470px; y: 6px; text: "ARTIST"; color: #9a9ea4; font-size: 11px; }
     Text { x: 700px; y: 6px; text: "BPM"; color: #9a9ea4; font-size: 11px; }
     Text { x: 770px; y: 6px; text: "KEY"; color: #9a9ea4; font-size: 11px; }
@@ -374,6 +399,15 @@ component LibraryPage inherits Rectangle {
             font-size: 13px;
             vertical-alignment: center;
         }
+        // A folder or playlist: a mark in its colour before the name.
+        if row.kind != 0: Rectangle {
+            x: 34px;
+            y: 9px;
+            width: 8px;
+            height: 14px;
+            border-radius: 2px;
+            background: row.kind == 1 ? #eb870f : #38d6f0;
+        }
         Text {
             x: 48px;
             width: 412px;
@@ -387,7 +421,7 @@ component LibraryPage inherits Rectangle {
             x: 470px;
             width: 222px;
             text: row.artist;
-            color: #c6cad0;
+            color: row.kind == 0 ? #c6cad0 : #9a9ea4;
             font-size: 14px;
             overflow: elide;
             vertical-alignment: center;
@@ -417,6 +451,27 @@ component LibraryPage inherits Rectangle {
         }
         load := TouchArea {
             clicked => { root.load(i); }
+        }
+    }
+    Rectangle {
+        x: 912px;
+        y: 236px;
+        width: 104px;
+        height: 56px;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: root.can-back ? #6ee128 : #2a2f35;
+        background: back.pressed ? #10240c : #12161a;
+        Text {
+            text: "BACK";
+            color: root.can-back ? #d8ff8a : #4a4f55;
+            font-size: 18px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        back := TouchArea {
+            enabled: root.can-back;
+            clicked => { root.back(); }
         }
     }
     Text {
@@ -668,6 +723,10 @@ export component Overview inherits Window {
     in property <bool> quantize-2;
     in property <bool> playing-1;
     in property <bool> playing-2;
+    in property <image> cover-1;
+    in property <image> cover-2;
+    in property <bool> has-cover-1;
+    in property <bool> has-cover-2;
     in property <string> fx-effect;
     in property <string> fx-beat;
     in property <int> fx-depth;
@@ -676,6 +735,8 @@ export component Overview inherits Window {
 
     in property <[LibraryLine]> library-rows;
     in property <string> library-count;
+    in property <string> library-heading;
+    in property <bool> library-can-back;
     in property <[CueTile]> cues-1;
     in property <[CueTile]> cues-2;
     in property <bool> loaded-1;
@@ -686,9 +747,10 @@ export component Overview inherits Window {
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
     callback cue(int, bool);
-    // The Library: a row of the page tapped, LOAD tapped for deck 0 or 1.
+    // The Library: a row of the page tapped, LOAD tapped for deck 0 or 1, BACK tapped.
     callback pick(int);
     callback load(int);
+    callback library-back();
     // The Hot Cues page: deck 0 or 1, its pad 0 to 7 down or up, and whether it deletes.
     callback hot-cue(int, int, bool, bool);
     // The FX page: what changed (0 effect, 1 beat, 2 channel, 3 depth, 4 FX ON) and to.
@@ -716,6 +778,8 @@ export component Overview inherits Window {
         number: 1;
         accent: #38d6f0;
         playing: root.playing-1;
+        cover: root.cover-1;
+        has-cover: root.has-cover-1;
         play => { root.play(0); }
         cue(down) => { root.cue(0, down); }
     }
@@ -726,6 +790,8 @@ export component Overview inherits Window {
         number: 2;
         accent: #6ee1a8;
         playing: root.playing-2;
+        cover: root.cover-2;
+        has-cover: root.has-cover-2;
         play => { root.play(1); }
         cue(down) => { root.cue(1, down); }
     }
@@ -752,8 +818,11 @@ export component Overview inherits Window {
         y: 46px;
         rows: root.library-rows;
         count: root.library-count;
+        heading: root.library-heading;
+        can-back: root.library-can-back;
         pick(row) => { root.pick(row); }
         load(deck) => { root.load(deck); }
+        back => { root.library-back(); }
     }
 
     if root.active-tab == 4: FxPage {

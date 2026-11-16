@@ -281,8 +281,12 @@ impl Engine {
         // The browse knob moves the Library's selection while that page is open, and
         // otherwise zooms the deck screen's waveform, as the donor's overview does; with
         // Shift, several steps a detent. LOAD loads the Library's selection, once the
-        // deck screen has published a list.
-        use crate::deck_view::{SHIFT_BROWSE_ROWS, SHIFT_ZOOM_STEPS, browse, library_open};
+        // deck screen has published a list; on a folder or playlist it opens it, as the
+        // knob's press does. Shift and the press go one level up.
+        use crate::deck_view::{
+            Row, SHIFT_BROWSE_ROWS, SHIFT_ZOOM_STEPS, back, browse, library_open, open,
+            selected_row,
+        };
         match (event.control, event.value) {
             (SemanticControl::BrowseDelta, ControlValue::Relative(delta)) => {
                 let delta = i32::from(delta);
@@ -300,10 +304,22 @@ impl Engine {
                     crate::deck_view::zoom_by(delta * SHIFT_ZOOM_STEPS);
                 }
             }
-            (SemanticControl::Load, ControlValue::Pressed(true)) => {
-                if let (Some(deck), Some(track)) = (event.deck, crate::deck_view::selected()) {
-                    self.request_load(deck, track);
+            (SemanticControl::Load, ControlValue::Pressed(true)) => match selected_row() {
+                Some(Row::Track(track)) => {
+                    if let Some(deck) = event.deck {
+                        self.request_load(deck, track);
+                    }
                 }
+                Some(Row::Node(_)) => {
+                    open();
+                }
+                None => {}
+            },
+            (SemanticControl::BrowsePress, ControlValue::Pressed(true)) if library_open() => {
+                open();
+            }
+            (SemanticControl::ShiftBrowsePress, ControlValue::Pressed(true)) if library_open() => {
+                back();
             }
             _ => {}
         }

@@ -236,6 +236,11 @@ pub(crate) enum TouchControl {
     Fx(FxTouch),
     /// MT tapped: Master Tempo on or off.
     MasterTempo,
+    /// The Library page's selected folder or playlist tapped again: open it, as the
+    /// browse knob's press does. It belongs to no deck.
+    LibraryOpen,
+    /// The Library page's BACK: one level up, as Shift and the browse knob's press do.
+    LibraryBack,
 }
 
 /// What the FX page sets: an effect (0 Filter to 3 Delay), a beat (0 for 1/4 to 4 for 4
@@ -293,6 +298,8 @@ impl TouchQueue {
                     512 | kind << 10 | u32::from(value & 0x7f) << 13
                 }
                 TouchControl::MasterTempo => 1 << 20,
+                TouchControl::LibraryOpen => 1 << 21,
+                TouchControl::LibraryBack => 1 << 21 | 1 << 22,
             };
         self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
         self.head.store(head.wrapping_add(1), Ordering::Release);
@@ -314,7 +321,13 @@ impl TouchQueue {
         }
         let word = self.slots[(tail % TOUCH_SLOTS) as usize].load(Ordering::Relaxed);
         self.tail.store(tail.wrapping_add(1), Ordering::Release);
-        let control = if word & 1 << 20 != 0 {
+        let control = if word & 1 << 21 != 0 {
+            if word & 1 << 22 != 0 {
+                TouchControl::LibraryBack
+            } else {
+                TouchControl::LibraryOpen
+            }
+        } else if word & 1 << 20 != 0 {
             TouchControl::MasterTempo
         } else if word & 512 != 0 {
             let value = (word >> 13 & 0x7f) as u8;
@@ -365,7 +378,247 @@ pub(crate) struct Library {
 
 static LIBRARY: Mailbox<Library> = Mailbox::new();
 static LIBRARY_LEN: AtomicU32 = AtomicU32::new(0);
+/// The selected row of the level shown.
 static SELECTED: AtomicU32 = AtomicU32::new(0);
+
+/// One folder or playlist of the export's playlist tree.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct ShelfNode {
+    pub(crate) name: String,
+    pub(crate) folder: bool,
+    /// The parent's node index, or `None` at the top.
+    pub(crate) parent: Option<u32>,
+    /// A folder's children, as node indexes, in Rekordbox's order.
+    pub(crate) children: Vec<u32>,
+    /// A playlist's tracks, as catalog indexes, in Rekordbox's order.
+    pub(crate) tracks: Vec<u32>,
+}
+
+/// The export's playlist tree: the top level's nodes, and every node by index.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(crate) struct Shelf {
+    pub(crate) top: Vec<u32>,
+    pub(crate) nodes: Vec<ShelfNode>,
+}
+
+impl Shelf {
+    /// The tree of a playlist index, from its top level down; nodes the index cannot
+    /// reach are left out.
+    pub(crate) fn from_index<S: ruzina_media_catalog::playlists::PlaylistStore>(
+        index: &ruzina_media_catalog::playlists::PlaylistIndex<S>,
+    ) -> Self {
+        use ruzina_media_catalog::playlists::PLAYLIST_ROOT;
+        let mut shelf = Self::default();
+        // Each folder still to walk: its id, and its node index (`None` at the top).
+        let mut pending = alloc::vec![(PLAYLIST_ROOT, None)];
+        while let Some((id, parent)) = pending.pop() {
+            for node in index.children(id) {
+                let at = shelf.nodes.len() as u32;
+                match parent {
+                    None => shelf.top.push(at),
+                    Some(parent) => shelf.nodes[parent as usize].children.push(at),
+                }
+                shelf.nodes.push(ShelfNode {
+                    name: node.name.as_str().into(),
+                    folder: node.is_folder,
+                    parent,
+                    children: Vec::new(),
+                    tracks: if node.is_folder {
+                        Vec::new()
+                    } else {
+                        index
+                            .tracks(node.id)
+                            .iter()
+                            .map(|entry| u32::from(entry.track_index))
+                            .collect()
+                    },
+                });
+                if node.is_folder && id != node.id {
+                    pending.push((node.id, Some(at)));
+                }
+            }
+        }
+        shelf
+    }
+}
+
+/// The playlist tree, once the catalog has one. Published once a card and kept: the
+/// engine and the UI task both read it.
+static SHELF: AtomicPtr<Shelf> = AtomicPtr::new(core::ptr::null_mut());
+
+/// The level the Library shows: `ALL` the catalog's tracks, `TOP` the playlist tree's
+/// top level, otherwise a node index. Written by the engine.
+static LEVEL: AtomicU32 = AtomicU32::new(ALL);
+const ALL: u32 = u32::MAX;
+const TOP: u32 = u32::MAX - 1;
+/// The selected row on each level above the one shown, from the top down, and how many.
+static PATH: [AtomicU32; PATH_DEPTH] = [const { AtomicU32::new(0) }; PATH_DEPTH];
+static DEPTH: AtomicU32 = AtomicU32::new(0);
+const PATH_DEPTH: usize = 16;
+/// The selection in the track list, while the playlists are shown.
+static ALL_SELECTED: AtomicU32 = AtomicU32::new(0);
+
+/// A level of the Library.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Level {
+    /// Every track in the catalog.
+    All,
+    /// The playlist tree's top level.
+    Top,
+    /// A folder's children or a playlist's tracks, by node index.
+    Node(u32),
+}
+
+/// A row of the level shown.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Row {
+    /// A track, by catalog index.
+    Track(u32),
+    /// A folder or playlist, by node index.
+    Node(u32),
+}
+
+/// Hands the export's playlist tree to the Library. It starts again on the track list.
+pub(crate) fn publish_shelf(shelf: Shelf) {
+    // The tree lives as long as the firmware, for any task that read it. A new card
+    // would leave the old one behind, which the legacy image does not do.
+    let old = SHELF.swap(Box::into_raw(Box::new(shelf)), Ordering::AcqRel);
+    #[cfg(test)]
+    if !old.is_null() {
+        // SAFETY: the tests read the tree only between publications.
+        drop(unsafe { Box::from_raw(old) });
+    }
+    #[cfg(not(test))]
+    let _ = old;
+    LEVEL.store(ALL, Ordering::Relaxed);
+    DEPTH.store(0, Ordering::Relaxed);
+}
+
+/// Takes the playlist tree back down, for the next test.
+#[cfg(test)]
+pub(crate) fn clear_shelf() {
+    let old = SHELF.swap(core::ptr::null_mut(), Ordering::AcqRel);
+    if !old.is_null() {
+        // SAFETY: as in `publish_shelf`.
+        drop(unsafe { Box::from_raw(old) });
+    }
+    LEVEL.store(ALL, Ordering::Relaxed);
+    DEPTH.store(0, Ordering::Relaxed);
+}
+
+/// The playlist tree, if the catalog has one.
+pub(crate) fn shelf() -> Option<&'static Shelf> {
+    // SAFETY: a published tree is never freed outside the tests (`publish_shelf`).
+    unsafe { SHELF.load(Ordering::Acquire).as_ref() }
+}
+
+/// The level shown.
+pub(crate) fn level() -> Level {
+    match LEVEL.load(Ordering::Relaxed) {
+        ALL => Level::All,
+        TOP => Level::Top,
+        node => Level::Node(node),
+    }
+}
+
+/// How many rows `level` has.
+pub(crate) fn level_len(level: Level) -> u32 {
+    match level {
+        Level::All => LIBRARY_LEN.load(Ordering::Acquire),
+        Level::Top => shelf().map_or(0, |shelf| shelf.top.len() as u32),
+        Level::Node(node) => shelf()
+            .and_then(|shelf| shelf.nodes.get(node as usize))
+            .map_or(0, |node| (node.children.len() + node.tracks.len()) as u32),
+    }
+}
+
+/// Row `index` of `level`.
+pub(crate) fn row_at(level: Level, index: u32) -> Option<Row> {
+    let index = index as usize;
+    match level {
+        Level::All => (index < LIBRARY_LEN.load(Ordering::Acquire) as usize)
+            .then_some(Row::Track(index as u32)),
+        Level::Top => shelf()?.top.get(index).map(|&node| Row::Node(node)),
+        Level::Node(node) => {
+            let node = shelf()?.nodes.get(node as usize)?;
+            node.children
+                .get(index)
+                .map(|&child| Row::Node(child))
+                .or_else(|| node.tracks.get(index).map(|&track| Row::Track(track)))
+        }
+    }
+}
+
+/// The selected row of the level shown.
+pub(crate) fn selected_row() -> Option<Row> {
+    row_at(level(), selected()?)
+}
+
+/// Opens the selected folder or playlist; false on a track or with nothing selected.
+/// The engine's side.
+pub(crate) fn open() -> bool {
+    let Some(Row::Node(node)) = selected_row() else {
+        return false;
+    };
+    let depth = DEPTH.load(Ordering::Relaxed) as usize;
+    if level() != Level::All && depth < PATH_DEPTH {
+        PATH[depth].store(SELECTED.load(Ordering::Relaxed), Ordering::Relaxed);
+        DEPTH.store(depth as u32 + 1, Ordering::Relaxed);
+    }
+    LEVEL.store(node, Ordering::Relaxed);
+    SELECTED.store(0, Ordering::Relaxed);
+    true
+}
+
+/// One level up: the track list goes to the playlists' top level, the top level back
+/// to the track list, and a folder or playlist to its parent, with that level's
+/// selection as it was. False when there is nowhere to go. The engine's side.
+pub(crate) fn back() -> bool {
+    let (up, selected) = match level() {
+        Level::All => {
+            if level_len(Level::Top) == 0 {
+                return false;
+            }
+            ALL_SELECTED.store(SELECTED.load(Ordering::Relaxed), Ordering::Relaxed);
+            DEPTH.store(0, Ordering::Relaxed);
+            (TOP, 0)
+        }
+        Level::Top => (ALL, ALL_SELECTED.load(Ordering::Relaxed)),
+        Level::Node(node) => {
+            let parent = shelf()
+                .and_then(|shelf| shelf.nodes.get(node as usize))
+                .and_then(|node| node.parent);
+            let depth = DEPTH.load(Ordering::Relaxed).saturating_sub(1);
+            DEPTH.store(depth, Ordering::Relaxed);
+            (
+                parent.unwrap_or(TOP),
+                PATH[depth as usize].load(Ordering::Relaxed),
+            )
+        }
+    };
+    LEVEL.store(up, Ordering::Relaxed);
+    let len = level_len(level());
+    SELECTED.store(selected.min(len.saturating_sub(1)), Ordering::Relaxed);
+    true
+}
+
+/// The names from the top level down to the level shown, for the page's heading.
+pub(crate) fn path_names() -> Vec<&'static str> {
+    let mut names = Vec::new();
+    let mut at = match level() {
+        Level::All | Level::Top => None,
+        Level::Node(node) => Some(node),
+    };
+    while let Some(node) = at.and_then(|node| shelf()?.nodes.get(node as usize)) {
+        names.push(node.name.as_str());
+        at = node.parent;
+        if names.len() > PATH_DEPTH {
+            break;
+        }
+    }
+    names.reverse();
+    names
+}
 /// Whether the Library page is open: the browse knob then moves the selection rather
 /// than the lanes' zoom. Written by the UI task.
 pub(crate) static LIBRARY_OPEN: AtomicBool = AtomicBool::new(false);
@@ -599,15 +852,15 @@ pub(crate) fn take_library() -> Option<Box<Library>> {
     LIBRARY.take()
 }
 
-/// The selected track's catalog index; `None` while there is no list.
+/// The selected row of the level shown; `None` while it has no rows.
 pub(crate) fn selected() -> Option<u32> {
-    let len = LIBRARY_LEN.load(Ordering::Acquire);
+    let len = level_len(level());
     (len != 0).then(|| SELECTED.load(Ordering::Relaxed).min(len - 1))
 }
 
-/// Selects catalog track `index`, within the list.
+/// Selects row `index` of the level shown, within it.
 pub(crate) fn select(index: u32) {
-    let len = LIBRARY_LEN.load(Ordering::Acquire);
+    let len = level_len(level());
     if len != 0 {
         SELECTED.store(index.min(len - 1), Ordering::Relaxed);
     }
@@ -620,7 +873,7 @@ pub(crate) fn browse(delta: i32) {
     }
 }
 
-/// Tracks in the Library's list.
+/// Tracks in the catalog.
 #[cfg_attr(test, allow(dead_code))]
 pub(crate) fn library_len() -> u32 {
     LIBRARY_LEN.load(Ordering::Acquire)
@@ -726,7 +979,13 @@ pub(crate) struct LoadedTrack {
     pub(crate) duration_ms: u32,
     /// Beat grid, waveforms and cues, when the export has an analysis.
     pub(crate) analysis: Option<AnalysisPublication>,
+    /// The cover, `COVER_EDGE` pixels square in RGB565, when the export has a readable
+    /// one.
+    pub(crate) cover: Option<Vec<u16>>,
 }
+
+/// The deck screen's cover edge in pixels.
+pub(crate) const COVER_EDGE: u16 = 56;
 
 impl LoadedTrack {
     pub(crate) fn none() -> Self {
@@ -737,6 +996,7 @@ impl LoadedTrack {
             key: String::new(),
             duration_ms: 0,
             analysis: None,
+            cover: None,
         }
     }
 }

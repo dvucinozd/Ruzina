@@ -719,6 +719,15 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         if let Some(playlists) = probe.playlists {
             report(pass, load_event::PLAYLISTS, playlists.nodes);
         }
+        // The deck screen's playlists, with the catalog they were built on.
+        #[cfg(feature = "idf-slint-ui")]
+        if pass == 1
+            && let Some(index) = stage
+                .playlists()
+                .filter(|index| index.publication() == publication && !index.is_empty())
+        {
+            crate::deck_view::publish_shelf(crate::deck_view::Shelf::from_index(index));
+        }
         // Each track's Rekordbox cues, kept from the pass below for its loads.
         // Without the memory a load just starts with no Rekordbox cues.
         #[cfg(feature = "idf-deck-engine")]
@@ -887,6 +896,10 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
                         key: track.key.as_str().into(),
                         duration_ms: track.duration_ms,
                         analysis,
+                        #[cfg(feature = "idf-slint-ui")]
+                        cover: read_cover(volume, track.artwork_path.as_str(), &current),
+                        #[cfg(not(feature = "idf-slint-ui"))]
+                        cover: None,
                     }
                 },
             ),
@@ -898,6 +911,59 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
         };
     }
     0
+}
+
+/// A track's cover for the deck screen: Rekordbox's larger copy (`a1_m.jpg`) when the
+/// export has one, else the 80-pixel `a1.jpg`, decoded to `COVER_EDGE` square. `None`
+/// when the track has no cover, the file is missing, too large or not a baseline JPEG,
+/// or the lease ended.
+#[cfg(feature = "idf-slint-ui")]
+fn read_cover<D: OwnedBlockDevice<Buffer = Sector>>(
+    volume: &mut crate::exfat_fixture::Volume<D>,
+    path: &str,
+    current: &impl Fn() -> bool,
+) -> Option<alloc::vec::Vec<u16>> {
+    use crate::deck_view::COVER_EDGE;
+    use ruzina_media_catalog::artwork::{ARTWORK_MAX_FILE_BYTES, decode_thumbnail};
+    use ruzina_media_catalog::jpeg::BaselineJpegDecoder;
+    use ruzina_media_fs::{AsyncFileSystem, FileHandle};
+    let stem = path.strip_suffix(".jpg")?;
+    let medium = alloc::format!("{stem}_m.jpg");
+    for path in [medium.as_str(), path] {
+        if !current() {
+            return None;
+        }
+        let Ok(mut file) = block_on(volume.open_read(path)) else {
+            continue;
+        };
+        let len = FileHandle::len(&file);
+        let mut jpeg = alloc::vec::Vec::new();
+        let fits = len != 0
+            && len <= ARTWORK_MAX_FILE_BYTES
+            && jpeg.try_reserve_exact(len as usize).is_ok();
+        if fits {
+            jpeg.resize(len as usize, 0);
+            let mut filled = 0;
+            while filled < jpeg.len() {
+                match block_on(volume.read(&mut file, &mut jpeg[filled..])) {
+                    Ok(0) | Err(_) => break,
+                    Ok(bytes) => filled += bytes,
+                }
+            }
+            jpeg.truncate(filled);
+        }
+        let _ = block_on(volume.close_file(file));
+        if !fits || jpeg.len() as u64 != len || !current() {
+            continue;
+        }
+        let mut cover = alloc::vec![0u16; usize::from(COVER_EDGE) * usize::from(COVER_EDGE)];
+        // The decoder's accumulators are tens of KiB: PSRAM, not the task's stack.
+        let mut decoder = alloc::boxed::Box::new(BaselineJpegDecoder::new());
+        if decode_thumbnail(&jpeg, COVER_EDGE, &mut cover, &mut *decoder).is_ok() {
+            return Some(cover);
+        }
+    }
+    None
 }
 
 #[cfg(feature = "idf-deck-play")]
