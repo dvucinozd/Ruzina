@@ -80,6 +80,7 @@ impl WebBackend for Session {
     fn status(&mut self) -> StatusParts<'_> {
         let channel = |i: usize| self.mixer.deck(deck(i));
         StatusParts {
+            name: "Ruzina Simulator",
             catalog: self.catalog_publication(),
             load_generations: [self.load_generation(0), self.load_generation(1)],
             decks: [deck_status(self, 0), deck_status(self, 1)],

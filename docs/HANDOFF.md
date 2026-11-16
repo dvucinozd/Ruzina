@@ -219,7 +219,10 @@
   The server reads up to four connections with `select()` and answers each once its
   request is in. A slow phone no longer holds others back. s113: two tabs, 189 requests,
   the longest 63 ms.
-- **On the board:** s113 (app `9b7576a7…`), the Web Remote with four connections.
+- **Deck name on the page (2026-11-16):** [the Web Remote names its deck](reviews/2026-11-16-deck-name.md).
+  The status carries `name` (the network's, `Ruzina-AB2D`), and the page shows it in its
+  header and tab title. s114: owner "radi".
+- **On the board:** s114 (app `eeaa0ada…`), the Web Remote that names its deck.
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

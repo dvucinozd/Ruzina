@@ -31,6 +31,8 @@ const AP_IPV4: &str = "192.168.4.1";
 /// What the web task keeps between requests: the catalog and each deck's track.
 #[derive(Default)]
 struct WebState {
+    /// The deck's name, as `ruzina_web_set_name` set it.
+    name: alloc::string::String,
     library: Option<Box<WebLibrary>>,
     tracks: [Option<Box<WebTrack>>; 2],
 }
@@ -38,6 +40,20 @@ struct WebState {
 impl WebState {
     /// Takes whatever the load task published since the last request.
     fn refresh(&mut self) {
+        let len = NAME_LEN.load(Ordering::Acquire).min(NAME.len());
+        let changed = len != self.name.len()
+            || self
+                .name
+                .bytes()
+                .zip(&NAME)
+                .any(|(have, slot)| have != slot.load(Ordering::Relaxed));
+        if changed {
+            let bytes: alloc::vec::Vec<u8> = NAME[..len]
+                .iter()
+                .map(|b| b.load(Ordering::Relaxed))
+                .collect();
+            self.name = alloc::string::String::from_utf8(bytes).unwrap_or_default();
+        }
         if let Some(library) = deck_view::take_web_library() {
             self.library = Some(library);
         }
@@ -123,6 +139,7 @@ impl WebBackend for Backend<'_> {
             }
         };
         StatusParts {
+            name: state.name.as_str(),
             catalog: state.library.as_ref().map(|library| CatalogPublicationId {
                 lease: LEASE,
                 revision: library.revision,
@@ -434,6 +451,29 @@ impl Takeover {
         }
         false
     }
+}
+
+/// The deck's name for its page: its access point's, set once before the server starts.
+static NAME: [core::sync::atomic::AtomicU8; 32] =
+    [const { core::sync::atomic::AtomicU8::new(0) }; 32];
+static NAME_LEN: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
+/// Sets the deck's name for its page, up to 32 bytes. Before the web server starts.
+///
+/// # Safety
+/// `name` must be valid for `len` reads.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_web_set_name(name: *const u8, len: usize) {
+    if name.is_null() {
+        return;
+    }
+    let len = len.min(NAME.len());
+    // SAFETY: the caller lends `len` readable bytes for this call.
+    let name = unsafe { core::slice::from_raw_parts(name, len) };
+    for (slot, &byte) in NAME.iter().zip(name) {
+        slot.store(byte, Ordering::Relaxed);
+    }
+    NAME_LEN.store(len, Ordering::Release);
 }
 
 struct Server(UnsafeCell<Option<(WebServer, WebState)>>);

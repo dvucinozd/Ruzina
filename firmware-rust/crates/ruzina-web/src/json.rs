@@ -77,6 +77,8 @@ pub struct MixerStatus {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StatusSnapshot<'a> {
     pub stamp: StatusStamp,
+    /// The deck's name, as its page shows it; empty for none.
+    pub name: &'a str,
     pub decks: [DeckStatus<'a>; 2],
     pub mixer: MixerStatus,
 }
@@ -187,7 +189,8 @@ pub fn write_status(status: &StatusSnapshot<'_>, out: &mut [u8]) -> Result<usize
     json.unsigned(stamp.load_generations[0])?;
     json.raw(",")?;
     json.unsigned(stamp.load_generations[1])?;
-    json.raw("]}")?;
+    json.raw("]},\"name\":")?;
+    json.string(status.name)?;
     for (index, deck) in status.decks.iter().enumerate() {
         json.raw(if index == 0 {
             ",\"deck1\":{\"title\":"
@@ -356,6 +359,7 @@ mod tests {
                 }),
                 load_generations: [5, 0],
             },
+            name: "Ruzina-AB2D",
             decks: [
                 DeckStatus {
                     title,
@@ -389,7 +393,7 @@ mod tests {
             core::str::from_utf8(&out[..len]).unwrap(),
             concat!(
                 "{\"stamp\":{\"boot\":7,\"sequence\":42,\"library_revision\":3,",
-                "\"load_generations\":[5,0]},",
+                "\"load_generations\":[5,0]},\"name\":\"Ruzina-AB2D\",",
                 "\"deck1\":{\"title\":\"Helpless \\\"live\\\"\\\\\\u0001\",\"artist\":\"Grid Lab\",",
                 "\"bpm\":113,\"pitch_percent\":-6.25,\"pitch_raw\":100,\"position_ms\":1770,\"duration_ms\":10000,",
                 "\"playing\":true,\"sync_enabled\":false,\"sync_master\":true,",

@@ -171,6 +171,15 @@ fn a_seek_needs_a_loaded_track_and_keeps_inside_it() {
 }
 
 #[test]
+fn the_status_names_the_deck() {
+    let name = "Ruzina-AB2D";
+    // SAFETY: a valid string for its length.
+    unsafe { ruzina_web_set_name(name.as_ptr(), name.len()) };
+    let status = get("/api/status");
+    assert!(status.contains("\"name\":\"Ruzina-AB2D\""), "{status}");
+}
+
+#[test]
 fn the_page_and_the_status_answer_for_the_access_point_only() {
     let page = handle("GET / HTTP/1.1\r\nHost: 192.168.4.1\r\n\r\n");
     assert!(
