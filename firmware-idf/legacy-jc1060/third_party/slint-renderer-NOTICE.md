@@ -8,7 +8,10 @@ of the registry copy with `[patch.crates-io]`.
 - **License:** as upstream: `GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR
   LicenseRef-Slint-Software-3.0`, the texts in its `LICENSES/`. The vendored copy changes
   nothing about which of these the firmware uses Slint under.
-- **Per-file SHA-256** of the 16 unmodified files: `upstream-files.json`.
+- **Per-file SHA-256** of all 17 files as upstream ships them: `upstream-files.json`. The
+  changed file's upstream and patched digests are pinned in
+  `tools/source_budget/vendor-patch.json`; `tools/source_budget/verify_vendor.py` checks
+  both in CI.
 
 ## The one change
 

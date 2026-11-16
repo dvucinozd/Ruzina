@@ -43,6 +43,7 @@
       "LICENSES/LicenseRef-Slint-Royalty-free-2.0.md": "5167f5056e850419106ab6265efbdca7cba4d99c849d1445ca0bbf6a1e2315fe",
       "LICENSES/LicenseRef-Slint-Software-3.0.md": "a235744b92f4453fe18e081e54f29468a6a9db6a44e9a8f6364a48001ba4f10f",
       "README.md": "d517affd6b3d811a95384d094217d9bae9c77615b41026121717e67e6a774fc7",
+      "draw_functions.rs": "8d79deb5b757b5b2d177c4bca747340d7008b3de618c434300ef875251a7cf12",
       "fixed.rs": "df74b70f61b52ec4dd25db70b35852652b94779a8a486fa328cc1604a70c7445",
       "fonts.rs": "68bd2ad3d03c2b63c792c9e203fe4a46bf2238a2e52188ddbf5c286163c8e5bf",
       "fonts/pixelfont.rs": "2a351f6a8a6665a5340ae7f5b2db264ce19a3179aab4a2c3074fec5cf55a94c2",
