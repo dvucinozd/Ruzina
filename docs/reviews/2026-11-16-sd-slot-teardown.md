@@ -34,7 +34,7 @@ The SD card's failure itself is not addressed here.
 
 - **Host:** the IDF build has no warnings.
 - **Device:** s116 (app `a7add45b…`). It is built from `main`, so it lacks
-  [SYNC on the tempo's line](2026-11-16-sync-mt-line.md).
+  SYNC on the tempo's line, which is still under review on its own branch.
   - **Without the SD card, after a cold power-up:**
     - no assert, and the uptime kept counting;
     - the 30-second `wifi_ap` report came;
