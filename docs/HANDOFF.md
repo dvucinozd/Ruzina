@@ -277,6 +277,13 @@
   `ruzina-media-io`](reviews/2026-11-18-read-ahead-crate.md), behind its `read-ahead`
   feature. The legacy core uses it from there. s134: both decks and the Library behave
   as before; owner "Radi".
+- **Memory cues (2026-11-17, branch `ogranak/jc1060-memory-cues`, not merged):**
+  [Rekordbox memory cues](reviews/2026-11-17-memory-cues.md).
+  - Red marks on the lane and overview, a MEMORY list on HOT CUES, and the FLX4's
+    SAMPLER pads (read by the board, not the golden profile) call cues 1–16 as a CDJ's
+    CALL does.
+  - s131: the SAMPLER button reaches the board. Calling cues waits for an export with
+    memory cues.
 - **On the board:** s134 (app `af38de11…`), the SD retry, the Settings rows and the
   shared read-ahead; the memory cues (s131) are not on it.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in

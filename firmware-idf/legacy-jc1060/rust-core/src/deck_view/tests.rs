@@ -103,6 +103,10 @@ fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
     assert!(queue.push(0, TouchControl::LibraryBack));
     assert_eq!(queue.pop(), Some((0, TouchControl::LibraryOpen)));
     assert_eq!(queue.pop(), Some((0, TouchControl::LibraryBack)));
+    assert!(queue.push(1, TouchControl::Memory(0)));
+    assert!(queue.push(0, TouchControl::Memory(15)));
+    assert_eq!(queue.pop(), Some((1, TouchControl::Memory(0))));
+    assert_eq!(queue.pop(), Some((0, TouchControl::Memory(15))));
     assert_eq!(queue.pop(), None);
     for _ in 0..TOUCH_SLOTS {
         assert!(queue.push(0, TouchControl::Play));

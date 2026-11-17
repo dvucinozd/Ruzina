@@ -10,7 +10,7 @@
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
-use ruzina_track_analysis::{Beat, WaveformColumn};
+use ruzina_track_analysis::{AnalysisMemoryCue, Beat, WaveformColumn};
 use slint::platform::software_renderer::{MinimalSoftwareWindow, RepaintBufferType};
 use slint::platform::{Platform, WindowAdapter};
 use slint::{ComponentHandle, PhysicalSize};
@@ -132,6 +132,13 @@ const CUE_COLORS: [u16; 8] = {
 };
 const CUE_FLAG_WIDTH: i64 = 7;
 const CUE_FLAG_HEIGHT: usize = 7;
+/// Rekordbox's memory cues, red as Rekordbox draws them: a line through the lane (and at
+/// a memory loop's end), and at its start a triangle at the Hot Cue flags' edge, pointing
+/// into the lane. The overview marks them at its top and bottom.
+const MEMORY: u16 = rgb(0xff, 0x30, 0x30);
+const MEMORY_FLAG_REACH: i64 = 5;
+const MEMORY_FLAG_HEIGHT: usize = 7;
+const MINI_MEMORY_ROWS: usize = 5;
 /// The running loop: its ends as lines, and its span shaded behind the waveform.
 const LOOP_EDGE: u16 = rgb(0xff, 0x8c, 0x00);
 const LOOP_SHADE: u16 = rgb(0x30, 0x1c, 0x00);
@@ -407,6 +414,7 @@ struct Wave<'a> {
     marks: Marks,
     /// The playhead, where the shading from a Loop In ends.
     position_ms: u32,
+    memory: &'a [AnalysisMemoryCue],
 }
 
 impl Wave<'_> {
@@ -494,17 +502,30 @@ impl Wave<'_> {
         (0..8).find(|&pad| self.marks.cues[pad].is_some_and(|ms| self.holds(at, ms)))
     }
 
+    /// Whether a memory cue starts in track pixel `at`, or with `ends` a memory loop
+    /// ends there.
+    fn memory_at(&self, at: i64, ends: bool) -> bool {
+        self.memory.iter().any(|cue| {
+            self.holds(at, cue.start_ms)
+                || ends && cue.end_ms.is_some_and(|end| self.holds(at, end))
+        })
+    }
+
     /// The colour of a mark through the whole of track pixel `at`: a Hot Cue, else an
-    /// end of the running loop.
+    /// end of the running loop, else a memory cue.
     fn mark(&self, at: i64) -> Option<u16> {
         if let Some(pad) = self.cue(at) {
             return Some(CUE_COLORS[pad]);
         }
-        if let Some(from) = self.marks.pending_in {
-            return self.holds(at, from).then_some(LOOP_EDGE);
+        let loop_edge = match (self.marks.pending_in, self.marks.looped) {
+            (Some(from), _) => self.holds(at, from),
+            (None, Some((start, end))) => self.holds(at, start) || self.holds(at, end),
+            (None, None) => false,
+        };
+        if loop_edge {
+            return Some(LOOP_EDGE);
         }
-        let (start, end) = self.marks.looped?;
-        (self.holds(at, start) || self.holds(at, end)).then_some(LOOP_EDGE)
+        self.memory_at(at, true).then_some(MEMORY)
     }
 }
 
@@ -550,6 +571,7 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks, position_ms: 
             window_ms,
             marks,
             position_ms,
+            memory: &[],
         };
     };
     Wave {
@@ -559,6 +581,7 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks, position_ms: 
         window_ms,
         marks,
         position_ms,
+        memory: view.memory_cues(),
     }
 }
 
@@ -622,7 +645,43 @@ fn draw_columns(
         }
     }
     draw_bar_caps(frame, area, wave, left, columns.clone());
+    draw_memory_flags(frame, area, wave, left, columns.clone());
     draw_cue_flags(frame, area, wave, left, columns);
+}
+
+/// Draws the triangles of the memory cues near columns `columns`, clipped to them and
+/// clear of the playhead: at the Hot Cue flags' edge, pointing into the lane. A Hot Cue's
+/// flag is drawn over one.
+fn draw_memory_flags(
+    frame: &mut [u16],
+    area: Area,
+    wave: Wave<'_>,
+    left: i64,
+    columns: core::ops::Range<usize>,
+) {
+    if wave.memory.is_empty() {
+        return;
+    }
+    let at_top = area.y == LANES[0].y;
+    let (first, end) = (columns.start as i64, columns.end as i64);
+    for centre in first - MEMORY_FLAG_REACH..end + MEMORY_FLAG_REACH {
+        if !wave.memory_at(left + centre, false) {
+            continue;
+        }
+        for row in 0..MEMORY_FLAG_HEIGHT {
+            // Widest at the edge, a point towards the middle.
+            let reach =
+                MEMORY_FLAG_REACH * (MEMORY_FLAG_HEIGHT - row) as i64 / MEMORY_FLAG_HEIGHT as i64;
+            let y = if at_top { row } else { LANE_HEIGHT - 1 - row };
+            let line = (area.y + y) * WIDTH + area.x;
+            for x in (centre - reach).max(first)..=(centre + reach).min(end - 1) {
+                let x = x as usize;
+                if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
+                    frame[line + x] = MEMORY;
+                }
+            }
+        }
+    }
 }
 
 /// Draws the flags of the Hot Cues near columns `columns`, clipped to them and clear of
@@ -756,11 +815,29 @@ fn draw_meter(frame: &mut [u16], area: Area, lit: i32) {
     flush(frame, area.y, area.height);
 }
 
-/// Draws the whole-track overview, shaded up to the playhead at `x`.
-fn draw_mini(frame: &mut [u16], area: Area, preview: &[WaveformColumn], x: Option<usize>) {
+/// Draws the whole-track overview, shaded up to the playhead at `x`, with each memory
+/// cue of a track `duration_ms` long marked at its top and bottom.
+fn draw_mini(
+    frame: &mut [u16],
+    area: Area,
+    preview: &[WaveformColumn],
+    x: Option<usize>,
+    memory: &[AnalysisMemoryCue],
+    duration_ms: u32,
+) {
     let middle = area.height / 2;
     let mut heights = [0u32; 512];
     let mut colors = [BACKGROUND; 512];
+    let mut marked = [false; 512];
+    if duration_ms != 0 {
+        for cue in memory {
+            let column = (u64::from(cue.start_ms.min(duration_ms)) * (area.width as u64 - 1)
+                / u64::from(duration_ms)) as usize;
+            if let Some(mark) = marked.get_mut(column) {
+                *mark = true;
+            }
+        }
+    }
     for column in 0..area.width {
         if let Some(entry) = preview.get(column * preview.len() / area.width.max(1)) {
             heights[column] = u32::from(entry.peak) * MINI_HALF / u32::from(u16::MAX);
@@ -773,10 +850,13 @@ fn draw_mini(frame: &mut [u16], area: Area, preview: &[WaveformColumn], x: Optio
     }
     for row in 0..area.height {
         let distance = row.abs_diff(middle) as u32;
+        let edge = row < MINI_MEMORY_ROWS || row >= area.height - MINI_MEMORY_ROWS;
         let start = (area.y + row) * WIDTH + area.x;
         for column in 0..area.width {
             frame[start + column] = if x == Some(column) {
                 MINI_PLAYHEAD
+            } else if edge && marked[column] {
+                MEMORY
             } else if heights[column] != 0 && distance <= heights[column] {
                 colors[column]
             } else {
@@ -1081,6 +1161,38 @@ fn show_cues(ui: &Overview, state: CueState) {
     }
 }
 
+/// Lists a deck's memory cues on the Hot Cues page: each number, its time, and whether it
+/// is a loop.
+fn show_memory(ui: &Overview, deck: usize, track: Option<&LoadedTrack>) {
+    let lines: alloc::vec::Vec<MemoryLine> = track
+        .and_then(|track| track.analysis.as_ref())
+        .map(|analysis| {
+            analysis
+                .view()
+                .memory_cues()
+                .iter()
+                .enumerate()
+                .map(|(n, cue)| MemoryLine {
+                    number: alloc::format!("{}", n + 1).into(),
+                    time: alloc::format!(
+                        "{}.{}",
+                        deck_view::clock(cue.start_ms),
+                        cue.start_ms / 100 % 10
+                    )
+                    .into(),
+                    looped: cue.end_ms.is_some(),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let lines = slint::ModelRc::new(slint::VecModel::from(lines));
+    if deck == 0 {
+        ui.set_memory_1(lines);
+    } else {
+        ui.set_memory_2(lines);
+    }
+}
+
 fn show_fx(ui: &Overview, fx: FxSnapshot) {
     ui.set_fx_effect(fx.effect_name().into());
     ui.set_fx_beat(fx.beat_name().into());
@@ -1169,6 +1281,10 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     ui.on_hot_cue(|deck, pad, down, delete| {
         let pad = (pad & 7) as u8;
         let control = deck_view::TouchControl::HotCue { pad, delete, down };
+        deck_view::TOUCH.push(deck as usize & 1, control);
+    });
+    ui.on_memory_cue(|deck, n| {
+        let control = deck_view::TouchControl::Memory((n & 15) as u8);
         deck_view::TOUCH.push(deck as usize & 1, control);
     });
     // A setting tapped: in force at once (the USB client task applies it on its next
@@ -1266,12 +1382,14 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         for deck in 0..2 {
             if let Some(track) = deck_view::take_track(deck) {
                 show_cover(&ui, deck, track.cover.as_deref());
+                show_memory(&ui, deck, Some(&track));
                 tracks[deck] = Some(track);
                 lane_at[0][deck] = None;
                 lane_at[1][deck] = None;
             }
             if !decks[deck].has(deck_view::LOADED) && tracks[deck].is_some() {
                 show_cover(&ui, deck, None);
+                show_memory(&ui, deck, None);
                 tracks[deck] = None;
                 lane_at[0][deck] = None;
                 lane_at[1][deck] = None;
@@ -1458,10 +1576,12 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             });
             let mini = Some((index, playhead));
             if mini_at[drawing][deck] != mini {
-                let preview = track
+                let view = track
                     .and_then(|track| track.analysis.as_ref())
-                    .map_or(&[][..], |analysis| analysis.view().preview());
-                draw_mini(buffer, MINIS[deck], preview, playhead);
+                    .map(|analysis| analysis.view());
+                let preview = view.as_ref().map_or(&[][..], |view| view.preview());
+                let memory = view.as_ref().map_or(&[][..], |view| view.memory_cues());
+                draw_mini(buffer, MINIS[deck], preview, playhead, memory, duration);
                 mini_at[drawing][deck] = mini;
             }
         }

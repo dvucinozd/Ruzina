@@ -53,6 +53,53 @@ fn take_out(capacity: usize) -> Vec<[u8; 4]> {
         .collect()
 }
 
+#[cfg(feature = "deck-engine")]
+#[test]
+fn the_flx4_sampler_button_and_pads_become_semantic_events() {
+    use ruzina_controller_core::{PadAction, PadMode};
+    let pad = |pad, shifted, pressed| {
+        Some(ControlValue::PadAction(PadAction {
+            pad,
+            mode: PadMode::Sampler,
+            shifted,
+            pressed,
+        }))
+    };
+    let value = |packet| sampler_event(packet).map(|event| event.value);
+    let deck = |packet| sampler_event(packet).and_then(|event| event.deck);
+    // The button on each deck's channel, down and up.
+    let button = sampler_event([0x09, 0x91, 0x22, 0x7f]).unwrap();
+    assert_eq!(
+        (button.deck, button.control, button.value),
+        (
+            Some(DeckId::Two),
+            SemanticControl::PadModeSampler,
+            ControlValue::Pressed(true)
+        )
+    );
+    assert_eq!(
+        value([0x09, 0x90, 0x22, 0x00]),
+        Some(ControlValue::Pressed(false))
+    );
+    // The pads on deck 1, with and without Shift, and deck 2's; a note off is a release.
+    assert_eq!(value([0x09, 0x97, 0x30, 0x7f]), pad(0, false, true));
+    assert_eq!(deck([0x09, 0x97, 0x30, 0x7f]), Some(DeckId::One));
+    assert_eq!(value([0x09, 0x98, 0x37, 0x7f]), pad(7, true, true));
+    assert_eq!(deck([0x09, 0x99, 0x33, 0x7f]), Some(DeckId::Two));
+    assert_eq!(value([0x09, 0x9a, 0x31, 0x7f]), pad(1, true, true));
+    assert_eq!(value([0x08, 0x87, 0x32, 0x40]), pad(2, false, false));
+    // Other pad modes, other notes and other messages are the profile's.
+    for packet in [
+        [0x09, 0x97, 0x00, 0x7f],
+        [0x09, 0x97, 0x38, 0x7f],
+        [0x09, 0x92, 0x22, 0x7f],
+        [0x0b, 0xb0, 0x22, 0x7f],
+        [0x09, 0x90, 0x0b, 0x7f],
+    ] {
+        assert_eq!(sampler_event(packet), None, "{packet:x?}");
+    }
+}
+
 // One test: the session is a single process-wide static, as on the device.
 #[test]
 fn flx4_play_presses_reach_the_semantic_session() {
@@ -79,7 +126,8 @@ fn flx4_play_presses_reach_the_semantic_session() {
     // toggle): note-on 0x90/0x91 0x0B with a non-zero value, CIN 9, cable 0.
     // With the deck engine, Play on an empty deck is refused: the first LED
     // sync sends them off.
-    let out = take_out(512);
+    // The first sync also clears the SAMPLER pads' LEDs.
+    let out = take_out(1024);
     let engine = cfg!(feature = "deck-engine");
     let lit = |status: u8| {
         out.iter()

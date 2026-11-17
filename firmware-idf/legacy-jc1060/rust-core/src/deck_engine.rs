@@ -160,6 +160,9 @@ pub(crate) struct Engine {
     /// Shift + BEAT SYNC (the tempo range) held down: the frames rendered since, or
     /// `TEMPO_RANGE_FIRED` once the hold turned Master Tempo over.
     tempo_range_held: [Option<u32>; 2],
+    /// The FLX4's SAMPLER pad mode, which the deck state does not keep: its pads call
+    /// the track's memory cues.
+    sampler: [bool; 2],
     /// Banks the flash journal has not taken yet, one per track, oldest first.
     /// Flash waits until no deck plays, which a long mix can put off.
     hot_cue_saves: [Option<HotCueBank>; HOT_CUE_SAVES_QUEUED],
@@ -204,6 +207,7 @@ impl Engine {
             loop_pad: [None; 2],
             quantize_set: false,
             tempo_range_held: [None; 2],
+            sampler: [false; 2],
             hot_cue_saves: [None; HOT_CUE_SAVES_QUEUED],
             hot_cue_in_flight: None,
             #[cfg(feature = "soak-autoplay")]
@@ -379,6 +383,39 @@ impl Engine {
             }
             return;
         }
+        // SAMPLER: the deck state leaves its pad mode as it was, so the engine keeps it,
+        // and its pads call memory cues 1 to 8, with Shift 9 to 16.
+        if let Some(deck) = event.deck {
+            let i = index(deck);
+            match (event.control, event.value) {
+                (SemanticControl::PadModeSampler, ControlValue::Pressed(true)) => {
+                    self.sampler[i] = true;
+                    return;
+                }
+                (
+                    SemanticControl::PadModeHotCue
+                    | SemanticControl::PadModeBeatLoop
+                    | SemanticControl::PadModeBeatJump
+                    | SemanticControl::PadModeKeyShift
+                    | SemanticControl::PadModeKeyboard
+                    | SemanticControl::PadModePadFx1
+                    | SemanticControl::PadModePadFx2,
+                    ControlValue::Pressed(true),
+                ) => self.sampler[i] = false,
+                (SemanticControl::PadAction, ControlValue::PadAction(pad))
+                    if pad.mode == PadMode::Sampler =>
+                {
+                    if pad.pressed {
+                        self.call_memory(
+                            deck,
+                            usize::from(pad.pad & 7) + 8 * usize::from(pad.shifted),
+                        );
+                    }
+                    return;
+                }
+                _ => {}
+            }
+        }
         // Pads as pressed: the 4 BEAT button's Beat Loop pad has no release.
         if let (Some(deck), ControlValue::PadAction(pad)) = (event.deck, event.value) {
             let (mode, held) = &mut self.pads_held[index(deck)];
@@ -441,6 +478,41 @@ impl Engine {
                 *grid = Some(new);
             }
         }
+    }
+
+    /// Deck `i`'s memory cues, when they belong to the loaded track.
+    fn memory(&self, i: usize) -> &[(u32, Option<u32>)] {
+        let loaded = self.source[i].map(|source| source.index);
+        self.grids[i]
+            .as_deref()
+            .filter(|grid| Some(grid.index) == loaded)
+            .map_or(&[], |grid| &*grid.memory)
+    }
+
+    /// Calls memory cue `n` of the deck's track, as a CDJ's CALL does: the deck moves
+    /// there (a memory loop runs), and CUE returns there. Nothing during a scratch or
+    /// without that cue.
+    pub(crate) fn call_memory(&mut self, deck: DeckId, n: usize) {
+        let i = index(deck);
+        let Some(&(start_ms, end_ms)) = self.memory(i).get(n) else {
+            return;
+        };
+        if self.deck.deck(deck).jog_touched {
+            return;
+        }
+        let effects = self.deck.recall_memory_cue(deck, start_ms, end_ms);
+        self.apply(effects);
+    }
+
+    /// Each deck's memory cues 1 to 8 that exist, one bit each, for the SAMPLER pads.
+    pub(crate) fn memory_masks(&self) -> [u8; 2] {
+        core::array::from_fn(|i| (0..self.memory(i).len().min(8)).fold(0, |mask, n| mask | 1 << n))
+    }
+
+    /// Whether each deck's pads are in SAMPLER mode.
+    #[cfg(test)]
+    pub(crate) fn sampler_modes(&self) -> [bool; 2] {
+        self.sampler
     }
 
     /// Deck `i`'s beat grid, when it belongs to the loaded track and has beats.
@@ -868,7 +940,12 @@ impl Engine {
                 (SemanticLedId::PAD_MODE_PAD_FX2, PadMode::PadFx2),
                 (SemanticLedId::PAD_MODE_SAMPLER, PadMode::Sampler),
             ] {
-                set(led, this, state.pad_mode == mode);
+                let shown = if self.sampler[i] {
+                    PadMode::Sampler
+                } else {
+                    state.pad_mode
+                };
+                set(led, this, shown == mode);
             }
             let (held_mode, held) = self.pads_held[i];
             let held = |mode, pad: u8| held_mode == Some(mode) && held >> pad & 1 != 0;
