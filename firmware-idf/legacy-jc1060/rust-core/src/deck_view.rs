@@ -622,6 +622,12 @@ pub(crate) fn path_names() -> Vec<&'static str> {
 /// Whether the Library page is open: the browse knob then moves the selection rather
 /// than the lanes' zoom. Written by the UI task.
 pub(crate) static LIBRARY_OPEN: AtomicBool = AtomicBool::new(false);
+/// The engine asks the UI task to show the Library page (the browse knob pressed on
+/// another page).
+pub(crate) static SHOW_LIBRARY: AtomicBool = AtomicBool::new(false);
+/// The engine asks the UI task to go back to the Overview (the browse knob pressed on a
+/// track in the Library).
+pub(crate) static SHOW_OVERVIEW: AtomicBool = AtomicBool::new(false);
 
 /// Rows one Shift + browse detent moves the selection.
 pub(crate) const SHIFT_BROWSE_ROWS: i32 = 10;

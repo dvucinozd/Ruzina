@@ -2453,8 +2453,8 @@ fn on_the_library_page_browse_moves_the_selection_and_load_loads_it() {
 #[test]
 fn in_the_library_load_opens_a_playlist_and_loads_its_tracks() {
     use crate::deck_view::{
-        LIBRARY_OPEN, Level, LibraryRow, Row, Shelf, ShelfNode, clear_shelf, level,
-        publish_library, publish_shelf, selected_row,
+        LIBRARY_OPEN, Level, LibraryRow, Row, SHOW_LIBRARY, SHOW_OVERVIEW, Shelf, ShelfNode,
+        clear_shelf, level, publish_library, publish_shelf, selected_row,
     };
     use core::sync::atomic::Ordering;
     use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
@@ -2485,24 +2485,35 @@ fn in_the_library_load_opens_a_playlist_and_loads_its_tracks() {
     mix.engine().lease = Some(lease);
     LOAD_REQUESTS[1].take();
 
-    // Away from the Library page, Shift and the knob's press do nothing.
+    // On another page the knob's press shows the Library as it was, and Shift and the
+    // press show its playlists.
     LIBRARY_OPEN.store(false, Ordering::Relaxed);
-    press(&mut mix, None, SemanticControl::ShiftBrowsePress);
+    SHOW_LIBRARY.store(false, Ordering::Relaxed);
+    press(&mut mix, None, SemanticControl::BrowsePress);
+    assert!(SHOW_LIBRARY.swap(false, Ordering::Relaxed));
     assert_eq!(level(), Level::All);
-    LIBRARY_OPEN.store(true, Ordering::Relaxed);
     press(&mut mix, None, SemanticControl::ShiftBrowsePress);
+    assert!(SHOW_LIBRARY.swap(false, Ordering::Relaxed));
     assert_eq!(level(), Level::Top);
+    press(&mut mix, None, SemanticControl::ShiftBrowsePress);
+    assert_eq!(level(), Level::Top, "already on the playlists");
+    LIBRARY_OPEN.store(true, Ordering::Relaxed);
     // LOAD on a playlist opens it and loads nothing.
     press(&mut mix, Some(DeckId::Two), SemanticControl::Load);
     assert_eq!(level(), Level::Node(0));
     assert!(LOAD_REQUESTS[1].take().is_none());
     // Its first track is catalog track 2.
     assert_eq!(selected_row(), Some(Row::Track(2)));
+    SHOW_OVERVIEW.store(false, Ordering::Relaxed);
     press(&mut mix, None, SemanticControl::BrowsePress);
     assert_eq!(
         level(),
         Level::Node(0),
-        "the knob's press on a track does nothing"
+        "the press on a track stays on the level"
+    );
+    assert!(
+        SHOW_OVERVIEW.swap(false, Ordering::Relaxed),
+        "and goes back to the Overview"
     );
     press(&mut mix, Some(DeckId::Two), SemanticControl::Load);
     let request = LOAD_REQUESTS[1].take().expect("a load");

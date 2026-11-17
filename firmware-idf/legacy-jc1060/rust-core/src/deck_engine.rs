@@ -282,10 +282,12 @@ impl Engine {
         // otherwise zooms the deck screen's waveform, as the donor's overview does; with
         // Shift, several steps a detent. LOAD loads the Library's selection, once the
         // deck screen has published a list; on a folder or playlist it opens it, as the
-        // knob's press does. Shift and the press go one level up.
+        // knob's press does. Shift and the press go one level up. On another page the
+        // press shows the Library, and Shift and the press its playlists; in the Library
+        // the press on a track goes back to the Overview.
         use crate::deck_view::{
-            Row, SHIFT_BROWSE_ROWS, SHIFT_ZOOM_STEPS, back, browse, library_open, open,
-            selected_row,
+            Level, Row, SHIFT_BROWSE_ROWS, SHIFT_ZOOM_STEPS, SHOW_LIBRARY, SHOW_OVERVIEW, back,
+            browse, level, library_open, open, selected_row,
         };
         match (event.control, event.value) {
             (SemanticControl::BrowseDelta, ControlValue::Relative(delta)) => {
@@ -315,11 +317,25 @@ impl Engine {
                 }
                 None => {}
             },
-            (SemanticControl::BrowsePress, ControlValue::Pressed(true)) if library_open() => {
-                open();
+            (SemanticControl::BrowsePress, ControlValue::Pressed(true)) => {
+                if library_open() {
+                    if !open() {
+                        SHOW_OVERVIEW.store(true, Ordering::Relaxed);
+                    }
+                } else {
+                    SHOW_LIBRARY.store(true, Ordering::Relaxed);
+                }
             }
-            (SemanticControl::ShiftBrowsePress, ControlValue::Pressed(true)) if library_open() => {
-                back();
+            (SemanticControl::ShiftBrowsePress, ControlValue::Pressed(true)) => {
+                if library_open() {
+                    back();
+                } else {
+                    // The playlists, unless the Library already shows a level of them.
+                    if level() == Level::All {
+                        back();
+                    }
+                    SHOW_LIBRARY.store(true, Ordering::Relaxed);
+                }
             }
             _ => {}
         }

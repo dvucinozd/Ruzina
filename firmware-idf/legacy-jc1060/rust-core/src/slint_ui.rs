@@ -1215,6 +1215,16 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         for (deck, meter) in meters.iter_mut().enumerate() {
             *meter = deck_view::meter_segments(deck_view::PEAKS.take(deck)).max(*meter - 1);
         }
+        // The browse knob pressed on another page shows the Library.
+        if deck_view::SHOW_LIBRARY.swap(false, core::sync::atomic::Ordering::Relaxed) {
+            ui.set_active_tab(1);
+        }
+        // Pressed on a track in the Library, it goes back to the Overview.
+        if deck_view::SHOW_OVERVIEW.swap(false, core::sync::atomic::Ordering::Relaxed)
+            && ui.get_active_tab() == 1
+        {
+            ui.set_active_tab(0);
+        }
         // The Library page: the browse knob's target, and the list around the selection.
         let tab = ui.get_active_tab();
         let library_open = tab == 1;

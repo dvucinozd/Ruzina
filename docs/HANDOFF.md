@@ -246,13 +246,15 @@
     in a 1 MB PSRAM arena, not IDF's locked heap.
   - s123: an allocation takes about 0.3 µs, not 2.5 µs. Library page 70 → 61 ms,
     Settings 45 → 41 ms, underruns 0/0. Owner: "Radi".
-- **Playlists and covers (2026-11-16, not yet tried on the board):** [playlists in the Library, and each deck's cover](reviews/2026-11-16-playlists-covers.md).
-  - The Library walks the export's playlist tree: the press opens a folder or playlist,
-    Shift + press or BACK goes up, and LOAD loads a track or opens a node.
+- **Playlists and covers (2026-11-16/17):** [playlists in the Library, and each deck's cover](reviews/2026-11-16-playlists-covers.md).
+  - The browse press opens LIBRARY from any page, and Shift + press opens it at the
+    playlists. In LIBRARY the press opens a folder or playlist, and on a track it goes
+    back to the Overview. Shift + press or BACK goes up; LOAD loads a track or opens a node.
   - Each deck shows its track's 56 px cover under CUE, from `a1_m.jpg` or `a1.jpg`.
   - The shared JPEG decoder's largest thumbnail is now 64 px.
-  - s125 is flashed; it waits for an export with playlists and artwork.
-- **On the board:** s125 (app `548d8a2c…`), playlists and covers, not yet run.
+  - s127 on the owner's export (25 tracks, 1 playlist): playlists, covers and the browse
+    press work. Owner: "Radi".
+- **On the board:** s127 (app `474577ad…`), playlists, covers and the browse press.
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
