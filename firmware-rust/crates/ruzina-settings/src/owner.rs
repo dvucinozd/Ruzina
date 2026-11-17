@@ -150,6 +150,13 @@ impl<F: SettingsFlash> SettingsOwner<F> {
         Ok(true)
     }
 
+    /// Erases ahead of time the sector the next settings write will use, so that
+    /// write needs no erase (an erase stalls a board running from flash). Returns
+    /// whether a sector was erased.
+    pub fn erase_settings_spare(&mut self) -> Result<bool, StoreError<F::Error>> {
+        self.store.erase_spare(RecordKind::Settings)
+    }
+
     /// Continuous backlight control: applied at once, persisted later by
     /// [`persist_backlight`](Self::persist_backlight) once the slider is
     /// quiet, so a drag is not one flash write per sample.

@@ -292,6 +292,7 @@ fn refresh_mix() {
         // The Web Remote's requests, the same ways, and its view of the mix.
         #[cfg(feature = "web-remote")]
         crate::web_remote::service(mix);
+        mix.apply_settings();
         mix.tick();
         mix.attach_fx();
         mix.attach_keylocks();

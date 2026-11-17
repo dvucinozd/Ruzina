@@ -505,6 +505,86 @@ pub extern "C" fn ruzina_legacy_hotcues_erase_spares() -> u32 {
     erased
 }
 
+/// Reads the deck's settings at boot, before the screen and USB audio start, and
+/// publishes them; then erases the sector the saves move on to once theirs is full, so
+/// that no save erases (an erase stalls the USB audio fill and the screen). App main
+/// task, before the load task exists.
+///
+/// Returns the screen's brightness in percent (bits 0-7); the record's state in bits
+/// 8-11 (0 none yet, 1 read, 2 from a newer firmware, 3 refused, 4 flash failed); and
+/// bit 12 when a slot was erased.
+#[cfg(feature = "idf-deck-engine")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_settings_load() -> u32 {
+    use ruzina_settings::owner::{RecordStatus, SettingsOwner};
+    let (state, erased) = match SettingsOwner::load(settings_flash::Flash) {
+        Ok((mut owner, report)) => {
+            let state = match report.settings {
+                RecordStatus::Defaults => 0,
+                RecordStatus::Stored { .. } => {
+                    crate::deck_settings::publish_loaded(&owner.settings());
+                    1
+                }
+                RecordStatus::NewerPreserved { .. } => 2,
+                RecordStatus::Rejected => 3,
+            };
+            (state, owner.erase_settings_spare() == Ok(true))
+        }
+        Err(_) => (4, false),
+    };
+    u32::from(crate::deck_settings::current().backlight_percent)
+        | state << 8
+        | u32::from(erased) << 12
+}
+
+/// The deck's settings on their own flash partition, in `ruzina-settings`' two-slot
+/// records.
+#[cfg(feature = "idf-deck-engine")]
+mod settings_flash {
+    use ruzina_settings::{ProductSettings, owner::SettingsOwner, store::SettingsFlash};
+
+    unsafe extern "C" {
+        fn ruzina_bridge_settings_read(offset: u32, out: *mut u8, len: u32) -> i32;
+        fn ruzina_bridge_settings_write(offset: u32, data: *const u8, len: u32) -> i32;
+        fn ruzina_bridge_settings_erase_sector(offset: u32) -> i32;
+    }
+
+    pub(super) struct Flash;
+
+    impl SettingsFlash for Flash {
+        type Error = ();
+
+        fn read(&mut self, offset: u32, output: &mut [u8]) -> Result<(), ()> {
+            // SAFETY: C writes `len` bytes into `output` and keeps no pointer.
+            let status = unsafe {
+                ruzina_bridge_settings_read(offset, output.as_mut_ptr(), output.len() as u32)
+            };
+            if status == 0 { Ok(()) } else { Err(()) }
+        }
+
+        fn write_nor(&mut self, offset: u32, data: &[u8]) -> Result<(), ()> {
+            // SAFETY: C reads `len` bytes from `data` and keeps no pointer.
+            let status =
+                unsafe { ruzina_bridge_settings_write(offset, data.as_ptr(), data.len() as u32) };
+            if status == 0 { Ok(()) } else { Err(()) }
+        }
+
+        fn erase_sector(&mut self, offset: u32) -> Result<(), ()> {
+            // SAFETY: scalar argument; the partition bounds the erase.
+            let status = unsafe { ruzina_bridge_settings_erase_sector(offset) };
+            if status == 0 { Ok(()) } else { Err(()) }
+        }
+    }
+
+    /// Commits `settings`. A record from a newer firmware is kept, and nothing is saved
+    /// over it.
+    pub(super) fn save(settings: &ProductSettings) -> bool {
+        SettingsOwner::load(Flash)
+            .ok()
+            .is_some_and(|(mut owner, _)| owner.apply(*settings).is_ok())
+    }
+}
+
 /// How long USB audio fills must stand still before the journal may erase ahead.
 #[cfg(feature = "idf-deck-engine")]
 const AUDIO_IDLE_US: u64 = 200_000;
@@ -581,6 +661,12 @@ mod load_event {
     /// value is the time it took in microseconds.
     #[cfg(feature = "idf-deck-engine")]
     pub const HOT_CUES_SPARE_ERASED: u32 = 19;
+    /// The deck's settings reached flash; value is the time it took in microseconds.
+    #[cfg(feature = "idf-deck-engine")]
+    pub const SETTINGS_SAVED: u32 = 30;
+    /// Saving the settings failed, and they are not saved again until the next boot.
+    #[cfg(feature = "idf-deck-engine")]
+    pub const SETTINGS_FAILED: u32 = 33;
 }
 
 /// Mount, import `export.pdb` and preflight every catalog track, repeatedly.
@@ -1107,6 +1193,9 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
     // sectors may still hold data.
     #[cfg(feature = "idf-deck-engine")]
     let (mut audio_fills, mut audio_seen_us, mut spares_left) = (u32::MAX, 0u64, true);
+    // Saving the settings failed once; they wait for the next boot.
+    #[cfg(feature = "idf-deck-engine")]
+    let mut settings_failed = false;
     let mut deck_two_first = false;
     let mut detail_deferred = false;
     let mut last_turn_us = 0u64;
@@ -1167,6 +1256,28 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
                     report(load_event::HOT_CUES_FAILED, 2);
                 }
                 None => {}
+            }
+        }
+        // The settings wait the same way, once a change has been quiet a moment. A save
+        // appends its record in a sector with room (64 records each), so it erases
+        // nothing; the other sector was erased at boot for when this one fills.
+        #[cfg(feature = "idf-deck-engine")]
+        if !settings_failed
+            && !playing.into_iter().any(|p| p)
+            && let Some(settings) = crate::deck_settings::take_owed((now / 1_000) as u32)
+        {
+            let saved = settings_flash::save(&settings);
+            let took = VolumeFiles {
+                volume: &mut *volume,
+                current,
+            }
+            .now_us()
+            .saturating_sub(now);
+            if saved {
+                report(load_event::SETTINGS_SAVED, took as u32);
+            } else {
+                settings_failed = true;
+                report(load_event::SETTINGS_FAILED, 0);
             }
         }
         // Erasing a flash sector stalls everything running from flash and PSRAM for

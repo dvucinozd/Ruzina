@@ -241,6 +241,27 @@ impl Engine {
         }
     }
 
+    /// The deck's settings: LOAD LOCK, and each deck's jog as VINYL or CDJ. Changing a
+    /// deck's jog lets go of a scratch the old mode held.
+    pub(crate) fn apply_settings(&mut self, settings: &ruzina_settings::ProductSettings) {
+        self.deck.set_load_lock(settings.load_lock);
+        for (deck, mode) in DECKS.into_iter().zip(settings.jog_modes) {
+            let action = match mode {
+                ruzina_settings::JogMode::Vinyl => DeckExtAction::JogVinyl,
+                ruzina_settings::JogMode::Cdj => DeckExtAction::JogCdj,
+            };
+            let effects = self.deck.handle_control(ControlEvent {
+                deck: Some(deck),
+                control: SemanticControl::DeckExtAction,
+                value: ControlValue::DeckExtAction(DeckExtActionValue {
+                    action,
+                    pressed: true,
+                }),
+            });
+            self.apply(effects);
+        }
+    }
+
     /// One controller event through the deck engine.
     pub(crate) fn control(&mut self, event: &ControlEvent) {
         if !self.connected {

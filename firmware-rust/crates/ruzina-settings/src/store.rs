@@ -1,7 +1,9 @@
-//! A/B record slots on NOR flash. Each record kind owns two erase sectors;
-//! a write erases the slot not holding the newest committed record, writes
-//! header and payload, and only then the commit word. A torn write or a
-//! power cut therefore leaves the previous committed record authoritative.
+//! Records on NOR flash. Each record kind owns two erase sectors, and a write appends its
+//! record after the newest one: header and payload, and only then the commit word. A torn
+//! write or a power cut therefore leaves the previous committed record authoritative.
+//!
+//! A sector holds many records, so writes seldom erase: only a full sector moves on to
+//! the other one, which [`RecordStore::erase_spare`] can erase ahead of time.
 
 use crate::crc32;
 
@@ -14,6 +16,8 @@ const HEADER_BYTES: usize = 24;
 const MAGIC: u32 = 0x3154_5350; // "PST1"
 const COMMIT_OFFSET: usize = 20;
 const COMMIT: u32 = 0x5e77_1ed0;
+/// Records start on this alignment within their sector.
+const RECORD_ALIGN: u32 = 32;
 
 /// Partition-relative NOR access (bits only clear between erases).
 pub trait SettingsFlash {
@@ -95,15 +99,28 @@ pub struct LoadOutcome {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Slot {
+enum Entry {
+    /// Erased: nothing was written here, and the sector's records end.
     Empty,
+    /// Written without its commit word: a cut write. What follows cannot be trusted.
     Torn,
-    Corrupt,
+    /// Committed but failing its checks; `len` when the header still gives one.
+    Corrupt { len: Option<usize> },
     Valid {
         version: u8,
         len: usize,
         sequence: u32,
     },
+}
+
+/// What one sector holds: its newest valid record, and where the next record goes.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Scan {
+    /// Offset, format, length and sequence.
+    newest: Option<(u32, u8, usize, u32)>,
+    /// The first free offset; `None` once a cut write or damage leaves no trusted end.
+    end: Option<u32>,
+    corrupt: bool,
 }
 
 pub struct RecordStore<F> {
@@ -131,35 +148,22 @@ impl<F: SettingsFlash> RecordStore<F> {
         supported: u8,
         payload: &mut [u8],
     ) -> Result<LoadOutcome, StoreError<F::Error>> {
-        let slots = [self.slot(kind, 0)?, self.slot(kind, 1)?];
-        let corrupt_slot = slots.contains(&Slot::Corrupt);
-        let newest = (0..2)
-            .filter_map(|side| match slots[side] {
-                Slot::Valid { sequence, .. } => Some((side, sequence)),
-                _ => None,
-            })
-            .reduce(|a, b| if newer(b.1, a.1) { b } else { a });
-        let Some((side, _)) = newest else {
+        let scans = [self.scan(kind, 0)?, self.scan(kind, 1)?];
+        let corrupt_slot = scans.iter().any(|scan| scan.corrupt);
+        let Some((side, _)) = newest(&scans) else {
             return Ok(LoadOutcome {
                 loaded: Loaded::Missing,
                 corrupt_slot,
             });
         };
-        let Slot::Valid {
-            version,
-            len,
-            sequence,
-        } = slots[side]
-        else {
-            unreachable!("selected a valid slot");
-        };
+        let (offset, version, len, sequence) = scans[side].newest.expect("newest side");
         let loaded = if version > supported {
             Loaded::Newer { version, sequence }
         } else if len > payload.len() {
             return Err(StoreError::PayloadTooLarge);
         } else {
             self.read(
-                slot_base(kind, side) + HEADER_BYTES as u32,
+                sector_base(kind, side) + offset + HEADER_BYTES as u32,
                 &mut payload[..len],
             )?;
             Loaded::Record {
@@ -177,6 +181,10 @@ impl<F: SettingsFlash> RecordStore<F> {
     /// Commits `payload` as the next record of `kind` and returns its
     /// sequence. The newest committed record stays intact until the commit
     /// word of the new one is written.
+    ///
+    /// The record goes after the newest one, in the same sector, while it fits there;
+    /// only a full (or damaged) sector moves on to the other, which is erased then
+    /// unless [`erase_spare`](Self::erase_spare) already did.
     pub fn write(
         &mut self,
         kind: RecordKind,
@@ -186,19 +194,35 @@ impl<F: SettingsFlash> RecordStore<F> {
         if payload.len() > RECORD_MAX_PAYLOAD {
             return Err(StoreError::PayloadTooLarge);
         }
-        let slots = [self.slot(kind, 0)?, self.slot(kind, 1)?];
-        let newest = (0..2)
-            .filter_map(|side| match slots[side] {
-                Slot::Valid { sequence, .. } => Some((side, sequence)),
-                _ => None,
-            })
-            .reduce(|a, b| if newer(b.1, a.1) { b } else { a });
-        let (side, sequence) = match newest {
-            Some((side, sequence)) => (side ^ 1, sequence.wrapping_add(1)),
+        let size = record_size(payload.len());
+        let scans = [self.scan(kind, 0)?, self.scan(kind, 1)?];
+        let (current, sequence) = match newest(&scans) {
+            Some((side, sequence)) => (side, sequence.wrapping_add(1)),
             None => (0, 1),
         };
-        let base = slot_base(kind, side);
-        self.flash.erase_sector(base).map_err(StoreError::Flash)?;
+        let mut at = None;
+        if let Some(end) = scans[current].end
+            && end + size <= SETTINGS_SECTOR_SIZE
+            && self.erased(sector_base(kind, current) + end, size)?
+        {
+            at = Some(sector_base(kind, current) + end);
+        }
+        let at = match at {
+            Some(at) => at,
+            None => {
+                // Move on to the other sector; with no record yet, start this one over.
+                let side = if newest(&scans).is_some() {
+                    current ^ 1
+                } else {
+                    current
+                };
+                let base = sector_base(kind, side);
+                if !self.erased(base, SETTINGS_SECTOR_SIZE)? {
+                    self.flash.erase_sector(base).map_err(StoreError::Flash)?;
+                }
+                base
+            }
+        };
         let mut header = [0u8; COMMIT_OFFSET];
         header[0..4].copy_from_slice(&MAGIC.to_le_bytes());
         header[4] = kind as u8;
@@ -208,46 +232,124 @@ impl<F: SettingsFlash> RecordStore<F> {
         let crc = crc32(&[&header[..12], payload]);
         header[12..16].copy_from_slice(&crc.to_le_bytes());
         self.flash
-            .write_nor(base, &header)
+            .write_nor(at, &header)
             .map_err(StoreError::Flash)?;
         self.flash
-            .write_nor(base + HEADER_BYTES as u32, payload)
+            .write_nor(at + HEADER_BYTES as u32, payload)
             .map_err(StoreError::Flash)?;
         self.flash
-            .write_nor(base + COMMIT_OFFSET as u32, &COMMIT.to_le_bytes())
+            .write_nor(at + COMMIT_OFFSET as u32, &COMMIT.to_le_bytes())
             .map_err(StoreError::Flash)?;
         Ok(sequence)
     }
 
-    fn slot(&mut self, kind: RecordKind, side: usize) -> Result<Slot, StoreError<F::Error>> {
-        let base = slot_base(kind, side);
+    /// Erases, ahead of time, the sector the next writes of `kind` will move on to once
+    /// the current one is full, so that no write erases (an erase stalls a board running
+    /// from flash). Returns whether a sector was erased. The sector holding the newest
+    /// committed record is never touched.
+    pub fn erase_spare(&mut self, kind: RecordKind) -> Result<bool, StoreError<F::Error>> {
+        let scans = [self.scan(kind, 0)?, self.scan(kind, 1)?];
+        let Some((current, _)) = newest(&scans) else {
+            return Ok(false);
+        };
+        let base = sector_base(kind, current ^ 1);
+        if self.erased(base, SETTINGS_SECTOR_SIZE)? {
+            return Ok(false);
+        }
+        self.flash.erase_sector(base).map_err(StoreError::Flash)?;
+        Ok(true)
+    }
+
+    /// Walks one sector's records from its start.
+    fn scan(&mut self, kind: RecordKind, side: usize) -> Result<Scan, StoreError<F::Error>> {
+        let base = sector_base(kind, side);
+        let mut scan = Scan {
+            newest: None,
+            end: None,
+            corrupt: false,
+        };
+        let mut at = 0;
+        while at + HEADER_BYTES as u32 <= SETTINGS_SECTOR_SIZE {
+            match self.entry(kind, base + at)? {
+                Entry::Empty => {
+                    scan.end = Some(at);
+                    break;
+                }
+                // A cut write is no damage: the records before it stand.
+                Entry::Torn => break,
+                Entry::Corrupt { len: None } => {
+                    scan.corrupt = true;
+                    break;
+                }
+                Entry::Corrupt { len: Some(len) } => {
+                    scan.corrupt = true;
+                    at += record_size(len);
+                }
+                Entry::Valid {
+                    version,
+                    len,
+                    sequence,
+                } => {
+                    if scan
+                        .newest
+                        .is_none_or(|(_, _, _, seen)| newer(sequence, seen))
+                    {
+                        scan.newest = Some((at, version, len, sequence));
+                    }
+                    at += record_size(len);
+                }
+            }
+        }
+        Ok(scan)
+    }
+
+    fn entry(&mut self, kind: RecordKind, at: u32) -> Result<Entry, StoreError<F::Error>> {
         let mut header = [0u8; HEADER_BYTES];
-        self.read(base, &mut header)?;
+        self.read(at, &mut header)?;
         if header.iter().all(|byte| *byte == 0xff) {
-            return Ok(Slot::Empty);
+            return Ok(Entry::Empty);
         }
         if header[COMMIT_OFFSET..] != COMMIT.to_le_bytes() {
-            return Ok(Slot::Torn);
+            return Ok(Entry::Torn);
         }
         let len = usize::from(u16::from_le_bytes([header[6], header[7]]));
+        let fits = len <= RECORD_MAX_PAYLOAD
+            && (at % SETTINGS_SECTOR_SIZE) + record_size(len) <= SETTINGS_SECTOR_SIZE;
         if header[0..4] != MAGIC.to_le_bytes()
             || header[4] != kind as u8
             || header[16..20].iter().any(|byte| *byte != 0)
-            || len > RECORD_MAX_PAYLOAD
+            || !fits
         {
-            return Ok(Slot::Corrupt);
+            return Ok(Entry::Corrupt {
+                len: fits.then_some(len),
+            });
         }
         let mut payload = [0u8; RECORD_MAX_PAYLOAD];
-        self.read(base + HEADER_BYTES as u32, &mut payload[..len])?;
+        self.read(at + HEADER_BYTES as u32, &mut payload[..len])?;
         let stored = u32::from_le_bytes(header[12..16].try_into().expect("four bytes"));
         if stored != crc32(&[&header[..12], &payload[..len]]) {
-            return Ok(Slot::Corrupt);
+            return Ok(Entry::Corrupt { len: Some(len) });
         }
-        Ok(Slot::Valid {
+        Ok(Entry::Valid {
             version: header[5],
             len,
             sequence: u32::from_le_bytes(header[8..12].try_into().expect("four bytes")),
         })
+    }
+
+    /// Whether `len` bytes at `at` read erased, checked 256 bytes at a time.
+    fn erased(&mut self, at: u32, len: u32) -> Result<bool, StoreError<F::Error>> {
+        let mut chunk = [0u8; 256];
+        let mut offset = 0;
+        while offset < len {
+            let take = (len - offset).min(chunk.len() as u32) as usize;
+            self.read(at + offset, &mut chunk[..take])?;
+            if chunk[..take].iter().any(|byte| *byte != 0xff) {
+                return Ok(false);
+            }
+            offset += take as u32;
+        }
+        Ok(true)
     }
 
     fn read(&mut self, offset: u32, output: &mut [u8]) -> Result<(), StoreError<F::Error>> {
@@ -255,7 +357,23 @@ impl<F: SettingsFlash> RecordStore<F> {
     }
 }
 
-const fn slot_base(kind: RecordKind, side: usize) -> u32 {
+/// The side holding the newest valid record of the two sectors, and its sequence.
+fn newest(scans: &[Scan; 2]) -> Option<(usize, u32)> {
+    (0..2)
+        .filter_map(|side| {
+            scans[side]
+                .newest
+                .map(|(_, _, _, sequence)| (side, sequence))
+        })
+        .reduce(|a, b| if newer(b.1, a.1) { b } else { a })
+}
+
+/// A record's room in its sector: header and payload, rounded up to [`RECORD_ALIGN`].
+const fn record_size(len: usize) -> u32 {
+    (HEADER_BYTES as u32 + len as u32).div_ceil(RECORD_ALIGN) * RECORD_ALIGN
+}
+
+const fn sector_base(kind: RecordKind, side: usize) -> u32 {
     kind.base() + side as u32 * SETTINGS_SECTOR_SIZE
 }
 
@@ -282,6 +400,8 @@ pub(crate) mod fake {
     pub struct FakeFlash {
         pub bytes: Vec<u8>,
         pub budget: Option<usize>,
+        /// Sectors erased so far.
+        pub erases: usize,
     }
 
     impl FakeFlash {
@@ -289,6 +409,7 @@ pub(crate) mod fake {
             Self {
                 bytes: vec![0xff; SETTINGS_PARTITION_SIZE as usize],
                 budget: None,
+                erases: 0,
             }
         }
 
@@ -341,6 +462,7 @@ pub(crate) mod fake {
                 return Err(FakeError::OutOfBounds);
             }
             self.spend(1)?;
+            self.erases += 1;
             let start = offset as usize;
             self.bytes
                 .get_mut(start..start + SETTINGS_SECTOR_SIZE as usize)
@@ -362,7 +484,7 @@ mod tests {
     }
 
     #[test]
-    fn writes_alternate_slots_and_the_newest_commit_wins() {
+    fn records_append_in_a_sector_and_the_newest_commit_wins() {
         let mut store = RecordStore::new(FakeFlash::new());
         assert_eq!(
             load(&mut store, RecordKind::Settings).0.loaded,
@@ -384,6 +506,10 @@ mod tests {
             );
             assert_eq!(payload, [value; 8]);
         }
+        // One after another in the first sector, 32 bytes each, with no erase.
+        assert_eq!(record_size(8), 32);
+        assert_eq!(store.flash_mut().bytes[4 * 32 + HEADER_BYTES], 5);
+        assert_eq!(store.flash_mut().erases, 0);
         // Kinds are independent.
         assert_eq!(
             load(&mut store, RecordKind::Network).0.loaded,
@@ -392,39 +518,123 @@ mod tests {
     }
 
     #[test]
+    fn a_full_sector_moves_on_and_the_spare_is_erased_ahead() {
+        let mut store = RecordStore::new(FakeFlash::new());
+        let per_sector = SETTINGS_SECTOR_SIZE / record_size(8);
+        let mut sequence = 0u32;
+        let mut write = |store: &mut RecordStore<FakeFlash>| {
+            sequence += 1;
+            assert_eq!(
+                store.write(RecordKind::Settings, 1, &[sequence as u8; 8]),
+                Ok(sequence)
+            );
+        };
+        // A whole sector, then on into the blank second one: no erase.
+        for _ in 0..=per_sector {
+            write(&mut store);
+        }
+        assert_eq!(store.flash_mut().erases, 0);
+        assert_eq!(
+            store.flash_mut().bytes[SETTINGS_SECTOR_SIZE as usize + HEADER_BYTES],
+            (per_sector + 1) as u8
+        );
+        // The first sector holds only older records now; erasing it ahead spares the
+        // write that next moves back to it its erase.
+        assert_eq!(store.erase_spare(RecordKind::Settings), Ok(true));
+        assert_eq!(store.erase_spare(RecordKind::Settings), Ok(false));
+        assert_eq!(store.flash_mut().erases, 1);
+        assert_eq!(
+            load(&mut store, RecordKind::Settings).1,
+            [(per_sector + 1) as u8; 8]
+        );
+        for _ in 0..per_sector {
+            write(&mut store);
+        }
+        assert_eq!(store.flash_mut().erases, 1);
+        // Without an erase ahead, moving back to the second sector erases it.
+        for _ in 0..per_sector {
+            write(&mut store);
+        }
+        assert_eq!(store.flash_mut().erases, 2);
+        assert_eq!(
+            load(&mut store, RecordKind::Settings).1,
+            [sequence as u8; 8]
+        );
+        // A blank store has no spare to erase; the other kind is untouched.
+        let mut blank = RecordStore::new(FakeFlash::new());
+        assert_eq!(blank.erase_spare(RecordKind::Settings), Ok(false));
+        assert_eq!(
+            load(&mut store, RecordKind::Network).0.loaded,
+            Loaded::Missing
+        );
+    }
+
+    #[test]
     fn a_power_cut_at_any_byte_keeps_the_previous_record() {
-        let mut probe = RecordStore::new(FakeFlash::new());
-        probe.write(RecordKind::Settings, 1, &[1; 8]).unwrap();
-        // Erase (1) + header (20) + payload (8) + commit (4).
-        for cut in 0..33 {
-            let mut store = RecordStore::new(FakeFlash::new());
-            store.write(RecordKind::Settings, 1, &[1; 8]).unwrap();
-            store.write(RecordKind::Settings, 1, &[2; 8]).unwrap();
-            store.flash_mut().budget = Some(cut);
-            assert!(store.write(RecordKind::Settings, 1, &[3; 8]).is_err());
-            let mut flash = store.into_flash();
-            flash.budget = None;
-            let mut rebooted = RecordStore::new(flash);
-            let (outcome, payload) = load(&mut rebooted, RecordKind::Settings);
-            assert_eq!(payload, [2; 8], "cut after {cut} bytes");
-            assert!(!outcome.corrupt_slot);
-            // The next write succeeds and supersedes it.
-            rebooted.write(RecordKind::Settings, 1, &[4; 8]).unwrap();
-            assert_eq!(load(&mut rebooted, RecordKind::Settings).1, [4; 8]);
+        // Header (20) + payload (8) + commit (4), appended with no erase; and the same
+        // for a write that moves on to a used sector, which erases first (1).
+        for (before, bytes) in [(2usize, 32usize), (2 * 128, 33)] {
+            for cut in 0..bytes {
+                let mut store = RecordStore::new(FakeFlash::new());
+                for value in 1..=before {
+                    store
+                        .write(RecordKind::Settings, 1, &[value as u8; 8])
+                        .unwrap();
+                }
+                store.flash_mut().budget = Some(cut);
+                assert!(store.write(RecordKind::Settings, 1, &[0xaa; 8]).is_err());
+                let mut flash = store.into_flash();
+                flash.budget = None;
+                let mut rebooted = RecordStore::new(flash);
+                let (outcome, payload) = load(&mut rebooted, RecordKind::Settings);
+                assert_eq!(payload, [before as u8; 8], "cut after {cut} bytes");
+                assert!(!outcome.corrupt_slot);
+                // The next write succeeds and supersedes it.
+                rebooted.write(RecordKind::Settings, 1, &[0xbb; 8]).unwrap();
+                assert_eq!(load(&mut rebooted, RecordKind::Settings).1, [0xbb; 8]);
+                // And so does the one after it.
+                rebooted.write(RecordKind::Settings, 1, &[0xcc; 8]).unwrap();
+                assert_eq!(load(&mut rebooted, RecordKind::Settings).1, [0xcc; 8]);
+            }
         }
     }
 
     #[test]
-    fn corrupt_newer_slot_falls_back_and_newer_formats_are_not_decoded() {
+    fn records_written_by_the_two_slot_store_still_load_and_append() {
+        // The earlier store wrote each record at the start of a sector, erasing it first:
+        // records 1 and 3 in the first sector (3 over 1), 2 in the second.
+        let mut store = RecordStore::new(FakeFlash::new());
+        for value in 1..=3 {
+            store.write(RecordKind::Settings, 1, &[value; 8]).unwrap();
+        }
+        let mut flash = store.into_flash();
+        let (mut second, mut third) = ([0u8; 32], [0u8; 32]);
+        second.copy_from_slice(&flash.bytes[32..64]);
+        third.copy_from_slice(&flash.bytes[64..96]);
+        flash.bytes[..SETTINGS_SECTOR_SIZE as usize].fill(0xff);
+        flash.bytes[..32].copy_from_slice(&third);
+        flash.bytes[SETTINGS_SECTOR_SIZE as usize..][..32].copy_from_slice(&second);
+        let mut store = RecordStore::new(flash);
+        assert_eq!(load(&mut store, RecordKind::Settings).1, [3; 8]);
+        // The next goes after record 3, in its sector, with no erase.
+        store.write(RecordKind::Settings, 1, &[4; 8]).unwrap();
+        assert_eq!(store.flash_mut().bytes[32 + HEADER_BYTES], 4);
+        assert_eq!(store.flash_mut().erases, 0);
+        assert_eq!(load(&mut store, RecordKind::Settings).1, [4; 8]);
+    }
+
+    #[test]
+    fn corrupt_newer_record_falls_back_and_newer_formats_are_not_decoded() {
         let mut store = RecordStore::new(FakeFlash::new());
         store.write(RecordKind::Settings, 1, &[1; 8]).unwrap();
-        store.write(RecordKind::Settings, 1, &[2; 8]).unwrap(); // slot B
-        let payload_byte = (SETTINGS_SECTOR_SIZE as usize) + HEADER_BYTES;
+        store.write(RecordKind::Settings, 1, &[2; 8]).unwrap(); // after record 1
+        let payload_byte = record_size(8) as usize + HEADER_BYTES;
         store.flash_mut().bytes[payload_byte] ^= 0x40;
         let (outcome, payload) = load(&mut store, RecordKind::Settings);
         assert!(outcome.corrupt_slot);
         assert_eq!(payload, [1; 8]);
 
+        // A damaged record is stepped over; the next goes after it.
         store.write(RecordKind::Settings, 2, &[9; 8]).unwrap();
         let (outcome, _) = load(&mut store, RecordKind::Settings);
         assert_eq!(
@@ -438,6 +648,20 @@ mod tests {
             store.write(RecordKind::Settings, 1, &[0; RECORD_MAX_PAYLOAD + 1]),
             Err(StoreError::PayloadTooLarge)
         );
+        // A header that gives no length ends the sector's records; writes move on.
+        let mut store = RecordStore::new(FakeFlash::new());
+        store.write(RecordKind::Settings, 1, &[1; 8]).unwrap();
+        store.write(RecordKind::Settings, 1, &[2; 8]).unwrap();
+        store.flash_mut().bytes[record_size(8) as usize + 7] = 0xfe; // length 0xfe08
+        let (outcome, payload) = load(&mut store, RecordKind::Settings);
+        assert!(outcome.corrupt_slot);
+        assert_eq!(payload, [1; 8]);
+        store.write(RecordKind::Settings, 1, &[3; 8]).unwrap();
+        assert_eq!(
+            store.flash_mut().bytes[SETTINGS_SECTOR_SIZE as usize + HEADER_BYTES],
+            3
+        );
+        assert_eq!(load(&mut store, RecordKind::Settings).1, [3; 8]);
     }
 
     #[test]
