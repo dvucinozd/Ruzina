@@ -103,6 +103,16 @@ void app_main(void)
     const int64_t spares_start = esp_timer_get_time();
     const uint32_t spares = ruzina_legacy_hotcues_erase_spares();
     printf("hotcue_spares erased=%" PRIu32 " us=%" PRId64 "\n", spares, esp_timer_get_time() - spares_start);
+    /* The deck's settings, read the same way; the screen takes their brightness. */
+    extern uint32_t ruzina_legacy_settings_load(void);
+    const int64_t settings_start = esp_timer_get_time();
+    const uint32_t settings = ruzina_legacy_settings_load();
+    printf("settings state=%" PRIu32 " backlight_percent=%" PRIu32 " spare_erased=%" PRIu32 " us=%" PRId64 "\n",
+           (settings >> 8) & 0xf, settings & 0xff, (settings >> 12) & 1, esp_timer_get_time() - settings_start);
+#if CONFIG_RUZINA_DISPLAY_TOUCH || CONFIG_RUZINA_LOAD_DISPLAY
+    extern void ruzina_display_backlight(uint32_t percent);
+    ruzina_display_backlight(settings & 0xff);
+#endif
     fflush(stdout);
 #endif
 #if CONFIG_RUZINA_LOAD_DISPLAY
@@ -150,5 +160,10 @@ void app_main(void)
         printf("heartbeat=%" PRIu32 " uptime_us=%" PRId64 "\n",
                ++heartbeat, esp_timer_get_time());
         fflush(stdout);
+#if CONFIG_RUZINA_DECK_ENGINE
+        /* The deck's settings are saved here, on this internal-RAM stack, card or not. */
+        extern void ruzina_legacy_settings_service(void);
+        ruzina_legacy_settings_service();
+#endif
     }
 }

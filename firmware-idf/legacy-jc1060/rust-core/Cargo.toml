@@ -33,6 +33,7 @@ ruzina-audio-runtime = { path = "../../../firmware-rust/crates/ruzina-audio-runt
 ruzina-audio-scratch = { path = "../../../firmware-rust/crates/ruzina-audio-scratch", optional = true }
 ruzina-mixer = { path = "../../../firmware-rust/crates/ruzina-mixer", optional = true }
 ruzina-hot-cues = { path = "../../../firmware-rust/crates/ruzina-hot-cues", optional = true }
+ruzina-settings = { path = "../../../firmware-rust/crates/ruzina-settings", optional = true }
 ruzina-core = { path = "../../../firmware-rust/crates/ruzina-core", optional = true }
 ruzina-web = { path = "../../../firmware-rust/crates/ruzina-web", optional = true }
 ruzina-track-analysis = { path = "../../../firmware-rust/crates/ruzina-track-analysis", optional = true, features = ["owned"] }
@@ -81,6 +82,7 @@ idf-deck-mix = ["idf-deck-play", "deck-mix"]
 deck-engine = [
     "deck-mix",
     "dep:ruzina-hot-cues",
+    "dep:ruzina-settings",
     "dep:ruzina-core",
     "dep:ruzina-track-analysis",
 ]

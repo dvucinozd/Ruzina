@@ -226,7 +226,23 @@ fn c_text(bytes: &[u8]) -> &str {
     core::str::from_utf8(&bytes[..end]).unwrap_or("?")
 }
 
-/// The Settings page's two columns: the decks, then the mix and the firmware.
+/// The Settings page's choices, as the settings in force have them.
+fn show_setting_values(ui: &Overview) {
+    use ruzina_settings::{JogMode, MasterTrim};
+    let settings = crate::deck_settings::current();
+    ui.set_setting_load_lock(settings.load_lock);
+    ui.set_setting_jog_cdj_1(settings.jog_modes[0] == JogMode::Cdj);
+    ui.set_setting_jog_cdj_2(settings.jog_modes[1] == JogMode::Cdj);
+    ui.set_setting_backlight(i32::from(settings.backlight_percent));
+    ui.set_setting_trim(match settings.master_trim {
+        MasterTrim::ZeroDb => 0,
+        MasterTrim::Minus3Db => 1,
+        MasterTrim::Minus6Db => 2,
+    });
+}
+
+/// The Settings page's two columns of figures: the decks, then the mix and the
+/// firmware. The settings themselves sit below the decks.
 fn show_settings(ui: &Overview, uptime_ms: u64) {
     use core::sync::atomic::Ordering::Relaxed;
     let stats: [u32; 8] = core::array::from_fn(|i| deck_view::STATS[i].load(Relaxed));
@@ -238,41 +254,29 @@ fn show_settings(ui: &Overview, uptime_ms: u64) {
         "Tracks",
         alloc::format!("{}", deck_view::library_len())
     )];
+    // Each deck on one line: its source rate, the audio buffered, and its underruns.
     for deck in 0..2 {
         let rate = stats[5 + deck];
         let buffered = stats[3 + deck];
         left.push(line(
-            if deck == 0 {
-                "Deck 1 source"
-            } else {
-                "Deck 2 source"
-            },
+            if deck == 0 { "Deck 1" } else { "Deck 2" },
             if rate == 0 {
                 "no track".into()
             } else {
-                alloc::format!("{}.{} kHz", rate / 1_000, rate % 1_000 / 100)
+                let buffered = match buffered.checked_mul(100).and_then(|b| b.checked_div(rate)) {
+                    Some(centiseconds) => {
+                        alloc::format!("{}.{:02} s", centiseconds / 100, centiseconds % 100)
+                    }
+                    None => "-".into(),
+                };
+                alloc::format!(
+                    "{}.{} kHz, {}, {} underruns",
+                    rate / 1_000,
+                    rate % 1_000 / 100,
+                    buffered,
+                    stats[1 + deck]
+                )
             },
-        ));
-        left.push(line(
-            if deck == 0 {
-                "Deck 1 buffered"
-            } else {
-                "Deck 2 buffered"
-            },
-            match buffered.checked_mul(100).and_then(|b| b.checked_div(rate)) {
-                Some(centiseconds) => {
-                    alloc::format!("{}.{:02} s", centiseconds / 100, centiseconds % 100)
-                }
-                None => "-".into(),
-            },
-        ));
-        left.push(line(
-            if deck == 0 {
-                "Deck 1 underruns"
-            } else {
-                "Deck 2 underruns"
-            },
-            alloc::format!("{}", stats[1 + deck]),
         ));
     }
     // SAFETY: IDF returns its static app description, valid for the program's life.
@@ -1145,6 +1149,45 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let control = deck_view::TouchControl::HotCue { pad, delete, down };
         deck_view::TOUCH.push(deck as usize & 1, control);
     });
+    // A setting tapped: in force at once (the USB client task applies it on its next
+    // turn, the brightness here), saved by the load task once it has been quiet.
+    let weak = ui.as_weak();
+    ui.on_setting(move |kind, value| {
+        use ruzina_settings::{JogMode, MasterTrim};
+        let jog = if value == 1 {
+            JogMode::Cdj
+        } else {
+            JogMode::Vinyl
+        };
+        let before = crate::deck_settings::current();
+        let settings = crate::deck_settings::change((now_us() / 1_000) as u32, |s| match kind {
+            0 => s.load_lock = value == 1,
+            1 => s.jog_modes[0] = jog,
+            2 => s.jog_modes[1] = jog,
+            3 => {
+                s.backlight_percent =
+                    crate::deck_settings::step_backlight(s.backlight_percent, value == 1)
+            }
+            _ => {
+                s.master_trim = match value {
+                    1 => MasterTrim::Minus3Db,
+                    2 => MasterTrim::Minus6Db,
+                    _ => MasterTrim::ZeroDb,
+                }
+            }
+        });
+        if settings.backlight_percent != before.backlight_percent {
+            unsafe extern "C" {
+                fn ruzina_display_backlight(percent: u32);
+            }
+            // SAFETY: a scalar; the C side clamps it and drives the backlight PWM.
+            unsafe { ruzina_display_backlight(u32::from(settings.backlight_percent)) };
+        }
+        if let Some(ui) = weak.upgrade() {
+            show_setting_values(&ui);
+        }
+    });
+    show_setting_values(&ui);
     let mut library = Box::new(Library {
         rows: alloc::vec::Vec::new(),
     });

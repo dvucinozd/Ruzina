@@ -96,6 +96,19 @@ static esp_err_t brightness(unsigned duty)
     return err == ESP_OK ? ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0) : err;
 }
 
+/* The deck's brightness setting, 10 to 100 percent of the 10-bit PWM. Before the panel
+ * is up it is kept for the panel's start, so a failed panel stays dark. */
+static bool lit;
+static uint32_t backlight_percent = 25;
+static unsigned backlight_duty(void) { return backlight_percent * 1023u / 100u; }
+void ruzina_display_backlight(uint32_t percent)
+{
+    if (percent < 10) percent = 10;
+    if (percent > 100) percent = 100;
+    backlight_percent = percent;
+    if (lit) brightness(backlight_duty());
+}
+
 /* Brings up the New_Panel with one driver-owned RGB565 framebuffer. `fill`
  * paints it before scanout starts; the backlight stays off until then. On
  * failure the backlight is off and handles are retained until app restart. */
@@ -155,8 +168,9 @@ esp_err_t ruzina_panel_start(void (*fill)(uint16_t *frame), uint16_t **frame_out
     fill(frame);
     TRY(esp_cache_msync(frame, 1024*600*2, ESP_CACHE_MSYNC_FLAG_DIR_C2M));
     TRY(esp_lcd_panel_init(panel));
-    TRY(brightness(256));
-    printf("S6_DISPLAY_INIT commands=60 lanes=2 mbps=750 pixel_mhz=52 size=1024x600 format=RGB565 framebuffer_bytes=1228800 backlight_percent=25\n");
+    TRY(brightness(backlight_duty()));
+    lit = true;
+    printf("S6_DISPLAY_INIT commands=60 lanes=2 mbps=750 pixel_mhz=52 size=1024x600 format=RGB565 framebuffer_bytes=1228800 backlight_percent=%" PRIu32 "\n", backlight_percent);
     *frame_out = frame;
     return ESP_OK;
 fail:

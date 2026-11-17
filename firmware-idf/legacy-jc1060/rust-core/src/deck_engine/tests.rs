@@ -1191,6 +1191,73 @@ fn the_jog_scratches_a_playing_and_a_paused_deck_and_release_plays_on() {
     assert_eq!(run(&mut mix, 3), 0);
 }
 
+#[test]
+fn the_settings_reach_the_engine_and_main() {
+    use ruzina_settings::{JogMode, MasterTrim};
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    crate::deck_settings::reset();
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    let more = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 30_000];
+    assert!(RINGS[0].push(&more));
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 10,
+            bpm_x100: 12_000,
+            track_id: [10; 16],
+        },
+    );
+    mix.apply_settings();
+    run(&mut mix, 3);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 300);
+    let loud = run(&mut mix, 3);
+    assert!(loud > 500, "{loud}");
+    // Out of the box: LOAD LOCK keeps a playing deck's track.
+    assert!(!mix.engine().load_allowed(DeckId::One));
+    crate::deck_settings::change(0, |s| {
+        s.load_lock = false;
+        s.jog_modes[0] = JogMode::Cdj;
+        s.master_trim = MasterTrim::Minus6Db;
+    });
+    mix.apply_settings();
+    assert!(mix.engine().load_allowed(DeckId::One));
+    assert_eq!(deck(&mut mix).jog_mode, ruzina_deck::JogMode::Cdj);
+    assert_eq!(
+        mix.engine().deck(DeckId::Two).jog_mode,
+        ruzina_deck::JogMode::Vinyl
+    );
+    // MAIN is 6 dB lower.
+    run(&mut mix, 20);
+    let quiet = run(&mut mix, 3);
+    assert!(
+        (i32::from(quiet) * 2 - i32::from(loud)).abs() < i32::from(loud) / 20,
+        "{quiet} against {loud}"
+    );
+    // CDJ: touching the platter does not hold the playing deck.
+    let before = deck(&mut mix).position_ms;
+    press(&mut mix, SemanticControl::JogTouch, true);
+    run(&mut mix, 100);
+    assert!(deck(&mut mix).position_ms > before + 50);
+    assert_ne!(run(&mut mix, 3), 0);
+    press(&mut mix, SemanticControl::JogTouch, false);
+    // Back to VINYL: the touch holds it again.
+    crate::deck_settings::change(0, |s| s.jog_modes[0] = JogMode::Vinyl);
+    mix.apply_settings();
+    press(&mut mix, SemanticControl::JogTouch, true);
+    run(&mut mix, 10);
+    assert_eq!(run(&mut mix, 3), 0);
+    press(&mut mix, SemanticControl::JogTouch, false);
+    press(&mut mix, SemanticControl::Play, true);
+    crate::deck_settings::reset();
+}
+
 /// Gives the mix's render graph its effect memory.
 fn attach_fx(mix: &mut Mix) {
     use ruzina_audio_runtime::fx::FX_TOTAL_STORAGE_SAMPLES;

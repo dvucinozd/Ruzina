@@ -60,6 +60,29 @@ int32_t ruzina_bridge_hotcue_erase_sector(uint32_t offset)
     const esp_partition_t *partition=hotcue_partition();
     return partition&&esp_partition_erase_range(partition,offset,4096)==ESP_OK?0:-1;
 }
+/* The deck's settings partition: read at boot from the app main task, saved later by
+   the SD owner task, both on internal-RAM stacks. Offsets are relative to it. */
+static const esp_partition_t *settings_partition(void)
+{
+    static const esp_partition_t *partition;
+    if(!partition) partition=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,(esp_partition_subtype_t)0x41,"settings");
+    return partition;
+}
+int32_t ruzina_bridge_settings_read(uint32_t offset, uint8_t *out, uint32_t len)
+{
+    const esp_partition_t *partition=settings_partition();
+    return partition&&esp_partition_read(partition,offset,out,len)==ESP_OK?0:-1;
+}
+int32_t ruzina_bridge_settings_write(uint32_t offset, const uint8_t *data, uint32_t len)
+{
+    const esp_partition_t *partition=settings_partition();
+    return partition&&esp_partition_write(partition,offset,data,len)==ESP_OK?0:-1;
+}
+int32_t ruzina_bridge_settings_erase_sector(uint32_t offset)
+{
+    const esp_partition_t *partition=settings_partition();
+    return partition&&esp_partition_erase_range(partition,offset,4096)==ESP_OK?0:-1;
+}
 #endif
 void ruzina_bridge_lock(void) { portENTER_CRITICAL(&bridge_mux); }
 void ruzina_bridge_unlock(void) { portEXIT_CRITICAL(&bridge_mux); }

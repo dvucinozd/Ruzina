@@ -64,6 +64,11 @@ pub(crate) struct Mix {
     keylocks: Option<Box<[crate::deck_keylock::Keylock; 2]>>,
     /// Which decks play through their keylock this block.
     keylocked: [bool; 2],
+    /// The settings last applied, packed, and the MAIN trim's gain from them.
+    #[cfg(feature = "deck-engine")]
+    settings: Option<u32>,
+    #[cfg(feature = "deck-engine")]
+    trim: f32,
 }
 
 impl Mix {
@@ -90,7 +95,25 @@ impl Mix {
             #[cfg(feature = "deck-engine")]
             keylocks: None,
             keylocked: [false; 2],
+            #[cfg(feature = "deck-engine")]
+            settings: None,
+            #[cfg(feature = "deck-engine")]
+            trim: 1.0,
         }
+    }
+
+    /// The deck's settings, when they changed: LOAD LOCK and the jogs to the engine,
+    /// the trim to MAIN. Once per USB client turn, outside the fill.
+    #[cfg(feature = "deck-engine")]
+    pub(crate) fn apply_settings(&mut self) {
+        let packed = crate::deck_settings::current_packed();
+        if self.settings == Some(packed) {
+            return;
+        }
+        self.settings = Some(packed);
+        let settings = crate::deck_settings::current();
+        self.engine.apply_settings(&settings);
+        self.trim = crate::deck_settings::trim_gain(settings.master_trim);
     }
 
     #[cfg(feature = "deck-engine")]
@@ -224,6 +247,10 @@ impl Mix {
         let gains = self.mixer.stage_gains();
         let mut control = RenderControl::idle();
         control.master_gain = gains.master;
+        #[cfg(feature = "deck-engine")]
+        {
+            control.master_gain *= self.trim;
+        }
         control.headphones = self.mixer.headphone_gains();
         #[cfg(feature = "deck-engine")]
         let fx = self.engine.fx_controls();

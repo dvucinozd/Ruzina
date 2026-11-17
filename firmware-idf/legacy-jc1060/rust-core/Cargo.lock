@@ -3423,6 +3423,7 @@ dependencies = [
  "ruzina-media-session",
  "ruzina-mixer",
  "ruzina-screen-lines",
+ "ruzina-settings",
  "ruzina-track-analysis",
  "ruzina-uac",
  "ruzina-web",
@@ -3522,6 +3523,10 @@ version = "0.1.0"
 dependencies = [
  "slint",
 ]
+
+[[package]]
+name = "ruzina-settings"
+version = "0.1.0"
 
 [[package]]
 name = "ruzina-track-analysis"
