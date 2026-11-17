@@ -261,7 +261,9 @@
   - The `ruzina-settings` store now appends records within a sector, so a save erases
     nothing. s128's erasing saves had flashed the screen once and lost 2 USB packets.
   - s129: 5 saves, `packet_errors=0`, settings back after a cold boot. Owner: "Radi".
-- **On the board:** s129 (app `39303711…`), settings on the Settings page.
+  - Review fixes (s130): the app main task saves, card or not; a save that would erase
+    waits for USB audio to stand still. s130: saves of 9 and 2 ms, 30 % back after a boot.
+- **On the board:** s130 (app `2a75085d…`), settings on the Settings page.
   diagnostic image (s52, app `f1f9fb9b…`, 12 MB app partition, journal moved). Before that, app `8a264d4d…` (production with loops, reloop, scratch, FX, hot cues, LEDs and the review fixes; QIO 80 MHz flash, 200 MHz PSRAM). Live pre-write backups are in
   `D:\BoardEvidence\JC1060-20261030-COM3\s{10..41}-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
