@@ -86,6 +86,12 @@ pub(crate) fn take_owed(now_ms: u32) -> Option<ProductSettings> {
     OWED.swap(false, Ordering::AcqRel).then(current)
 }
 
+/// A save taken by [`take_owed`] had to wait: the settings in force are owed again,
+/// and the next turn may save them at once.
+pub(crate) fn owe_again() {
+    OWED.store(true, Ordering::Release);
+}
+
 /// The brightness one step up or down, within the page's range.
 #[cfg(any(test, feature = "slint-ui"))]
 pub(crate) fn step_backlight(percent: u8, up: bool) -> u8 {

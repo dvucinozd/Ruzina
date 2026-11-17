@@ -157,6 +157,13 @@ impl<F: SettingsFlash> SettingsOwner<F> {
         self.store.erase_spare(RecordKind::Settings)
     }
 
+    /// Whether the next settings write would erase a sector first: a caller that must
+    /// not stall waits with it until it may.
+    pub fn settings_write_erases(&mut self) -> Result<bool, StoreError<F::Error>> {
+        self.store
+            .write_erases(RecordKind::Settings, SETTINGS_PAYLOAD_BYTES)
+    }
+
     /// Continuous backlight control: applied at once, persisted later by
     /// [`persist_backlight`](Self::persist_backlight) once the slider is
     /// quiet, so a drag is not one flash write per sample.

@@ -160,5 +160,10 @@ void app_main(void)
         printf("heartbeat=%" PRIu32 " uptime_us=%" PRId64 "\n",
                ++heartbeat, esp_timer_get_time());
         fflush(stdout);
+#if CONFIG_RUZINA_DECK_ENGINE
+        /* The deck's settings are saved here, on this internal-RAM stack, card or not. */
+        extern void ruzina_legacy_settings_service(void);
+        ruzina_legacy_settings_service();
+#endif
     }
 }

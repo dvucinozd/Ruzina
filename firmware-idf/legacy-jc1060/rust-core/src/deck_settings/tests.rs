@@ -63,6 +63,10 @@ fn a_change_is_saved_once_it_has_been_quiet() {
     change(u32::MAX - 500, |s| s.load_lock = true);
     assert_eq!(take_owed(100), None);
     assert!(take_owed(SAVE_QUIET_MS).unwrap().load_lock);
+    // A save that had to wait is owed again, at once.
+    owe_again();
+    assert!(take_owed(SAVE_QUIET_MS).unwrap().load_lock);
+    assert_eq!(take_owed(SAVE_QUIET_MS * 2), None);
 }
 
 #[test]

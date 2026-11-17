@@ -123,6 +123,14 @@ struct Scan {
     corrupt: bool,
 }
 
+/// Where a write puts its record, whether it erases that sector first, and its sequence.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Place {
+    at: u32,
+    erase: bool,
+    sequence: u32,
+}
+
 pub struct RecordStore<F> {
     flash: F,
 }
@@ -194,35 +202,13 @@ impl<F: SettingsFlash> RecordStore<F> {
         if payload.len() > RECORD_MAX_PAYLOAD {
             return Err(StoreError::PayloadTooLarge);
         }
-        let size = record_size(payload.len());
-        let scans = [self.scan(kind, 0)?, self.scan(kind, 1)?];
-        let (current, sequence) = match newest(&scans) {
-            Some((side, sequence)) => (side, sequence.wrapping_add(1)),
-            None => (0, 1),
-        };
-        let mut at = None;
-        if let Some(end) = scans[current].end
-            && end + size <= SETTINGS_SECTOR_SIZE
-            && self.erased(sector_base(kind, current) + end, size)?
-        {
-            at = Some(sector_base(kind, current) + end);
+        let place = self.place(kind, payload.len())?;
+        if place.erase {
+            self.flash
+                .erase_sector(place.at)
+                .map_err(StoreError::Flash)?;
         }
-        let at = match at {
-            Some(at) => at,
-            None => {
-                // Move on to the other sector; with no record yet, start this one over.
-                let side = if newest(&scans).is_some() {
-                    current ^ 1
-                } else {
-                    current
-                };
-                let base = sector_base(kind, side);
-                if !self.erased(base, SETTINGS_SECTOR_SIZE)? {
-                    self.flash.erase_sector(base).map_err(StoreError::Flash)?;
-                }
-                base
-            }
-        };
+        let (at, sequence) = (place.at, place.sequence);
         let mut header = [0u8; COMMIT_OFFSET];
         header[0..4].copy_from_slice(&MAGIC.to_le_bytes());
         header[4] = kind as u8;
@@ -241,6 +227,53 @@ impl<F: SettingsFlash> RecordStore<F> {
             .write_nor(at + COMMIT_OFFSET as u32, &COMMIT.to_le_bytes())
             .map_err(StoreError::Flash)?;
         Ok(sequence)
+    }
+
+    /// Whether the next write of a `len`-byte record of `kind` would erase a sector
+    /// first. A caller that must not stall can wait with that write until it may.
+    pub fn write_erases(
+        &mut self,
+        kind: RecordKind,
+        len: usize,
+    ) -> Result<bool, StoreError<F::Error>> {
+        if len > RECORD_MAX_PAYLOAD {
+            return Err(StoreError::PayloadTooLarge);
+        }
+        Ok(self.place(kind, len)?.erase)
+    }
+
+    /// Where the next record of `kind` goes: after the newest one while it fits in its
+    /// sector, else at the start of the other sector (or of this one, with no record
+    /// yet), which must be erased first unless it reads erased.
+    fn place(&mut self, kind: RecordKind, len: usize) -> Result<Place, StoreError<F::Error>> {
+        let size = record_size(len);
+        let scans = [self.scan(kind, 0)?, self.scan(kind, 1)?];
+        let newest = newest(&scans);
+        let (current, sequence) = match newest {
+            Some((side, sequence)) => (side, sequence.wrapping_add(1)),
+            None => (0, 1),
+        };
+        if let Some(end) = scans[current].end
+            && end + size <= SETTINGS_SECTOR_SIZE
+            && self.erased(sector_base(kind, current) + end, size)?
+        {
+            return Ok(Place {
+                at: sector_base(kind, current) + end,
+                erase: false,
+                sequence,
+            });
+        }
+        let side = if newest.is_some() {
+            current ^ 1
+        } else {
+            current
+        };
+        let at = sector_base(kind, side);
+        Ok(Place {
+            at,
+            erase: !self.erased(at, SETTINGS_SECTOR_SIZE)?,
+            sequence,
+        })
     }
 
     /// Erases, ahead of time, the sector the next writes of `kind` will move on to once
@@ -551,11 +584,17 @@ mod tests {
             write(&mut store);
         }
         assert_eq!(store.flash_mut().erases, 1);
-        // Without an erase ahead, moving back to the second sector erases it.
-        for _ in 0..per_sector {
+        // Without an erase ahead, moving back to the second sector erases it, and the
+        // store says so beforehand.
+        for _ in 0..per_sector - 1 {
+            assert_eq!(store.write_erases(RecordKind::Settings, 8), Ok(false));
             write(&mut store);
         }
+        assert_eq!(store.write_erases(RecordKind::Settings, 8), Ok(true));
+        assert_eq!(store.flash_mut().erases, 1);
+        write(&mut store);
         assert_eq!(store.flash_mut().erases, 2);
+        assert_eq!(store.write_erases(RecordKind::Settings, 8), Ok(false));
         assert_eq!(
             load(&mut store, RecordKind::Settings).1,
             [sequence as u8; 8]
