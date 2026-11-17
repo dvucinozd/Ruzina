@@ -2449,3 +2449,82 @@ fn on_the_library_page_browse_moves_the_selection_and_load_loads_it() {
     publish_library(std::vec::Vec::new());
     crate::deck_view::take_library();
 }
+
+#[test]
+fn in_the_library_load_opens_a_playlist_and_loads_its_tracks() {
+    use crate::deck_view::{
+        LIBRARY_OPEN, Level, LibraryRow, Row, SHOW_LIBRARY, SHOW_OVERVIEW, Shelf, ShelfNode,
+        clear_shelf, level, publish_library, publish_shelf, selected_row,
+    };
+    use core::sync::atomic::Ordering;
+    use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut mix = Mix::new();
+    let press = |mix: &mut Mix, deck, control| {
+        mix.control(&ControlEvent {
+            deck,
+            control,
+            value: ControlValue::Pressed(true),
+        });
+    };
+    publish_library(std::vec![LibraryRow::default(); 3]);
+    publish_shelf(Shelf {
+        top: std::vec![0],
+        nodes: std::vec![ShelfNode {
+            name: "Set".into(),
+            tracks: std::vec![2, 0],
+            ..ShelfNode::default()
+        }],
+    });
+    let ConnectResult::Accepted(lease) =
+        MediaSession::new().on_connect(MediaSourceId::new(7).unwrap())
+    else {
+        panic!()
+    };
+    crate::media_signal::activate(lease);
+    mix.engine().lease = Some(lease);
+    LOAD_REQUESTS[1].take();
+
+    // On another page the knob's press shows the Library as it was, and Shift and the
+    // press show its playlists.
+    LIBRARY_OPEN.store(false, Ordering::Relaxed);
+    SHOW_LIBRARY.store(false, Ordering::Relaxed);
+    press(&mut mix, None, SemanticControl::BrowsePress);
+    assert!(SHOW_LIBRARY.swap(false, Ordering::Relaxed));
+    assert_eq!(level(), Level::All);
+    press(&mut mix, None, SemanticControl::ShiftBrowsePress);
+    assert!(SHOW_LIBRARY.swap(false, Ordering::Relaxed));
+    assert_eq!(level(), Level::Top);
+    press(&mut mix, None, SemanticControl::ShiftBrowsePress);
+    assert_eq!(level(), Level::Top, "already on the playlists");
+    LIBRARY_OPEN.store(true, Ordering::Relaxed);
+    // LOAD on a playlist opens it and loads nothing.
+    press(&mut mix, Some(DeckId::Two), SemanticControl::Load);
+    assert_eq!(level(), Level::Node(0));
+    assert!(LOAD_REQUESTS[1].take().is_none());
+    // Its first track is catalog track 2.
+    assert_eq!(selected_row(), Some(Row::Track(2)));
+    SHOW_OVERVIEW.store(false, Ordering::Relaxed);
+    press(&mut mix, None, SemanticControl::BrowsePress);
+    assert_eq!(
+        level(),
+        Level::Node(0),
+        "the press on a track stays on the level"
+    );
+    assert!(
+        SHOW_OVERVIEW.swap(false, Ordering::Relaxed),
+        "and goes back to the Overview"
+    );
+    press(&mut mix, Some(DeckId::Two), SemanticControl::Load);
+    let request = LOAD_REQUESTS[1].take().expect("a load");
+    assert_eq!(request.index, 2);
+    GATES[1].finish(request.permit);
+    press(&mut mix, None, SemanticControl::ShiftBrowsePress);
+    press(&mut mix, None, SemanticControl::ShiftBrowsePress);
+    assert_eq!(level(), Level::All);
+
+    LIBRARY_OPEN.store(false, Ordering::Relaxed);
+    clear_shelf();
+    publish_library(std::vec::Vec::new());
+    crate::deck_view::take_library();
+}

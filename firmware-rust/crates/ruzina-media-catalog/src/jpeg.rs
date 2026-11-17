@@ -8,8 +8,9 @@
 
 use crate::artwork::{ArtworkDecoder, JpegInfo, JpegVerdict};
 
-/// Largest thumbnail edge the accumulators hold (deck 34, Library row 40).
-pub const JPEG_THUMB_MAX_EDGE: usize = 40;
+/// Largest thumbnail edge the accumulators hold (deck 34, Library row 40, the JC1060
+/// deck screen's cover 56).
+pub const JPEG_THUMB_MAX_EDGE: usize = 64;
 
 const ZIGZAG: [u8; 64] = [
     0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20,

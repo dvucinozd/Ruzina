@@ -435,6 +435,8 @@ pub(crate) fn touch_events(
             events.push(on, SemanticControl::Cue, ControlValue::Pressed(down))
         }
         TouchControl::Load => events.presses(on, SemanticControl::Load, 1),
+        TouchControl::LibraryOpen => events.presses(None, SemanticControl::BrowsePress, 1),
+        TouchControl::LibraryBack => events.presses(None, SemanticControl::ShiftBrowsePress, 1),
         // The pad in Hot Cue mode, whatever mode the controller's pads are in.
         TouchControl::HotCue { pad, delete, down } => events.push(
             on,

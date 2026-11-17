@@ -99,6 +99,10 @@ fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
     assert_eq!(queue.pop(), Some((0, TouchControl::Play)));
     assert_eq!(queue.pop(), Some((1, TouchControl::Cue(true))));
     assert_eq!(queue.pop(), Some((1, TouchControl::Cue(false))));
+    assert!(queue.push(0, TouchControl::LibraryOpen));
+    assert!(queue.push(0, TouchControl::LibraryBack));
+    assert_eq!(queue.pop(), Some((0, TouchControl::LibraryOpen)));
+    assert_eq!(queue.pop(), Some((0, TouchControl::LibraryBack)));
     assert_eq!(queue.pop(), None);
     for _ in 0..TOUCH_SLOTS {
         assert!(queue.push(0, TouchControl::Play));
@@ -193,4 +197,103 @@ fn marks_change_their_revision_only_when_they_change() {
     assert_eq!(slot.load().0, second, "the same marks keep the revision");
     slot.store(Marks::NONE);
     assert_eq!(slot.load().1, Marks::NONE);
+}
+
+/// A catalog of three tracks (source ids 10, 20 and 30) and its playlist tree:
+/// `Warmup` (a playlist, sorted second) and `Clubs` (a folder) at the top, `Peak` (a
+/// playlist) in `Clubs`.
+fn shelf_fixture() -> Shelf {
+    use ruzina_core::MediaTrackId;
+    use ruzina_media_catalog::playlists::{InlinePlaylistStore, PlaylistBuilder};
+    use ruzina_media_catalog::{CatalogBuilder, CatalogText, CatalogTrack};
+    use ruzina_media_session::{MediaGeneration, MediaLease, MediaSourceId};
+    let lease = MediaLease {
+        generation: MediaGeneration::initial(),
+        source: MediaSourceId::new(1).unwrap(),
+    };
+    let mut catalog = CatalogBuilder::<4>::new(lease);
+    for (id, source) in [(1, 10), (2, 20), (3, 30)] {
+        catalog
+            .push(CatalogTrack {
+                track_id: MediaTrackId([id; 16]),
+                source_track_id: source,
+                title: CatalogText::try_from_str("t").unwrap(),
+                ..CatalogTrack::EMPTY
+            })
+            .unwrap();
+    }
+    let catalog = catalog.finish(1);
+    let mut tree = PlaylistBuilder::new(InlinePlaylistStore::<8, 8>::new());
+    assert!(tree.push_node(5, 0, 2, false, "Warmup"));
+    assert!(tree.push_node(7, 0, 1, true, "Clubs"));
+    assert!(tree.push_node(9, 7, 0, false, "Peak"));
+    for (list, index, track) in [(5, 2, 30), (5, 1, 10), (9, 0, 20), (9, 1, 20)] {
+        assert!(tree.push_entry(list, index, track));
+    }
+    Shelf::from_index(&tree.finish(&catalog))
+}
+
+#[test]
+fn the_shelf_keeps_rekordboxs_tree_and_order() {
+    let shelf = shelf_fixture();
+    let name = |node: u32| shelf.nodes[node as usize].name.as_str();
+    let top: Vec<_> = shelf.top.iter().map(|&node| name(node)).collect();
+    assert_eq!(top, ["Clubs", "Warmup"]);
+    let clubs = &shelf.nodes[shelf.top[0] as usize];
+    assert!(clubs.folder && clubs.tracks.is_empty() && clubs.parent.is_none());
+    let peak = &shelf.nodes[clubs.children[0] as usize];
+    assert_eq!(peak.name, "Peak");
+    assert_eq!(peak.parent, Some(shelf.top[0]));
+    assert_eq!(
+        peak.tracks,
+        [1, 1],
+        "a track twice in a playlist stays twice"
+    );
+    let warmup = &shelf.nodes[shelf.top[1] as usize];
+    assert_eq!(warmup.tracks, [0, 2], "in the playlist's order");
+}
+
+#[test]
+fn the_library_walks_the_playlists_and_comes_back_where_it_was() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    publish_library(std::vec![LibraryRow::default(); 3]);
+    clear_shelf();
+    select(2);
+    assert!(!back(), "no playlists: the track list stays");
+    publish_shelf(shelf_fixture());
+    assert_eq!(level(), Level::All);
+    select(2);
+    assert!(!open(), "a track does not open");
+    assert_eq!(selected_row(), Some(Row::Track(2)));
+
+    assert!(back());
+    assert_eq!(level(), Level::Top);
+    assert_eq!(level_len(Level::Top), 2);
+    assert_eq!(selected(), Some(0));
+    let clubs = selected_row();
+    assert!(open());
+    assert_eq!(path_names(), ["Clubs"]);
+    assert!(open());
+    assert_eq!(path_names(), ["Clubs", "Peak"]);
+    assert_eq!(selected_row(), Some(Row::Track(1)));
+    assert_eq!(level_len(level()), 2);
+
+    assert!(back());
+    assert_eq!(path_names(), ["Clubs"]);
+    assert!(back());
+    assert_eq!((level(), selected_row()), (Level::Top, clubs));
+    select(1);
+    assert!(open());
+    assert_eq!(path_names(), ["Warmup"]);
+    select(1);
+    assert_eq!(selected_row(), Some(Row::Track(2)));
+    assert!(back());
+    assert_eq!(selected(), Some(1), "back on Warmup");
+    assert!(back());
+    assert_eq!(level(), Level::All);
+    assert_eq!(selected(), Some(2), "the track list's selection");
+
+    clear_shelf();
+    publish_library(std::vec::Vec::new());
+    take_library();
 }
