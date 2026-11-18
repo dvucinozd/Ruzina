@@ -241,9 +241,31 @@ fn show_setting_values(ui: &Overview) {
     });
 }
 
+/// The Settings page's two columns, as their models: left, then right.
+type SettingsModels = (
+    Rc<slint::VecModel<SettingLine>>,
+    Rc<slint::VecModel<SettingLine>>,
+);
+
+/// Brings `model` to `lines`, changing only the rows that differ.
+fn sync_rows(model: &slint::VecModel<SettingLine>, lines: alloc::vec::Vec<SettingLine>) {
+    use slint::Model;
+    let len = lines.len();
+    for (row, line) in lines.into_iter().enumerate() {
+        if row >= model.row_count() {
+            model.push(line);
+        } else if model.row_data(row).as_ref() != Some(&line) {
+            model.set_row_data(row, line);
+        }
+    }
+    while model.row_count() > len {
+        model.remove(model.row_count() - 1);
+    }
+}
+
 /// The Settings page's two columns of figures: the decks, then the mix and the
 /// firmware. The settings themselves sit below the decks.
-fn show_settings(ui: &Overview, uptime_ms: u64) {
+fn show_settings(models: &SettingsModels, uptime_ms: u64) {
     use core::sync::atomic::Ordering::Relaxed;
     let stats: [u32; 8] = core::array::from_fn(|i| deck_view::STATS[i].load(Relaxed));
     let line = |label: &str, value: alloc::string::String| SettingLine {
@@ -325,8 +347,8 @@ fn show_settings(ui: &Overview, uptime_ms: u64) {
         right.push(line("Password", password));
         right
     };
-    ui.set_settings_left(slint::ModelRc::new(slint::VecModel::from(left)));
-    ui.set_settings_right(slint::ModelRc::new(slint::VecModel::from(right)));
+    sync_rows(&models.0, left);
+    sync_rows(&models.1, right);
 }
 
 /// The deck's own Wi-Fi network and its password, from the C6 probe.
@@ -1195,6 +1217,11 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let mut shown_library: Option<LibraryState> = None;
     let library_model = Rc::new(slint::VecModel::<LibraryLine>::default());
     ui.set_library_rows(slint::ModelRc::from(library_model.clone()));
+    // The Settings page's two columns keep their models: a refresh changes only the
+    // rows whose text changed, so Slint keeps the others' items.
+    let settings_models: SettingsModels = (Rc::default(), Rc::default());
+    ui.set_settings_left(slint::ModelRc::from(settings_models.0.clone()));
+    ui.set_settings_right(slint::ModelRc::from(settings_models.1.clone()));
     let mut shown_cues: Option<CueState> = None;
     // When the Settings page next refreshes its figures.
     let mut settings_at = 0u64;
@@ -1284,7 +1311,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         // The Settings page's figures, twice a second while it is open.
         if tab == 3 {
             if ms >= settings_at {
-                show_settings(&ui, ms);
+                show_settings(&settings_models, ms);
                 settings_at = ms + 500;
             }
         } else {

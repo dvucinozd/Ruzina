@@ -270,8 +270,11 @@
   Up to three tries, removing and adding back slot 0 alone, the third at 20 MHz. s132:
   `attempts=1` at 40 MHz on a normal boot, owner "Radi"; the retry itself waits for a
   failing boot.
-- **On the board:** s132 (app `3293e844…`), `main` with the SD retry; the memory cues
-  (s131) are not on it.
+- **Settings page rows (2026-11-19):** [the Settings page keeps its rows](reviews/2026-11-19-settings-model.md).
+  Its two columns keep their models and change only the rows that differ. s133: Settings
+  frames over 30 ms went from about 3.5 a second to 6 in 46 s; owner "Radi".
+- **On the board:** s133 (app `1ab195d4…`), the SD retry and the Settings rows; the memory
+  cues (s131) are not on it.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

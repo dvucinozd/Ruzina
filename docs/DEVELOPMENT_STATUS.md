@@ -1,6 +1,6 @@
 # Current development status
 
-Updated 2026-11-18. `main` matches image s132 (app `3293e844…`).
+Updated 2026-11-18. `main` matches image s133 (app `1ab195d4…`).
 
 ## What runs on the board
 
