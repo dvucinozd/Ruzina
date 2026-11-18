@@ -96,12 +96,16 @@ the order Play, pad, Play, SAMPLER in one transfer.
       deck 2, each with its release.
     - The owner: "Radi".
     - All 15 reports had `packet_errors=0` and underruns 0/0.
-    - **Not tried:** Shift + pad (cues 9–16).
+    - Shift + pad (cues 9–16) was not tried on s135; it was on s136, see below.
   - **s136** (app `a666ac6e…`, 2026-11-19): s135 with the packet-order fix.
     - Started over COM3; the SD card came up at the first try.
     - The owner pressed SAMPLER pads, Play and both jogs (`PadAction`, `Play`,
       `JogTouch`, `JogScratch`, `JogBend`): "Radi".
     - All 67 reports had `packet_errors=0` and underruns 0/0.
+  - **s136, short checks** (2026-11-19, passive capture, no reset): Shift + SAMPLER
+    pads 1–3 on deck 1 and 2–4 on deck 2 reached the board as shifted `PadAction`
+    (cues 9–12). All 18 reports had `packet_errors=0` and underruns 0/0. The owner:
+    "Radi".
 
 ## Test plan
 

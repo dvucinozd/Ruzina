@@ -42,8 +42,8 @@
   loop. 1024 ticks per turn is an estimate.
 - **Beat FX and Pad FX (2026-11-05):** [connected to the render graph](reviews/2026-11-05-fx.md),
   with 1.5 MB of PSRAM and short fades so filters do not click. The owner tried
-  them on the FLX4 ("Radi"). Delay, turning Beat FX off, Pad FX bank 2 and the
-  channel switch are not in the device log.
+  them on the FLX4 ("Radi"). Turning Beat FX off and Pad FX bank 2 reached the
+  device log on 2026-11-19 (s136); Delay and the channel switch have not.
 - **Hot cues (2026-11-06):** [Rekordbox cues on load, own cues in a flash journal](reviews/2026-11-06-hot-cues.md)
   on a new 1 MB partition, written only while no deck plays. Writes work on the
   board, longest 11.7 ms, and the owner saw a cue come back after a reset.
@@ -283,10 +283,12 @@
     SAMPLER pads (read by the board, not the golden profile) call cues 1–16 as a CDJ's
     CALL does.
   - s135, rebased on s134: SAMPLER pads 1–4 and 7 on deck 1 and 1–2 on deck 2 reached
-    the board as `PadAction`, `packet_errors=0`; owner "Radi". Shift + pad was not
-    tried.
+    the board as `PadAction`, `packet_errors=0`; owner "Radi".
   - Review fix: SAMPLER events keep their place among a transfer's other events. s136:
     pads, Play and both jogs, 67 reports with `packet_errors=0`; owner "Radi".
+  - s136 short checks (2026-11-19): Shift + pad reached cues 9–12 on both decks, Beat
+    FX went on and off, and Pad FX bank 2 pads 1–4 played; `packet_errors=0`; owner
+    "Radi".
 - **On the board:** s136 (app `a666ac6e…`): s134 with the memory cues.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
