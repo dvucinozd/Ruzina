@@ -12,7 +12,7 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 - a DDJ-FLX4 for control, MAIN and headphones;
 - a Rekordbox export on the SD card.
 
-`main` matches image s132 (app `3293e844…`). Every point below has a dated review with
+`main` matches image s133 (app `1ab195d4…`). Every point below has a dated review with
 its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.md):
 
 - **Playback:**
