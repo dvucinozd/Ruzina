@@ -285,7 +285,9 @@
   - s135, rebased on s134: SAMPLER pads 1–4 and 7 on deck 1 and 1–2 on deck 2 reached
     the board as `PadAction`, `packet_errors=0`; owner "Radi". Shift + pad was not
     tried.
-- **On the board:** s135 (app `b9b0c6cb…`): s134 with the memory cues.
+  - Review fix: SAMPLER events keep their place among a transfer's other events. s136:
+    pads, Play and both jogs, 67 reports with `packet_errors=0`; owner "Radi".
+- **On the board:** s136 (app `a666ac6e…`): s134 with the memory cues.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
