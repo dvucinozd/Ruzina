@@ -31,6 +31,56 @@ pub(crate) const FLX4_PROFILE: &[u8] = include_bytes!(
     "../../../../firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.v2-golden.s3bin"
 );
 
+/// The FLX4's SAMPLER button and pads, which the golden profile does not map: the button
+/// is note 0x22 on a deck's channel, and the pads notes 0x30 to 0x37 on the pad channels,
+/// as the other pad modes are mapped.
+#[cfg(feature = "deck-engine")]
+const SAMPLER_BUTTON_NOTE: u8 = 0x22;
+#[cfg(feature = "deck-engine")]
+const SAMPLER_PAD_NOTE: u8 = 0x30;
+/// Each deck's pad status (note on), without Shift; with Shift the next channel.
+#[cfg(feature = "deck-engine")]
+const SAMPLER_PADS: [u8; 2] = [0x97, 0x99];
+
+/// A SAMPLER button or pad message as the semantic event the profile would give it.
+#[cfg(feature = "deck-engine")]
+pub(crate) fn sampler_event(packet: [u8; 4]) -> Option<ControlEvent> {
+    use ruzina_controller_core::{PadAction, PadMode};
+    let [_, status, data1, data2] = packet;
+    let pressed = match status & 0xf0 {
+        0x90 => data2 != 0,
+        0x80 => false,
+        _ => return None,
+    };
+    let channel = status & 0x0f;
+    match (channel, data1) {
+        (0 | 1, SAMPLER_BUTTON_NOTE) => Some(ControlEvent {
+            deck: Some(if channel == 0 {
+                DeckId::One
+            } else {
+                DeckId::Two
+            }),
+            control: SemanticControl::PadModeSampler,
+            value: ControlValue::Pressed(pressed),
+        }),
+        (7..=10, SAMPLER_PAD_NOTE..=0x37) => Some(ControlEvent {
+            deck: Some(if channel <= 8 {
+                DeckId::One
+            } else {
+                DeckId::Two
+            }),
+            control: SemanticControl::PadAction,
+            value: ControlValue::PadAction(PadAction {
+                pad: data1 - SAMPLER_PAD_NOTE,
+                mode: PadMode::Sampler,
+                shifted: channel == 8 || channel == 10,
+                pressed,
+            }),
+        }),
+        _ => None,
+    }
+}
+
 /// Event value kinds passed to C (see [`encode`]).
 pub(crate) mod kind {
     pub const PRESSED: u32 = 1;
@@ -58,6 +108,9 @@ struct State {
     meters: [u8; 2],
     #[cfg(feature = "deck-engine")]
     meters_at_ms: u32,
+    /// The SAMPLER pads' LEDs as sent, one bit a pad; `None` sends them all again.
+    #[cfg(feature = "deck-engine")]
+    sampler_leds: [Option<u8>; 2],
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
     out: [[u8; 4]; OUT_PACKETS],
@@ -95,6 +148,7 @@ impl State {
             self.lamp_lit = on;
             if !on {
                 self.leds.mark_all_dirty();
+                self.sampler_leds = [None; 2];
             }
         }
         let Some(profile) = self.profile else { return };
@@ -184,6 +238,8 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     meters: [0; 2],
     #[cfg(feature = "deck-engine")]
     meters_at_ms: 0,
+    #[cfg(feature = "deck-engine")]
+    sampler_leds: [None; 2],
     headphone: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
@@ -229,9 +285,10 @@ impl State {
     /// Only the ones that changed are sent; a new binding sends them all.
     fn sync_leds(&mut self) {
         self.meter_leds(now_ms());
-        self.playing = crate::deck_mix::with(|mix| {
+        let memory;
+        (self.playing, memory) = crate::deck_mix::with(|mix| {
             mix.refresh_leds(&mut self.leds);
-            mix.engine().playing()
+            (mix.engine().playing(), mix.engine().memory_masks())
         });
         if self.lamp_lit {
             return;
@@ -240,6 +297,22 @@ impl State {
             if let Some(message) = self.profile.and_then(|p| p.map_led_update(update)) {
                 self.push_out(message);
             }
+        }
+        // The SAMPLER pads light where the track has a memory cue; the profile has no
+        // map for them, so their notes go out as they are.
+        if self.profile.is_none() {
+            return;
+        }
+        for (deck, mask) in memory.into_iter().enumerate() {
+            let sent = self.sampler_leds[deck];
+            for pad in 0..8u8 {
+                let on = mask >> pad & 1 != 0;
+                if sent.is_none_or(|sent| (sent >> pad & 1 != 0) != on) {
+                    let status = SAMPLER_PADS[deck];
+                    self.push_out([status, SAMPLER_PAD_NOTE + pad, if on { 0x7f } else { 0 }]);
+                }
+            }
+            self.sampler_leds[deck] = Some(mask);
         }
     }
 }
@@ -449,6 +522,17 @@ pub(crate) fn touch_events(
                 pressed: down,
             }),
         ),
+        // A SAMPLER pad, 1 to 8, and with Shift 9 to 16: it calls that memory cue.
+        TouchControl::Memory(n) => events.push(
+            on,
+            SemanticControl::PadAction,
+            ControlValue::PadAction(PadAction {
+                pad: n & 7,
+                mode: PadMode::Sampler,
+                shifted: n & 8 != 0,
+                pressed: true,
+            }),
+        ),
         TouchControl::Fx(FxTouch::Effect(effect)) => {
             let steps = (effect & 3).wrapping_sub(fx.effect) & 3;
             events.presses(None, SemanticControl::BeatFxSelectNext, steps);
@@ -549,6 +633,7 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         {
             state.leds = ControllerLedFrame::new();
             state.lamp_lit = false;
+            state.sampler_leds = [None; 2];
         }
         state.headphone = None;
         state.out_len = 0;
@@ -619,16 +704,53 @@ pub unsafe extern "C" fn ruzina_legacy_midi_ingest(bytes: *const u8, len: u32) -
     }
     // SAFETY: the caller lends `len` readable bytes for this call.
     let payload = unsafe { core::slice::from_raw_parts(bytes, len as usize) };
-    with(|state| {
-        let Some(profile) = state.profile else {
-            return -1;
-        };
-        match state.session.process_usb_midi_transfer(&profile, payload) {
+    with(|state| ingest(state, payload))
+}
+
+/// The SAMPLER button and pads, which the profile leaves unmapped, are
+/// delivered in packet order among the profile's events: the transfer is cut
+/// after each SAMPLER packet, the session delivers what came before it, then
+/// the SAMPLER event follows. A transfer without one stays a single batch.
+#[cfg(feature = "idf-controller-midi")]
+fn ingest(state: &mut State, payload: &[u8]) -> i32 {
+    let Some(profile) = state.profile else {
+        return -1;
+    };
+    if !payload.len().is_multiple_of(4) {
+        return -1;
+    }
+    let mut delivered = 0;
+    let mut rest = payload;
+    loop {
+        let (batch, sampler) = split_at_sampler(rest);
+        match state.session.process_usb_midi_transfer(&profile, batch) {
             Ok(report) => state.totals.accumulate(report),
             Err(_) => return -1,
         }
-        drain(state)
-    })
+        delivered += drain(state);
+        if let Some(event) = sampler {
+            deliver(state, &event);
+            delivered += 1;
+        }
+        rest = &rest[batch.len()..];
+        if rest.is_empty() {
+            return delivered;
+        }
+    }
+}
+
+/// The packets up to and including the first SAMPLER packet, with its event,
+/// or the whole payload when it has none. Without the deck engine nothing
+/// reads SAMPLER events, so the payload stays whole.
+#[cfg(feature = "idf-controller-midi")]
+fn split_at_sampler(payload: &[u8]) -> (&[u8], Option<ControlEvent>) {
+    #[cfg(feature = "deck-engine")]
+    for (index, packet) in payload.chunks_exact(4).enumerate() {
+        if let Some(event) = sampler_event([packet[0], packet[1], packet[2], packet[3]]) {
+            return (&payload[..(index + 1) * 4], Some(event));
+        }
+    }
+    (payload, None)
 }
 
 /// Copies the running batch totals into `out[0..8]`: packets, decoded,
@@ -670,45 +792,49 @@ fn drain(state: &mut State) -> i32 {
             });
         }
         if let SessionDelivery::Control(event) = delivery {
-            let (deck, kind, value, max) = encode(&event);
-            let mut name = Name {
-                bytes: [0; 32],
-                len: 0,
-            };
-            let _ = write!(name, "{:?}", event.control);
-            // SAFETY: scalars plus `name`, lent for the call only.
-            unsafe {
-                ruzina_bridge_midi_event(
-                    deck,
-                    event.control as u32,
-                    kind,
-                    value,
-                    max,
-                    name.bytes.as_ptr(),
-                    name.len as u32,
-                )
-            };
-            state.echo(&event);
-            #[cfg(all(feature = "deck-mix", not(feature = "web-remote")))]
-            crate::deck_mix::with(|mix| mix.control(&event));
-            #[cfg(feature = "web-remote")]
-            crate::deck_mix::with(|mix| mix.controller_control(&event));
-            #[cfg(feature = "deck-engine")]
-            state.sync_leds();
-            // The deck screen's Library takes browse and load in Rust; the old load
-            // screen keeps its own selection in C.
-            #[cfg(not(feature = "slint-ui"))]
-            if let Some((action, deck, value)) = ui_action(&event) {
-                {
-                    // SAFETY: scalars only.
-                    unsafe { ruzina_bridge_midi_ui(action, deck, value) };
-                }
-            }
+            deliver(state, &event);
             delivered += 1;
         }
         state.session.complete_delivery(true);
     }
     delivered
+}
+
+/// One control event: logged in C, echoed, and handed to the mix and the deck engine.
+#[cfg(feature = "idf-controller-midi")]
+fn deliver(state: &mut State, event: &ControlEvent) {
+    let (deck, kind, value, max) = encode(event);
+    let mut name = Name {
+        bytes: [0; 32],
+        len: 0,
+    };
+    let _ = write!(name, "{:?}", event.control);
+    // SAFETY: scalars plus `name`, lent for the call only.
+    unsafe {
+        ruzina_bridge_midi_event(
+            deck,
+            event.control as u32,
+            kind,
+            value,
+            max,
+            name.bytes.as_ptr(),
+            name.len as u32,
+        )
+    };
+    state.echo(event);
+    #[cfg(all(feature = "deck-mix", not(feature = "web-remote")))]
+    crate::deck_mix::with(|mix| mix.control(event));
+    #[cfg(feature = "web-remote")]
+    crate::deck_mix::with(|mix| mix.controller_control(event));
+    #[cfg(feature = "deck-engine")]
+    state.sync_leds();
+    // The deck screen's Library takes browse and load in Rust; the old load
+    // screen keeps its own selection in C.
+    #[cfg(not(feature = "slint-ui"))]
+    if let Some((action, deck, value)) = ui_action(event) {
+        // SAFETY: scalars only.
+        unsafe { ruzina_bridge_midi_ui(action, deck, value) };
+    }
 }
 
 #[cfg(test)]

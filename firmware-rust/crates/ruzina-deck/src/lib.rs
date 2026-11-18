@@ -1776,6 +1776,23 @@ impl DeckProductState {
         })
     }
 
+    /// A Rekordbox memory cue called up, as a CDJ's CALL does: the deck moves to it as
+    /// a Hot Cue recalls (a memory loop runs, a point exits an active loop, play state
+    /// is kept), and CUE then returns there. The caller checks that a track is loaded.
+    pub fn recall_memory_cue(
+        &mut self,
+        deck: DeckId,
+        start_ms: u32,
+        end_ms: Option<u32>,
+    ) -> DeckEffects {
+        let cue = end_ms
+            .and_then(|end_ms| HotCueSlot::loop_region(start_ms, end_ms))
+            .unwrap_or(HotCueSlot::single(start_ms));
+        let effects = self.recall_hot_cue(deck, cue);
+        self.decks[deck_index(deck)].cue_point_ms = start_ms;
+        effects
+    }
+
     /// M2.5 B11: a loop cue recalls its start and activates its stored end as
     /// one atomic Seek + SetLoop publication; a single cue exits an active loop.
     /// Play/pause state is preserved and loop-adjust ownership is cleared.
@@ -3570,6 +3587,47 @@ mod tests {
                 position_ms: 10_000,
             })
         );
+    }
+
+    #[test]
+    fn a_memory_cue_moves_the_deck_and_its_cue_and_a_memory_loop_runs() {
+        let mut state = DeckProductState::new();
+        state.set_position_ms(DeckId::One, 30_000);
+        // A memory point: the deck seeks there, and CUE now returns there.
+        let point = state.recall_memory_cue(DeckId::One, 12_000, None);
+        assert_eq!(
+            point.items[0],
+            Some(DeckEffect::Seek {
+                deck: DeckId::One,
+                position_ms: 12_000,
+            })
+        );
+        assert_eq!(point.items[1], None);
+        let deck = state.deck(DeckId::One);
+        assert_eq!((deck.position_ms, deck.cue_point_ms), (12_000, 12_000));
+        assert!(!deck.playing);
+        // A memory loop: the loop runs from its start.
+        let looped = state.recall_memory_cue(DeckId::One, 20_000, Some(22_000));
+        assert_eq!(
+            looped.items[1],
+            Some(DeckEffect::SetLoop {
+                deck: DeckId::One,
+                start_ms: 20_000,
+                end_ms: 22_000,
+            })
+        );
+        assert_eq!(state.deck(DeckId::One).cue_point_ms, 20_000);
+        assert!(state.deck(DeckId::One).loop_state.active.is_some());
+        // A point then leaves the loop; the other deck is untouched.
+        let out = state.recall_memory_cue(DeckId::One, 5_000, None);
+        assert_eq!(
+            out.items[1],
+            Some(DeckEffect::ClearLoop { deck: DeckId::One })
+        );
+        assert_eq!(state.deck(DeckId::Two).cue_point_ms, 0);
+        // An end before the start is a point.
+        let odd = state.recall_memory_cue(DeckId::One, 9_000, Some(8_000));
+        assert_eq!(odd.items[1], None);
     }
 
     #[test]

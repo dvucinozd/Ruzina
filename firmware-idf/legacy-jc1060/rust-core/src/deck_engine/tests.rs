@@ -1258,6 +1258,84 @@ fn the_settings_reach_the_engine_and_main() {
     crate::deck_settings::reset();
 }
 
+#[test]
+fn the_sampler_pads_call_the_tracks_memory_cues() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    let mut mix = Mix::new();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    serve(0);
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 10,
+            bpm_x100: 12_000,
+            track_id: [10; 16],
+        },
+    );
+    run(&mut mix, 3);
+    let sampler = |pad, shifted| {
+        event(
+            SemanticControl::PadAction,
+            ControlValue::PadAction(PadAction {
+                pad,
+                mode: PadMode::Sampler,
+                shifted,
+                pressed: true,
+            }),
+        )
+    };
+    // No memory cues yet: the pads do nothing.
+    mix.control(&sampler(0, false));
+    assert_eq!(deck(&mut mix).position_ms, 0);
+    assert_eq!(mix.engine().memory_masks(), [0, 0]);
+    // A grid of another track's cues is not this track's.
+    let memory: std::vec::Vec<(u32, Option<u32>)> = (0..10)
+        .map(|n| (1_000 * (n + 1), (n == 1).then_some(2_500)))
+        .collect();
+    mix.engine().grids[0] = Some(Box::new(Grid {
+        index: 11,
+        beats: Box::new([]),
+        memory: memory.clone().into(),
+    }));
+    mix.control(&sampler(0, false));
+    assert_eq!(deck(&mut mix).position_ms, 0);
+    mix.engine().grids[0] = Some(Box::new(Grid {
+        index: 10,
+        beats: Box::new([]),
+        memory: memory.into(),
+    }));
+    assert_eq!(mix.engine().memory_masks(), [0xff, 0]);
+    // Pad 1: the deck goes to the first memory point, and CUE now returns there.
+    mix.control(&sampler(0, false));
+    assert_eq!(take_seek(), Some(1_000));
+    acknowledge_seek(&mut mix);
+    let state = deck(&mut mix);
+    assert_eq!((state.position_ms, state.cue_point_ms), (1_000, 1_000));
+    // Pad 2: a memory loop runs.
+    mix.control(&sampler(1, false));
+    assert_eq!(take_seek(), Some(2_000));
+    acknowledge_seek(&mut mix);
+    assert!(deck(&mut mix).loop_state.active.is_some());
+    // Shift and pad 2: memory cue 10, which leaves the loop.
+    mix.control(&sampler(1, true));
+    assert_eq!(take_seek(), Some(10_000));
+    acknowledge_seek(&mut mix);
+    assert!(deck(&mut mix).loop_state.active.is_none());
+    assert_eq!(deck(&mut mix).cue_point_ms, 10_000);
+    // Shift and pad 3 is memory cue 11, which the track does not have.
+    mix.control(&sampler(2, true));
+    assert_eq!(take_seek(), None);
+    // The SAMPLER button lights SAMPLER; another pad mode takes it back.
+    press(&mut mix, SemanticControl::PadModeSampler, true);
+    assert_eq!(mix.engine().sampler_modes(), [true, false]);
+    press(&mut mix, SemanticControl::PadModeHotCue, true);
+    assert_eq!(mix.engine().sampler_modes(), [false, false]);
+}
+
 /// Gives the mix's render graph its effect memory.
 fn attach_fx(mix: &mut Mix) {
     use ruzina_audio_runtime::fx::FX_TOTAL_STORAGE_SAMPLES;
@@ -1665,8 +1743,11 @@ fn the_leds_follow_the_deck_and_mixer_and_all_reach_the_flx4() {
     press(&mut mix, SemanticControl::PadModeBeatJump, true);
     assert!(on(&mix, &mut leds, Led::PAD_MODE_BEAT_JUMP, one));
     assert!(!on(&mix, &mut leds, Led::PAD_MODE_PAD_FX1, one));
-    // The deck state has no Sampler mode, so its button stays off.
+    // The deck state has no Sampler mode; the engine keeps it, for the memory cues.
     press(&mut mix, SemanticControl::PadModeSampler, true);
+    assert!(on(&mix, &mut leds, Led::PAD_MODE_SAMPLER, one));
+    assert!(!on(&mix, &mut leds, Led::PAD_MODE_BEAT_JUMP, one));
+    press(&mut mix, SemanticControl::PadModeBeatJump, true);
     assert!(on(&mix, &mut leds, Led::PAD_MODE_BEAT_JUMP, one));
     assert!(!on(&mix, &mut leds, Led::PAD_MODE_SAMPLER, one));
 
@@ -1929,6 +2010,7 @@ fn load_with_grid(mix: &mut Mix, deck: DeckId, index: u32) {
     mix.engine().grids[i] = Some(Box::new(Grid {
         index,
         beats: grid(0, 500, 60, 0).into(),
+        memory: Box::new([]),
     }));
 }
 

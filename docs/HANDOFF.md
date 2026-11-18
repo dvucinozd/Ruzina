@@ -277,8 +277,17 @@
   `ruzina-media-io`](reviews/2026-11-18-read-ahead-crate.md), behind its `read-ahead`
   feature. The legacy core uses it from there. s134: both decks and the Library behave
   as before; owner "Radi".
-- **On the board:** s134 (app `af38de11…`), the SD retry, the Settings rows and the
-  shared read-ahead; the memory cues (s131) are not on it.
+- **Memory cues (2026-11-17, tested 2026-11-18):**
+  [Rekordbox memory cues](reviews/2026-11-17-memory-cues.md).
+  - Red marks on the lane and overview, a MEMORY list on HOT CUES, and the FLX4's
+    SAMPLER pads (read by the board, not the golden profile) call cues 1–16 as a CDJ's
+    CALL does.
+  - s135, rebased on s134: SAMPLER pads 1–4 and 7 on deck 1 and 1–2 on deck 2 reached
+    the board as `PadAction`, `packet_errors=0`; owner "Radi". Shift + pad was not
+    tried.
+  - Review fix: SAMPLER events keep their place among a transfer's other events. s136:
+    pads, Play and both jogs, 67 reports with `packet_errors=0`; owner "Radi".
+- **On the board:** s136 (app `a666ac6e…`): s134 with the memory cues.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

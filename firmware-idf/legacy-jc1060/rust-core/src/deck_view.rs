@@ -241,6 +241,9 @@ pub(crate) enum TouchControl {
     LibraryOpen,
     /// The Library page's BACK: one level up, as Shift and the browse knob's press do.
     LibraryBack,
+    /// A memory cue on the Hot Cues page tapped (0 to 15): the deck calls it, as the
+    /// SAMPLER pads do.
+    Memory(u8),
 }
 
 /// What the FX page sets: an effect (0 Filter to 3 Delay), a beat (0 for 1/4 to 4 for 4
@@ -300,6 +303,7 @@ impl TouchQueue {
                 TouchControl::MasterTempo => 1 << 20,
                 TouchControl::LibraryOpen => 1 << 21,
                 TouchControl::LibraryBack => 1 << 21 | 1 << 22,
+                TouchControl::Memory(n) => 1 << 23 | u32::from(n & 15) << 24,
             };
         self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
         self.head.store(head.wrapping_add(1), Ordering::Release);
@@ -321,7 +325,9 @@ impl TouchQueue {
         }
         let word = self.slots[(tail % TOUCH_SLOTS) as usize].load(Ordering::Relaxed);
         self.tail.store(tail.wrapping_add(1), Ordering::Release);
-        let control = if word & 1 << 21 != 0 {
+        let control = if word & 1 << 23 != 0 {
+            TouchControl::Memory((word >> 24 & 15) as u8)
+        } else if word & 1 << 21 != 0 {
             if word & 1 << 22 != 0 {
                 TouchControl::LibraryBack
             } else {
@@ -1034,16 +1040,22 @@ impl<T> Mailbox<T> {
 
 static TRACKS: [Mailbox<LoadedTrack>; 2] = [Mailbox::new(), Mailbox::new()];
 
-/// Hands deck `deck`'s new track to the UI, and its beat grid to the deck engine.
+/// Hands deck `deck`'s new track to the UI, and its beat grid and memory cues to the
+/// deck engine.
 pub(crate) fn publish_track(deck: usize, track: Box<LoadedTrack>) {
-    let beats = track
-        .analysis
+    let view = track.analysis.as_ref().map(|analysis| analysis.view());
+    let beats = view
         .as_ref()
-        .and_then(|analysis| analysis.view().beat_grid())
+        .and_then(|view| view.beat_grid())
         .map_or(&[][..], |grid| grid.beats());
+    let memory = view.as_ref().map_or(&[][..], |view| view.memory_cues());
     GRIDS[deck].put(Box::new(Grid {
         index: track.index,
         beats: beats.into(),
+        memory: memory
+            .iter()
+            .map(|cue| (cue.start_ms, cue.end_ms))
+            .collect(),
     }));
     #[cfg(feature = "web-remote")]
     WEB_TRACKS[deck].put(Box::new(WebTrack {
@@ -1060,12 +1072,15 @@ pub(crate) fn take_track(deck: usize) -> Option<Box<LoadedTrack>> {
     TRACKS[deck].take()
 }
 
-/// The beat grid of the track a deck loaded, for the deck engine's beat sync.
+/// The beat grid of the track a deck loaded, for the deck engine's beat sync, and its
+/// memory cues, for their calls.
 pub(crate) struct Grid {
     /// Catalog index; `u32::MAX` for no track.
     pub(crate) index: u32,
     /// Empty when the track has no analysis.
     pub(crate) beats: Box<[Beat]>,
+    /// Rekordbox's memory cues in export order: each start, and a memory loop's end.
+    pub(crate) memory: Box<[(u32, Option<u32>)]>,
 }
 
 static GRIDS: [Mailbox<Grid>; 2] = [Mailbox::new(), Mailbox::new()];
