@@ -1,7 +1,18 @@
 use super::*;
-use crate::exfat_fixture::tests::{image, ready};
-use ruzina_media_session::{ConnectResult, MediaSession, MediaSourceId};
+use core::future::Future;
+use core::pin::pin;
+use core::task::{Context, Poll, Waker};
 use std::vec::Vec;
+
+fn ready<F: Future>(future: F) -> F::Output {
+    match pin!(future)
+        .as_mut()
+        .poll(&mut Context::from_waker(Waker::noop()))
+    {
+        Poll::Ready(value) => value,
+        Poll::Pending => panic!("unexpected pending"),
+    }
+}
 
 /// A whole card in memory that records every request it serves.
 struct Card {
@@ -121,45 +132,4 @@ fn a_failed_request_returns_the_buffer_keeps_the_line_and_retries_later() {
     cache.device.fail_at = None;
     assert_eq!(sector(&mut cache, 17)[..], bytes[17 * 512..18 * 512]);
     assert_eq!(cache.device.requests, [(16, 16)]);
-}
-
-#[test]
-fn the_exfat_fixture_verifies_through_the_read_ahead_with_far_fewer_requests() {
-    let bytes = image();
-    let sectors = (crate::exfat_fixture::SIZE as usize).div_ceil(512);
-    let mut cache = ReadAhead::try_new(Card::new(bytes)).ok().unwrap();
-    let ConnectResult::Accepted(lease) =
-        MediaSession::new().on_connect(MediaSourceId::new(1).unwrap())
-    else {
-        panic!("a fresh session accepts its first source");
-    };
-    {
-        let mut volume = ready(crate::exfat_fixture::mount(&mut cache, lease, &|| true))
-            .ok()
-            .unwrap();
-        ready(crate::exfat_fixture::verify(&mut volume, &|| true, || {})).unwrap();
-    }
-    // Every file sector is read once at least; lines bring that down 16-fold.
-    let requests = cache.device.requests.len();
-    assert!(
-        requests * 15 < sectors,
-        "{requests} requests for {sectors} sectors"
-    );
-    assert!(
-        cache
-            .device
-            .requests
-            .iter()
-            .all(|&(_, count)| count <= LINE_SECTORS)
-    );
-    let fetched: u64 = cache
-        .device
-        .requests
-        .iter()
-        .map(|&(_, count)| u64::from(count))
-        .sum();
-    assert!(
-        fetched < 2 * sectors as u64 + 64,
-        "{fetched} sectors fetched"
-    );
 }

@@ -380,3 +380,72 @@ fn invalidation_during_long_verify_never_returns_success() {
         Err(Error::Stale)
     );
 }
+
+/// A whole card in memory, handing out read-ahead lines, that records every
+/// request it serves.
+#[cfg(feature = "media-load")]
+struct LineCard {
+    bytes: Vec<u8>,
+    requests: Vec<(u64, u32)>,
+}
+
+#[cfg(feature = "media-load")]
+impl ruzina_media_io::OwnedBlockDevice for LineCard {
+    type Error = i32;
+    type Buffer = ruzina_media_io::read_ahead::Line;
+    fn geometry(&self) -> BlockGeometry {
+        BlockGeometry {
+            block_size: 512,
+            block_count: (self.bytes.len() / 512) as u64,
+        }
+    }
+    async fn read_blocks_owned(
+        &mut self,
+        first: u64,
+        count: u32,
+        mut line: Self::Buffer,
+    ) -> Result<Self::Buffer, (i32, Self::Buffer)> {
+        self.requests.push((first, count));
+        let start = first as usize * 512;
+        let out = line.as_mut();
+        let len = out.len();
+        out.copy_from_slice(&self.bytes[start..start + len]);
+        Ok(line)
+    }
+}
+
+#[cfg(feature = "media-load")]
+#[test]
+fn the_fixture_verifies_through_the_read_ahead_with_far_fewer_requests() {
+    use ruzina_media_io::read_ahead::{LINE_SECTORS, ReadAhead};
+    use ruzina_media_session::{ConnectResult, MediaSession};
+
+    let card = LineCard {
+        bytes: image(),
+        requests: Vec::new(),
+    };
+    let sectors = (SIZE as usize).div_ceil(512);
+    let mut cache = ReadAhead::try_new(card).ok().unwrap();
+    let ConnectResult::Accepted(lease) =
+        MediaSession::new().on_connect(MediaSourceId::new(1).unwrap())
+    else {
+        panic!("a fresh session accepts its first source");
+    };
+    {
+        let mut volume = ready(mount(&mut cache, lease, &|| true)).ok().unwrap();
+        ready(verify(&mut volume, &|| true, || {})).unwrap();
+    }
+    // Every file sector is read once at least; lines bring that down 16-fold.
+    let requests = &cache.device_mut().requests;
+    assert!(
+        requests.len() * 15 < sectors,
+        "{} requests for {sectors} sectors",
+        requests.len()
+    );
+    assert!(requests.iter().all(|&(_, count)| count <= LINE_SECTORS));
+    let fetched: u64 = requests.iter().map(|&(_, count)| u64::from(count)).sum();
+    assert!(
+        fetched < 2 * sectors as u64 + 64,
+        "{fetched} sectors fetched"
+    );
+}

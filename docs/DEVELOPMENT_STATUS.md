@@ -1,6 +1,6 @@
 # Current development status
 
-Updated 2026-11-18. `main` matches image s133 (app `1ab195d4…`).
+Updated 2026-11-18. `main` matches image s134 (app `af38de11…`).
 
 ## What runs on the board
 
@@ -31,7 +31,7 @@ below has a device log and the owner's verdict in its review. The
 
 | Work | Branch | State |
 |---|---|---|
-| Rekordbox memory cues | `ogranak/jc1060-memory-cues` | On the board (s131); the SAMPLER button reaches it. Calling cues waits for an export with memory cues; its review is on the branch. |
+| Rekordbox memory cues | `ogranak/jc1060-memory-cues` | Tested as s131, where the SAMPLER button reached it; needs a rebase and a reflash. Calling cues waits for an export with memory cues; its review is on the branch. |
 | Music from a USB stick | `ogranak/jc1060-usb-stick` | Built; waits for the board's own power on CN2. |
 
 ## Open

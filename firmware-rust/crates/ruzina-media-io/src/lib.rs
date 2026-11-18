@@ -1,8 +1,13 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "read-ahead")]
+extern crate alloc;
 #[cfg(test)]
 extern crate std;
+
+#[cfg(feature = "read-ahead")]
+pub mod read_ahead;
 
 use core::fmt;
 

@@ -9,11 +9,13 @@
 //! transport, so a cached line never goes stale. Like the volume's own sector
 //! cache, a hit performs no lease check: callers check the lease around each
 //! filesystem operation and discard the volume when it ends.
-#![forbid(unsafe_code)]
+//!
+//! It needs a heap, so it sits behind the `read-ahead` feature.
 
 use alloc::{boxed::Box, vec::Vec};
 use ruzina_media_block::{BlockGeometry, TransferError};
-use ruzina_media_io::OwnedBlockDevice;
+
+use crate::OwnedBlockDevice;
 
 /// Sectors fetched per card request, and the bytes they fill.
 pub const LINE_SECTORS: u32 = 16;

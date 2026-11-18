@@ -7,3 +7,7 @@ publish.workspace = true
 
 [dependencies]
 ruzina-media-block.workspace = true
+
+[features]
+# A multi-sector read-ahead over an owned block device. Needs a heap.
+read-ahead = []
