@@ -35,6 +35,8 @@ static uint32_t reads, sectors_read, denied_commands;
 /* One request carries up to 16 sectors (8 KiB, Rust's read-ahead line). */
 #define BRIDGE_MAX_SECTORS 16u
 #define BRIDGE_BOUNCE_BYTES (BRIDGE_MAX_SECTORS*512u)
+/* Tries at bringing the card up at boot (see owner()). */
+#define SD_INIT_ATTEMPTS 3
 
 #if CONFIG_RUZINA_DECK_ENGINE
 /* The Hot Cue journal partition. SD owner task only; its stack is internal RAM,
@@ -255,9 +257,28 @@ static void owner(void *unused)
     sdmmc_slot_config_t slot=SDMMC_SLOT_CONFIG_DEFAULT();
     slot.width=4; slot.clk=43; slot.cmd=44; slot.d0=39; slot.d1=40; slot.d2=41; slot.d3=42;
     slot.cd=SDMMC_SLOT_NO_CD; slot.wp=SDMMC_SLOT_NO_WP; slot.flags=0;
-    err=sdmmc_host_init_slot(host.slot,&slot); if(err!=ESP_OK) goto finish;
-    slot_up=true;
-    err=sdmmc_card_init(&host,&card); if(err!=ESP_OK) goto finish;
+    /* The card sometimes fails to take its clock at the first boot after a flash
+     * (`failed to set clk`, ESP_ERR_TIMEOUT: s85, s115). It is tried up to three times,
+     * each after removing and adding back the card's slot 0 alone; the third try at
+     * 20 MHz. Slot 1 belongs to the Wi-Fi's C6 and is never touched. */
+    int attempts=0;
+    for(;;) {
+        attempts++;
+        err=sdmmc_host_init_slot(host.slot,&slot); if(err!=ESP_OK) goto finish;
+        slot_up=true;
+        err=sdmmc_card_init(&host,&card);
+        if(err==ESP_OK) break;
+        printf("rust_sd_card_init attempt=%d max_khz=%d error=%s\n",attempts,host.max_freq_khz,esp_err_to_name(err));
+        fflush(stdout);
+        if(attempts==SD_INIT_ATTEMPTS) goto finish;
+        sdmmc_host_deinit_slot(SDMMC_HOST_SLOT_0);
+        slot_up=false;
+        vTaskDelay(pdMS_TO_TICKS(100));
+        /* Without the C6 the controller went with its last slot: bring it back. */
+        err=sdmmc_host_init();
+        if(err!=ESP_OK && err!=ESP_ERR_INVALID_STATE) goto finish;
+        if(attempts==SD_INIT_ATTEMPTS-1) host.max_freq_khz=SDMMC_FREQ_DEFAULT;
+    }
     if(card.csd.sector_size!=512) {err=ESP_ERR_NOT_SUPPORTED;goto finish;}
     /* Cache-line aligned, so the driver DMAs straight into it; an unaligned
      * buffer makes it allocate a temporary one per call and split the read. */
@@ -265,9 +286,9 @@ static void owner(void *unused)
     if(!bounce) {err=ESP_ERR_NO_MEM;goto finish;}
     if(!card.host.check_buffer_alignment(card.host.slot,bounce,512)) {err=ESP_ERR_INVALID_STATE;goto finish;}
     if(ruzina_legacy_bridge_init(card.csd.capacity)!=0) {err=ESP_ERR_INVALID_STATE;goto finish;}
-    printf("S6_RUST_SD_BRIDGE sectors=%" PRIu32 " sector_bytes=512 max_khz=%d real_khz=%d width=4 ldo=4 bounce_bytes=%u dma_direct=1 max_sectors=%u readonly=1\n",
-           (uint32_t)card.csd.capacity,SDMMC_FREQ_HIGHSPEED,card.real_freq_khz,BRIDGE_BOUNCE_BYTES,
-           BRIDGE_MAX_SECTORS);
+    printf("S6_RUST_SD_BRIDGE sectors=%" PRIu32 " sector_bytes=512 max_khz=%d real_khz=%d width=4 ldo=4 bounce_bytes=%u dma_direct=1 max_sectors=%u readonly=1 attempts=%d\n",
+           (uint32_t)card.csd.capacity,host.max_freq_khz,card.real_freq_khz,BRIDGE_BOUNCE_BYTES,
+           BRIDGE_MAX_SECTORS,attempts);
 #if CONFIG_RUZINA_SD_RUST_LOAD
     /* The Rust allocator has no internal fallback: refuse to start without PSRAM. */
     if(!esp_psram_is_initialized()) {err=ESP_ERR_INVALID_STATE;goto finish;}
