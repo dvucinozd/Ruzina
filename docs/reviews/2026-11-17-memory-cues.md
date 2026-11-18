@@ -53,6 +53,19 @@ Date: 2026-11-17. Branch: `ogranak/jc1060-memory-cues`, from `main` at `f1a4894`
   - a tap calls one (`TouchControl::Memory`, through the same SAMPLER pad event);
   - with none, the list says NO MEMORY CUES.
 
+### Review fix: packet order
+
+Codex (P2) found that a transfer's SAMPLER events were delivered after all of its
+profile events. A memory pad followed by Jog Touch in one Bulk-IN would then be
+refused, because the jog already counted as touched. Now `ingest` cuts the transfer
+after each SAMPLER packet:
+- the session first delivers the profile events before it;
+- then comes the SAMPLER event;
+- then the rest of the transfer.
+
+A transfer without a SAMPLER packet stays one batch, as before. The session test checks
+the order Play, pad, Play, SAMPLER in one transfer.
+
 ## Evidence
 
 - **Host:**

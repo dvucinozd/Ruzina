@@ -704,26 +704,53 @@ pub unsafe extern "C" fn ruzina_legacy_midi_ingest(bytes: *const u8, len: u32) -
     }
     // SAFETY: the caller lends `len` readable bytes for this call.
     let payload = unsafe { core::slice::from_raw_parts(bytes, len as usize) };
-    with(|state| {
-        let Some(profile) = state.profile else {
-            return -1;
-        };
-        match state.session.process_usb_midi_transfer(&profile, payload) {
+    with(|state| ingest(state, payload))
+}
+
+/// The SAMPLER button and pads, which the profile leaves unmapped, are
+/// delivered in packet order among the profile's events: the transfer is cut
+/// after each SAMPLER packet, the session delivers what came before it, then
+/// the SAMPLER event follows. A transfer without one stays a single batch.
+#[cfg(feature = "idf-controller-midi")]
+fn ingest(state: &mut State, payload: &[u8]) -> i32 {
+    let Some(profile) = state.profile else {
+        return -1;
+    };
+    if !payload.len().is_multiple_of(4) {
+        return -1;
+    }
+    let mut delivered = 0;
+    let mut rest = payload;
+    loop {
+        let (batch, sampler) = split_at_sampler(rest);
+        match state.session.process_usb_midi_transfer(&profile, batch) {
             Ok(report) => state.totals.accumulate(report),
             Err(_) => return -1,
         }
-        #[cfg_attr(not(feature = "deck-engine"), allow(unused_mut))]
-        let mut delivered = drain(state);
-        // The SAMPLER button and pads, which the profile leaves unmapped.
-        #[cfg(feature = "deck-engine")]
-        for packet in payload.chunks_exact(4) {
-            if let Some(event) = sampler_event([packet[0], packet[1], packet[2], packet[3]]) {
-                deliver(state, &event);
-                delivered += 1;
-            }
+        delivered += drain(state);
+        if let Some(event) = sampler {
+            deliver(state, &event);
+            delivered += 1;
         }
-        delivered
-    })
+        rest = &rest[batch.len()..];
+        if rest.is_empty() {
+            return delivered;
+        }
+    }
+}
+
+/// The packets up to and including the first SAMPLER packet, with its event,
+/// or the whole payload when it has none. Without the deck engine nothing
+/// reads SAMPLER events, so the payload stays whole.
+#[cfg(feature = "idf-controller-midi")]
+fn split_at_sampler(payload: &[u8]) -> (&[u8], Option<ControlEvent>) {
+    #[cfg(feature = "deck-engine")]
+    for (index, packet) in payload.chunks_exact(4).enumerate() {
+        if let Some(event) = sampler_event([packet[0], packet[1], packet[2], packet[3]]) {
+            return (&payload[..(index + 1) * 4], Some(event));
+        }
+    }
+    (payload, None)
 }
 
 /// Copies the running batch totals into `out[0..8]`: packets, decoded,

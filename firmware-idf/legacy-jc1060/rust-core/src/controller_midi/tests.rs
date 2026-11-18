@@ -260,6 +260,36 @@ fn flx4_play_presses_reach_the_semantic_session() {
         assert_eq!(headphone_level(), Some((100, 0x3fff)));
     }
 
+    // SAMPLER events keep their place among the profile's events in one
+    // transfer: Play, a SAMPLER pad, Play, the SAMPLER button.
+    #[cfg(feature = "deck-engine")]
+    {
+        EVENTS.lock().unwrap().clear();
+        let delivered = ingest(&[
+            0x09, 0x90, 0x0b, 0x7f, //
+            0x09, 0x97, 0x30, 0x7f, //
+            0x09, 0x91, 0x0b, 0x7f, //
+            0x09, 0x91, 0x22, 0x7f,
+        ]);
+        let names: Vec<_> = EVENTS
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|event| (event.0, event.4.clone()))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                (1, "Play".into()),
+                (1, "PadAction".into()),
+                (2, "Play".into()),
+                (2, "PadModeSampler".into()),
+            ]
+        );
+        assert_eq!(delivered, 4);
+        take_out(1024);
+    }
+
     ruzina_legacy_midi_unbind();
     assert_eq!(ingest(&[0x09, 0x90, 0x0b, 0x7f]), -1);
 }
