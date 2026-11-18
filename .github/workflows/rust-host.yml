@@ -70,6 +70,11 @@ jobs:
       - name: Unit tests
         run: cargo test --locked --workspace
 
+      - name: Media read-ahead
+        run: |
+          cargo clippy --locked -p ruzina-media-io --features read-ahead --all-targets -- -D warnings
+          cargo test --locked -p ruzina-media-io --features read-ahead
+
       - name: Desktop simulator compile gate
         run: cargo check --locked -p desktop-simulator
 

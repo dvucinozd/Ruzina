@@ -15,7 +15,7 @@ use ruzina_media_session::{MediaHandle, MediaSourceId};
 /// With the load path the transport carries heap read-ahead lines of up to
 /// 16 sectors; the diagnostics without a heap read one stack sector.
 #[cfg(feature = "media-load")]
-type Buffer = crate::read_ahead::Line;
+type Buffer = ruzina_media_io::read_ahead::Line;
 #[cfg(not(feature = "media-load"))]
 type Buffer = [u8; 512];
 /// What the filesystem reads, one sector at a time.
@@ -349,7 +349,7 @@ pub extern "C" fn ruzina_legacy_bridge_run() -> i32 {
 /// One sector's transport buffer.
 #[cfg(feature = "media-load")]
 fn sector_buffer() -> Option<Buffer> {
-    crate::read_ahead::Line::try_new(512)
+    ruzina_media_io::read_ahead::Line::try_new(512)
 }
 #[cfg(not(feature = "media-load"))]
 fn sector_buffer() -> Option<Buffer> {
@@ -361,8 +361,8 @@ fn sector_buffer() -> Option<Buffer> {
 #[cfg(all(feature = "idf-exfat-fixture", feature = "media-load"))]
 fn filesystem_device(
     client: ReadClient<Port>,
-) -> Option<crate::read_ahead::ReadAhead<ReadClient<Port>>> {
-    crate::read_ahead::ReadAhead::try_new(client).ok()
+) -> Option<ruzina_media_io::read_ahead::ReadAhead<ReadClient<Port>>> {
+    ruzina_media_io::read_ahead::ReadAhead::try_new(client).ok()
 }
 #[cfg(all(feature = "idf-exfat-fixture", not(feature = "media-load")))]
 fn filesystem_device(client: ReadClient<Port>) -> Option<ReadClient<Port>> {

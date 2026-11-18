@@ -273,8 +273,12 @@
 - **Settings page rows (2026-11-19):** [the Settings page keeps its rows](reviews/2026-11-19-settings-model.md).
   Its two columns keep their models and change only the rows that differ. s133: Settings
   frames over 30 ms went from about 3.5 a second to 6 in 46 s; owner "Radi".
-- **On the board:** s133 (app `1ab195d4…`), the SD retry and the Settings rows; the memory
-  cues (s131) are not on it.
+- **Read-ahead in the shared crate (2026-11-18):** [the SD read-ahead moves into
+  `ruzina-media-io`](reviews/2026-11-18-read-ahead-crate.md), behind its `read-ahead`
+  feature. The legacy core uses it from there. s134: both decks and the Library behave
+  as before; owner "Radi".
+- **On the board:** s134 (app `af38de11…`), the SD retry, the Settings rows and the
+  shared read-ahead; the memory cues (s131) are not on it.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

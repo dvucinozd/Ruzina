@@ -52,6 +52,7 @@ exfat-fixture = ["media-bridge", "dep:ruzina-media-partition", "dep:ruzina-media
 idf-exfat-fixture = ["idf-media-bridge", "exfat-fixture"]
 media-load = [
     "exfat-fixture",
+    "ruzina-media-io/read-ahead",
     "dep:ruzina-media-catalog",
     "dep:ruzina-media-identity",
     "dep:ruzina-media-load",
