@@ -43,7 +43,7 @@ below has a device log and the owner's verdict in its review. The
   tried three times ([retry](reviews/2026-11-18-sd-retry.md)), not yet seen working on a
   failing boot. Since s116 it no longer
   takes the Wi-Fi's slot down with it ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
-- **Not in a device log yet:** turning Beat FX off and Pad FX bank 2.
+- **Not in a device log yet:** the Delay effect and the Beat FX channel switch.
 
 ## Evidence layers
 
