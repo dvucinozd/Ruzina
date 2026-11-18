@@ -12,7 +12,7 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 - a DDJ-FLX4 for control, MAIN and headphones;
 - a Rekordbox export on the SD card.
 
-`main` matches image s134 (app `af38de11…`). Every point below has a dated review with
+`main` matches image s135 (app `b9b0c6cb…`). Every point below has a dated review with
 its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.md):
 
 - **Playback:**
@@ -34,13 +34,12 @@ its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.
   - waveforms with Hot Cue, loop and beat marks;
   - a Library with Rekordbox playlists, and each deck's cover;
   - Hot Cues, FX and Settings pages;
+  - Rekordbox memory cues, called from the HOT CUES page or the FLX4's SAMPLER pads;
   - settings kept on flash: LOAD LOCK, VINYL/CDJ, brightness and the MAIN trim.
 - **Network:** the deck's own Wi-Fi (ESP32-C6 via ESP-Hosted) and the Web Remote, with
   play, cue, library, mixer and SYNC.
 
 **Not on `main` yet:**
-- Rekordbox memory cues, on `ogranak/jc1060-memory-cues`. It was tested as s131; the
-  branch needs a rebase and a reflash, and its test waits for an export with memory cues.
 - Music from a USB stick, on `ogranak/jc1060-usb-stick`. It waits for the board's own
   power on CN2.
 

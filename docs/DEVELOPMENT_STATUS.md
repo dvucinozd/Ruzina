@@ -1,6 +1,6 @@
 # Current development status
 
-Updated 2026-11-18. `main` matches image s134 (app `af38de11…`).
+Updated 2026-11-18. `main` matches image s135 (app `b9b0c6cb…`).
 
 ## What runs on the board
 
@@ -18,6 +18,7 @@ below has a device log and the owner's verdict in its review. The
 | Loops and scratch | From a played-audio history, with 5.8 ms crossfades | [loops](reviews/2026-11-05-loops.md), [scratch](reviews/2026-11-05-scratch.md) |
 | Beat FX and Pad FX | In the render graph; FX page by touch | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md) |
 | Hot Cues | From Rekordbox, own ones in a flash journal, erased ahead | [Hot Cues](reviews/2026-11-06-hot-cues.md), [erase ahead](reviews/2026-11-13-hot-cue-erase-ahead.md), [page](reviews/2026-11-12-hot-cues-page.md) |
+| Memory cues | Rekordbox memory cues on the lane, the HOT CUES page and the SAMPLER pads | [memory cues](reviews/2026-11-17-memory-cues.md) |
 | FLX4 LEDs | Pad modes, SYNC, PFL, Smart buttons, Beat FX ON | [LEDs](reviews/2026-11-06-controller-leds.md) |
 | SYNC and Quantize | Beat sync, continuous SYNC, Quantize | [beat sync](reviews/2026-11-11-beat-sync.md), [continuous](reviews/2026-11-13-continuous-sync.md), [Quantize](reviews/2026-11-12-quantize.md) |
 | Master Tempo | Its own keylock; with SYNC, phase within 1 ms | [Master Tempo](reviews/2026-11-13-master-tempo.md), [stops](reviews/2026-11-13-mt-phase.md), [controller](reviews/2026-11-14-mt-on-controller.md), [with SYNC](reviews/2026-11-16-sync-mt-line.md) |
@@ -31,7 +32,6 @@ below has a device log and the owner's verdict in its review. The
 
 | Work | Branch | State |
 |---|---|---|
-| Rekordbox memory cues | `ogranak/jc1060-memory-cues` | Tested as s131, where the SAMPLER button reached it; needs a rebase and a reflash. Calling cues waits for an export with memory cues; its review is on the branch. |
 | Music from a USB stick | `ogranak/jc1060-usb-stick` | Built; waits for the board's own power on CN2. |
 
 ## Open

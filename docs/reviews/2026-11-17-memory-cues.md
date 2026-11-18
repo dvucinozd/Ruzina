@@ -71,10 +71,19 @@ Date: 2026-11-17. Branch: `ogranak/jc1060-memory-cues`, from `main` at `f1a4894`
     - the legacy tests and clippy;
     - target clippy for every CI feature set;
     - the desktop simulator's and media catalog's tests.
-- **Device:** s131 (app `2b6a970a…`) is flashed, and its readback matches.
-  - The SAMPLER button reached the board (`PadModeSampler`, deck 1).
-  - Nothing else is confirmed on the device yet. The owner did not know which track has
-    memory cues, and the run's log has no pad press. The test is left for later.
+- **Device:**
+  - **s131** (app `2b6a970a…`): the SAMPLER button reached the board
+    (`PadModeSampler`, deck 1). The owner did not know which track has memory cues, and
+    the log had no pad press, so the test was left for later.
+  - **s135** (app `b9b0c6cb…`, 2026-11-18): the branch rebased on `main` (s134) and
+    started over COM3 from the held ROM.
+    - The SD card came up at the first try.
+    - The owner loaded tracks on both decks and pressed SAMPLER.
+    - The log has `control=PadAction` for pads 1–4 and 7 on deck 1, and pads 1–2 on
+      deck 2, each with its release.
+    - The owner: "Radi".
+    - All 15 reports had `packet_errors=0` and underruns 0/0.
+    - **Not tried:** Shift + pad (cues 9–16).
 
 ## Test plan
 
