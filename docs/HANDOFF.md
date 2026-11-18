@@ -266,7 +266,12 @@
   - s129: 5 saves, `packet_errors=0`, settings back after a cold boot. Owner: "Radi".
   - Review fixes (s130): the app main task saves, card or not; a save that would erase
     waits for USB audio to stand still. s130: saves of 9 and 2 ms, 30 % back after a boot.
-- **On the board:** s130 (app `2a75085d…`), settings on the Settings page.
+- **SD tried again (2026-11-18):** [the SD card is tried again when it fails to take its clock](reviews/2026-11-18-sd-retry.md).
+  Up to three tries, removing and adding back slot 0 alone, the third at 20 MHz. s132:
+  `attempts=1` at 40 MHz on a normal boot, owner "Radi"; the retry itself waits for a
+  failing boot.
+- **On the board:** s132 (app `3293e844…`), `main` with the SD retry; the memory cues
+  (s131) are not on it.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

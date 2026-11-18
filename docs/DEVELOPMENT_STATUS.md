@@ -1,6 +1,6 @@
 # Current development status
 
-Updated 2026-11-18. `main` matches image s130 (app `2a75085d…`).
+Updated 2026-11-18. `main` matches image s132 (app `3293e844…`).
 
 ## What runs on the board
 
@@ -39,7 +39,9 @@ below has a device log and the owner's verdict in its review. The
 - **USB audio fill:** the longest fill is 3.2 ms while mixing, over the 3 ms target,
   with no underruns.
 - **Screen:** Slint's scene preparation is still 16 to 26 ms of a big frame.
-- **SD:** an SD clock failure at the first boot after a flash. Since s116 it no longer
+- **SD:** an SD clock failure at the first boot after a flash. Since s132 the card is
+  tried three times ([retry](reviews/2026-11-18-sd-retry.md)), not yet seen working on a
+  failing boot. Since s116 it no longer
   takes the Wi-Fi's slot down with it ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
 - **Not in a device log yet:** turning Beat FX off and Pad FX bank 2.
 
