@@ -1,6 +1,7 @@
 # Current development status
 
-Updated 2026-11-18. `main` matches image s136 (app `a666ac6e…`).
+Updated 2026-11-19. The board keeps image s140 (app `df3ae93c…`), the `--usb-stick` build
+of `main`; the SD build of the same code is s136 (app `a666ac6e…`).
 
 ## What runs on the board
 
@@ -12,9 +13,10 @@ below has a device log and the owner's verdict in its review. The
 | Area | On the board | Review |
 |---|---|---|
 | Two MP3 decks | 59 s clean, 0 underruns, at `opt-level = 3` | [dual MP3](reviews/2026-11-03-dual-mp3-opt3.md) |
-| Storage and speed | SD reads of up to 16 sectors through a read-ahead; QIO 80 MHz flash; 200 MHz PSRAM | [SD reads](reviews/2026-11-04-sd-multisector.md), [flash](reviews/2026-11-04-flash-qio80.md), [PSRAM](reviews/2026-11-04-psram-200m.md) |
+| Storage and speed | A read-ahead: 8 KiB per stick read, up to 16 sectors from an SD card; QIO 80 MHz flash; 200 MHz PSRAM | [SD reads](reviews/2026-11-04-sd-multisector.md), [flash](reviews/2026-11-04-flash-qio80.md), [PSRAM](reviews/2026-11-04-psram-200m.md) |
 | Seeks | Indexed MP3 seeks, untagged VBR included | [MP3 index](reviews/2026-11-04-mp3-seek-index.md), [VBR](reviews/2026-11-05-untagged-vbr-seek.md) |
-| Long runs | Soaks of 35 to 40 minutes, and 45 minutes of scripted gestures, 0/0 underruns | [soak](reviews/2026-11-04-soak-autoplay.md), [every control](reviews/2026-11-06-full-control-soak.md) |
+| Long runs | Soaks of 35 to 42 minutes, and 45 minutes of scripted gestures, 0/0 underruns | [soak](reviews/2026-11-04-soak-autoplay.md), [every control](reviews/2026-11-06-full-control-soak.md), [stick soak](reviews/2026-11-19-stick-soak.md) |
+| Music from a USB stick | exFAT stick behind a hub on the HS port, with the FLX4; MEDIA REMOVED when pulled out, an app restart when put back; no SD card | [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md), [8 KiB reads](reviews/2026-11-19-stick-8k-reads.md) |
 | Loops and scratch | From a played-audio history, with 5.8 ms crossfades | [loops](reviews/2026-11-05-loops.md), [scratch](reviews/2026-11-05-scratch.md) |
 | Beat FX and Pad FX | In the render graph; FX page by touch | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md) |
 | Hot Cues | From Rekordbox, own ones in a flash journal, erased ahead | [Hot Cues](reviews/2026-11-06-hot-cues.md), [erase ahead](reviews/2026-11-13-hot-cue-erase-ahead.md), [page](reviews/2026-11-12-hot-cues-page.md) |
@@ -28,18 +30,17 @@ below has a device log and the owner's verdict in its review. The
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, kept on flash | [settings](reviews/2026-11-17-settings.md) |
 | Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted); play, cue, library, mixer, SYNC, four connections, soft takeover | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [Web Remote](reviews/2026-11-15-web-remote-play-cue.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md) |
 
-## Not on `main` yet
+## Still to come
 
-| Work | Branch | State |
-|---|---|---|
-| Music from a USB stick | `ogranak/jc1060-usb-stick` | Works behind a hub on the HS port (s137, [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md)); the CN2 layout comes last. |
+The final layout: the board's own power on CN2, the stick on the FS port and the log on
+UART0.
 
 ## Open
 
-- **USB audio fill:** the longest fill is 3.2 ms while mixing, over the 3 ms target,
-  with no underruns.
+- **USB audio fill:** over the 3 ms target, with no underruns: 3.2 ms while mixing, and
+  5.95 ms at most in the 42-minute stick soak, where 11 % of fills were over 3 ms.
 - **Screen:** Slint's scene preparation is still 16 to 26 ms of a big frame.
-- **SD:** an SD clock failure at the first boot after a flash. Since s132 the card is
+- **SD (SD build only):** an SD clock failure at the first boot after a flash. Since s132 the card is
   tried three times ([retry](reviews/2026-11-18-sd-retry.md)), not yet seen working on a
   failing boot. Since s116 it no longer
   takes the Wi-Fi's slot down with it ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).

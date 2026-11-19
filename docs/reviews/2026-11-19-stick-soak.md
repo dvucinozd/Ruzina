@@ -44,7 +44,7 @@ both decks for so long:
   soak stayed under 6 ms.
 - Whether the stick adds to the fill (its bulk transfers share the HS controller with
   the isochronous audio) or a long two-deck run does is not settled. An SD soak of the
-  same image would separate the two.
+  same image would separate the two; the owner did not want one.
 
 ## Verdict
 

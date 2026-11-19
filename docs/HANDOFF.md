@@ -307,10 +307,14 @@
 - **Soak from the stick (2026-11-19):** [a 42-minute soak from the USB stick](reviews/2026-11-19-stick-soak.md).
   s140, soak DJ, no SD card: 0/0 underruns and no USB audio error in 419 reports; 254 MiB
   read from the stick with no recovery. The longest fill was 5950 µs, and 11.2 % of
-  fills were over 3 ms, against about 7 % in shorter SD runs: an SD soak of the same
-  image would show whether the stick adds to it.
+  fills were over 3 ms, against about 7 % in shorter SD runs. The owner did not want an
+  SD soak to compare.
+- **The stick image is the board's image (2026-11-19):** the owner chose the
+  `--usb-stick` build as the one kept on the board, with the Rekordbox export on the
+  stick and no SD card. The SD build stays in CI and for comparisons.
 - **On the board:** s140 (app `df3ae93c…`), the `--usb-stick` image of `main` with the
-  stick behind a hub. The SD image of `main` is s136 (app `a666ac6e…`).
+  stick behind a hub; this is the image the board keeps. The SD image of the same code
+  is s136 (app `a666ac6e…`).
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
