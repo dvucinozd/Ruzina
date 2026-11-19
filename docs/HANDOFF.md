@@ -326,11 +326,15 @@
   chunks; the audio is bit-identical. Graph 1410 → 1008 µs a fill; under the profile,
   fills over 3 ms 8.1 % → 0.61 %, 0/0 underruns (s145, s146, s147). The fill chain's
   stack is now 4016 of its 4096 B budget, through the render.
-- **On the board:** s147 (app `50903496…`), the `--uac-profile` `--usb-stick` image of the
-  faster render, for measuring. The image the board keeps is s142 (app `3125b34f…`), the
-  `--usb-stick` image with even fills and the stick behind a hub. s140 (app `df3ae93c…`) is
-  the same image before even fills. The SD image s136
-  (app `a666ac6e…`) is from before even fills too.
+- **Faster render soak, fill stack (2026-11-20):** [the product image and the fill stack](reviews/2026-11-20-fast-render-soak.md).
+  s148 against s142 over the same 159 000 fills: fills over 3 ms 3.75 % → 0.23 %, the
+  longest 5235 → 4155 µs, 0/0 underruns, no USB audio error; owner "Radi". The mix now
+  builds a graph without effects out of line, so its 1.3 KiB slot is no longer in every
+  fill's frame: the product fill chain needs 2704 B, down from 3792 B.
+- **On the board:** s148 (app `5824136c…`), the `--usb-stick` image with the faster render
+  and the stick behind a hub; this is the image the board keeps. s142 (app `3125b34f…`) is
+  the same image before the faster render, s140 (app `df3ae93c…`) before even fills. The
+  SD image s136 (app `a666ac6e…`) is from before even fills.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
