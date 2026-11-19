@@ -76,6 +76,10 @@ jobs:
           - variant: deck-engine
             slint: true
             profile: true
+          # The deck screen reading its media from a USB stick behind a hub on HS.
+          - variant: deck-engine
+            slint: true
+            usb_stick: true
           - variant: deck-engine
             profile: true
           - variant: deck-engine
@@ -88,7 +92,7 @@ jobs:
             producer_profile: true
             profile: false
             mp3_core_opt3: true
-    name: legacy (${{ matrix.variant }}${{ matrix.slint && '-slint' || '' }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }}${{ matrix.mp3_core_opt3 && '-mp3-core-opt3' || '' }})
+    name: legacy (${{ matrix.variant }}${{ matrix.slint && '-slint' || '' }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }}${{ matrix.mp3_core_opt3 && '-mp3-core-opt3' || '' }}${{ matrix.usb_stick && '-usb-stick' || '' }})
     steps:
       - uses: actions/checkout@v4
       - name: Rust
@@ -128,10 +132,10 @@ jobs:
           . "$RUNNER_TEMP/idf/export.sh"
           python firmware-rust/tools/check_docs.py
           python -m unittest discover -s firmware-idf/legacy-jc1060/tools/tests -v
-          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' ${{ matrix.slint && '--soak-autoplay --slint-ui --fill-iram' || '' }} ${{ matrix.profile && '--uac-profile' || '' }} ${{ matrix.pack_iram && '--uac-pack-iram' || '' }} ${{ matrix.producer_profile && '--producer-profile' || '' }} ${{ matrix.mp3_core_opt3 && '--mp3-core-opt3' || '' }} --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
+          python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --variant '${{ matrix.variant }}' ${{ matrix.slint && '--soak-autoplay --slint-ui --fill-iram' || '' }} ${{ matrix.profile && '--uac-profile' || '' }} ${{ matrix.pack_iram && '--uac-pack-iram' || '' }} ${{ matrix.producer_profile && '--producer-profile' || '' }} ${{ matrix.mp3_core_opt3 && '--mp3-core-opt3' || '' }} ${{ matrix.usb_stick && '--usb-stick' || '' }} --output "$RUNNER_TEMP/legacy-${{ matrix.variant }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: legacy-${{ matrix.variant }}${{ matrix.slint && '-slint' || '' }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }}${{ matrix.mp3_core_opt3 && '-mp3-core-opt3' || '' }}-BUILD-ONLY
+          name: legacy-${{ matrix.variant }}${{ matrix.slint && '-slint' || '' }}${{ matrix.profile && '-profile' || '' }}${{ matrix.pack_iram && '-pack-iram' || '' }}${{ matrix.producer_profile && '-producer-profile' || '' }}${{ matrix.mp3_core_opt3 && '-mp3-core-opt3' || '' }}${{ matrix.usb_stick && '-usb-stick' || '' }}-BUILD-ONLY
           path: |
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/manifest.json
             ${{ runner.temp }}/legacy-${{ matrix.variant }}/*build.log

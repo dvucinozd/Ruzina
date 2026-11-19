@@ -151,8 +151,8 @@
   - a SCSI Bulk-Only reader;
   - the media owner reading the stick under the SD contract.
 
-  Both builds compile; it is untested until the board is powered from CN2 VIN with the
-  PC off the FS port.
+  Both builds compile. On 2026-11-19 it moved behind a hub on the HS port and works on
+  the board (s137, see below).
 - **Latin letters (2026-11-13):** [Croatian and other Latin letters](reviews/2026-11-13-latin-glyphs.md)
   on the deck screen. Slint embeds only ASCII and literal characters, so an invisible
   text now carries Latin-1, Latin Extended-A and typographic quotes (+641 KB). Owner:
@@ -289,7 +289,19 @@
   - s136 short checks (2026-11-19): Shift + pad reached cues 9–12 on both decks, Beat
     FX went on and off, and Pad FX bank 2 pads 1–4 played; `packet_errors=0`; owner
     "Radi".
-- **On the board:** s136 (app `a666ac6e…`): s134 with the memory cues.
+- **USB stick behind a hub (2026-11-19):** [music from a USB stick behind a hub](reviews/2026-11-19-usb-stick-hub.md).
+  - `--usb-stick` now keeps the host on HS with hub support. The FLX4 and the stick share
+    a hub, and the PC keeps the FS port for power and COM3.
+  - The hub runs without its adapter, because with it the hub drove 5 V back up its cable.
+  - s137, with no SD card: the stick mounted, and both decks loaded and played from it.
+    9 reports had `packet_errors=0`; owner "Radi".
+  - Review fixes: the stick closes only once no command uses it, and a timed-out transfer
+    is never reused. s138: pulling the stick out mid-track stopped media access cleanly,
+    and the board kept running; owner "Radi".
+  - The stick put back: the Library shows MEDIA REMOVED while it is out, and its return
+    restarts the app. s139: it mounted again and both decks played; owner "Radi".
+- **On the board:** s139 (app `c2a28cbb…`), the `--usb-stick` image of `main` with the
+  stick behind a hub. The SD image of `main` is s136 (app `a666ac6e…`).
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on

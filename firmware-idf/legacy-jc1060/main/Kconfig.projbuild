@@ -74,6 +74,15 @@ config RUZINA_UAC_PROFILE
     select ESP_TIMER_IN_IRAM
     default n
 
+config RUZINA_MEDIA_USB_STICK
+    bool "Read the media from a USB stick behind a hub on the HS port instead of the SD card"
+    depends on RUZINA_SD_RUST_BRIDGE && RUZINA_USB_HOST_ENUM && USB_HOST_HUBS_SUPPORTED
+    default n
+    help
+        A hub on the HS port carries the controller and a mass-storage stick. The FS
+        port stays USB Serial/JTAG, so the PC keeps the console and may power the
+        board. A self-powered hub must not drive 5 V back up its upstream port.
+
 config RUZINA_PRODUCER_PROFILE
     bool "Diagnostic producer wall partitions and USB service observations"
     depends on RUZINA_DECK_ENGINE && !RUZINA_UAC_PROFILE

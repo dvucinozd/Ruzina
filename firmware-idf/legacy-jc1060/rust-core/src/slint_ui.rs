@@ -992,7 +992,17 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
 
 /// The Library page as shown: the list's version, the playlist tree, the level, the
 /// first row, the selection and each deck's track.
-type LibraryState = (u32, usize, deck_view::Level, u32, Option<u32>, [u32; 2]);
+/// The catalog version, the shelf, the level, the first row, the selection, each deck's
+/// track, and whether the media are gone (their tracks can no longer load).
+type LibraryState = (
+    u32,
+    usize,
+    deck_view::Level,
+    u32,
+    Option<u32>,
+    [u32; 2],
+    bool,
+);
 
 /// Shows the Library page's level from row `first`: the selected row, and each track's
 /// decks.
@@ -1007,7 +1017,7 @@ fn show_library(
 ) {
     use deck_view::{Level, Row};
     use slint::Model;
-    let (_, _, level, first, selected, decks) = state;
+    let (_, _, level, first, selected, decks, gone) = state;
     let len = deck_view::level_len(level);
     let shelf = deck_view::shelf();
     let lines = (first..len.min(first + LIBRARY_ROWS)).filter_map(|index| {
@@ -1069,6 +1079,14 @@ fn show_library(
     }
     while model.row_count() > count {
         model.remove(model.row_count() - 1);
+    }
+    // The media went away: the rows stay as they were read, but none of them loads until
+    // the app restarts (a USB stick put back restarts it by itself).
+    if gone {
+        ui.set_library_count("RESTART NEEDED".into());
+        ui.set_library_heading("MEDIA REMOVED".into());
+        ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
+        return;
     }
     ui.set_library_count(match selected {
         Some(index) => alloc::format!("{} / {}", index + 1, len).into(),
@@ -1462,7 +1480,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 tracks[deck].as_ref().map_or(u32::MAX, |track| track.index)
             });
             let shelf = deck_view::shelf().map_or(0, |shelf| core::ptr::from_ref(shelf) as usize);
-            let state = (library_version, shelf, level, first, selected, decks);
+            let gone = crate::media_signal::muted();
+            let state = (library_version, shelf, level, first, selected, decks, gone);
             if shown_library != Some(state) {
                 show_library(&ui, &library_model, &library.rows, state);
                 shown_library = Some(state);
