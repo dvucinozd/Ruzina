@@ -14,7 +14,17 @@
  * - an invalid or missing status, a phase error, or a timeout: Reset Recovery (the
  *   class Bulk-Only Mass Storage Reset, then clear both bulk halts);
  * - a failed READ (status 1): REQUEST SENSE, then the read is tried again.
- * A read is tried 3 times before the owner stops. */
+ * A read is tried 3 times before the owner stops.
+ *
+ * Handle lifetime: the device handle is closed only while no command runs. The owner marks
+ * each command busy before it checks that the stick is present, and the client marks the
+ * stick gone before it checks busy (both sequentially consistent), so either the command
+ * sees the stick gone, or the client waits for it to end before closing the device.
+ *
+ * A transfer is never submitted again while it may still be in flight. EP0 has no cancel
+ * in this host library, so a control request that times out, or a bulk transfer still
+ * running after its cancel, leaves the stick given up (`msc_stuck`) until it is unplugged
+ * and the app restarts. Each completion wakes only the wait for its own transfer. */
 #include <string.h>
 #include "freertos/semphr.h"
 
@@ -48,7 +58,14 @@ static uint8_t msc_interface = 0xff, msc_in, msc_out;
 static uint16_t msc_mps_in;
 static usb_transfer_t *msc_transfer, *msc_control_transfer;
 static SemaphoreHandle_t msc_done, msc_bound;
-static volatile bool msc_present;
+/* Set by the client task: the stick is bound, and not gone. */
+static _Atomic bool msc_present;
+/* Set by the owner task while a command uses the device handle. */
+static _Atomic bool msc_busy;
+/* A transfer may still be in flight after a timeout: the stick is given up. */
+static bool msc_stuck;
+/* The transfer the owner waits for; another one's completion does not wake it. */
+static usb_transfer_t *_Atomic msc_awaited;
 static uint32_t msc_tag;
 static uint32_t msc_commands, msc_errors, msc_stalls, msc_resets, msc_retries;
 
@@ -60,8 +77,19 @@ bool ruzina_msc_present(void)
 
 static void msc_transfer_done(usb_transfer_t *transfer)
 {
-    (void)transfer;
-    xSemaphoreGive(msc_done);
+    if (transfer == msc_awaited) xSemaphoreGive(msc_done);
+}
+
+/* Client task, on DEV_GONE: no new command may use the device from now on. */
+static void msc_gone(void)
+{
+    msc_present = false;
+}
+
+/* Client task: whether the device may be closed, with no command using it. */
+static bool msc_idle(void)
+{
+    return !msc_busy;
 }
 
 /* Whether `config` has a SCSI Bulk-Only interface; its number and bulk endpoints if so. */
@@ -118,7 +146,7 @@ static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
     return true;
 }
 
-/* Client task: the stick is gone. In-flight transfers have completed by now. */
+/* Client task: the stick is gone, and no command uses it (msc_idle). */
 static void msc_unbind(void)
 {
     msc_present = false;
@@ -132,17 +160,41 @@ static void msc_unbind(void)
     fflush(stdout);
 }
 
-/* Waits for the transfer just submitted. On a timeout it cancels the transfer (halt, then
- * flush: the callback runs with CANCELED) and leaves the endpoint halted for recovery. */
-static msc_result_t msc_wait(usb_transfer_t *t, uint8_t endpoint)
+/* Submits `t` and waits for it. On a timeout a bulk transfer is cancelled (halt, then
+ * flush: the callback runs with CANCELED) and its endpoint left halted for recovery. A
+ * transfer that has not ended by then (always so on EP0, which cannot be cancelled here)
+ * gives the stick up, so it is never submitted again while in flight. */
+static msc_result_t msc_submit_wait(usb_transfer_t *t)
 {
-    if (xSemaphoreTake(msc_done, pdMS_TO_TICKS(MSC_TIMEOUT_MS)) != pdTRUE) {
-        if (!msc_present) return MSC_GONE;
+    const uint8_t endpoint = t->bEndpointAddress;
+    xSemaphoreTake(msc_done, 0);
+    msc_awaited = t;
+    esp_err_t err = endpoint ? usb_host_transfer_submit(t) : usb_host_transfer_submit_control(client, t);
+    if (err != ESP_OK) {
+        msc_awaited = NULL;
+        return msc_present ? MSC_RECOVER : MSC_GONE;
+    }
+    bool ended = xSemaphoreTake(msc_done, pdMS_TO_TICKS(MSC_TIMEOUT_MS)) == pdTRUE;
+    if (!ended && msc_present && endpoint) {
         usb_host_endpoint_halt(msc_dev, endpoint);
         usb_host_endpoint_flush(msc_dev, endpoint);
-        xSemaphoreTake(msc_done, pdMS_TO_TICKS(500));
-        return MSC_RECOVER;
+        ended = xSemaphoreTake(msc_done, pdMS_TO_TICKS(500)) == pdTRUE;
+        if (ended) {
+            msc_awaited = NULL;
+            return MSC_RECOVER;
+        }
     }
+    /* A gone device's transfers end with NO_DEVICE: wait for that before letting go. */
+    if (!ended && !msc_present) ended = xSemaphoreTake(msc_done, pdMS_TO_TICKS(MSC_TIMEOUT_MS)) == pdTRUE;
+    msc_awaited = NULL;
+    if (!ended) {
+        msc_stuck = true;
+        printf("usb_msc stuck endpoint=%02x present=%d reinsert=APP_RESTART_REQUIRED\n", endpoint,
+               (int)msc_present);
+        fflush(stdout);
+        return MSC_GONE;
+    }
+    if (!msc_present) return MSC_GONE;
     switch (t->status) {
         case USB_TRANSFER_STATUS_COMPLETED: return MSC_OK;
         case USB_TRANSFER_STATUS_STALL: msc_stalls++; return MSC_STALL;
@@ -154,7 +206,7 @@ static msc_result_t msc_wait(usb_transfer_t *t, uint8_t endpoint)
 /* A control request with no data stage, waited on. */
 static msc_result_t msc_control(uint8_t request_type, uint8_t request, uint16_t value, uint16_t index)
 {
-    if (!msc_present) return MSC_GONE;
+    if (!msc_present || msc_stuck) return MSC_GONE;
     usb_transfer_t *t = msc_control_transfer;
     usb_setup_packet_t *setup = (usb_setup_packet_t *)t->data_buffer;
     setup->bmRequestType = request_type;
@@ -168,16 +220,14 @@ static msc_result_t msc_control(uint8_t request_type, uint8_t request, uint16_t 
     t->callback = msc_transfer_done;
     t->context = NULL;
     t->timeout_ms = MSC_TIMEOUT_MS;
-    xSemaphoreTake(msc_done, 0);
-    if (usb_host_transfer_submit_control(client, t) != ESP_OK) return MSC_RECOVER;
-    return msc_wait(t, 0);
+    return msc_submit_wait(t);
 }
 
 /* Clears a halted bulk endpoint on both sides: the device's (CLEAR_FEATURE ENDPOINT_HALT)
  * and the host pipe's. */
 static msc_result_t msc_clear_halt(uint8_t endpoint)
 {
-    if (!msc_present) return MSC_GONE;
+    if (!msc_present || msc_stuck) return MSC_GONE;
     /* The pipe may already be halted by the stall; halting it again is harmless. */
     usb_host_endpoint_halt(msc_dev, endpoint);
     usb_host_endpoint_flush(msc_dev, endpoint);
@@ -202,7 +252,7 @@ static msc_result_t msc_reset_recovery(void)
  * out for IN; `actual` gets the bytes moved. */
 static msc_result_t msc_bulk(uint8_t endpoint, uint8_t *buffer, size_t len, size_t *actual)
 {
-    if (!msc_present) return MSC_GONE;
+    if (!msc_present || msc_stuck) return MSC_GONE;
     usb_transfer_t *t = msc_transfer;
     const bool in = endpoint & 0x80;
     /* An IN transfer must ask for whole packets. */
@@ -215,9 +265,7 @@ static msc_result_t msc_bulk(uint8_t endpoint, uint8_t *buffer, size_t len, size
     t->callback = msc_transfer_done;
     t->context = NULL;
     t->timeout_ms = MSC_TIMEOUT_MS;
-    xSemaphoreTake(msc_done, 0);
-    if (usb_host_transfer_submit(t) != ESP_OK) return msc_present ? MSC_RECOVER : MSC_GONE;
-    msc_result_t r = msc_wait(t, endpoint);
+    msc_result_t r = msc_submit_wait(t);
     if (r != MSC_OK) return r;
     size_t got = (size_t)t->actual_num_bytes;
     if (in) memcpy(buffer, t->data_buffer, got < len ? got : len);
@@ -246,8 +294,8 @@ static msc_result_t msc_status(uint32_t tag, uint8_t *status)
 }
 
 /* One SCSI command: CBW, an optional IN data stage of `len` bytes in chunks, CSW. A
- * command that needs Reset Recovery gets it before returning. */
-static msc_result_t msc_command(const uint8_t *cdb, uint8_t cdb_len, uint8_t *data, uint32_t len)
+ * command that needs Reset Recovery gets it before returning. Runs while busy. */
+static msc_result_t msc_command_run(const uint8_t *cdb, uint8_t cdb_len, uint8_t *data, uint32_t len)
 {
     uint8_t cbw[MSC_CBW_BYTES] = {0};
     const uint32_t tag = ++msc_tag;
@@ -283,6 +331,16 @@ static msc_result_t msc_command(const uint8_t *cdb, uint8_t cdb_len, uint8_t *da
     if (r == MSC_OK && done != len) r = MSC_FAILED;
     if (r != MSC_OK) msc_errors++;
     if (r == MSC_RECOVER) msc_reset_recovery();
+    return r;
+}
+
+/* Owner task: one command, with the device handle kept open until it ends. Busy is set
+ * before presence is read; the client marks the stick gone before it reads busy. */
+static msc_result_t msc_command(const uint8_t *cdb, uint8_t cdb_len, uint8_t *data, uint32_t len)
+{
+    msc_busy = true;
+    const msc_result_t r = msc_present && !msc_stuck ? msc_command_run(cdb, cdb_len, data, len) : MSC_GONE;
+    msc_busy = false;
     return r;
 }
 

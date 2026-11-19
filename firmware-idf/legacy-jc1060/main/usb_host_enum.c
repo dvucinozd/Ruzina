@@ -262,6 +262,8 @@ static void on_event(const usb_host_client_event_msg_t *msg, void *arg)
     } else if (msg->event == USB_HOST_CLIENT_EVENT_DEV_GONE) {
 #if CONFIG_RUZINA_MEDIA_USB_STICK
         if (msc_dev && msg->dev_gone.dev_hdl == msc_dev) {
+            /* No new command takes the handle now; it closes once none uses it. */
+            msc_gone();
             stick_gone = true;
             return;
         }
@@ -366,8 +368,9 @@ static void client_task(void *unused)
         bool service_active=uac_health.state==UAC_HEALTH_STREAMING;
         uint64_t service_start=(uint64_t)esp_timer_get_time();
 #endif
-#if CONFIG_RUZINA_USB_HOST_MIDI
-        /* Bounded wait so an error retry can run without a new event. */
+#if CONFIG_RUZINA_USB_HOST_MIDI || CONFIG_RUZINA_MEDIA_USB_STICK
+        /* Bounded wait so an error retry, or the stick's deferred close, can run without a
+         * new event. */
         usb_host_client_handle_events(client, pdMS_TO_TICKS(50));
 #else
         usb_host_client_handle_events(client, portMAX_DELAY);
@@ -391,7 +394,8 @@ static void client_task(void *unused)
             if (!device) report(address);
         }
 #if CONFIG_RUZINA_MEDIA_USB_STICK
-        if (stick_gone) {
+        /* The media owner may be inside a command with the handle: close once it is out. */
+        if (stick_gone && msc_idle()) {
             stick_gone = false;
             msc_unbind();
         }

@@ -29,6 +29,22 @@ CN2 layout is left for the end.
 - **Rebase:** the SD path keeps `main`'s three tries and its slot-only teardown.
 - **CI:** the legacy CI builds the stick image (`deck-engine`, Slint, `--usb-stick`).
 
+### Review fixes (Codex, two P2)
+
+- **Unplugging:** the client task closed the stick at DEV_GONE, while the media owner could
+  be preparing a transfer with the same handle. Now:
+  - the owner marks each command busy before it checks that the stick is present;
+  - the client marks the stick gone at once, and closes the device only once no command
+    is busy;
+  - both flags are sequentially consistent, so either the command sees the stick gone or
+    the close waits for it;
+  - the client loop wakes every 50 ms in the stick build, so a deferred close runs.
+- **Timeouts:** this host library cannot cancel EP0, and a bulk transfer may still be in
+  flight after its cancel. A transfer that has not ended is now never submitted again.
+  The stick is given up (`usb_msc stuck`), until it is unplugged and the app restarts. A
+  completion wakes only the wait for its own transfer.
+- s138 (app `d42b7986…`) builds with no warnings.
+
 ## Hub power
 
 The hub has its own adapter, and with it plugged in the hub drove about 5 V back up its
@@ -63,7 +79,7 @@ and the stick.
 - **Throughput:** reads of 16 sectors still go in two 4 KiB transfers; larger transfers
   on a high-speed stick are not measured yet.
 - **Long run:** no soak from the stick yet.
-- **Unplugging:** pulling the stick or the hub out while running is not tried.
+- **Unplugging:** pulling the stick or the hub out while running is not tried on the board.
 - **Hot-plugging:** plugging the hub in reset the board once. Connect it with the board
   off, or before a flash.
 - **CN2:** the planned layout (stick on FS, power on CN2, log on UART0) is left for the
