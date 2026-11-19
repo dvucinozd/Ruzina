@@ -104,7 +104,7 @@ fn the_deck_engine_owns_transport() {
             track_id: [7; 16],
         },
     );
-    run(&mut mix, 3); // at least one 128-frame block, where loads commit
+    run(&mut mix, 3); // at least one render block, where loads commit
     assert_eq!(deck(&mut mix).base_bpm_x100, 12_800);
     assert!(mix.engine().load_allowed(DeckId::One));
 
@@ -229,7 +229,7 @@ fn the_deck_engine_owns_transport() {
             track_id: [8; 16],
         },
     );
-    run(&mut mix, 3); // at least one 128-frame block, where loads commit
+    run(&mut mix, 3); // at least one render block, where loads commit
     press(&mut mix, SemanticControl::Play, true);
     assert_eq!(mix.engine().playing(), [false, false]);
     assert_eq!(mix.engine().counters()[1], 1);
