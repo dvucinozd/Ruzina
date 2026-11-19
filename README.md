@@ -12,8 +12,8 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 - a DDJ-FLX4 for control, MAIN and headphones;
 - a Rekordbox export on an exFAT USB stick, behind a hub on the board's HS port.
 
-The board keeps image s140 (app `df3ae93c…`), the `--usb-stick` build of `main`; the SD
-build of the same code is s136 (app `a666ac6e…`). Every point below has a dated review with
+The board keeps image s142 (app `3125b34f…`), the `--usb-stick` build of `main`; the SD
+build s136 (app `a666ac6e…`) is from before even fills. Every point below has a dated review with
 its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.md):
 
 - **Playback:**
@@ -48,7 +48,8 @@ FS port and the log on UART0.
 
 **Open:**
 - USB audio fills over the 3 ms target, with no underruns: 3.2 ms while mixing, and
-  5.95 ms at most in the 42-minute stick soak, where 11 % of fills were over 3 ms.
+  5.24 ms at most from the stick, where 3.75 % of fills were over 3 ms
+  ([even fills](docs/reviews/2026-11-19-even-fills.md)).
 - Slint's scene preparation is still 16 to 26 ms of a big frame.
 - In the SD build only: an SD clock failure at the first boot after a flash.
 

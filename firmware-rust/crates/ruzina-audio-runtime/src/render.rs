@@ -224,12 +224,30 @@ impl<'a> FixedRateRenderGraph<'a> {
         &mut self,
         control: RenderControl,
         output: &mut RenderOutputBlock,
+        pop_source: F,
+    ) -> RenderBlockReport
+    where
+        F: FnMut(usize) -> Option<PcmFrame>,
+    {
+        self.render_block_frames(control, output, RENDER_BLOCK_FRAMES, pop_source)
+    }
+
+    /// `render_block` for the first `frames` of the block (1 to
+    /// `RENDER_BLOCK_FRAMES`, clamped), so a caller whose packets are not a
+    /// multiple of 128 frames can render even shares. The rest of `output`
+    /// is left as it was; `output.len` and the report say how many frames.
+    pub fn render_block_frames<F>(
+        &mut self,
+        control: RenderControl,
+        output: &mut RenderOutputBlock,
+        frames: usize,
         mut pop_source: F,
     ) -> RenderBlockReport
     where
         F: FnMut(usize) -> Option<PcmFrame>,
     {
-        self.render_with(control, output, |deck, control, state| {
+        let frames = frames.clamp(1, RENDER_BLOCK_FRAMES);
+        self.render_with(control, output, frames, |deck, control, state| {
             if !control.playing {
                 return SourceSample::default();
             }
@@ -283,7 +301,7 @@ impl<'a> FixedRateRenderGraph<'a> {
                 control.decks[i].source_epoch = 0; // revoke FX memory and tails too
             }
         }
-        self.render_with(control, output, |deck, control, _| {
+        self.render_with(control, output, RENDER_BLOCK_FRAMES, |deck, control, _| {
             if control.stream_generation == 0
                 || control.stream_generation != sources[deck].generation()
             {
@@ -304,16 +322,17 @@ impl<'a> FixedRateRenderGraph<'a> {
         &mut self,
         control: RenderControl,
         output: &mut RenderOutputBlock,
+        frames: usize,
         mut source: F,
     ) -> RenderBlockReport
     where
         F: FnMut(usize, RenderDeckControl, &mut RenderDeckState) -> SourceSample,
     {
         let mut report = RenderBlockReport {
-            rendered_frames: RENDER_BLOCK_FRAMES as u16,
+            rendered_frames: frames as u16,
             ..RenderBlockReport::default()
         };
-        output.len = RENDER_BLOCK_FRAMES as u16;
+        output.len = frames as u16;
 
         for deck in 0..2 {
             let deck_control = control.decks[deck];
@@ -339,7 +358,7 @@ impl<'a> FixedRateRenderGraph<'a> {
             }
         }
 
-        for frame_index in 0..RENDER_BLOCK_FRAMES {
+        for frame_index in 0..frames {
             let mut deck_frames = [DspFrame::default(); 2];
             let mut pfl_sum = DspFrame::default();
 
@@ -581,6 +600,55 @@ mod tests {
         assert_eq!(sink.frames(), RENDER_BLOCK_FRAMES as u64);
         assert_eq!(sink.peak_abs(), 0);
         assert_ne!(sink.digest(), 0);
+    }
+
+    #[test]
+    fn shorter_blocks_render_the_same_audio() {
+        // 384 frames as three 128-frame blocks and as four 96-frame blocks, with
+        // both decks, a pitch, a cut EQ and an open filter: every frame matches.
+        let mut deck = active_deck();
+        deck.pitch_centipercent = 250;
+        deck.eq_low = 0;
+        deck.filter_raw = FILTER_RAW_CENTER + 3000;
+        let control = RenderControl {
+            decks: [deck, active_deck()],
+            master_gain: 1.0,
+            ..RenderControl::idle()
+        };
+        let render = |frames: usize| {
+            let mut graph = FixedRateRenderGraph::new();
+            let mut output = RenderOutputBlock::default();
+            let mut sequence = [0i16; 2];
+            let mut main = [PcmFrame::default(); 384];
+            let mut headphones = [PcmFrame::default(); 384];
+            let mut at = 0;
+            while at < 384 {
+                let report = graph.render_block_frames(control, &mut output, frames, |deck| {
+                    sequence[deck] =
+                        sequence[deck].wrapping_add(if deck == 0 { 977 } else { -613 });
+                    Some(PcmFrame {
+                        left: sequence[deck],
+                        right: sequence[deck] / 2,
+                    })
+                });
+                assert_eq!(usize::from(report.rendered_frames), frames);
+                assert_eq!(usize::from(output.len), frames);
+                main[at..at + frames].copy_from_slice(&output.main[..frames]);
+                headphones[at..at + frames].copy_from_slice(&output.headphones[..frames]);
+                at += frames;
+            }
+            (main, headphones, graph.health())
+        };
+        let (main, headphones, health) = render(RENDER_BLOCK_FRAMES);
+        let (short_main, short_headphones, short_health) = render(96);
+        assert_eq!(short_main, main);
+        assert_eq!(short_headphones, headphones);
+        assert_eq!(short_health.rendered_frames, health.rendered_frames);
+        assert_eq!(
+            short_health.source_frames_consumed,
+            health.source_frames_consumed
+        );
+        assert!(main.iter().any(|frame| *frame != PcmFrame::default()));
     }
 
     #[test]

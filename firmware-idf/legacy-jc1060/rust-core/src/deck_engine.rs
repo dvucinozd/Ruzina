@@ -48,15 +48,20 @@ const DECKS: [DeckId; 2] = [DeckId::One, DeckId::Two];
 /// The Beat Loop pad whose length is 4 beats.
 const FOUR_BEAT_LOOP_PAD: u8 = 7;
 
+/// Render blocks in `ms` milliseconds.
+const fn blocks_in_ms(ms: u32) -> u16 {
+    (ms * RENDER_SAMPLE_RATE_HZ / 1000 / crate::deck_mix::MIX_BLOCK_FRAMES as u32) as u16
+}
+
 /// Render blocks from a beat sync's jump to its check of the remaining phase error
-/// (about 1 s).
-const PHASE_CHECK_BLOCKS: u16 = 375;
+/// (1 s).
+const PHASE_CHECK_BLOCKS: u16 = blocks_in_ms(1000);
 
 /// Render blocks a beat sync waits before its jump while either deck plays in Master
-/// Tempo (about 32 ms): two of the stretch's hops, so that it plays at the tempo the
+/// Tempo (32 ms): two of the stretch's hops, so that it plays at the tempo the
 /// sync set. A stretch that lands on exactly the track's own tempo keeps its last
 /// grain's place from then on, and the jump must see where that is.
-const KEYLOCK_SETTLE_BLOCKS: u16 = 12;
+const KEYLOCK_SETTLE_BLOCKS: u16 = blocks_in_ms(32);
 
 /// Load events the beat sync reports, with the deck as the pass and the milliseconds
 /// offset by `PHASE_REPORT_ZERO`: 40 the jump, 41 a jump the audio could not make, 42
@@ -96,8 +101,8 @@ static STATUS: [[AtomicU32; 2]; 2] = [
 /// seek's first block alone is a few milliseconds, and resuming on it
 /// underran the next render blocks on the device.
 const SEEK_CUSHION_FRAMES: u32 = 4096;
-/// The longest a cushion holds a deck, in 128-frame render blocks (1 s).
-const SEEK_CUSHION_MAX_BLOCKS: u16 = 375;
+/// The longest a cushion holds a deck, in render blocks (1 s).
+const SEEK_CUSHION_MAX_BLOCKS: u16 = blocks_in_ms(1000);
 
 /// Tracks whose new Hot Cues can wait for flash at once.
 const HOT_CUE_SAVES_QUEUED: usize = 16;

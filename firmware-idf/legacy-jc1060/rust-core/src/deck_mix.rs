@@ -1,7 +1,7 @@
 //! Two-deck mix to MAIN and the headphones, through the product render graph.
 //!
 //! Both decks decode into their `deck_play` rings. On the USB client task,
-//! `controller_audio` takes each packet's frames from 128-frame blocks of
+//! `controller_audio` takes each packet's frames from 96-frame blocks of
 //! `ruzina-audio-runtime`'s `FixedRateRenderGraph`: per-deck resampling to
 //! 48 kHz with the Tempo fader as pitch, trim, EQ and filter, the channel
 //! faders and crossfader, master gain and the MAIN limiter, plus the
@@ -24,6 +24,12 @@ use ruzina_audio_runtime::render::{
 };
 use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
 use ruzina_mixer::{MIXER_CONTROL_MAX, MixerState};
+
+/// Frames per render block: each 6 ms USB transfer of 288 frames takes exactly three,
+/// so every fill renders the same work. 128-frame blocks gave fills of two or three
+/// blocks, and the three-block fills ran over 3 ms.
+pub(crate) const MIX_BLOCK_FRAMES: usize = 96;
+const _: () = assert!(MIX_BLOCK_FRAMES <= RENDER_BLOCK_FRAMES && 288 % MIX_BLOCK_FRAMES == 0);
 
 /// Fixed headphone headroom on top of the product mix (-12 dB).
 const HEADPHONE_CEILING: f32 = 0.25;
@@ -82,7 +88,7 @@ impl Mix {
             pitch: [0; 2],
             readers: [Reader::new(), Reader::new()],
             block: RenderOutputBlock::silence(),
-            position: RENDER_BLOCK_FRAMES,
+            position: MIX_BLOCK_FRAMES,
             rendered: 0,
             underruns: [0; 2],
             limited: 0,
@@ -300,7 +306,7 @@ impl Mix {
     fn render(&mut self, playing: [bool; 2]) {
         let _profile = uac_profile::scope(Stage::Init);
         uac_profile::block();
-        // Ordinary source changes take effect at a 128-frame boundary.
+        // Ordinary source changes take effect at a block boundary.
         // Finish the cached suffix first: both readers have already committed
         // its source frames. Revocation bypasses this delay in fill().
         #[cfg(feature = "deck-engine")]
@@ -390,16 +396,17 @@ impl Mix {
             .pitch
             .map(ruzina_audio_runtime::render::tempo_factor_from_centipercent);
         uac_profile::stage(Stage::Graph);
-        let report = graph.render_block(control, &mut self.block, |deck| {
-            let reader = &mut readers[deck];
-            #[cfg(feature = "deck-engine")]
-            if keylocked[deck]
-                && let Some(keylocks) = keylocks.as_mut()
-            {
-                return keylocks[deck].next(tempo[deck], || reader.pop(&RINGS[deck]));
-            }
-            reader.pop(&RINGS[deck])
-        });
+        let report =
+            graph.render_block_frames(control, &mut self.block, MIX_BLOCK_FRAMES, |deck| {
+                let reader = &mut readers[deck];
+                #[cfg(feature = "deck-engine")]
+                if keylocked[deck]
+                    && let Some(keylocks) = keylocks.as_mut()
+                {
+                    return keylocks[deck].next(tempo[deck], || reader.pop(&RINGS[deck]));
+                }
+                reader.pop(&RINGS[deck])
+            });
         uac_profile::stage(Stage::Progress);
         // The deck's position is what is heard, behind what the stretch already took, on
         // the tempo's own line.
@@ -468,7 +475,7 @@ impl Mix {
             for pfl in &mut self.block.pfl {
                 pfl.fill(PcmFrame::default());
             }
-            self.position = RENDER_BLOCK_FRAMES;
+            self.position = MIX_BLOCK_FRAMES;
             if let Some(graph) = self.graph.as_mut() {
                 graph.reset_deck(0);
                 graph.reset_deck(1);
@@ -484,7 +491,7 @@ impl Mix {
         }
         uac_profile::stage(Stage::Copy);
         for (main, headphones) in main.iter_mut().zip(headphones.iter_mut()) {
-            if self.position >= RENDER_BLOCK_FRAMES {
+            if self.position >= MIX_BLOCK_FRAMES {
                 self.render(playing);
             }
             *main = self.block.main[self.position];

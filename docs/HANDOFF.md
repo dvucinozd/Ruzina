@@ -312,9 +312,16 @@
 - **The stick image is the board's image (2026-11-19):** the owner chose the
   `--usb-stick` build as the one kept on the board, with the Rekordbox export on the
   stick and no SD card. The SD build stays in CI and for comparisons.
-- **On the board:** s140 (app `df3ae93c…`), the `--usb-stick` image of `main` with the
-  stick behind a hub; this is the image the board keeps. The SD image of the same code
-  is s136 (app `a666ac6e…`).
+- **Even fills (2026-11-19):** [three even render blocks per USB audio fill](reviews/2026-11-19-even-fills.md).
+  The mix renders 96-frame blocks, exactly three per 288-frame fill, instead of 128-frame
+  blocks that made every fourth fill render three. s142 against s140 over the same
+  159 000 fills: fills over 3 ms fell from 11.3 % to 3.75 %, and the longest from 5950 to
+  5235 µs, with 0/0 underruns and no USB audio error; owner "Radi". The rest follow the
+  tracks playing, likely PSRAM contention with the other core.
+- **On the board:** s142 (app `3125b34f…`), the `--usb-stick` image with even fills and
+  the stick behind a hub; this is the image the board keeps. s140 (app `df3ae93c…`) is
+  the same image before even fills. The SD image s136
+  (app `a666ac6e…`) is from before even fills too.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
