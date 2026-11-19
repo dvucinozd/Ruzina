@@ -315,7 +315,10 @@ impl Mix {
         {
             self.pitch = pitch;
         }
-        let graph = self.graph.get_or_insert_with(FixedRateRenderGraph::new);
+        if self.graph.is_none() {
+            build_graph(&mut self.graph);
+        }
+        let graph = self.graph.as_mut().expect("graph built above");
         uac_profile::stage(Stage::Transport);
         #[cfg_attr(not(feature = "deck-engine"), allow(unused_variables))]
         let mut changed = [false; 2];
@@ -518,6 +521,15 @@ impl Mix {
             self.limited,
         ]
     }
+}
+
+/// The graph without effects, for a mix that renders before it has any. The graph is
+/// built on the stack before it moves into `slot` (about 1.3 KiB); out of line, that
+/// space is taken only on the first block, not in every fill's frame.
+#[cold]
+#[inline(never)]
+fn build_graph(slot: &mut Option<FixedRateRenderGraph<'static>>) {
+    *slot = Some(FixedRateRenderGraph::new());
 }
 
 struct Shared(UnsafeCell<Mix>);

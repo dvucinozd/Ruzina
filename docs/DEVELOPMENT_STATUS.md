@@ -1,6 +1,6 @@
 # Current development status
 
-Updated 2026-11-19. The board keeps image s142 (app `3125b34f…`), the `--usb-stick` build
+Updated 2026-11-20. The board keeps image s148 (app `5824136c…`), the `--usb-stick` build
 of `main`; the SD build s136 (app `a666ac6e…`) is from before even fills.
 
 ## What runs on the board
@@ -37,11 +37,10 @@ UART0.
 
 ## Open
 
-- **USB audio fill:** over the 3 ms target, with no underruns: 3.2 ms while mixing, and
-  5.24 ms at most from the stick, where 3.75 % of fills were over 3 ms
-  ([even fills](reviews/2026-11-19-even-fills.md)). A faster render took the render graph from 1410
-  to 1008 µs a fill, and fills over 3 ms under the profile from 8.1 % to 0.61 %
-  ([FX fill cost](reviews/2026-11-19-fx-fill-cost.md)); a product image of it is not yet measured.
+- **USB audio fill:** over the 3 ms target, with no underruns: 4.16 ms at most from the stick,
+  where 0.23 % of fills were over 3 ms, after a
+  [faster render](reviews/2026-11-19-fx-fill-cost.md)
+  ([soak](reviews/2026-11-20-fast-render-soak.md); 3.75 % before).
 - **Screen:** Slint's scene preparation is still 16 to 26 ms of a big frame.
 - **SD (SD build only):** an SD clock failure at the first boot after a flash. Since s132 the card is
   tried three times ([retry](reviews/2026-11-18-sd-retry.md)), not yet seen working on a
