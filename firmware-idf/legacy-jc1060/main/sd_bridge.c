@@ -21,7 +21,7 @@ extern int32_t ruzina_legacy_bridge_complete(int32_t status, const uint8_t *data
 extern int32_t ruzina_legacy_bridge_invalidate(void);
 extern int32_t ruzina_legacy_bridge_run(void);
 #if CONFIG_RUZINA_MEDIA_USB_STICK
-/* usb_msc.inc (USB host client): the stick on the FS port, read on this owner task. */
+/* usb_msc.inc (USB host client): the stick behind a hub on the HS port, read on this owner task. */
 extern esp_err_t ruzina_msc_open(uint32_t *sectors);
 extern esp_err_t ruzina_msc_read(uint32_t first, uint32_t count, uint8_t *data);
 extern bool ruzina_msc_present(void);

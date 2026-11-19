@@ -288,6 +288,16 @@ static void report(uint8_t address)
     const usb_config_desc_t *config;
     usb_device_info_t info;
     esp_err_t err = usb_host_device_open(client, address, &device);
+#if CONFIG_USB_HOST_HUBS_SUPPORTED
+    /* A hub belongs to the host library's hub driver: neither the controller nor the stick. */
+    if (err == ESP_OK && usb_host_get_device_descriptor(device, &dev) == ESP_OK && dev->bDeviceClass == USB_CLASS_HUB) {
+        printf("usb_hub address=%u vid=%04x pid=%04x usb=%04x\n", address, dev->idVendor, dev->idProduct, dev->bcdUSB);
+        fflush(stdout);
+        usb_host_device_close(client, device);
+        device = NULL;
+        return;
+    }
+#endif
 #if CONFIG_RUZINA_MEDIA_USB_STICK
     /* A mass-storage device is the stick, not the controller. */
     if (err == ESP_OK && usb_host_get_active_config_descriptor(device, &config) == ESP_OK &&
@@ -416,22 +426,16 @@ static void client_task(void *unused)
 
 esp_err_t ruzina_usb_host_enum_start(void)
 {
-    /* peripheral_map 0 selects the default, high-speed (UTMI) peripheral. With the stick,
-     * the full-speed peripheral too: it takes the FS PHY from USB Serial/JTAG. */
-    const usb_host_config_t host = {
-        .skip_phy_setup = false,
-        .intr_flags = ESP_INTR_FLAG_LEVEL1,
-#if CONFIG_RUZINA_MEDIA_USB_STICK
-        .peripheral_map = BIT0 | BIT1,
-#endif
-    };
+    /* peripheral_map 0 selects the default, high-speed (UTMI) peripheral. The stick and the
+     * controller share it behind a hub, so USB Serial/JTAG keeps the FS PHY. */
+    const usb_host_config_t host = {.skip_phy_setup = false, .intr_flags = ESP_INTR_FLAG_LEVEL1};
     esp_err_t err = usb_host_install(&host);
     if (err != ESP_OK) return err;
     if (xTaskCreatePinnedToCore(lib_task, "usb_lib", 4096, NULL, 5, NULL, 0) != pdPASS ||
         xTaskCreatePinnedToCore(client_task, "usb_client", 8192, NULL, 4, NULL, 0) != pdPASS)
         return ESP_ERR_NO_MEM;
 #if CONFIG_RUZINA_MEDIA_USB_STICK
-    printf("S6_USB_HOST ports=HS+FS stick=FS claim=MIDI_STREAMING+MSC vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
+    printf("S6_USB_HOST port=HS phy=UTMI hub=YES claim=MIDI_STREAMING+MSC vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
 #elif CONFIG_RUZINA_USB_HOST_MIDI
     printf("S6_USB_HOST port=HS phy=UTMI claim=MIDI_STREAMING vbus=HARDWIRED_USB5V_IN client_stack=8192\n");
 #else

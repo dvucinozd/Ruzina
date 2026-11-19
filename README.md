@@ -40,8 +40,8 @@ its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.
   play, cue, library, mixer and SYNC.
 
 **Not on `main` yet:**
-- Music from a USB stick, on `ogranak/jc1060-usb-stick`. It waits for the board's own
-  power on CN2.
+- Music from a USB stick, on `ogranak/jc1060-usb-stick`. It works behind a hub on the HS
+  port (s137); the final layout with the board's own power on CN2 comes last.
 
 **Open:**
 - The longest USB audio fill is 3.2 ms while mixing, over the 3 ms target, with no

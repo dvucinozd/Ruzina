@@ -1,4 +1,5 @@
-/* USB mass storage (Bulk-Only Transport, SCSI) for the media on a stick on the FS port.
+/* USB mass storage (Bulk-Only Transport, SCSI) for the media on a stick behind a hub on
+ * the HS port.
  * Included by usb_host_enum.c, which owns the USB host client.
  *
  * Two tasks share this module:
@@ -26,8 +27,9 @@
 #define MSC_CSW_BYTES 13
 /* The largest data stage: the media bridge reads at most this much at a time. */
 #define MSC_MAX_DATA_BYTES 8192
-/* One bulk transfer's data: an OTG 1.1 transfer carries at most 127 packets (8128 bytes
- * at 64-byte packets), so a larger data stage goes in pieces of this size. */
+/* One bulk transfer's data. 4 KiB keeps a full-speed stick under the 127-packet limit of
+ * an OTG 1.1 transfer (8128 bytes at 64-byte packets); a larger data stage goes in pieces
+ * of this size. */
 #define MSC_CHUNK_BYTES 4096
 #define MSC_TIMEOUT_MS 2000
 #define MSC_READ_ATTEMPTS 3

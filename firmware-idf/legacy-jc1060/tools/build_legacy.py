@@ -62,7 +62,7 @@ def main():
     parser.add_argument('--slint-ui', action='store_true', help='Diagnostic: the deck screen with demo data, measured against USB audio')
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
     parser.add_argument('--no-wifi', action='store_true', help="Leave out the deck screen image's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted)")
-    parser.add_argument('--usb-stick', action='store_true', help='Media from a USB stick on the FS port instead of the SD card')
+    parser.add_argument('--usb-stick', action='store_true', help='Media from a USB stick behind a hub on the HS port instead of the SD card')
     args = parser.parse_args()
     # The deck screen image carries the deck's Wi-Fi and Web Remote unless asked not to.
     args.wifi = args.slint_ui and args.variant == 'deck-engine' and not args.no_wifi

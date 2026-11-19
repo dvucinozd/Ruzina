@@ -32,7 +32,7 @@ below has a device log and the owner's verdict in its review. The
 
 | Work | Branch | State |
 |---|---|---|
-| Music from a USB stick | `ogranak/jc1060-usb-stick` | Built; waits for the board's own power on CN2. |
+| Music from a USB stick | `ogranak/jc1060-usb-stick` | Works behind a hub on the HS port (s137, [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md)); the CN2 layout comes last. |
 
 ## Open
 
