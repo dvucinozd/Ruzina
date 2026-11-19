@@ -300,7 +300,11 @@
     and the board kept running; owner "Radi".
   - The stick put back: the Library shows MEDIA REMOVED while it is out, and its return
     restarts the app. s139: it mounted again and both decks played; owner "Radi".
-- **On the board:** s139 (app `c2a28cbb…`), the `--usb-stick` image of `main` with the
+- **Stick reads in one transfer (2026-11-19):** [one transfer per high-speed stick read](reviews/2026-11-19-stick-8k-reads.md).
+  A high-speed stick takes each 8 KiB read in one data transfer instead of two, and the
+  owner's report shows the read times. s140: track 1's index walk took 2.24 s, against
+  2.39 to 2.51 s before and 2.04 s from the SD card; owner "Radi".
+- **On the board:** s140 (app `df3ae93c…`), the `--usb-stick` image of `main` with the
   stick behind a hub. The SD image of `main` is s136 (app `a666ac6e…`).
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.

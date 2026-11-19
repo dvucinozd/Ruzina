@@ -107,8 +107,7 @@ and the stick.
 
 ## Not covered
 
-- **Throughput:** reads of 16 sectors still go in two 4 KiB transfers; larger transfers
-  on a high-speed stick are not measured yet.
+- **Throughput:** see [one transfer per high-speed stick read](2026-11-19-stick-8k-reads.md).
 - **Long run:** no soak from the stick yet.
 - **Unplugging:** the stick pulled out while playing stops media access cleanly (s138). Putting it back restarts the app (s139). Pulling the whole hub out is not tried.
 - **Hot-plugging:** plugging the hub in reset the board once. Connect it with the board
