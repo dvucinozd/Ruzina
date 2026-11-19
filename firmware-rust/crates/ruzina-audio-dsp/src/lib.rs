@@ -24,6 +24,7 @@ pub struct DspFrame {
 }
 
 impl From<PcmFrame> for DspFrame {
+    #[inline]
     fn from(frame: PcmFrame) -> Self {
         Self {
             left: frame.left as f32,
@@ -33,6 +34,7 @@ impl From<PcmFrame> for DspFrame {
 }
 
 impl From<DspFrame> for PcmFrame {
+    #[inline]
     fn from(frame: DspFrame) -> Self {
         Self {
             left: pcm_sample_from_float(frame.left),
@@ -116,6 +118,9 @@ impl EqState {
         self.raw[band.index()]
     }
 
+    // The render's EQ stage runs this in a loop of its own; inlined there, the
+    // filters' state stays in registers.
+    #[inline(always)]
     pub fn process_frame(&mut self, input: DspFrame) -> DspFrame {
         if self.gain_frames_left == 0 {
             self.refresh_gains();
@@ -144,6 +149,7 @@ impl EqState {
         }
     }
 
+    #[inline]
     fn process_sample(&mut self, sample: f32, channel: usize) -> f32 {
         self.low_lp[channel] += self.low_alpha * (sample - self.low_lp[channel]);
         self.low_lp2[channel] += self.low_alpha * (self.low_lp[channel] - self.low_lp2[channel]);
@@ -196,6 +202,8 @@ impl ResamplerState {
         self.current = PcmFrame::default();
     }
 
+    // Inlined into the render's source stage, as `EqState::process_frame` is.
+    #[inline(always)]
     pub fn next<F>(&mut self, pitch_factor: f32, mut pop_source: F) -> (PcmFrame, u32)
     where
         F: FnMut() -> Option<PcmFrame>,
@@ -247,6 +255,7 @@ impl Default for ResamplerState {
     }
 }
 
+#[inline]
 fn sanitize_pitch_factor(factor: f32) -> f32 {
     if !factor.is_finite() {
         1.0
@@ -261,6 +270,7 @@ fn pitch_step_q32(bits: u32) -> u64 {
     (mantissa as u64) << (exponent + 9) as u32
 }
 
+#[inline]
 fn phase_fraction_float(phase_q32: u32) -> f32 {
     f32::from_bits(0x3f80_0000 | (phase_q32 >> 9)) - 1.0
 }
@@ -579,6 +589,7 @@ impl FilterState {
         self.raw
     }
 
+    #[inline]
     pub fn process_frame(&mut self, enabled: bool, input: DspFrame) -> DspFrame {
         if !enabled {
             return input;
@@ -660,6 +671,7 @@ impl FilterState {
         self.coefficients_dirty = false;
     }
 
+    #[inline]
     fn svf_process(&mut self, sample: f32, channel: usize) -> f32 {
         let v3 = sample - self.ic2eq[channel];
         let v1 = self.a1 * self.ic1eq[channel] + self.a2 * v3;
@@ -831,6 +843,7 @@ impl<'a> DelayFx<'a> {
         self.tail_frames_remaining
     }
 
+    #[inline]
     pub fn process_frame(&mut self, input: DspFrame) -> DspFrame {
         if !self.allocated || self.delay_frames == 0 {
             return input;
@@ -893,6 +906,7 @@ impl<'a> DelayFx<'a> {
         self.process_frame(input.into()).into()
     }
 
+    #[inline]
     fn damp_feedback_sample(&mut self, delayed: f32, channel: usize) -> f32 {
         self.fb_lp[channel] +=
             (delayed - self.fb_lp[channel]) * (self.damp_alpha_q15 as f32 / 32_768.0);
@@ -900,10 +914,12 @@ impl<'a> DelayFx<'a> {
     }
 }
 
+#[inline]
 fn q15_mul_float(sample: f32, gain_q15: u16) -> f32 {
     sample * (gain_q15 as f32 / 32_768.0)
 }
 
+#[inline]
 fn smooth_q15(current: u16, target: u16) -> u16 {
     let delta = target as i32 - current as i32;
     let mut step = delta / (1 << DELAY_SMOOTH_SHIFT);
@@ -1033,6 +1049,7 @@ impl<'a> FlangerFx<'a> {
         self.allocated
     }
 
+    #[inline]
     pub fn process_frame(&mut self, input: DspFrame) -> DspFrame {
         // After turning off the wet level falls to zero, because cutting it
         // outright clicks.
@@ -1254,6 +1271,7 @@ impl WetFade {
     }
 
     /// One frame toward fully `on`; returns the crossfaded frame.
+    #[inline]
     pub fn apply(&mut self, on: bool, dry: DspFrame, wet: DspFrame) -> DspFrame {
         let step = 1.0 / FILTER_FADE_FRAMES as f32;
         self.mix = if on {
@@ -1384,6 +1402,7 @@ impl<'a> PadFx<'a> {
         self.echo_tail_active
     }
 
+    #[inline]
     pub fn process_frame(&mut self, input: DspFrame) -> DspFrame {
         if self.active && self.kind == PadFxKind::Filter {
             let wet = self.filter.process_frame(true, input);
@@ -1454,6 +1473,7 @@ pub fn eq_raw_to_gain(raw: u16) -> f32 {
     }
 }
 
+#[inline]
 pub fn pcm_sample_from_float(sample: f32) -> i16 {
     if sample.is_nan() {
         0

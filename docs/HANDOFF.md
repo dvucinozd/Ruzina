@@ -318,8 +318,17 @@
   159 000 fills: fills over 3 ms fell from 11.3 % to 3.75 %, and the longest from 5950 to
   5235 µs, with 0/0 underruns and no USB audio error; owner "Radi". The rest follow the
   tracks playing, likely PSRAM contention with the other core.
-- **On the board:** s142 (app `3125b34f…`), the `--usb-stick` image with even fills and
-  the stick behind a hub; this is the image the board keeps. s140 (app `df3ae93c…`) is
+- **Faster render (2026-11-19):** [what Beat FX costs a fill, and a faster render](reviews/2026-11-19-fx-fill-cost.md).
+  The profile now sorts fills by class (plain, each Beat FX, FX tail, Pad FX, scratch or
+  Master Tempo) and times the render graph at boot. The graph was computing, not waiting
+  on PSRAM: cross-crate DSP calls a frame. The per-frame DSP is inlined, per-block values
+  are worked out once a block, and the render runs each deck's stages over 16-frame
+  chunks; the audio is bit-identical. Graph 1410 → 1008 µs a fill; under the profile,
+  fills over 3 ms 8.1 % → 0.61 %, 0/0 underruns (s145, s146, s147). The fill chain's
+  stack is now 4016 of its 4096 B budget, through the render.
+- **On the board:** s147 (app `50903496…`), the `--uac-profile` `--usb-stick` image of the
+  faster render, for measuring. The image the board keeps is s142 (app `3125b34f…`), the
+  `--usb-stick` image with even fills and the stick behind a hub. s140 (app `df3ae93c…`) is
   the same image before even fills. The SD image s136
   (app `a666ac6e…`) is from before even fills too.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in

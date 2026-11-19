@@ -1322,6 +1322,14 @@ impl Engine {
 /// Writes deck 1 and 2 position (ms) and flags (bit 0 loaded, bit 1
 /// playing) to `out[0..4]`. Any task: the values are published atomically.
 ///
+/// The Beat FX as the deck screen shows it (`deck_view::FxSnapshot::pack`), for the fill
+/// profile: its low two bits are the effect.
+#[cfg(feature = "idf-uac-profile")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_fx_word() -> u32 {
+    crate::deck_view::FX.load(Ordering::Relaxed)
+}
+
 /// # Safety
 /// `out` must be valid for four `u32` writes.
 #[cfg(feature = "idf-deck-engine")]

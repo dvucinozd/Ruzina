@@ -11,6 +11,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 #if ESP_IDF_VERSION != ESP_IDF_VERSION_VAL(6, 1, 0)
 #error "This compile experiment is pinned to ESP-IDF 6.1"
@@ -18,6 +19,45 @@
 
 /* Scalar ABI only: no Rust layout, allocations, pointers or exceptions cross it. */
 extern int16_t ruzina_legacy_pitch_centipercent(uint16_t raw);
+
+#if CONFIG_RUZINA_UAC_PROFILE
+/* Profile builds: times the render graph before USB audio and the media load start
+ * (render_bench.rs). Each case runs on a task of its own on core 0 at the USB client's
+ * priority, with the graph on its stack in internal RAM; between cases core 0's idle
+ * task runs, for the task watchdog. */
+extern uint32_t ruzina_legacy_render_bench(uint32_t render_case, uint32_t *out);
+typedef struct { uint32_t render_case, ok, words[3]; SemaphoreHandle_t done; } render_bench_t;
+static void render_bench_task(void *arg)
+{
+    render_bench_t *bench = arg;
+    bench->ok = ruzina_legacy_render_bench(bench->render_case, bench->words);
+    xSemaphoreGive(bench->done);
+    vTaskDelete(NULL);
+}
+static void render_bench(void)
+{
+    static const char *const names[] = {"graph", "graph_echo", "internal_ring", "psram_ring", "psram_ring_acquire",
+        "resampler", "eq", "filter_center", "limiter_pcm", "graph_one_deck", "graph_no_fx"};
+    render_bench_t bench = {.done = xSemaphoreCreateBinary()};
+    if (!bench.done) { printf("render_bench result=NO_SEMAPHORE\n"); return; }
+    for (uint32_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+        bench.render_case = i; bench.ok = 0;
+        if (xTaskCreatePinnedToCore(render_bench_task, "render_bench", 16384, &bench, 4, NULL, 0) != pdPASS) {
+            printf("render_bench case=%s result=TASK_FAILED\n", names[i]); break;
+        }
+        xSemaphoreTake(bench.done, portMAX_DELAY);
+        if (bench.ok) {
+            printf("render_bench case=%s fills=300 frames=288 mean_us=%" PRIu32 " min_us=%" PRIu32 " max_us=%" PRIu32 "\n",
+                   names[i], bench.words[0], bench.words[1], bench.words[2]);
+        } else {
+            printf("render_bench case=%s result=FAILED\n", names[i]);
+        }
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    vSemaphoreDelete(bench.done);
+}
+#endif
 
 #if !CONFIG_APP_BUILD_TYPE_PURE_RAM_APP
 static void restart_console(void *unused)
@@ -112,6 +152,9 @@ void app_main(void)
 #if CONFIG_RUZINA_DISPLAY_TOUCH || CONFIG_RUZINA_LOAD_DISPLAY
     extern void ruzina_display_backlight(uint32_t percent);
     ruzina_display_backlight(settings & 0xff);
+#endif
+#if CONFIG_RUZINA_UAC_PROFILE
+    render_bench();
 #endif
     fflush(stdout);
 #endif
