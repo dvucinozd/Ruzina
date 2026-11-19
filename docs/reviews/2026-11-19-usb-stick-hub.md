@@ -43,7 +43,14 @@ CN2 layout is left for the end.
   flight after its cancel. A transfer that has not ended is now never submitted again.
   The stick is given up (`usb_msc stuck`), until it is unplugged and the app restarts. A
   completion wakes only the wait for its own transfer.
-- s138 (app `d42b7986…`) builds with no warnings.
+- s138 (app `d42b7986…`) builds with no warnings. On the board (2026-11-19), the owner
+  loaded a track from the stick on deck 1 and pulled the stick out while it played:
+  - `usb_msc unbound commands=1951 errors=1 stalls=0 resets=0 retries=0`;
+  - `rust_sd_owner=QUIESCED error=ESP_ERR_NOT_FOUND reinsert=APP_RESTART_REQUIRED`;
+  - the media client stopped, and there was no `stuck` and no fault;
+  - the board kept running, and the FLX4 stayed attached;
+  - all 6 reports had `packet_errors=0` and underruns 0/0;
+  - the owner: "Radi".
 
 ## Hub power
 
@@ -79,7 +86,7 @@ and the stick.
 - **Throughput:** reads of 16 sectors still go in two 4 KiB transfers; larger transfers
   on a high-speed stick are not measured yet.
 - **Long run:** no soak from the stick yet.
-- **Unplugging:** pulling the stick or the hub out while running is not tried on the board.
+- **Unplugging:** the stick pulled out while playing stops media access cleanly (s138). Putting it back needs an app restart. Pulling the whole hub out is not tried.
 - **Hot-plugging:** plugging the hub in reset the board once. Connect it with the board
   off, or before a flash.
 - **CN2:** the planned layout (stick on FS, power on CN2, log on UART0) is left for the

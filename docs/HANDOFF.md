@@ -295,7 +295,10 @@
   - The hub runs without its adapter, because with it the hub drove 5 V back up its cable.
   - s137, with no SD card: the stick mounted, and both decks loaded and played from it.
     9 reports had `packet_errors=0`; owner "Radi".
-- **On the board:** s137 (app `fbb0b5e1…`), the `--usb-stick` image of `main` with the
+  - Review fixes: the stick closes only once no command uses it, and a timed-out transfer
+    is never reused. s138: pulling the stick out mid-track stopped media access cleanly,
+    and the board kept running; owner "Radi".
+- **On the board:** s138 (app `d42b7986…`), the `--usb-stick` image of `main` with the
   stick behind a hub. The SD image of `main` is s136 (app `a666ac6e…`).
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
