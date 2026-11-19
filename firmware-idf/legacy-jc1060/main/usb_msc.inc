@@ -26,6 +26,7 @@
  * running after its cancel, leaves the stick given up (`msc_stuck`) until it is unplugged
  * and the app restarts. Each completion wakes only the wait for its own transfer. */
 #include <string.h>
+#include "esp_system.h"
 #include "freertos/semphr.h"
 
 #define MSC_CLASS 0x08
@@ -66,6 +67,8 @@ static _Atomic bool msc_busy;
 static bool msc_stuck;
 /* The transfer the owner waits for; another one's completion does not wake it. */
 static usb_transfer_t *_Atomic msc_awaited;
+/* A stick went away in this run: the media owner has stopped for good. */
+static bool msc_lost;
 static uint32_t msc_tag;
 static uint32_t msc_commands, msc_errors, msc_stalls, msc_resets, msc_retries;
 
@@ -84,6 +87,7 @@ static void msc_transfer_done(usb_transfer_t *transfer)
 static void msc_gone(void)
 {
     msc_present = false;
+    msc_lost = true;
 }
 
 /* Client task: whether the device may be closed, with no command using it. */
@@ -122,7 +126,17 @@ static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
 {
     uint8_t interface, in, out;
     uint16_t mps;
-    if (msc_dev || !msc_find(config, &interface, &in, &out, &mps)) return false;
+    if (!msc_find(config, &interface, &in, &out, &mps)) return false;
+    /* The media owner stopped when the last stick went, and the catalog and decks belong
+     * to that stick: a stick put back restarts the app, which reads it from the start. A
+     * restart is no harsher than a power cut, which the settings and Hot Cue stores take. */
+    if (msc_lost) {
+        printf("usb_msc reinserted restart=YES\n");
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        esp_restart();
+    }
+    if (msc_dev) return false;
     if (!msc_done) msc_done = xSemaphoreCreateBinary();
     if (!msc_bound) msc_bound = xSemaphoreCreateBinary();
     if (!msc_transfer && usb_host_transfer_alloc(MSC_CHUNK_BYTES, 0, &msc_transfer) != ESP_OK) return false;
@@ -150,6 +164,7 @@ static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
 static void msc_unbind(void)
 {
     msc_present = false;
+    msc_lost = true;
     usb_host_interface_release(client, msc_dev, msc_interface);
     usb_host_device_close(client, msc_dev);
     msc_dev = NULL;

@@ -52,6 +52,30 @@ CN2 layout is left for the end.
   - all 6 reports had `packet_errors=0` and underruns 0/0;
   - the owner: "Radi".
 
+### Putting the stick back
+
+On s138, a stick put back was enumerated, but nothing read it. The media owner had
+stopped for good, and the Library still listed the old tracks, which no longer loaded.
+The owner asked for the quick fix:
+- **Library:** while the media are gone (`media_signal::muted()`), the Library heading
+  reads MEDIA REMOVED and its count RESTART NEEDED. The rows stay as they were read.
+- **Restart:** a stick that attaches after one was lost in this run restarts the app
+  (`usb_msc reinserted restart=YES`, then `esp_restart`). The loss is marked at DEV_GONE,
+  so even a stick put back before the deferred close restarts it. A restart is no harsher
+  than a power cut, which the settings and Hot Cue stores take.
+- **s139** (app `c2a28cbb…`, no warnings): the owner loaded a track and pulled the stick
+  out mid-track.
+  - The read in flight went through 3 Reset Recoveries and 2 retries before the detach,
+    then `QUIESCED` and `usb_msc unbound`.
+  - The stick put back gave `usb_msc reinserted restart=YES` and a software reset
+    (`reset_reason=3`).
+  - The stick mounted again, and both decks loaded and played from it.
+  - All 6 reports had `packet_errors=0` and underruns 0/0, with no stuck transfer and
+    no fault.
+  - The owner: "Radi".
+- Reading a stick again without a restart (the media session, catalog and decks started
+  over) is left for later.
+
 ## Hub power
 
 The hub has its own adapter, and with it plugged in the hub drove about 5 V back up its
@@ -86,7 +110,7 @@ and the stick.
 - **Throughput:** reads of 16 sectors still go in two 4 KiB transfers; larger transfers
   on a high-speed stick are not measured yet.
 - **Long run:** no soak from the stick yet.
-- **Unplugging:** the stick pulled out while playing stops media access cleanly (s138). Putting it back needs an app restart. Pulling the whole hub out is not tried.
+- **Unplugging:** the stick pulled out while playing stops media access cleanly (s138). Putting it back restarts the app (s139). Pulling the whole hub out is not tried.
 - **Hot-plugging:** plugging the hub in reset the board once. Connect it with the board
   off, or before a flash.
 - **CN2:** the planned layout (stick on FS, power on CN2, log on UART0) is left for the

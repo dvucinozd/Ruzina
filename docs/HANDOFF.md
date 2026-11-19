@@ -298,7 +298,9 @@
   - Review fixes: the stick closes only once no command uses it, and a timed-out transfer
     is never reused. s138: pulling the stick out mid-track stopped media access cleanly,
     and the board kept running; owner "Radi".
-- **On the board:** s138 (app `d42b7986…`), the `--usb-stick` image of `main` with the
+  - The stick put back: the Library shows MEDIA REMOVED while it is out, and its return
+    restarts the app. s139: it mounted again and both decks played; owner "Radi".
+- **On the board:** s139 (app `c2a28cbb…`), the `--usb-stick` image of `main` with the
   stick behind a hub. The SD image of `main` is s136 (app `a666ac6e…`).
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
