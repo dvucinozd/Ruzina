@@ -77,6 +77,9 @@ mod deck_settings;
 #[cfg(feature = "soak-autoplay")]
 mod soak_autoplay;
 
+#[cfg(all(feature = "idf-uac-profile", not(test)))]
+mod render_bench;
+
 #[cfg(feature = "web-remote")]
 mod web_remote;
 

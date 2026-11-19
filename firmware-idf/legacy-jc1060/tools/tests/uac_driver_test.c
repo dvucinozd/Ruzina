@@ -147,6 +147,7 @@ void ruzina_legacy_uac_stats(uint32_t *out) { memset(out,0,3*sizeof(*out)); }
 void ruzina_legacy_mix_stats(uint32_t *out) { memset(out,0,8*sizeof(*out)); }
 void ruzina_legacy_play_diagnostics(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
 void ruzina_legacy_engine_status(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
+uint32_t ruzina_legacy_fx_word(void) { return 0; }
 void ruzina_legacy_engine_counters(uint32_t *out) { memset(out,0,2*sizeof(*out)); }
 #endif
 #if UAC_TEST_PROFILE
@@ -272,6 +273,7 @@ int main(void) {
 #if UAC_TEST_PROFILE
     assert(snapshot.log_drops==1);
     assert(snapshot.distribution.samples==uac_profile_distribution.samples);
+    assert(snapshot.classes.c[0].fills==uac_profile_classes.c[0].fills);
     assert(snapshot.headroom_seen && snapshot.headroom.whole_us==4001);
     assert(snapshot.profile_seen && snapshot.worst.rust_valid);
     assert(snapshot.worst.generation<=snapshot.generation);
@@ -296,6 +298,23 @@ int main(void) {
     assert(dist.samples==UINT32_MAX && dist.valid==UINT32_MAX && dist.whole[6]==UINT32_MAX && dist.stage[0][6]==UINT32_MAX);
     const uint32_t edges[]={0,50,51,100,101,250,251,500,501,1000,1001,3000,3001,UINT32_MAX};
     for(unsigned i=0;i<14;++i) assert(uac_profile_bin(edges[i])==i/2);
+    // Classes: Beat FX by effect, then its 3 s tail, Pad FX, scratch first of all.
+    uac_profile_classes_t k={0};
+    uac_profile_record_t f={.uptime_us=1000,.whole_us=3500,.rust_valid=1};
+    f.rust[0]=3000;f.rust[4+3]=3000;
+    assert(uac_profile_class_of(&k,&f)==0);
+    f.flags[3]=8;f.fx=3;assert(uac_profile_class_of(&k,&f)==4);
+    f.flags[3]=0;f.uptime_us=1000+UAC_PROFILE_TAIL_US-1;f.fx=0;assert(uac_profile_class_of(&k,&f)==5);
+    f.uptime_us=1000+UAC_PROFILE_TAIL_US;assert(uac_profile_class_of(&k,&f)==0);
+    f.flags[1]=16;assert(uac_profile_class_of(&k,&f)==6);
+    f.flags[1]=8|4;assert(uac_profile_class_of(&k,&f)==7);
+    f.flags[1]=8|128;assert(uac_profile_class_of(&k,&f)==7);
+    uac_profile_classes_t sum={0};f.flags[1]=8;f.fx=1;
+    uac_profile_classify(&sum,&f);f.whole_us=2500;f.rust[0]=f.rust[4+3]=2500;uac_profile_classify(&sum,&f);
+    assert(sum.c[2].fills==2 && sum.c[2].over==1 && sum.c[2].max_us==3500 && sum.c[2].whole_sum==6000);
+    assert(sum.c[2].graph_fills==2 && sum.c[2].graph_sum==5500);
+    f.rust[1]=1;uac_profile_classify(&sum,&f);
+    assert(sum.c[2].fills==3 && sum.c[2].graph_fills==2);
 #endif
     assert(!uac_report_pending);assert(uac_health.state==UAC_HEALTH_STREAMING);
     // A lost isochronous packet is counted and the stream carries on.

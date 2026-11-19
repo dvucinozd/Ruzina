@@ -347,6 +347,7 @@ pub fn crossfader_gains(raw: u16) -> (f32, f32) {
     }
 }
 
+#[inline]
 pub fn limit_main_sample(mixed: f32, stats: &mut LimiterStats) -> i16 {
     let mixed = if mixed.is_nan() { 0.0 } else { mixed };
     let abs_float = if mixed < 0.0 { -mixed } else { mixed };

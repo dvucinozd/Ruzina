@@ -58,9 +58,13 @@ def functions(table):
 
 
 def relocation_args(table):
+    """One rename per section. An `#[inline]` function is made in every object that uses
+    it, each copy in a section of the same name; one rename moves them all, and objcopy
+    refuses a second rename of the same section."""
+    sections = list(dict.fromkeys(item['section'] for item in functions(table)))
     moves = []
-    for i, item in enumerate(functions(table)):
-        moves += ['--rename-section', item['section'] + '=.iram1.ruzina_fill_' + str(i)]
+    for i, section in enumerate(sections):
+        moves += ['--rename-section', section + '=.iram1.ruzina_fill_' + str(i)]
     return moves
 
 

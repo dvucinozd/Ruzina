@@ -5,6 +5,8 @@ use ruzina_mixer::{HeadphoneGains, LimiterStats, limit_main_sample};
 
 pub const RENDER_SAMPLE_RATE_HZ: u32 = 48_000;
 pub const RENDER_BLOCK_FRAMES: usize = 128;
+/// Frames a render stage runs over at a time; see `render_with`.
+const STAGE_CHUNK_FRAMES: usize = 16;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RenderDeckControl {
@@ -247,6 +249,14 @@ impl<'a> FixedRateRenderGraph<'a> {
         F: FnMut(usize) -> Option<PcmFrame>,
     {
         let frames = frames.clamp(1, RENDER_BLOCK_FRAMES);
+        // The resampler's step depends only on the block's control: once a block.
+        let steps = control.decks.map(|deck| {
+            source_step_factor(
+                deck.source_sample_rate_hz,
+                RENDER_SAMPLE_RATE_HZ,
+                deck.pitch_centipercent,
+            )
+        });
         self.render_with(control, output, frames, |deck, control, state| {
             if !control.playing {
                 return SourceSample::default();
@@ -257,11 +267,7 @@ impl<'a> FixedRateRenderGraph<'a> {
                     ..SourceSample::default()
                 };
             }
-            let step = source_step_factor(
-                control.source_sample_rate_hz,
-                RENDER_SAMPLE_RATE_HZ,
-                control.pitch_centipercent,
-            );
+            let step = steps[deck];
             let mut missed = false;
             let mut received = false;
             let (pcm, consumed) = state.resampler.next(step, || {
@@ -358,77 +364,120 @@ impl<'a> FixedRateRenderGraph<'a> {
             }
         }
 
-        for frame_index in 0..frames {
-            let mut deck_frames = [DspFrame::default(); 2];
-            let mut pfl_sum = DspFrame::default();
+        // Gains depend only on the block's control: sanitized once a block.
+        let pre_gain = control.decks.map(|deck| sanitize_gain(deck.pre_gain));
+        let post_gain = control.decks.map(|deck| sanitize_gain(deck.post_gain));
+        let master_gain = sanitize_gain(control.master_gain);
+        let cue_gain = sanitize_unit_gain(control.headphones.cue);
+        let master = sanitize_unit_gain(control.headphones.master);
+        let level = sanitize_unit_gain(control.headphones.level);
 
-            for (deck, deck_frame) in deck_frames.iter_mut().enumerate() {
+        // The block goes through in chunks. In a chunk each deck runs one stage at a time
+        // over all its frames (source, trim and EQ, filter, effects, meter and fader), so
+        // a stage's state stays in registers instead of being reloaded for every frame.
+        // Each deck still sees its frames in order, and each frame the same arithmetic,
+        // so the audio is the same as rendering frame by frame. The chunk's buffers sit
+        // on the caller's stack, so a chunk is short.
+        let has_fx = self.fx.is_some();
+        let mut start = 0;
+        while start < frames {
+            let len = (frames - start).min(STAGE_CHUNK_FRAMES);
+            // Each deck's frame after its fader, summed in deck order.
+            let mut mixed = [DspFrame::default(); STAGE_CHUNK_FRAMES];
+            // PFL before the faders, summed in deck order.
+            let mut pfl_sum = [DspFrame::default(); STAGE_CHUNK_FRAMES];
+
+            for deck in 0..2 {
                 let deck_control = control.decks[deck];
-                output.pfl[deck][frame_index] = PcmFrame::default();
+                let state = &mut self.decks[deck];
+                let mut chunk = [DspFrame::default(); STAGE_CHUNK_FRAMES];
+                // A frame with no input skips the deck's processing unless effects run,
+                // which keep ringing through silence.
+                let mut live = [false; STAGE_CHUNK_FRAMES];
 
-                let sample = source(deck, deck_control, &mut self.decks[deck]);
-                report.source_frames_consumed[deck] =
-                    report.source_frames_consumed[deck].saturating_add(sample.advanced);
-                report.underflow_frames[deck] =
-                    report.underflow_frames[deck].saturating_add(u32::from(sample.starved));
-                report.deferred_mode_frames[deck] =
-                    report.deferred_mode_frames[deck].saturating_add(u32::from(sample.deferred));
-                let has_input = !((!deck_control.playing && !deck_control.scratch_active)
-                    || sample.starved
-                    || sample.deferred
-                    || sample.silent);
-                if !has_input && self.fx.is_none() {
-                    continue;
+                for (frame, live) in chunk[..len].iter_mut().zip(&mut live[..len]) {
+                    let sample = source(deck, deck_control, state);
+                    report.source_frames_consumed[deck] =
+                        report.source_frames_consumed[deck].saturating_add(sample.advanced);
+                    report.underflow_frames[deck] =
+                        report.underflow_frames[deck].saturating_add(u32::from(sample.starved));
+                    report.deferred_mode_frames[deck] = report.deferred_mode_frames[deck]
+                        .saturating_add(u32::from(sample.deferred));
+                    let has_input = !((!deck_control.playing && !deck_control.scratch_active)
+                        || sample.starved
+                        || sample.deferred
+                        || sample.silent);
+                    *live = has_input || has_fx;
+                    if has_input {
+                        *frame = DspFrame::from(sample.frame);
+                    }
                 }
 
-                let mut dsp = if has_input {
-                    DspFrame::from(sample.frame)
-                } else {
-                    DspFrame::default()
-                };
-                let pre_gain = sanitize_gain(deck_control.pre_gain);
-                dsp.left *= pre_gain;
-                dsp.right *= pre_gain;
-                dsp = self.decks[deck].eq.process_frame(dsp);
-                dsp = self.decks[deck]
-                    .filter
-                    .process_frame(deck_control.filter_enabled, dsp);
+                let mut eq = state.eq;
+                for (frame, _) in chunk[..len].iter_mut().zip(&live).filter(|(_, l)| **l) {
+                    frame.left *= pre_gain[deck];
+                    frame.right *= pre_gain[deck];
+                    *frame = eq.process_frame(*frame);
+                }
+                state.eq = eq;
+
+                let mut filter = state.filter;
+                for (frame, _) in chunk[..len].iter_mut().zip(&live).filter(|(_, l)| **l) {
+                    *frame = filter.process_frame(deck_control.filter_enabled, *frame);
+                }
+                state.filter = filter;
+
                 if let Some(fx) = &mut self.fx {
-                    dsp = fx[deck].process(dsp);
-                }
-                // A NaN reads as silence.
-                let peak = dsp.left.abs().max(dsp.right.abs()) as u16;
-                report.channel_peak[deck] = report.channel_peak[deck].max(peak);
-
-                if deck_control.pfl_enabled {
-                    output.pfl[deck][frame_index] = PcmFrame::from(dsp);
-                    // Preserve headroom: sum and attenuate before PCM conversion.
-                    pfl_sum.left += dsp.left;
-                    pfl_sum.right += dsp.right;
+                    // With effects every frame is live.
+                    let fx = &mut fx[deck];
+                    for frame in &mut chunk[..len] {
+                        *frame = fx.process(*frame);
+                    }
                 }
 
-                let post_gain = sanitize_gain(deck_control.post_gain);
-                dsp.left *= post_gain;
-                dsp.right *= post_gain;
-                *deck_frame = dsp;
+                let mut peak = report.channel_peak[deck];
+                for i in 0..len {
+                    let mut dsp = DspFrame::default();
+                    output.pfl[deck][start + i] = PcmFrame::default();
+                    if live[i] {
+                        dsp = chunk[i];
+                        // A NaN reads as silence.
+                        peak = peak.max(dsp.left.abs().max(dsp.right.abs()) as u16);
+                        if deck_control.pfl_enabled {
+                            output.pfl[deck][start + i] = PcmFrame::from(dsp);
+                            // Preserve headroom: sum and attenuate before PCM conversion.
+                            pfl_sum[i].left += dsp.left;
+                            pfl_sum[i].right += dsp.right;
+                        }
+                        dsp.left *= post_gain[deck];
+                        dsp.right *= post_gain[deck];
+                    }
+                    if deck == 0 {
+                        mixed[i] = dsp;
+                    } else {
+                        mixed[i].left += dsp.left;
+                        mixed[i].right += dsp.right;
+                    }
+                }
+                report.channel_peak[deck] = peak;
             }
 
-            let master_gain = sanitize_gain(control.master_gain);
-            let mixed_left = (deck_frames[0].left + deck_frames[1].left) * master_gain;
-            let mixed_right = (deck_frames[0].right + deck_frames[1].right) * master_gain;
-            output.main[frame_index] = PcmFrame {
-                left: limit_main_sample(mixed_left, &mut report.limiter),
-                right: limit_main_sample(mixed_right, &mut report.limiter),
-            };
-            let cue =
-                (pfl_sum.left + pfl_sum.right) * 0.5 * sanitize_unit_gain(control.headphones.cue);
-            let master = sanitize_unit_gain(control.headphones.master);
-            let level = sanitize_unit_gain(control.headphones.level);
-            let monitor = output.main[frame_index];
-            output.headphones[frame_index] = PcmFrame::from(DspFrame {
-                left: (cue + monitor.left as f32 * master) * level,
-                right: (cue + monitor.right as f32 * master) * level,
-            });
+            for i in 0..len {
+                let frame_index = start + i;
+                let mixed_left = mixed[i].left * master_gain;
+                let mixed_right = mixed[i].right * master_gain;
+                output.main[frame_index] = PcmFrame {
+                    left: limit_main_sample(mixed_left, &mut report.limiter),
+                    right: limit_main_sample(mixed_right, &mut report.limiter),
+                };
+                let cue = (pfl_sum[i].left + pfl_sum[i].right) * 0.5 * cue_gain;
+                let monitor = output.main[frame_index];
+                output.headphones[frame_index] = PcmFrame::from(DspFrame {
+                    left: (cue + monitor.left as f32 * master) * level,
+                    right: (cue + monitor.right as f32 * master) * level,
+                });
+            }
+            start += len;
         }
 
         self.health.rendered_blocks = self.health.rendered_blocks.saturating_add(1);

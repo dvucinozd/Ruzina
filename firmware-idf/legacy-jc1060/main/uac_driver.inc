@@ -56,8 +56,10 @@ static uint32_t uac_log_drops;
 #include "uac_profile_record.h"
 extern void ruzina_legacy_uac_profile_begin(void);
 extern uint32_t ruzina_legacy_uac_profile_end(uint32_t *out,uint32_t len);
+extern uint32_t ruzina_legacy_fx_word(void);
 static uac_profile_record_t uac_profile_worst, uac_profile_over, uac_profile_headroom;
 static uac_profile_distribution_t uac_profile_distribution;
+static uac_profile_classes_t uac_profile_classes;
 static uac_sched_stamp_t uac_cal_before,uac_cal_after;
 static uac_irq_stamp_t uac_irq_cal_before,uac_irq_cal_after;
 static uint32_t uac_cal_generation;
@@ -101,6 +103,7 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
         .catalog=ruzina_uac_catalog_phase(),.log_drops=uac_log_drops};
     for (unsigned i=0;i<UAC_TRANSFERS;++i) if (uac_iso_busy[i]) profile.pool_mask |= 1u<<i;
     ruzina_legacy_engine_status(profile.flags);
+    profile.fx=ruzina_legacy_fx_word();
     bool bound=ruzina_uac_sched_bind(xTaskGetCurrentTaskHandle());
     ruzina_legacy_uac_profile_begin();
     uac_sched_stamp_t sched_before=ruzina_uac_sched_stamp();
@@ -127,6 +130,7 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     profile.irq_valid &= profile.irq_calibration_passed;
     if (phase==UAC_FILL_CALLBACK) {
         uac_profile_distribute(&uac_profile_distribution,&profile);
+        uac_profile_classify(&uac_profile_classes,&profile);
         if (!uac_profile_seen || took>uac_profile_worst.whole_us) { uac_profile_worst=profile;uac_profile_seen=true; }
         if (took>=6000) { uac_profile_over=profile;uac_profile_over_seen=true; }
         if (took>3000 && took<6000) { uac_profile_headroom=profile;uac_profile_headroom_seen=true; }
@@ -196,6 +200,7 @@ typedef struct {
 #if CONFIG_RUZINA_UAC_PROFILE
     uac_profile_record_t worst, over, headroom;
     uac_profile_distribution_t distribution;
+    uac_profile_classes_t classes;
     uac_sched_stamp_t cal_before,cal_after;
     uac_irq_stamp_t irq_cal_before,irq_cal_after;
     uint32_t cal_generation;
@@ -343,6 +348,14 @@ static void uac_log_task(void *unused)
                    i ? sample.distribution.max[i-1] : sample.timing.phase[UAC_FILL_CALLBACK].max_us,
                    bins[0],bins[1],bins[2],bins[3],bins[4],bins[5],bins[6]);
         }
+        static const char *const class_names[]={"plain","fx_filter","fx_echo","fx_flanger","fx_delay","fx_tail","pad_fx","scratch_mt"};
+        for(unsigned i=0;i<UAC_PROFILE_CLASSES;++i) {
+            const uac_profile_class_t *c=&sample.classes.c[i];
+            printf("uac_profile_class gen=%" PRIu32 " class=%s fills=%" PRIu32 " mean_us=%" PRIu32 " graph_fills=%" PRIu32
+                   " graph_mean_us=%" PRIu32 " over_3000=%" PRIu32 " max_us=%" PRIu32 "\n",sample.generation,class_names[i],
+                   c->fills,c->fills ? (uint32_t)(c->whole_sum/c->fills) : 0,c->graph_fills,
+                   c->graph_fills ? (uint32_t)(c->graph_sum/c->graph_fills) : 0,c->over,c->max_us);
+        }
         printf("uac_profile_logger stack_free=%u\n",(unsigned)uxTaskGetStackHighWaterMark(NULL));
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
@@ -379,6 +392,7 @@ static void uac_report(void)
     sample.worst=uac_profile_worst;sample.over=uac_profile_over;
     sample.headroom=uac_profile_headroom; sample.headroom_seen=uac_profile_headroom_seen;
     sample.distribution=uac_profile_distribution;
+    sample.classes=uac_profile_classes;
     sample.cal_before=uac_cal_before; sample.cal_after=uac_cal_after;
     sample.irq_cal_before=uac_irq_cal_before; sample.irq_cal_after=uac_irq_cal_after;
     sample.irq_cal_passed=uac_irq_cal_passed;

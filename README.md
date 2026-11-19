@@ -49,7 +49,9 @@ FS port and the log on UART0.
 **Open:**
 - USB audio fills over the 3 ms target, with no underruns: 3.2 ms while mixing, and
   5.24 ms at most from the stick, where 3.75 % of fills were over 3 ms
-  ([even fills](docs/reviews/2026-11-19-even-fills.md)).
+  ([even fills](docs/reviews/2026-11-19-even-fills.md)). A faster render took the render graph from 1410
+  to 1008 µs a fill, and fills over 3 ms under the profile from 8.1 % to 0.61 %
+  ([FX fill cost](docs/reviews/2026-11-19-fx-fill-cost.md)); a product image of it is not yet measured.
 - Slint's scene preparation is still 16 to 26 ms of a big frame.
 - In the SD build only: an SD clock failure at the first boot after a flash.
 
