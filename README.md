@@ -4,23 +4,25 @@ Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with
 v3.2 silicon required by the native target. The minimum configured revision is 302.
 
-## Current state — 2026-11-18
+## Current state — 2026-11-19
 
 **On the board:** the owner's JC1060 (ESP32-P4 v1.3, rev103) runs the legacy path:
 - ESP-IDF 6.1, with the shared `no_std` Rust core, in
   [`firmware-idf/legacy-jc1060`](firmware-idf/legacy-jc1060);
 - a DDJ-FLX4 for control, MAIN and headphones;
-- a Rekordbox export on the SD card.
+- a Rekordbox export on an exFAT USB stick, behind a hub on the board's HS port.
 
-`main` matches image s136 (app `a666ac6e…`). Every point below has a dated review with
+The board keeps image s140 (app `df3ae93c…`), the `--usb-stick` build of `main`; the SD
+build of the same code is s136 (app `a666ac6e…`). Every point below has a dated review with
 its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.md):
 
 - **Playback:**
   - two decks of WAV, MP3 and FLAC;
-  - SD reads of up to 16 sectors through a read-ahead;
+  - media reads through a read-ahead: 8 KiB per stick read, up to 16 sectors from an SD
+    card;
   - QIO 80 MHz flash and 200 MHz PSRAM;
   - indexed MP3 seeks;
-  - no underruns in the 35 to 40-minute soaks.
+  - no underruns in the 35 to 42-minute soaks, the last one from the stick.
 - **Performance:**
   - CUE, loops and scratch from a played-audio history;
   - SYNC, also continuous;
@@ -36,18 +38,19 @@ its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.
   - Hot Cues, FX and Settings pages;
   - Rekordbox memory cues, called from the HOT CUES page or the FLX4's SAMPLER pads;
   - settings kept on flash: LOAD LOCK, VINYL/CDJ, brightness and the MAIN trim.
+- **Media:** the USB stick shares a hub with the FLX4. Pulled out, the Library shows
+  MEDIA REMOVED; put back, the app restarts and reads it again. No SD card is needed.
 - **Network:** the deck's own Wi-Fi (ESP32-C6 via ESP-Hosted) and the Web Remote, with
   play, cue, library, mixer and SYNC.
 
-**Not on `main` yet:**
-- Music from a USB stick, on `ogranak/jc1060-usb-stick`. It works behind a hub on the HS
-  port (s137); the final layout with the board's own power on CN2 comes last.
+**Still to come:** the final layout, with the board's own power on CN2, the stick on the
+FS port and the log on UART0.
 
 **Open:**
-- The longest USB audio fill is 3.2 ms while mixing, over the 3 ms target, with no
-  underruns.
+- USB audio fills over the 3 ms target, with no underruns: 3.2 ms while mixing, and
+  5.95 ms at most in the 42-minute stick soak, where 11 % of fills were over 3 ms.
 - Slint's scene preparation is still 16 to 26 ms of a big frame.
-- An SD clock failure at the first boot after a flash.
+- In the SD build only: an SD clock failure at the first boot after a flash.
 
 **Evidence layers:** each claim names its layer.
 - **Physical:** this JC1060 on the legacy path.
