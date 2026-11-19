@@ -39,6 +39,8 @@ static atomic_bool stop_requested;
 static esp_err_t (*host_transaction)(int, sdmmc_command_t *);
 #endif
 static uint32_t reads, sectors_read, denied_commands;
+static uint64_t read_us_sum;
+static uint32_t read_us_max;
 
 /* One request carries up to 16 sectors (8 KiB, Rust's read-ahead line). */
 #define BRIDGE_MAX_SECTORS 16u
@@ -348,21 +350,30 @@ static void owner(void *unused)
         }
         /* C independently validates before touching driver/DMA. Rust only lends
          * scalar coordinates; this C allocation remains the sole DMA buffer. */
+        const int64_t read_start=esp_timer_get_time();
         if(count==0 || count>BRIDGE_MAX_SECTORS || first>=capacity || count>capacity-first) err=ESP_ERR_INVALID_ARG;
 #if CONFIG_RUZINA_MEDIA_USB_STICK
         else { reads++;sectors_read+=count;err=ruzina_msc_read(first,count,bounce); }
 #else
         else { reads++;sectors_read+=count;err=sdmmc_read_sectors(&card,bounce,first,count); }
 #endif
+        /* Each read's time, for the media's speed: the sum and the longest since the
+         * last report. */
+        const uint32_t read_us=(uint32_t)(esp_timer_get_time()-read_start);
+        read_us_sum+=read_us;
+        if(read_us>read_us_max) read_us_max=read_us;
         /* sdmmc_read_sectors is synchronous: transfer has ended on return. Rust
          * copies exactly count*512 bytes, outside its state critical section. */
         int32_t completed=ruzina_legacy_bridge_complete(err,err==ESP_OK?bounce:NULL,err==ESP_OK?count*512u:0);
         if(completed!=0) {err=ESP_ERR_INVALID_STATE;break;}
         if(err!=ESP_OK) break;
         if(reads%80==0) {
-            printf("rust_sd_owner reads=%" PRIu32 " sectors=%" PRIu32 " denied_commands=%" PRIu32 " stack_free=%u\n",
-                   reads,sectors_read,denied_commands,(unsigned)uxTaskGetStackHighWaterMark(NULL));
+            printf("rust_sd_owner reads=%" PRIu32 " sectors=%" PRIu32 " denied_commands=%" PRIu32 " stack_free=%u read_avg_us=%" PRIu32 " read_max_us=%" PRIu32 "\n",
+                   reads,sectors_read,denied_commands,(unsigned)uxTaskGetStackHighWaterMark(NULL),
+                   (uint32_t)(read_us_sum/80),read_us_max);
             fflush(stdout);
+            read_us_sum=0;
+            read_us_max=0;
         }
     }
 finish:

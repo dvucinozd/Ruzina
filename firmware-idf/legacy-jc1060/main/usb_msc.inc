@@ -38,10 +38,13 @@
 #define MSC_CSW_BYTES 13
 /* The largest data stage: the media bridge reads at most this much at a time. */
 #define MSC_MAX_DATA_BYTES 8192
-/* One bulk transfer's data. 4 KiB keeps a full-speed stick under the 127-packet limit of
- * an OTG 1.1 transfer (8128 bytes at 64-byte packets); a larger data stage goes in pieces
- * of this size. */
+/* One bulk transfer's data on a full-speed stick: 4 KiB keeps it under the 127-packet
+ * limit of an OTG 1.1 transfer (8128 bytes at 64-byte packets), so a larger data stage
+ * goes in pieces. A high-speed stick (512-byte packets) takes the whole data stage in
+ * one transfer: each transfer costs a round trip through the client task. */
 #define MSC_CHUNK_BYTES 4096
+#define MSC_HS_PACKET 512
+static uint32_t msc_chunk_bytes(void);
 #define MSC_TIMEOUT_MS 2000
 #define MSC_READ_ATTEMPTS 3
 
@@ -71,6 +74,12 @@ static usb_transfer_t *_Atomic msc_awaited;
 static bool msc_lost;
 static uint32_t msc_tag;
 static uint32_t msc_commands, msc_errors, msc_stalls, msc_resets, msc_retries;
+
+/* The most one bulk transfer carries for the bound stick. */
+static uint32_t msc_chunk_bytes(void)
+{
+    return msc_mps_in >= MSC_HS_PACKET ? MSC_MAX_DATA_BYTES : MSC_CHUNK_BYTES;
+}
 
 /* Owner task: whether the stick is still attached. */
 bool ruzina_msc_present(void)
@@ -139,7 +148,7 @@ static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
     if (msc_dev) return false;
     if (!msc_done) msc_done = xSemaphoreCreateBinary();
     if (!msc_bound) msc_bound = xSemaphoreCreateBinary();
-    if (!msc_transfer && usb_host_transfer_alloc(MSC_CHUNK_BYTES, 0, &msc_transfer) != ESP_OK) return false;
+    if (!msc_transfer && usb_host_transfer_alloc(MSC_MAX_DATA_BYTES, 0, &msc_transfer) != ESP_OK) return false;
     if (!msc_control_transfer &&
         usb_host_transfer_alloc(sizeof(usb_setup_packet_t), 0, &msc_control_transfer) != ESP_OK)
         return false;
@@ -272,7 +281,7 @@ static msc_result_t msc_bulk(uint8_t endpoint, uint8_t *buffer, size_t len, size
     const bool in = endpoint & 0x80;
     /* An IN transfer must ask for whole packets. */
     size_t request = in ? (len + msc_mps_in - 1) / msc_mps_in * msc_mps_in : len;
-    if (request > t->data_buffer_size || request > MSC_CHUNK_BYTES) return MSC_RECOVER;
+    if (request > t->data_buffer_size || request > msc_chunk_bytes()) return MSC_RECOVER;
     if (!in) memcpy(t->data_buffer, buffer, len);
     t->device_handle = msc_dev;
     t->bEndpointAddress = endpoint;
@@ -328,7 +337,8 @@ static msc_result_t msc_command_run(const uint8_t *cdb, uint8_t cdb_len, uint8_t
     if (r == MSC_OK) {
         /* The data stage in pieces; a short piece ends it early. */
         while (done < len) {
-            const uint32_t want = len - done < MSC_CHUNK_BYTES ? len - done : MSC_CHUNK_BYTES;
+            const uint32_t chunk = msc_chunk_bytes();
+            const uint32_t want = len - done < chunk ? len - done : chunk;
             size_t got = 0;
             r = msc_bulk(msc_in, data + done, want, &got);
             if (r != MSC_OK) break;
