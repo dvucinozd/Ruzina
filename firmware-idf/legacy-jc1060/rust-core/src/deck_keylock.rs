@@ -10,7 +10,7 @@
 //! The fill must stay even, so that match is searched during the hop before the grain
 //! starts, one candidate every `SPREAD` output frames: first every 8th start, comparing
 //! every 16th frame on a mono copy of every 4th frame kept as frames arrive, then frame by
-//! frame around the best, comparing every 8th frame.
+//! frame around the best, comparing every 4th frame.
 //! When the hop has only as many frames left as candidates, one a frame. A search the
 //! deck cannot feed yet (just after a seek) leaves the grain where the tempo puts it.
 //!
@@ -32,10 +32,11 @@ const THIN: u32 = 4;
 /// The coarse search tries every `COARSE`th start.
 const COARSE: u32 = 8;
 /// The coarse search compares every `COARSE_EVERY`th frame of the overlap, the fine search
-/// every `FINE_EVERY`th. On a track-like test signal the joins matched as well as with
-/// every 8th and 4th, for half the work: the search was half the keylock's cost.
+/// every `FINE_EVERY`th. The coarse search only needs the rough shape: every 16th frame
+/// picks as well as every 8th. The fine search lines up the high frequencies: every 8th
+/// frame instead of every 4th joined a bright tone worse (see the tests).
 const COARSE_EVERY: u32 = 16;
-const FINE_EVERY: u32 = 8;
+const FINE_EVERY: u32 = 4;
 /// Frames the fine search moves either way from the coarse pick.
 const FINE: i32 = 3;
 /// Frames the window keeps; a power of two, well over the reads' reach at tempo 2.
@@ -257,8 +258,11 @@ impl Keylock {
                 continuation,
                 nominal,
             } => {
-                // Starts a multiple of `THIN` apart, so that the mono copy holds them.
-                let oldest = self.pulled.saturating_sub(WINDOW - GRAIN).max(HOP);
+                // Starts a multiple of `THIN` apart, so that the mono copy holds them. The
+                // fine search reaches `FINE` frames before the first, so the first stays
+                // `THIN` after this run's first frame: the window still holds the frames of
+                // the run before it there.
+                let oldest = self.pulled.saturating_sub(WINDOW - GRAIN).max(HOP + THIN);
                 let first = nominal.saturating_sub(SEEK).max(oldest) & !(THIN - 1);
                 let need = (continuation + HOP).max(first + 2 * SEEK + HOP) + COARSE;
                 if self.fill(need, PULL_BURST, pull) {

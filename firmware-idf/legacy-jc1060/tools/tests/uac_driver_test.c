@@ -308,10 +308,24 @@ int main(void) {
     f.uptime_us=1000+UAC_PROFILE_TAIL_US;assert(uac_profile_class_of(&k,&f)==0);
     f.flags[1]=16;assert(uac_profile_class_of(&k,&f)==6);
     f.flags[1]=8|4;assert(uac_profile_class_of(&k,&f)==7);
-    f.flags[1]=8|128;assert(uac_profile_class_of(&k,&f)==8);
-    f.flags[1]=4|128;assert(uac_profile_class_of(&k,&f)==9);
-    f.flags[1]=4;f.flags[3]=128;assert(uac_profile_class_of(&k,&f)==9);
+    f.flags[1]=8|256;assert(uac_profile_class_of(&k,&f)==8);
+    f.flags[1]=4|256;assert(uac_profile_class_of(&k,&f)==9);
+    f.flags[1]=4;f.flags[3]=256;assert(uac_profile_class_of(&k,&f)==9);
+    // Master Tempo merely on: a deck that scratches or stands still plays no keylock.
+    f.flags[1]=4|128;f.flags[3]=0;assert(uac_profile_class_of(&k,&f)==7);
+    { uac_profile_classes_t idle={0}; f.flags[1]=128; assert(uac_profile_class_of(&idle,&f)==0); } /* no FX tail */
+    f.flags[1]=4;f.flags[3]=128;assert(uac_profile_class_of(&k,&f)==7);
     f.flags[3]=0;
+    // The FX tail stays gone when the 32-bit uptime comes round.
+    {
+        uac_profile_classes_t t={0};
+        uac_profile_record_t g={.uptime_us=1000};
+        g.flags[1]=8;assert(uac_profile_class_of(&t,&g)==1);
+        g.flags[1]=0;g.uptime_us=1000+UAC_PROFILE_TAIL_US-1;assert(uac_profile_class_of(&t,&g)==5);
+        g.uptime_us=1000+UAC_PROFILE_TAIL_US;assert(uac_profile_class_of(&t,&g)==0);
+        g.uptime_us=1000+UAC_PROFILE_TAIL_US+60000000u;assert(uac_profile_class_of(&t,&g)==0);
+        g.uptime_us=1000+1000000u;assert(uac_profile_class_of(&t,&g)==0); /* a full round later */
+    }
     uac_profile_classes_t sum={0};f.flags[1]=8;f.fx=1;
     uac_profile_classify(&sum,&f);f.whole_us=2500;f.rust[0]=f.rust[4+3]=2500;uac_profile_classify(&sum,&f);
     assert(sum.c[2].fills==2 && sum.c[2].over==1 && sum.c[2].max_us==3500 && sum.c[2].whole_sum==6000);

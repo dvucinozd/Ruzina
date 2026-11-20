@@ -1231,7 +1231,8 @@ impl Engine {
             }
             let flags = u32::from(self.loaded[i]) | u32::from(self.playing[i]) << 1;
             // The fill profile also records what the deck was doing: scratch, Beat FX,
-            // Pad FX, a loop, and playback from the history.
+            // Pad FX, a loop, playback from the history, Master Tempo on, and playback
+            // through the keylock.
             #[cfg(feature = "uac-profile")]
             let flags = {
                 let beat = &fx[i].beat;
@@ -1244,6 +1245,7 @@ impl Engine {
                     | u32::from(self.loop_ms[i].is_some()) << 5
                     | u32::from(reader.replaying()) << 6
                     | u32::from(self.deck.deck(deck).master_tempo) << 7
+                    | u32::from(crate::deck_mix::KEYLOCKING[i].load(Ordering::Relaxed)) << 8
             };
             STATUS[i][0].store(self.deck.deck(deck).position_ms, Ordering::Relaxed);
             STATUS[i][1].store(flags, Ordering::Relaxed);

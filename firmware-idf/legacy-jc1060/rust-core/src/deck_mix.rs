@@ -386,6 +386,8 @@ impl Mix {
                     keylocks[deck].stop();
                 }
                 self.keylocked[deck] = keylocked;
+                #[cfg(feature = "uac-profile")]
+                KEYLOCKING[deck].store(keylocked, core::sync::atomic::Ordering::Relaxed);
             }
         }
         uac_profile::stage(Stage::Control);
@@ -537,6 +539,12 @@ struct Shared(UnsafeCell<Mix>);
 // counters (the MIDI and UAC exports share that task).
 unsafe impl Sync for Shared {}
 static MIX: Shared = Shared(UnsafeCell::new(Mix::new()));
+
+/// Whether each deck plays through its keylock, for the fill profile: Master Tempo is on
+/// and the deck neither scratches nor stands still. The setting alone says less.
+#[cfg(feature = "uac-profile")]
+pub(crate) static KEYLOCKING: [core::sync::atomic::AtomicBool; 2] =
+    [const { core::sync::atomic::AtomicBool::new(false) }; 2];
 
 pub(crate) fn with<R>(f: impl FnOnce(&mut Mix) -> R) -> R {
     // SAFETY: single caller task (see `Shared`); no reference escapes `f`.

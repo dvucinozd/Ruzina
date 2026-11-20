@@ -352,6 +352,14 @@
   on s155: Master Tempo fills over 3 ms 18 % → 15 %, but the longest stayed 5.6 ms (6.0 ms
   with a scratch), from a render spike the search does not explain. The owner hears no
   difference. The board runs s155, a profile image.
+- **Keylock and profile fixes (2026-11-20):** [from an outside review](reviews/2026-11-20-keylock-profile-fixes.md).
+  An outside review of `7fa9b84` had eleven findings; all hold. Taken here: the search no
+  longer reaches 3 frames before a run (tempo under 0.51, silent first hop); the profile's
+  `master_tempo` and `mt_scratch` go by a keylock actually playing (flag 256), not the
+  setting; the Beat FX tail ends for good after 3 s. A bright-tone test showed the fine
+  search on every 8th frame joined worse, so it is back on every 4th; the coarse search
+  stays on every 16th. Not flashed. Open: Web Remote load/seek outcomes (1, 4, 5), the
+  stick's semaphores and reset recovery (2, 3), then 6, 10, 11.
 - **On the board:** s155 (app `1d48d8e1…`), a profile image of the keylock search branch.
   The image the board keeps is s148 (app `5824136c…`), the `--usb-stick` image with the
   faster render and the stick behind a hub; s154 (app `53c2f867…`) is `main` after the

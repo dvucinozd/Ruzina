@@ -91,6 +91,67 @@ fn a_chord_stays_whole_across_the_grain_joins() {
     }
 }
 
+/// A bright tone: harmonics of 1200 Hz up to 8.4 kHz, so one period is exactly 40 frames
+/// at 48 kHz. The search compares only every 4th or 16th frame, far below these
+/// frequencies; the joins must still line the waveforms up.
+fn bright(t: f64) -> f64 {
+    [1.0f64, 2.0, 3.0, 5.0, 7.0]
+        .into_iter()
+        .map(|k| (2.0 * core::f64::consts::PI * 1_200.0 * k * t + k).sin())
+        .sum::<f64>()
+        * 3_000.0
+}
+
+#[test]
+fn a_bright_tone_stays_whole_across_the_grain_joins() {
+    for tempo in [0.87f32, 0.97, 1.03, 1.13] {
+        let (output, _) = stretch(tempo, 96_000, source(bright));
+        // As for the chord: each frame of a perfect stretch repeats a period later.
+        let left: Vec<f64> = output[4_800..].iter().map(|f| f64::from(f.left)).collect();
+        let residual: f64 = left.windows(41).map(|w| (w[40] - w[0]).powi(2)).sum();
+        let energy: f64 = left.iter().map(|s| s * s).sum();
+        let ratio = residual / energy;
+        // 0.0114 at tempos 0.87 and 1.13; with the fine search on every 8th frame, 0.0148.
+        assert!(ratio < 0.0125, "tempo {tempo}: residual {ratio}");
+    }
+}
+
+/// `sample` on the left and its inverse on the right: both channels as one are silent, so
+/// every candidate the search compares scores the same.
+fn opposed(sample: impl Fn(f64) -> f64) -> impl FnMut() -> Option<PcmFrame> {
+    let mut mono = source(sample);
+    move || {
+        let frame = mono()?;
+        Some(PcmFrame {
+            left: frame.left,
+            right: frame.left.wrapping_neg(),
+        })
+    }
+}
+
+#[test]
+fn a_run_does_not_hear_the_run_before_it() {
+    for tempo in [0.5f32, 0.6, 1.5, 2.0] {
+        // One keylock plays a loud other track first, round its whole window, and stops; a
+        // fresh one does not. The track after it gives the search nothing to choose by, so
+        // it takes the earliest start it may.
+        let mut keylocks = Keylock::boxed_pair();
+        let mut before = source(chord);
+        for _ in 0..2 * WINDOW {
+            keylocks[0].next(1.0, &mut before).unwrap();
+        }
+        keylocks[0].stop();
+        let (mut used, mut fresh) = (opposed(sine(700.0)), opposed(sine(700.0)));
+        for n in 0..4_000 {
+            assert_eq!(
+                keylocks[0].next(tempo, &mut used),
+                keylocks[1].next(tempo, &mut fresh),
+                "tempo {tempo}: frame {n}"
+            );
+        }
+    }
+}
+
 #[test]
 fn a_starved_keylock_waits_and_a_stopped_one_starts_over() {
     let mut keylocks = Keylock::boxed_pair();
