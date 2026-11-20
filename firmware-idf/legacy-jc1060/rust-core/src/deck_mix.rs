@@ -386,8 +386,12 @@ impl Mix {
                     keylocks[deck].stop();
                 }
                 self.keylocked[deck] = keylocked;
+                // A paused deck keeps its keylock for when it plays on, but renders none.
                 #[cfg(feature = "uac-profile")]
-                KEYLOCKING[deck].store(keylocked, core::sync::atomic::Ordering::Relaxed);
+                KEYLOCKING[deck].store(
+                    keylocked && playing[deck],
+                    core::sync::atomic::Ordering::Relaxed,
+                );
             }
         }
         uac_profile::stage(Stage::Control);
