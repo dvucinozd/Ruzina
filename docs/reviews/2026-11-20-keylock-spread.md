@@ -65,4 +65,31 @@ s153 (app `630a46ce…`), µs a fill:
 | `graph_keylock` | 1699 | 2065 | 1599 | 1770 |
 
 The spread took about 0.3 ms off the longest fills. The window check took about 13 % off
-the keylock's mean. A Master Tempo run in real play is still to come.
+the keylock's mean.
+
+## In real play
+
+s153 again, as for s150 in [scratch and Master Tempo fills](2026-11-20-scratch-mt-fills.md).
+The soak DJ played both decks, scratching on its own, while the owner switched Master
+Tempo:
+- minute 0 to 1: nothing;
+- 1 to 5: Master Tempo on deck 1, with the tempo moved;
+- 5 to 8: on both decks;
+- 8 to 9: on deck 1, with fast jog scratches on deck 2;
+- 9 to 10: off.
+
+10 minutes, 108 000 fills, 0/0 underruns, no packet or isochronous errors, no fault:
+
+| Class | Fills | Mean graph, s150 → s153 | Over 3 ms, s150 → s153 | Longest, s150 → s153 |
+|---|---:|---:|---:|---:|
+| `plain` | 24 564 | 1400 → 1375 µs | 0.19 → 0.10 % | 4601 → 3676 µs |
+| `scratch` | 249 | 1799 → 1796 µs | 11 → 12 % | 4218 → 4275 µs |
+| `master_tempo` | 77 653 | 1997 → 1948 µs | 23.1 → 18.3 % | 5471 → 5246 µs |
+| `mt_scratch` | 1604 | 2190 → 2125 µs | 28.1 → 22.6 % | 6016 → 5554 µs |
+
+- In play the spread saves less than in the bench: about 50 µs of the mean graph and
+  0.2 to 0.5 ms of the longest fill.
+- About a fifth fewer Master Tempo fills are over 3 ms.
+- Master Tempo's longest fill, 5.2 ms alone and 5.6 ms with a scratch, is still over the
+  5 ms rule, so its accepted exception stays, now at those lower figures.
+- A scratch alone stays under 5 ms and needs none.

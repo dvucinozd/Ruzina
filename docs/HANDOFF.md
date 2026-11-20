@@ -341,7 +341,10 @@
   the first 72 frames of each hop. The search now compares a candidate every 7 frames,
   catching up at the hop's end, so it picks the same start; the audio is bit-identical.
   Render with both decks keylocked: mean 1699 → 1599 µs, longest 2065 → 1770 µs (s153).
-  The board still runs s153, a profile image; a Master Tempo run in real play is next.
+  In real play on s153 (10 minutes, 0/0 underruns), Master Tempo fills over 3 ms fell from
+  23 % to 18 % and its longest from 5.5 to 5.2 ms; with a scratch, 28 % to 23 % and 6.0 to
+  5.6 ms. Master Tempo still needs its exception to the 5 ms rule. The board still runs
+  s153, a profile image.
 - **On the board:** s148 (app `5824136c…`), the `--usb-stick` image with the faster render
   and the stick behind a hub; this is the image the board keeps. s142 (app `3125b34f…`) is
   the same image before the faster render, s140 (app `df3ae93c…`) before even fills. The
