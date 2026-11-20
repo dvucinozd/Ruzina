@@ -43,8 +43,10 @@ static inline unsigned uac_profile_bin(uint32_t us) {
     return 6;
 }
 /* Fills by what the decks did: 0 plain, 1 to 4 Beat FX filter, echo, flanger and delay,
- * 5 the 3 s after Beat FX went off (an echo still rings), 6 Pad FX, 7 a scratch or
- * Master Tempo. A fill takes the first class that matches, from 7 down. */
+ * 5 the 3 s after Beat FX went off (an echo still rings), 6 Pad FX, 7 a scratch, 8 a deck
+ * playing through its keylock (Master Tempo), 9 both. A fill takes the first class that
+ * matches, from 9 down. Master Tempo counts only while a keylock plays (flag 256), not
+ * while it is merely on (flag 128): a deck that scratches or stands still bypasses it. */
 enum { UAC_PROFILE_CLASSES=10, UAC_PROFILE_TAIL_US=3000000 };
 typedef struct { uint32_t fills, graph_fills, over, max_us; uint64_t whole_sum, graph_sum; } uac_profile_class_t;
 typedef struct { uac_profile_class_t c[UAC_PROFILE_CLASSES]; uint32_t beat_us; bool beat_seen; } uac_profile_classes_t;
@@ -52,12 +54,15 @@ static inline unsigned uac_profile_class_of(uac_profile_classes_t *k,const uac_p
     uint32_t any=r->flags[1]|r->flags[3];
     bool beat=(any&8)!=0;
     if(beat) { k->beat_us=r->uptime_us; k->beat_seen=true; }
-    // A scratch, Master Tempo, or both, on either deck.
-    if((any&(4|128))==(4|128)) return 9;
-    if(any&128) return 8;
+    /* The tail ends for good: the 32-bit uptime comes round every 71.6 minutes, and the
+     * difference would fall under 3 s again. */
+    if(k->beat_seen && !beat && r->uptime_us-k->beat_us>=UAC_PROFILE_TAIL_US) k->beat_seen=false;
+    // A scratch, a keylock playing, or both, on either deck.
+    if((any&(4|256))==(4|256)) return 9;
+    if(any&256) return 8;
     if(any&4) return 7;
     if(beat) return 1+(r->fx&3);
-    if(k->beat_seen && r->uptime_us-k->beat_us<UAC_PROFILE_TAIL_US) return 5;
+    if(k->beat_seen) return 5;
     if(any&16) return 6;
     return 0;
 }
