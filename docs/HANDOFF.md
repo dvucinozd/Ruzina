@@ -331,6 +331,11 @@
   longest 5235 → 4155 µs, 0/0 underruns, no USB audio error; owner "Radi". The mix now
   builds a graph without effects out of line, so its 1.3 KiB slot is no longer in every
   fill's frame: the product fill chain needs 2704 B, down from 3792 B.
+- **Scratch and Master Tempo fills (2026-11-20):** [after the faster render](reviews/2026-11-20-scratch-mt-fills.md).
+  The profile splits `scratch_mt` into `scratch`, `master_tempo` and `mt_scratch`. s150, 14
+  minutes with the owner switching Master Tempo, 0/0 underruns: a scratch's longest fill
+  is 4.2 ms (accepted 6.3 ms before), Master Tempo 5.5 ms with 23 % of fills over 3 ms
+  (6.2 ms and over 40 %), both 6.0 ms (7.0 ms). The keylock is the largest cost left.
 - **On the board:** s148 (app `5824136c…`), the `--usb-stick` image with the faster render
   and the stick behind a hub; this is the image the board keeps. s142 (app `3125b34f…`) is
   the same image before the faster render, s140 (app `df3ae93c…`) before even fills. The
