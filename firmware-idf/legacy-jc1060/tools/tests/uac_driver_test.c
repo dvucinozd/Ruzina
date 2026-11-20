@@ -308,7 +308,10 @@ int main(void) {
     f.uptime_us=1000+UAC_PROFILE_TAIL_US;assert(uac_profile_class_of(&k,&f)==0);
     f.flags[1]=16;assert(uac_profile_class_of(&k,&f)==6);
     f.flags[1]=8|4;assert(uac_profile_class_of(&k,&f)==7);
-    f.flags[1]=8|128;assert(uac_profile_class_of(&k,&f)==7);
+    f.flags[1]=8|128;assert(uac_profile_class_of(&k,&f)==8);
+    f.flags[1]=4|128;assert(uac_profile_class_of(&k,&f)==9);
+    f.flags[1]=4;f.flags[3]=128;assert(uac_profile_class_of(&k,&f)==9);
+    f.flags[3]=0;
     uac_profile_classes_t sum={0};f.flags[1]=8;f.fx=1;
     uac_profile_classify(&sum,&f);f.whole_us=2500;f.rust[0]=f.rust[4+3]=2500;uac_profile_classify(&sum,&f);
     assert(sum.c[2].fills==2 && sum.c[2].over==1 && sum.c[2].max_us==3500 && sum.c[2].whole_sum==6000);

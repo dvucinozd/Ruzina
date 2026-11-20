@@ -45,14 +45,17 @@ static inline unsigned uac_profile_bin(uint32_t us) {
 /* Fills by what the decks did: 0 plain, 1 to 4 Beat FX filter, echo, flanger and delay,
  * 5 the 3 s after Beat FX went off (an echo still rings), 6 Pad FX, 7 a scratch or
  * Master Tempo. A fill takes the first class that matches, from 7 down. */
-enum { UAC_PROFILE_CLASSES=8, UAC_PROFILE_TAIL_US=3000000 };
+enum { UAC_PROFILE_CLASSES=10, UAC_PROFILE_TAIL_US=3000000 };
 typedef struct { uint32_t fills, graph_fills, over, max_us; uint64_t whole_sum, graph_sum; } uac_profile_class_t;
 typedef struct { uac_profile_class_t c[UAC_PROFILE_CLASSES]; uint32_t beat_us; bool beat_seen; } uac_profile_classes_t;
 static inline unsigned uac_profile_class_of(uac_profile_classes_t *k,const uac_profile_record_t *r) {
     uint32_t any=r->flags[1]|r->flags[3];
     bool beat=(any&8)!=0;
     if(beat) { k->beat_us=r->uptime_us; k->beat_seen=true; }
-    if(any&(4|128)) return 7;
+    // A scratch, Master Tempo, or both, on either deck.
+    if((any&(4|128))==(4|128)) return 9;
+    if(any&128) return 8;
+    if(any&4) return 7;
     if(beat) return 1+(r->fx&3);
     if(k->beat_seen && r->uptime_us-k->beat_us<UAC_PROFILE_TAIL_US) return 5;
     if(any&16) return 6;

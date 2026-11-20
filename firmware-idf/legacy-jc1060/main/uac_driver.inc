@@ -348,7 +348,7 @@ static void uac_log_task(void *unused)
                    i ? sample.distribution.max[i-1] : sample.timing.phase[UAC_FILL_CALLBACK].max_us,
                    bins[0],bins[1],bins[2],bins[3],bins[4],bins[5],bins[6]);
         }
-        static const char *const class_names[]={"plain","fx_filter","fx_echo","fx_flanger","fx_delay","fx_tail","pad_fx","scratch_mt"};
+        static const char *const class_names[]={"plain","fx_filter","fx_echo","fx_flanger","fx_delay","fx_tail","pad_fx","scratch","master_tempo","mt_scratch"};
         for(unsigned i=0;i<UAC_PROFILE_CLASSES;++i) {
             const uac_profile_class_t *c=&sample.classes.c[i];
             printf("uac_profile_class gen=%" PRIu32 " class=%s fills=%" PRIu32 " mean_us=%" PRIu32 " graph_fills=%" PRIu32
