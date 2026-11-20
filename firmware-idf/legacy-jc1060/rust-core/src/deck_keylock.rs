@@ -8,8 +8,9 @@
 //! the crossfade joins like waveforms.
 //!
 //! The fill must stay even, so that match is searched during the hop before the grain
-//! starts, one candidate an output frame: first every 8th start, on a mono copy of every
-//! 4th frame kept as frames arrive, then frame by frame around the best. A search the
+//! starts, one candidate every `SPREAD` output frames: first every 8th start, on a mono
+//! copy of every 4th frame kept as frames arrive, then frame by frame around the best.
+//! When the hop has only as many frames left as candidates, one a frame. A search the
 //! deck cannot feed yet (just after a seek) leaves the grain where the tempo puts it.
 //!
 //! The stretch works at the track's own rate; the render graph then resamples to 48 kHz
@@ -34,6 +35,10 @@ const COARSE: u32 = 8;
 const FINE: i32 = 3;
 /// Frames the window keeps; a power of two, well over the reads' reach at tempo 2.
 const WINDOW: u32 = 8192;
+/// Output frames from one search candidate to the next. The 72 candidates then take most
+/// of a hop instead of its first 72 frames, so that no USB audio fill gets all of them:
+/// on the board a fill that did ran 0.7 ms longer than one with none.
+const SPREAD: u32 = 7;
 /// Frames pulled from the deck at most per output frame for a search, so that a search
 /// right after a seek does not take a whole block's worth at once.
 const PULL_BURST: u32 = 64;
@@ -93,22 +98,33 @@ impl Keylock {
     /// Both decks' keylocks on the heap, never as a stack temporary: each is about
     /// 44 KiB, far over the USB task's free stack.
     pub(crate) fn boxed_pair() -> Box<[Keylock; 2]> {
+        let mut pair = Box::<[Keylock; 2]>::new_zeroed();
+        // SAFETY: the box is zeroed and the pair's own.
+        unsafe {
+            Self::init_pair(pair.as_mut_ptr());
+            pair.assume_init()
+        }
+    }
+
+    /// Makes zeroed memory at `pair` a stopped pair.
+    ///
+    /// # Safety
+    /// `pair` must be valid, aligned and all-zero, and no one else may use it.
+    pub(crate) unsafe fn init_pair(pair: *mut [Keylock; 2]) {
         // SAFETY: every field of `Keylock` but `search` is an integer, a float, a bool
         // or an array of them, for which all-zero bytes are a valid value; `search` is
-        // written before the pair is handed out.
-        let mut pair = unsafe {
-            let mut pair = Box::<[Keylock; 2]>::new_zeroed();
-            let base = pair.as_mut_ptr().cast::<Keylock>();
+        // written before the pair is used.
+        let pair = unsafe {
+            let base = pair.cast::<Keylock>();
             for i in 0..2 {
                 core::ptr::addr_of_mut!((*base.add(i)).search).write(Search::Done(0));
             }
-            pair.assume_init()
+            &mut *pair
         };
         for keylock in pair.iter_mut() {
             fill_raised_cosine(&mut keylock.fade);
             keylock.stop();
         }
-        pair
     }
 
     /// The next frame starts over: after a seek, a scratch or Master Tempo going off.
@@ -175,10 +191,14 @@ impl Keylock {
         }
         let outgoing = self.out_start.wrapping_add(HOP + self.phase);
         let incoming = self.in_start.wrapping_add(self.phase);
-        if !self.fill(outgoing, u32::MAX, &mut pull) || !self.fill(incoming, u32::MAX, &mut pull) {
+        if !(self.holds(outgoing) || self.fill(outgoing, u32::MAX, &mut pull))
+            || !(self.holds(incoming) || self.fill(incoming, u32::MAX, &mut pull))
+        {
             return None;
         }
-        self.work(&mut pull);
+        if self.search_due() {
+            self.work(&mut pull);
+        }
         let (a, b) = (self.frame(outgoing), self.frame(incoming));
         let fade = self.fade[self.phase as usize];
         self.phase += 1;
@@ -207,6 +227,22 @@ impl Keylock {
             }
         };
         self.hop_rate = ((self.nominal - anchor) / f64::from(HOP)) as f32;
+    }
+
+    /// Whether the search takes a step this frame. Waiting for the frames is tried every
+    /// frame. A candidate is compared every `SPREAD` frames, or every frame once the hop
+    /// has no more frames left than candidates, so that a search finishes exactly when
+    /// one a frame would.
+    fn search_due(&self) -> bool {
+        let left = match self.search {
+            Search::Waiting { .. } => return true,
+            Search::Done(_) => return false,
+            Search::Coarse { first, next, .. } => {
+                (first + 2 * SEEK - next) / COARSE + 1 + (2 * FINE as u32 + 1)
+            }
+            Search::Fine { offset, .. } => (FINE - offset) as u32 + 1,
+        };
+        self.phase.is_multiple_of(SPREAD) || left >= HOP - self.phase
     }
 
     /// One step of the search for the next grain's start.
@@ -333,6 +369,12 @@ impl Keylock {
             left -= 1;
         }
         true
+    }
+
+    /// Whether the window already holds `position`.
+    #[inline(always)]
+    fn holds(&self, position: u32) -> bool {
+        (position.wrapping_sub(self.pulled) as i32) < 0
     }
 
     fn frame(&self, position: u32) -> PcmFrame {

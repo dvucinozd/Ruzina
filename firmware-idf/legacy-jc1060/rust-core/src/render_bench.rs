@@ -14,7 +14,11 @@
 //! 5. to 8. the graph's parts alone, for both decks a frame: the resampler, the EQ, the
 //!    channel filter at its center, and MAIN's limiter with the headphones' conversion;
 //! 9. the graph with deck 2 stopped;
-//! 10. the graph without effect storage.
+//! 10. the graph without effect storage;
+//! 11. Master Tempo's keylocks alone, one frame a deck for each output frame, at tempos
+//!     1.025 and 0.975;
+//! 12. the graph with both decks through their keylocks, as `deck_mix` plays Master Tempo;
+//! 13. case 11 with the keylocks in internal RAM instead of PSRAM.
 use crate::deck_mix::MIX_BLOCK_FRAMES;
 use alloc::vec;
 use core::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
@@ -24,7 +28,7 @@ use ruzina_audio_runtime::render::{
     FixedRateRenderGraph, RenderControl, RenderDeckControl, RenderOutputBlock,
 };
 
-const CASES: u32 = 11;
+const CASES: u32 = 14;
 const FILLS: u32 = 300;
 const WARMUP: u32 = 20;
 /// Source frames per deck in a PSRAM ring: 2 MiB, larger than every cache.
@@ -39,6 +43,8 @@ static INTERNAL: [[[AtomicU32; INTERNAL_RING]; 2]; 2] =
 
 unsafe extern "C" {
     fn esp_timer_get_time() -> i64;
+    fn heap_caps_calloc(n: usize, size: usize, caps: u32) -> *mut core::ffi::c_void;
+    fn heap_caps_free(ptr: *mut core::ffi::c_void);
 }
 
 fn now() -> i64 {
@@ -175,6 +181,59 @@ fn parts(case: u32, out: &mut [u32; 3]) {
     }
 }
 
+/// Master Tempo (cases 11 to 13): the decks' keylocks, on the heap as `deck_mix` keeps
+/// them, fed by the noise source. Returns false when its memory is short.
+fn keylocked(case: u32, out: &mut [u32; 3]) -> bool {
+    use crate::deck_keylock::Keylock;
+    let tempo = [1.025f32, 0.975];
+    let mut state = [1u32, 7];
+    if case == 13 {
+        const INTERNAL_8BIT: u32 = (1 << 11) | (1 << 2);
+        let size = core::mem::size_of::<[Keylock; 2]>();
+        // SAFETY: a plain IDF allocation, zeroed, freed below.
+        let pair = unsafe { heap_caps_calloc(1, size, INTERNAL_8BIT) }.cast::<[Keylock; 2]>();
+        if pair.is_null() {
+            return false;
+        }
+        // SAFETY: fresh zeroed memory of the pair's size, aligned by the allocator.
+        let keylocks = unsafe {
+            Keylock::init_pair(pair);
+            &mut *pair
+        };
+        time_frames(out, || {
+            for (deck, keylock) in keylocks.iter_mut().enumerate() {
+                core::hint::black_box(keylock.next(tempo[deck], || noise(&mut state, deck)));
+            }
+        });
+        // SAFETY: allocated above, no longer used.
+        unsafe { heap_caps_free(pair.cast()) };
+        return true;
+    }
+    let mut keylocks = Keylock::boxed_pair();
+    if case == 11 {
+        time_frames(out, || {
+            for (deck, keylock) in keylocks.iter_mut().enumerate() {
+                core::hint::black_box(keylock.next(tempo[deck], || noise(&mut state, deck)));
+            }
+        });
+        return true;
+    }
+    let mut fx = vec![0.0f32; 2 * FX_DECK_STORAGE_SAMPLES];
+    let (a, b) = fx.split_at_mut(FX_DECK_STORAGE_SAMPLES);
+    let Ok(mut graph) = FixedRateRenderGraph::with_fx([a, b]) else {
+        return false;
+    };
+    // A keylocked deck plays at its track's own pitch; the keylock moves the tempo.
+    let mut control = control(false);
+    for deck in &mut control.decks {
+        deck.pitch_centipercent = 0;
+    }
+    time(&mut graph, control, out, |deck| {
+        keylocks[deck].next(tempo[deck], || noise(&mut state, deck))
+    });
+    true
+}
+
 /// A frame from a register: a noise generator per deck.
 fn noise(state: &mut [u32; 2], deck: usize) -> Option<PcmFrame> {
     state[deck] = state[deck]
@@ -208,6 +267,9 @@ fn run(case: u32, out: &mut [u32; 3]) -> bool {
     if (5..=8).contains(&case) {
         parts(case, out);
         return true;
+    }
+    if (11..=13).contains(&case) {
+        return keylocked(case, out);
     }
     if case == 10 {
         let mut graph = FixedRateRenderGraph::new();
@@ -293,7 +355,7 @@ fn run(case: u32, out: &mut [u32; 3]) -> bool {
     true
 }
 
-/// Runs case `case` (0 to 4) into the caller's three words; returns 1, or 0 when it
+/// Runs case `case` (0 to `CASES` - 1) into the caller's three words; returns 1, or 0 when it
 /// could not run.
 ///
 /// # Safety
