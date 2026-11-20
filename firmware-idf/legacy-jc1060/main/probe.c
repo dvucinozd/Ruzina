@@ -37,7 +37,8 @@ static void render_bench_task(void *arg)
 static void render_bench(void)
 {
     static const char *const names[] = {"graph", "graph_echo", "internal_ring", "psram_ring", "psram_ring_acquire",
-        "resampler", "eq", "filter_center", "limiter_pcm", "graph_one_deck", "graph_no_fx"};
+        "resampler", "eq", "filter_center", "limiter_pcm", "graph_one_deck", "graph_no_fx", "keylock",
+        "graph_keylock", "keylock_internal"};
     render_bench_t bench = {.done = xSemaphoreCreateBinary()};
     if (!bench.done) { printf("render_bench result=NO_SEMAPHORE\n"); return; }
     for (uint32_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {

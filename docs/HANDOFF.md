@@ -336,6 +336,12 @@
   minutes with the owner switching Master Tempo, 0/0 underruns: a scratch's longest fill
   is 4.2 ms (accepted 6.3 ms before), Master Tempo 5.5 ms with 23 % of fills over 3 ms
   (6.2 ms and over 40 %), both 6.0 ms (7.0 ms). The keylock is the largest cost left.
+- **Keylock search spread (2026-11-20):** [Master Tempo's keylock](reviews/2026-11-20-keylock-spread.md).
+  A boot bench showed its cost is computing, not PSRAM, and that its grain search ran in
+  the first 72 frames of each hop. The search now compares a candidate every 7 frames,
+  catching up at the hop's end, so it picks the same start; the audio is bit-identical.
+  Render with both decks keylocked: mean 1699 → 1599 µs, longest 2065 → 1770 µs (s153).
+  The board still runs s153, a profile image; a Master Tempo run in real play is next.
 - **On the board:** s148 (app `5824136c…`), the `--usb-stick` image with the faster render
   and the stick behind a hub; this is the image the board keeps. s142 (app `3125b34f…`) is
   the same image before the faster render, s140 (app `df3ae93c…`) before even fills. The
