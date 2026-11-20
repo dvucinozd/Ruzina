@@ -343,11 +343,20 @@
   Render with both decks keylocked: mean 1699 → 1599 µs, longest 2065 → 1770 µs (s153).
   In real play on s153 (10 minutes, 0/0 underruns), Master Tempo fills over 3 ms fell from
   23 % to 18 % and its longest from 5.5 to 5.2 ms; with a scratch, 28 % to 23 % and 6.0 to
-  5.6 ms. Master Tempo still needs its exception to the 5 ms rule. The board still runs
-  s153, a profile image.
-- **On the board:** s148 (app `5824136c…`), the `--usb-stick` image with the faster render
-  and the stick behind a hub; this is the image the board keeps. s142 (app `3125b34f…`) is
-  the same image before the faster render, s140 (app `df3ae93c…`) before even fills. The
+  5.6 ms. Master Tempo still needs its exception to the 5 ms rule. The product image s154
+  (app `53c2f867…`) peaked at 5.4 ms with Master Tempo on both decks.
+- **Keylock search, half the frames (2026-11-20):** [Master Tempo's keylock search](reviews/2026-11-20-keylock-search.md).
+  The coarse search compares every 16th frame instead of every 8th, the fine one every
+  8th instead of every 4th. On a track-like host signal the joins match as well. Bench:
+  keylock mean 642 → 517 µs, render with both decks keylocked 1599 → 1477 µs. Real play
+  on s155: Master Tempo fills over 3 ms 18 % → 15 %, but the longest stayed 5.6 ms (6.0 ms
+  with a scratch), from a render spike the search does not explain. The owner hears no
+  difference. The board runs s155, a profile image.
+- **On the board:** s155 (app `1d48d8e1…`), a profile image of the keylock search branch.
+  The image the board keeps is s148 (app `5824136c…`), the `--usb-stick` image with the
+  faster render and the stick behind a hub; s154 (app `53c2f867…`) is `main` after the
+  keylock spread. s142 (app `3125b34f…`) is
+  s148 before the faster render, s140 (app `df3ae93c…`) before even fills. The
   SD image s136 (app `a666ac6e…`) is from before even fills.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.

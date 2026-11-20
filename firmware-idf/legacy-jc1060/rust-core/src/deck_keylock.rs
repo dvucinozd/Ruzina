@@ -8,8 +8,9 @@
 //! the crossfade joins like waveforms.
 //!
 //! The fill must stay even, so that match is searched during the hop before the grain
-//! starts, one candidate every `SPREAD` output frames: first every 8th start, on a mono
-//! copy of every 4th frame kept as frames arrive, then frame by frame around the best.
+//! starts, one candidate every `SPREAD` output frames: first every 8th start, comparing
+//! every 16th frame on a mono copy of every 4th frame kept as frames arrive, then frame by
+//! frame around the best, comparing every 8th frame.
 //! When the hop has only as many frames left as candidates, one a frame. A search the
 //! deck cannot feed yet (just after a seek) leaves the grain where the tempo puts it.
 //!
@@ -28,9 +29,13 @@ const HOP: u32 = GRAIN / 2;
 const SEEK: u32 = 256;
 /// The mono copy keeps every `THIN`th frame.
 const THIN: u32 = 4;
-/// The coarse search tries every `COARSE`th start and compares every `COARSE`th frame
-/// of the overlap.
+/// The coarse search tries every `COARSE`th start.
 const COARSE: u32 = 8;
+/// The coarse search compares every `COARSE_EVERY`th frame of the overlap, the fine search
+/// every `FINE_EVERY`th. On a track-like test signal the joins matched as well as with
+/// every 8th and 4th, for half the work: the search was half the keylock's cost.
+const COARSE_EVERY: u32 = 16;
+const FINE_EVERY: u32 = 8;
 /// Frames the fine search moves either way from the coarse pick.
 const FINE: i32 = 3;
 /// Frames the window keeps; a power of two, well over the reads' reach at tempo 2.
@@ -320,12 +325,12 @@ impl Keylock {
     }
 
     /// How well the frames from `start` match those from `template`, on every
-    /// `COARSE`th frame of the overlap: normalised cross-correlation, as its signed
+    /// `COARSE_EVERY`th frame of the overlap: normalised cross-correlation, as its signed
     /// square so that no root is taken. Both are multiples of `THIN`.
     fn coarse_score(&self, template: u32, start: u32) -> f32 {
         let thin = |position: u32| self.thin[((position / THIN) & (WINDOW / THIN - 1)) as usize];
         let (mut correlation, mut energy) = (0.0f32, 1.0f32);
-        for j in (0..HOP).step_by(COARSE as usize) {
+        for j in (0..HOP).step_by(COARSE_EVERY as usize) {
             let (t, s) = (thin(template + j), thin(start + j));
             correlation += t * s;
             energy += s * s;
@@ -333,10 +338,10 @@ impl Keylock {
         correlation * correlation.abs() / energy
     }
 
-    /// As `coarse_score`, frame by frame from any start, on every `THIN`th frame.
+    /// As `coarse_score`, frame by frame from any start, on every `FINE_EVERY`th frame.
     fn fine_score(&self, template: u32, start: u32) -> f32 {
         let (mut correlation, mut energy) = (0.0f32, 1.0f32);
-        for j in (0..HOP).step_by(THIN as usize) {
+        for j in (0..HOP).step_by(FINE_EVERY as usize) {
             let t = mono(self.frame(template.wrapping_add(j)));
             let s = mono(self.frame(start.wrapping_add(j)));
             correlation += t * s;
