@@ -181,9 +181,9 @@ fn parts(case: u32, out: &mut [u32; 3]) {
     }
 }
 
-/// Master Tempo (cases 11 and 12): the decks' keylocks, on the heap as `deck_mix` keeps
-/// them, fed by the noise source.
-fn keylocked(case: u32, out: &mut [u32; 3]) {
+/// Master Tempo (cases 11 to 13): the decks' keylocks, on the heap as `deck_mix` keeps
+/// them, fed by the noise source. Returns false when its memory is short.
+fn keylocked(case: u32, out: &mut [u32; 3]) -> bool {
     use crate::deck_keylock::Keylock;
     let tempo = [1.025f32, 0.975];
     let mut state = [1u32, 7];
@@ -193,7 +193,7 @@ fn keylocked(case: u32, out: &mut [u32; 3]) {
         // SAFETY: a plain IDF allocation, zeroed, freed below.
         let pair = unsafe { heap_caps_calloc(1, size, INTERNAL_8BIT) }.cast::<[Keylock; 2]>();
         if pair.is_null() {
-            return;
+            return false;
         }
         // SAFETY: fresh zeroed memory of the pair's size, aligned by the allocator.
         let keylocks = unsafe {
@@ -207,7 +207,7 @@ fn keylocked(case: u32, out: &mut [u32; 3]) {
         });
         // SAFETY: allocated above, no longer used.
         unsafe { heap_caps_free(pair.cast()) };
-        return;
+        return true;
     }
     let mut keylocks = Keylock::boxed_pair();
     if case == 11 {
@@ -216,12 +216,12 @@ fn keylocked(case: u32, out: &mut [u32; 3]) {
                 core::hint::black_box(keylock.next(tempo[deck], || noise(&mut state, deck)));
             }
         });
-        return;
+        return true;
     }
     let mut fx = vec![0.0f32; 2 * FX_DECK_STORAGE_SAMPLES];
     let (a, b) = fx.split_at_mut(FX_DECK_STORAGE_SAMPLES);
     let Ok(mut graph) = FixedRateRenderGraph::with_fx([a, b]) else {
-        return;
+        return false;
     };
     // A keylocked deck plays at its track's own pitch; the keylock moves the tempo.
     let mut control = control(false);
@@ -231,6 +231,7 @@ fn keylocked(case: u32, out: &mut [u32; 3]) {
     time(&mut graph, control, out, |deck| {
         keylocks[deck].next(tempo[deck], || noise(&mut state, deck))
     });
+    true
 }
 
 /// A frame from a register: a noise generator per deck.
@@ -268,8 +269,7 @@ fn run(case: u32, out: &mut [u32; 3]) -> bool {
         return true;
     }
     if (11..=13).contains(&case) {
-        keylocked(case, out);
-        return true;
+        return keylocked(case, out);
     }
     if case == 10 {
         let mut graph = FixedRateRenderGraph::new();
