@@ -6,12 +6,15 @@ Profile JSON sources are copied verbatim from `dvucinozd/Pajoniiir` commit
 - `pioneer_ddj_flx4.json` — released FLX4 profile source.
 - `hercules_djcontrol_inpulse_500.json` — released Hercules Inpulse 500 profile source.
 
-`compile_profile.py` is copied verbatim from the stable M2.5 reference
-`20f1c3f04a615209ae25e9bbdae649d0f5b44e8d`
+`compile_profile.py` is copied verbatim from the donor (Pajoniiir shared P4 core)
+`0cde41815c7a4cb8f7b534f990073a629628d951`
 (`tools/controller_profile/compile_profile.py`, SHA-256
-`9c88652aa87462cad3f8c5041e844045385ad29fafd44746e166b26067dc0d6e`). It
+`d0b3e28a15496b888b2bfd7d042c0e6830d23f077d1275fd400cd56c06a1ac20`). It
 accepts the S3CP v2/v3/v4 JSON extensions and emits the oldest version that
-represents a profile.
+represents a profile. Over the M2.5 reference (`20f1c3f0`, SHA-256
+`9c88652a…`), which it replaces, it adds `cc7_to14_inverted` inputs, the
+`deckN.pfl_set` event, `note_velocity` outputs and the `native_headphone_controls`
+capability. It still reproduces every golden binary below byte for byte.
 
 Frozen binaries (RP-02) — produced by tooling, never by the Rust parser:
 
@@ -32,3 +35,22 @@ compares the output with the frozen bytes and parses it with
 `ruzina-controller-profile`. Passing this test is host evidence only. It
 does not upgrade Hercules or any other non-FLX4 controller to physically
 qualified hardware support.
+
+## The donor's other controllers
+
+The deck carries these besides the FLX4's, chosen by the controller's USB VID:PID. Their
+JSON sources are copied verbatim from the donor at `0cde4181`
+(`controllers/<name>/profile.json`); each `.s3bin` is the compiler's output, the same
+bytes as the donor's own `profile.s3bin`. The donor's README for each controller
+records where its mapping comes from and what was tested.
+
+| JSON | VID:PID | Source (from the donor's README) | Donor's hardware status | SHA-256 of `.s3bin` |
+|---|---|---|---|---|
+| `pioneer_ddj_400.json` | `2B73:0026` | kayrozen's Pajoniiir fork `428b97dd` | not run | `2fc922ec2986249f4af7c7a077367e4bb5b9e9f22ced5b3d137e853d21f74408` |
+| `numark_dj2go2_touch.json` | `15E4:003C` | Mixxx mapping (addresses and roles only), `0fffd3d0` | controls and audio run by an operator; LEDs partial | `6e899de3f34a910fbc7df38d2d81cfd54b4cf47e49650f05d96d937fd3960578` |
+| `ni_traktor_s2_mk3_full.json` | `17CC:1710` | Algoriddim djay Pro 2.2.9 factory mapping (not redistributed) | experimental candidate | `ab9259c51c2b18cf5b67e2e279e3a0fbf9ee167a489f345b813a9ef37f40725f` |
+| `hercules_djcontrol_inpulse_500.v4.json` | `06F8:B12B` | the donor's `docs/HERCULES_INPULSE_500_MIDI_MAP.md` | 60-minute soak on the donor's M3 bench; control and LED coverage partial | `570b59ecca6baa7319ef85ca92d7d3a11fbe11ea1f9c9c580a8779031a40f549` |
+
+None is tested on this project's hardware. The Hercules (asynchronous UAC1 with a
+feedback endpoint) and the S2 MK3 (UAC2) have no audio route here yet; their MIDI works
+without it.

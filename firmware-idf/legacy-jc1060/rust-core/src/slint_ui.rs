@@ -326,7 +326,14 @@ fn show_settings(models: &SettingsModels, uptime_ms: u64) {
     // SAFETY: IDF returns its static app description, valid for the program's life.
     let app = unsafe { &*esp_app_get_description() };
     let right = alloc::vec![
-        line("Output", "48 kHz to the FLX4".into()),
+        line(
+            "Controller",
+            match crate::controller_midi::attached() {
+                None => "none".into(),
+                Some((_, _, Some(name))) => name.into(),
+                Some((vid, pid, None)) => alloc::format!("{vid:04X}:{pid:04X}, no profile"),
+            }
+        ),
         line(
             "Played",
             deck_view::clock((u64::from(stats[0]) * 1_000 / 48_000) as u32),

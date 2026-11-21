@@ -144,6 +144,13 @@ impl Mix {
         self.control(event);
     }
 
+    /// The bound controller's profile lets the channel filter work without Smart CFX
+    /// (S3CP v4 FILTER_ALWAYS); off with no controller.
+    #[cfg(feature = "idf-controller-midi")]
+    pub(crate) fn set_channel_filter_always(&mut self, always: bool) {
+        self.mixer.set_channel_filter_always(always);
+    }
+
     /// The mixer's settings, for the Web Remote's status.
     #[cfg(feature = "web-remote")]
     pub(crate) const fn mixer(&self) -> &MixerState {

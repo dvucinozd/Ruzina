@@ -124,6 +124,9 @@ pub enum SemanticControl {
     SmartFaderShift,
     BeatFxBeatDecShift,
     BeatFxBeatIncShift,
+    /// A latching PFL button: `Pressed(on)` sets the deck's headphone cue to `on`
+    /// (M2.5 `deckN.pfl_set`, the Numark DJ2GO2 Touch), where [`Self::Pfl`] toggles.
+    PflSet,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -181,6 +184,7 @@ impl SemanticControl {
             | Self::EqLow
             | Self::Filter
             | Self::Pfl
+            | Self::PflSet
             | Self::HeadphoneMix
             | Self::SmartCfx
             | Self::SmartFader

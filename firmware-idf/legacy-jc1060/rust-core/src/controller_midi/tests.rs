@@ -293,3 +293,70 @@ fn flx4_play_presses_reach_the_semantic_session() {
     ruzina_legacy_midi_unbind();
     assert_eq!(ingest(&[0x09, 0x90, 0x0b, 0x7f]), -1);
 }
+
+#[test]
+fn sysex_goes_out_in_three_byte_packets() {
+    let packets = |message: &[u8]| sysex_packets(message).collect::<Vec<_>>();
+    assert_eq!(
+        packets(&[0xf0, 1, 2, 3, 4, 0xf7]),
+        vec![[0x4, 0xf0, 1, 2], [0x7, 3, 4, 0xf7]]
+    );
+    assert_eq!(
+        packets(&[0xf0, 1, 2, 3, 0xf7]),
+        vec![[0x4, 0xf0, 1, 2], [0x6, 3, 0xf7, 0]]
+    );
+    assert_eq!(
+        packets(&[0xf0, 1, 2, 0xf7]),
+        vec![[0x4, 0xf0, 1, 2], [0x5, 0xf7, 0, 0]]
+    );
+    assert!(packets(&[]).is_empty());
+}
+
+#[test]
+fn only_the_flx4_has_sampler_notes() {
+    let payload = [0x09, 0x90, 0x22, 0x7f, 0x09, 0x90, 0x0b, 0x7f];
+    let (batch, sampler) = split_at_sampler(&payload, true);
+    assert_eq!(
+        batch.len(),
+        if cfg!(feature = "deck-engine") { 4 } else { 8 }
+    );
+    assert_eq!(sampler.is_some(), cfg!(feature = "deck-engine"));
+    assert_eq!(split_at_sampler(&payload, false), (&payload[..], None));
+}
+
+// The session is process-wide: this test holds the deck lock as the FLX4 test does.
+#[test]
+fn each_controller_binds_its_own_profile_and_initial_sysex() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    // Every profile parses, and no two name one VID:PID.
+    for (index, controller) in CONTROLLERS.iter().enumerate() {
+        let profile = Profile::parse(controller.profile).unwrap();
+        assert_eq!(
+            controller_for(profile.vid(), profile.pid()).map(|(found, _)| found),
+            Some(index),
+            "{}",
+            controller.name
+        );
+    }
+    assert_eq!(CONTROLLERS[FLX4].name, "Pioneer DDJ-FLX4");
+
+    // The DDJ-400's initial SysEx goes out first, before the lamp test and the LEDs.
+    assert_eq!(ruzina_legacy_midi_bind(0x2b73, 0x0026), 1);
+    let sysex = Profile::parse(CONTROLLERS[1].profile).unwrap().init_sysex();
+    let expected: Vec<[u8; 4]> = sysex_packets(sysex).collect();
+    assert!(!expected.is_empty());
+    let out = take_out(1024);
+    assert_eq!(&out[..expected.len()], &expected[..]);
+    assert_eq!(attached(), Some((0x2b73, 0x0026, Some("Pioneer DDJ-400"))));
+
+    // The FLX4 sends none.
+    assert_eq!(ruzina_legacy_midi_bind(0x2b73, 0x0045), 1);
+    assert!(take_out(1024).iter().all(|packet| packet[0] & 0x0f > 0x07));
+    assert_eq!(attached(), Some((0x2b73, 0x0045, Some("Pioneer DDJ-FLX4"))));
+
+    // A controller without a profile is shown by its VID:PID.
+    assert_eq!(ruzina_legacy_midi_bind(0x1234, 0x5678), 0);
+    assert_eq!(attached(), Some((0x1234, 0x5678, None)));
+    ruzina_legacy_midi_unbind();
+    assert_eq!(attached(), None);
+}

@@ -72,6 +72,81 @@ fn m25_compiler_preserves_frozen_v2_v3_v4_bytes() {
     }
 }
 
+/// The donor's current profiles, which the deck carries besides the FLX4's: the donor's
+/// compiler (Pajoniiir `0cde4181`) reproduces the donor's own binaries, every input maps to
+/// a control, and each declares what its controller needs.
+#[test]
+fn donor_profiles_compile_parse_and_map_every_input() {
+    for (json, vid, pid) in [
+        ("pioneer_ddj_400", 0x2b73, 0x0026),
+        ("numark_dj2go2_touch", 0x15e4, 0x003c),
+        ("ni_traktor_s2_mk3_full", 0x17cc, 0x1710),
+        ("hercules_djcontrol_inpulse_500.v4", 0x06f8, 0xb12b),
+    ] {
+        let compiled = compile_fixture(json);
+        assert_eq!(compiled, fixture_bytes(&format!("{json}.s3bin")), "{json}");
+        let profile = Profile::parse(&compiled).unwrap();
+        assert_eq!(
+            (profile.vid(), profile.pid(), profile.version()),
+            (vid, pid, 4),
+            "{json}"
+        );
+        for index in 0..profile.input_count() {
+            let entry = profile.input(index).unwrap();
+            let event = ProfileEvent {
+                semantic_type: entry.semantic_type,
+                semantic_id: entry.semantic_id,
+                value: 1,
+            };
+            assert!(
+                !matches!(
+                    adapt_profile_event(event),
+                    Err(ruzina_controller_profile::SemanticAdapterError::UnsupportedId(_))
+                ),
+                "{json} input {index} id {:#04x}",
+                entry.semantic_id
+            );
+        }
+    }
+
+    let ddj400 = fixture_bytes("pioneer_ddj_400.s3bin");
+    let ddj400 = Profile::parse(&ddj400).unwrap();
+    assert_eq!(ddj400.init_sysex().len(), 12);
+    assert!(ddj400.channel_filter_always());
+
+    // Numark's latching PFL sets the state it reports.
+    let numark = fixture_bytes("numark_dj2go2_touch.s3bin");
+    let numark = Profile::parse(&numark).unwrap();
+    assert_eq!(numark.init_sysex().len(), 7);
+    let pfl_set = (0..numark.input_count())
+        .filter_map(|index| numark.input(index))
+        .filter(|entry| entry.semantic_id == 0x85)
+        .count();
+    assert!(pfl_set > 0);
+    assert_eq!(
+        adapt_profile_event(ProfileEvent {
+            semantic_type: 0x01,
+            semantic_id: 0x86,
+            value: 0,
+        }),
+        Ok(ControlEvent {
+            deck: Some(DeckId::Two),
+            control: SemanticControl::PflSet,
+            value: ControlValue::Pressed(false),
+        })
+    );
+
+    let hercules = fixture_bytes("hercules_djcontrol_inpulse_500.v4.s3bin");
+    assert!(Profile::parse(&hercules).unwrap().native_headphones());
+
+    // The S2's pitch faders are mounted the other way up.
+    let s2 = fixture_bytes("ni_traktor_s2_mk3_full.s3bin");
+    let s2 = Profile::parse(&s2).unwrap();
+    assert!((0..s2.input_count()).any(|index| {
+        s2.input(index).unwrap().raw_type == ruzina_controller_profile::RawType::Cc7To14Inverted
+    }));
+}
+
 #[test]
 fn m25_v3_scaled_cc_maps_detents_and_replays_mixer_only() {
     let bytes = fixture_bytes("s3cp_v3_scaled_cc.golden.s3bin");

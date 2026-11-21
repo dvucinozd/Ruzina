@@ -14,6 +14,7 @@
 //! which C takes with [`ruzina_legacy_midi_take_out`] for one Bulk-OUT.
 use core::cell::UnsafeCell;
 use core::fmt::Write;
+use core::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 #[cfg(feature = "deck-engine")]
 use ruzina_controller_core::ControllerLedFrame;
 use ruzina_controller_core::{
@@ -30,6 +31,95 @@ const OUT_PACKETS: usize = 256;
 pub(crate) const FLX4_PROFILE: &[u8] = include_bytes!(
     "../../../../firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.v2-golden.s3bin"
 );
+
+/// A controller the deck knows: its name, for the Settings page, and its profile, which
+/// names its USB VID:PID.
+pub(crate) struct Controller {
+    pub(crate) name: &'static str,
+    profile: &'static [u8],
+}
+
+/// Every controller the deck knows: the FLX4, then the donor's other profiles
+/// (`ruzina-controller-profile/fixtures/README.md` says where each comes from). Only the
+/// FLX4 is tested on this hardware.
+pub(crate) const CONTROLLERS: [Controller; 5] = [
+    Controller {
+        name: "Pioneer DDJ-FLX4",
+        profile: FLX4_PROFILE,
+    },
+    Controller {
+        name: "Pioneer DDJ-400",
+        profile: include_bytes!(
+            "../../../../firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_400.s3bin"
+        ),
+    },
+    Controller {
+        name: "Numark DJ2GO2 Touch",
+        profile: include_bytes!(
+            "../../../../firmware-rust/crates/ruzina-controller-profile/fixtures/numark_dj2go2_touch.s3bin"
+        ),
+    },
+    Controller {
+        name: "NI Traktor Kontrol S2 MK3",
+        profile: include_bytes!(
+            "../../../../firmware-rust/crates/ruzina-controller-profile/fixtures/ni_traktor_s2_mk3_full.s3bin"
+        ),
+    },
+    Controller {
+        name: "Hercules DJControl Inpulse 500",
+        profile: include_bytes!(
+            "../../../../firmware-rust/crates/ruzina-controller-profile/fixtures/hercules_djcontrol_inpulse_500.v4.s3bin"
+        ),
+    },
+];
+/// The FLX4's place in [`CONTROLLERS`]: its SAMPLER button and pads are read and lit
+/// outside the profile.
+const FLX4: usize = 0;
+
+/// The controller in [`CONTROLLERS`] whose profile names `vid:pid`.
+#[cfg(feature = "idf-controller-midi")]
+fn controller_for(vid: u16, pid: u16) -> Option<(usize, Profile<'static>)> {
+    CONTROLLERS
+        .iter()
+        .enumerate()
+        .find_map(|(index, controller)| {
+            Profile::parse(controller.profile)
+                .ok()
+                .filter(|profile| profile.vid() == vid && profile.pid() == pid)
+                .map(|profile| (index, profile))
+        })
+}
+
+/// The attached controller's VID:PID (0 when none), and its place in [`CONTROLLERS`] plus 1
+/// (0 when none or unknown), for the screen.
+static ATTACHED: AtomicU32 = AtomicU32::new(0);
+static KNOWN: AtomicU8 = AtomicU8::new(0);
+
+/// The attached controller: `None` when none is, else its VID:PID and, when the deck knows
+/// it, its name.
+#[cfg_attr(not(feature = "slint-ui"), allow(dead_code))]
+pub(crate) fn attached() -> Option<(u16, u16, Option<&'static str>)> {
+    let id = ATTACHED.load(Ordering::Acquire);
+    let known = usize::from(KNOWN.load(Ordering::Acquire));
+    (id != 0).then(|| {
+        let name = known.checked_sub(1).map(|index| CONTROLLERS[index].name);
+        ((id >> 16) as u16, id as u16, name)
+    })
+}
+
+/// A SysEx message as USB-MIDI 1.0 packets on cable 0: code index 0x4 for each three bytes
+/// that start or continue it, then 0x5, 0x6 or 0x7 for the last one to three.
+#[cfg(feature = "idf-controller-midi")]
+fn sysex_packets(message: &[u8]) -> impl Iterator<Item = [u8; 4]> + '_ {
+    let chunks = message.len().div_ceil(3);
+    message.chunks(3).enumerate().map(move |(index, chunk)| {
+        let last = index + 1 == chunks;
+        let code = if last { 0x4 + chunk.len() as u8 } else { 0x4 };
+        let mut packet = [code, 0, 0, 0];
+        packet[1..=chunk.len()].copy_from_slice(chunk);
+        packet
+    })
+}
 
 /// The FLX4's SAMPLER button and pads, which the golden profile does not map: the button
 /// is note 0x22 on a deck's channel, and the pads notes 0x30 to 0x37 on the pad channels,
@@ -113,6 +203,8 @@ struct State {
     sampler_leds: [Option<u8>; 2],
     /// Last Headphone Level position and its range; `None` until it moves.
     headphone: Option<(u16, u16)>,
+    /// The bound controller's place in [`CONTROLLERS`].
+    controller: Option<usize>,
     out: [[u8; 4]; OUT_PACKETS],
     out_len: usize,
     /// Packets that did not fit the queue.
@@ -121,12 +213,16 @@ struct State {
 
 impl State {
     fn push_out(&mut self, message: [u8; 3]) {
+        // Cable 0; the code index number is the channel-voice status nibble.
+        self.push_packet([message[0] >> 4, message[0], message[1], message[2]]);
+    }
+
+    fn push_packet(&mut self, packet: [u8; 4]) {
         if self.out_len == OUT_PACKETS {
             self.out_overflow = self.out_overflow.saturating_add(1);
             return;
         }
-        // Cable 0; the code index number is the channel-voice status nibble.
-        self.out[self.out_len] = [message[0] >> 4, message[0], message[1], message[2]];
+        self.out[self.out_len] = packet;
         self.out_len += 1;
     }
 
@@ -241,6 +337,7 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     #[cfg(feature = "deck-engine")]
     sampler_leds: [None; 2],
     headphone: None,
+    controller: None,
     out: [[0; 4]; OUT_PACKETS],
     out_len: 0,
     out_overflow: 0,
@@ -298,9 +395,9 @@ impl State {
                 self.push_out(message);
             }
         }
-        // The SAMPLER pads light where the track has a memory cue; the profile has no
-        // map for them, so their notes go out as they are.
-        if self.profile.is_none() {
+        // The FLX4's SAMPLER pads light where the track has a memory cue; the profile has
+        // no map for them, so their notes go out as they are.
+        if self.controller != Some(FLX4) {
             return;
         }
         for (deck, mask) in memory.into_iter().enumerate() {
@@ -617,14 +714,20 @@ unsafe extern "C" {
 }
 
 /// Bind the session to a newly attached controller. Returns 1 when a built-in
-/// profile matches `vid:pid`, 0 when it does not (events then stay unmapped).
+/// profile matches `vid:pid`, 0 when it does not (events then stay unmapped). A profile's
+/// initial SysEx is queued first, ahead of the lamp test and the LEDs.
 #[cfg(feature = "idf-controller-midi")]
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
     with(|state| {
-        state.profile = Profile::parse(FLX4_PROFILE)
-            .ok()
-            .filter(|profile| profile.vid() == vid && profile.pid() == pid);
+        let found = controller_for(vid, pid);
+        state.profile = found.map(|(_, profile)| profile);
+        state.controller = found.map(|(index, _)| index);
+        ATTACHED.store(u32::from(vid) << 16 | u32::from(pid), Ordering::Release);
+        KNOWN.store(
+            found.map_or(0, |(index, _)| index as u8 + 1),
+            Ordering::Release,
+        );
         state.session.reset_profile_state();
         state.session.set_connected(true);
         state.totals = UsbMidiBatchReport::default();
@@ -638,6 +741,16 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
         state.headphone = None;
         state.out_len = 0;
         state.out_overflow = 0;
+        if let Some(profile) = state.profile {
+            for packet in sysex_packets(profile.init_sysex()) {
+                state.push_packet(packet);
+            }
+        }
+        // A profile may let the channel filter work without Smart CFX (the DDJ-400).
+        #[cfg(feature = "deck-engine")]
+        crate::deck_mix::with(|mix| {
+            mix.set_channel_filter_always(state.profile.is_some_and(|p| p.channel_filter_always()))
+        });
         drain(state);
         i32::from(state.profile.is_some())
     })
@@ -687,6 +800,11 @@ pub extern "C" fn ruzina_legacy_midi_unbind() {
         state.session.set_connected(false);
         drain(state);
         state.profile = None;
+        state.controller = None;
+        ATTACHED.store(0, Ordering::Release);
+        KNOWN.store(0, Ordering::Release);
+        #[cfg(feature = "deck-engine")]
+        crate::deck_mix::with(|mix| mix.set_channel_filter_always(false));
     });
 }
 
@@ -722,7 +840,7 @@ fn ingest(state: &mut State, payload: &[u8]) -> i32 {
     let mut delivered = 0;
     let mut rest = payload;
     loop {
-        let (batch, sampler) = split_at_sampler(rest);
+        let (batch, sampler) = split_at_sampler(rest, state.controller == Some(FLX4));
         match state.session.process_usb_midi_transfer(&profile, batch) {
             Ok(report) => state.totals.accumulate(report),
             Err(_) => return -1,
@@ -740,16 +858,21 @@ fn ingest(state: &mut State, payload: &[u8]) -> i32 {
 }
 
 /// The packets up to and including the first SAMPLER packet, with its event,
-/// or the whole payload when it has none. Without the deck engine nothing
-/// reads SAMPLER events, so the payload stays whole.
+/// or the whole payload when it has none. Only the FLX4 has these notes; another
+/// controller's payload stays whole, as it does without the deck engine, which alone
+/// reads SAMPLER events.
 #[cfg(feature = "idf-controller-midi")]
-fn split_at_sampler(payload: &[u8]) -> (&[u8], Option<ControlEvent>) {
+fn split_at_sampler(payload: &[u8], flx4: bool) -> (&[u8], Option<ControlEvent>) {
     #[cfg(feature = "deck-engine")]
-    for (index, packet) in payload.chunks_exact(4).enumerate() {
-        if let Some(event) = sampler_event([packet[0], packet[1], packet[2], packet[3]]) {
-            return (&payload[..(index + 1) * 4], Some(event));
+    if flx4 {
+        for (index, packet) in payload.chunks_exact(4).enumerate() {
+            if let Some(event) = sampler_event([packet[0], packet[1], packet[2], packet[3]]) {
+                return (&payload[..(index + 1) * 4], Some(event));
+            }
         }
     }
+    #[cfg(not(feature = "deck-engine"))]
+    let _ = flx4;
     (payload, None)
 }
 

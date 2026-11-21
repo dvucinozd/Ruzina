@@ -81,6 +81,8 @@ pub fn adapt_profile_event(event: ProfileEvent) -> Result<ControlEvent, Semantic
         0x7f => button(event, None, SemanticControl::SmartFaderShift),
         0x83 => button(event, None, SemanticControl::BeatFxBeatDecShift),
         0x84 => button(event, None, SemanticControl::BeatFxBeatIncShift),
+        0x85 => button(event, Some(DeckId::One), SemanticControl::PflSet),
+        0x86 => button(event, Some(DeckId::Two), SemanticControl::PflSet),
         _ => Err(SemanticAdapterError::UnsupportedId(event.semantic_id)),
     }
 }

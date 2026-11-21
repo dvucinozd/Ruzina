@@ -420,9 +420,18 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   playing deck holds it off. A touch or a controller press only wakes it; faders, knobs and
   the Web Remote act too. s172 (app `d0863dcc…`): all of it works by touch and from the Web
   Remote, owner "Sve radi"; the FLX4's wake waits for the controller.
+- **The donor's controller profiles (2026-11-21):** [the donor's other controller profiles](reviews/2026-11-21-controller-profiles.md).
+  The deck now carries the DDJ-400, Numark DJ2GO2 Touch, Traktor S2 MK3 and Hercules
+  Inpulse 500 profiles besides the FLX4's, chosen by VID:PID. It sends a profile's initial
+  SysEx and takes its filter flag. The FLX4's SAMPLER trick is limited to the FLX4. The
+  parser gained the donor's inverted CC7, latching PFL and native-headphone flag. Audio
+  for the Hercules (asynchronous) and the S2 MK3 (UAC2) is still to come. s173 (app
+  `fd4d6e1b…`), no controller attached: works, owner "Sve radi". No controller has been
+  tested on it yet.
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s173 (app `fd4d6e1b…`) is the play image flags on the controller profiles branch.
   - s172 (app `d0863dcc…`) is the play image flags on the screensaver branch.
   - s162 (app `4b6044fa…`) is the `--usb-stick` image of the Web Remote send branch, with
     no profile. Its firmware is the same as `main` at `830a46b`. It has all 11 outside

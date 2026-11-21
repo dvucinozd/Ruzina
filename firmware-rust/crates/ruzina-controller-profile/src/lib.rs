@@ -40,6 +40,9 @@ pub const PROFILE_FLAG_JOG_TOUCH: u32 = 1 << 2;
 pub const PROFILE_FLAG_PITCH_14BIT: u32 = 1 << 3;
 /// v4 only: the channel filter is not gated by Smart CFX for this profile.
 pub const PROFILE_FLAG_FILTER_ALWAYS: u32 = 1 << 4;
+/// v4 only, with USB audio: the controller mixes its own headphones (level and cue/master
+/// blend), so the deck sends the cue bus at unity (the Hercules DJControl Inpulse 500).
+pub const PROFILE_FLAG_NATIVE_HEADPHONES: u32 = 1 << 5;
 
 const SEMANTIC_TYPE_PITCH: u8 = 0x03;
 
@@ -67,6 +70,9 @@ pub enum RawType {
     Cc7To14 = 8,
     /// v4: Note On press emits a fixed nonnegative value; release is ignored.
     NoteSelect = 9,
+    /// v4: [`Self::Cc7To14`] turned over, 0/64/127 -> 16383/8192/0, for a fader or
+    /// pitch slider mounted the other way up.
+    Cc7To14Inverted = 10,
 }
 
 impl RawType {
@@ -82,6 +88,7 @@ impl RawType {
             7 => Some(Self::NoteStatePair),
             8 => Some(Self::Cc7To14),
             9 => Some(Self::NoteSelect),
+            10 => Some(Self::Cc7To14Inverted),
             _ => None,
         }
     }
@@ -89,7 +96,7 @@ impl RawType {
     const fn min_version(self) -> u16 {
         match self {
             Self::Cc7To14 => S3CP_VERSION_SCALED,
-            Self::NoteSelect => S3CP_VERSION_EXTENDED,
+            Self::NoteSelect | Self::Cc7To14Inverted => S3CP_VERSION_EXTENDED,
             _ => S3CP_VERSION_LEGACY,
         }
     }
@@ -106,6 +113,18 @@ pub const fn cc7_to14(data2: u8) -> i16 {
         value * 128
     } else {
         8192 + ((value - 64) * 8191 + 31) / 63
+    };
+    scaled as i16
+}
+
+/// Integer 0/64/127 -> 16383/8192/0 scaling (M2.5 `CP_IN_CC7_TO14_INVERTED`); the center
+/// detent stays exactly 8192.
+pub const fn cc7_to14_inverted(data2: u8) -> i16 {
+    let value = (data2 & 0x7f) as i32;
+    let scaled = if value <= 64 {
+        8192 + ((64 - value) * 8191 + 32) / 64
+    } else {
+        8192 - ((value - 64) * 8192 + 31) / 63
     };
     scaled as i16
 }
@@ -235,7 +254,9 @@ impl<'a> Profile<'a> {
             || output_count > MAX_OUTPUTS
             || pair_slot_count > MAX_PAIR_SLOTS
             || init_sysex_len > MAX_INIT_SYSEX
-            || (version < S3CP_VERSION_EXTENDED && flags & PROFILE_FLAG_FILTER_ALWAYS != 0)
+            || (version < S3CP_VERSION_EXTENDED
+                && flags & (PROFILE_FLAG_FILTER_ALWAYS | PROFILE_FLAG_NATIVE_HEADPHONES) != 0)
+            || (flags & PROFILE_FLAG_NATIVE_HEADPHONES != 0 && flags & PROFILE_FLAG_USB_AUDIO == 0)
         {
             return Err(ParseError::Bounds);
         }
@@ -291,7 +312,7 @@ impl<'a> Profile<'a> {
                         || entry.press_mask != 0
                         || entry.base_value < 0
                 }
-                RawType::Cc7To14 => {
+                RawType::Cc7To14 | RawType::Cc7To14Inverted => {
                     entry.match_status & 0xf0 != 0xb0
                         || entry.semantic_type != SEMANTIC_TYPE_PITCH
                         || entry.pair_slot != PAIR_SLOT_NONE
@@ -342,6 +363,12 @@ impl<'a> Profile<'a> {
     /// enable gate. Absent for every v2/v3 profile.
     pub const fn channel_filter_always(&self) -> bool {
         self.flags & PROFILE_FLAG_FILTER_ALWAYS != 0
+    }
+
+    /// Profile-owned capability: the controller mixes its own headphones. Absent for
+    /// every v2/v3 profile.
+    pub const fn native_headphones(&self) -> bool {
+        self.flags & PROFILE_FLAG_NATIVE_HEADPHONES != 0
     }
 
     pub const fn vid(&self) -> u16 {
@@ -575,12 +602,12 @@ impl ProfileRuntime {
                     }
                     slot.value()?
                 }
-                RawType::Cc7Abs | RawType::Cc7To14 => {
+                RawType::Cc7Abs | RawType::Cc7To14 | RawType::Cc7To14Inverted => {
                     // Replay stores the scaled value, matching M2.5.
-                    let value = if entry.raw_type == RawType::Cc7To14 {
-                        cc7_to14(data2)
-                    } else {
-                        (data2 & 0x7f) as i16
+                    let value = match entry.raw_type {
+                        RawType::Cc7To14 => cc7_to14(data2),
+                        RawType::Cc7To14Inverted => cc7_to14_inverted(data2),
+                        _ => (data2 & 0x7f) as i16,
                     };
                     self.cc7_value[index] = value;
                     self.cc7_valid[index] = true;
@@ -632,7 +659,9 @@ impl ProfileRuntime {
 
             let value = match entry.raw_type {
                 RawType::Cc14Msb => self.slots[entry.pair_slot as usize].value(),
-                RawType::Cc7Abs | RawType::Cc7To14 if self.cc7_valid[index] => {
+                RawType::Cc7Abs | RawType::Cc7To14 | RawType::Cc7To14Inverted
+                    if self.cc7_valid[index] =>
+                {
                     Some(self.cc7_value[index])
                 }
                 _ => None,
@@ -1031,6 +1060,69 @@ mod tests {
         }
         for value in 1..=127u8 {
             assert!(cc7_to14(value) > cc7_to14(value - 1));
+        }
+    }
+
+    #[test]
+    fn cc7_to14_inverted_turns_the_scale_over_around_an_exact_center() {
+        // M2.5 `CP_IN_CC7_TO14_INVERTED`.
+        for (input, expected) in [
+            (0u8, 16383i16),
+            (1, 16255),
+            (63, 8320),
+            (64, 8192),
+            (65, 8062),
+            (127, 0),
+            (0xff, 0),
+        ] {
+            assert_eq!(cc7_to14_inverted(input), expected, "data2 {input}");
+        }
+        for value in 1..=127u8 {
+            assert!(cc7_to14_inverted(value) < cc7_to14_inverted(value - 1));
+        }
+
+        // A v4 pitch CC only, with replay allowed; never before v4.
+        let mut inverted = input(0xb0, 0x13, 10, 0x03, 0x50);
+        inverted[6] = 0x01;
+        let profile_bytes = blob(4, 0, &[inverted], &[], &[]);
+        let profile = Profile::parse(&profile_bytes).unwrap();
+        let mut runtime = ProfileRuntime::new();
+        let event = runtime.process(&profile, 0xb0, 0x13, 0).unwrap();
+        assert_eq!(event.value, 16383);
+        assert_eq!(
+            Profile::parse(&blob(3, 0, &[inverted], &[], &[])).err(),
+            Some(ParseError::Bounds)
+        );
+        for entry in [
+            input(0x90, 0x13, 10, 0x03, 0x50),
+            input(0xb0, 0x13, 10, 0x01, 0x50),
+        ] {
+            assert_eq!(
+                Profile::parse(&blob(4, 0, &[entry], &[], &[])).err(),
+                Some(ParseError::Bounds)
+            );
+        }
+    }
+
+    #[test]
+    fn native_headphones_need_v4_and_usb_audio() {
+        let both = PROFILE_FLAG_NATIVE_HEADPHONES | PROFILE_FLAG_USB_AUDIO;
+        assert!(
+            Profile::parse(&blob(4, both, &[], &[], &[]))
+                .unwrap()
+                .native_headphones()
+        );
+        assert!(
+            !Profile::parse(&blob(4, PROFILE_FLAG_USB_AUDIO, &[], &[], &[]))
+                .unwrap()
+                .native_headphones()
+        );
+        for (version, flags) in [(4, PROFILE_FLAG_NATIVE_HEADPHONES), (3, both), (2, both)] {
+            assert_eq!(
+                Profile::parse(&blob(version, flags, &[], &[], &[])).err(),
+                Some(ParseError::Bounds),
+                "v{version} flags {flags:#x}"
+            );
         }
     }
 
