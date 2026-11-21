@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Korisnički priručnik za Ružinu na ploči Guition JC1060 s kontrolerom Pioneer DDJ-FLX4.">
+  <title>Ružina – korisnički priručnik</title>
+  <link rel="icon" href="docs/manual/emblem.webp" type="image/webp">
+  <link rel="stylesheet" href="docs/manual/manual.css">
+</head>
+<body id="vrh">
+  <a class="skip" href="#prirucnik">Preskoči na priručnik</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="#vrh">Ružina <span>/ Priručnik</span></a>
+      <a class="repo-link" href="https://github.com/dvucinozd/Ruzina">GitHub <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+  <div class="hero">
+    <div class="shell hero-inner">
+      <div>
+        <p class="scope">Guition JC1060 <span aria-hidden="true">·</span> Pioneer DDJ-FLX4</p>
+        <h1>Korisnički<br>priručnik</h1>
+        <p class="hero-copy">Pripremi glazbu u rekordboxu, spoji opremu i odsviraj prvi miks na dva decka. Ovdje su i upute za rad s cue točkama, efektima i Web Remoteom.</p>
+        <a class="primary" href="#brzi-pocetak">Kreni s postavljanjem <span aria-hidden="true">↓</span></a>
+      </div>
+      <img class="emblem" src="docs/manual/emblem.webp" width="475" height="480" alt="">
+    </div>
+  </div>
+
+  <div class="shell layout">
+    <nav class="contents" aria-label="Sadržaj priručnika">
+      <h2>Sadržaj</h2>
+      <ol>
+        <li><a href="#brzi-pocetak">Brzi početak</a></li>
+        <li><a href="#oprema">Oprema i spajanje</a></li>
+        <li><a href="#izvoz">Priprema USB medija</a></li>
+        <li><a href="#zaslon">Zaslon i knjižnica</a></li>
+        <li><a href="#miks">Prvi miks i slušalice</a></li>
+        <li><a href="#ritam">Tempo, jog i petlje</a></li>
+        <li><a href="#cue">Cue točke i efekti</a></li>
+        <li><a href="#postavke">Postavke uređaja</a></li>
+        <li><a href="#web-remote">Web Remote</a></li>
+        <li><a href="#odrzavanje">Medij i firmware</a></li>
+        <li><a href="#problemi">Rješavanje problema</a></li>
+        <li><a href="#kompatibilnost">Kompatibilnost</a></li>
+      </ol>
+    </nav>
+
+    <main id="prirucnik" tabindex="-1">
+      <section id="brzi-pocetak">
+        <h2>Brzi početak</h2>
+        <p>Upute su za <strong>JC1060P470C_I_W_Y, ESP32-P4 revizija 1.3 (103)</strong>, s već instaliranom Ružinom za tu ploču. Prikazana je varijanta firmwarea sa Slint zaslonom i USB memorijom kao izvorom glazbe.</p>
+        <ol class="steps">
+          <li><strong>Pripremi dvije pjesme.</strong> Analiziraj ih u rekordboxu i izvezi na exFAT USB memoriju zajedno s klasičnom bazom Device Library. <a href="#izvoz">Upute za izvoz</a></li>
+          <li><strong>Spoji opremu.</strong> DDJ-FLX4 i USB memoriju priključi na hub spojen na HS priključak JC1060. Na FLX4 spoji zvučnike i slušalice, s glasnoćom smanjenom prije uključivanja. <a href="#oprema">Shema spajanja</a></li>
+          <li><strong>Pokreni Ružinu.</strong> Napajaj ploču preko njezina FS Type-C priključka. Pričekaj da prođe početni zaslon i da se katalog učita. Otvori <b>LIBRARY</b>, odaberi pjesmu pa pritisni <b>LOAD</b> za prvi deck.</li>
+          <li><strong>Provjeri oba izlaza.</strong> Postavi crossfader u sredinu, podigni fader prvog kanala, pritisni <b>PLAY</b> i polako podižI glasnoću. Za provjeru slušalica okreni <b>HEADPHONES MIX</b> prema <b>MASTER</b> i podigni <b>HEADPHONES LEVEL</b>. <a href="#miks">Odvojeno preslušavanje i prvi miks</a></li>
+        </ol>
+      </section>
+
+      <section id="oprema">
+        <h2>Oprema i spajanje</h2>
+        <ul>
+          <li>Guition <strong>JC1060P470C_I_W_Y</strong> rev1.3 s odgovarajućim firmwareom Ružine.</li>
+          <li>Pioneer <strong>DDJ-FLX4</strong> s podatkovnim USB kabelom za priključak za računalo/mobilni uređaj.</li>
+          <li>USB hub i exFAT USB memorija s izvozom iz rekordboxa.</li>
+          <li>Aktivni zvučnici ili pojačalo s linijskim ulazom, stereo RCA kabel i slušalice.</li>
+        </ul>
+        <figure class="wiring">
+          <figcaption>Spojevi provjerenog postava</figcaption>
+          <dl>
+            <div><dt>Računalo <span aria-hidden="true">→</span> FS Type-C na JC1060</dt><dd>Napajanje ploče preko USB-a.</dd></div>
+            <div><dt>HS USB na JC1060 <span aria-hidden="true">→</span> hub</dt><dd>Na hub idu DDJ-FLX4 i USB memorija.</dd></div>
+            <div><dt>FLX4 <span aria-hidden="true">→</span> zvučnici i slušalice</dt><dd>RCA MASTER ide na linijski ulaz. Slušalice idu na izlaz za slušalice na FLX4.</dd></div>
+          </dl>
+        </figure>
+        <aside class="note">
+          <h3>Napajanje USB huba</h3>
+          <p>U ovom je postavu korišten hub bez njegova dodatnog adaptera. S uključenim adapterom taj je hub vraćao oko 5 V prema ploči koja je već bila napajana preko FS priključka. Za prikazani spoj koristi hub za koji je provjereno da ne vraća napon prema ploči. <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/docs/reviews/2026-11-19-usb-stick-hub.md#hub-power">Zapis mjerenja napajanja</a></p>
+        </aside>
+      </section>
+
+      <section id="izvoz">
+        <h2>Priprema USB medija</h2>
+        <ol>
+          <li>Odaberi USB memoriju s <strong>exFAT</strong> datotečnim sustavom. Ako je trebaš formatirati, prvo kopiraj postojeće datoteke na drugo mjesto jer formatiranje briše sadržaj.</li>
+          <li>U rekordbox za računalo uvezi glazbu i pokreni analizu. Za prvi pokušaj odaberi dvije lokalne datoteke u formatu <strong>MP3, FLAC ili 16-bitni PCM WAV</strong>. Provjeri BPM i beatgrid prije rada sa SYNC-om i Quantizeom.</li>
+          <li>U načinu <b>EXPORT</b> izvezi pjesme ili playlistu na odabranu USB memoriju. Ružina učitava klasičnu <b>Device Library</b>. Na računalu provjeri postoji li <code>PIONEER/rekordbox/export.pdb</code> na mediju. OneLibrary, ranije Device Library Plus, može biti prisutan uz tu bazu.</li>
+          <li>Ostavi strukturu koju je napravio rekordbox. Ružina iz baze traži glazbu i prateću analizu na njihovim izvornim putanjama. Po završetku izvoza sigurno izbaci memoriju iz operacijskog sustava.</li>
+          <li>Umetni memoriju u hub Ružine. U <b>LIBRARY</b> provjeri pojavljuju li se pjesme i playliste, zatim učitaj jednu pjesmu na svaki deck.</li>
+        </ol>
+        <p>Uvoz u knjižnicu kreće od izvoza iz rekordboxa, koji povezuje pjesme s njihovim datotekama. Za nedostajuće BPM, beatgrid, cue točke ili naslovnice provjeri jesu li ti podaci bili dostupni u izvozu. <a href="https://rekordbox.com/en/support/usb-export/">Službene upute za USB izvoz</a></p>
+      </section>
+
+      <section id="zaslon">
+        <h2>Zaslon i knjižnica</h2>
+        <dl class="definitions">
+          <div><dt>OVERVIEW</dt><dd>Prikazuje oba decka, valne oblike, naslovnice kad su dostupne, poziciju i vrijeme, BPM i pitch, oznake za beatgrid, cue točke i petlje. Tu su dodirne kontrole za PLAY i CUE, oznake za Master Tempo i Quantize te panel za Beat FX. U ovom izdanju browse kotačić na Overviewu mijenja zum valnih oblika.</dd></div>
+          <div><dt>LIBRARY</dt><dd>Prikazuje sve pjesme, mape i playliste iz izvoza. Redak pjesme može prikazati izvođača, BPM, tonalitet, trajanje i oznaku decka D1 ili D2.</dd></div>
+          <div><dt>HOT CUES</dt><dd>Osam Hot Cue mjesta po decku, od A do H, i popis memorijskih cue točaka iz izvoza.</dd></div>
+          <div><dt>SETTINGS</dt><dd>Postavke rada, podaci o firmwareu, kontroleru i stanju reprodukcije te podaci za pristup mreži uređaja.</dd></div>
+        </dl>
+        <h3>Odabir i učitavanje s DDJ-FLX4</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Radnja</th><th scope="col">Rezultat</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Pritisni browse kotačić izvan knjižnice</th><td>Otvara LIBRARY. Uz SHIFT otvara prikaz playlista ili zadržava već otvorenu mapu odnosno playlistu.</td></tr>
+              <tr><th scope="row">Okreni browse kotačić u knjižnici</th><td>Pomiče odabir za jedan red po koraku. Uz SHIFT pomiče ga za deset redova. Redak možeš odabrati i dodirom.</td></tr>
+              <tr><th scope="row">Pritisni kotačić nad mapom ili playlistom</th><td>Otvara odabranu stavku. Na zaslonu isti učinak ima ponovni dodir odabranog retka. Pritisak kotačića na retku pjesme vraća Overview.</td></tr>
+              <tr><th scope="row">SHIFT + pritisak kotačića ili BACK na zaslonu</th><td>Ide jednu razinu natrag. Iz korijena playlista vraća se na sve pjesme.</td></tr>
+              <tr><th scope="row">LOAD za deck 1 ili 2</th><td>Učitava odabranu pjesmu na taj deck. Ako je odabrana mapa ili playlista, prvo otvara taj popis. Uz uključen LOAD LOCK zamjena pjesme na decku koji svira bit će odbijena.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Za učitavanje dodirom odaberi redak pjesme pa na zaslonu odaberi <b>LOAD D1</b> ili <b>LOAD D2</b>. Prije pritiska PLAY provjeri je li naslov prikazan na željenom decku.</p>
+      </section>
+      <section id="miks">
+        <h2>Prvi miks i slušalice</h2>
+        <dl class="definitions">
+          <div><dt>MAIN / MASTER</dt><dd>Publika čuje završni stereo miks preko RCA MASTER-a na FLX4. Na njega utječu faderi kanala, crossfader, MASTER LEVEL i MAIN TRIM.</dd></div>
+          <div><dt>PFL / HEADPHONES CUE</dt><dd>Tipka CUE u mikseru označava kanal za preslušavanje prije njegova fadera. <b>HEADPHONES MIX</b> određuje odnos odabranih PFL kanala i MASTER-a. <b>HEADPHONES LEVEL</b> podešava ukupnu glasnoću slušalica.</dd></div>
+          <div><dt>Transportni CUE</dt><dd>Tipka CUE pokraj PLAY-a upravlja cue točkom decka i povratkom na nju. Za preslušavanje drugog decka u slušalicama služi CUE u mikseru.</dd></div>
+        </dl>
+        <ol>
+          <li>Učitaj prvu pjesmu na deck 1. Ostavi fader kanala 2 spušten. S crossfaderom u sredini pokreni deck 1, podigni njegov fader i namjesti ugodnu razinu na zvučnicima.</li>
+          <li>Učitaj drugu pjesmu na deck 2. Uključi <b>HEADPHONES CUE</b> kanala 2 i zakreni <b>HEADPHONES MIX</b> prema <b>CUE</b>. Za provjeru izolacije ostavi PFL kanala 1 isključen. Pokreni deck 2 i provjeri da druga pjesma svira u slušalicama, dok zvučnici reproduciraju prvu.</li>
+          <li>Uskladi tempo i početak fraze. Za usporedbu obje pjesme zakreni <b>HEADPHONES MIX</b> prema sredini. Po potrebi koristi tempo fader ili SYNC i kratke korekcije jogom.</li>
+          <li>Postupno podigni fader kanala 2 i spusti fader kanala 1. Obrati pozornost na zbroj glasnoća dok oba decka sviraju. Ako često vidiš rast brojača <b>Limiter</b> u SETTINGS, smanji razine kanala ili MAIN TRIM.</li>
+        </ol>
+      </section>
+
+      <section id="ritam">
+        <h2>Tempo, jog i petlje</h2>
+        <h3>Tempo, BEAT SYNC i Master Tempo</h3>
+        <ul>
+          <li><strong>Tempo fader</strong> mijenja brzinu. Na FLX4 kratko pritisni <b>SHIFT + BEAT SYNC</b> za promjenu raspona između 6, 10 i 16 posto. Pusti tipku da se raspon promijeni.</li>
+          <li><strong>BEAT SYNC</strong> uključuje ili isključuje praćenje drugog decka. Uz beatgrid na obje pjesme i oba pokrenuta decka Ružina može uskladiti i fazu. Bez obaju beatgridova usklađuje tempo kad su BPM podaci dostupni. Usklađivanje faze može pričekati da pustiš jog ili izađeš iz petlje.</li>
+          <li><strong>Kontinuirani SYNC</strong> prati promjene tempa referentnog decka unutar raspona. Pomakni tempo fader decka koji prati ili ponovno pritisni SYNC kad želiš preuzeti njegov tempo.</li>
+          <li><strong>Master Tempo (MT)</strong> zadržava visinu tona dok mijenjaš tempo. Dodirni <b>MT</b> na Overviewu ili drži <b>SHIFT + BEAT SYNC</b> oko sekunde na odgovarajućem decku.</li>
+        </ul>
+        <h3>Jog, Quantize i Beat Jump</h3>
+        <ul>
+          <li><strong>VINYL</strong> omogućuje držanje i scratch dodirom gornje plohe joga. Za kratko ubrzanje ili usporenje tijekom reprodukcije koristi rub. U načinu <strong>CDJ</strong> dodir gornje plohe ne zaustavlja reprodukciju niti pokreće scratch. Način se bira za svaki deck zasebno u SETTINGS.</li>
+          <li><strong>Quantize</strong> koristi analizirani beatgrid pri postavljanju cue točaka i početka petlje. Na FLX4 ga prebaci kombinacijom <b>SHIFT + CUE</b> na pripadajućem kanalu miksera. Oznaka <b>Q</b> na Overviewu pokazuje stanje za svaki deck. Ako točke padaju na pogrešne udarce, najprije provjeri beatgrid u rekordboxu i osvježi izvoz.</li>
+          <li><strong>BEAT JUMP</strong> na padovima pomiče poziciju za zadani broj beatova, uz zadržavanje pomaka unutar beata. Koristan je za preskakanje dijela fraze.</li>
+        </ul>
+        <h3>Petlje</h3>
+        <p>Pritisni <b>4 BEAT/EXIT</b> na FLX4 za pokretanje petlje od četiri beata ili za izlazak iz aktivne petlje. Za ručni raspon koristi <b>IN</b> za početak i <b>OUT</b> za kraj. U načinu <b>BEAT LOOP</b> odaberi duljinu padom. Granice aktivne petlje vidiš na valnom obliku. Nakon izlaska pjesma nastavlja kroz kraj petlje.</p>
+      </section>
+
+      <section id="cue">
+        <h2>Cue točke i efekti</h2>
+        <h3>Hot Cues i Memory Cues</h3>
+        <ol>
+          <li>Učitaj pjesmu i otvori <b>HOT CUES</b> ili odaberi način <b>HOT CUE</b> na padovima FLX4. Prazno mjesto A–H dodirom ili pritiskom sprema cue na trenutačnoj poziciji. Postojeća oznaka poziva tu točku.</li>
+          <li>Za brisanje dodirni <b>DELETE</b> na strani željenog decka pa zauzeto mjesto. Na kontroleru upotrijebi <b>SHIFT + pad</b> u načinu HOT CUE. Cue točke koje Ružina promijeni spremaju se lokalno na uređaju. Za spremanje pauziraj oba decka i ostavi uređaj uključen nekoliko sekundi.</li>
+          <li>Za cue točke uvezene iz rekordboxa dodirni zapis u popisu <b>MEMORY</b>. Na FLX4 uključi <b>SAMPLER</b> na tom decku. Padovi 1–8 pozivaju točke 1–8, a SHIFT + pad poziva 9–16. Poziv zadržava stanje PLAY/PAUSE. Memorijska petlja aktivira petlju.</li>
+        </ol>
+        <p>Za izmjene koje želiš prenijeti na druge playere uredi točke u rekordboxu pa ponovno izvezi medij.</p>
+        <h3>Beat FX i Pad FX</h3>
+        <p>Na Overviewu dodirni <b>FX</b> panel desno od valnih oblika. Odaberi <b>Filter</b>, <b>Echo</b>, <b>Flanger</b> ili <b>Delay</b>, trajanje od ¼ do 4 beata i cilj (<b>deck 1</b>, <b>deck 2</b> ili <b>oba</b>). Namjesti <b>DEPTH</b> i uključi <b>FX ON</b>. Za početak postavi malu dubinu pa je povećavaj po sluhu. <b>CLOSE</b> vraća Overview. <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/DEVELOPMENT_STATUS.md#open">Status provjere pojedinih efekata i odabira kanala</a></p>
+        <p>Za Pad FX odaberi način <b>PAD FX</b> na FLX4 i upotrijebi pad za dodijeljeni efekt. Za promjene na cijelom miksu provjeri ciljni kanal Beat FX-a i stanje efekta prije prijelaza na drugu pjesmu.</p>
+      </section>
+
+      <section id="postavke">
+        <h2>Postavke uređaja</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Postavka</th><th scope="col">Kako radi</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">LOAD LOCK</th><td><b>ON</b> štiti deck koji svira od slučajnog učitavanja druge pjesme. <b>OFF</b> dopušta zamjenu tijekom reprodukcije. Tvornička vrijednost Ružine je ON.</td></tr>
+              <tr><th scope="row">JOG DECK 1 / 2</th><td><b>VINYL</b> (zadano) za scratch. <b>CDJ</b> za rad bez scratcha dodirom gornje plohe.</td></tr>
+              <tr><th scope="row">BRIGHTNESS</th><td>Tipke − i + mijenjaju svjetlinu za pet postotnih bodova, između 10 i 50 posto. Zadano je 25 posto.</td></tr>
+              <tr><th scope="row">MAIN TRIM</th><td>0, −3 ili −6 dB. Djeluje na MAIN prije limitera. Razinu slušalica regulira HEADPHONES LEVEL.</td></tr>
+              <tr><th scope="row">SCREENSAVER</th><td>OFF, 2, 5 ili 10 minuta. Zadano je 2 minute. Aktivna reprodukcija drži zaslon budnim. Kada ga screensaver prekriva, prvi dodir, pritisak tipke ili pad te pokret joga ili browse kotačića samo bude zaslon. Faderi i potenciometri nastavljaju upravljati miksom.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Promjena se primjenjuje tijekom rada i zapisuje u flash kada oba decka miruju i vrijednosti se nekoliko sekundi ne mijenjaju. Ako ćeš isključiti ploču odmah nakon promjene, prvo pauziraj oba decka i pričekaj nekoliko sekundi.</p>
+        <p>Za dijagnostiku pogledaj stavke <b>Controller</b>, <b>Firmware</b>, <b>Built</b> i <b>ELF</b>. U istom prikazu su podaci o međuspremniku i brojačima prekida punjenja audio međuspremnika (underrun).</p>
+      </section>
+
+      <section id="web-remote">
+        <h2>Web Remote</h2>
+        <p>Ružina s omogućenim Wi-Fi-jem otvara vlastitu lokalnu mrežu. Web Remote upravlja fizičkim deckovima, dok zvuk izlazi preko FLX4.</p>
+        <ol>
+          <li>Na Ružini otvori <b>SETTINGS</b> i pogledaj <b>Wi-Fi</b> i <b>Password</b>.</li>
+          <li>Na telefonu ili računalu odaberi upravo tu mrežu i upiši prikazanu lozinku. Ako uređaj prijavi da mreža nema internet, odaberi da ostane spojen.</li>
+          <li>U adresnu traku preglednika upiši <code>http://192.168.4.1</code>. Na stranici se prikazuju oba decka, mikser i knjižnica.</li>
+          <li>Otvori <b>LIBRARY</b>, potraži naslov ili izvođača i učitaj pjesmu na odgovarajući deck. Provjeri potvrdu učitavanja odnosno poruku o odbijanju. PLAY, CUE, SYNC, <b>4B LOOP</b>, <b>CLEAR</b> i traka pozicije upravljaju pojedinim deckom.</li>
+          <li>U mikseru su dostupni EQ, filter, faderi kanala, crossfader, PFL, MASTER i omjer slušalica. Prati položaje kontrola kad više osoba upravlja uređajem.</li>
+        </ol>
+        <aside class="note">
+          <h3>Preuzimanje fizičke kontrole nakon Web Remotea</h3>
+          <p>Ako je klizač promijenjen u pregledniku, pomakni pripadni fader ili potenciometar na FLX4 do vrijednosti prikazane u Web Remoteu ili preko nje. Kontrola se tada ponovno preuzima na kontroleru, bez naglog skoka vrijednosti.</p>
+        </aside>
+      </section>
+      <section id="odrzavanje">
+        <h2>Medij i firmware</h2>
+        <h3>Zamjena USB memorije i gašenje</h3>
+        <ol>
+          <li>Pauziraj oba decka. Ako si uređivao postavke ili Hot Cues, pričekaj nekoliko sekundi da uređaj spremi promjene.</li>
+          <li>Smanji glasnoću izlaza prije gašenja ili prespajanja. Za uobičajeno gašenje isključi USB napajanje ploče.</li>
+          <li>Ako tijekom rada izvučeš medij, LIBRARY može prikazati <b>MEDIA REMOVED</b> i zadržati stare retke. Nakon ponovnog umetanja USB memorije firmware automatski ponovno pokreće aplikaciju da bi učitao katalog.</li>
+          <li>Pričekaj povratak knjižnice i učitaj pjesme ponovno. Ponovno pokretanje prekida reprodukciju i prazni trenutačne deckove.</li>
+        </ol>
+        <h3>Ažuriranje i oporavak</h3>
+        <p>Za firmware najprije zabilježi model ploče, reviziju ESP32-P4 i vrijednosti <b>Firmware</b>, <b>Built</b> i <b>ELF</b> u SETTINGS. Zatim provjeri razvojni status i odaberi sliku namijenjenu toj reviziji i željenom izvoru glazbe. USB i SD imaju zasebne buildove.</p>
+        <p>Prije programiranja pripremi provjerenu sigurnosnu kopiju postojećeg flasha i postupak oporavka za taj uređaj. Odjeljak za održavatelje obuhvaća odabir builda, raspored particija i provjeru povrata. Web Remote služi upravljanju izvedbom. <a href="https://github.com/dvucinozd/Ruzina/blob/main/firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image">Buildovi sa zaslonom</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/boards/JC1060_LEGACY_RECOVERY.md">Oporavak JC1060</a></p>
+      </section>
+
+      <section id="problemi">
+        <h2>Rješavanje problema</h2>
+        <details open>
+          <summary>Knjižnica je prazna ili nedostaju playliste</summary>
+          <p>Provjeri je li USB memorija u hubu na HS priključku, je li u exFAT-u i sadrži li klasični <code>PIONEER/rekordbox/export.pdb</code>. U rekordboxu pod Devices provjeri pojavljuju li se pjesme i playliste u Device Library. Kreni s malim izvozom dviju poznatih pjesama i pričekaj da završi učitavanje kataloga.</p>
+        </details>
+        <details>
+          <summary>Pjesma se vidi, ali LOAD je ne učitava</summary>
+          <p>Provjeri je li odabrana pjesma ili mapa. Pauziraj ciljni deck ako je uključen LOAD LOCK. Ako se problem ponavlja s jednom pjesmom, ponovno je izvezi i provjeri format. U Web Remoteu zabilježi poruku koja se pojavljuje nakon pokušaja.</p>
+        </details>
+        <details>
+          <summary>FLX4 reagira, ali nema zvuka na zvučnicima</summary>
+          <p>Provjeri da PLAY radi i da se pozicija pomiče. Provjeri fader odgovarajućeg kanala, crossfader, MASTER LEVEL i ulaz pojačala ili zvučnika. RCA kabel treba biti na MASTER izlazu FLX4. Provjeri naziv kontrolera u SETTINGS.</p>
+        </details>
+        <details>
+          <summary>U slušalicama čujem krivi deck ili nema zvuka</summary>
+          <p>Uključi HEADPHONES CUE željenog kanala. Okreni HEADPHONES MIX prema CUE za preslušavanje odabranog kanala ili prema MASTER za izlazni miks. Podigni HEADPHONES LEVEL postupno. Za izolaciju drugog decka isključi PFL prvog.</p>
+        </details>
+        <details>
+          <summary>Zvuk krči ili prekida</summary>
+          <p>Za početak pusti jednu poznatu pjesmu bez efekata. Smanji razine ako Limiter brzo raste. Ako se problem javlja samo kad sviraju oba decka, zabilježi formate, stanje Master Tempa, aktivne efekte i zaslon koji je bio otvoren. Provjeri jesu li porasli underrun brojači u SETTINGS. Kad se pojavi problem s detekcijom oba USB uređaja, provjeri spojeve, kabel i napajanje huba prema prikazanoj shemi.</p>
+        </details>
+        <details>
+          <summary>Web Remote se ne otvara</summary>
+          <p>Provjeri da telefon ostaje na Wi-Fi mreži prikazanoj u SETTINGS. Upiši punu adresu s <code>http://</code>. Pričekaj povratak mreže nakon ponovnog pokretanja i pokušaj ponovo. Ako SETTINGS nema mrežne podatke, provjeri je li uređaj pokrenut s buildom koji uključuje Wi-Fi.</p>
+        </details>
+        <details>
+          <summary>Uređaj ne prepoznaje komandu nakon duljeg mirovanja</summary>
+          <p>Ako vidiš riječ RUZINA preko zaslona, dodir ili pritisak prvo budi zaslon. Zatim ponovi komandu. Ako fizički fader miruje nakon korištenja Web Remotea, pomakni ga do prikazane vrijednosti kako bi ponovno preuzeo kontrolu.</p>
+        </details>
+        <details>
+          <summary>Zaslon ostaje taman ili FLX4 nije prepoznat</summary>
+          <p>Smanji glasnoću izlaza, provjeri napajanje na FS Type-C i spoj huba na HS. Pokreni ploču bez držanja tipke BOOT i pričekaj početni zaslon. U SETTINGS provjeri stavku Controller. Ako piše <b>none</b>, provjeri podatkovni USB kabel i je li spojen na priključak FLX4 za računalo ili mobilni uređaj.</p>
+        </details>
+        <h3>Prijava problema</h3>
+        <p>Zabilježi model ploče i kontrolera, firmware/ELF, tip i format medija, radnju kojom se problem ponavlja, očekivani rezultat i što se stvarno dogodilo. Ako možeš, dodaj fotografiju zaslona ili broj underrunova. Prije slanja ukloni lozinku prikazanu u SETTINGS. <a href="https://github.com/dvucinozd/Ruzina/issues">GitHub Issues</a></p>
+      </section>
+
+      <section id="kompatibilnost">
+        <h2>Kompatibilnost i status</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Oprema / izvedba</th><th scope="col">Status</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">JC1060 rev1.3 + DDJ-FLX4</th><td>Konfiguracija isprobana na fizičkoj ploči s ESP-IDF izvedbom, USB memorijom, RCA MAIN i slušalicama na FLX4. Provjera pojedine funkcije ovisi o točnoj slici firmwarea.</td></tr>
+              <tr><th scope="row">DDJ-400 i Numark DJ2GO2 Touch</th><td>Profili postoje u kodu. Provjera reprodukcije i komandi s fizičkim uređajima na ovoj ploči je otvorena.</td></tr>
+              <tr><th scope="row">Traktor Kontrol S2 MK3 i Inpulse 500</th><td>Profili postoje u kodu. USB audio i fizička provjera su otvoreni.</td></tr>
+              <tr><th scope="row">Izvorni esp-hal build</th><td>Za ESP32-P4 revizije 3.2 (302) ili novije. Odvojeni cilj s provjerom kompilacije. Upute za rev1.3 odnose se na ESP-IDF izvedbu.</td></tr>
+              <tr><th scope="row">JC8012P4A1C_I_W_Y</th><td>Zasebni cilj razvoja. Fizička kvalifikacija ostaje otvorena.</td></tr>
+              <tr><th scope="row">Vanjski DAC za MAIN</th><td>Planirana mogućnost. U konfiguraciji ovog priručnika MAIN i slušalice izlaze iz FLX4.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Za status konkretnih slika, slušnih provjera i duljih mjerenja prati razvojnu dokumentaciju. <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/DEVELOPMENT_STATUS.md">Razvojni status</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/docs/reviews/2026-11-21-controller-profiles.md">Status dodatnih kontrolera</a></p>
+      </section>
+
+      <footer class="manual-footer">
+        <p>Upute su provjerene prema javnom kodu u commitu <a href="https://github.com/dvucinozd/Ruzina/commit/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5"><code>7a5ea74</code></a>.</p>
+        <p>Izvori za održavanje priručnika. <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-idf/legacy-jc1060/rust-core/ui/overview.slint">Zaslon uređaja</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-rust/crates/ruzina-web/web/index.html">Web Remote</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.json">FLX4 profil</a> · <a href="https://www.pioneerdj.com/-/media/pioneerdj/software-info/controller/ddj-flx4/ddj-flx4_midi_message_list_e1.pdf">FLX4 MIDI referenca</a></p>
+        <a href="#vrh">Na vrh stranice ↑</a>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
