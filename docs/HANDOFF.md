@@ -367,7 +367,11 @@
   The starts are not the cause. Real play is about twice as slow as the boot bench (plain
   fill 1.9 ms against 1.0 ms), so memory shared with the screen and the stick is the next
   suspect.
-- **On the board:** s156 (app `d4124d57…`), a profile image of the keylock start branch.
+- **On the board:** s157 (app `bd390cb0…`), the `--usb-stick` product image of `main` at
+  `f2a61fd`, with no profile. In 7 minutes of play with Master Tempo, hot cues, SYNC and a
+  scratch it made 79 000 fills with 0/0 underruns. The longest was 5.1 ms (s154: 5.4 ms), and
+  11.5 % were over 3 ms. s156 (app `d4124d57…`) is the profile image of the keylock start
+  branch.
   The image the board keeps is s148 (app `5824136c…`), the `--usb-stick` image with the
   faster render and the stick behind a hub; s154 (app `53c2f867…`) is `main` after the
   keylock spread. s142 (app `3125b34f…`) is
