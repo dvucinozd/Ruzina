@@ -174,6 +174,16 @@ unsafe extern "C" {
         height: u32,
         dx: u32,
     ) -> i32;
+    /// A strip of `pixels` pixels in internal RAM, made on the first call, or null.
+    fn ruzina_panel_strip(pixels: u32) -> *mut u16;
+    fn ruzina_panel_blit(
+        from: *const u16,
+        to: *mut u16,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) -> i32;
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
     /// The running app's description (IDF `esp_app_desc_t`).
     fn esp_app_get_description() -> *const AppDescription;
@@ -737,10 +747,39 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks, position_ms: 
     }
 }
 
+/// Columns of a lane's strip in internal RAM (`draw_strips`): 25 KiB.
+const STRIP_COLUMNS: usize = 64;
+
+/// Where a lane's pixels go: the frame buffer, or a strip that holds columns `first` and
+/// up of all the lane's rows, `stride` to a row.
+struct Canvas<'a> {
+    pixels: &'a mut [u16],
+    stride: usize,
+    /// The index of the lane's top left pixel, or of the strip's.
+    base: usize,
+    first: usize,
+}
+
+impl<'a> Canvas<'a> {
+    fn frame(frame: &'a mut [u16], area: Area) -> Self {
+        Self {
+            pixels: frame,
+            stride: WIDTH,
+            base: area.y * WIDTH + area.x,
+            first: 0,
+        }
+    }
+
+    /// The index of the lane's column `x`, at or after `first`, in row `y`.
+    fn index(&self, x: usize, y: usize) -> usize {
+        self.base + y * self.stride + x - self.first
+    }
+}
+
 /// Draws columns `columns` of the lane whose left edge shows detail column `left`. Each
 /// row is built in internal RAM and written in one copy; rows mirror below the middle.
 fn draw_columns(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -791,21 +830,21 @@ fn draw_columns(
         }
         for row in [middle - distance, middle + distance] {
             if row < LANE_HEIGHT {
-                let start = (area.y + row) * WIDTH + area.x + columns.start;
-                frame[start..start + width].copy_from_slice(&line[..width]);
+                let start = canvas.index(columns.start, row);
+                canvas.pixels[start..start + width].copy_from_slice(&line[..width]);
             }
         }
     }
-    draw_bar_caps(frame, area, wave, left, columns.clone());
-    draw_memory_flags(frame, area, wave, left, columns.clone());
-    draw_cue_flags(frame, area, wave, left, columns);
+    draw_bar_caps(canvas, area, wave, left, columns.clone());
+    draw_memory_flags(canvas, area, wave, left, columns.clone());
+    draw_cue_flags(canvas, area, wave, left, columns);
 }
 
 /// Draws the triangles of the memory cues near columns `columns`, clipped to them and
 /// clear of the playhead: at the Hot Cue flags' edge, pointing into the lane. A Hot Cue's
 /// flag is drawn over one.
 fn draw_memory_flags(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -825,11 +864,11 @@ fn draw_memory_flags(
             let reach =
                 MEMORY_FLAG_REACH * (MEMORY_FLAG_HEIGHT - row) as i64 / MEMORY_FLAG_HEIGHT as i64;
             let y = if at_top { row } else { LANE_HEIGHT - 1 - row };
-            let line = (area.y + y) * WIDTH + area.x;
             for x in (centre - reach).max(first)..=(centre + reach).min(end - 1) {
                 let x = x as usize;
                 if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
-                    frame[line + x] = MEMORY;
+                    let at = canvas.index(x, y);
+                    canvas.pixels[at] = MEMORY;
                 }
             }
         }
@@ -840,7 +879,7 @@ fn draw_memory_flags(
 /// the playhead: a square right of the cue's line, at the edge away from the bar
 /// triangles (the top of deck 1's lane, the bottom of deck 2's).
 fn draw_cue_flags(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -854,11 +893,11 @@ fn draw_cue_flags(
         };
         for row in 0..CUE_FLAG_HEIGHT {
             let y = if at_top { row } else { LANE_HEIGHT - 1 - row };
-            let start = (area.y + y) * WIDTH + area.x;
             for x in line.max(first)..(line + CUE_FLAG_WIDTH).min(end) {
                 let x = x as usize;
                 if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
-                    frame[start + x] = CUE_COLORS[pad];
+                    let at = canvas.index(x, y);
+                    canvas.pixels[at] = CUE_COLORS[pad];
                 }
             }
         }
@@ -868,7 +907,7 @@ fn draw_cue_flags(
 /// Draws the red triangles of the bar lines near columns `columns`, clipped to them and
 /// clear of the playhead. Deck 1's lane has them at the bottom, deck 2's at the top.
 fn draw_bar_caps(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -888,33 +927,90 @@ fn draw_bar_caps(
             } else {
                 row
             };
-            let line = (area.y + y) * WIDTH + area.x;
             for x in (centre - reach).max(first)..=(centre + reach).min(end - 1) {
                 let x = x as usize;
                 if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
-                    frame[line + x] = BAR_CAP;
+                    let at = canvas.index(x, y);
+                    canvas.pixels[at] = BAR_CAP;
                 }
             }
         }
     }
 }
 
-/// Brings the lane in `back` to show track pixel `left` at its left edge. When `shown`
-/// holds it at most half a lane earlier, the hardware copies those pixels, moved left,
-/// and the CPU draws only the new columns and the playhead; otherwise the CPU draws the
-/// whole lane. `back` holds the frame before `shown`, so it is never left as it was.
-/// Each of the two steps starts between USB audio fills (`Gate`).
+/// Draws columns `columns` of the lane in `frame`: in strips in internal RAM that the PPA
+/// copies into `frame`, so the CPU does not write PSRAM. Without a strip, or once a copy
+/// fails, it draws straight into `frame` and drops the strip, and the caller then writes
+/// the lane's rows back: a later copy would discard what the CPU wrote there.
+fn draw_strips(
+    frame: &mut [u16],
+    strip: &mut Option<&mut [u16]>,
+    area: Area,
+    wave: Wave<'_>,
+    left: i64,
+    columns: core::ops::Range<usize>,
+) {
+    let mut start = columns.start;
+    while start < columns.end {
+        let Some(pixels) = strip.as_deref_mut() else {
+            draw_columns(
+                &mut Canvas::frame(frame, area),
+                area,
+                wave,
+                left,
+                start..columns.end,
+            );
+            return;
+        };
+        let end = (start + STRIP_COLUMNS).min(columns.end);
+        let width = end - start;
+        let pixels = &mut pixels[..width * LANE_HEIGHT];
+        let mut canvas = Canvas {
+            pixels,
+            stride: width,
+            base: 0,
+            first: start,
+        };
+        draw_columns(&mut canvas, area, wave, left, start..end);
+        mark(MOVE, true);
+        // SAFETY: the strip holds `width` by LANE_HEIGHT pixels; `frame` is one of the
+        // panel's frame buffers and C bounds the block to it.
+        let copied = unsafe {
+            ruzina_panel_blit(
+                canvas.pixels.as_ptr(),
+                frame.as_mut_ptr(),
+                (area.x + start) as u32,
+                area.y as u32,
+                width as u32,
+                LANE_HEIGHT as u32,
+            )
+        } == 0;
+        mark(MOVE, false);
+        if copied {
+            start = end;
+        } else {
+            *strip = None;
+        }
+    }
+}
+
+/// Brings the lane in `back` to show track pixel `left` at its left edge. When `shown`,
+/// the other frame buffer, holds it at most half a lane earlier (its lane starts at the
+/// pixel given with it), the hardware copies those pixels, moved left, and only the new
+/// columns and the playhead are drawn; otherwise the whole lane is. The columns are drawn
+/// through `strip` (`draw_strips`). `back` holds the frame before `shown`, so it is never
+/// left as it was. Each of the two steps starts between USB audio fills (`Gate`).
 fn draw_lane(
     gate: &mut Gate,
+    strip: Option<&mut [u16]>,
     back: &mut [u16],
-    shown: &[u16],
-    shown_left: Option<i64>,
+    shown: Option<(&[u16], i64)>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
 ) {
-    let step = shown_left.map(|shown_left| left - shown_left);
-    let moved = step.is_some_and(|dx| {
+    let step = shown.map(|(_, shown_left)| left - shown_left);
+    let moved = shown.zip(step).is_some_and(|((shown, _), dx)| {
         dx >= 0
             && dx < LANE_WIDTH as i64 / 2
             && gate.run(Step::Move, || {
@@ -936,18 +1032,30 @@ fn draw_lane(
             }) == 0
     });
     gate.run(Step::Columns, || {
+        let mut strip = strip;
         match (moved, step) {
             // A paused deck: the copy is the whole frame.
             (true, Some(0)) => {}
             (true, Some(dx)) => {
                 let dx = dx as usize;
-                draw_columns(back, area, wave, left, LANE_WIDTH - dx..LANE_WIDTH);
+                draw_strips(
+                    back,
+                    &mut strip,
+                    area,
+                    wave,
+                    left,
+                    LANE_WIDTH - dx..LANE_WIDTH,
+                );
                 // The old playhead moved left with the rest.
-                draw_columns(back, area, wave, left, PLAYHEAD_X - 1 - dx..PLAYHEAD_X + 2);
+                let playhead = PLAYHEAD_X - 1 - dx..PLAYHEAD_X + 2;
+                draw_strips(back, &mut strip, area, wave, left, playhead);
             }
-            _ => draw_columns(back, area, wave, left, 0..LANE_WIDTH),
+            _ => draw_strips(back, &mut strip, area, wave, left, 0..LANE_WIDTH),
         }
-        flush(back, area.y, LANE_HEIGHT);
+        // The PPA wrote memory itself; what the CPU wrote is still in cache.
+        if strip.is_none() {
+            flush(back, area.y, LANE_HEIGHT);
+        }
     });
 }
 
@@ -1559,6 +1667,12 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let mut next_report = REPORT_MS;
     let mut drawing = 1;
     let mut gate = Gate::new();
+    // SAFETY: C makes the strip once and hands it only to this task.
+    let mut strip = unsafe {
+        let pixels = ruzina_panel_strip((STRIP_COLUMNS * LANE_HEIGHT) as u32);
+        (!pixels.is_null())
+            .then(|| core::slice::from_raw_parts_mut(pixels, STRIP_COLUMNS * LANE_HEIGHT))
+    };
     #[cfg(feature = "idf-uac-profile")]
     mark_own_task();
     // SAFETY: reads a counter.
@@ -1805,9 +1919,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     .filter(|_| marks_at[1 - drawing][deck] == Some(revision));
                 draw_lane(
                     &mut gate,
+                    strip.as_deref_mut(),
                     buffer,
-                    shown,
-                    shown_left,
+                    shown_left.map(|shown_left| (shown, shown_left)),
                     LANES[deck],
                     wave,
                     left,
