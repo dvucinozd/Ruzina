@@ -856,13 +856,20 @@ component FxPanel inherits Rectangle {
     TouchArea {
         clicked => { root.open(); }
     }
+    // While the effect is on, the FX label blinks green.
+    property <bool> lit;
+    Timer {
+        interval: 400ms;
+        running: root.on;
+        triggered => { root.lit = !root.lit; }
+    }
     Rectangle {
         x: 4px;
         y: 4px;
         width: 56px;
         height: 22px;
-        background: root.on ? #b7410e : #1e1511;
-        Text { text: "FX"; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+        background: !root.on ? #1e1511 : root.lit ? #00ff66 : #0b2614;
+        Text { text: "FX"; color: root.on && root.lit ? #100c08 : #f5f0ed; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Rectangle {
         x: 4px;

@@ -456,10 +456,13 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
 
   The browse knob and LOAD follow the list as shown, through a lock-free view in
   `deck_view`. The headings are 16 px on a rust band. s180 (app `68235527…`): owner "Sve
-  radi".
+  radi". After it, the Overview's FX label blinks green while the effect is on (s181, app
+  `f47e264d…`, owner "Sve radi").
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s181 (app `f47e264d…`) is the play image flags on the redesign branch with the
+    Library filters and the blinking FX label.
   - s180 (app `68235527…`) is the play image flags on the redesign branch with the
     Library filters.
   - s177 (app `4041be8c…`) is the play image flags on the redesign branch: palette,

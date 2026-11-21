@@ -23,7 +23,9 @@ The owner's mockup is the "Ruzina deck screen" design canvas.
   - The meter sits at x 122, centred on the lane.
 - **Phase strip:** the 36 px between the lanes holds the phase strip's place, with its
   PHASE label. The strip itself is the next step.
-- **FX panel:** right of the lanes, 64×464.
+- **FX panel:** right of the lanes, 64×464. While the effect is on, its FX label blinks
+  green (`#00FF66` and dark green, every 400 ms, a Slint `Timer`), as the owner asked;
+  off, it stays dark.
 - **Deck cards:** two cards of 482×116 at the bottom, on every page.
   - Each card has the deck's colour bar and title, then elapsed, remaining, BPM (rust),
     pitch, MT, Q, the key and the deck status, then the overview of 466×45.
@@ -69,3 +71,5 @@ lanes, as a direct area (`PHASE`, 814×36 at y 222).
   "Izgleda dobro". A short boot log has no errors.
 - **s177** (app `4041be8c…`), with the phase strip, the soak DJ playing: the owner says
   "Izgleda dobro". The log has no errors.
+- **s181** (app `f47e264d…`), with the blinking FX label: the owner says "Sve radi". The
+  log has no errors.
