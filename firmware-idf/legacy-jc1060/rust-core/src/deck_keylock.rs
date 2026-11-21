@@ -138,6 +138,12 @@ impl Keylock {
         self.running = false;
     }
 
+    /// Whether the stretch runs; the next frame starts it over when not.
+    #[cfg(feature = "uac-profile")]
+    pub(crate) const fn running(&self) -> bool {
+        self.running
+    }
+
     /// Frames pulled from the reader but not played yet: the stretch's lead on what the
     /// grain fading in reads. The reader steps back by it when the stretch stops on the
     /// same source, so the deck goes on from the very frames it played.

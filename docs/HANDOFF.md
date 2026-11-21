@@ -360,7 +360,14 @@
   search on every 8th frame joined worse, so it is back on every 4th; the coarse search
   stays on every 16th. Not flashed. Open: Web Remote load/seek outcomes (1, 4, 5), the
   stick's semaphores and reset recovery (2, 3), then 6, 10, 11.
-- **On the board:** s155 (app `1d48d8e1…`), a profile image of the keylock search branch.
+- **Keylock start in the profile (2026-11-21):** [does a keylock start make the longest fills?](reviews/2026-11-21-keylock-start-profile.md)
+  Profile builds now flag a fill in which a deck's keylock starts over (flag 512), with its
+  own class `mt_start`. s156, 10 minutes, 0/0 underruns: only 18 such fills, with a longest
+  of 5.4 ms. Steady Master Tempo reached 5.3 ms, and 5.6 ms with a scratch on the other deck.
+  The starts are not the cause. Real play is about twice as slow as the boot bench (plain
+  fill 1.9 ms against 1.0 ms), so memory shared with the screen and the stick is the next
+  suspect.
+- **On the board:** s156 (app `d4124d57…`), a profile image of the keylock start branch.
   The image the board keeps is s148 (app `5824136c…`), the `--usb-stick` image with the
   faster render and the stick behind a hub; s154 (app `53c2f867…`) is `main` after the
   keylock spread. s142 (app `3125b34f…`) is

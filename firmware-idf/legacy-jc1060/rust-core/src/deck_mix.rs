@@ -404,6 +404,16 @@ impl Mix {
         let tempo = self
             .pitch
             .map(ruzina_audio_runtime::render::tempo_factor_from_centipercent);
+        // For the fill profile: a keylock that starts over in this block, after a load, a
+        // seek, a scratch or Master Tempo going on, fills its window from the deck at once.
+        #[cfg(feature = "uac-profile")]
+        if let Some(keylocks) = keylocks.as_ref() {
+            for deck in 0..2 {
+                if keylocked[deck] && playing[deck] && !keylocks[deck].running() {
+                    KEYLOCK_STARTS.fetch_or(1 << deck, core::sync::atomic::Ordering::Relaxed);
+                }
+            }
+        }
         uac_profile::stage(Stage::Graph);
         let report =
             graph.render_block_frames(control, &mut self.block, MIX_BLOCK_FRAMES, |deck| {
@@ -549,6 +559,19 @@ static MIX: Shared = Shared(UnsafeCell::new(Mix::new()));
 #[cfg(feature = "uac-profile")]
 pub(crate) static KEYLOCKING: [core::sync::atomic::AtomicBool; 2] =
     [const { core::sync::atomic::AtomicBool::new(false) }; 2];
+
+/// The decks whose keylock started over since the fill profile last asked: bit 0 deck 1,
+/// bit 1 deck 2.
+#[cfg(feature = "uac-profile")]
+static KEYLOCK_STARTS: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
+/// The decks whose keylock started over during the fill just made (bit 0 deck 1, bit 1
+/// deck 2), and none from now on. USB client task only, after the fill.
+#[cfg(feature = "uac-profile")]
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_legacy_keylock_starts() -> u32 {
+    KEYLOCK_STARTS.swap(0, core::sync::atomic::Ordering::Relaxed)
+}
 
 pub(crate) fn with<R>(f: impl FnOnce(&mut Mix) -> R) -> R {
     // SAFETY: single caller task (see `Shared`); no reference escapes `f`.
