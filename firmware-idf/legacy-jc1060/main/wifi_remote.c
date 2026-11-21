@@ -3,8 +3,8 @@
  * ESP-Hosted carries Wi-Fi from the C6 over SDIO. The deck starts a WPA2 access point,
  * "Ruzina-XXXX", with the password CONFIG_RUZINA_WIFI_PASSWORD (the owner's choice), shown
  * on the Settings page (ruzina_wifi_credentials). On 192.168.4.1 a small
- * server takes one connection at a time and hands each request to ruzina-web
- * (ruzina_web_handle): the Web Remote page, its status and its controls.
+ * server serves up to four connections at once (web_client.h) and hands each request to
+ * ruzina-web (ruzina_web_handle): the Web Remote page, its status and its controls.
  * The log carries counts and timings only: no addresses or names of the devices that
  * join, and never the password.
  *
@@ -139,99 +139,48 @@ static esp_err_t start_access_point(void)
     return err;
 }
 
-/* The Content-Length value in a request head of `len` bytes, or 0. Searches only those
- * bytes: the buffer is reused and never NUL-terminated. */
-static size_t content_length(const uint8_t *head, size_t len)
+/* The connections' sockets for web_client.h: never waiting. */
+static int web_recv(int sock, uint8_t *buffer, size_t len) { return recv(sock, buffer, len, MSG_DONTWAIT); }
+static int web_send(int sock, const uint8_t *buffer, size_t len) { return send(sock, buffer, len, MSG_DONTWAIT); }
+static void web_close(int sock)
 {
-    static const char field[] = "\r\ncontent-length:";
-    const size_t field_len = sizeof field - 1;
-    for (size_t at = 0; at + field_len <= len; ++at) {
-        size_t i = 0;
-        while (i < field_len && tolower(head[at + i]) == field[i]) ++i;
-        if (i < field_len) continue;
-        size_t value = 0;
-        for (size_t j = at + field_len; j < len; ++j) {
-            if (head[j] == ' ' || head[j] == '\t') continue;
-            if (head[j] < '0' || head[j] > '9') break;
-            if (value > REQUEST_MAX) return SIZE_MAX;
-            value = value * 10 + (size_t)(head[j] - '0');
-        }
-        return value;
-    }
-    return 0;
+    shutdown(sock, SHUT_RDWR);
+    close(sock);
 }
+#include "web_client.h"
 
-/* Connections the server reads at once, and how long one may take to send its request. */
+/* Connections the server serves at once. */
 #define CLIENTS 4
-#define CLIENT_TIMEOUT_US 2000000
-
-struct client {
-    int sock;
-    uint8_t *buffer;
-    size_t len;
-    /* The whole request's length, once its head is in; 0 before. */
-    size_t want;
-    int64_t start;
-};
 
 static atomic_uint dropped;
+static uint32_t boot;
+static size_t response_cap;
 
-static void client_close(struct client *c)
+/* A complete request's answer, from ruzina-web, into the connection's own buffer. */
+static size_t answer(struct client *c)
 {
-    shutdown(c->sock, SHUT_RDWR);
-    close(c->sock);
-    c->sock = -1;
+    return ruzina_web_handle(boot, c->buffer, c->len, c->out, response_cap);
 }
 
-/* Reads what arrived on `c`, without waiting: 1 once the request (the head, then a body
- * up to Content-Length, both within REQUEST_MAX) is complete, -1 to drop the connection,
- * 0 to wait for more. */
-static int client_read(struct client *c)
-{
-    int got = recv(c->sock, c->buffer + c->len, REQUEST_MAX - c->len, MSG_DONTWAIT);
-    if (got < 0) return errno == EAGAIN || errno == EWOULDBLOCK ? 0 : -1;
-    if (got == 0) return c->want && c->len >= c->want ? 1 : -1;
-    c->len += (size_t)got;
-    if (c->want == 0) {
-        const uint8_t *end = memmem(c->buffer, c->len, "\r\n\r\n", 4);
-        if (end == NULL) return c->len >= REQUEST_MAX ? -1 : 0;
-        size_t head = (size_t)(end - c->buffer) + 4;
-        size_t body = content_length(c->buffer, head);
-        if (body > REQUEST_MAX - head) return -1;
-        c->want = head + body;
-    }
-    return c->len >= c->want ? 1 : 0;
-}
-
-/* Answers `c`'s complete request through ruzina-web, then closes it. */
-static void client_answer(struct client *c, uint8_t *response, size_t response_cap, uint32_t boot)
-{
-    size_t out = ruzina_web_handle(boot, c->buffer, c->len, response, response_cap);
-    for (size_t sent = 0; sent < out;) {
-        int n = send(c->sock, response + sent, out - sent, 0);
-        if (n <= 0) break;
-        sent += (size_t)n;
-    }
-    const unsigned took = (unsigned)(esp_timer_get_time() - c->start);
-    atomic_fetch_add(&requests, 1);
-    if (took > atomic_load(&request_max_us)) atomic_store(&request_max_us, took);
-    client_close(c);
-}
-
-/* One task reads up to CLIENTS connections at once and answers each as soon as its
- * request is in, so a slow one holds no other back. ruzina-web still sees one request at
- * a time. A connection that has not sent its request within CLIENT_TIMEOUT_US is
- * dropped. */
+/* One task serves up to CLIENTS connections at once. It answers each as soon as its
+ * request is in, and sends each answer in pieces as its socket takes them, so a slow
+ * client holds no other back. ruzina-web still sees one request at a time. A connection
+ * that has not sent its request within CLIENT_TIMEOUT_US, or taken its answer within
+ * SEND_TIMEOUT_US, is dropped. */
 static void server_task(void *unused)
 {
     (void)unused;
-    const size_t response_cap = ruzina_web_largest_asset() + 1024;
-    uint8_t *response = heap_caps_malloc(response_cap, MALLOC_CAP_SPIRAM);
+    response_cap = ruzina_web_largest_asset() + 1024;
+    /* Each connection keeps its own request and answer: an answer stays until it is sent. */
     struct client conns[CLIENTS];
-    bool ok = response != NULL;
+    bool ok = true;
     for (int i = 0; i < CLIENTS; ++i) {
-        conns[i] = (struct client){.sock = -1, .buffer = heap_caps_malloc(REQUEST_MAX, MALLOC_CAP_SPIRAM)};
-        ok = ok && conns[i].buffer != NULL;
+        conns[i] = (struct client){
+            .sock = -1,
+            .buffer = heap_caps_malloc(REQUEST_MAX, MALLOC_CAP_SPIRAM),
+            .out = heap_caps_malloc(response_cap, MALLOC_CAP_SPIRAM),
+        };
+        ok = ok && conns[i].buffer != NULL && conns[i].out != NULL;
     }
     int listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in address = {.sin_family = AF_INET, .sin_port = htons(80), .sin_addr.s_addr = htonl(INADDR_ANY)};
@@ -239,28 +188,33 @@ static void server_task(void *unused)
     setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
     ok = ok && listener >= 0 && bind(listener, (struct sockaddr *)&address, sizeof address) == 0 &&
          listen(listener, 4) == 0;
-    printf("web_remote listen=%s response_cap=%u clients=%d\n", ok ? "ok" : "failed", (unsigned)response_cap,
-           CLIENTS);
+    printf("web_remote listen=%s response_cap=%u clients=%d send_slice=%d\n", ok ? "ok" : "failed",
+           (unsigned)response_cap, CLIENTS, WEB_SEND_SLICE);
     if (!ok) {
         /* Give back whatever did start: the buffers and the socket. */
         if (listener >= 0) close(listener);
-        for (int i = 0; i < CLIENTS; ++i) heap_caps_free(conns[i].buffer);
-        heap_caps_free(response);
+        for (int i = 0; i < CLIENTS; ++i) {
+            heap_caps_free(conns[i].buffer);
+            heap_caps_free(conns[i].out);
+        }
         atomic_store(&server_state, SERVER_FAILED);
         vTaskDelete(NULL);
         return;
     }
     atomic_store(&server_state, SERVER_LISTENING);
     /* Differs on each start, so the page notices a reboot. */
-    const uint32_t boot = esp_random();
+    boot = esp_random();
     for (;;) {
-        fd_set reads;
+        /* A connection still sending its request waits to be read; one with an answer
+         * waits until its socket takes more. */
+        fd_set reads, writes;
         FD_ZERO(&reads);
+        FD_ZERO(&writes);
         int top = -1;
         bool room = false;
         for (int i = 0; i < CLIENTS; ++i) {
             if (conns[i].sock >= 0) {
-                FD_SET(conns[i].sock, &reads);
+                FD_SET(conns[i].sock, conns[i].out_len ? &writes : &reads);
                 if (conns[i].sock > top) top = conns[i].sock;
             } else {
                 room = true;
@@ -272,15 +226,13 @@ static void server_task(void *unused)
             if (listener > top) top = listener;
         }
         struct timeval tick = {.tv_sec = 0, .tv_usec = 200000};
-        int ready = select(top + 1, &reads, NULL, NULL, &tick);
+        int ready = select(top + 1, &reads, &writes, NULL, &tick);
         const int64_t now = esp_timer_get_time();
         if (ready > 0 && room && FD_ISSET(listener, &reads)) {
             struct sockaddr_storage peer;
             socklen_t peer_len = sizeof peer;
             int sock = accept(listener, (struct sockaddr *)&peer, &peer_len);
             if (sock >= 0) {
-                const struct timeval send_timeout = {.tv_sec = 2, .tv_usec = 0};
-                setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof send_timeout);
                 for (int i = 0; i < CLIENTS; ++i) {
                     if (conns[i].sock < 0) {
                         conns[i].sock = sock;
@@ -295,21 +247,17 @@ static void server_task(void *unused)
         for (int i = 0; i < CLIENTS; ++i) {
             struct client *c = &conns[i];
             if (c->sock < 0) continue;
-            if (ready > 0 && FD_ISSET(c->sock, &reads)) {
-                int state = client_read(c);
-                if (state > 0) {
-                    client_answer(c, response, response_cap, boot);
-                    continue;
+            const bool readable = ready > 0 && FD_ISSET(c->sock, &reads);
+            const bool writable = ready > 0 && FD_ISSET(c->sock, &writes);
+            switch (client_step(c, readable, writable, now, answer)) {
+                case CLIENT_ANSWERED: {
+                    const unsigned took = (unsigned)(esp_timer_get_time() - c->start);
+                    atomic_fetch_add(&requests, 1);
+                    if (took > atomic_load(&request_max_us)) atomic_store(&request_max_us, took);
+                    break;
                 }
-                if (state < 0) {
-                    atomic_fetch_add(&dropped, 1);
-                    client_close(c);
-                    continue;
-                }
-            }
-            if (now - c->start > CLIENT_TIMEOUT_US) {
-                atomic_fetch_add(&dropped, 1);
-                client_close(c);
+                case CLIENT_DROPPED: atomic_fetch_add(&dropped, 1); break;
+                case CLIENT_WAITING: break;
             }
         }
     }

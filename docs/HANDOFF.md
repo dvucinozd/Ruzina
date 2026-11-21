@@ -396,7 +396,13 @@
     Wi-Fi report shows the server as starting, listening or failed.
   - Back finds the row it came from in the parent's rows, so it lands right at any depth.
     The old 16-level history is gone.
-  - Still open from the review: 6, slow HTTP sends holding up other clients.
+  - Still open from the review then: 6, slow HTTP sends holding up other clients.
+- **Web Remote sends in pieces (2026-11-21):** [the Web Remote sends its answers in pieces](reviews/2026-11-21-web-send-in-pieces.md).
+  This takes outside review finding 6, the last one open. Each connection keeps its answer
+  until it is sent, and the server sends at most 2920 bytes a pass, without waiting, when
+  the socket is ready. A slow client therefore no longer holds back another's controls.
+  A connection that has not taken its answer within 5 s is dropped. A host test covers it
+  with fake sockets.
 - **On the board:** s160 (app `efe6975c…`), the `--usb-stick` product image of `main` at
   `725488f`, with no profile. It is now the image the board keeps. It has the Web Remote
   outcomes and the stick's checked recovery. In 8 minutes of play it
