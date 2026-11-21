@@ -1,21 +1,44 @@
 # Current development status
 
-Updated 2026-11-20. The board keeps image s148 (app `5824136c…`), the `--usb-stick` build
-of `main`; the SD build s136 (app `a666ac6e…`) is from before even fills.
+Updated 2026-11-21. This page is the one place that names the board's images; the other
+documents link here.
+
+## The board's images
+
+- **Kept for play:** s162 (app `4b6044fa…`), the `--usb-stick` image, built with the
+  [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image).
+  Its firmware is `main` at `830a46b`, with all 11 fixes of the first outside review
+  ([its last run](reviews/2026-11-21-web-send-in-pieces.md)). `main` after it (#158) adds
+  profile diagnostics.
+- **Last documented measurement:** s163 (app `2ce5c0aa…`), the fill contention profile
+  image, in its 15-minute run on 2026-11-21 ([fill contention](reviews/2026-11-21-fill-contention.md)).
+  The handoff records it as left on the board after that run, with s162 to go back for
+  play.
+- **Where this comes from:** the dated reviews and the [handoff](HANDOFF.md), as of
+  2026-11-21. This page does not read the flash: what is on the board right now is
+  whatever its boot log's app hash says.
+- **The SD build** s136 (app `a666ac6e…`) is from before even fills. The handoff lists the
+  older images and where each flash backup is kept.
 
 ## What runs on the board
 
 The owner's JC1060 (ESP32-P4 v1.3, rev103) runs the legacy path: ESP-IDF 6.1, with the
 shared `no_std` Rust core in [`firmware-idf/legacy-jc1060`](../firmware-idf/legacy-jc1060). Each row
-below has a device log and the owner's verdict in its review. The
+below has a dated review with its device evidence, and each review says which kind:
+- a device log with counters (underruns, fill times, read times);
+- the owner's observation on the board, seen or heard;
+- or both.
+
+The long soaks were scripted or unattended, with logs and counters only: nobody listened to
+them. The owner's listening checks are separate, shorter runs. The
 [handoff](HANDOFF.md) has the full log, newest last.
 
 | Area | On the board | Review |
 |---|---|---|
-| Two MP3 decks | 59 s clean, 0 underruns, at `opt-level = 3` | [dual MP3](reviews/2026-11-03-dual-mp3-opt3.md) |
+| Two MP3 decks | 59 s clean, 0 underruns, at `opt-level = 3`; owner listened | [dual MP3](reviews/2026-11-03-dual-mp3-opt3.md) |
 | Storage and speed | A read-ahead: 8 KiB per stick read, up to 16 sectors from an SD card; QIO 80 MHz flash; 200 MHz PSRAM | [SD reads](reviews/2026-11-04-sd-multisector.md), [flash](reviews/2026-11-04-flash-qio80.md), [PSRAM](reviews/2026-11-04-psram-200m.md) |
 | Seeks | Indexed MP3 seeks, untagged VBR included | [MP3 index](reviews/2026-11-04-mp3-seek-index.md), [VBR](reviews/2026-11-05-untagged-vbr-seek.md) |
-| Long runs | Soaks of 35 to 42 minutes, and 45 minutes of scripted gestures, 0/0 underruns | [soak](reviews/2026-11-04-soak-autoplay.md), [every control](reviews/2026-11-06-full-control-soak.md), [stick soak](reviews/2026-11-19-stick-soak.md) |
+| Long runs | Soaks of 35 to 42 minutes, and 45 minutes of scripted gestures, 0/0 underruns; logs and counters only, nobody listened | [soak](reviews/2026-11-04-soak-autoplay.md), [every control](reviews/2026-11-06-full-control-soak.md), [stick soak](reviews/2026-11-19-stick-soak.md) |
 | Music from a USB stick | exFAT stick behind a hub on the HS port, with the FLX4; MEDIA REMOVED when pulled out, an app restart when put back; no SD card | [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md), [8 KiB reads](reviews/2026-11-19-stick-8k-reads.md) |
 | Loops and scratch | From a played-audio history, with 5.8 ms crossfades | [loops](reviews/2026-11-05-loops.md), [scratch](reviews/2026-11-05-scratch.md) |
 | Beat FX and Pad FX | In the render graph; FX page by touch | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md) |
@@ -32,15 +55,29 @@ below has a device log and the owner's verdict in its review. The
 
 ## Still to come
 
-The final layout: the board's own power on CN2, the stick on the FS port and the log on
-UART0.
+The final layout: the board's own power on CN2 and the stick on the FS port. The console
+is already on UART0 (CN2, GPIO37/38, 921600 baud; see the
+[UART0 service link](boards/JC1060_UART0_SERVICE.md)); today the FLX4 and the stick share a
+hub on the HS port.
 
 ## Open
 
-- **USB audio fill:** over the 3 ms target, with no underruns: 4.16 ms at most from the stick,
-  where 0.23 % of fills were over 3 ms, after a
-  [faster render](reviews/2026-11-19-fx-fill-cost.md)
-  ([soak](reviews/2026-11-20-fast-render-soak.md); 3.75 % before).
+- **USB audio fill:** some fills go over the 3 ms target, with no underruns. Each figure
+  belongs to its own image, workload and metric:
+  - **s163, profile image, 2026-11-21** (the soak DJ, then Master Tempo on both decks,
+    15 minutes; [fill contention](reviews/2026-11-21-fill-contention.md)): of Master Tempo
+    fills, 18.3 % took over 3 ms in the phases with the screen drawing, against 1.7 % in the
+    phases with it still; the longest took 5.35 ms against 3.9 ms. 88 % of Master Tempo
+    fills over 3 ms overlapped a screen frame. That is a count of fills, not a share of
+    CPU time.
+  - **s162, play image, 2026-11-21** (Web Remote from a phone, about 4 minutes): all
+    fills, 42 000, the longest 4.2 ms ([Web Remote sends](reviews/2026-11-21-web-send-in-pieces.md)).
+  - **s148, play image flags, 2026-11-20** (the soak DJ alone, 16 minutes, 159 000 fills):
+    all fills, 0.23 % over 3 ms, the longest 4.16 ms, after a
+    [faster render](reviews/2026-11-19-fx-fill-cost.md)
+    ([soak](reviews/2026-11-20-fast-render-soak.md); 3.75 % on s142 before it).
+
+  Work on keeping the screen's frames from slowing the fill is in progress.
 - **Screen:** Slint's scene preparation is still 16 to 26 ms of a big frame.
 - **SD (SD build only):** an SD clock failure at the first boot after a flash. Since s132 the card is
   tried three times ([retry](reviews/2026-11-18-sd-retry.md)), not yet seen working on a
@@ -50,7 +87,8 @@ UART0.
 
 ## Evidence layers
 
-- **Physical:** the JC1060 above, on the legacy path, each with its image and log.
+- **Physical:** the JC1060 above, on the legacy path, each with its image and its kind of
+  evidence (log and counters, the owner's observation, or both).
 - **Host and simulator:** [`firmware-rust`](../firmware-rust/README.md), with the shared
   crates' tests and the desktop simulator.
 - **Native `esp-hal` firmware** (`apps/m1-firmware`, silicon rev 302 and up): compiles

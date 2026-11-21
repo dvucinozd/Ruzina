@@ -70,13 +70,14 @@ jobs:
         producer_profile: [false]
         slint: [false]
         include:
-          # The deck screen image as flashed on the board, and its fill-profile build.
+          # The deck screen image reading the SD card, and its fill-profile build.
           - variant: deck-engine
             slint: true
           - variant: deck-engine
             slint: true
             profile: true
-          # The deck screen reading its media from a USB stick behind a hub on HS.
+          # The deck screen reading its media from a USB stick behind a hub on HS: the play
+          # image's flags. A CI build checks the source; it is not the image the board keeps.
           - variant: deck-engine
             slint: true
             usb_stick: true

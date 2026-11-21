@@ -7,10 +7,13 @@
 //! - **Change:** the Settings page changes the value here at once. The USB client task
 //!   applies it to the engine and the mix on its next turn, and the screen's brightness
 //!   follows at once.
-//! - **Save:** the load task saves a change once it has been quiet for
-//!   [`SAVE_QUIET_MS`] and no deck plays, as Hot Cue saves wait: flash stalls everything
-//!   running from flash and PSRAM, the USB audio fill included. A save appends a record
-//!   after the last one and erases nothing.
+//! - **Save:** the app main task saves a change, in `ruzina_legacy_settings_service`
+//!   (`idf_media_bridge.rs`), which `main/probe.c` calls from its heartbeat loop. It saves
+//!   once the change has been quiet for [`SAVE_QUIET_MS`] and no deck plays, as Hot Cue
+//!   saves wait: flash stalls everything running from flash and PSRAM, the USB audio fill
+//!   included. A save usually appends a record after the last one and erases nothing. A
+//!   save that has to erase a sector (once saves have filled one), and erasing the next
+//!   spare ahead, first wait until USB audio has stood still, then erase.
 //!
 //! Settings this board does not offer (time display, cue mode, DJ Link) keep what the
 //! record holds.
