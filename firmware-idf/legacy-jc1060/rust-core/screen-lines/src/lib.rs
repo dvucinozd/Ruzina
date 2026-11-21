@@ -238,7 +238,7 @@ impl LineBufferProvider for &mut Lines<'_, '_> {
         range: Range<usize>,
         render_fn: impl FnOnce(&mut [Rgb565Pixel]),
     ) {
-        let before = (self.clock)();
+        let mut before = (self.clock)();
         if self.drawn.calls == 0 {
             self.drawn.prepare_us = (before - self.started) as u32;
         }
@@ -254,6 +254,8 @@ impl LineBufferProvider for &mut Lines<'_, '_> {
                 && (band.lines + 1) * width <= room;
             if !joins {
                 self.finish_band();
+                // The band's blocks count in `copy_us`; this line's drawing starts now.
+                before = (self.clock)();
                 self.band = Band {
                     first: line,
                     lines: 0,
@@ -454,5 +456,36 @@ mod tests {
         // A stage smaller than a line is not used.
         let (frame, cpu_wrote, blocks) = draw(WIDTH - 1, usize::MAX, &lines);
         assert!(frame == want && cpu_wrote && blocks == 0);
+    }
+
+    /// A clock that moves only when a line is drawn (1 µs) or a block copied (1000 µs).
+    static TICKS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+    fn ticks() -> u64 {
+        TICKS.load(Ordering::Relaxed)
+    }
+    fn slow_copy(_: &[u16], _: &mut [u16], _: Block) -> bool {
+        TICKS.fetch_add(1000, Ordering::Relaxed);
+        true
+    }
+
+    #[test]
+    fn a_band_finished_by_the_next_line_counts_only_as_copying() {
+        let mut frame = vec![0xffff; WIDTH * HEIGHT];
+        let mut stage = vec![0; 16 * WIDTH];
+        let direct = [LANE];
+        let stage = Some(Stage {
+            pixels: &mut stage,
+            copy: slow_copy,
+        });
+        let mut drawn = Lines::new(&mut frame, &direct, ticks, stage);
+        for (line, range) in screen() {
+            (&mut drawn).process_line(line, range, |_| {
+                TICKS.fetch_add(1, Ordering::Relaxed);
+            });
+        }
+        drawn.finish_band();
+        // 40 lines, and six blocks: three bands finished by the next line, one at the end.
+        assert_eq!(drawn.drawn.lines_us, 40);
+        assert_eq!(drawn.drawn.copy_us, 6 * 1000);
     }
 }
