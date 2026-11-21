@@ -747,7 +747,7 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
             }
         }
         // A profile may let the channel filter work without Smart CFX (the DDJ-400).
-        #[cfg(feature = "deck-engine")]
+        #[cfg(feature = "deck-mix")]
         crate::deck_mix::with(|mix| {
             mix.set_channel_filter_always(state.profile.is_some_and(|p| p.channel_filter_always()))
         });
@@ -803,7 +803,7 @@ pub extern "C" fn ruzina_legacy_midi_unbind() {
         state.controller = None;
         ATTACHED.store(0, Ordering::Release);
         KNOWN.store(0, Ordering::Release);
-        #[cfg(feature = "deck-engine")]
+        #[cfg(feature = "deck-mix")]
         crate::deck_mix::with(|mix| mix.set_channel_filter_always(false));
     });
 }
