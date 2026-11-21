@@ -372,11 +372,17 @@
   load or a seek, and withdraws a request the USB task did not take within 250 ms. Loads
   get the same admission as the FLX4's LOAD, so a playing deck changes track from the page
   when LOAD LOCK is off. Each deck has a load generation in `/status`, which the page sends
-  with a seek; a seek for a track the deck no longer holds is refused. Not yet on the
-  board.
-- **On the board:** s157 (app `bd390cb0…`), the `--usb-stick` product image of `main` at
-  `f2a61fd`, with no profile. In 7 minutes of play with Master Tempo, hot cues, SYNC and a
-  scratch it made 79 000 fills with 0/0 underruns. The longest was 5.1 ms (s154: 5.4 ms), and
+  with a seek; a seek for a track the deck no longer holds is refused. Tested on s158
+  (app `40688f8c…`) with a phone on the deck's access point:
+  - a load onto a stopped deck, and a seek, went through;
+  - a load onto a playing deck with LOAD LOCK on, and a seek inside a loop, were refused
+    with their reasons;
+  - with LOAD LOCK off, the playing deck loaded.
+  Underruns were 0/0, and the longest web request took 91 ms.
+- **On the board:** s158 (app `40688f8c…`), the `--usb-stick` product image of the Web
+  Remote outcomes branch, with no profile. s157 (app `bd390cb0…`) is the product image of
+  `main` at `f2a61fd`. In 7 minutes of play with Master Tempo, hot cues, SYNC and a scratch
+  it made 79 000 fills with 0/0 underruns. The longest was 5.1 ms (s154: 5.4 ms), and
   11.5 % were over 3 ms. s156 (app `d4124d57…`) is the profile image of the keylock start
   branch.
   The image the board keeps is s148 (app `5824136c…`), the `--usb-stick` image with the

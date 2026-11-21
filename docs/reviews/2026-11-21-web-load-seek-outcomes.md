@@ -80,6 +80,20 @@ The protocol only gains things (`ruzina-web`), so older pages still work:
   withdrawn.
 - **Page:** a seek carries the deck's generation from the status.
 
+## On the board
+
+Image s158 (app `40688f8c…`), the `--usb-stick` product image of this branch, tested with a
+phone on the deck's access point. Every step behaved as intended:
+
+- a load onto a stopped deck went through;
+- a load onto a playing deck with LOAD LOCK on was refused with "Deck is playing (load
+  lock)";
+- a seek moved the deck;
+- a seek inside a 4-beat loop was refused with "Deck is scratching or looping";
+- with LOAD LOCK off, the playing deck loaded.
+
+Underruns were 0/0, with no crash, and the longest web request took 91 ms.
+
 ## Cost
 
 While it waits, the web task answers no other request. The wait is a few ms, and at most
