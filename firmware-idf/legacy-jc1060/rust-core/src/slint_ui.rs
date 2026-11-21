@@ -12,6 +12,7 @@
 //! nothing.
 use crate::deck_phase::{self, PhaseDeck, Ticks};
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
+use crate::library_view::{self, Camelot, Column, KeyFit, Sort};
 use crate::screen_idle::{Cover, Saver};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -1366,6 +1367,9 @@ type LibraryState = (
     Option<u32>,
     [u32; 2],
     bool,
+    // The view's version (sort and filter), and the reference deck's key for the colours.
+    u32,
+    Option<Camelot>,
 );
 
 /// Shows the Library page's level from row `first`: the selected row, and each track's
@@ -1381,7 +1385,7 @@ fn show_library(
 ) {
     use deck_view::{Level, Row};
     use slint::Model;
-    let (_, _, level, first, selected, decks, gone) = state;
+    let (_, _, level, first, selected, decks, gone, _, reference_key) = state;
     let len = deck_view::level_len(level);
     let shelf = deck_view::shelf();
     let lines = (first..len.min(first + LIBRARY_ROWS)).filter_map(|index| {
@@ -1399,6 +1403,13 @@ fn show_library(
                     artist: row.artist.as_str().into(),
                     bpm: deck_view::bpm(row.bpm_x100, 0).into(),
                     key: row.key.as_str().into(),
+                    fit: match library_view::key_fit(reference_key, &row.key) {
+                        KeyFit::Unknown => 0,
+                        KeyFit::Fits => 1,
+                        KeyFit::Plus2 => 2,
+                        KeyFit::Plus7 => 3,
+                        KeyFit::Clash => 4,
+                    },
                     time: deck_view::clock(row.duration_ms).into(),
                     decks: match (on(0), on(1)) {
                         (true, true) => "D1 D2",
@@ -1632,6 +1643,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             deck_view::select(index);
         }
     });
+    // The Library's sort and BPM filter, which the screen task applies (`library_view`).
+    let library_sort: Rc<core::cell::Cell<Option<Sort>>> = Rc::default();
+    let sort = library_sort.clone();
+    ui.on_library_sort(move |column| {
+        if let Some(column) = Column::from_index(column) {
+            sort.set(Some(library_view::tap(sort.get(), column)));
+        }
+    });
+    let bpm_filter: Rc<core::cell::Cell<bool>> = Rc::default();
+    let filter = bpm_filter.clone();
+    ui.on_library_bpm_filter_toggled(move || filter.set(!filter.get()));
     ui.on_library_back(|| {
         deck_view::TOUCH.push(0, deck_view::TouchControl::LibraryBack);
     });
@@ -1721,6 +1743,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     });
     let mut library_version = 0u32;
     let mut shown_library: Option<LibraryState> = None;
+    let mut view_version = 0u32;
+    let mut shown_view = None;
     let library_model = Rc::new(slint::VecModel::<LibraryLine>::default());
     ui.set_library_rows(slint::ModelRc::from(library_model.clone()));
     // The Settings page's two columns keep their models: a refresh changes only the
@@ -1887,6 +1911,85 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             library = rows;
             library_version = library_version.wrapping_add(1);
         }
+        // The Library's view: the level's tracks sorted and, with the filter on, only those
+        // within 4 % of the reference deck's tempo. The reference is the deck that plays,
+        // or with both or neither playing the master (deck 1, unless deck 1 alone has SYNC).
+        let reference = match (
+            decks[0].has(deck_view::PLAYING),
+            decks[1].has(deck_view::PLAYING),
+        ) {
+            (true, false) => 0,
+            (false, true) => 1,
+            _ => usize::from(decks[0].has(deck_view::SYNC) && !decks[1].has(deck_view::SYNC)),
+        };
+        let reference_track = tracks[reference].as_deref();
+        let reference_bpm = reference_track
+            .map(|_| {
+                deck_phase::playing_bpm_x100(
+                    decks[reference].bpm_x100,
+                    decks[reference].pitch_centipercent,
+                )
+            })
+            .filter(|&bpm| bpm != 0);
+        let reference_key = reference_track.and_then(|track| library_view::camelot(&track.key));
+        let sort = library_sort.get();
+        let filter = bpm_filter.get();
+        let level = deck_view::level();
+        let shelf = deck_view::shelf().map_or(0, |shelf| core::ptr::from_ref(shelf) as usize);
+        // The tempo counts to a tenth of a BPM, so a moving pitch does not rebuild the list
+        // at every frame.
+        let view = (
+            library_version,
+            shelf,
+            level,
+            sort,
+            filter,
+            reference,
+            if filter {
+                reference_bpm.map(|bpm| bpm / 10)
+            } else {
+                None
+            },
+        );
+        if shown_view != Some(view) {
+            let before = deck_view::selected_row();
+            let tracks_of_level: Option<alloc::vec::Vec<(u32, u32)>> = match level {
+                deck_view::Level::All => {
+                    Some((0..library.rows.len() as u32).map(|i| (i, i)).collect())
+                }
+                deck_view::Level::Node(node) => deck_view::shelf()
+                    .and_then(|shelf| shelf.nodes.get(node as usize))
+                    .filter(|node| !node.folder)
+                    .map(|node| {
+                        let first = node.children.len() as u32;
+                        node.tracks
+                            .iter()
+                            .enumerate()
+                            .map(|(at, &track)| (first + at as u32, track))
+                            .collect()
+                    }),
+                deck_view::Level::Top => None,
+            };
+            let reference_x100 = if filter { reference_bpm } else { None };
+            let rows = tracks_of_level
+                .filter(|_| sort.is_some() || reference_x100.is_some())
+                .map(|tracks| library_view::build(&library.rows, &tracks, sort, reference_x100));
+            deck_view::publish_view(level, rows.as_deref());
+            // The selection stays on the row it was on, if the view still shows it.
+            let len = deck_view::level_len(level);
+            let at =
+                before.and_then(|row| (0..len).find(|&i| deck_view::row_at(level, i) == Some(row)));
+            deck_view::select(at.unwrap_or(0));
+            ui.set_library_sort_column(sort.map_or(-1, |sort| sort.column.index()));
+            ui.set_library_sort_descending(sort.is_some_and(|sort| sort.descending));
+            ui.set_library_bpm_filter(filter);
+            ui.set_library_bpm_reference(match reference_bpm {
+                Some(bpm) => alloc::format!("D{} {}", reference + 1, deck_view::bpm(bpm, 0)).into(),
+                None => "NO TRACK".into(),
+            });
+            view_version = view_version.wrapping_add(1);
+            shown_view = Some(view);
+        }
         if library_open {
             let level = deck_view::level();
             let selected = deck_view::selected();
@@ -1899,9 +2002,18 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             let decks = core::array::from_fn(|deck| {
                 tracks[deck].as_ref().map_or(u32::MAX, |track| track.index)
             });
-            let shelf = deck_view::shelf().map_or(0, |shelf| core::ptr::from_ref(shelf) as usize);
             let gone = crate::media_signal::muted();
-            let state = (library_version, shelf, level, first, selected, decks, gone);
+            let state = (
+                library_version,
+                shelf,
+                level,
+                first,
+                selected,
+                decks,
+                gone,
+                view_version,
+                reference_key,
+            );
             if shown_library != Some(state) {
                 show_library(&ui, &library_model, &library.rows, state);
                 shown_library = Some(state);

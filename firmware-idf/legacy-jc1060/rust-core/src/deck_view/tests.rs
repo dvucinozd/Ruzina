@@ -170,6 +170,34 @@ fn the_library_selection_stays_within_the_list() {
 }
 
 #[test]
+fn the_browse_knob_and_load_follow_the_sorted_filtered_view() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    publish_library(std::vec![LibraryRow::default(); 4]);
+    // The page shows tracks 3 and 1, in that order.
+    publish_view(Level::All, Some(&[3, 1]));
+    assert_eq!(level_len(Level::All), 2);
+    assert_eq!(base_len(Level::All), 4);
+    assert_eq!(row_at(Level::All, 0), Some(Row::Track(3)));
+    assert_eq!(row_at(Level::All, 1), Some(Row::Track(1)));
+    assert_eq!(row_at(Level::All, 2), None);
+    select(0);
+    browse(5);
+    assert_eq!(selected(), Some(1), "the knob stops at the view's last row");
+    assert_eq!(
+        selected_row(),
+        Some(Row::Track(1)),
+        "LOAD takes the row shown"
+    );
+    // A view of another level leaves this one as it is.
+    publish_view(Level::Top, Some(&[0]));
+    assert_eq!(level_len(Level::All), 4);
+    assert_eq!(row_at(Level::All, 3), Some(Row::Track(3)));
+    publish_view(Level::All, None);
+    assert_eq!(level_len(Level::All), 4);
+    publish_library(std::vec::Vec::new());
+}
+
+#[test]
 fn the_mailbox_hands_over_the_latest_track_once() {
     // Deck 2 only: deck 1's slot belongs to the engine tests that load tracks.
     while take_track(1).is_some() {}

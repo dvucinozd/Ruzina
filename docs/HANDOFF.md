@@ -448,9 +448,20 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   narrowed. The phase strip followed. It shows both decks' beats between the lanes over
   four master beats, and the PHASE offset in ms. s177 (app `4041be8c…`): owner "Izgleda
   dobro".
+- **Library filters (2026-11-21):** [the Library's sort, BPM filter and key colours](reviews/2026-11-21-library-filters.md).
+  These follow the donor's ui-next Browse:
+  - a tap on a heading sorts, and a second tap reverses;
+  - BPM ±4 % of the deck that plays (or the master);
+  - each key coloured by how it fits that deck.
+
+  The browse knob and LOAD follow the list as shown, through a lock-free view in
+  `deck_view`. The headings are 16 px on a rust band. s180 (app `68235527…`): owner "Sve
+  radi".
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s180 (app `68235527…`) is the play image flags on the redesign branch with the
+    Library filters.
   - s177 (app `4041be8c…`) is the play image flags on the redesign branch: palette,
     layout and phase strip.
   - s176 (app `72498c59…`) is the play image flags on the redesign branch: palette and

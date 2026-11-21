@@ -547,6 +547,9 @@ export struct LibraryLine {
     selected: bool,
     // 0 a track, 1 a folder, 2 a playlist.
     kind: int,
+    // How its key sits with the reference deck's: 0 no reference, 1 fits, 2 two steps
+    // up, 3 seven steps up, 4 none of these.
+    fit: int,
 }
 
 // The catalog or a level of its playlists, a page at a time around the selection, which
@@ -558,31 +561,46 @@ component LibraryPage inherits Rectangle {
     in property <string> count;
     in property <string> heading;
     in property <bool> can-back;
+    // The column the list is sorted on (0 title, 1 artist, 2 BPM, 3 key, 4 time; -1 none),
+    // and which way.
+    in property <int> sort-column: -1;
+    in property <bool> sort-descending;
+    // Only tracks within 4 % of the reference deck's tempo, and that deck ("D1 128.0").
+    in property <bool> bpm-filter;
+    in property <string> bpm-reference;
     callback pick(int);
     callback load(int);
     callback back();
+    // A column's heading tapped: sort on it, or turn its sort over.
+    callback sort(int);
+    callback bpm-filter-toggled();
     width: 952px;
     height: 474px;
     background: #100c08;
     // Takes the taps that miss the rows and buttons, away from the page below.
     TouchArea { }
-    Text { x: 8px; y: 6px; text: "#"; color: #a3958e; font-size: 11px; }
+    // The column headings, as large as the titles: a tap sorts on one (the title's is the
+    // level's name), and the sorted one shows in yellow with its arrow, on a rust band.
+    Rectangle { x: 0px; y: 0px; width: 820px; height: 34px; background: #b7410e; }
+    Text { x: 8px; y: 0px; height: 34px; text: "#"; color: #f5f0ed; font-size: 16px; vertical-alignment: center; }
     Text {
         x: 48px;
-        y: 4px;
+        y: 0px;
         width: 360px;
-        text: root.heading;
-        color: #00ff66;
-        font-size: 13px;
+        height: 34px;
+        text: root.heading + (root.sort-column == 0 ? (root.sort-descending ? "▼" : "▲") : "");
+        color: root.sort-column == 0 ? #ffd600 : #f5f0ed;
+        font-size: 16px;
         overflow: elide;
+        vertical-alignment: center;
     }
-    Text { x: 416px; y: 6px; text: "ARTIST"; color: #a3958e; font-size: 11px; }
-    Text { x: 622px; y: 6px; text: "BPM"; color: #a3958e; font-size: 11px; }
-    Text { x: 686px; y: 6px; text: "KEY"; color: #a3958e; font-size: 11px; }
-    Text { x: 734px; y: 6px; text: "TIME"; color: #a3958e; font-size: 11px; }
+    Text { x: 416px; y: 0px; height: 34px; text: "ARTIST" + (root.sort-column == 1 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 1 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 622px; y: 0px; height: 34px; text: "BPM" + (root.sort-column == 2 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 2 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 686px; y: 0px; height: 34px; text: "KEY" + (root.sort-column == 3 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 3 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 734px; y: 0px; height: 34px; text: "TIME" + (root.sort-column == 4 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 4 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
     for row[i] in root.rows: Rectangle {
         x: 0px;
-        y: 26px + i * 33px;
+        y: 38px + i * 33px;
         width: 820px;
         height: 32px;
         background: row.selected ? #0b2614 : #1e1511;
@@ -624,7 +642,7 @@ component LibraryPage inherits Rectangle {
             vertical-alignment: center;
         }
         Text { x: 622px; width: 60px; text: row.bpm; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
-        Text { x: 686px; width: 44px; text: row.key; color: #ff7700; font-size: 14px; vertical-alignment: center; }
+        Text { x: 686px; width: 44px; text: row.key; color: row.fit == 1 ? #00ff66 : row.fit == 2 ? #ffd600 : row.fit == 3 ? #0088ff : row.fit == 4 ? #a3958e : #ff7700; font-size: 14px; vertical-alignment: center; }
         Text { x: 734px; width: 46px; text: row.time; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
         Text { x: 782px; width: 32px; text: row.decks; color: #e64c0c; font-size: 11px; vertical-alignment: center; }
         TouchArea {
@@ -669,6 +687,30 @@ component LibraryPage inherits Rectangle {
         back := TouchArea {
             enabled: root.can-back;
             clicked => { root.back(); }
+        }
+    }
+    // The headings take a tap: the title's over the heading, then each column's.
+    for column[i] in [{ x: 40px, w: 368px }, { x: 408px, w: 206px }, { x: 614px, w: 64px }, { x: 678px, w: 48px }, { x: 726px, w: 56px }]: TouchArea {
+        x: column.x;
+        y: 0px;
+        width: column.w;
+        height: 36px;
+        clicked => { root.sort(i); }
+    }
+    Rectangle {
+        x: 832px;
+        y: 304px;
+        width: 112px;
+        height: 72px;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: root.bpm-filter ? #e64c0c : #38251e;
+        background: root.bpm-filter ? #b7410e : #1e1511;
+        opacity: bpm.pressed ? 0.6 : 1.0;
+        Text { y: 14px; width: parent.width; text: "BPM ±4%"; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; }
+        Text { y: 44px; width: parent.width; text: root.bpm-reference; color: root.bpm-filter ? #f5f0ed : #a3958e; font-size: 11px; horizontal-alignment: center; }
+        bpm := TouchArea {
+            clicked => { root.bpm-filter-toggled(); }
         }
     }
     Text {
@@ -911,6 +953,10 @@ export component Overview inherits Window {
     in property <string> library-count;
     in property <string> library-heading;
     in property <bool> library-can-back;
+    in property <int> library-sort-column: -1;
+    in property <bool> library-sort-descending;
+    in property <bool> library-bpm-filter;
+    in property <string> library-bpm-reference;
     in property <[CueTile]> cues-1;
     in property <[CueTile]> cues-2;
     in property <[MemoryLine]> memory-1;
@@ -940,6 +986,9 @@ export component Overview inherits Window {
     callback pick(int);
     callback load(int);
     callback library-back();
+    // The Library's column heading 0 to 4 tapped, and its BPM filter.
+    callback library-sort(int);
+    callback library-bpm-filter-toggled();
     // The Hot Cues page: deck 0 or 1, its pad 0 to 7 down or up, and whether it deletes.
     callback hot-cue(int, int, bool, bool);
     // The Hot Cues page's MEMORY list: deck 0 or 1, its memory cue 0 to 15 tapped.
@@ -1058,9 +1107,15 @@ export component Overview inherits Window {
         count: root.library-count;
         heading: root.library-heading;
         can-back: root.library-can-back;
+        sort-column: root.library-sort-column;
+        sort-descending: root.library-sort-descending;
+        bpm-filter: root.library-bpm-filter;
+        bpm-reference: root.library-bpm-reference;
         pick(row) => { root.pick(row); }
         load(deck) => { root.load(deck); }
         back => { root.library-back(); }
+        sort(column) => { root.library-sort(column); }
+        bpm-filter-toggled => { root.library-bpm-filter-toggled(); }
     }
 
     if root.active-tab == 4: FxPage {
@@ -1184,7 +1239,7 @@ export component Overview inherits Window {
         width: 0px;
         height: 0px;
         color: transparent;
-        text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™";
+        text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™▲▼";
     }
 
     // The boot screen and the screensaver, as the donor's: the owner's RUZINA wordmark, its

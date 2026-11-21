@@ -521,8 +521,68 @@ pub(crate) fn level() -> Level {
     }
 }
 
-/// How many rows `level` has.
+/// The Library page's view of a track list, sorted and filtered (`library_view`): for one
+/// level, the positions of the rows it shows, in order. The screen task writes it; the
+/// engine reads it, on the other core, for the browse knob and LOAD. A sequence count
+/// guards it: odd while the screen task writes, so a reader that saw it change reads again.
+const VIEW_MAX: usize = 1_024;
+const NO_VIEW: u32 = u32::MAX - 2;
+static VIEW_SEQUENCE: AtomicU32 = AtomicU32::new(0);
+static VIEW_LEVEL: AtomicU32 = AtomicU32::new(NO_VIEW);
+static VIEW_LEN: AtomicU32 = AtomicU32::new(0);
+static VIEW_ROWS: [AtomicU32; VIEW_MAX] = [const { AtomicU32::new(0) }; VIEW_MAX];
+
+const fn level_code(level: Level) -> u32 {
+    match level {
+        Level::All => ALL,
+        Level::Top => TOP,
+        Level::Node(node) => node,
+    }
+}
+
+/// Shows `level` through `rows`, positions of its rows (`None`: as the level has them).
+/// The screen task's side. Rows past `VIEW_MAX` are left out.
+pub(crate) fn publish_view(level: Level, rows: Option<&[u32]>) {
+    VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+    match rows {
+        Some(rows) => {
+            let rows = &rows[..rows.len().min(VIEW_MAX)];
+            for (slot, &row) in VIEW_ROWS.iter().zip(rows) {
+                slot.store(row, Ordering::Relaxed);
+            }
+            VIEW_LEN.store(rows.len() as u32, Ordering::Relaxed);
+            VIEW_LEVEL.store(level_code(level), Ordering::Relaxed);
+        }
+        None => VIEW_LEVEL.store(NO_VIEW, Ordering::Relaxed),
+    }
+    VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+}
+
+/// What the view says of `level`: `None` when it has no view of it. A read the screen task
+/// keeps overwriting gives up after a few tries and reads the level as it is.
+fn through_view<R>(level: Level, read: impl Fn() -> R) -> Option<R> {
+    for _ in 0..64 {
+        let before = VIEW_SEQUENCE.load(Ordering::Acquire);
+        if before.is_multiple_of(2) {
+            let seen = VIEW_LEVEL.load(Ordering::Relaxed) == level_code(level);
+            let value = seen.then(&read);
+            core::sync::atomic::fence(Ordering::Acquire);
+            if VIEW_SEQUENCE.load(Ordering::Relaxed) == before {
+                return value;
+            }
+        }
+        core::hint::spin_loop();
+    }
+    None
+}
+
+/// How many rows `level` shows: its view's, or all of them.
 pub(crate) fn level_len(level: Level) -> u32 {
+    through_view(level, || VIEW_LEN.load(Ordering::Relaxed)).unwrap_or_else(|| base_len(level))
+}
+
+/// How many rows `level` has, before any view.
+pub(crate) fn base_len(level: Level) -> u32 {
     match level {
         Level::All => LIBRARY_LEN.load(Ordering::Acquire),
         Level::Top => shelf().map_or(0, |shelf| shelf.top.len() as u32),
@@ -532,8 +592,20 @@ pub(crate) fn level_len(level: Level) -> u32 {
     }
 }
 
-/// Row `index` of `level`.
+/// Row `index` of what `level` shows.
 pub(crate) fn row_at(level: Level, index: u32) -> Option<Row> {
+    let position = through_view(level, || {
+        (index < VIEW_LEN.load(Ordering::Relaxed))
+            .then(|| VIEW_ROWS[index as usize].load(Ordering::Relaxed))
+    });
+    match position {
+        Some(position) => base_row_at(level, position?),
+        None => base_row_at(level, index),
+    }
+}
+
+/// Row `index` of `level`, before any view.
+pub(crate) fn base_row_at(level: Level, index: u32) -> Option<Row> {
     let index = index as usize;
     match level {
         Level::All => (index < LIBRARY_LEN.load(Ordering::Acquire) as usize)

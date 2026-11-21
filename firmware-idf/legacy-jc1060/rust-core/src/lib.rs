@@ -80,6 +80,9 @@ mod deck_settings;
 #[cfg(feature = "deck-engine")]
 mod screen_idle;
 
+#[cfg(feature = "deck-engine")]
+mod library_view;
+
 #[cfg(feature = "soak-autoplay")]
 mod soak_autoplay;
 
