@@ -79,7 +79,7 @@ with `xSemaphoreCreateBinary`.
 ## On the board
 
 Image s159 (app `be416a1f…`), the `--usb-stick` product image of this branch, ran for 6
-minutes with both decks playing, browsing and jumps.
+minutes of play.
 
 - **Stick:** it bound (`in=82 out=01 mps=512`), opened at 1982464 sectors and read
   throughout.

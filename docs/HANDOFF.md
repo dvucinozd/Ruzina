@@ -387,7 +387,7 @@
     returns the first step that failed, not the last step's result. A failed recovery
     gives the stick up instead of letting a read try again.
   - A host test runs the real `usb_msc.inc` against a fake stick, with each failure point.
-  - On s159 (app `be416a1f…`, 6 minutes with both decks playing and jumps) the stick
+  - On s159 (app `be416a1f…`, 6 minutes of play) the stick
     bound, opened and read. Its only notice was the usual first-attach UNIT ATTENTION on
     TEST UNIT READY. No Reset Recovery or read retry was needed, and underruns were 0/0.
 - **On the board:** s159 (app `be416a1f…`), the `--usb-stick` product image of the stick
