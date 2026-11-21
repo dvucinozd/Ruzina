@@ -63,7 +63,7 @@ mod deck_keylock;
 mod deck_engine;
 
 #[cfg(feature = "deck-engine")]
-mod deck_link;
+mod deck_phase;
 
 #[cfg(feature = "deck-engine")]
 mod deck_transport;
