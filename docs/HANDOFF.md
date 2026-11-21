@@ -437,9 +437,20 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   - the memory cues (now warm white) and the bar markers (now acid green).
 
   s174 (app `586c7ec6…`) works; owner: "Izgleda dobro".
+- **Screen layout (2026-11-21):** [the deck screen's new layout](reviews/2026-11-21-screen-layout.md).
+  The second step of the redesign, after the palette:
+  - a 48 px icon rail instead of the tabs;
+  - lanes of 814×210 with the phase strip's place between them;
+  - deck cards at the bottom on every page;
+  - the pages narrowed to 952 px.
+
+  s176 (app `72498c59…`): owner "Izgleda dobro"; s175 had a 72 px rail, which the owner
+  narrowed.
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s176 (app `72498c59…`) is the play image flags on the redesign branch: palette and
+    layout.
   - s174 (app `586c7ec6…`) is the play image flags on the Rust palette branch.
   - s173 (app `fd4d6e1b…`) is the play image flags on the controller profiles branch.
   - s172 (app `d0863dcc…`) is the play image flags on the screensaver branch.

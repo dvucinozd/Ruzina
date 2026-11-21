@@ -31,47 +31,51 @@ const SLOW_FRAME_US: u32 = 30_000;
 // the dark rectangles in `overview.slint`.
 use ruzina_screen_lines::Area;
 
-const LANE_WIDTH: usize = 872;
-const LANE_HEIGHT: usize = 201;
+const LANE_WIDTH: usize = 814;
+const LANE_HEIGHT: usize = 210;
+/// The two lanes, right of the deck buttons, with the phase strip's 36 pixels (and 4 either
+/// side) between them.
 const LANES: [Area; 2] = [
     Area {
-        x: 82,
-        y: 46,
+        x: 136,
+        y: 8,
         width: LANE_WIDTH,
         height: LANE_HEIGHT,
     },
     Area {
-        x: 82,
-        y: 248,
+        x: 136,
+        y: 262,
         width: LANE_WIDTH,
         height: LANE_HEIGHT,
     },
 ];
+/// The overviews, at the bottom of the deck cards.
 const MINIS: [Area; 2] = [
     Area {
-        x: 8,
-        y: 552,
-        width: 496,
+        x: 60,
+        y: 548,
+        width: 466,
         height: 45,
     },
     Area {
-        x: 520,
-        y: 552,
-        width: 496,
+        x: 546,
+        y: 548,
+        width: 466,
         height: 45,
     },
 ];
-/// The channel meters, left of the lanes: ten segments, 11 pixels high and 14 apart.
+/// The channel meters, left of the lanes and centred on them: ten segments, 11 pixels
+/// high and 14 apart.
 const METERS: [Area; 2] = [
     Area {
-        x: 68,
-        y: 49,
+        x: 122,
+        y: 43,
         width: 10,
         height: 140,
     },
     Area {
-        x: 68,
-        y: 251,
+        x: 122,
+        y: 297,
         width: 10,
         height: 140,
     },

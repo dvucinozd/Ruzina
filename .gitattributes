@@ -33,3 +33,4 @@ tools/source_budget/** text eol=lf
 firmware-idf/legacy-jc1060/third_party/** -text -whitespace
 docs/reviews/evidence/2026-11-03-mp3-reset/** -text -whitespace
 firmware-idf/legacy-jc1060/rust-core/ui/wordmark/make.sh text eol=lf
+firmware-idf/legacy-jc1060/rust-core/ui/icons/make.sh text eol=lf
