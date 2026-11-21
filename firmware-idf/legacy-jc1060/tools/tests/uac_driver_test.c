@@ -334,6 +334,56 @@ int main(void) {
     assert(sum.c[2].graph_fills==2 && sum.c[2].graph_sum==5500);
     f.rust[1]=1;uac_profile_classify(&sum,&f);
     assert(sum.c[2].fills==3 && sum.c[2].graph_fills==2);
+    /* What else ran during a fill: an activity running when it began, or one that started
+     * or stopped while it ran. The screen counts as still only if it was still throughout. */
+    {
+        ruzina_uac_activity(UAC_ACTIVITY_DECODER,true);
+        const uac_activity_stamp_t a=ruzina_uac_activity_stamp();
+        ruzina_uac_activity(UAC_ACTIVITY_DECODER,true); /* already running: no edge */
+        ruzina_uac_screen_still(true);
+        const uac_activity_stamp_t b=ruzina_uac_activity_stamp();
+        assert(b.edges[UAC_ACTIVITY_DECODER]==a.edges[UAC_ACTIVITY_DECODER]);
+        assert(uac_profile_overlap_of(a,b)==2u);
+        /* A frame drawn and done within the fill, and the decoder going idle. */
+        ruzina_uac_activity(UAC_ACTIVITY_SCREEN,true);ruzina_uac_activity(UAC_ACTIVITY_SCREEN,false);
+        ruzina_uac_activity(UAC_ACTIVITY_DECODER,false);
+        const uac_activity_stamp_t c=ruzina_uac_activity_stamp();
+        assert(uac_profile_overlap_of(b,c)==(1u|2u|8u));
+        ruzina_uac_activity(UAC_ACTIVITY_STICK,true);ruzina_uac_screen_still(false);
+        const uac_activity_stamp_t d=ruzina_uac_activity_stamp();
+        assert(uac_profile_overlap_of(d,ruzina_uac_activity_stamp())==4u);
+        ruzina_uac_activity(UAC_ACTIVITY_STICK,false);
+        ruzina_uac_activity(UAC_ACTIVITIES,true); /* no such activity */
+        const uac_activity_stamp_t e=ruzina_uac_activity_stamp();
+        assert(uac_profile_overlap_of(e,ruzina_uac_activity_stamp())==0);
+    }
+    /* Plain and Master Tempo fills are counted by what overlapped them; others are not. */
+    {
+        uac_profile_overlap_t o={0};
+        uac_profile_record_t r={.whole_us=3200,.overlap=1u|8u};
+        uac_profile_overlap_count(&o,0,&r);
+        r.overlap=4u;r.whole_us=2000;uac_profile_overlap_count(&o,8,&r);
+        uac_profile_overlap_count(&o,7,&r);
+        assert(o.c[0][9].fills==1 && o.c[0][9].over==1 && o.c[0][9].max_us==3200);
+        assert(o.c[1][4].fills==1 && o.c[1][4].over==0);
+        uint32_t total=0;
+        for(unsigned k=0;k<2;++k) for(unsigned i=0;i<UAC_OVERLAPS;++i) total+=o.c[k][i].fills;
+        assert(total==2);
+    }
+    /* The report hands the logger a copy only once it has printed the last one. */
+    {
+        uac_profile_overlap_handed=false;
+        uac_report_pending=true;uac_report();
+        assert(uac_profile_overlap_handed);
+        const uint32_t handed=uac_profile_overlap_logged.c[0][0].fills;
+        uac_profile_overlap.c[0][0].fills++;
+        uac_report_pending=true;uac_report();
+        assert(uac_profile_overlap_logged.c[0][0].fills==handed);
+        uac_profile_overlap_handed=false;
+        uac_report_pending=true;uac_report();
+        assert(uac_profile_overlap_logged.c[0][0].fills==handed+1);
+        uac_log_snapshot_t drained;(void)xQueueReceive(uac_log_queue,&drained,0);
+    }
 #endif
     assert(!uac_report_pending);assert(uac_health.state==UAC_HEALTH_STREAMING);
     // A lost isochronous packet is counted and the stream carries on.

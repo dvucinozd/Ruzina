@@ -61,6 +61,10 @@ extern uint32_t ruzina_legacy_keylock_starts(void);
 static uac_profile_record_t uac_profile_worst, uac_profile_over, uac_profile_headroom;
 static uac_profile_distribution_t uac_profile_distribution;
 static uac_profile_classes_t uac_profile_classes;
+/* The overlap counts go to the logger beside its queue, not in the snapshot both tasks keep
+ * on their stacks: the report copies them only once the logger has printed the last. */
+static uac_profile_overlap_t uac_profile_overlap, uac_profile_overlap_logged;
+static _Atomic bool uac_profile_overlap_handed;
 static uac_sched_stamp_t uac_cal_before,uac_cal_after;
 static uac_irq_stamp_t uac_irq_cal_before,uac_irq_cal_after;
 static uint32_t uac_cal_generation;
@@ -109,6 +113,7 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     ruzina_legacy_uac_profile_begin();
     uac_sched_stamp_t sched_before=ruzina_uac_sched_stamp();
     uac_irq_stamp_t irq_before=ruzina_uac_irq_stamp();
+    const uac_activity_stamp_t activity_before=ruzina_uac_activity_stamp();
 #endif
 #if CONFIG_RUZINA_DECK_MIX
     int64_t start = esp_timer_get_time();
@@ -119,9 +124,11 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     int64_t elapsed = esp_timer_get_time() - start;
     uint32_t took = elapsed > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed;
 #if CONFIG_RUZINA_UAC_PROFILE
+    const uac_activity_stamp_t activity_after=ruzina_uac_activity_stamp();
     uac_irq_stamp_t irq_after=ruzina_uac_irq_stamp();
     uac_sched_stamp_t sched_after=ruzina_uac_sched_stamp();
     profile.whole_us=took;
+    profile.overlap=uac_profile_overlap_of(activity_before,activity_after);
     profile.rust_valid=ruzina_legacy_uac_profile_end(profile.rust,UAC_PROFILE_WORDS)==UAC_PROFILE_WORDS;
     /* What happened during the fill itself: a keylock started over (flag 512). */
     const uint32_t starts=ruzina_legacy_keylock_starts();
@@ -135,7 +142,7 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     profile.irq_valid &= profile.irq_calibration_passed;
     if (phase==UAC_FILL_CALLBACK) {
         uac_profile_distribute(&uac_profile_distribution,&profile);
-        uac_profile_classify(&uac_profile_classes,&profile);
+        uac_profile_overlap_count(&uac_profile_overlap,uac_profile_classify(&uac_profile_classes,&profile),&profile);
         if (!uac_profile_seen || took>uac_profile_worst.whole_us) { uac_profile_worst=profile;uac_profile_seen=true; }
         if (took>=6000) { uac_profile_over=profile;uac_profile_over_seen=true; }
         if (took>3000 && took<6000) { uac_profile_headroom=profile;uac_profile_headroom_seen=true; }
@@ -227,10 +234,11 @@ static void uac_log_profile(const char *name,const uac_profile_record_t *r,bool 
            " phase=%" PRIu32 " busy=%" PRIu32 " health=%" PRIu32 " catalog=%" PRIu32
            " d1_flags=%" PRIu32 " d2_flags=%" PRIu32 " drops=%" PRIu32 " whole_us=%" PRIu32
            " rust_us=%" PRIu32 " partition_valid=%u outer_us=%" PRIu32 " packets=%" PRIu32 " blocks=%" PRIu32
-           " sched_valid=%" PRIu32 " sched_window_us=%" PRIu32 " away_us=%" PRIu32 " switches=%" PRIu32 "\n",
+           " sched_valid=%" PRIu32 " sched_window_us=%" PRIu32 " away_us=%" PRIu32 " switches=%" PRIu32
+           " overlap=%" PRIu32 "\n",
            name,(unsigned)seen,r->generation,r->ordinal,r->uptime_us,r->phase,r->pool_mask,r->health,r->catalog,
            r->flags[1],r->flags[3],r->log_drops,r->whole_us,r->rust[0],(unsigned)partition,
-           partition?r->whole_us-r->rust[0]:0,r->rust[2],r->rust[3],r->sched_valid,r->sched_window_us,r->sched_away_us,r->sched_switches);
+           partition?r->whole_us-r->rust[0]:0,r->rust[2],r->rust[3],r->sched_valid,r->sched_window_us,r->sched_away_us,r->sched_switches,r->overlap);
     printf("uac_profile_cause kind=%s gen=%" PRIu32 " ordinal=%" PRIu32 " calibration=%" PRIu32
            " away_before=%" PRIu32 " away_after=%" PRIu32 " switches_before=%" PRIu32 " switches_after=%" PRIu32
            " irq_calibration=%" PRIu32 " irq_valid=%" PRIu32 " irq_window_us=%" PRIu32 " irq_dispatch_us=%" PRIu32 " irq_entries=%" PRIu32 " irq_nested=%" PRIu32 "\n",
@@ -361,6 +369,19 @@ static void uac_log_task(void *unused)
                    c->fills,c->fills ? (uint32_t)(c->whole_sum/c->fills) : 0,c->graph_fills,
                    c->graph_fills ? (uint32_t)(c->graph_sum/c->graph_fills) : 0,c->over,c->max_us);
         }
+        if(atomic_load_explicit(&uac_profile_overlap_handed,memory_order_acquire)) {
+            static const char *const overlap_classes[2]={"plain","master_tempo"};
+            for(unsigned k=0;k<2;++k) for(unsigned i=0;i<UAC_OVERLAPS;++i) {
+                const uac_profile_class_t *c=&uac_profile_overlap_logged.c[k][i];
+                if(!c->fills) continue;
+                printf("uac_profile_overlap gen=%" PRIu32 " class=%s still=%u screen=%u decoder=%u stick=%u fills=%" PRIu32
+                       " mean_us=%" PRIu32 " graph_fills=%" PRIu32 " graph_mean_us=%" PRIu32 " over_3000=%" PRIu32 " max_us=%" PRIu32 "\n",
+                       sample.generation,overlap_classes[k],(i>>3)&1u,i&1u,(i>>1)&1u,(i>>2)&1u,c->fills,
+                       (uint32_t)(c->whole_sum/c->fills),c->graph_fills,c->graph_fills ? (uint32_t)(c->graph_sum/c->graph_fills) : 0,
+                       c->over,c->max_us);
+            }
+            atomic_store_explicit(&uac_profile_overlap_handed,false,memory_order_release);
+        }
         printf("uac_profile_logger stack_free=%u\n",(unsigned)uxTaskGetStackHighWaterMark(NULL));
 #endif
 #if CONFIG_RUZINA_DECK_ENGINE
@@ -398,6 +419,10 @@ static void uac_report(void)
     sample.headroom=uac_profile_headroom; sample.headroom_seen=uac_profile_headroom_seen;
     sample.distribution=uac_profile_distribution;
     sample.classes=uac_profile_classes;
+    if(!atomic_load_explicit(&uac_profile_overlap_handed,memory_order_acquire)) {
+        uac_profile_overlap_logged=uac_profile_overlap;
+        atomic_store_explicit(&uac_profile_overlap_handed,true,memory_order_release);
+    }
     sample.cal_before=uac_cal_before; sample.cal_after=uac_cal_after;
     sample.irq_cal_before=uac_irq_cal_before; sample.irq_cal_after=uac_irq_cal_after;
     sample.irq_cal_passed=uac_irq_cal_passed;

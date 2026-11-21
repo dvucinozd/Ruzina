@@ -1,4 +1,5 @@
 #pragma once
+#include <stdatomic.h>
 #include "uac_profile_sched.h"
 #include "uac_profile_irq.h"
 enum { UAC_PROFILE_WORDS=20 };
@@ -10,6 +11,7 @@ typedef struct {
     uint32_t calibration_passed, irq_calibration_passed;
     uint32_t irq_window_us, irq_us, irq_entries, irq_nested, irq_valid;
     uint32_t rust[UAC_PROFILE_WORDS], rust_valid;
+    uint32_t overlap;
 } uac_profile_record_t;
 static inline void uac_profile_schedule(uac_profile_record_t *r,uac_sched_stamp_t before,uac_sched_stamp_t after) {
     r->sched_window_us=after.wall_us-before.wall_us;
@@ -68,8 +70,7 @@ static inline unsigned uac_profile_class_of(uac_profile_classes_t *k,const uac_p
     if(any&16) return 6;
     return 0;
 }
-static inline void uac_profile_classify(uac_profile_classes_t *k,const uac_profile_record_t *r) {
-    uac_profile_class_t *c=&k->c[uac_profile_class_of(k,r)];
+static inline void uac_profile_count(uac_profile_class_t *c,const uac_profile_record_t *r) {
     uac_profile_increment(&c->fills);
     c->whole_sum+=r->whole_us;
     if(r->whole_us>3000) uac_profile_increment(&c->over);
@@ -77,6 +78,26 @@ static inline void uac_profile_classify(uac_profile_classes_t *k,const uac_profi
     if(!uac_profile_partition(r)) return;
     uac_profile_increment(&c->graph_fills);
     c->graph_sum+=r->rust[4+3];
+}
+static inline unsigned uac_profile_classify(uac_profile_classes_t *k,const uac_profile_record_t *r) {
+    unsigned i=uac_profile_class_of(k,r);
+    uac_profile_count(&k->c[i],r);
+    return i;
+}
+/* What else ran during a fill: bit 0 the screen drew, 1 a decoder ran, 2 the stick was
+ * read, each if it was running when the fill began or changed while it ran; bit 3 the
+ * screen stood still throughout. Plain fills and Master Tempo fills are counted by it. */
+enum { UAC_OVERLAPS=16 };
+typedef struct { uac_profile_class_t c[2][UAC_OVERLAPS]; } uac_profile_overlap_t;
+static inline uint32_t uac_profile_overlap_of(uac_activity_stamp_t before,uac_activity_stamp_t after) {
+    uint32_t bits=0;
+    for(unsigned i=0;i<UAC_ACTIVITIES;++i)
+        if((before.edges[i]&1u) || after.edges[i]!=before.edges[i]) bits|=1u<<i;
+    if(before.still && after.still) bits|=8u;
+    return bits;
+}
+static inline void uac_profile_overlap_count(uac_profile_overlap_t *o,unsigned class_index,const uac_profile_record_t *r) {
+    if(class_index==0 || class_index==8) uac_profile_count(&o->c[class_index==8][r->overlap&(UAC_OVERLAPS-1)],r);
 }
 static inline void uac_profile_distribute(uac_profile_distribution_t *d,const uac_profile_record_t *r) {
     uac_profile_increment(&d->samples);

@@ -17,7 +17,9 @@ bool ruzina_uac_sched_bind(const void *task) {
     if (!task) return false;
     return atomic_compare_exchange_strong(&tracked,&expected,task) || expected==task;
 }
+static void activity_switched(const void *task,bool off);
 void IRAM_ATTR ruzina_uac_switched_out(const void *task,unsigned core) {
+    activity_switched(task,true);
     if (core!=0 || !task || task!=atomic_load_explicit(&tracked,memory_order_relaxed)) return;
     atomic_fetch_add_explicit(&sequence,1,memory_order_acq_rel);
     atomic_store_explicit(&out_since,(uint32_t)esp_timer_get_time(),memory_order_relaxed);
@@ -25,6 +27,7 @@ void IRAM_ATTR ruzina_uac_switched_out(const void *task,unsigned core) {
     atomic_fetch_add_explicit(&sequence,1,memory_order_release);
 }
 void IRAM_ATTR ruzina_uac_switched_in(const void *task,unsigned core) {
+    activity_switched(task,false);
     if (core!=0 || !task || task!=atomic_load_explicit(&tracked,memory_order_relaxed)) return;
     atomic_fetch_add_explicit(&sequence,1,memory_order_acq_rel);
     if (atomic_load_explicit(&is_out,memory_order_relaxed)) {
@@ -51,3 +54,34 @@ void ruzina_uac_catalog_event(uint32_t event) {
     if (event>=1 && event<=6) atomic_store_explicit(&catalog,event,memory_order_release);
 }
 uint32_t ruzina_uac_catalog_phase(void) { return atomic_load_explicit(&catalog,memory_order_acquire); }
+/* Each activity's word: bit 0 it is busy, as its task says; bit 1 its task is off the CPU
+ * (only for an activity that names its task); bits 2 and up count the edges of busy and
+ * on the CPU. A decoder preempted by the screen on its core is busy but does not run. */
+static _Atomic uint32_t activity[UAC_ACTIVITIES];
+static _Atomic(const void *) activity_task[UAC_ACTIVITIES];
+static inline bool activity_running(uint32_t word) { return (word&3u)==1u; }
+static void IRAM_ATTR activity_set(unsigned which,uint32_t bit,bool on) {
+    uint32_t word=atomic_load_explicit(&activity[which],memory_order_relaxed),next;
+    do {
+        next=on ? word|bit : word&~bit;
+        if (activity_running(next)!=activity_running(word)) next+=4u;
+    } while (!atomic_compare_exchange_weak_explicit(&activity[which],&word,next,memory_order_acq_rel,memory_order_relaxed));
+}
+static void IRAM_ATTR activity_switched(const void *task,bool off) {
+    if (!task) return;
+    for (unsigned i=0;i<UAC_ACTIVITIES;++i)
+        if (atomic_load_explicit(&activity_task[i],memory_order_relaxed)==task) activity_set(i,2u,off);
+}
+void ruzina_uac_activity_task(uint32_t which,const void *task) {
+    if (which<UAC_ACTIVITIES) atomic_store_explicit(&activity_task[which],task,memory_order_release);
+}
+static _Atomic bool screen_still;
+void ruzina_uac_activity(uint32_t which,bool running) {
+    if (which<UAC_ACTIVITIES) activity_set(which,1u,running);
+}
+void ruzina_uac_screen_still(bool still) { atomic_store_explicit(&screen_still,still,memory_order_release); }
+uac_activity_stamp_t ruzina_uac_activity_stamp(void) {
+    uac_activity_stamp_t stamp={.still=atomic_load_explicit(&screen_still,memory_order_acquire)};
+    for (unsigned i=0;i<UAC_ACTIVITIES;++i) stamp.edges[i]=atomic_load_explicit(&activity[i],memory_order_acquire)>>2;
+    return stamp;
+}

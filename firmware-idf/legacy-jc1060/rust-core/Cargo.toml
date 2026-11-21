@@ -106,6 +106,10 @@ idf-producer-profile = ["idf-deck-engine", "producer-profile"]
 slint-ui = ["deck-engine", "dep:slint", "dep:slint-build", "dep:ruzina-screen-lines"]
 idf-slint-ui = ["idf-deck-engine", "slint-ui"]
 
+# Profile diagnostic: the screen stands still every other 30 s, to measure the fill without it.
+screen-still = ["slint-ui", "uac-profile"]
+idf-screen-still = ["idf-slint-ui", "idf-uac-profile", "screen-still"]
+
 # The Web Remote on the deck's own Wi-Fi (the C6 probe): ruzina-web over the engine.
 web-remote = ["slint-ui", "dep:ruzina-web", "dep:ruzina-media-catalog", "dep:ruzina-media-session"]
 idf-web-remote = ["idf-slint-ui", "web-remote"]

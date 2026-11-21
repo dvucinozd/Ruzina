@@ -28,6 +28,26 @@ int main(void) {
     inject_switch=true;assert(!ruzina_uac_sched_stamp().valid);
     assert(ruzina_uac_sched_stamp().valid);
     ruzina_uac_catalog_event(4);assert(ruzina_uac_catalog_phase()==4);
+    /* An activity that names its task counts only while that task is on the CPU. */
+    ruzina_uac_activity_task(UAC_ACTIVITY_DECODER,(void *)3);
+    ruzina_uac_activity(UAC_ACTIVITY_DECODER,true);
+    const uint32_t busy=ruzina_uac_activity_stamp().edges[UAC_ACTIVITY_DECODER];
+    assert(busy&1u);
+    ruzina_uac_switched_out((void *)3,1);
+    const uint32_t preempted=ruzina_uac_activity_stamp().edges[UAC_ACTIVITY_DECODER];
+    assert(preempted==busy+1);
+    ruzina_uac_activity(UAC_ACTIVITY_DECODER,false); /* goes idle while off the CPU: no edge */
+    assert(ruzina_uac_activity_stamp().edges[UAC_ACTIVITY_DECODER]==preempted);
+    ruzina_uac_switched_in((void *)3,1);
+    assert(ruzina_uac_activity_stamp().edges[UAC_ACTIVITY_DECODER]==preempted);
+    ruzina_uac_activity(UAC_ACTIVITY_DECODER,true);
+    assert(ruzina_uac_activity_stamp().edges[UAC_ACTIVITY_DECODER]==preempted+1);
+    ruzina_uac_switched_out((void *)4,1); /* another task: no change */
+    assert(ruzina_uac_activity_stamp().edges[UAC_ACTIVITY_DECODER]==preempted+1);
+    /* An activity without a task is as its task says, on the CPU or not. */
+    ruzina_uac_activity(UAC_ACTIVITY_STICK,true);
+    ruzina_uac_switched_out((void *)3,1);
+    assert(ruzina_uac_activity_stamp().edges[UAC_ACTIVITY_STICK]&1u);
     ruzina_uac_catalog_event(13);assert(ruzina_uac_catalog_phase()==4);
     return 0;
 }
