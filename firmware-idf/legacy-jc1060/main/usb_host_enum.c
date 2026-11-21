@@ -435,6 +435,9 @@ esp_err_t ruzina_usb_host_enum_start(void)
     const usb_host_config_t host = {.skip_phy_setup = false, .intr_flags = ESP_INTR_FLAG_LEVEL1};
     esp_err_t err = usb_host_install(&host);
     if (err != ESP_OK) return err;
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    msc_init(); /* before the client task can bind a stick */
+#endif
     if (xTaskCreatePinnedToCore(lib_task, "usb_lib", 4096, NULL, 5, NULL, 0) != pdPASS ||
         xTaskCreatePinnedToCore(client_task, "usb_client", 8192, NULL, 4, NULL, 0) != pdPASS)
         return ESP_ERR_NO_MEM;
