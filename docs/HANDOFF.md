@@ -379,6 +379,14 @@
     with their reasons;
   - with LOAD LOCK off, the playing deck loaded.
   Underruns were 0/0, and the longest web request took 91 ms.
+- **Stick semaphores and Reset Recovery (2026-11-21):** [the stick's semaphores and Reset Recovery](reviews/2026-11-21-msc-lifecycle.md).
+  This takes outside review findings 2 and 3.
+  - Both semaphores are now static and made before the USB client task starts, with an
+    atomic flag the media owner waits on. No bind can go ahead without them.
+  - Reset Recovery checks the host's halt, flush and clear, and each control request. It
+    returns the first step that failed, not the last step's result. A failed recovery
+    gives the stick up instead of letting a read try again.
+  - A host test runs the real `usb_msc.inc` against a fake stick, with each failure point.
 - **On the board:** s158 (app `40688f8c…`), the `--usb-stick` product image of the Web
   Remote outcomes branch, with no profile. s157 (app `bd390cb0…`) is the product image of
   `main` at `f2a61fd`. In 7 minutes of play with Master Tempo, hot cues, SYNC and a scratch

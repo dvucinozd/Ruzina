@@ -14,7 +14,12 @@
  * - an invalid or missing status, a phase error, or a timeout: Reset Recovery (the
  *   class Bulk-Only Mass Storage Reset, then clear both bulk halts);
  * - a failed READ (status 1): REQUEST SENSE, then the read is tried again.
- * A read is tried 3 times before the owner stops.
+ * A read is tried 3 times before the owner stops. It is tried again only after a Reset
+ * Recovery whose every step succeeded: a recovery that fails gives the stick up, as a
+ * transfer stuck in flight does.
+ *
+ * The two semaphores are static and made before the client task starts (msc_init), so
+ * neither task ever sees one missing.
  *
  * Handle lifetime: the device handle is closed only while no command runs. The owner marks
  * each command busy before it checks that the stick is present, and the client marks the
@@ -61,12 +66,16 @@ static usb_device_handle_t msc_dev;
 static uint8_t msc_interface = 0xff, msc_in, msc_out;
 static uint16_t msc_mps_in;
 static usb_transfer_t *msc_transfer, *msc_control_transfer;
+static StaticSemaphore_t msc_done_storage, msc_bound_storage;
 static SemaphoreHandle_t msc_done, msc_bound;
+/* Set once both semaphores exist; the owner waits for it before it takes msc_bound. */
+static _Atomic bool msc_ready;
 /* Set by the client task: the stick is bound, and not gone. */
 static _Atomic bool msc_present;
 /* Set by the owner task while a command uses the device handle. */
 static _Atomic bool msc_busy;
-/* A transfer may still be in flight after a timeout: the stick is given up. */
+/* A transfer may still be in flight after a timeout, or Reset Recovery failed: the stick
+ * is given up. */
 static bool msc_stuck;
 /* The transfer the owner waits for; another one's completion does not wake it. */
 static usb_transfer_t *_Atomic msc_awaited;
@@ -79,6 +88,15 @@ static uint32_t msc_commands, msc_errors, msc_stalls, msc_resets, msc_retries;
 static uint32_t msc_chunk_bytes(void)
 {
     return msc_mps_in >= MSC_HS_PACKET ? MSC_MAX_DATA_BYTES : MSC_CHUNK_BYTES;
+}
+
+/* Before the USB client task starts: the semaphores both tasks use. Static storage, so
+ * they cannot fail for want of memory. */
+static void msc_init(void)
+{
+    msc_done = xSemaphoreCreateBinaryStatic(&msc_done_storage);
+    msc_bound = xSemaphoreCreateBinaryStatic(&msc_bound_storage);
+    msc_ready = true;
 }
 
 /* Owner task: whether the stick is still attached. */
@@ -145,9 +163,7 @@ static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
         vTaskDelay(pdMS_TO_TICKS(100));
         esp_restart();
     }
-    if (msc_dev) return false;
-    if (!msc_done) msc_done = xSemaphoreCreateBinary();
-    if (!msc_bound) msc_bound = xSemaphoreCreateBinary();
+    if (msc_dev || !msc_ready) return false;
     if (!msc_transfer && usb_host_transfer_alloc(MSC_MAX_DATA_BYTES, 0, &msc_transfer) != ESP_OK) return false;
     if (!msc_control_transfer &&
         usb_host_transfer_alloc(sizeof(usb_setup_packet_t), 0, &msc_control_transfer) != ESP_OK)
@@ -247,27 +263,38 @@ static msc_result_t msc_control(uint8_t request_type, uint8_t request, uint16_t 
     return msc_submit_wait(t);
 }
 
-/* Clears a halted bulk endpoint on both sides: the device's (CLEAR_FEATURE ENDPOINT_HALT)
- * and the host pipe's. */
+/* Clears a halted bulk endpoint on both sides: the host pipe's and the device's
+ * (CLEAR_FEATURE ENDPOINT_HALT). MSC_OK, MSC_RECOVER when it did not clear, or MSC_GONE. */
 static msc_result_t msc_clear_halt(uint8_t endpoint)
 {
     if (!msc_present || msc_stuck) return MSC_GONE;
-    /* The pipe may already be halted by the stall; halting it again is harmless. */
-    usb_host_endpoint_halt(msc_dev, endpoint);
-    usb_host_endpoint_flush(msc_dev, endpoint);
-    usb_host_endpoint_clear(msc_dev, endpoint);
-    return msc_control(0x02, 0x01, 0, endpoint); /* standard, endpoint: CLEAR_FEATURE(ENDPOINT_HALT) */
+    /* Halting a pipe the stall already halted is allowed and returns ESP_OK. Flush and clear
+     * need a halted pipe, so after the halt any error is a real fault. */
+    esp_err_t err = usb_host_endpoint_halt(msc_dev, endpoint);
+    if (err == ESP_OK) err = usb_host_endpoint_flush(msc_dev, endpoint);
+    if (err == ESP_OK) err = usb_host_endpoint_clear(msc_dev, endpoint);
+    if (err != ESP_OK) {
+        printf("usb_msc clear_halt endpoint=%02x host=%s\n", endpoint, esp_err_to_name(err));
+        return msc_present ? MSC_RECOVER : MSC_GONE;
+    }
+    const msc_result_t r = msc_control(0x02, 0x01, 0, endpoint); /* standard, endpoint: CLEAR_FEATURE(ENDPOINT_HALT) */
+    return r == MSC_STALL ? MSC_RECOVER : r;
 }
 
-/* Bulk-Only Reset Recovery: the class reset, then both bulk endpoints cleared. */
+/* Bulk-Only Reset Recovery: the class reset, then both bulk endpoints cleared. Every step
+ * must succeed: the outcome is the stick going away if it did, else the first step that
+ * failed, else MSC_OK. */
 static msc_result_t msc_reset_recovery(void)
 {
     msc_resets++;
-    msc_result_t r = msc_control(0x21, 0xff, 0, msc_interface); /* class, interface: Bulk-Only Mass Storage Reset */
-    if (r == MSC_GONE) return r;
-    msc_clear_halt(msc_in);
-    r = msc_clear_halt(msc_out);
-    printf("usb_msc reset_recovery n=%" PRIu32 " result=%d\n", msc_resets, (int)r);
+    msc_result_t reset = msc_control(0x21, 0xff, 0, msc_interface); /* class, interface: Bulk-Only Mass Storage Reset */
+    if (reset == MSC_STALL) reset = MSC_RECOVER;
+    const msc_result_t in = msc_clear_halt(msc_in);
+    const msc_result_t out = msc_clear_halt(msc_out);
+    msc_result_t r = reset != MSC_OK ? reset : in != MSC_OK ? in : out;
+    if (reset == MSC_GONE || in == MSC_GONE || out == MSC_GONE) r = MSC_GONE;
+    printf("usb_msc reset_recovery n=%" PRIu32 " reset=%d in=%d out=%d result=%d\n", msc_resets, (int)reset,
+           (int)in, (int)out, (int)r);
     fflush(stdout);
     return r;
 }
@@ -355,7 +382,18 @@ static msc_result_t msc_command_run(const uint8_t *cdb, uint8_t cdb_len, uint8_t
     if (r == MSC_OK && status == 1) r = MSC_FAILED;
     if (r == MSC_OK && done != len) r = MSC_FAILED;
     if (r != MSC_OK) msc_errors++;
-    if (r == MSC_RECOVER) msc_reset_recovery();
+    if (r == MSC_RECOVER) {
+        /* Tried again only on a stick that recovered; one that did not is given up. */
+        const msc_result_t recovered = msc_reset_recovery();
+        if (recovered == MSC_GONE) {
+            r = MSC_GONE;
+        } else if (recovered != MSC_OK) {
+            msc_stuck = true;
+            printf("usb_msc recovery_failed reinsert=APP_RESTART_REQUIRED\n");
+            fflush(stdout);
+            r = MSC_GONE;
+        }
+    }
     return r;
 }
 
@@ -391,7 +429,7 @@ static void msc_sense(const char *what)
 /* Owner task: waits for a stick, makes it ready and returns its 512-byte sector count. */
 esp_err_t ruzina_msc_open(uint32_t *sectors)
 {
-    while (!msc_bound) vTaskDelay(pdMS_TO_TICKS(100));
+    while (!msc_ready) vTaskDelay(pdMS_TO_TICKS(100));
     xSemaphoreTake(msc_bound, portMAX_DELAY);
     uint8_t buffer[36];
     const uint8_t inquiry[6] = {0x12, 0, 0, 0, sizeof buffer, 0};
