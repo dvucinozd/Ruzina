@@ -12,7 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#if CONFIG_RUZINA_UAC_PROFILE && CONFIG_RUZINA_SLINT_UI
+#if CONFIG_RUZINA_CONTENTION_BENCH
 #include <stdatomic.h>
 #include <string.h>
 #include "driver/ppa.h"
@@ -66,7 +66,7 @@ static void render_bench(void)
     vSemaphoreDelete(bench.done);
 }
 
-#if CONFIG_RUZINA_SLINT_UI
+#if CONFIG_RUZINA_CONTENTION_BENCH
 /* The same graph while core 1 keeps doing one kind of the screen's memory work, over and
  * over, on a lane of two frame buffers of its own: which kind slows the fill (s163). The
  * screen does each in bursts; here it never stops, so each is at its worst. */
@@ -281,7 +281,7 @@ void app_main(void)
 #endif
 #if CONFIG_RUZINA_UAC_PROFILE
     render_bench();
-#if CONFIG_RUZINA_SLINT_UI
+#if CONFIG_RUZINA_CONTENTION_BENCH
     render_contention();
 #endif
 #endif
