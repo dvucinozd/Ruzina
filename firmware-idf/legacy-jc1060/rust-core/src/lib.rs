@@ -63,6 +63,9 @@ mod deck_keylock;
 mod deck_engine;
 
 #[cfg(feature = "deck-engine")]
+mod deck_link;
+
+#[cfg(feature = "deck-engine")]
 mod deck_transport;
 
 #[cfg(feature = "deck-engine")]
