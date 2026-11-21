@@ -62,6 +62,9 @@ static atomic_bool ap_ready;
 static atomic_int clients;
 static atomic_uint requests;
 static atomic_uint request_max_us;
+/* The web server's state, for the Wi-Fi task's report. */
+enum { SERVER_STARTING, SERVER_LISTENING, SERVER_FAILED };
+static atomic_int server_state;
 
 static void lower_hosted_tasks(const char *when)
 {
@@ -239,9 +242,15 @@ static void server_task(void *unused)
     printf("web_remote listen=%s response_cap=%u clients=%d\n", ok ? "ok" : "failed", (unsigned)response_cap,
            CLIENTS);
     if (!ok) {
+        /* Give back whatever did start: the buffers and the socket. */
+        if (listener >= 0) close(listener);
+        for (int i = 0; i < CLIENTS; ++i) heap_caps_free(conns[i].buffer);
+        heap_caps_free(response);
+        atomic_store(&server_state, SERVER_FAILED);
         vTaskDelete(NULL);
         return;
     }
+    atomic_store(&server_state, SERVER_LISTENING);
     /* Differs on each start, so the page notices a reboot. */
     const uint32_t boot = esp_random();
     for (;;) {
@@ -331,8 +340,10 @@ static void wifi_task(void *unused)
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(REPORT_PERIOD_MS));
         lower_hosted_tasks("report");
-        printf("wifi_ap clients=%d requests=%u request_max_us=%u dropped=%u internal_free=%u\n",
-               atomic_load(&clients), atomic_load(&requests), atomic_exchange(&request_max_us, 0),
+        static const char *const server_names[] = {"starting", "listening", "failed"};
+        printf("wifi_ap server=%s clients=%d requests=%u request_max_us=%u dropped=%u internal_free=%u\n",
+               server_names[atomic_load(&server_state)], atomic_load(&clients), atomic_load(&requests),
+               atomic_exchange(&request_max_us, 0),
                atomic_load(&dropped),
                (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
     }

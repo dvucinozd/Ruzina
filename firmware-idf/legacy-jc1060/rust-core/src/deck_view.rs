@@ -457,10 +457,6 @@ static SHELF: AtomicPtr<Shelf> = AtomicPtr::new(core::ptr::null_mut());
 static LEVEL: AtomicU32 = AtomicU32::new(ALL);
 const ALL: u32 = u32::MAX;
 const TOP: u32 = u32::MAX - 1;
-/// The selected row on each level above the one shown, from the top down, and how many.
-static PATH: [AtomicU32; PATH_DEPTH] = [const { AtomicU32::new(0) }; PATH_DEPTH];
-static DEPTH: AtomicU32 = AtomicU32::new(0);
-const PATH_DEPTH: usize = 16;
 /// The selection in the track list, while the playlists are shown.
 static ALL_SELECTED: AtomicU32 = AtomicU32::new(0);
 
@@ -497,7 +493,6 @@ pub(crate) fn publish_shelf(shelf: Shelf) {
     #[cfg(not(test))]
     let _ = old;
     LEVEL.store(ALL, Ordering::Relaxed);
-    DEPTH.store(0, Ordering::Relaxed);
 }
 
 /// Takes the playlist tree back down, for the next test.
@@ -509,7 +504,6 @@ pub(crate) fn clear_shelf() {
         drop(unsafe { Box::from_raw(old) });
     }
     LEVEL.store(ALL, Ordering::Relaxed);
-    DEPTH.store(0, Ordering::Relaxed);
 }
 
 /// The playlist tree, if the catalog has one.
@@ -566,19 +560,15 @@ pub(crate) fn open() -> bool {
     let Some(Row::Node(node)) = selected_row() else {
         return false;
     };
-    let depth = DEPTH.load(Ordering::Relaxed) as usize;
-    if level() != Level::All && depth < PATH_DEPTH {
-        PATH[depth].store(SELECTED.load(Ordering::Relaxed), Ordering::Relaxed);
-        DEPTH.store(depth as u32 + 1, Ordering::Relaxed);
-    }
     LEVEL.store(node, Ordering::Relaxed);
     SELECTED.store(0, Ordering::Relaxed);
     true
 }
 
 /// One level up: the track list goes to the playlists' top level, the top level back
-/// to the track list, and a folder or playlist to its parent, with that level's
-/// selection as it was. False when there is nowhere to go. The engine's side.
+/// to the track list, and a folder or playlist to its parent. On the parent the
+/// selection is the row of the folder or playlist it came from, however deep the tree.
+/// False when there is nowhere to go. The engine's side.
 pub(crate) fn back() -> bool {
     let (up, selected) = match level() {
         Level::All => {
@@ -586,20 +576,25 @@ pub(crate) fn back() -> bool {
                 return false;
             }
             ALL_SELECTED.store(SELECTED.load(Ordering::Relaxed), Ordering::Relaxed);
-            DEPTH.store(0, Ordering::Relaxed);
             (TOP, 0)
         }
         Level::Top => (ALL, ALL_SELECTED.load(Ordering::Relaxed)),
         Level::Node(node) => {
-            let parent = shelf()
+            let shelf = shelf();
+            let parent = shelf
                 .and_then(|shelf| shelf.nodes.get(node as usize))
                 .and_then(|node| node.parent);
-            let depth = DEPTH.load(Ordering::Relaxed).saturating_sub(1);
-            DEPTH.store(depth, Ordering::Relaxed);
-            (
-                parent.unwrap_or(TOP),
-                PATH[depth as usize].load(Ordering::Relaxed),
-            )
+            // The row this level was opened from: the node among its parent's rows.
+            let row = shelf
+                .and_then(|shelf| {
+                    match parent {
+                        Some(parent) => shelf.nodes.get(parent as usize)?.children.iter(),
+                        None => shelf.top.iter(),
+                    }
+                    .position(|&child| child == node)
+                })
+                .unwrap_or(0);
+            (parent.unwrap_or(TOP), row as u32)
         }
     };
     LEVEL.store(up, Ordering::Relaxed);
@@ -615,10 +610,12 @@ pub(crate) fn path_names() -> Vec<&'static str> {
         Level::All | Level::Top => None,
         Level::Node(node) => Some(node),
     };
+    // No path is longer than the tree has nodes; the bound only stops a broken parent loop.
+    let bound = shelf().map_or(0, |shelf| shelf.nodes.len());
     while let Some(node) = at.and_then(|node| shelf()?.nodes.get(node as usize)) {
         names.push(node.name.as_str());
         at = node.parent;
-        if names.len() > PATH_DEPTH {
+        if names.len() >= bound {
             break;
         }
     }
