@@ -414,9 +414,16 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   the same with the screen still, so the screen does not leave a slower cache behind. Its
   frames compete for memory while the fill runs. The stick's reads made no difference.
   Next: keep the screen's heavy memory work, and if needed the decoders, out of the fill.
+- **Boot screen and screensaver (2026-11-21):** [the boot screen and the screensaver](reviews/2026-11-21-screensaver.md).
+  As the donor's: the owner's RUZINA wordmark, its letters lit in turn, for 3 s at boot and
+  after an idle wait set on the Settings page (OFF, 2, 5, 10 minutes; 2 by default). A
+  playing deck holds it off. A touch or a controller press only wakes it; faders, knobs and
+  the Web Remote act too. s172 (app `d0863dcc…`): all of it works by touch and from the Web
+  Remote, owner "Sve radi"; the FLX4's wake waits for the controller.
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s172 (app `d0863dcc…`) is the play image flags on the screensaver branch.
   - s162 (app `4b6044fa…`) is the `--usb-stick` image of the Web Remote send branch, with
     no profile. Its firmware is the same as `main` at `830a46b`. It has all 11 outside
     review fixes. In its run it made 42 000 fills with 0/0 underruns, and the longest took
@@ -975,8 +982,8 @@ Branding: the owner-supplied artwork is in `firmware-rust/assets/branding`
   a remote mutation delivered).
 - The simulator shows the splash on the landscape JC1060 and the emblem over
   the wordmark on the portrait JC8012, with two new reviewed goldens.
-- The target display screensaver still needs a display owner and a derived
-  RGB565 image.
+- The JC1060 deck screen has had its boot screen and screensaver since 2026-11-21
+  ([screensaver](reviews/2026-11-21-screensaver.md)), on the same `IdleScreen` timing.
 
 A case-insensitive search for the old name may show only the donor
 references listed above.

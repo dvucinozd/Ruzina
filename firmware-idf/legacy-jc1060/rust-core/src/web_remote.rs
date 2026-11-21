@@ -441,6 +441,7 @@ fn mixer_status() -> MixerStatus {
 pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
     const DECKS: [DeckId; 2] = [DeckId::One, DeckId::Two];
     while let Some((deck, control)) = deck_view::WEB.pop() {
+        crate::screen_idle::remote();
         let fx = mix.engine().fx_view();
         for event in crate::controller_midi::touch_events(deck, control, fx)
             .into_iter()
@@ -450,6 +451,7 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         }
     }
     while let Some(event) = deck_view::WEB_EVENTS.pop() {
+        crate::screen_idle::remote();
         // LOOP CLEAR arrives as the FLX4's Shift + 4 BEAT (`ReloopStop`), which brings the
         // last loop back when none plays. From the page it only clears: without a loop
         // playing there is nothing to clear, so it goes no further.
@@ -469,6 +471,7 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
     use crate::deck_engine::{LoadRefused, SeekRefused};
     for (i, deck) in DECKS.into_iter().enumerate() {
         if let Some((ticket, [track, revision, _])) = WEB_LOAD[i].take() {
+            crate::screen_idle::remote();
             let answer = if revision != deck_view::web_revision() {
                 CHANGED
             } else {
@@ -482,6 +485,7 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
             WEB_LOAD[i].answer(ticket, answer);
         }
         if let Some((ticket, [position_ms, sent, generation])) = WEB_SEEK[i].take() {
+            crate::screen_idle::remote();
             let answer = if sent != 0 && generation != mix.engine().load_generation(deck) {
                 CHANGED
             } else {

@@ -7,7 +7,11 @@
 //! `SLOW_FRAME_US` also logs 23 its draw (pass: the rows drawn) and 24 the page updates
 //! before it (pass: the open page), then 25 each area drawn (pass: first and last row,
 //! value: first and last column, 16 bits each) and 26 the lines (pass) and pixels drawn.
+//!
+//! The boot screen and the screensaver lie over everything (`screen_idle`); Rust then draws
+//! nothing.
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
+use crate::screen_idle::{Cover, Saver};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use ruzina_track_analysis::{AnalysisMemoryCue, Beat, WaveformColumn};
@@ -76,6 +80,11 @@ const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], ME
 /// The Library, Hot Cues, Settings and FX pages cover the lanes and meters; Rust then draws only
 /// the overviews.
 const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
+/// The cover's lit letter moves one letter on each step.
+const COVER_STEP_MS: u64 = 120;
+/// The cover's word has six letters; its lit letter runs from two before the first to two
+/// past the last.
+const COVER_HEADS: u64 = 6 + 5;
 /// The Library page's rows.
 const LIBRARY_ROWS: u32 = 12;
 const PANEL: u16 = rgb(0x0d, 0x0f, 0x11);
@@ -235,7 +244,7 @@ fn c_text(bytes: &[u8]) -> &str {
 
 /// The Settings page's choices, as the settings in force have them.
 fn show_setting_values(ui: &Overview) {
-    use ruzina_settings::{JogMode, MasterTrim};
+    use ruzina_settings::{JogMode, MasterTrim, Screensaver};
     let settings = crate::deck_settings::current();
     ui.set_setting_load_lock(settings.load_lock);
     ui.set_setting_jog_cdj_1(settings.jog_modes[0] == JogMode::Cdj);
@@ -245,6 +254,12 @@ fn show_setting_values(ui: &Overview) {
         MasterTrim::ZeroDb => 0,
         MasterTrim::Minus3Db => 1,
         MasterTrim::Minus6Db => 2,
+    });
+    ui.set_setting_screensaver(match settings.screensaver {
+        Screensaver::Off => 0,
+        Screensaver::Minutes2 => 1,
+        Screensaver::Minutes5 => 2,
+        Screensaver::Minutes10 => 3,
     });
 }
 
@@ -1336,7 +1351,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // turn, the brightness here), saved by the load task once it has been quiet.
     let weak = ui.as_weak();
     ui.on_setting(move |kind, value| {
-        use ruzina_settings::{JogMode, MasterTrim};
+        use ruzina_settings::{JogMode, MasterTrim, Screensaver};
         let jog = if value == 1 {
             JogMode::Cdj
         } else {
@@ -1351,11 +1366,19 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 s.backlight_percent =
                     crate::deck_settings::step_backlight(s.backlight_percent, value == 1)
             }
-            _ => {
+            4 => {
                 s.master_trim = match value {
                     1 => MasterTrim::Minus3Db,
                     2 => MasterTrim::Minus6Db,
                     _ => MasterTrim::ZeroDb,
+                }
+            }
+            _ => {
+                s.screensaver = match value {
+                    0 => Screensaver::Off,
+                    2 => Screensaver::Minutes5,
+                    3 => Screensaver::Minutes10,
+                    _ => Screensaver::Minutes2,
                 }
             }
         });
@@ -1387,6 +1410,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // When the Settings page next refreshes its figures.
     let mut settings_at = 0u64;
     let mut was_covered = false;
+    let mut shown_cover = Cover::Boot;
+    let mut shown_head = None;
     let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over both frame buffers.
     let mut buffers = unsafe {
@@ -1414,6 +1439,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let mut drawing = 1;
     // SAFETY: reads a counter.
     let mut target = unsafe { ruzina_panel_refreshes() } + REFRESHES_PER_FRAME;
+    let timeout_ms = || crate::deck_settings::current().screensaver.timeout_ms();
+    let mut saver = Saver::new(0, timeout_ms());
     loop {
         let ms = now_us() / 1_000 - start;
         if ms >= next_report {
@@ -1430,6 +1457,25 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         }
         let updates_started = now_us();
         let decks = [deck_view::LIVE[0].load(), deck_view::LIVE[1].load()];
+        // The boot screen, then the screensaver once the deck has stood idle.
+        let playing = decks.iter().any(|deck| deck.has(deck_view::PLAYING));
+        let cover = saver.tick(ms as u32, touched.is_some(), playing, timeout_ms());
+        if cover != shown_cover {
+            ui.set_cover(match cover {
+                Cover::None => 0,
+                Cover::Boot => 1,
+                Cover::Screensaver => 2,
+            });
+            // Off again: the overviews come back, drawn anew in each buffer.
+            mini_at = [[None; 2]; 2];
+            shown_cover = cover;
+        }
+        let hidden = cover != Cover::None;
+        let head = hidden.then(|| ((ms / COVER_STEP_MS) % COVER_HEADS) as i32 - 2);
+        if head != shown_head {
+            ui.set_cover_head(head.unwrap_or(0));
+            shown_head = head;
+        }
         for deck in 0..2 {
             if let Some(track) = deck_view::take_track(deck) {
                 show_cover(&ui, deck, track.cover.as_deref());
@@ -1468,8 +1514,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let tab = ui.get_active_tab();
         let library_open = tab == 1;
         deck_view::LIBRARY_OPEN.store(library_open, core::sync::atomic::Ordering::Relaxed);
-        // The Library, Hot Cues, Settings and FX pages cover the lanes and meters.
-        let covered = matches!(tab, 1..=4);
+        // The Library, Hot Cues, Settings and FX pages cover the lanes and meters, and the
+        // boot screen and screensaver cover everything.
+        let covered = hidden || matches!(tab, 1..=4);
         if covered != was_covered {
             // A page covered the lanes and meters, or uncovered them: Rust draws them
             // again in each buffer.
@@ -1538,7 +1585,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let mut rows_drawn = 0;
         let mut drawn_areas = None;
         let mut split = None;
-        let direct: &[Area] = if covered { &COVERED_DIRECT } else { &DIRECT };
+        let direct: &[Area] = if hidden {
+            &[]
+        } else if covered {
+            &COVERED_DIRECT
+        } else {
+            &DIRECT
+        };
         // Every frame goes through Slint, which then also brings this buffer up to date
         // with what changed while the other one was shown.
         window.request_redraw();
@@ -1628,7 +1681,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     / u64::from(duration)) as usize
             });
             let mini = Some((index, playhead));
-            if mini_at[drawing][deck] != mini {
+            if !hidden && mini_at[drawing][deck] != mini {
                 let view = track
                     .and_then(|track| track.analysis.as_ref())
                     .map(|analysis| analysis.view());

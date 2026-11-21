@@ -437,8 +437,10 @@ component SettingsPage inherits Rectangle {
     in property <bool> jog-cdj-2;
     in property <int> backlight;
     in property <int> trim;
+    in property <int> screensaver;
     // What changed (0 LOAD LOCK, 1 deck 1's jog, 2 deck 2's jog, 3 the brightness one
-    // step, 4 the MAIN trim) and to: 1 for on, CDJ or a step up, else 0; the trim 0 to 2.
+    // step, 4 the MAIN trim, 5 the screensaver) and to: 1 for on, CDJ or a step up, else
+    // 0; the trim 0 to 2; the screensaver 0 OFF, then 1 to 3 for 2, 5 and 10 minutes.
     callback change(int, int);
     width: 1024px;
     height: 430px;
@@ -484,6 +486,22 @@ component SettingsPage inherits Rectangle {
             text: name;
             selected: i == root.trim;
             clicked => { root.change(4, i); }
+        }
+    }
+    // Under the ten lines of the right column.
+    SettingRow {
+        x: 520px;
+        y: 382px;
+        height: 44px;
+        label: "SCREENSAVER";
+        for name[i] in ["OFF", "2 MIN", "5 MIN", "10 MIN"]: Choice {
+            x: 176px + i * 78px;
+            y: 4px;
+            width: 72px;
+            height: 36px;
+            text: name;
+            selected: i == root.screensaver;
+            clicked => { root.change(5, i); }
         }
     }
     for line[i] in root.left: Rectangle {
@@ -895,6 +913,12 @@ export component Overview inherits Window {
     in property <bool> setting-jog-cdj-2;
     in property <int> setting-backlight: 25;
     in property <int> setting-trim;
+    in property <int> setting-screensaver: 1;
+    // Over everything: 0 nothing, 1 the boot screen, 2 the screensaver (`screen_idle.rs`).
+    in property <int> cover: 1;
+    // The cover's lit letter, which moves along the word from before its first letter to
+    // past its last; the letters around it glow less the further they are.
+    in property <int> cover-head;
 
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
@@ -912,7 +936,7 @@ export component Overview inherits Window {
     // MT tapped on deck 0 or 1.
     callback master-tempo(int);
     // The Settings page: what changed (0 LOAD LOCK, 1 and 2 a deck's jog, 3 the
-    // brightness one step, 4 the MAIN trim) and to.
+    // brightness one step, 4 the MAIN trim, 5 the screensaver) and to.
     callback setting(int, int);
     // Each tab has a page. The FX panel opens page 4, which no tab marks.
     in-out property <int> active-tab: 0;
@@ -1004,6 +1028,7 @@ export component Overview inherits Window {
         jog-cdj-2: root.setting-jog-cdj-2;
         backlight: root.setting-backlight;
         trim: root.setting-trim;
+        screensaver: root.setting-screensaver;
         change(kind, value) => { root.setting(kind, value); }
     }
 
@@ -1108,5 +1133,41 @@ export component Overview inherits Window {
         height: 0px;
         color: transparent;
         text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™";
+    }
+
+    // The boot screen and the screensaver, as the donor's: the owner's RUZINA wordmark, its
+    // letters lit in turn.
+    if root.cover != 0: Rectangle {
+        width: 1024px;
+        height: 600px;
+        background: #100c08;
+        // Takes every tap: one that wakes the screensaver presses nothing below.
+        TouchArea { }
+        // The wordmark cut into its letters (`wordmark/make.sh`), side by side as drawn.
+        HorizontalLayout {
+            y: 244px;
+            height: 112px;
+            alignment: center;
+            spacing: 0px;
+            for letter[i] in [
+                @image-url("wordmark/R.png"),
+                @image-url("wordmark/U.png"),
+                @image-url("wordmark/Z.png"),
+                @image-url("wordmark/I.png"),
+                @image-url("wordmark/N.png"),
+                @image-url("wordmark/A.png"),
+            ]: Image {
+                source: letter;
+                opacity: Math.abs(i - root.cover-head) >= 4 ? 0.27 : (255 - Math.abs(i - root.cover-head) * 46) / 255;
+            }
+        }
+        if root.cover == 2: Text {
+            y: 540px;
+            width: 1024px;
+            text: "touch me.....or don't ;)";
+            color: #a3958e;
+            font-size: 20px;
+            horizontal-alignment: center;
+        }
     }
 }

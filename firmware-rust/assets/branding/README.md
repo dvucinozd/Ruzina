@@ -9,7 +9,9 @@ files are the sources of record; the firmware and simulator use derived forms.
 | `ruzina-wordmark.png` | 824x200 RGBA | `7cdf364ceff17f44fdbeb29ef3785066519c6f6c9512bf9ec406590fea18f1a6` | Portrait screensaver, under the emblem |
 | `ruzina-screensaver.png` | 1536x1024 RGB | `d505d269ad09e58b9375265766c43ed665757f5cad1dbe5adb4988f85dd32730` | Landscape screensaver (emblem and wordmark on rusted steel) |
 
-The simulator embeds the PNGs at build time. A target display owner will need
+The simulator embeds the PNGs at build time. The JC1060 deck screen's boot screen and
+screensaver use the wordmark cut into its six letters, 720 px wide, in
+`firmware-idf/legacy-jc1060/rust-core/ui/wordmark/` (`make.sh` there makes them). A target display owner will need
 its own derived format (for example RGB565 at the qualified panel size);
 derive it from these files and record the conversion next to its output.
 

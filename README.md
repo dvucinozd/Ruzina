@@ -41,7 +41,9 @@ runs.
   - a Library with Rekordbox playlists, and each deck's cover;
   - Hot Cues, FX and Settings pages;
   - Rekordbox memory cues, called from the HOT CUES page or the FLX4's SAMPLER pads;
-  - settings kept on flash: LOAD LOCK, VINYL/CDJ, brightness and the MAIN trim.
+  - settings kept on flash: LOAD LOCK, VINYL/CDJ, brightness, the MAIN trim and the
+    screensaver's wait;
+  - a boot screen and a screensaver with the RUZINA wordmark.
 - **Media:** the USB stick shares a hub with the FLX4. Pulled out, the Library shows
   MEDIA REMOVED; put back, the app restarts and reads it again. No SD card is needed.
 - **Network:** the deck's own Wi-Fi (ESP32-C6 via ESP-Hosted) and the Web Remote, with

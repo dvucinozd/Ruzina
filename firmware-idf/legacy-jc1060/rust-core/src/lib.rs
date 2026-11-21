@@ -74,6 +74,9 @@ mod deck_resources;
 #[cfg(feature = "deck-engine")]
 mod deck_settings;
 
+#[cfg(feature = "deck-engine")]
+mod screen_idle;
+
 #[cfg(feature = "soak-autoplay")]
 mod soak_autoplay;
 

@@ -48,6 +48,30 @@ pub enum JogMode {
     Cdj,
 }
 
+/// How long the screen waits, with nothing touched or pressed and no deck playing, before
+/// the screensaver shows. Stored in byte 9, reserved (0) before it: every older record
+/// holds 0, which is the two-minute default. Firmware from before reads any other value as
+/// a reserved byte set and falls back to its defaults, leaving the record as it is.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Screensaver {
+    Minutes2,
+    Off,
+    Minutes5,
+    Minutes10,
+}
+
+impl Screensaver {
+    /// The wait in milliseconds; 0 when off.
+    pub const fn timeout_ms(self) -> u32 {
+        match self {
+            Self::Off => 0,
+            Self::Minutes2 => 2 * 60 * 1000,
+            Self::Minutes5 => 5 * 60 * 1000,
+            Self::Minutes10 => 10 * 60 * 1000,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProductSettings {
     pub backlight_percent: u8,
@@ -59,6 +83,7 @@ pub struct ProductSettings {
     /// RP-04 LOAD LOCK; on by default.
     pub load_lock: bool,
     pub jog_modes: [JogMode; 2],
+    pub screensaver: Screensaver,
 }
 
 impl ProductSettings {
@@ -72,6 +97,7 @@ impl ProductSettings {
         dj_link: false,
         load_lock: true,
         jog_modes: [JogMode::Vinyl; 2],
+        screensaver: Screensaver::Minutes2,
     };
 
     pub fn validate(&self) -> Result<(), SettingsCodecError> {
@@ -107,6 +133,12 @@ impl ProductSettings {
                 JogMode::Cdj => 1,
             };
         }
+        out[9] = match self.screensaver {
+            Screensaver::Minutes2 => 0,
+            Screensaver::Off => 1,
+            Screensaver::Minutes5 => 2,
+            Screensaver::Minutes10 => 3,
+        };
         Ok(out)
     }
 
@@ -115,7 +147,7 @@ impl ProductSettings {
     pub fn decode(payload: &[u8]) -> Result<Self, SettingsCodecError> {
         let payload: &[u8; SETTINGS_PAYLOAD_BYTES] =
             payload.try_into().map_err(|_| SettingsCodecError::Length)?;
-        if payload[9..].iter().any(|byte| *byte != 0) {
+        if payload[10..].iter().any(|byte| *byte != 0) {
             return Err(SettingsCodecError::Reserved);
         }
         let flag = |byte: u8| match byte {
@@ -150,6 +182,13 @@ impl ProductSettings {
             dj_link: flag(payload[5])?,
             load_lock: flag(payload[6])?,
             jog_modes: [jog(payload[7])?, jog(payload[8])?],
+            screensaver: match payload[9] {
+                0 => Screensaver::Minutes2,
+                1 => Screensaver::Off,
+                2 => Screensaver::Minutes5,
+                3 => Screensaver::Minutes10,
+                _ => return Err(SettingsCodecError::OutOfRange),
+            },
         };
         settings.validate()?;
         Ok(settings)
@@ -197,6 +236,7 @@ mod tests {
             dj_link: false,
             load_lock: false,
             jog_modes: [JogMode::Cdj, JogMode::Vinyl],
+            screensaver: Screensaver::Minutes10,
         };
         let bytes = settings.encode().unwrap();
         assert_eq!(ProductSettings::decode(&bytes), Ok(settings));
@@ -212,7 +252,8 @@ mod tests {
             (3, 3, SettingsCodecError::OutOfRange),
             (6, 0xff, SettingsCodecError::OutOfRange),
             (8, 2, SettingsCodecError::OutOfRange),
-            (9, 1, SettingsCodecError::Reserved),
+            (9, 4, SettingsCodecError::OutOfRange),
+            (10, 1, SettingsCodecError::Reserved),
             (15, 1, SettingsCodecError::Reserved),
         ] {
             let mut bad = bytes;
@@ -222,6 +263,16 @@ mod tests {
         assert_eq!(
             ProductSettings::decode(&bytes[..15]),
             Err(SettingsCodecError::Length)
+        );
+        // A record from before the screensaver setting: byte 9 was reserved, so 0.
+        let mut older = bytes;
+        older[9] = 0;
+        assert_eq!(
+            ProductSettings::decode(&older),
+            Ok(ProductSettings {
+                screensaver: Screensaver::Minutes2,
+                ..settings
+            })
         );
         let dim = ProductSettings {
             backlight_percent: 5,

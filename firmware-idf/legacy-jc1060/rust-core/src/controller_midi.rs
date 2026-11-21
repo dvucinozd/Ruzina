@@ -800,7 +800,8 @@ fn drain(state: &mut State) -> i32 {
     delivered
 }
 
-/// One control event: logged in C, echoed, and handed to the mix and the deck engine.
+/// One control event: logged in C, echoed, and handed to the mix and the deck engine. A
+/// press that only wakes the screensaver goes no further (`screen_idle`).
 #[cfg(feature = "idf-controller-midi")]
 fn deliver(state: &mut State, event: &ControlEvent) {
     let (deck, kind, value, max) = encode(event);
@@ -821,6 +822,10 @@ fn deliver(state: &mut State, event: &ControlEvent) {
             name.len as u32,
         )
     };
+    #[cfg(feature = "deck-engine")]
+    if !crate::screen_idle::controller(event) {
+        return;
+    }
     state.echo(event);
     #[cfg(all(feature = "deck-mix", not(feature = "web-remote")))]
     crate::deck_mix::with(|mix| mix.control(event));

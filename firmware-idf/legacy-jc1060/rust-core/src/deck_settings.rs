@@ -1,5 +1,5 @@
 //! The deck's own settings, kept on flash (RP-11): LOAD LOCK, each deck's jog as VINYL
-//! or CDJ, the screen's brightness and the MAIN trim.
+//! or CDJ, the screen's brightness, the MAIN trim and the screensaver's wait.
 //!
 //! - **Boot:** the record is read before the screen and USB audio start. The sector the
 //!   saves move on to, once theirs is full, is erased then: an erase stalls the USB
@@ -20,7 +20,7 @@
 
 use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use ruzina_settings::{
-    BACKLIGHT_MIN_PERCENT, CueMode, JogMode, MasterTrim, ProductSettings, TimeDisplay,
+    BACKLIGHT_MIN_PERCENT, CueMode, JogMode, MasterTrim, ProductSettings, Screensaver, TimeDisplay,
 };
 
 /// The board's out-of-the-box settings: the shared defaults, with the screen as bright
@@ -124,7 +124,8 @@ fn sanitized(mut settings: ProductSettings) -> ProductSettings {
 }
 
 /// Bits 0-6 the brightness; then one bit each for the time display, the cue mode, two
-/// for the trim, then Wi-Fi, DJ Link, LOAD LOCK and each deck's CDJ jog.
+/// for the trim, then Wi-Fi, DJ Link, LOAD LOCK and each deck's CDJ jog, then two for the
+/// screensaver.
 const fn pack(settings: &ProductSettings) -> u32 {
     let trim = match settings.master_trim {
         MasterTrim::ZeroDb => 0,
@@ -140,6 +141,12 @@ const fn pack(settings: &ProductSettings) -> u32 {
         | (settings.load_lock as u32) << 13
         | (matches!(settings.jog_modes[0], JogMode::Cdj) as u32) << 14
         | (matches!(settings.jog_modes[1], JogMode::Cdj) as u32) << 15
+        | (match settings.screensaver {
+            Screensaver::Minutes2 => 0,
+            Screensaver::Off => 1,
+            Screensaver::Minutes5 => 2,
+            Screensaver::Minutes10 => 3,
+        }) << 16
 }
 
 fn unpack(packed: u32) -> ProductSettings {
@@ -166,6 +173,12 @@ fn unpack(packed: u32) -> ProductSettings {
         dj_link: bit(12),
         load_lock: bit(13),
         jog_modes: [jog(14), jog(15)],
+        screensaver: match packed >> 16 & 3 {
+            1 => Screensaver::Off,
+            2 => Screensaver::Minutes5,
+            3 => Screensaver::Minutes10,
+            _ => Screensaver::Minutes2,
+        },
     }
 }
 
