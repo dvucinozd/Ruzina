@@ -692,20 +692,12 @@ pub(crate) fn take_web_track(deck: usize) -> Option<Box<WebTrack>> {
     WEB_TRACKS[deck].take()
 }
 
-/// Loads the Web Remote asks for: the catalog index plus one per deck, 0 for none. The
-/// web task stores, the USB task takes; they do not go through the screen's selection.
+/// The revision of the newest catalog list, as [`WebLibrary::revision`] gives it. The
+/// USB task checks a Web Remote load against it.
 #[cfg(feature = "web-remote")]
-pub(crate) static WEB_LOADS: [AtomicU32; 2] = [const { AtomicU32::new(0) }; 2];
-
-/// Whether the engine has a load onto each deck in flight, from any source: the USB task
-/// stores it after every turn, and the Web Remote answers Busy meanwhile.
-#[cfg(feature = "web-remote")]
-pub(crate) static LOAD_PENDING: [AtomicBool; 2] = [const { AtomicBool::new(false) }; 2];
-
-/// Seeks the Web Remote asks for: the position in ms plus one per deck, 0 for none. The
-/// latest wins; the USB task takes it.
-#[cfg(feature = "web-remote")]
-pub(crate) static WEB_SEEKS: [AtomicU32; 2] = [const { AtomicU32::new(0) }; 2];
+pub(crate) fn web_revision() -> u32 {
+    WEB_REVISION.load(Ordering::Relaxed).max(1)
+}
 
 /// The Web Remote's other controls (the mixer, SYNC, PFL, Tempo, loops), from the web task
 /// to the USB task as the controller sends them, oldest first.

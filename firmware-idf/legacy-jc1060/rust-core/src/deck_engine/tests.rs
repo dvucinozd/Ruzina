@@ -984,6 +984,162 @@ fn the_four_beat_button_starts_a_loop_and_exits_it() {
     assert_eq!(mix.stats()[1], underruns);
 }
 
+/// The engine's answer to a Web Remote load onto deck 1, with `before` acting on the mix
+/// as the controller would between the page's request and the USB task's turn.
+#[cfg(feature = "web-remote")]
+fn web_load(mix: &mut Mix, index: u32, revision: u32, before: impl FnOnce(&mut Mix)) -> Option<u8> {
+    use crate::web_remote::{WEB_LOAD, engine_answer};
+    engine_answer(&WEB_LOAD[0], [index + 1, revision, 0], mix, before)
+}
+
+/// The engine's answer to a Web Remote seek on deck 1.
+#[cfg(feature = "web-remote")]
+fn web_seek(mix: &mut Mix, position_ms: u32, generation: Option<u32>) -> Option<u8> {
+    use crate::web_remote::{WEB_SEEK, engine_answer};
+    let args = [
+        position_ms,
+        u32::from(generation.is_some()),
+        generation.unwrap_or(0),
+    ];
+    engine_answer(&WEB_SEEK[0], args, mix, |_| {})
+}
+
+/// The producer's side of the load the engine asked for: ready, as `post_load` does.
+#[cfg(feature = "web-remote")]
+fn finish_load(mix: &mut Mix, track: u8) {
+    let request = LOAD_REQUESTS[0].take().expect("a load asked for");
+    GATES[0].begin_replacement(request.permit).unwrap();
+    LOAD_RESULTS[0]
+        .put(LoadResult {
+            source_cues: NO_CUES,
+            persisted_cues: None,
+            request,
+            ready: true,
+            bpm_x100: 12_000,
+            track_id: [track; 16],
+        })
+        .unwrap();
+    run(mix, 3);
+}
+
+#[cfg(feature = "web-remote")]
+#[test]
+fn the_web_remote_hears_what_the_engine_did_with_its_loads() {
+    use crate::web_remote::{BUSY, CHANGED, DONE, LOCKED};
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    LOAD_REQUESTS[0].take();
+    LOAD_RESULTS[0].take();
+    let mut mix = Mix::new();
+    serve(0);
+    let revision = crate::deck_view::web_revision();
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 1,
+            bpm_x100: 12_000,
+            track_id: [1; 16],
+        },
+    );
+    run(&mut mix, 3);
+    // From a revision the deck's catalog no longer has: refused before the engine.
+    assert_eq!(
+        web_load(&mut mix, 2, revision.wrapping_add(1), |_| {}),
+        Some(CHANGED)
+    );
+    assert!(LOAD_REQUESTS[0].take().is_none());
+    // A Play on the controller between the page's request and the USB task's turn:
+    // LOAD LOCK refuses, as it would the controller's LOAD.
+    let play = |mix: &mut Mix| press(mix, SemanticControl::Play, true);
+    assert_eq!(web_load(&mut mix, 2, revision, play), Some(LOCKED));
+    assert!(LOAD_REQUESTS[0].take().is_none());
+    run(&mut mix, 3);
+    assert!(deck(&mut mix).playing);
+    assert_eq!(
+        web_load(&mut mix, 2, revision, |_| {}),
+        Some(LOCKED),
+        "playing"
+    );
+    // With LOAD LOCK off the engine lets a playing deck change track, so the page does.
+    mix.engine().deck.set_load_lock(false);
+    assert_eq!(web_load(&mut mix, 2, revision, |_| {}), Some(DONE));
+    // A second load onto the same deck while the first is in flight.
+    assert_eq!(web_load(&mut mix, 3, revision, |_| {}), Some(BUSY));
+    finish_load(&mut mix, 2);
+    assert_eq!(
+        TRACK_INDEX[0].load(Ordering::Relaxed),
+        2,
+        "the first one's track"
+    );
+    mix.engine().deck.set_load_lock(true);
+    empty_ring(0);
+    empty_ring(1);
+}
+
+#[cfg(feature = "web-remote")]
+#[test]
+fn a_web_seek_lands_on_the_track_it_was_meant_for_or_says_why_not() {
+    use crate::web_remote::{CHANGED, DONE, HELD, LOAD_GENERATIONS, NO_TRACK};
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    attach_ring(0);
+    attach_ring(1);
+    LOAD_REQUESTS[0].take();
+    LOAD_RESULTS[0].take();
+    SEEK_REQUESTS[0].take();
+    SEEK_RESULTS[0].take();
+    let mut mix = Mix::new();
+    serve(0);
+    assert_eq!(web_seek(&mut mix, 100, None), Some(NO_TRACK));
+    post_load(
+        &mut mix,
+        LoadFixture {
+            ready: true,
+            index: 9,
+            bpm_x100: 48_000,
+            track_id: [9; 16],
+        },
+    );
+    run(&mut mix, 3);
+    let more = std::vec![PcmFrame { left: 10_000, right: 10_000 }; 30_000];
+    assert!(RINGS[0].push(&more));
+    let first = mix.engine().load_generation(DeckId::One);
+    // The status publishes the generation after the USB task's turn.
+    assert_eq!(web_seek(&mut mix, 2_000, Some(first)), Some(DONE));
+    assert_eq!(LOAD_GENERATIONS[0].load(Ordering::Relaxed), first);
+    assert_eq!(take_seek(), Some(2_000));
+    acknowledge_seek(&mut mix);
+    // A seek meant for another track never moves this one.
+    assert_eq!(
+        web_seek(&mut mix, 3_000, Some(first.wrapping_add(1))),
+        Some(CHANGED)
+    );
+    assert_eq!(take_seek(), None);
+    // Inside a loop the deck holds its place.
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 100);
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    assert!(deck(&mut mix).loop_state.active.is_some(), "a 4-beat loop");
+    assert_eq!(web_seek(&mut mix, 3_000, Some(first)), Some(HELD));
+    assert_eq!(take_seek(), None);
+    press(&mut mix, SemanticControl::ReloopExit, true);
+    press(&mut mix, SemanticControl::Play, true);
+    run(&mut mix, 3);
+    // Loading the same track again is a new generation: the old seek is refused.
+    let revision = crate::deck_view::web_revision();
+    assert_eq!(
+        web_load(&mut mix, 9, revision, |_| {}),
+        Some(crate::web_remote::DONE)
+    );
+    finish_load(&mut mix, 9);
+    assert_ne!(mix.engine().load_generation(DeckId::One), first);
+    assert_eq!(web_seek(&mut mix, 3_000, Some(first)), Some(CHANGED));
+    assert_eq!(take_seek(), None);
+    empty_ring(0);
+    empty_ring(1);
+}
+
 #[cfg(feature = "web-remote")]
 #[test]
 fn the_web_loop_clear_does_not_bring_back_an_exited_loop() {

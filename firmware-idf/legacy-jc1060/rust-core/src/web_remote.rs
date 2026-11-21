@@ -5,18 +5,18 @@
 //! API. PLAY and CUE take the touch path to the USB task: [`deck_view::WEB`] is a second
 //! touch queue, so they pass the same admission as the deck screen's buttons. The other
 //! controls (the mixer, SYNC, PFL, Tempo, loops) go as the controller sends them, through
-//! [`deck_view::WEB_EVENTS`]. Seeks go through [`deck_view::WEB_SEEKS`]. The USB task's
-//! side of all of it is [`service`].
+//! [`deck_view::WEB_EVENTS`]. The USB task's side of all of it is [`service`].
 //!
 //! The page lists the catalog from the Web Remote's own copy
 //! ([`deck_view::take_web_library`]) and shows each deck's title and duration
-//! ([`deck_view::take_web_track`]). A load goes to the USB task through
-//! [`deck_view::WEB_LOADS`], into the same admission as a LOAD, without moving the
-//! screen's selection.
+//! ([`deck_view::take_web_track`]). A load goes to the USB task through [`WEB_LOAD`], into
+//! the same admission as a LOAD, without moving the screen's selection. A seek goes
+//! through [`WEB_SEEK`]. For both, the web task waits for the engine's answer, so the page
+//! hears what the deck did, not only that the request was queued.
 use crate::deck_view::{self, MixView, TouchControl, WebLibrary, WebTrack};
 use alloc::boxed::Box;
 use core::cell::UnsafeCell;
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
 use ruzina_media_catalog::CatalogPublicationId;
 use ruzina_media_session::{MediaGeneration, MediaLease, MediaSourceId};
@@ -27,6 +27,156 @@ use ruzina_web::server::{
 
 /// The access point's address; the guard admits requests for it.
 const AP_IPV4: &str = "192.168.4.1";
+
+/// One request at a time from the web task to the USB task, and the USB task's answer.
+pub(crate) struct Exchange {
+    /// The ticket of the request waiting for the USB task; 0 for none.
+    asked: AtomicU32,
+    args: [AtomicU32; 3],
+    /// The last answered request: its ticket, shifted up 8 bits, and its answer.
+    answered: AtomicU32,
+}
+
+/// How long the web task waits for the USB task to take a request. The USB task serves
+/// the page at least every 50 ms while the controller is attached.
+const TAKE_MS: u32 = 250;
+/// How long it then waits for the answer, which the USB task gives in the same turn.
+const ANSWER_MS: u32 = 1_000;
+/// One wait's length.
+const STEP_MS: u32 = 2;
+
+/// The engine did it.
+pub(crate) const DONE: u8 = 0;
+/// LOAD LOCK refused the load.
+pub(crate) const LOCKED: u8 = 1;
+/// Another load onto the deck is in flight.
+pub(crate) const BUSY: u8 = 2;
+/// The catalog or the deck's track changed since the page saw it, or the media went.
+pub(crate) const CHANGED: u8 = 3;
+/// The deck has no track to seek in.
+pub(crate) const NO_TRACK: u8 = 4;
+/// A scratch or a loop holds the deck's place.
+pub(crate) const HELD: u8 = 5;
+
+/// Tests: puts a request up on `exchange`, lets `before` act on the mix as the controller
+/// would meanwhile, runs the USB task's turn and gives the engine's answer.
+#[cfg(test)]
+pub(crate) fn engine_answer(
+    exchange: &Exchange,
+    args: [u32; 3],
+    mix: &mut crate::deck_mix::Mix,
+    before: impl FnOnce(&mut crate::deck_mix::Mix),
+) -> Option<u8> {
+    let ticket = exchange.post(args);
+    before(mix);
+    service(mix);
+    exchange.reply(ticket)
+}
+
+impl Exchange {
+    pub(crate) const fn new() -> Self {
+        Self {
+            asked: AtomicU32::new(0),
+            args: [const { AtomicU32::new(0) }; 3],
+            answered: AtomicU32::new(0),
+        }
+    }
+
+    /// Web task: asks, then waits for the answer. `None` if the USB task did not take the
+    /// request in time; it is then withdrawn and never runs.
+    fn ask(&self, args: [u32; 3]) -> Option<u8> {
+        let ticket = self.post(args);
+        let mut waited = 0;
+        loop {
+            if let Some(answer) = self.reply(ticket) {
+                return Some(answer);
+            }
+            if waited >= TAKE_MS {
+                let withdrawn = self
+                    .asked
+                    .compare_exchange(ticket, 0, Ordering::AcqRel, Ordering::Acquire)
+                    .is_ok();
+                if withdrawn || waited >= TAKE_MS + ANSWER_MS {
+                    return None;
+                }
+            }
+            wait();
+            waited += STEP_MS;
+        }
+    }
+
+    /// Web task: puts a request up for the USB task; returns its ticket.
+    fn post(&self, args: [u32; 3]) -> u32 {
+        let ticket = TICKET.fetch_add(1, Ordering::Relaxed) % 0x00FF_FFFF + 1;
+        for (slot, value) in self.args.iter().zip(args) {
+            slot.store(value, Ordering::Relaxed);
+        }
+        self.asked.store(ticket, Ordering::Release);
+        ticket
+    }
+
+    /// Web task: the answer to the request with `ticket`, once there is one.
+    fn reply(&self, ticket: u32) -> Option<u8> {
+        let answered = self.answered.load(Ordering::Acquire);
+        (answered >> 8 == ticket).then_some(answered as u8)
+    }
+
+    /// USB task: the waiting request's ticket and arguments, if one waits.
+    fn take(&self) -> Option<(u32, [u32; 3])> {
+        let ticket = self.asked.swap(0, Ordering::Acquire);
+        (ticket != 0).then(|| {
+            (
+                ticket,
+                self.args.each_ref().map(|a| a.load(Ordering::Relaxed)),
+            )
+        })
+    }
+
+    /// USB task: the answer to the request with `ticket`.
+    fn answer(&self, ticket: u32, answer: u8) {
+        self.answered
+            .store(ticket << 8 | u32::from(answer), Ordering::Release);
+    }
+}
+
+/// Web task only: each request's ticket comes from here.
+static TICKET: AtomicU32 = AtomicU32::new(0);
+
+/// Each deck's Web Remote load: the catalog index plus one, and the catalog revision the
+/// page listed it from.
+pub(crate) static WEB_LOAD: [Exchange; 2] = [const { Exchange::new() }; 2];
+/// Each deck's Web Remote seek: the position in ms, whether the page sent the deck's load
+/// generation, and that generation.
+pub(crate) static WEB_SEEK: [Exchange; 2] = [const { Exchange::new() }; 2];
+/// Each deck's load generation, which the USB task publishes after every turn for the
+/// status.
+pub(crate) static LOAD_GENERATIONS: [AtomicU32; 2] = [const { AtomicU32::new(0) }; 2];
+
+/// One short wait of the web task.
+#[cfg(not(test))]
+fn wait() {
+    unsafe extern "C" {
+        fn ruzina_web_wait(ms: u32);
+    }
+    // SAFETY: a plain delay of the calling task, the web task.
+    unsafe { ruzina_web_wait(STEP_MS) }
+}
+
+#[cfg(test)]
+std::thread_local! {
+    /// What a test's USB task does while the web task waits.
+    static USB_TURN: core::cell::RefCell<Option<Box<dyn FnMut()>>> =
+        core::cell::RefCell::new(None);
+}
+
+#[cfg(test)]
+fn wait() {
+    USB_TURN.with(|turn| {
+        if let Some(turn) = turn.borrow_mut().as_mut() {
+            turn();
+        }
+    });
+}
 
 /// What the web task keeps between requests: the catalog and each deck's track.
 #[derive(Default)]
@@ -144,7 +294,9 @@ impl WebBackend for Backend<'_> {
                 lease: LEASE,
                 revision: library.revision,
             }),
-            load_generations: [0, 0],
+            load_generations: LOAD_GENERATIONS
+                .each_ref()
+                .map(|g| g.load(Ordering::Acquire)),
             decks: [deck(0), deck(1)],
             mixer: mixer_status(),
         }
@@ -188,8 +340,8 @@ impl WebBackend for Backend<'_> {
         ControlOutcome::Applied
     }
 
-    /// A seek onto a loaded deck with a known duration; the latest one wins.
-    fn seek(&mut self, deck: DeckId, position_ms: u32) -> SeekOutcome {
+    /// A seek onto a loaded deck with a known duration, answered as the engine did it.
+    fn seek(&mut self, deck: DeckId, position_ms: u32, generation: Option<u32>) -> SeekOutcome {
         let i = deck_index(deck);
         let Some(duration) = self.state.track(i).map(|track| track.duration_ms) else {
             return SeekOutcome::NotSeekable;
@@ -197,8 +349,18 @@ impl WebBackend for Backend<'_> {
         if duration == 0 {
             return SeekOutcome::NotSeekable;
         }
-        deck_view::WEB_SEEKS[i].store(position_ms.min(duration - 1) + 1, Ordering::Release);
-        SeekOutcome::Applied
+        let args = [
+            position_ms.min(duration - 1),
+            u32::from(generation.is_some()),
+            generation.unwrap_or(0),
+        ];
+        match WEB_SEEK[i].ask(args) {
+            Some(DONE) => SeekOutcome::Applied,
+            Some(NO_TRACK) => SeekOutcome::NotSeekable,
+            Some(HELD) => SeekOutcome::Held,
+            Some(CHANGED) => SeekOutcome::TrackChanged,
+            _ => SeekOutcome::Busy,
+        }
     }
 
     /// `track` is the row's `track_key`: the catalog index plus one.
@@ -212,24 +374,14 @@ impl WebBackend for Backend<'_> {
         if track == 0 || track as usize > library.rows.len() {
             return LoadOutcome::NotFound;
         }
-        let i = deck_index(deck);
-        // The load lock, as the engine applies it: never onto a playing deck.
-        if deck_view::LIVE[i].load().has(deck_view::PLAYING) {
-            return LoadOutcome::Locked;
-        }
-        // One load per deck in flight, from any source: one the engine is still running
-        // (`LOAD_PENDING`) or one the USB task has not taken yet (`WEB_LOADS`).
-        if deck_view::LOAD_PENDING[i].load(Ordering::Acquire) {
-            return LoadOutcome::Busy;
-        }
-        match deck_view::WEB_LOADS[i].compare_exchange(
-            0,
-            track,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        ) {
-            Ok(_) => LoadOutcome::Loaded,
-            Err(_) => LoadOutcome::Busy,
+        // The engine decides, as for a LOAD on the controller: LOAD LOCK, a load in flight
+        // from any source, the media. `Loaded` means it took the load; a track that then
+        // fails to open leaves the deck empty in the status.
+        match WEB_LOAD[deck_index(deck)].ask([track, revision, 0]) {
+            Some(DONE) => LoadOutcome::Loaded,
+            Some(LOCKED) => LoadOutcome::Locked,
+            Some(CHANGED) => LoadOutcome::LibraryChanged,
+            _ => LoadOutcome::Busy,
         }
     }
 
@@ -314,18 +466,34 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         }
         mix.web_control(&event);
     }
+    use crate::deck_engine::{LoadRefused, SeekRefused};
     for (i, deck) in DECKS.into_iter().enumerate() {
-        let track = deck_view::WEB_LOADS[i].swap(0, Ordering::AcqRel);
-        if track != 0 {
-            mix.engine().request_load(deck, track - 1);
+        if let Some((ticket, [track, revision, _])) = WEB_LOAD[i].take() {
+            let answer = if revision != deck_view::web_revision() {
+                CHANGED
+            } else {
+                match mix.engine().try_load(deck, track - 1) {
+                    Ok(()) => DONE,
+                    Err(LoadRefused::Locked) => LOCKED,
+                    Err(LoadRefused::Busy) => BUSY,
+                    Err(LoadRefused::NoMedia) => CHANGED,
+                }
+            };
+            WEB_LOAD[i].answer(ticket, answer);
         }
-        let seek = deck_view::WEB_SEEKS[i].swap(0, Ordering::AcqRel);
-        if seek != 0 {
-            mix.engine().web_seek(deck, seek - 1);
+        if let Some((ticket, [position_ms, sent, generation])) = WEB_SEEK[i].take() {
+            let answer = if sent != 0 && generation != mix.engine().load_generation(deck) {
+                CHANGED
+            } else {
+                match mix.engine().web_seek(deck, position_ms) {
+                    Ok(()) => DONE,
+                    Err(SeekRefused::NoTrack) => NO_TRACK,
+                    Err(SeekRefused::Held) => HELD,
+                }
+            };
+            WEB_SEEK[i].answer(ticket, answer);
         }
-    }
-    for (i, deck) in DECKS.into_iter().enumerate() {
-        deck_view::LOAD_PENDING[i].store(mix.engine().load_pending(deck), Ordering::Release);
+        LOAD_GENERATIONS[i].store(mix.engine().load_generation(deck), Ordering::Release);
     }
     let mixer = *mix.mixer();
     let sync = DECKS.map(|deck| mix.engine().sync_flags(deck));

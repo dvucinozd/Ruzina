@@ -105,6 +105,7 @@ impl ruzina_web::server::WebBackend for HttpOta {
         &mut self,
         _: ruzina_controller_core::DeckId,
         _: u32,
+        _: Option<u32>,
     ) -> ruzina_web::server::SeekOutcome {
         panic!("seek outside OTA composition")
     }

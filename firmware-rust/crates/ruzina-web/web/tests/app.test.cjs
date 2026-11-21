@@ -17,6 +17,8 @@ class Element {
 }
 function harness() {
   const document=new Element(); document.createElement=()=>new Element();
+  const cards=[1,2].map(deck=>{const card=document.querySelector(`.deck[data-deck="${deck}"]`); card.dataset.deck=String(deck); return card;});
+  document.querySelectorAll=s=>s==='.deck'?cards:[];
   const calls=[]; const timers=[]; let now=0;
   const context=vm.createContext({document, URLSearchParams, Uint32Array,
     crypto:{getRandomValues:a=>a}, Date:{now:()=>now},
@@ -86,6 +88,17 @@ test('pitch reflects raw fader, preserves drag and never emits control on render
   h.context.testApi.dragging.delete(slider);
   h.context.testApi.renderDeck(1,{state_text:'READY',pitch_percent:-5,pitch_raw:100},{});
   assert.equal(slider.value,100); assert.equal(h.calls.length,1);
+});
+test('a seek carries the load generation of the track it was meant for',async()=>{
+  const h=harness(); const status=h.status(3); status.stamp.load_generations=[4,9];
+  status.deck2={state_text:'READY',pitch_percent:0,duration_ms:1000,position_ms:0};
+  h.reply(h.calls[0],status); await h.flush();
+  const bar=h.document.querySelector('.deck[data-deck="2"]').querySelector('[data-field="bar"]');
+  bar.getBoundingClientRect=()=>({left:0,width:100});
+  const before=h.calls.length; bar.listeners.click({clientX:25});
+  const seek=new URL(h.calls[before].url,'http://deck').searchParams;
+  assert.equal(seek.get('action'),'seek'); assert.equal(seek.get('deck'),'2');
+  assert.equal(seek.get('value'),'250'); assert.equal(seek.get('generation'),'9');
 });
 test('the page names the deck it drives',async()=>{
   const h=harness(); h.reply(h.calls[0],{...h.status(10),name:'Ruzina-AB2D'}); await h.flush();

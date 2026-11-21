@@ -108,7 +108,14 @@ impl WebBackend for Session {
         ControlOutcome::Applied
     }
 
-    fn seek(&mut self, target: DeckId, position_ms: u32) -> SeekOutcome {
+    fn seek(&mut self, target: DeckId, position_ms: u32, generation: Option<u32>) -> SeekOutcome {
+        let i = match target {
+            DeckId::One => 0,
+            DeckId::Two => 1,
+        };
+        if generation.is_some_and(|generation| generation != self.load_generation(i)) {
+            return SeekOutcome::TrackChanged;
+        }
         if self.web_seek(target, position_ms) {
             SeekOutcome::Applied
         } else {

@@ -50,6 +50,12 @@ pub enum SeekOutcome {
     Applied,
     /// No loaded, healthy track (M2.5 `Deck not seekable`).
     NotSeekable,
+    /// The deck holds its place for now: a scratch or a loop.
+    Held,
+    /// The deck loaded another track since the page saw its generation.
+    TrackChanged,
+    /// The deck did not take the seek in time.
+    Busy,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -87,8 +93,9 @@ pub trait WebBackend {
     fn status(&mut self) -> StatusParts<'_>;
     /// Events in order; a tap is press then release.
     fn control(&mut self, events: &[ControlEvent]) -> ControlOutcome;
-    /// `position_ms` is already clamped where the length is known.
-    fn seek(&mut self, deck: DeckId, position_ms: u32) -> SeekOutcome;
+    /// `position_ms` is already clamped where the length is known. `generation` is the
+    /// deck's load generation the page saw, if it sent one.
+    fn seek(&mut self, deck: DeckId, position_ms: u32, generation: Option<u32>) -> SeekOutcome;
     /// `track` is the export track id listed from catalog `revision`
     /// (see [`crate::status::resolve_load`]).
     fn load(&mut self, deck: DeckId, track: u32, revision: u32) -> LoadOutcome;
@@ -407,11 +414,18 @@ impl WebServer {
                     ControlOutcome::Busy => (HttpStatus::ServiceUnavailable, "Control queue busy"),
                 }
             }
-            RemoteCommand::Seek { deck, position_ms } => {
+            RemoteCommand::Seek {
+                deck,
+                position_ms,
+                generation,
+            } => {
                 let position_ms = remote::clamp_seek_ms(position_ms, backend.duration_ms(deck));
-                match backend.seek(deck, position_ms) {
+                match backend.seek(deck, position_ms, generation) {
                     SeekOutcome::Applied => (HttpStatus::Ok, "OK"),
                     SeekOutcome::NotSeekable => (HttpStatus::BadRequest, "Deck not seekable"),
+                    SeekOutcome::Held => (HttpStatus::Conflict, "Deck is scratching or looping"),
+                    SeekOutcome::TrackChanged => (HttpStatus::Conflict, "Deck track changed"),
+                    SeekOutcome::Busy => (HttpStatus::ServiceUnavailable, "Deck busy"),
                 }
             }
             RemoteCommand::Load {

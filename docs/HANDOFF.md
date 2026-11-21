@@ -367,6 +367,13 @@
   The starts are not the cause. Real play is about twice as slow as the boot bench (plain
   fill 1.9 ms against 1.0 ms), so memory shared with the screen and the stick is the next
   suspect.
+- **Web Remote load and seek outcomes (2026-11-21):** [the Web Remote reports what the engine did](reviews/2026-11-21-web-load-seek-outcomes.md).
+  Outside review findings 1, 4 and 5. The web task now waits for the engine's answer to a
+  load or a seek, and withdraws a request the USB task did not take within 250 ms. Loads
+  get the same admission as the FLX4's LOAD, so a playing deck changes track from the page
+  when LOAD LOCK is off. Each deck has a load generation in `/status`, which the page sends
+  with a seek; a seek for a track the deck no longer holds is refused. Not yet on the
+  board.
 - **On the board:** s157 (app `bd390cb0…`), the `--usb-stick` product image of `main` at
   `f2a61fd`, with no profile. In 7 minutes of play with Master Tempo, hot cues, SYNC and a
   scratch it made 79 000 fills with 0/0 underruns. The longest was 5.1 ms (s154: 5.4 ms), and

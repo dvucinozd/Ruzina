@@ -79,6 +79,27 @@ pub(crate) enum LoopCommand {
     Clear,
 }
 
+/// Why the engine refused a load.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum LoadRefused {
+    /// LOAD LOCK: the deck plays, is about to, or scratches.
+    Locked,
+    /// Another load onto the deck is in flight.
+    Busy,
+    /// No media, or not the media the catalog came from.
+    NoMedia,
+}
+
+/// Why the engine refused a Web Remote seek.
+#[cfg(feature = "web-remote")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SeekRefused {
+    /// The deck has no track.
+    NoTrack,
+    /// A scratch or a loop holds the deck's place.
+    Held,
+}
+
 fn index(deck: DeckId) -> usize {
     usize::from(deck == DeckId::Two)
 }
@@ -133,6 +154,9 @@ pub(crate) struct Engine {
     source: [Option<LoadRequest>; 2],
     next_seek: u32,
     revision: [u32; 2],
+    /// Changes each time a deck's track changes: a load finished, or the media went.
+    /// The Web Remote's seeks carry the one the page saw.
+    load_generation: [u32; 2],
     lease: Option<MediaLease>,
     pending_load: [Option<LoadPermit>; 2],
     unsupported: u32,
@@ -195,6 +219,7 @@ impl Engine {
             source: [None; 2],
             next_seek: 0,
             revision: [0; 2],
+            load_generation: [0; 2],
             lease: None,
             pending_load: [None; 2],
             unsupported: 0,
@@ -672,12 +697,6 @@ impl Engine {
         }
     }
 
-    /// Whether a load onto `deck` is in flight, from admission until it finishes or fails.
-    #[cfg(feature = "web-remote")]
-    pub(crate) fn load_pending(&self, deck: DeckId) -> bool {
-        self.pending_load[index(deck)].is_some()
-    }
-
     /// Whether deck `deck` is playing inside a loop, for the Web Remote's LOOP CLEAR.
     #[cfg(feature = "web-remote")]
     pub(crate) fn loop_active(&self, deck: DeckId) -> bool {
@@ -691,34 +710,53 @@ impl Engine {
         (state.sync_enabled, state.sync_master)
     }
 
+    /// Deck `deck`'s load generation: it changes each time the deck's track changes.
+    #[cfg(feature = "web-remote")]
+    pub(crate) fn load_generation(&self, deck: DeckId) -> u32 {
+        self.load_generation[index(deck)]
+    }
+
     /// A seek the Web Remote asked for: the deck moves there as a beat jump does, and the
-    /// producer reopens its source at it. Nothing during a scratch, a loop or without a
+    /// producer reopens its source at it. Not during a scratch or a loop, nor without a
     /// track.
     #[cfg(feature = "web-remote")]
-    pub(crate) fn web_seek(&mut self, deck: DeckId, position_ms: u32) {
+    pub(crate) fn web_seek(&mut self, deck: DeckId, position_ms: u32) -> Result<(), SeekRefused> {
         let i = index(deck);
         let state = self.deck.deck(deck);
-        if self.source[i].is_none() || state.jog_touched || state.loop_state.active.is_some() {
-            return;
+        if self.source[i].is_none() {
+            return Err(SeekRefused::NoTrack);
+        }
+        if state.jog_touched || state.loop_state.active.is_some() {
+            return Err(SeekRefused::Held);
         }
         self.deck.set_position_ms(deck, position_ms);
         self.seek(i, position_ms);
+        Ok(())
     }
 
     /// Admission and reservation run on the USB control task. Producer must
     /// begin replacement with this exact permit before closing the old file.
     pub(crate) fn request_load(&mut self, deck: DeckId, catalog_index: u32) -> bool {
+        self.try_load(deck, catalog_index).is_ok()
+    }
+
+    /// [`Self::request_load`], saying why the engine refused.
+    pub(crate) fn try_load(&mut self, deck: DeckId, catalog_index: u32) -> Result<(), LoadRefused> {
         self.transport();
         let i = index(deck);
-        if self.deck.load_admission(deck).is_err() || self.pending_load[i].is_some() {
+        if self.pending_load[i].is_some() {
             self.refused_loads = self.refused_loads.wrapping_add(1);
-            return false;
+            return Err(LoadRefused::Busy);
+        }
+        if self.deck.load_admission(deck).is_err() {
+            self.refused_loads = self.refused_loads.wrapping_add(1);
+            return Err(LoadRefused::Locked);
         }
         let Some(lease) = self.lease.filter(|l| crate::media_signal::current(*l)) else {
-            return false;
+            return Err(LoadRefused::NoMedia);
         };
         let Ok(permit) = GATES[i].reserve() else {
-            return false;
+            return Err(LoadRefused::Busy);
         };
         let request = LoadRequest {
             lease,
@@ -727,10 +765,10 @@ impl Engine {
         };
         if LOAD_REQUESTS[i].put(request).is_err() {
             GATES[i].finish(permit);
-            return false;
+            return Err(LoadRefused::Busy);
         }
         self.pending_load[i] = Some(permit);
-        true
+        Ok(())
     }
 
     #[cfg(test)]
@@ -1040,7 +1078,9 @@ impl Engine {
                 if let Some(permit) = self.pending_load[i].take() {
                     GATES[i].finish(permit);
                 }
-                self.source[i] = None;
+                if self.source[i].take().is_some() {
+                    self.load_generation[i] = self.load_generation[i].wrapping_add(1);
+                }
                 self.loaded[i] = false;
                 self.faulted[i] = false;
                 self.playing[i] = false;
@@ -1092,6 +1132,7 @@ impl Engine {
             self.loaded[i] = committed;
             self.faulted[i] = false;
             self.source[i] = committed.then_some(result.request);
+            self.load_generation[i] = self.load_generation[i].wrapping_add(1);
             self.revision[i] = self.revision[i].wrapping_add(1);
             self.playing[i] = false;
             self.seeking[i] = None;

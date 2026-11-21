@@ -760,6 +760,17 @@ fn web_remote_status_controls_and_loads_use_the_session() {
         &web_post("/api/control?action=seek&deck=2&value=99999"),
     );
     assert_eq!(s.presentation(1).transport.position_ms, 14_000);
+    // A seek meant for the deck's earlier track is refused and does not move it.
+    let earlier = s.load_generation(1).wrapping_add(1);
+    let stale = web_exchange(
+        &mut server,
+        &mut s,
+        &web_post(&format!(
+            "/api/control?action=seek&deck=2&value=5&generation={earlier}"
+        )),
+    );
+    assert!(stale.ends_with("Deck track changed"), "{stale}");
+    assert_eq!(s.presentation(1).transport.position_ms, 14_000);
     s.detach();
     let empty = web_exchange(
         &mut server,
