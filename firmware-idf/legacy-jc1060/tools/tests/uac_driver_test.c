@@ -148,6 +148,7 @@ void ruzina_legacy_mix_stats(uint32_t *out) { memset(out,0,8*sizeof(*out)); }
 void ruzina_legacy_play_diagnostics(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
 void ruzina_legacy_engine_status(uint32_t *out) { memset(out,0,4*sizeof(*out)); }
 uint32_t ruzina_legacy_fx_word(void) { return 0; }
+uint32_t ruzina_legacy_keylock_starts(void) { return 0; }
 void ruzina_legacy_engine_counters(uint32_t *out) { memset(out,0,2*sizeof(*out)); }
 #endif
 #if UAC_TEST_PROFILE
@@ -311,6 +312,7 @@ int main(void) {
     f.flags[1]=8|256;assert(uac_profile_class_of(&k,&f)==8);
     f.flags[1]=4|256;assert(uac_profile_class_of(&k,&f)==9);
     f.flags[1]=4;f.flags[3]=256;assert(uac_profile_class_of(&k,&f)==9);
+    f.flags[1]=4|256;f.flags[3]=512;assert(uac_profile_class_of(&k,&f)==10);
     // Master Tempo merely on: a deck that scratches or stands still plays no keylock.
     f.flags[1]=4|128;f.flags[3]=0;assert(uac_profile_class_of(&k,&f)==7);
     { uac_profile_classes_t idle={0}; f.flags[1]=128; assert(uac_profile_class_of(&idle,&f)==0); } /* no FX tail */

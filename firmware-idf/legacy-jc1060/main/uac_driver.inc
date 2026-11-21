@@ -57,6 +57,7 @@ static uint32_t uac_log_drops;
 extern void ruzina_legacy_uac_profile_begin(void);
 extern uint32_t ruzina_legacy_uac_profile_end(uint32_t *out,uint32_t len);
 extern uint32_t ruzina_legacy_fx_word(void);
+extern uint32_t ruzina_legacy_keylock_starts(void);
 static uac_profile_record_t uac_profile_worst, uac_profile_over, uac_profile_headroom;
 static uac_profile_distribution_t uac_profile_distribution;
 static uac_profile_classes_t uac_profile_classes;
@@ -122,6 +123,10 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     uac_sched_stamp_t sched_after=ruzina_uac_sched_stamp();
     profile.whole_us=took;
     profile.rust_valid=ruzina_legacy_uac_profile_end(profile.rust,UAC_PROFILE_WORDS)==UAC_PROFILE_WORDS;
+    /* What happened during the fill itself: a keylock started over (flag 512). */
+    const uint32_t starts=ruzina_legacy_keylock_starts();
+    if(starts&1u) profile.flags[1]|=512u;
+    if(starts&2u) profile.flags[3]|=512u;
     uac_profile_schedule(&profile,sched_before,sched_after);
     profile.calibration_passed=uac_cal_passed && uac_cal_generation==uac_generation;
     profile.sched_valid &= bound && profile.calibration_passed;
@@ -348,7 +353,7 @@ static void uac_log_task(void *unused)
                    i ? sample.distribution.max[i-1] : sample.timing.phase[UAC_FILL_CALLBACK].max_us,
                    bins[0],bins[1],bins[2],bins[3],bins[4],bins[5],bins[6]);
         }
-        static const char *const class_names[]={"plain","fx_filter","fx_echo","fx_flanger","fx_delay","fx_tail","pad_fx","scratch","master_tempo","mt_scratch"};
+        static const char *const class_names[]={"plain","fx_filter","fx_echo","fx_flanger","fx_delay","fx_tail","pad_fx","scratch","master_tempo","mt_scratch","mt_start"};
         for(unsigned i=0;i<UAC_PROFILE_CLASSES;++i) {
             const uac_profile_class_t *c=&sample.classes.c[i];
             printf("uac_profile_class gen=%" PRIu32 " class=%s fills=%" PRIu32 " mean_us=%" PRIu32 " graph_fills=%" PRIu32
