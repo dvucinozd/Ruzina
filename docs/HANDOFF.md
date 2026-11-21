@@ -404,17 +404,29 @@
   A connection that has not taken its answer within 5 s is dropped. A host test covers it
   with fake sockets. On s162 (app `4b6044fa…`), tested from a phone, 594 requests came in
   and none was dropped. Underruns were 0/0, and the owner noticed no delay.
-- **On the board:** s160 (app `efe6975c…`), the `--usb-stick` product image of `main` at
-  `725488f`, with no profile. It is now the image the board keeps. It has the Web Remote
-  outcomes and the stick's checked recovery. In 8 minutes of play it
-  made 79 000 fills with 0/0 underruns, and the longest took 5.1 ms (11.5 % over 3 ms).
-  The stick had no recovery or retry, and nothing crashed.
+- **What slows the fill (2026-11-21):** [what slows the USB audio fill in play](reviews/2026-11-21-fill-contention.md).
+  Profile images now record what else ran during each fill: a screen frame, a decoder or a
+  stick read. The new `--screen-still` flag stops the screen every other 30 s. On s163
+  (app `2ce5c0aa…`, 15 minutes, 0/0 underruns), 88 % of Master Tempo fills over 3 ms
+  overlapped a screen frame. With the screen still, 1.7 % went over 3 ms instead of 18.3 %,
+  and the longest took 3.9 ms instead of 5.35 ms. A fill with nothing else running costs
+  the same with the screen still, so the screen does not leave a slower cache behind. Its
+  frames compete for memory while the fill runs. The stick's reads made no difference.
+  Next: keep the screen's heavy memory work, and if needed the decoders, out of the fill.
+- **On the board:** s162 (app `4b6044fa…`), the `--usb-stick` image of the Web Remote send
+  branch, with no profile. Its firmware is the same as `main` at `830a46b`, so it is the
+  image the board keeps. It has all 11 outside review fixes. In its run it made 42 000
+  fills with 0/0 underruns, and the longest took 4.2 ms.
   Earlier images:
+  - s163 (app `2ce5c0aa…`) is the fill contention profile image, on the board after its
+    run; flash s162 back for play.
+  - s160 (app `efe6975c…`) is `main` at `725488f`. In 8 minutes of play it made 79 000
+    fills with 0/0 underruns, and the longest took 5.1 ms (11.5 % over 3 ms).
   - s159 (app `be416a1f…`) and s158 (app `40688f8c…`) are the stick and Web Remote
     branches before they merged.
   - s157 (app `bd390cb0…`) is `main` at `f2a61fd`.
   - s156 (app `d4124d57…`) is the profile image of the keylock start branch.
-  - s148 (app `5824136c…`), the kept image until s160, is the `--usb-stick` image with the
+  - s148 (app `5824136c…`), the kept image before s160, is the `--usb-stick` image with the
     faster render and the stick behind a hub.
   - s154 (app `53c2f867…`) is `main` after the keylock spread.
   - s142 (app `3125b34f…`) is s148 before the faster render, and s140 (app `df3ae93c…`)
