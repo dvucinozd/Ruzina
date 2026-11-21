@@ -13,6 +13,14 @@
 #include "freertos/task.h"
 #include "sdmmc_cmd.h"
 #include "sd_pwr_ctrl_by_on_chip_ldo.h"
+#if CONFIG_RUZINA_UAC_PROFILE
+#include "uac_profile_sched.h"
+/* Profile images: the fill learns whether the decoders ran and the stick was read
+ * while it did. */
+#define ACTIVITY(which, running) ruzina_uac_activity((which), (running))
+#else
+#define ACTIVITY(which, running) ((void)0)
+#endif
 
 /* Task-only C ABI: Rust layouts, futures, tickets and buffers never cross it. */
 extern int32_t ruzina_legacy_bridge_init(uint32_t sectors);
@@ -100,7 +108,12 @@ void ruzina_bridge_lock(void) { portENTER_CRITICAL(&bridge_mux); }
 void ruzina_bridge_unlock(void) { portEXIT_CRITICAL(&bridge_mux); }
 void ruzina_bridge_notify_worker(void) { xTaskNotifyGive(worker_task); }
 void ruzina_bridge_notify_client(void) { xTaskNotifyGive(client_task); }
-void ruzina_bridge_wait_client(void) { ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000)); }
+void ruzina_bridge_wait_client(void)
+{
+    ACTIVITY(UAC_ACTIVITY_DECODER, false);
+    ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
+    ACTIVITY(UAC_ACTIVITY_DECODER, true);
+}
 void ruzina_bridge_delay(void) { vTaskDelay(pdMS_TO_TICKS(1000)); }
 void ruzina_bridge_report(uint32_t pass, uint32_t event, uint32_t value)
 {
@@ -109,7 +122,12 @@ void ruzina_bridge_report(uint32_t pass, uint32_t event, uint32_t value)
     fflush(stdout);
 }
 
-void ruzina_bridge_fixture_yield(void) { vTaskDelay(1); }
+void ruzina_bridge_fixture_yield(void)
+{
+    ACTIVITY(UAC_ACTIVITY_DECODER, false);
+    vTaskDelay(1);
+    ACTIVITY(UAC_ACTIVITY_DECODER, true);
+}
 void ruzina_bridge_fs_report(uint32_t pass, uint32_t event, uint32_t value)
 {
     printf("rust_exfat pass=%" PRIu32 " event=%" PRIu32 " value=%" PRIu32 " stack_free=%u",
@@ -230,6 +248,7 @@ static void client(void *unused)
     /* Register on this task before any Rust waker can target it. The task stays
      * allocated after completion so static RawWakers never reference freed TCBs. */
     client_task=xTaskGetCurrentTaskHandle();
+    ACTIVITY(UAC_ACTIVITY_DECODER, true);
 #if CONFIG_RUZINA_SD_RUST_LOAD
     int32_t result=ruzina_legacy_load_run();
 #elif CONFIG_RUZINA_SD_RUST_EXFAT
@@ -351,6 +370,7 @@ static void owner(void *unused)
         /* C independently validates before touching driver/DMA. Rust only lends
          * scalar coordinates; this C allocation remains the sole DMA buffer. */
         const int64_t read_start=esp_timer_get_time();
+        ACTIVITY(UAC_ACTIVITY_STICK, true);
         if(count==0 || count>BRIDGE_MAX_SECTORS || first>=capacity || count>capacity-first) err=ESP_ERR_INVALID_ARG;
 #if CONFIG_RUZINA_MEDIA_USB_STICK
         else { reads++;sectors_read+=count;err=ruzina_msc_read(first,count,bounce); }
@@ -365,6 +385,7 @@ static void owner(void *unused)
         /* sdmmc_read_sectors is synchronous: transfer has ended on return. Rust
          * copies exactly count*512 bytes, outside its state critical section. */
         int32_t completed=ruzina_legacy_bridge_complete(err,err==ESP_OK?bounce:NULL,err==ESP_OK?count*512u:0);
+        ACTIVITY(UAC_ACTIVITY_STICK, false);
         if(completed!=0) {err=ESP_ERR_INVALID_STATE;break;}
         if(err!=ESP_OK) break;
         if(reads%80==0) {

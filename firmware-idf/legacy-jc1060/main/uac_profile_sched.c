@@ -51,3 +51,17 @@ void ruzina_uac_catalog_event(uint32_t event) {
     if (event>=1 && event<=6) atomic_store_explicit(&catalog,event,memory_order_release);
 }
 uint32_t ruzina_uac_catalog_phase(void) { return atomic_load_explicit(&catalog,memory_order_acquire); }
+static _Atomic uint32_t activity[UAC_ACTIVITIES];
+static _Atomic bool screen_still;
+void ruzina_uac_activity(uint32_t which,bool running) {
+    if (which>=UAC_ACTIVITIES) return;
+    /* One writer per activity: an edge only when its state changes. */
+    uint32_t edges=atomic_load_explicit(&activity[which],memory_order_relaxed);
+    if ((edges&1u)!=(uint32_t)running) atomic_store_explicit(&activity[which],edges+1,memory_order_release);
+}
+void ruzina_uac_screen_still(bool still) { atomic_store_explicit(&screen_still,still,memory_order_release); }
+uac_activity_stamp_t ruzina_uac_activity_stamp(void) {
+    uac_activity_stamp_t stamp={.still=atomic_load_explicit(&screen_still,memory_order_acquire)};
+    for (unsigned i=0;i<UAC_ACTIVITIES;++i) stamp.edges[i]=atomic_load_explicit(&activity[i],memory_order_acquire);
+    return stamp;
+}

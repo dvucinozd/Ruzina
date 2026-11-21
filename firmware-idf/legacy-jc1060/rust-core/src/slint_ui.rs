@@ -385,6 +385,33 @@ fn wifi_credentials() -> (alloc::string::String, alloc::string::String) {
     (c_text(&ssid).into(), c_text(&password).into())
 }
 
+/// Profile images: the USB audio fill learns whether a frame was being drawn while it ran
+/// (`uac_profile_sched.h`).
+#[cfg(feature = "idf-uac-profile")]
+fn mark_drawing(running: bool) {
+    unsafe extern "C" {
+        fn ruzina_uac_activity(which: u32, running: bool);
+    }
+    // SAFETY: two scalars; only this task marks the screen.
+    unsafe { ruzina_uac_activity(0, running) };
+}
+#[cfg(not(feature = "idf-uac-profile"))]
+fn mark_drawing(_: bool) {}
+
+/// A diagnostic (`--screen-still`): the screen stands still every other 30 s, so the fill
+/// can be measured with it and without it. The fill's profile is told which.
+#[cfg(feature = "screen-still")]
+fn standing_still() -> bool {
+    const PHASE_US: u64 = 30_000_000;
+    unsafe extern "C" {
+        fn ruzina_uac_screen_still(still: bool);
+    }
+    let still = (now_us() / PHASE_US) % 2 == 1;
+    // SAFETY: a scalar.
+    unsafe { ruzina_uac_screen_still(still) };
+    still
+}
+
 fn now_us() -> u64 {
     // SAFETY: IDF monotonic task-safe clock, no retained pointer.
     unsafe { esp_timer_get_time() as u64 }
@@ -1395,6 +1422,12 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             next_report = ms + REPORT_MS;
         }
         touch(ui.window(), &mut touched, &mut touch_errors);
+        #[cfg(feature = "screen-still")]
+        if standing_still() {
+            // SAFETY: waits on the panel's refresh.
+            unsafe { ruzina_panel_wait_refresh() };
+            continue;
+        }
         let updates_started = now_us();
         let decks = [deck_view::LIVE[0].load(), deck_view::LIVE[1].load()];
         for deck in 0..2 {
@@ -1499,6 +1532,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         } else {
             (&mut **second, &**first)
         };
+        mark_drawing(true);
         let allocs_before = crate::idf_alloc::counted();
         let started = now_us();
         let mut rows_drawn = 0;
@@ -1605,6 +1639,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             }
         }
         wave_times.add((now_us() - drawn) as u32);
+        mark_drawing(false);
         // The screen runs above the decoding client on its core. After a long frame (a
         // page full of text) it steps aside for two refreshes, so a run of them cannot
         // hold the decoders off: on s97 such a run kept them out for 250 ms, and a deck
