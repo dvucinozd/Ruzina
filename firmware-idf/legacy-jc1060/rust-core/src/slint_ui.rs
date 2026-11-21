@@ -87,47 +87,51 @@ const COVER_STEP_MS: u64 = 120;
 const COVER_HEADS: u64 = 6 + 5;
 /// The Library page's rows.
 const LIBRARY_ROWS: u32 = 12;
-const PANEL: u16 = rgb(0x0d, 0x0f, 0x11);
-const METER_OFF: u16 = rgb(0x1c, 0x22, 0x28);
-const METER_GREEN: u16 = rgb(0x6e, 0xe1, 0x28);
-const METER_AMBER: u16 = rgb(0xeb, 0x87, 0x0f);
-const METER_RED: u16 = rgb(0xff, 0x17, 0x44);
+// The owner's Rust palette (`docs/reviews/2026-11-21-rust-palette.md`). The main
+// background is #100C08, not the spec's #0F0B09, which RGB565 turns neutral grey.
+const PANEL: u16 = rgb(0x10, 0x0c, 0x08);
+/// The meters: acid green to 0 dB, deep coral red above it, laser red at the top.
+const METER_OFF: u16 = rgb(0x2a, 0x1b, 0x14);
+const METER_GREEN: u16 = rgb(0x39, 0xff, 0x14);
+const METER_AMBER: u16 = rgb(0xe6, 0x19, 0x3c);
+const METER_RED: u16 = rgb(0xff, 0x00, 0x33);
 
-const BACKGROUND: u16 = rgb(0x02, 0x04, 0x06);
-const BEAT_LINE: u16 = rgb(0x30, 0x34, 0x3b);
-const BAR_LINE: u16 = rgb(0x6e, 0x72, 0x78);
-const PLAYHEAD: u16 = rgb(0x00, 0xff, 0x00);
+const BACKGROUND: u16 = rgb(0x10, 0x0c, 0x08);
+const BEAT_LINE: u16 = rgb(0x38, 0x25, 0x1e);
+const BAR_LINE: u16 = rgb(0x57, 0x4b, 0x45);
+const PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
 const PLAYHEAD_X: usize = LANE_WIDTH / 2;
 /// Refreshes per frame: 30 frames a second, each shown exactly two refreshes after the
 /// last.
 const REFRESHES_PER_FRAME: u32 = 2;
 /// Half the mini overview's height, for a full-scale column.
 const MINI_HALF: u32 = 21;
-const PLAYED_SHADE: u16 = rgb(0x30, 0x30, 0x30);
-const MINI_PLAYHEAD: u16 = rgb(0xff, 0xff, 0xff);
-/// The donor's waveform palette, picked by a column's colour hint and loudness.
-const PINK: u16 = rgb(0xff, 0x2e, 0x6e);
-const BLUE: u16 = rgb(0x3a, 0x7b, 0xff);
-const CYAN: u16 = rgb(0x26, 0xe0, 0xff);
-const GREEN: u16 = rgb(0x38, 0xf5, 0x8c);
-const AMBER: u16 = rgb(0xff, 0xb7, 0x33);
-const PURPLE: u16 = rgb(0xb5, 0x7c, 0xff);
-/// The red triangle on each bar line, for beat matching: its base at the lane's edge
-/// towards the other deck, pointing into the lane.
-const BAR_CAP: u16 = rgb(0xff, 0x17, 0x44);
+const PLAYED_SHADE: u16 = rgb(0x38, 0x25, 0x1e);
+const MINI_PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
+/// The waveform by frequency: lows, mids and highs. Rekordbox's detail waveform (PWV3)
+/// has no bands, only how white each column is, 0 to 7: the whiter, the brighter the
+/// sound, so 0 to 2 draw as lows, 3 and 4 as mids, 5 to 7 as highs.
+const BANDS: [[u8; 3]; 3] = [[0xe6, 0x4c, 0x0c], [0x00, 0x88, 0xff], [0x00, 0xe5, 0xff]];
+const LOWS: u16 = rgb(BANDS[0][0], BANDS[0][1], BANDS[0][2]);
+const MIDS: u16 = rgb(BANDS[1][0], BANDS[1][1], BANDS[1][2]);
+const HIGHS: u16 = rgb(BANDS[2][0], BANDS[2][1], BANDS[2][2]);
+/// The acid green triangle on each bar line, for beat matching: its base at the lane's
+/// edge towards the other deck, pointing into the lane.
+const BAR_CAP: u16 = rgb(0x39, 0xff, 0x14);
 const BAR_CAP_REACH: i64 = 6;
 const BAR_CAP_HEIGHT: usize = 8;
 /// Hot Cues A to H: a line through the lane and a flag at the edge away from the bar
 /// triangles.
+/// A to D as the spec has them; E to H chosen with the owner (2026-11-21).
 const CUE_RGB: [[u8; 3]; 8] = [
-    [0x28, 0xe2, 0x14],
-    [0x30, 0xd2, 0xe8],
-    [0x30, 0x5a, 0xff],
-    [0xaa, 0x72, 0xff],
-    [0xff, 0x12, 0x7b],
-    [0xff, 0x8c, 0x00],
-    [0xe0, 0xff, 0x00],
-    [0x10, 0xb1, 0x76],
+    [0x00, 0xff, 0x66],
+    [0x00, 0xe5, 0xff],
+    [0xff, 0x00, 0x33],
+    [0xff, 0xd6, 0x00],
+    [0xa2, 0x59, 0xff],
+    [0xff, 0x2e, 0xc4],
+    [0x2f, 0x6b, 0xff],
+    [0xb6, 0xff, 0x00],
 ];
 const CUE_COLORS: [u16; 8] = {
     let mut colors = [0; 8];
@@ -141,18 +145,18 @@ const CUE_COLORS: [u16; 8] = {
 };
 const CUE_FLAG_WIDTH: i64 = 7;
 const CUE_FLAG_HEIGHT: usize = 7;
-/// Rekordbox's memory cues, red as Rekordbox draws them: a line through the lane (and at
-/// a memory loop's end), and at its start a triangle at the Hot Cue flags' edge, pointing
-/// into the lane. The overview marks them at its top and bottom.
-const MEMORY: u16 = rgb(0xff, 0x30, 0x30);
+/// Rekordbox's memory cues, in warm white (red is Hot Cue C's): a line through the lane
+/// (and at a memory loop's end), and at its start a triangle at the Hot Cue flags' edge,
+/// pointing into the lane. The overview marks them at its top and bottom.
+const MEMORY: u16 = rgb(0xf5, 0xf0, 0xed);
 const MEMORY_FLAG_REACH: i64 = 5;
 const MEMORY_FLAG_HEIGHT: usize = 7;
 const MINI_MEMORY_ROWS: usize = 5;
 /// The running loop: its ends as lines, and its span shaded behind the waveform.
-const LOOP_EDGE: u16 = rgb(0xff, 0x8c, 0x00);
+const LOOP_EDGE: u16 = rgb(0xff, 0x77, 0x00);
 const LOOP_SHADE: u16 = rgb(0x30, 0x1c, 0x00);
 /// The white edge on loud peaks.
-const TIP: u16 = rgb(0xff, 0xff, 0xff);
+const TIP: u16 = rgb(0xf5, 0xf0, 0xed);
 const TIP_LOUDNESS: u8 = 26;
 
 const fn rgb(red: u8, green: u8, blue: u8) -> u16 {
@@ -701,23 +705,35 @@ fn ink(column: WaveformColumn) -> (u8, u16) {
     let hint = ((column.color_rgb565 >> 11) * 7 + 15) / 31;
     let shade = ((hint * 31 / 7) << 11) | ((hint * 63 / 7) << 5) | 31;
     if shade != column.color_rgb565 {
-        return (loudness, column.color_rgb565);
+        return (loudness, band_mix(column.color_rgb565));
     }
     let color = match hint {
-        1 => PINK,
-        2 => BLUE,
-        3 | 7 => CYAN,
-        4 => GREEN,
-        5 => AMBER,
-        6 => PURPLE,
-        _ => match loudness {
-            28.. => CYAN,
-            22.. => PINK,
-            14.. => BLUE,
-            _ => PURPLE,
-        },
+        0..=2 => LOWS,
+        3 | 4 => MIDS,
+        _ => HIGHS,
     };
     (loudness, color)
+}
+
+/// A Rekordbox colour column (PWV4), whose red, green and blue are its bass, mid and
+/// treble: the three band colours mixed in that measure.
+fn band_mix(rgb565: u16) -> u16 {
+    let weights = [
+        u32::from(rgb565 >> 11) * 2,
+        u32::from(rgb565 >> 5 & 0x3f),
+        u32::from(rgb565 & 0x1f) * 2,
+    ];
+    let total: u32 = weights.iter().sum();
+    if total == 0 {
+        return LOWS;
+    }
+    let channel = |c: usize| {
+        let sum: u32 = (0..3)
+            .map(|band| weights[band] * u32::from(BANDS[band][c]))
+            .sum();
+        (sum / total) as u8
+    };
+    rgb(channel(0), channel(1), channel(2))
 }
 
 /// The lane's view of `track` with `marks` and the playhead at `position_ms`, showing

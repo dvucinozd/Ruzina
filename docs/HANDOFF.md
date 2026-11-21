@@ -428,9 +428,19 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   for the Hercules (asynchronous) and the S2 MK3 (UAC2) is still to come. s173 (app
   `fd4d6e1b…`), no controller attached: works, owner "Sve radi". No controller has been
   tested on it yet.
+- **Rust palette (2026-11-21):** [the deck screen in the owner's Rust palette](reviews/2026-11-21-rust-palette.md).
+  The first step of the screen redesign. It changes:
+  - the shell and deck colours;
+  - the waveform in three bands (PWV3 whiteness mapped to lows, mids and highs; PWV4
+    band mixes blended);
+  - the Hot Cues A–H chosen with the owner;
+  - the memory cues (now warm white) and the bar markers (now acid green).
+
+  s174 (app `586c7ec6…`) works; owner: "Izgleda dobro".
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s174 (app `586c7ec6…`) is the play image flags on the Rust palette branch.
   - s173 (app `fd4d6e1b…`) is the play image flags on the controller profiles branch.
   - s172 (app `d0863dcc…`) is the play image flags on the screensaver branch.
   - s162 (app `4b6044fa…`) is the `--usb-stick` image of the Web Remote send branch, with
