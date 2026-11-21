@@ -3426,6 +3426,7 @@ dependencies = [
  "ruzina-settings",
  "ruzina-track-analysis",
  "ruzina-uac",
+ "ruzina-ui-model",
  "ruzina-web",
  "sha2",
  "slint",
@@ -3541,6 +3542,17 @@ name = "ruzina-uac"
 version = "0.1.0"
 dependencies = [
  "ruzina-audio-dsp",
+]
+
+[[package]]
+name = "ruzina-ui-model"
+version = "0.1.0"
+dependencies = [
+ "ruzina-controller-core",
+ "ruzina-core",
+ "ruzina-deck",
+ "ruzina-hot-cues",
+ "ruzina-mixer",
 ]
 
 [[package]]

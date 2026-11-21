@@ -24,6 +24,7 @@ fn every_setting_survives_the_packing() {
         dj_link: true,
         load_lock: false,
         jog_modes: [JogMode::Cdj, JogMode::Vinyl],
+        screensaver: Screensaver::Minutes10,
     };
     assert_eq!(unpack(pack(&settings)), settings);
     let other = ProductSettings {
@@ -32,10 +33,18 @@ fn every_setting_survives_the_packing() {
         ..BOARD_DEFAULT
     };
     assert_eq!(unpack(pack(&other)), other);
+    for screensaver in [Screensaver::Off, Screensaver::Minutes5] {
+        let saver = ProductSettings {
+            screensaver,
+            ..BOARD_DEFAULT
+        };
+        assert_eq!(unpack(pack(&saver)), saver);
+    }
     assert_eq!(current(), BOARD_DEFAULT);
     // Out of the box: as bright as the screen has always started, with LOAD LOCK on.
     assert_eq!(current().backlight_percent, 25);
     assert!(current().load_lock);
+    assert_eq!(current().screensaver, Screensaver::Minutes2);
 }
 
 #[test]
