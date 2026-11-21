@@ -10,6 +10,7 @@
 //!
 //! The boot screen and the screensaver lie over everything (`screen_idle`); Rust then draws
 //! nothing.
+use crate::deck_phase::{self, PhaseDeck, Ticks};
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
 use crate::screen_idle::{Cover, Saver};
 use alloc::boxed::Box;
@@ -80,7 +81,21 @@ const METERS: [Area; 2] = [
         height: 140,
     },
 ];
-const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1]];
+/// The phase strip between the lanes: deck 1's beats in its upper half, deck 2's in its
+/// lower, over four of the master's beats in real time, the playhead in the middle.
+const PHASE: Area = Area {
+    x: 136,
+    y: 222,
+    width: LANE_WIDTH,
+    height: 36,
+};
+const PHASE_BEATS: u32 = 4;
+const PHASE_BACK: u16 = rgb(0x1e, 0x15, 0x11);
+const PHASE_MIDDLE: u16 = rgb(0x38, 0x25, 0x1e);
+const DECK_COLORS: [u16; 2] = [rgb(0xe6, 0x4c, 0x0c), rgb(0x00, 0xe5, 0xff)];
+const DIRECT: [Area; 7] = [
+    LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1], PHASE,
+];
 /// The Library, Hot Cues, Settings and FX pages cover the lanes and meters; Rust then draws only
 /// the overviews.
 const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
@@ -1133,6 +1148,35 @@ fn draw_meter(frame: &mut [u16], area: Area, lit: i32) {
     flush(frame, area.y, area.height);
 }
 
+/// Draws the phase strip: each deck's beats as two-column ticks in its half, a line between
+/// the halves and the playhead in the middle.
+fn draw_phase(frame: &mut [u16], ticks: [Ticks; 2]) {
+    let mut plain = [PHASE_BACK; LANE_WIDTH];
+    let mut middle = [PHASE_MIDDLE; LANE_WIDTH];
+    let mut halves = [[PHASE_BACK; LANE_WIDTH]; 2];
+    for (deck, half) in halves.iter_mut().enumerate() {
+        for &column in ticks[deck].columns() {
+            let column = usize::from(column);
+            half[column..(column + 2).min(LANE_WIDTH)].fill(DECK_COLORS[deck]);
+        }
+    }
+    let [upper, lower] = &mut halves;
+    for row in [&mut plain, &mut middle, upper, lower] {
+        row[PLAYHEAD_X - 1..=PLAYHEAD_X + 1].fill(PLAYHEAD);
+    }
+    for row in 0..PHASE.height {
+        let line = match row {
+            3..=17 => &halves[0],
+            18 => &middle,
+            19..=33 => &halves[1],
+            _ => &plain,
+        };
+        let start = (PHASE.y + row) * WIDTH + PHASE.x;
+        frame[start..start + PHASE.width].copy_from_slice(line);
+    }
+    flush(frame, PHASE.y, PHASE.height);
+}
+
 /// Draws the whole-track overview, shaded up to the playhead at `x`, with each memory
 /// cue of a track `duration_ms` long marked at its top and bottom.
 fn draw_mini(
@@ -1708,6 +1752,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // Per buffer and deck: the lane's left column and time span, and the overview's track
     // and playhead.
     let mut lane_at: [[Option<(i64, i64)>; 2]; 2] = [[None; 2]; 2];
+    // Per buffer: the beats the phase strip shows; and the offset its label shows.
+    let mut phase_at: [Option<[Ticks; 2]>; 2] = [None; 2];
+    let mut shown_offset: Option<Option<i32>> = None;
     let mut mini_at: [[Option<MiniState>; 2]; 2] = [[None; 2]; 2];
     // Per buffer and deck: the revision of the marks its lane shows.
     let mut marks_at: [[Option<u32>; 2]; 2] = [[None; 2]; 2];
@@ -1814,6 +1861,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             // again in each buffer.
             lane_at = [[None; 2]; 2];
             meter_at = [[None; 2]; 2];
+            phase_at = [None; 2];
             was_covered = covered;
         }
         // The Settings page's figures, twice a second while it is open.
@@ -2002,6 +2050,49 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 let memory = view.as_ref().map_or(&[][..], |view| view.memory_cues());
                 draw_mini(buffer, MINIS[deck], preview, playhead, memory, duration);
                 mini_at[drawing][deck] = mini;
+            }
+        }
+        if !covered {
+            // The master is deck 2 only while deck 1 alone follows it with SYNC.
+            let master =
+                usize::from(decks[0].has(deck_view::SYNC) && !decks[1].has(deck_view::SYNC));
+            let tempo = |deck: usize| {
+                deck_phase::playing_bpm_x100(decks[deck].bpm_x100, decks[deck].pitch_centipercent)
+            };
+            let span = deck_phase::span_ms(tempo(master), PHASE_BEATS);
+            let beats = |deck: usize| {
+                tracks[deck]
+                    .as_deref()
+                    .and_then(|track| track.analysis.as_ref())
+                    .and_then(|analysis| analysis.view().beat_grid())
+                    .map_or(&[][..], |grid| grid.beats())
+            };
+            let ticks = core::array::from_fn(|deck| {
+                let snapshot = decks[deck];
+                deck_phase::beat_columns(
+                    beats(deck),
+                    snapshot.position_ms,
+                    snapshot.pitch_centipercent,
+                    span,
+                    PHASE.width,
+                )
+            });
+            if phase_at[drawing] != Some(ticks) {
+                draw_phase(buffer, ticks);
+                phase_at[drawing] = Some(ticks);
+            }
+            let phase_deck = |deck: usize| PhaseDeck {
+                beats: beats(deck),
+                position_ms: decks[deck].position_ms,
+                bpm_x100: tempo(deck),
+            };
+            let offset = deck_phase::beat_offset_ms(phase_deck(master), phase_deck(1 - master));
+            if shown_offset != Some(offset) {
+                ui.set_phase(match offset {
+                    Some(ms) => alloc::format!("{ms:+} ms").into(),
+                    None => "—".into(),
+                });
+                shown_offset = Some(offset);
             }
         }
         wave_times.add((now_us() - drawn) as u32);

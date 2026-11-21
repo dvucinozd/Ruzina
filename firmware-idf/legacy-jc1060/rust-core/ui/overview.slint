@@ -930,6 +930,8 @@ export component Overview inherits Window {
     // The cover's lit letter, which moves along the word from before its first letter to
     // past its last; the letters around it glow less the further they are.
     in property <int> cover-head;
+    // How far the other deck's beat is ahead of the master's ("+12 ms"), or a dash.
+    in property <string> phase: "—";
 
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
@@ -1021,7 +1023,7 @@ export component Overview inherits Window {
     // Rust draws here: the two waveforms.
     Rectangle { visible: root.active-tab == 0; x: 136px; y: 8px; width: 814px; height: 210px; background: #100c08; }
     Rectangle { visible: root.active-tab == 0; x: 136px; y: 262px; width: 814px; height: 210px; background: #100c08; }
-    // Between the lanes: the phase strip, to come.
+    // Between the lanes: the phase strip, which Rust draws, and its offset.
     Rectangle {
         visible: root.active-tab == 0;
         x: 52px;
@@ -1031,6 +1033,7 @@ export component Overview inherits Window {
         border-radius: 3px;
         background: #1e1511;
         Text { y: 3px; width: parent.width; text: "PHASE"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
+        Text { y: 16px; width: parent.width; text: root.phase; color: root.phase == "—" ? #574b45 : #ffd600; font-size: 14px; horizontal-alignment: center; }
     }
     Rectangle { visible: root.active-tab == 0; x: 136px; y: 222px; width: 814px; height: 36px; background: #1e1511; }
 

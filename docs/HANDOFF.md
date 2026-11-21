@@ -445,10 +445,14 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   - the pages narrowed to 952 px.
 
   s176 (app `72498c59…`): owner "Izgleda dobro"; s175 had a 72 px rail, which the owner
-  narrowed.
+  narrowed. The phase strip followed. It shows both decks' beats between the lanes over
+  four master beats, and the PHASE offset in ms. s177 (app `4041be8c…`): owner "Izgleda
+  dobro".
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s177 (app `4041be8c…`) is the play image flags on the redesign branch: palette,
+    layout and phase strip.
   - s176 (app `72498c59…`) is the play image flags on the redesign branch: palette and
     layout.
   - s174 (app `586c7ec6…`) is the play image flags on the Rust palette branch.

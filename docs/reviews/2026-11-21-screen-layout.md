@@ -36,10 +36,30 @@ The owner's mockup is the "Ruzina deck screen" design canvas.
   rectangles in `overview.slint`. The waveform's height and time scale follow
   `LANE_WIDTH` and `LANE_HEIGHT`.
 
+## The phase strip
+
+The third step fills the strip between the lanes. Rust draws it every frame, like the
+lanes, as a direct area (`PHASE`, 814×36 at y 222).
+
+- **Beats:** deck 1's beats are 2-column ticks in rust in the upper half, deck 2's in
+  cyan in the lower half. A line runs between the halves, and the playhead is in the
+  middle.
+- **Scale:** the strip spans four beats of the master in real time, each deck's pitch
+  included (`deck_phase::beat_columns`). When the decks are in phase, their ticks stand
+  above one another.
+- **Master:** deck 1, unless deck 1 alone has SYNC on, in which case deck 2 is master.
+- **PHASE label:** shows how far the other deck's beat is ahead of the master's, at the
+  master's tempo and within half a beat (`deck_phase::beat_offset_ms`), for example
+  "+12 ms" in neon yellow. Without both beat grids it shows a dash.
+- **The maths:** it comes from the local `ogranak/jc1060-deck-link` branch, whose link-bar
+  figures the owner dropped; only the beat offset was kept.
+
 ## Tests
 
 - The legacy host tests and clippy, with the Slint, Web Remote, profile and screen-still
   feature sets on the target.
+- `deck_phase`: the beat offset (three tests) and where beats fall on the strip,
+  pitched or not.
 - The layout has no host test; the board is the check.
 
 ## On the board
@@ -47,3 +67,5 @@ The owner's mockup is the "Ruzina deck screen" design canvas.
 - **s175** (app `13c5c47a…`), with the 72 px rail: the owner asked for a narrower rail.
 - **s176** (app `72498c59…`), with the 48 px rail and 814 px lanes: the owner says
   "Izgleda dobro". A short boot log has no errors.
+- **s177** (app `4041be8c…`), with the phase strip, the soak DJ playing: the owner says
+  "Izgleda dobro". The log has no errors.

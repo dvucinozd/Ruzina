@@ -1,9 +1,7 @@
-//! The phase strip's figure, for the deck screen's redesign: how far the other deck's
-//! beat is ahead of the master's. The strip shows it between the lanes; nothing here
-//! changes playback.
-//!
-//! Not on the screen yet: the redesign wires it in.
-#![cfg_attr(not(test), allow(dead_code))]
+//! The phase strip between the lanes: each deck's beats near its playhead, in real time
+//! at a common scale, and how far the other deck's beat is ahead of the master's. Nothing
+//! here changes playback.
+#![cfg_attr(not(any(test, feature = "slint-ui")), allow(dead_code))]
 
 use crate::deck_engine::beat_at;
 use ruzina_track_analysis::Beat;
@@ -28,6 +26,73 @@ pub(crate) fn beat_offset_ms(master: PhaseDeck<'_>, other: PhaseDeck<'_>) -> Opt
     }
     let ahead = wrap(other_into - master_into);
     Some(round(ahead * 6_000_000.0 / master.bpm_x100 as f32))
+}
+
+/// The most beats one deck shows on the strip.
+pub(crate) const MAX_TICKS: usize = 8;
+
+/// The columns of the strip where a deck's beats fall, left to right.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct Ticks {
+    columns: [u16; MAX_TICKS],
+    count: u8,
+}
+
+impl Ticks {
+    pub(crate) fn columns(&self) -> &[u16] {
+        &self.columns[..usize::from(self.count)]
+    }
+}
+
+/// The tempo a deck plays at: its track's `bpm_x100` with its pitch, in hundredths of a
+/// BPM (`pitch_centipercent` +800 is +8 %).
+pub(crate) fn playing_bpm_x100(bpm_x100: u32, pitch_centipercent: i32) -> u32 {
+    let scaled = i64::from(bpm_x100) * (10_000 + i64::from(pitch_centipercent)) / 10_000;
+    scaled.clamp(0, i64::from(u32::MAX)) as u32
+}
+
+/// The real time the strip spans: `beats` of the master at `bpm_x100`, or 2 s without a
+/// tempo.
+pub(crate) fn span_ms(bpm_x100: u32, beats: u32) -> u32 {
+    if bpm_x100 == 0 {
+        return 2_000;
+    }
+    (u64::from(beats) * 6_000_000 / u64::from(bpm_x100)) as u32
+}
+
+/// Where `beats` fall on a strip `width` columns wide that spans `span_ms` of real time
+/// with the playhead, `position_ms` into the track, in its middle. A deck pitched up plays
+/// its track faster, so its beats come closer in real time.
+pub(crate) fn beat_columns(
+    beats: &[Beat],
+    position_ms: u32,
+    pitch_centipercent: i32,
+    span_ms: u32,
+    width: usize,
+) -> Ticks {
+    let mut ticks = Ticks::default();
+    let rate = 10_000 + i64::from(pitch_centipercent);
+    if rate <= 0 || span_ms == 0 || width == 0 {
+        return ticks;
+    }
+    let (span, width) = (i64::from(span_ms), width as i64);
+    // Track time from the playhead to either end of the strip.
+    let reach = span * rate / 20_000;
+    let now = i64::from(position_ms);
+    let first = beats.partition_point(|beat| i64::from(beat.time_ms) < now - reach);
+    for beat in &beats[first..] {
+        let track_ms = i64::from(beat.time_ms) - now;
+        if track_ms > reach {
+            break;
+        }
+        let real_ms = track_ms * 10_000 / rate;
+        let column = width / 2 + real_ms * width / span;
+        if (0..width).contains(&column) && usize::from(ticks.count) < MAX_TICKS {
+            ticks.columns[usize::from(ticks.count)] = column as u16;
+            ticks.count += 1;
+        }
+    }
+    ticks
 }
 
 /// `beats` brought into `[-0.5, 0.5)`.
@@ -111,6 +176,27 @@ mod tests {
             beat_offset_ms(master, deck(&other_beats, 6_060, 12_000)),
             Some(50)
         );
+    }
+
+    #[test]
+    fn beats_fall_on_the_strip_in_real_time() {
+        // 120 BPM from 0: a beat each 500 ms. Four beats span 2 s on 800 columns, so a
+        // beat is 200 columns; the playhead 100 ms past a beat puts it 40 columns left of
+        // the middle.
+        let beats = grid(120, 0, 64);
+        let span = span_ms(12_000, 4);
+        assert_eq!(span, 2_000);
+        let ticks = beat_columns(&beats, 10_100, 0, span, 800);
+        assert_eq!(ticks.columns(), &[160, 360, 560, 760]);
+        // Pitched up 25 %, the same beats come 400 ms apart in real time: 160 columns.
+        let fast = beat_columns(&beats, 10_100, 2_500, span, 800);
+        assert_eq!(fast.columns(), &[48, 208, 368, 528, 688]);
+        // Nothing to show without beats or a span.
+        assert!(beat_columns(&[], 10_100, 0, span, 800).columns().is_empty());
+        assert!(beat_columns(&beats, 10_100, 0, 0, 800).columns().is_empty());
+        assert_eq!(playing_bpm_x100(12_000, 2_500), 15_000);
+        assert_eq!(playing_bpm_x100(12_000, -800), 11_040);
+        assert_eq!(span_ms(0, 4), 2_000);
     }
 
     #[test]
