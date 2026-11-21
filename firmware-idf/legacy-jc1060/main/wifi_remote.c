@@ -42,6 +42,14 @@ extern size_t ruzina_web_handle(uint32_t boot, const uint8_t *request, size_t re
 extern size_t ruzina_web_largest_asset(void);
 extern void ruzina_web_set_name(const uint8_t *name, size_t len);
 
+/* Called from ruzina_web_handle: the web task waits a moment for the USB task to answer a
+ * load or a seek. At least one tick, so the USB task gets its turn. */
+void ruzina_web_wait(uint32_t ms)
+{
+    const TickType_t ticks = pdMS_TO_TICKS(ms);
+    vTaskDelay(ticks ? ticks : 1);
+}
+
 static const char *const hosted_tasks[] = {
     "rpc_rx", "rpc_tx", "rpc_supp_cb", "sdio_rx_buf", "sdio_read", "sdio_process_rx", "sdio_write",
 };

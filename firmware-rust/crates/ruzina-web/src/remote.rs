@@ -45,6 +45,9 @@ pub enum RemoteCommand {
     Seek {
         deck: DeckId,
         position_ms: u32,
+        /// The deck's load generation the page saw (`load_generations`), if it sent one.
+        /// A seek meant for a track the deck no longer holds is refused.
+        generation: Option<u32>,
     },
     /// `track` is the export's track id, `revision` the catalog revision the
     /// page listed it from (see [`crate::status::resolve_load`]).
@@ -197,6 +200,10 @@ pub fn parse_remote(query: &str) -> Result<RemoteCommand, RemoteError> {
             position_ms: parse::query_value(query, "value")
                 .and_then(parse::parse_u32)
                 .ok_or(RemoteError::Value)?,
+            generation: match parse::query_value(query, "generation") {
+                None => None,
+                Some(value) => Some(parse::parse_u32(value).ok_or(RemoteError::Value)?),
+            },
         },
         "load" => RemoteCommand::Load {
             deck: deck()?,
@@ -381,8 +388,21 @@ mod tests {
             parse_remote("action=seek&deck=1&value=90000"),
             Ok(RemoteCommand::Seek {
                 deck: DeckId::One,
-                position_ms: 90_000
+                position_ms: 90_000,
+                generation: None,
             })
+        );
+        assert_eq!(
+            parse_remote("action=seek&deck=2&value=500&generation=7"),
+            Ok(RemoteCommand::Seek {
+                deck: DeckId::Two,
+                position_ms: 500,
+                generation: Some(7),
+            })
+        );
+        assert_eq!(
+            parse_remote("action=seek&deck=2&value=500&generation=x"),
+            Err(RemoteError::Value)
         );
         assert_eq!(clamp_seek_ms(90_000, Some(60_000)), 60_000);
         assert_eq!(clamp_seek_ms(90_000, None), 90_000);

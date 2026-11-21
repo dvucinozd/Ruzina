@@ -139,16 +139,44 @@ fn the_controllers_fader_takes_over_only_once_it_reaches_the_pages_value() {
     assert_eq!(mix.mixer().deck(DeckId::One).channel_volume, 1_000);
 }
 
+/// What a fake USB task took while the web task waited: a load (`'l'`) or a seek
+/// (`'s'`), the deck and the arguments.
+type Taken = std::rc::Rc<core::cell::RefCell<std::vec::Vec<(char, usize, [u32; 3])>>>;
+
+/// While the web task waits, a USB task that takes every load and seek and gives the
+/// answer `answer` holds then.
+fn usb_task(answer: std::rc::Rc<core::cell::Cell<u8>>) -> Taken {
+    let taken = Taken::default();
+    let seen = taken.clone();
+    USB_TURN.with(|turn| {
+        *turn.borrow_mut() = Some(Box::new(move || {
+            for (kind, exchanges) in [('l', &WEB_LOAD), ('s', &WEB_SEEK)] {
+                for (deck, exchange) in exchanges.iter().enumerate() {
+                    if let Some((ticket, args)) = exchange.take() {
+                        seen.borrow_mut().push((kind, deck, args));
+                        exchange.answer(ticket, answer.get());
+                    }
+                }
+            }
+        }));
+    });
+    taken
+}
+
+/// No USB task: nothing takes the web task's requests.
+fn no_usb_task() {
+    USB_TURN.with(|turn| *turn.borrow_mut() = None);
+}
+
 #[test]
-fn a_seek_needs_a_loaded_track_and_keeps_inside_it() {
+fn a_seek_needs_a_loaded_track_and_answers_as_the_engine_did() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
-    for slot in &deck_view::WEB_SEEKS {
-        slot.store(0, Ordering::Relaxed);
-    }
+    let answer = std::rc::Rc::new(core::cell::Cell::new(DONE));
+    let taken = usb_task(answer.clone());
     deck_view::LIVE[0].store(deck_view::DeckSnapshot::default());
     let refused = post("action=seek&deck=1&value=5000");
-    assert!(!refused.starts_with("HTTP/1.1 200"), "no track: {refused}");
-    assert_eq!(deck_view::WEB_SEEKS[0].load(Ordering::Relaxed), 0);
+    assert!(refused.starts_with("HTTP/1.1 400"), "no track: {refused}");
+    assert!(taken.borrow().is_empty(), "never asked");
     let mut track = deck_view::LoadedTrack::none();
     track.index = 0;
     track.duration_ms = 60_000;
@@ -159,12 +187,31 @@ fn a_seek_needs_a_loaded_track_and_keeps_inside_it() {
     });
     let seek = post("action=seek&deck=1&value=90000");
     assert!(seek.starts_with("HTTP/1.1 200"), "{seek}");
-    assert_eq!(
-        deck_view::WEB_SEEKS[0].load(Ordering::Relaxed),
-        60_000,
-        "the last ms, plus one"
+    let with_generation = post("action=seek&deck=1&value=100&generation=5");
+    assert!(
+        with_generation.starts_with("HTTP/1.1 200"),
+        "{with_generation}"
     );
-    deck_view::WEB_SEEKS[0].store(0, Ordering::Relaxed);
+    assert_eq!(
+        *taken.borrow(),
+        [('s', 0, [59_999, 0, 0]), ('s', 0, [100, 1, 5])],
+        "the last ms; the generation the page sent"
+    );
+    for (code, line, message) in [
+        (NO_TRACK, "HTTP/1.1 400", "Deck not seekable"),
+        (HELD, "HTTP/1.1 409", "Deck is scratching or looping"),
+        (CHANGED, "HTTP/1.1 409", "Deck track changed"),
+    ] {
+        answer.set(code);
+        let refused = post("action=seek&deck=1&value=100");
+        assert!(refused.starts_with(line), "{refused}");
+        assert!(refused.ends_with(message), "{refused}");
+    }
+    // Without a USB task the seek is withdrawn, so it never runs later.
+    no_usb_task();
+    let busy = post("action=seek&deck=1&value=100");
+    assert!(busy.starts_with("HTTP/1.1 503"), "{busy}");
+    assert!(WEB_SEEK[0].take().is_none(), "withdrawn");
     deck_view::LIVE[0].store(deck_view::DeckSnapshot::default());
     while deck_view::take_track(0).is_some() {}
     while deck_view::take_grid(0).is_some() {}
@@ -267,9 +314,8 @@ fn the_page_lists_the_library_and_loads_a_track_without_the_screens_selection() 
     for deck in &deck_view::LIVE {
         deck.store(deck_view::DeckSnapshot::default());
     }
-    for slot in &deck_view::WEB_LOADS {
-        slot.store(0, Ordering::Relaxed);
-    }
+    let answer = std::rc::Rc::new(core::cell::Cell::new(DONE));
+    let taken = usb_task(answer.clone());
     let library = get("/api/library");
     assert!(library.starts_with("HTTP/1.1 200"), "{library}");
     for expected in [
@@ -285,39 +331,37 @@ fn the_page_lists_the_library_and_loads_a_track_without_the_screens_selection() 
     let loaded = load(2, generation, 2);
     assert!(loaded.starts_with("HTTP/1.1 200"), "{loaded}");
     assert_eq!(
-        deck_view::WEB_LOADS[1].load(Ordering::Relaxed),
-        2,
-        "catalog index 1"
+        *taken.borrow(),
+        [('l', 1, [2, generation, 0])],
+        "catalog index 1, from the listed revision"
     );
     assert_eq!(
         deck_view::selected(),
         Some(0),
         "the screen's selection stays"
     );
-    let busy = load(3, generation, 2);
-    assert!(
-        busy.starts_with("HTTP/1.1 409"),
-        "one load per deck: {busy}"
-    );
-    deck_view::WEB_LOADS[1].store(0, Ordering::Relaxed);
-    // A load the engine is still running, whoever asked for it, is busy too.
-    deck_view::LOAD_PENDING[1].store(true, Ordering::Relaxed);
-    let running = load(3, generation, 2);
-    assert!(running.starts_with("HTTP/1.1 409"), "{running}");
-    assert_eq!(deck_view::WEB_LOADS[1].load(Ordering::Relaxed), 0);
-    deck_view::LOAD_PENDING[1].store(false, Ordering::Relaxed);
+    // The engine's refusals reach the page as they are.
+    for (code, message) in [
+        (BUSY, "Library changed or load busy"),
+        (LOCKED, "Deck is playing (load lock)"),
+        (CHANGED, "Library generation changed"),
+    ] {
+        answer.set(code);
+        let refused = load(3, generation, 2);
+        assert!(refused.starts_with("HTTP/1.1 409"), "{refused}");
+        assert!(refused.ends_with(message), "{refused}");
+    }
+    taken.borrow_mut().clear();
     let stale = load(2, generation.wrapping_add(1), 2);
     assert!(stale.starts_with("HTTP/1.1 409"), "{stale}");
     let missing = load(4, generation, 2);
     assert!(missing.starts_with("HTTP/1.1 404"), "{missing}");
-    deck_view::LIVE[0].store(deck_view::DeckSnapshot {
-        flags: deck_view::LOADED | deck_view::PLAYING,
-        ..deck_view::DeckSnapshot::default()
-    });
-    let locked = load(1, generation, 1);
-    assert!(locked.starts_with("HTTP/1.1 409"), "{locked}");
-    assert_eq!(deck_view::WEB_LOADS[0].load(Ordering::Relaxed), 0);
-    deck_view::LIVE[0].store(deck_view::DeckSnapshot::default());
+    assert!(taken.borrow().is_empty(), "neither reached the engine");
+    // Without a USB task the load is withdrawn, so it never runs later.
+    no_usb_task();
+    let busy = load(1, generation, 1);
+    assert!(busy.starts_with("HTTP/1.1 409"), "{busy}");
+    assert!(WEB_LOAD[0].take().is_none(), "withdrawn");
 }
 
 #[test]

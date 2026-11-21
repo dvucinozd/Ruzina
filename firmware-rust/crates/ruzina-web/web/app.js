@@ -129,6 +129,12 @@ async function pollStatus() {
       applied = status.stamp;
       renderDeck(1, status.deck1, status.mixer);
       renderDeck(2, status.deck2, status.mixer);
+      // Each deck's load generation goes with its seeks, so a seek meant for a track
+      // the deck has since replaced is refused.
+      for (const deck of [1, 2]) {
+        const generation = (status.stamp.load_generations || [])[deck - 1];
+        deckCard(deck).dataset.generation = generation === undefined ? '' : String(generation);
+      }
       renderMixer(status.mixer);
       const identity = {boot: status.stamp.boot, revision: status.stamp.library_revision};
       if (!sameIdentity(identity, desiredIdentity)) {
@@ -250,7 +256,10 @@ function bindControls() {
       const duration = Number(card.dataset.duration) || 0;
       const rect = bar.getBoundingClientRect();
       const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-      if (duration) control(deck, 'seek', Math.round(fraction * duration));
+      if (!duration) return;
+      const params = new URLSearchParams({ action: 'seek', deck, value: Math.round(fraction * duration) });
+      if (card.dataset.generation) params.set('generation', card.dataset.generation);
+      mutate(`/api/control?${params}`);
     });
   }
   $('#search').addEventListener('input', renderLibrary);

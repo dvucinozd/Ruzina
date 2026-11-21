@@ -15,9 +15,10 @@ const AP: &str = "192.168.4.1";
 #[derive(Default)]
 struct Fake {
     controls: Vec<ControlEvent>,
-    seeks: Vec<(DeckId, u32)>,
+    seeks: Vec<(DeckId, u32, Option<u32>)>,
     loads: Vec<(DeckId, u32, u32)>,
     busy: bool,
+    seek_outcome: Option<SeekOutcome>,
     load_outcome: Option<LoadOutcome>,
     duration: Option<u32>,
     /// (revision, rows) of the listed catalog.
@@ -56,9 +57,9 @@ impl WebBackend for Fake {
         self.controls.extend_from_slice(events);
         ControlOutcome::Applied
     }
-    fn seek(&mut self, deck: DeckId, position_ms: u32) -> SeekOutcome {
-        self.seeks.push((deck, position_ms));
-        SeekOutcome::Applied
+    fn seek(&mut self, deck: DeckId, position_ms: u32, generation: Option<u32>) -> SeekOutcome {
+        self.seeks.push((deck, position_ms, generation));
+        self.seek_outcome.unwrap_or(SeekOutcome::Applied)
     }
     fn load(&mut self, deck: DeckId, track: u32, revision: u32) -> LoadOutcome {
         self.loads.push((deck, track, revision));
@@ -209,7 +210,45 @@ fn seeks_are_clamped_and_loads_carry_the_listed_revision() {
         &mut fake,
         &post("/api/control?action=seek&deck=1&value=99000"),
     );
-    assert_eq!(fake.seeks, [(DeckId::One, 10_000)]);
+    assert_eq!(fake.seeks, [(DeckId::One, 10_000, None)]);
+    exchange(
+        &mut server,
+        &mut fake,
+        &post("/api/control?action=seek&deck=2&value=500&generation=4"),
+    );
+    assert_eq!(fake.seeks[1], (DeckId::Two, 500, Some(4)));
+    for (outcome, line, message) in [
+        (
+            SeekOutcome::NotSeekable,
+            "HTTP/1.1 400 Bad Request",
+            "Deck not seekable",
+        ),
+        (
+            SeekOutcome::Held,
+            "HTTP/1.1 409 Conflict",
+            "Deck is scratching or looping",
+        ),
+        (
+            SeekOutcome::TrackChanged,
+            "HTTP/1.1 409 Conflict",
+            "Deck track changed",
+        ),
+        (
+            SeekOutcome::Busy,
+            "HTTP/1.1 503 Service Unavailable",
+            "Deck busy",
+        ),
+    ] {
+        fake.seek_outcome = Some(outcome);
+        let refused = exchange(
+            &mut server,
+            &mut fake,
+            &post("/api/control?action=seek&deck=1&value=100"),
+        );
+        assert_eq!(status_line(&refused), line);
+        assert_eq!(body(&refused), message);
+    }
+    fake.seek_outcome = None;
 
     let ok = exchange(
         &mut server,
