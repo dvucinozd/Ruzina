@@ -16,5 +16,7 @@ uint32_t ruzina_uac_catalog_phase(void);
 enum { UAC_ACTIVITY_SCREEN, UAC_ACTIVITY_DECODER, UAC_ACTIVITY_STICK, UAC_ACTIVITIES };
 typedef struct { uint32_t edges[UAC_ACTIVITIES]; bool still; } uac_activity_stamp_t;
 void ruzina_uac_activity(uint32_t which, bool running);
+/* An activity that runs on the CPU names its task: it counts only while that task runs. */
+void ruzina_uac_activity_task(uint32_t which, const void *task);
 void ruzina_uac_screen_still(bool still);
 uac_activity_stamp_t ruzina_uac_activity_stamp(void);

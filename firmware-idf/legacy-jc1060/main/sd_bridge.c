@@ -18,7 +18,9 @@
 /* Profile images: the fill learns whether the decoders ran and the stick was read
  * while it did. */
 #define ACTIVITY(which, running) ruzina_uac_activity((which), (running))
+#define ACTIVITY_TASK(which) ruzina_uac_activity_task((which), xTaskGetCurrentTaskHandle())
 #else
+#define ACTIVITY_TASK(which) ((void)0)
 #define ACTIVITY(which, running) ((void)0)
 #endif
 
@@ -248,6 +250,9 @@ static void client(void *unused)
     /* Register on this task before any Rust waker can target it. The task stays
      * allocated after completion so static RawWakers never reference freed TCBs. */
     client_task=xTaskGetCurrentTaskHandle();
+    /* The decoders count only while this task is on the CPU, not while the screen above
+     * it on this core preempts them. */
+    ACTIVITY_TASK(UAC_ACTIVITY_DECODER);
     ACTIVITY(UAC_ACTIVITY_DECODER, true);
 #if CONFIG_RUZINA_SD_RUST_LOAD
     int32_t result=ruzina_legacy_load_run();

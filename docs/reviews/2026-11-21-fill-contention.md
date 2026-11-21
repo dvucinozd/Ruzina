@@ -20,9 +20,13 @@ unchanged.
 
 - **What else ran:** each fill records what else ran while it did. That is the screen
   drawing a frame (the Slint draw, the lanes and the flush), a decoder running on the other
-  core (outside its waits), and the media owner reading the stick. Each activity counts its
-  edges, so a fill knows whether the activity was running when it began, or started or
-  stopped while it ran (`uac_profile_sched.h`).
+  core, and the media owner reading the stick. Each activity counts its edges, so a fill
+  knows whether the activity was running when it began, or started or stopped while it ran
+  (`uac_profile_sched.h`).
+- **The decoders on the CPU:** a decoder counts only while its task is on the CPU, through
+  the scheduler's switch hooks. It does not count while it waits, or while the screen above
+  it on its core preempts it. s163 was built before this, so it counted a preempted decoder
+  as running (see below).
 - **Counts by overlap:** plain and Master Tempo fills are counted by that overlap
   (`uac_profile_overlap` lines). Each `uac_profile` record names the overlap of its fill.
 - **A still screen:** the new build flag `--screen-still` makes the screen stand still
@@ -57,6 +61,11 @@ Master Tempo fills, both decks through their keylocks:
 - **The stick:** its reads made no difference. Fills during a read were no slower than
   others.
 - **The worst fill** (5350 µs, graph stage 4023 µs) overlapped a screen frame and a decoder.
+- **What s163 cannot split:** on s163 a decoder that the screen preempted still counted as
+  running. A fill inside a screen frame could therefore count as overlapping a decoder that
+  never ran. The split between "a screen frame" and "a screen frame and a decoder" is not
+  reliable. The rest holds: the screen bit, the still phases, and the decoder rows with the
+  screen still.
 - **Plain fills** show the same pattern at a smaller scale. With nothing else running they
   take 1459–1507 µs (graph 1049–1101 µs, near the bench). With a screen frame and a decoder
   they take 2178 µs.
