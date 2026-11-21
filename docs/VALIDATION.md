@@ -63,6 +63,10 @@ configurations only compile owner modules; they do not establish a product
 runtime or hardware task wiring. [Host CI](../.github/workflows/rust-host.yml)
 retains UI/stress/runtime artifacts. Inspect exact run annotations if hosted jobs
 do not start; account billing/spending errors are infrastructure failures.
+[Legacy CI](../.github/workflows/legacy-idf.yml) builds the JC1060 rev103 ESP-IDF 6.1
+images, `deck-engine` with the Slint screen and the USB stick among them, and runs the
+legacy Rust core's host tests and the C test harnesses. It builds only; it does not
+qualify an image.
 
 ## Evidence retention
 
@@ -76,6 +80,18 @@ the pre-cleanup archive are retained outside the checkout, including complete
 source/ref snapshots and exact SHA-256 manifests. Build products are not binary
 releases and no board was flashed during software preparation or cleanup.
 
-Still NOT RUN: physical first boot/recovery, factory backup/readback, flash/PSRAM
-probes, display/touch, USB/SD power and reconnect behavior, audio/UAC/DAC clocks,
-latency, listening and soak on either Guition model.
+## Physical evidence by board and path
+
+- **JC1060 rev103, ESP-IDF 6.1 legacy path** (the owner's unit, v1.3): boot and recovery,
+  flash and PSRAM, display and touch, SD and USB stick media, FLX4 MIDI and UAC audio,
+  listening checks and long soaks have device evidence. The
+  [status matrix](DEVELOPMENT_STATUS.md#what-runs-on-the-board) lists each feature with its
+  dated review, and each review names its image and its kind of evidence (log and
+  counters, the owner's observation, or both). Still open there: an external DAC on MAIN,
+  the final power and port layout, and the items under
+  [Open](DEVELOPMENT_STATUS.md#open).
+- **JC1060 rev302+ on the native `esp-hal` path, and the JC8012:** still NOT RUN:
+  physical first boot/recovery, factory backup/readback, flash/PSRAM probes,
+  display/touch, USB/SD power and reconnect behavior, audio/UAC/DAC clocks, latency,
+  listening and soak. The rev103 results do not qualify either; each board needs its own
+  qualification.

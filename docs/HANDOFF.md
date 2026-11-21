@@ -1,7 +1,8 @@
 # Rust M2.5 development handoff
 
-**Current state:** the dated entries below, newest last, down to **On the board** and
-**Open**. A summary is in the [status page](DEVELOPMENT_STATUS.md).
+**Current state:** the dated entries below, newest last, down to **Images in this log**
+and **Open**. Which image the board keeps for play, and the last one measured, is only on
+the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current summary.
 
 **2026-11-03: [two MP3 decks play clean](reviews/2026-11-03-dual-mp3-opt3.md).**
 
@@ -413,13 +414,15 @@
   the same with the screen still, so the screen does not leave a slower cache behind. Its
   frames compete for memory while the fill runs. The stick's reads made no difference.
   Next: keep the screen's heavy memory work, and if needed the decoders, out of the fill.
-- **On the board:** s162 (app `4b6044fa…`), the `--usb-stick` image of the Web Remote send
-  branch, with no profile. Its firmware is the same as `main` at `830a46b`, so it is the
-  image the board keeps. It has all 11 outside review fixes. In its run it made 42 000
-  fills with 0/0 underruns, and the longest took 4.2 ms.
-  Earlier images:
-  - s163 (app `2ce5c0aa…`) is the fill contention profile image, on the board after its
-    run; flash s162 back for play.
+- **Images in this log:** which one the board keeps for play is on the
+  [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
+  the flash now.
+  - s162 (app `4b6044fa…`) is the `--usb-stick` image of the Web Remote send branch, with
+    no profile. Its firmware is the same as `main` at `830a46b`. It has all 11 outside
+    review fixes. In its run it made 42 000 fills with 0/0 underruns, and the longest took
+    4.2 ms.
+  - s163 (app `2ce5c0aa…`) is the fill contention profile image. It was left on the board
+    after its 2026-11-21 run, with s162 to go back for play.
   - s160 (app `efe6975c…`) is `main` at `725488f`. In 8 minutes of play it made 79 000
     fills with 0/0 underruns, and the longest took 5.1 ms (11.5 % over 3 ms).
   - s159 (app `be416a1f…`) and s158 (app `40688f8c…`) are the stick and Web Remote
@@ -436,15 +439,19 @@
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
-- **Open:**
-  - `fill_max_us` is 3.2 ms in production and 3.4 ms under profiling while
-    really mixing, over the 3000 µs headroom target, with no underruns. The
-    render graph is most of it. The owner stopped here; IRAM is kept for when
-    FX add render time;
-  - scratching with both decks playing reached 3.4 ms, the same as mixing, with
-    no underruns;
+- **Open:** the current open items are on the [status page](DEVELOPMENT_STATUS.md#open),
+  with the latest fill figures (s163, 2026-11-21: Master Tempo fills over 3 ms mostly
+  overlap a screen frame; work on that overlap is in progress). The items below are older,
+  each with its campaign:
+  - 2026-11-05, loops campaign (SD build, [loops](reviews/2026-11-05-loops.md)):
+    `fill_max_us` was 3.2 ms in production and
+    3.4 ms under profiling while really mixing, over the 3000 µs headroom target, with no
+    underruns. The render graph was most of it. The owner stopped there; IRAM was kept for
+    when FX add render time;
+  - the same period: scratching with both decks playing reached 3.4 ms, the same as
+    mixing, with no underruns;
   - the 35 to 40-minute soaks were unattended: no seeks, scratch or EQ
-    during them;
+    during them, and nobody listened;
 - **Older paragraphs** below are historical checkpoints.
 
 Latest offline implementation: [legacy MP3 in-place reset](reviews/2026-11-03-mp3-in-place-reset.md).

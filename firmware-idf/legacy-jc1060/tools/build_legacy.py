@@ -28,6 +28,11 @@ def sha(path):
 
 
 def rust_command(command, mp3_core_opt3=False):
+    # rust-core/Cargo.toml already builds nanomp3-core and nanoaudio-mp3 at opt-level 3
+    # in every release build, so this override repeats the manifest's value: the code is
+    # the same with or without --mp3-core-opt3. The flag comes from the 2026-11-03
+    # source-budget experiment (844c3b7), before 521172a set opt-level 3 in the manifest;
+    # an A/B of the decoder's optimization today would need the manifest's value changed.
     overrides = (['--config', 'profile.release.package.nanomp3-core.opt-level=3']
                  if mp3_core_opt3 and command[0] in ('build', 'clippy') else [])
     return ['cargo', '+1.95.0', *overrides, *command]
@@ -57,9 +62,10 @@ def main():
     parser.add_argument('--uac-profile', action='store_true', help='Explicit deck-engine-only callback profiling diagnostic')
     parser.add_argument('--uac-pack-iram', action='store_true', help='Single-variable exact-symbol pack placement; requires --uac-profile')
     parser.add_argument('--producer-profile', action='store_true', help='Separate deck-engine source-supply/USB service diagnostic')
-    parser.add_argument('--mp3-core-opt3', action='store_true', help='Default-OFF nanomp3-core compiler experiment; requires producer profiling')
+    parser.add_argument('--mp3-core-opt3', action='store_true', help='Historical: repeats the opt-level 3 that rust-core/Cargo.toml already gives nanomp3-core, '
+                        'and logs the Rust build verbosely; requires producer profiling')
     parser.add_argument('--soak-autoplay', action='store_true', help='Soak diagnostic: an unattended DJ keeps both decks loading and playing')
-    parser.add_argument('--slint-ui', action='store_true', help='Diagnostic: the deck screen with demo data, measured against USB audio')
+    parser.add_argument('--slint-ui', action='store_true', help="The Slint deck screen with the live decks, and the deck's Wi-Fi and Web Remote unless --no-wifi")
     parser.add_argument('--screen-still', action='store_true',
                         help='Profile diagnostic: the deck screen stands still every other 30 s; requires --uac-profile and --slint-ui')
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
@@ -428,6 +434,8 @@ def main():
                     fill_iram=args.fill_iram,
                     wifi=args.wifi,
                     usb_stick=args.usb_stick,
+                    # The explicit --config override only; empty does not mean a lower opt-level
+                    # (rust-core/Cargo.toml sets 3 for nanomp3-core and nanoaudio-mp3 either way).
                     rust_release_overrides={'nanomp3-core': {'opt-level': 3}} if args.mp3_core_opt3 else {},
                     sha256=sha(binary), bytes=len(data),
                     entrypoint=image.entrypoint, segments=[dict(address=s.addr, bytes=len(s.data)) for s in image.segments],

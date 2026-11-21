@@ -1,5 +1,18 @@
 # JC1060 USB host topology (offline, from the vendor schematic)
 
+> **Note, 2026-11-21:** the data roles below are as planned on 2026-10-31. Since then:
+> - **Console:** UART0 on CN2 (GPIO37/38) at 921600 baud, set in
+>   [`sdkconfig.defaults`](../../firmware-idf/legacy-jc1060/sdkconfig.defaults). USB
+>   Serial/JTAG on FS keeps an output-only copy. See the
+>   [UART0 service link](JC1060_UART0_SERVICE.md).
+> - **Data today:** the FLX4 and the USB stick share a hub on the HS port
+>   ([stick behind a hub](../reviews/2026-11-19-usb-stick-hub.md)); no SD card is needed.
+> - **Still to come:** the board's power on CN2 and the stick on the FS port
+>   ([status](../DEVELOPMENT_STATUS.md#still-to-come)).
+>
+> Data roles and power sources are separate questions: the VBUS and power notes below
+> still hold for every layout.
+
 Date: 2026-10-31. Source: vendor schematic `JC1060P470C_I_W_Y-V1.0.pdf`
 (SHA-256 `ae3f41fe9a66b201358ef8cf1f531fdced68c63f84c8bde36e23cde5132a23ee`),
 one A-size sheet, rendered locally with poppler 24.02. The rendered crops are

@@ -4,9 +4,11 @@ The host workspace contains the reusable DJ product logic and the interactive
 Slint simulator. Active hardware targets are Guition JC1060P470C_I_W_Y and
 JC8012P4A1C_I_W_Y, ESP32-P4 minimum silicon revision 302.
 
-Released M2.5 is the functional reference. See the [parity plan](../docs/M2_5_PARITY_PLAN.md)
-for missing v3/v4 profiles, transport/library features and unfinished services;
-existing host-tested foundations do not establish complete release parity.
+Released M2.5 is the functional reference. The controller-profile parser reads S3CP
+format versions v2, v3 and v4; how many controllers and profiles are qualified on a board
+is a separate question (the JC1060 has run only the DDJ-FLX4). See the
+[parity plan](../docs/M2_5_PARITY_PLAN.md) for transport/library features and unfinished
+services; existing host-tested foundations do not establish complete release parity.
 
 ## Boundaries
 

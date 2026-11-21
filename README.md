@@ -4,7 +4,7 @@ Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with
 v3.2 silicon required by the native target. The minimum configured revision is 302.
 
-## Current state — 2026-11-19
+## Current state — 2026-11-21
 
 **On the board:** the owner's JC1060 (ESP32-P4 v1.3, rev103) runs the legacy path:
 - ESP-IDF 6.1, with the shared `no_std` Rust core, in
@@ -12,9 +12,12 @@ v3.2 silicon required by the native target. The minimum configured revision is 3
 - a DDJ-FLX4 for control, MAIN and headphones;
 - a Rekordbox export on an exFAT USB stick, behind a hub on the board's HS port.
 
-The board keeps image s148 (app `5824136c…`), the `--usb-stick` build of `main`; the SD
-build s136 (app `a666ac6e…`) is from before even fills. Every point below has a dated review with
-its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.md):
+Which image the board keeps for play, and the last one measured, is on the
+[status page](docs/DEVELOPMENT_STATUS.md#the-boards-images). Every point below has a dated
+review, collected in the [handoff](docs/HANDOFF.md), with its device evidence: a log with
+counters, the owner's observation on the board, or both. The long soaks were scripted or
+unattended, logs and counters only; the owner's listening checks are separate, shorter
+runs.
 
 - **Playback:**
   - two decks of WAV, MP3 and FLAC;
@@ -22,7 +25,8 @@ its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.
     card;
   - QIO 80 MHz flash and 200 MHz PSRAM;
   - indexed MP3 seeks;
-  - no underruns in the 35 to 42-minute soaks, the last one from the stick.
+  - no underruns in the 35 to 42-minute soaks, the last one from the stick (counters;
+    nobody listened).
 - **Performance:**
   - CUE, loops and scratch from a played-audio history;
   - SYNC, also continuous;
@@ -43,14 +47,17 @@ its device log and the owner's verdict, collected in the [handoff](docs/HANDOFF.
 - **Network:** the deck's own Wi-Fi (ESP32-C6 via ESP-Hosted) and the Web Remote, with
   play, cue, library, mixer and SYNC.
 
-**Still to come:** the final layout, with the board's own power on CN2, the stick on the
-FS port and the log on UART0.
+**Still to come:** the final layout, with the board's own power on CN2 and the stick on the
+FS port. The console is already on UART0 ([service link](docs/boards/JC1060_UART0_SERVICE.md)).
 
 **Open:**
-- USB audio fills over the 3 ms target, with no underruns: 4.16 ms at most from the stick,
-  where 0.23 % of fills were over 3 ms, after a
-  [faster render](docs/reviews/2026-11-19-fx-fill-cost.md)
-  ([soak](docs/reviews/2026-11-20-fast-render-soak.md); 3.75 % before).
+- USB audio fills over the 3 ms target, with no underruns. On the s163 profile image
+  (2026-11-21, Master Tempo on both decks), 18.3 % of Master Tempo fills took over 3 ms
+  while the screen drew, against 1.7 % with it still, and 88 % of those over 3 ms
+  overlapped a screen frame ([fill contention](docs/reviews/2026-11-21-fill-contention.md)).
+  Earlier figures, each with its image and workload, are on the
+  [status page](docs/DEVELOPMENT_STATUS.md#open). Keeping the screen's frames from slowing
+  the fill is in progress.
 - Slint's scene preparation is still 16 to 26 ms of a big frame.
 - In the SD build only: an SD clock failure at the first boot after a flash.
 
@@ -155,7 +162,7 @@ or flash command is selected.
 ## Documentation
 
 - [Start here: agent handoff and exact continuation branch](docs/HANDOFF.md)
-- [Development status and next steps](docs/DEVELOPMENT.md)
+- [Native firmware plan and next steps](docs/DEVELOPMENT.md)
 - [M2.5 parity audit, priorities and acceptance](docs/M2_5_PARITY_PLAN.md)
 - [Architecture](docs/M1_RUST_ARCHITECTURE.md)
 - [Product requirements](docs/M1_RUST_PRODUCT_REQUIREMENTS.md)

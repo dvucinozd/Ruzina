@@ -1,11 +1,27 @@
-# Development status and next steps
+# Native firmware plan and next steps
 
-Updated: 2026-10-30. The first JC1060 reports incompatible v1.3 silicon on COM3;
+Updated: 2026-10-30, with a backend note on 2026-11-21. This page is the plan for the
+native `esp-hal` firmware (`apps/m1-firmware`, silicon rev 302 and up) and the shared host
+crates. The first JC1060 reports incompatible v1.3 silicon on COM3;
 see the [arrival/ESP-IDF assessment](boards/JC1060_ARRIVAL_2026-10-30.md).
 Native v3.2 policy remains unchanged. See the authoritative [status matrix](DEVELOPMENT_STATUS.md)
 and [review fix execution log](reviews/2026-10-27-astra-implementation-log.md).
-This page describes the current Guition Rust development
-scope; compilation, host behavior and physical acceptance remain distinct.
+Compilation, host behavior and physical acceptance remain distinct.
+
+**Two backends.** Where this page says a target adapter, driver or physical sink is
+missing, that holds for the native backend. The JC1060 rev103 legacy path
+([`firmware-idf/legacy-jc1060`](../firmware-idf/legacy-jc1060), ESP-IDF 6.1) already has,
+with device evidence on the [status page](DEVELOPMENT_STATUS.md#what-runs-on-the-board):
+- Wi-Fi through the ESP32-C6 over ESP-Hosted (`ruzina_wifi_start` in `main/probe.c`) and
+  the Web Remote over `ruzina-web`;
+- settings kept on flash (`ruzina_legacy_settings_service`, RP-11's `ruzina-settings`
+  record);
+- each deck's cover on the Slint screen (RP-07);
+- FLX4 audio: MAIN on channels 1/2 and the headphones on 3/4
+  (`rust-core/src/controller_audio.rs`).
+
+Open on both backends: signed OTA and its slot/trust adapter, TLS, writable media
+(profile uploads to a card or stick), an external DAC on MAIN, and the JC8012.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
@@ -16,7 +32,7 @@ slots. The simulator has an HTTP server and Web Remote page for status,
 controls and library loads, plus profile/config uploads and diagnostic snapshots.
 OTA upload is unavailable (503) in the demo Session without an explicit trust/slot
 adapter; HTTP-to-OTA composition is covered with the synthetic A/B device model.
-There is no C6 driver, TLS or target flash adapter. The host
+On the native backend there is no C6 driver, TLS or target flash adapter. The host
 parts of RP-09/10/14/16/17 exist (UAC, USB roles, MAIN change, headphone
 packing, MT regression; no USB adapter or board budgets). The remaining work
 includes HTTP-to-owner integrations, fixture expansion, board qualification
@@ -119,10 +135,13 @@ policy remain explicit board questions. See the [matrix](boards/GUITION_HARDWARE
 
 ## Further software and release work
 
-Target adapters for settings persistence, transactional writable media
-workflows, signed A/B OTA/rollback/readiness, C6 transport/networking and Web
-Remote are unfinished; their RP-11/12/13 rules exist only as host contracts. Physical audio sinks and controller-specific headphone channel maps
-are not implemented/qualified. Musical analysis accuracy, device performance,
+On the native backend, target adapters for settings persistence, transactional writable
+media workflows, signed A/B OTA/rollback/readiness, C6 transport/networking and Web
+Remote are unfinished; their RP-11/12/13 rules exist only as host contracts there.
+Physical audio sinks and controller-specific headphone channel maps are not
+implemented/qualified there. The rev103 legacy path has the settings, C6 and Web Remote
+adapters and the FLX4 channel map (see **Two backends** above); writable media, OTA and
+TLS are open on it too. Musical analysis accuracy, device performance,
 sanitizer/fuzz campaigns and long-duration physical soak are separate gates.
 
 The Rust product is named **Ruzina**; Pajoniiir remains the C donor's name.

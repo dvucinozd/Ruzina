@@ -12,8 +12,47 @@ handling; only READY permits interface startup and prefill. Resource readiness
 does not grant a media lease. Failure/removal is terminal until reboot; published
 rings remain alive. Lower diagnostic profiles retain their previous startup.
 See the [implementation record](../../docs/reviews/2026-11-02-resource-readiness.md)
-for verification and open physical gates. This candidate is not qualified or
-installed; s07 remains the accepted image.
+for verification and open physical gates. That record is from 2026-11-02, when s07 was
+the accepted image. Which image the board keeps now, and the last one measured, is on the
+[status page](../../docs/DEVELOPMENT_STATUS.md#the-boards-images).
+
+## Build recipes for the deck screen image
+
+The board runs `deck-engine` with the Slint deck screen. Two recipes, from the
+repository root in the pinned IDF environment (below), each into a NEW output directory.
+
+**Play image, music from the USB stick.** These are the flags in the build manifest of
+s162, the image kept for play:
+
+```sh
+python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --output /absolute/new/play --variant deck-engine --soak-autoplay --slint-ui --fill-iram --usb-stick
+```
+
+**Fill profile image.** These are the flags of s163, the
+[fill contention](../../docs/reviews/2026-11-21-fill-contention.md) profile image:
+
+```sh
+python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --output /absolute/new/profile --variant deck-engine --uac-profile --screen-still --soak-autoplay --slint-ui --fill-iram --usb-stick
+```
+
+| Flag | What it does | Requires |
+|---|---|---|
+| `--variant deck-engine` | The product deck engine in charge of transport, with the mix | — |
+| `--slint-ui` | The Slint deck screen with the live decks; also builds in the deck's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted) | `deck-engine`, no `--producer-profile` |
+| `--no-wifi` | Leaves the Wi-Fi and Web Remote out of the screen image | Only matters with `--slint-ui` |
+| `--usb-stick` | Media from an exFAT stick behind a hub on the HS port; no SD card | `deck-engine` |
+| `--fill-iram` | The USB audio fill code in internal RAM | — |
+| `--soak-autoplay` | The soak DJ: both decks keep loading and playing, with a gesture every few seconds; a deck the operator paused stays paused, and the controller keeps working | `deck-engine`, no `--producer-profile` |
+| `--uac-profile` | The fill profiler: `uac_profile` records and the overlap counts | `deck-engine` |
+| `--screen-still` | The screen stands still every other 30 s, to compare fills with and without it | `--uac-profile` and `--slint-ui` |
+
+- **PowerShell:** `tools/build_legacy.ps1` passes only `-UacProfile` of these flags. For
+  the recipes above, call Python directly.
+- **CI:** the [legacy CI](../../.github/workflows/legacy-idf.yml) builds
+  `--soak-autoplay --slint-ui --fill-iram` for pull requests and `main`: from the SD card
+  with and without `--uac-profile`, and once with `--usb-stick`. Those are build checks of the pushed
+  source. A CI image is not the image the board keeps, which the status page names by its
+  app hash.
 
 ## Reproducible offline tools
 
@@ -484,14 +523,22 @@ in charge of transport.
 - **Feedback to the engine.** The renderer reports each deck's position back
   to the engine. A loaded track is committed with `commit_track_load` once its
   producer has decoded it.
-- **Load lock.** Load is refused while the deck plays.
+- **Load lock.** Every Load goes through `ruzina-deck`'s `load_admission`. With LOAD
+  LOCK on (the default, a switch on the Settings page kept on flash), a Load to a deck
+  that plays, has a Play pending or is being scratched is refused. With LOAD LOCK off, a
+  playing deck loads.
 - **Feedback to the owner.** The Play LEDs follow the engine. The screen
   header shows `> m:ss` or `| m:ss` per deck, and the log adds
   `deck_engine_stats`.
-- **Not yet executed.** Scratch, loops, pad FX and beat FX effects are
-  counted only.
+- **Loops, scratch and FX.** Loops and scratch render from a played-audio history
+  ([loops](../../docs/reviews/2026-11-05-loops.md),
+  [scratch](../../docs/reviews/2026-11-05-scratch.md)), and Beat FX and Pad FX run in the
+  render graph ([FX](../../docs/reviews/2026-11-05-fx.md)). Not in a device log yet: the
+  Delay effect and the Beat FX channel switch.
 
-See [deck engine](../../docs/reviews/2026-11-01-legacy-deck-engine.md).
+See [deck engine](../../docs/reviews/2026-11-01-legacy-deck-engine.md) for the profile
+as first built, when scratch, loops and FX were only counted and a playing deck refused
+every Load.
 
 ## UAC fill-phase diagnostics (`deck-mix` / `deck-engine`)
 

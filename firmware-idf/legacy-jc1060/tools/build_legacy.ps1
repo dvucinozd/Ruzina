@@ -1,3 +1,6 @@
+# Passes only -UacProfile of build_legacy.py's flags. For the deck screen images (--slint-ui,
+# --usb-stick, --fill-iram, --soak-autoplay, --screen-still, --no-wifi), call build_legacy.py
+# directly; see "Build recipes" in ../README.md.
 param(
     [Parameter(Mandatory=$true)][string]$Idf,
     [Parameter(Mandatory=$true)][string]$Output,
