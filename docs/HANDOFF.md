@@ -397,18 +397,22 @@
   - Back finds the row it came from in the parent's rows, so it lands right at any depth.
     The old 16-level history is gone.
   - Still open from the review: 6, slow HTTP sends holding up other clients.
-- **On the board:** s159 (app `be416a1f…`), the `--usb-stick` product image of the stick
-  branch. Before it, s158 (app `40688f8c…`), the `--usb-stick` product image of the Web
-  Remote outcomes branch, with no profile. s157 (app `bd390cb0…`) is the product image of
-  `main` at `f2a61fd`. In 7 minutes of play with Master Tempo, hot cues, SYNC and a scratch
-  it made 79 000 fills with 0/0 underruns. The longest was 5.1 ms (s154: 5.4 ms), and
-  11.5 % were over 3 ms. s156 (app `d4124d57…`) is the profile image of the keylock start
-  branch.
-  The image the board keeps is s148 (app `5824136c…`), the `--usb-stick` image with the
-  faster render and the stick behind a hub; s154 (app `53c2f867…`) is `main` after the
-  keylock spread. s142 (app `3125b34f…`) is
-  s148 before the faster render, s140 (app `df3ae93c…`) before even fills. The
-  SD image s136 (app `a666ac6e…`) is from before even fills.
+- **On the board:** s160 (app `efe6975c…`), the `--usb-stick` product image of `main` at
+  `725488f`, with no profile. It is now the image the board keeps. It has the Web Remote
+  outcomes and the stick's checked recovery. In 8 minutes of play it
+  made 79 000 fills with 0/0 underruns, and the longest took 5.1 ms (11.5 % over 3 ms).
+  The stick had no recovery or retry, and nothing crashed.
+  Earlier images:
+  - s159 (app `be416a1f…`) and s158 (app `40688f8c…`) are the stick and Web Remote
+    branches before they merged.
+  - s157 (app `bd390cb0…`) is `main` at `f2a61fd`.
+  - s156 (app `d4124d57…`) is the profile image of the keylock start branch.
+  - s148 (app `5824136c…`), the kept image until s160, is the `--usb-stick` image with the
+    faster render and the stick behind a hub.
+  - s154 (app `53c2f867…`) is `main` after the keylock spread.
+  - s142 (app `3125b34f…`) is s148 before the faster render, and s140 (app `df3ae93c…`)
+    is before even fills.
+  - The SD image s136 (app `a666ac6e…`) is from before even fills.
   Each flash keeps its live pre-write backup (`restore-*.bin`) in
   `D:\BoardEvidence\JC1060-20261030-COM3\s<n>-*-flash`.
 - **Parked work:** the matched control/opt3 source-compare preparation is on
