@@ -46,3 +46,16 @@ fake sockets.
 - **Stuck connections:** a full socket never makes a step wait. A client that stops taking
   its answer is dropped after 5 s, a failed send drops at once, and an unfinished request
   is dropped after 2 s.
+
+## On the board
+
+Image s162 (app `4b6044fa…`), the `--usb-stick` product image of this branch, was tested
+with a phone on the deck's access point. Page, controls and a load all worked.
+
+- **Server:** it reported `listen=ok … send_slice=2920` and `server=listening`.
+- **Requests:** 594 in about 4 minutes, and none was dropped.
+- **Timing:** the longest request in most 30 s reports took 13–77 ms. Two reports had one
+  long request each, 428 ms and 972 ms, while the owner was using the page. The time
+  counts from the accepted connection, so it includes the phone's wait before it sends a
+  request on a connection it opened early. The owner noticed no delay.
+- **Audio:** 42 000 fills with 0/0 underruns. The longest took 4.2 ms.

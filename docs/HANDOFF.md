@@ -402,7 +402,8 @@
   until it is sent, and the server sends at most 2920 bytes a pass, without waiting, when
   the socket is ready. A slow client therefore no longer holds back another's controls.
   A connection that has not taken its answer within 5 s is dropped. A host test covers it
-  with fake sockets.
+  with fake sockets. On s162 (app `4b6044fa…`), tested from a phone, 594 requests came in
+  and none was dropped. Underruns were 0/0, and the owner noticed no delay.
 - **On the board:** s160 (app `efe6975c…`), the `--usb-stick` product image of `main` at
   `725488f`, with no profile. It is now the image the board keeps. It has the Web Remote
   outcomes and the stick's checked recovery. In 8 minutes of play it
