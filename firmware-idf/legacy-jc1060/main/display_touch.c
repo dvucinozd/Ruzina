@@ -79,9 +79,9 @@ int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32
 }
 
 /* A strip of `pixels` pixels in internal RAM, made on the first call, or NULL. The deck
-   screen draws a lane's columns there and the PPA copies them into a frame buffer, so the
-   CPU's writes stay off PSRAM: there they slow the USB audio fill on the other core, the
-   PPA's copies hardly at all (the s165 boot bench). */
+   screen draws there, Slint's lines and a lane's columns, and the PPA copies them into a
+   frame buffer, so the CPU's writes stay off PSRAM: there they slow the USB audio fill on
+   the other core, the PPA's copies hardly at all (the s165 boot bench). */
 uint16_t *ruzina_panel_strip(uint32_t pixels)
 {
     static uint16_t *strip;
@@ -93,16 +93,16 @@ uint16_t *ruzina_panel_strip(uint32_t pixels)
     return made == pixels ? strip : NULL;
 }
 
-/* Copies the `w` by `h` pixels at `from`, `w` to a row, to (x, y) of frame buffer `to`, in
-   hardware. As for ruzina_panel_move, the PPA driver invalidates the rows of `to`, so the
-   caller writes them back before. */
-int32_t ruzina_panel_blit(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
-                          uint32_t w, uint32_t h)
+/* Copies the `w` by `h` pixels at column `from_x` of `from`, `from_w` to a row, to (x, y)
+   of frame buffer `to`, in hardware. As for ruzina_panel_move, the PPA driver invalidates
+   the rows of `to`, so the caller writes them back before. */
+int32_t ruzina_panel_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *to,
+                          uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
-    if (!w || !h || x + w > 1024 || y + h > 600 || !mover_ready()) return -1;
+    if (!w || !h || from_x + w > from_w || x + w > 1024 || y + h > 600 || !mover_ready()) return -1;
     ppa_srm_oper_config_t blit = {
-        .in = {.buffer = from, .pic_w = w, .pic_h = h, .block_w = w, .block_h = h,
-               .block_offset_x = 0, .block_offset_y = 0, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
+        .in = {.buffer = from, .pic_w = from_w, .pic_h = h, .block_w = w, .block_h = h,
+               .block_offset_x = from_x, .block_offset_y = 0, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
         .out = {.buffer = to, .buffer_size = 1024 * 600 * 2, .pic_w = 1024, .pic_h = 600,
                 .block_offset_x = x, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
         .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,

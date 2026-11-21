@@ -178,6 +178,8 @@ unsafe extern "C" {
     fn ruzina_panel_strip(pixels: u32) -> *mut u16;
     fn ruzina_panel_blit(
         from: *const u16,
+        from_width: u32,
+        from_x: u32,
         to: *mut u16,
         x: u32,
         y: u32,
@@ -749,6 +751,31 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks, position_ms: 
 
 /// Columns of a lane's strip in internal RAM (`draw_strips`): 25 KiB.
 const STRIP_COLUMNS: usize = 64;
+/// The strip in internal RAM: 16 of Slint's lines (`ruzina_screen_lines::Stage`), 32 KiB,
+/// or a lane's columns in its start.
+const STRIP_PIXELS: usize = 16 * WIDTH;
+const _: () = assert!(STRIP_COLUMNS * LANE_HEIGHT <= STRIP_PIXELS);
+
+/// Copies a block of Slint's lines from the strip into a frame buffer, by the PPA.
+fn copy_block(strip: &[u16], frame: &mut [u16], block: ruzina_screen_lines::Block) -> bool {
+    mark(MOVE, true);
+    // SAFETY: the block lies inside `strip`, `stage_width` to a row (screen-lines makes
+    // it so); `frame` is one of the panel's frame buffers and C bounds the block to it.
+    let copied = unsafe {
+        ruzina_panel_blit(
+            strip.as_ptr(),
+            block.stage_width as u32,
+            block.stage_x as u32,
+            frame.as_mut_ptr(),
+            block.x as u32,
+            block.y as u32,
+            block.width as u32,
+            block.height as u32,
+        )
+    } == 0;
+    mark(MOVE, false);
+    copied
+}
 
 /// Where a lane's pixels go: the frame buffer, or a strip that holds columns `first` and
 /// up of all the lane's rows, `stride` to a row.
@@ -978,6 +1005,8 @@ fn draw_strips(
         let copied = unsafe {
             ruzina_panel_blit(
                 canvas.pixels.as_ptr(),
+                width as u32,
+                0,
                 frame.as_mut_ptr(),
                 (area.x + start) as u32,
                 area.y as u32,
@@ -1669,9 +1698,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let mut gate = Gate::new();
     // SAFETY: C makes the strip once and hands it only to this task.
     let mut strip = unsafe {
-        let pixels = ruzina_panel_strip((STRIP_COLUMNS * LANE_HEIGHT) as u32);
-        (!pixels.is_null())
-            .then(|| core::slice::from_raw_parts_mut(pixels, STRIP_COLUMNS * LANE_HEIGHT))
+        let pixels = ruzina_panel_strip(STRIP_PIXELS as u32);
+        (!pixels.is_null()).then(|| core::slice::from_raw_parts_mut(pixels, STRIP_PIXELS))
     };
     #[cfg(feature = "idf-uac-profile")]
     mark_own_task();
@@ -1841,16 +1869,27 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         window.request_redraw();
         gate.run(Step::Slint, || {
             window.draw_if_needed(|renderer| {
-                // Made in its own crate, built for speed (`ruzina-screen-lines`).
-                let lines = ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us);
+                // Made in its own crate, built for speed (`ruzina-screen-lines`). Its lines
+                // go through the strip and the PPA, off the CPU's writes to PSRAM.
+                let stage = strip
+                    .as_deref_mut()
+                    .map(|pixels| ruzina_screen_lines::Stage {
+                        pixels,
+                        copy: copy_block,
+                    });
+                let lines =
+                    ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us, stage);
                 drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));
                 let mut flush_us = 0;
                 if lines.bottom > lines.top {
                     let (top, bottom) = (lines.top, lines.bottom);
-                    let flushing = now_us();
-                    flush(buffer, top, bottom - top);
-                    flush_us = (now_us() - flushing) as u32;
                     rows_drawn = bottom - top;
+                    // What the PPA copied is in memory; what the CPU wrote is in cache.
+                    if lines.cpu_wrote {
+                        let flushing = now_us();
+                        flush(buffer, top, bottom - top);
+                        flush_us = (now_us() - flushing) as u32;
+                    }
                 }
                 split = Some((lines.prepare_us, lines.lines_us, lines.copy_us, flush_us));
             })
