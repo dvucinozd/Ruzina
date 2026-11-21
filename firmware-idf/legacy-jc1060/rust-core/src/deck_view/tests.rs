@@ -258,6 +258,61 @@ fn the_shelf_keeps_rekordboxs_tree_and_order() {
 }
 
 #[test]
+fn back_returns_to_the_row_it_came_from_however_deep_the_tree() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    // A chain of 20 folders, deeper than the old 16-level history. Each one sits among two
+    // empty playlists, folder d's child at row d % 3, so every level's row differs.
+    const LEVELS: usize = 20;
+    let mut shelf = Shelf::default();
+    let node = |shelf: &mut Shelf, folder: bool, parent: Option<u32>| {
+        shelf.nodes.push(ShelfNode {
+            name: std::format!("n{}", shelf.nodes.len()),
+            folder,
+            parent,
+            children: std::vec::Vec::new(),
+            tracks: std::vec::Vec::new(),
+        });
+        shelf.nodes.len() as u32 - 1
+    };
+    let mut chain = std::vec![node(&mut shelf, true, None)];
+    let pads = [node(&mut shelf, false, None), node(&mut shelf, false, None)];
+    shelf.top = std::vec![pads[0], chain[0], pads[1]];
+    for d in 0..LEVELS - 1 {
+        let parent = Some(chain[d]);
+        let child = node(&mut shelf, true, parent);
+        let mut rows = std::vec![
+            node(&mut shelf, false, parent),
+            node(&mut shelf, false, parent)
+        ];
+        rows.insert(d % 3, child);
+        shelf.nodes[chain[d] as usize].children = rows;
+        chain.push(child);
+    }
+    publish_library(std::vec![LibraryRow::default(); 1]);
+    publish_shelf(shelf);
+    assert!(back());
+    assert_eq!(level(), Level::Top);
+    select(1);
+    assert!(open());
+    for d in 0..LEVELS - 1 {
+        select(d as u32 % 3);
+        assert!(open());
+    }
+    assert_eq!(level(), Level::Node(chain[LEVELS - 1]));
+    assert_eq!(path_names().len(), LEVELS, "the whole path, however deep");
+    for d in (0..LEVELS - 1).rev() {
+        assert!(back());
+        assert_eq!(level(), Level::Node(chain[d]));
+        assert_eq!(selected(), Some(d as u32 % 3), "back at level {d}");
+    }
+    assert!(back());
+    assert_eq!((level(), selected()), (Level::Top, Some(1)));
+    clear_shelf();
+    publish_library(std::vec::Vec::new());
+    take_library();
+}
+
+#[test]
 fn the_library_walks_the_playlists_and_comes_back_where_it_was() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     publish_library(std::vec![LibraryRow::default(); 3]);

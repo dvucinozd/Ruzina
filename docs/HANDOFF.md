@@ -390,6 +390,13 @@
   - On s159 (app `be416a1f…`, 6 minutes of play) the stick
     bound, opened and read. Its only notice was the usual first-attach UNIT ATTENTION on
     TEST UNIT READY. No Reset Recovery or read retry was needed, and underruns were 0/0.
+- **Web server start and deep playlist navigation (2026-11-21):** [the web server's failed start, and Back in a deep playlist tree](reviews/2026-11-21-web-server-and-navigation.md).
+  This takes outside review findings 10 and 11.
+  - A web server that fails to start now frees its buffers and closes its socket. The
+    Wi-Fi report shows the server as starting, listening or failed.
+  - Back finds the row it came from in the parent's rows, so it lands right at any depth.
+    The old 16-level history is gone.
+  - Still open from the review: 6, slow HTTP sends holding up other clients.
 - **On the board:** s159 (app `be416a1f…`), the `--usb-stick` product image of the stick
   branch. Before it, s158 (app `40688f8c…`), the `--usb-stick` product image of the Web
   Remote outcomes branch, with no profile. s157 (app `bd390cb0…`) is the product image of
