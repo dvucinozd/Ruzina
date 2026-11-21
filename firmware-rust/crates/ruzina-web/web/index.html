@@ -2,87 +2,141 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RUZINA Web Remote</title>
+<!-- No web fonts: the page comes from the deck's own access point, which has no internet. -->
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <header class="top">
-  <h1>RUZINA</h1>
-  <span class="sub" id="deck-name">Web Remote</span>
-  <span id="conn" class="conn" title="Connection">●</span>
+  <div class="brand">
+    <span class="logo">RUZINA</span>
+    <span class="sub" id="deck-name">Web Remote</span>
+  </div>
+  <div class="pills">
+    <span class="pill d1"><b>D1</b> <span id="pill-1">—</span></span>
+    <span class="pill d2"><b>D2</b> <span id="pill-2">—</span></span>
+  </div>
+  <span class="live"><span id="conn" class="conn" title="Connection"></span>LIVE</span>
 </header>
 <main>
-  <section class="decks">
-    <article class="deck" data-deck="1">
-      <div class="deck-head"><span class="deck-name">DECK 1</span><span class="bpm" data-field="bpm">— BPM</span></div>
-      <div class="title" data-field="title">No track loaded</div>
-      <div class="artist" data-field="artist"></div>
-      <div class="bar" data-field="bar" role="slider" aria-label="Deck 1 position"><div class="fill"></div></div>
-      <div class="meta"><span data-field="time">0:00 / 0:00</span><span data-field="state">IDLE</span><span data-field="pitch">+0.00%</span></div>
-      <div class="buttons">
-        <button data-action="play_pause">PLAY</button>
-        <button data-action="cue">CUE</button>
-        <button data-action="sync">SYNC</button>
-        <button data-action="pfl">PFL</button>
-        <button data-action="loop_4" class="wide">4B LOOP</button>
-        <button data-action="loop_clear" class="wide">LOOP CLEAR</button>
+  <section class="perf">
+    <article class="deck" data-deck="1" aria-label="Deck 1">
+      <div class="deck-head">
+        <span class="tag"><span class="dot"></span>DECK 1</span>
+        <span class="badge master" data-field="master">MASTER</span>
+        <span class="badge" data-field="state">IDLE</span>
       </div>
-      <label>VOLUME <input type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
-      <label>PITCH <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
-      <div class="eq">
-        <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
-        <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
-        <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
-        <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
+      <div class="titlerow">
+        <div class="names">
+          <div class="title" data-field="title">No track loaded</div>
+          <div class="artist" data-field="artist"></div>
+        </div>
+        <div class="clock">
+          <div class="time" data-field="time">0:00 / 0:00</div>
+          <div class="remain" data-field="remain">-0:00</div>
+        </div>
       </div>
-    </article>
-    <article class="deck" data-deck="2">
-      <div class="deck-head"><span class="deck-name">DECK 2</span><span class="bpm" data-field="bpm">— BPM</span></div>
-      <div class="title" data-field="title">No track loaded</div>
-      <div class="artist" data-field="artist"></div>
-      <div class="bar" data-field="bar" role="slider" aria-label="Deck 2 position"><div class="fill"></div></div>
-      <div class="meta"><span data-field="time">0:00 / 0:00</span><span data-field="state">IDLE</span><span data-field="pitch">+0.00%</span></div>
-      <div class="buttons">
-        <button data-action="play_pause">PLAY</button>
-        <button data-action="cue">CUE</button>
-        <button data-action="sync">SYNC</button>
-        <button data-action="pfl">PFL</button>
-        <button data-action="loop_4" class="wide">4B LOOP</button>
-        <button data-action="loop_clear" class="wide">LOOP CLEAR</button>
+      <div class="bar" data-field="bar" role="slider" aria-label="Deck 1 position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><div class="fill"></div></div>
+      <div class="stats">
+        <div class="chip"><span>BPM</span><b data-field="bpm">—</b></div>
+        <div class="chip"><span>PITCH</span><b data-field="pitch">+0.00%</b></div>
+        <button class="sync" data-action="sync">SYNC</button>
       </div>
-      <label>VOLUME <input type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
-      <label>PITCH <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
-      <div class="eq">
-        <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
-        <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
-        <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
-        <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
+      <label class="tempo">TEMPO <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
+      <div class="transport">
+        <button class="cue" data-action="cue">CUE</button>
+        <button class="play" data-action="play_pause">PLAY</button>
+        <button class="loop" data-action="loop_4">4B LOOP</button>
+        <button class="loop" data-action="loop_clear">CLEAR</button>
       </div>
     </article>
-  </section>
-  <section class="mixer">
-    <label>CROSSFADER <span class="hint">D1 ↔ D2</span>
-      <input type="range" min="0" max="16383" value="8192" data-continuous="crossfader">
-    </label>
-    <div class="mixer-row">
+
+    <section class="mixer" aria-label="Mixer">
+      <div class="mixer-head">MIXER</div>
+      <div class="channels">
+        <div class="channel" data-deck="1">
+          <span class="ch">CH 1</span>
+          <details class="eq">
+            <summary>EQ</summary>
+            <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
+            <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
+            <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
+          </details>
+          <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
+          <button class="pfl" data-action="pfl" aria-label="Deck 1 headphone cue">PFL</button>
+          <label class="fader">VOL <input class="vertical" type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
+        </div>
+        <div class="channel" data-deck="2">
+          <span class="ch">CH 2</span>
+          <details class="eq">
+            <summary>EQ</summary>
+            <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
+            <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
+            <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
+          </details>
+          <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
+          <button class="pfl" data-action="pfl" aria-label="Deck 2 headphone cue">PFL</button>
+          <label class="fader">VOL <input class="vertical" type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
+        </div>
+      </div>
+      <label class="xfader">
+        <span class="xfader-head"><b>1</b>CROSSFADER<b>2</b></span>
+        <input type="range" min="0" max="16383" value="8192" data-continuous="crossfader">
+      </label>
       <label>MASTER <input type="range" min="0" max="16383" value="16383" data-continuous="master_volume"></label>
       <label>HEADPHONES <span class="hint">CUE ↔ MASTER</span> <input type="range" min="0" max="16383" value="8192" data-continuous="headphone_mix"></label>
-      <div class="buttons smart">
+      <div class="smart">
         <button data-action="smart_cfx">SMART CFX</button>
         <button data-action="smart_fader">SMART FADER</button>
       </div>
-    </div>
-    <div class="hint">Double-click a fader to reset it.</div>
+      <div class="hint">Double-click a fader to reset it.</div>
+    </section>
+
+    <article class="deck" data-deck="2" aria-label="Deck 2">
+      <div class="deck-head">
+        <span class="tag"><span class="dot"></span>DECK 2</span>
+        <span class="badge master" data-field="master">MASTER</span>
+        <span class="badge" data-field="state">IDLE</span>
+      </div>
+      <div class="titlerow">
+        <div class="names">
+          <div class="title" data-field="title">No track loaded</div>
+          <div class="artist" data-field="artist"></div>
+        </div>
+        <div class="clock">
+          <div class="time" data-field="time">0:00 / 0:00</div>
+          <div class="remain" data-field="remain">-0:00</div>
+        </div>
+      </div>
+      <div class="bar" data-field="bar" role="slider" aria-label="Deck 2 position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><div class="fill"></div></div>
+      <div class="stats">
+        <div class="chip"><span>BPM</span><b data-field="bpm">—</b></div>
+        <div class="chip"><span>PITCH</span><b data-field="pitch">+0.00%</b></div>
+        <button class="sync" data-action="sync">SYNC</button>
+      </div>
+      <label class="tempo">TEMPO <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
+      <div class="transport">
+        <button class="cue" data-action="cue">CUE</button>
+        <button class="play" data-action="play_pause">PLAY</button>
+        <button class="loop" data-action="loop_4">4B LOOP</button>
+        <button class="loop" data-action="loop_clear">CLEAR</button>
+      </div>
+    </article>
   </section>
-  <section class="library">
-    <div class="library-head">
+
+  <details class="library">
+    <summary>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       <h2>LIBRARY</h2>
-      <input id="search" type="search" placeholder="Search title or artist" autocomplete="off">
+      <span id="library-info" class="hint">Waiting for media…</span>
+    </summary>
+    <div class="search">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input id="search" type="search" placeholder="Search title or artist" autocomplete="off" aria-label="Search the library">
     </div>
-    <div id="library-info" class="hint">Waiting for media…</div>
     <ul id="tracks"></ul>
-  </section>
+  </details>
   <p id="message" class="message" role="status"></p>
 </main>
 <script src="/app.js"></script>
