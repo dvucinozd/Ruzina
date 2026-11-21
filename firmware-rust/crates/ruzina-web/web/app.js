@@ -19,6 +19,8 @@ const dragging = new Set();  // sliders the user is moving now
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const deckCard = (deck) => $(`.deck[data-deck="${deck}"]`);
+// A deck's channel strip in the mixer: its PFL, volume, EQ and filter.
+const channel = (deck) => $(`.channel[data-deck="${deck}"]`);
 
 function message(text) {
   $('#message').textContent = text || '';
@@ -78,30 +80,36 @@ function showValue(slider, value) {
 
 function renderDeck(deck, data, mixer) {
   const card = deckCard(deck);
+  const strip = channel(deck);
   const field = (name) => $(`[data-field="${name}"]`, card);
   const loaded = data.state_text !== 'IDLE';
   card.dataset.duration = data.duration_ms;
+  card.classList.toggle('playing', !!data.playing);
   field('title').textContent = loaded ? data.title : 'No track loaded';
   field('artist').textContent = data.artist || '';
-  field('bpm').textContent = loaded ? `${data.bpm} BPM` : '— BPM';
+  $(`#pill-${deck}`).textContent = loaded ? data.title : '—';
+  field('bpm').textContent = loaded ? String(data.bpm) : '—';
   field('time').textContent = `${clock(data.position_ms)} / ${clock(data.duration_ms)}`;
+  field('remain').textContent = `-${clock(Math.max(0, (data.duration_ms || 0) - (data.position_ms || 0)))}`;
   field('state').textContent = data.state_text;
+  field('master').classList.toggle('on', !!data.sync_master);
   const pitch = Number(data.pitch_percent);
   field('pitch').textContent = `${pitch >= 0 ? '+' : ''}${pitch.toFixed(2)}%`;
   showValue($('[data-continuous="pitch"]', card), data.pitch_raw);
   const fraction = data.duration_ms ? Math.min(1, data.position_ms / data.duration_ms) : 0;
   $('.fill', field('bar')).style.width = `${(fraction * 100).toFixed(2)}%`;
+  field('bar').ariaValueNow = String(Math.round(fraction * 100));
   const play = $('[data-action="play_pause"]', card);
   play.textContent = data.playing ? 'PAUSE' : 'PLAY';
   play.classList.toggle('active', data.playing);
   $('[data-action="sync"]', card).classList.toggle('active', data.sync_enabled);
-  $('[data-action="pfl"]', card).classList.toggle('active', mixer[`pfl${deck}`]);
+  $('[data-action="pfl"]', strip).classList.toggle('active', mixer[`pfl${deck}`]);
   for (const button of card.querySelectorAll('[data-action]')) {
     if (button.dataset.action !== 'pfl') button.disabled = !loaded;
   }
   for (const action of ['volume', 'eq_low', 'eq_mid', 'eq_high', 'filter']) {
     const key = action === 'volume' || action === 'filter' ? `${action}${deck}` : action.replace('eq_', `eq${deck}_`);
-    showValue($(`[data-continuous="${action}"]`, card), mixer[key]);
+    showValue($(`[data-continuous="${action}"]`, strip), mixer[key]);
   }
 }
 
@@ -234,8 +242,8 @@ function renderLibrary() {
 }
 
 function bindControls() {
-  // Deck controls carry their card's deck; mixer controls carry none.
-  const deckOf = (element) => element.closest('.deck')?.dataset.deck || null;
+  // Deck controls and channel strips carry their deck; the master section carries none.
+  const deckOf = (element) => element.closest('[data-deck]')?.dataset.deck || null;
   for (const button of document.querySelectorAll('[data-action]')) {
     button.addEventListener('click', () => control(deckOf(button), button.dataset.action));
   }
