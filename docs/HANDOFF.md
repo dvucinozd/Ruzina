@@ -387,7 +387,11 @@
     returns the first step that failed, not the last step's result. A failed recovery
     gives the stick up instead of letting a read try again.
   - A host test runs the real `usb_msc.inc` against a fake stick, with each failure point.
-- **On the board:** s158 (app `40688f8c…`), the `--usb-stick` product image of the Web
+  - On s159 (app `be416a1f…`, 6 minutes with both decks playing and jumps) the stick
+    bound, opened and read. Its only notice was the usual first-attach UNIT ATTENTION on
+    TEST UNIT READY. No Reset Recovery or read retry was needed, and underruns were 0/0.
+- **On the board:** s159 (app `be416a1f…`), the `--usb-stick` product image of the stick
+  branch. Before it, s158 (app `40688f8c…`), the `--usb-stick` product image of the Web
   Remote outcomes branch, with no profile. s157 (app `bd390cb0…`) is the product image of
   `main` at `f2a61fd`. In 7 minutes of play with Master Tempo, hot cues, SYNC and a scratch
   it made 79 000 fills with 0/0 underruns. The longest was 5.1 ms (s154: 5.4 ms), and

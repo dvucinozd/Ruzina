@@ -75,3 +75,15 @@ with `xSemaphoreCreateBinary`.
   In each, the read returns `ESP_ERR_NOT_FOUND` after one attempt, and nothing more is
   sent to the stick. Before this change, the middle case recovered "OK" and the read went
   on.
+
+## On the board
+
+Image s159 (app `be416a1f…`), the `--usb-stick` product image of this branch, ran for 6
+minutes with both decks playing, browsing and jumps.
+
+- **Stick:** it bound (`in=82 out=01 mps=512`), opened at 1982464 sectors and read
+  throughout.
+- **Notices:** only the usual UNIT ATTENTION after attach (sense key 6, ASC 28) on TEST
+  UNIT READY, which the open tries again.
+- **No faults:** no Reset Recovery, no read retry, no crash.
+- **Audio:** 59 000 fills with 0/0 underruns. The longest took 4.1 ms.
