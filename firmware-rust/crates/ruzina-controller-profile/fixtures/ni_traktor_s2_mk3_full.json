@@ -1,0 +1,627 @@
+{
+  "schema": "p4-controller-profile-v1",
+  "name": "NI Traktor Kontrol S2 MK3 - performance candidate",
+  "vendor": "Native Instruments",
+  "vid": "0x17CC",
+  "pid": "0x1710",
+  "decks": 2,
+  "capabilities": {
+    "led_feedback": true,
+    "usb_audio": true,
+    "jog_touch": true,
+    "pitch_14bit": false,
+    "channel_filter_requires_smart_cfx": false
+  },
+  "inputs": [
+    {
+      "type": "button",
+      "event": "deck1.play",
+      "status": "0x91",
+      "data1": 1
+    },
+    {
+      "type": "button",
+      "event": "deck1.cue",
+      "status": "0x91",
+      "data1": 2
+    },
+    {
+      "type": "button",
+      "event": "deck1.sync",
+      "status": "0x91",
+      "data1": 16
+    },
+    {
+      "type": "button",
+      "event": "deck1.pfl",
+      "status": "0x95",
+      "data1": 8
+    },
+    {
+      "type": "button",
+      "event": "browser.load_deck1",
+      "status": "0x91",
+      "data1": 19
+    },
+    {
+      "type": "button",
+      "event": "deck1.reloop_exit",
+      "status": "0x91",
+      "data1": 28
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "deck1.loop_size",
+      "status": "0xb1",
+      "data1": 29
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": false,
+      "status": "0x91",
+      "first_data1": 3,
+      "count": 8,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": true,
+      "status": "0x92",
+      "first_data1": 3,
+      "count": 8,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "button",
+      "event": "deck2.play",
+      "status": "0x93",
+      "data1": 1
+    },
+    {
+      "type": "button",
+      "event": "deck2.cue",
+      "status": "0x93",
+      "data1": 2
+    },
+    {
+      "type": "button",
+      "event": "deck2.sync",
+      "status": "0x93",
+      "data1": 16
+    },
+    {
+      "type": "button",
+      "event": "deck2.pfl",
+      "status": "0x96",
+      "data1": 8
+    },
+    {
+      "type": "button",
+      "event": "browser.load_deck2",
+      "status": "0x93",
+      "data1": 19
+    },
+    {
+      "type": "button",
+      "event": "deck2.reloop_exit",
+      "status": "0x93",
+      "data1": 28
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "deck2.loop_size",
+      "status": "0xb3",
+      "data1": 29
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": false,
+      "status": "0x93",
+      "first_data1": 3,
+      "count": 8,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": true,
+      "status": "0x94",
+      "first_data1": 3,
+      "count": 8,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "button",
+      "event": "browser.press",
+      "status": "0x91",
+      "data1": 24
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "browser.delta",
+      "status": "0xb1",
+      "data1": 25
+    },
+    {
+      "type": "button",
+      "event": "browser.press",
+      "status": "0x93",
+      "data1": 24
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "browser.delta",
+      "status": "0xb3",
+      "data1": 25
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.crossfader",
+      "replay": true,
+      "status": "0xb7",
+      "data1": 1
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.headphone_mix",
+      "replay": true,
+      "status": "0xb7",
+      "data1": 7
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch1_trim",
+      "replay": true,
+      "status": "0xb5",
+      "data1": 6
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch1_eq_high",
+      "replay": true,
+      "status": "0xb5",
+      "data1": 5
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch1_eq_mid",
+      "replay": true,
+      "status": "0xb5",
+      "data1": 4
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch1_eq_low",
+      "replay": true,
+      "status": "0xb5",
+      "data1": 3
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch1_filter",
+      "replay": true,
+      "status": "0xb5",
+      "data1": 2
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch1_volume",
+      "replay": true,
+      "status": "0xb5",
+      "data1": 1
+    },
+    {
+      "type": "cc7_to14_inverted",
+      "event": "deck1.tempo",
+      "replay": false,
+      "status": "0xb1",
+      "data1": 42
+    },
+    {
+      "type": "button",
+      "event": "deck1.jog_touch",
+      "status": "0x91",
+      "data1": 20
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "deck1.jog_scratch",
+      "status": "0xb1",
+      "data1": 30
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "deck1.jog_search",
+      "status": "0xb2",
+      "data1": 30
+    },
+    {
+      "type": "ext_action",
+      "deck": 1,
+      "action": "sync_master",
+      "status": "0x92",
+      "data1": 16
+    },
+    {
+      "type": "button",
+      "event": "browser.shift_press",
+      "status": "0x92",
+      "data1": 24
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "browser.shift_delta",
+      "status": "0xb2",
+      "data1": 25
+    },
+    {
+      "type": "button",
+      "event": "browser.shift_load_deck1",
+      "status": "0x92",
+      "data1": 19
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch2_trim",
+      "replay": true,
+      "status": "0xb6",
+      "data1": 6
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch2_eq_high",
+      "replay": true,
+      "status": "0xb6",
+      "data1": 5
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch2_eq_mid",
+      "replay": true,
+      "status": "0xb6",
+      "data1": 4
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch2_eq_low",
+      "replay": true,
+      "status": "0xb6",
+      "data1": 3
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch2_filter",
+      "replay": true,
+      "status": "0xb6",
+      "data1": 2
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch2_volume",
+      "replay": true,
+      "status": "0xb6",
+      "data1": 1
+    },
+    {
+      "type": "cc7_to14_inverted",
+      "event": "deck2.tempo",
+      "replay": false,
+      "status": "0xb3",
+      "data1": 42
+    },
+    {
+      "type": "button",
+      "event": "deck2.jog_touch",
+      "status": "0x93",
+      "data1": 20
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "deck2.jog_scratch",
+      "status": "0xb3",
+      "data1": 30
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "deck2.jog_search",
+      "status": "0xb4",
+      "data1": 30
+    },
+    {
+      "type": "ext_action",
+      "deck": 2,
+      "action": "sync_master",
+      "status": "0x94",
+      "data1": 16
+    },
+    {
+      "type": "button",
+      "event": "browser.shift_press",
+      "status": "0x94",
+      "data1": 24
+    },
+    {
+      "type": "encoder_rel64",
+      "event": "browser.shift_delta",
+      "status": "0xb4",
+      "data1": 25
+    },
+    {
+      "type": "button",
+      "event": "browser.shift_load_deck2",
+      "status": "0x94",
+      "data1": 19
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "note",
+      "led": "play",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 1,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "cue",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 2,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "sync",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 16,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "pfl",
+      "deck": 0,
+      "status": "0x95",
+      "data1": 8,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "play",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 1,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "cue",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 2,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "sync",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 16,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "pfl",
+      "deck": 1,
+      "status": "0x96",
+      "data1": 8,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[0]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 3,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[1]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 4,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[2]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 5,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[3]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 6,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[4]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 7,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[5]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 8,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[6]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 9,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[7]",
+      "deck": 0,
+      "status": "0x91",
+      "data1": 10,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note_velocity",
+      "led": "vu_meter",
+      "deck": 0,
+      "status": "0x95",
+      "data1": 7
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[0]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 3,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[1]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 4,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[2]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 5,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[3]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 6,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[4]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 7,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[5]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 8,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[6]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 9,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[7]",
+      "deck": 1,
+      "status": "0x93",
+      "data1": 10,
+      "off": 20,
+      "on": 127,
+      "blink": 127
+    },
+    {
+      "kind": "note_velocity",
+      "led": "vu_meter",
+      "deck": 1,
+      "status": "0x96",
+      "data1": 7
+    }
+  ],
+  "audio": {
+    "enabled": true,
+    "preferred_sample_rate": 48000,
+    "master_channels": [
+      1,
+      2
+    ],
+    "headphone_channels": [
+      3,
+      4
+    ]
+  }
+}

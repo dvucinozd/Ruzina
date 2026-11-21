@@ -180,6 +180,15 @@ impl MixerState {
                 self.decks[index].pfl_enabled = !self.decks[index].pfl_enabled;
                 true
             }
+            SemanticControl::PflSet => {
+                let (Some(deck), ControlValue::Pressed(on)) = (event.deck, event.value) else {
+                    return false;
+                };
+                let pfl = &mut self.decks[deck_index(deck)].pfl_enabled;
+                let changed = *pfl != on;
+                *pfl = on;
+                changed
+            }
             SemanticControl::MasterCue => {
                 if event.value != ControlValue::Pressed(true) {
                     return false;
@@ -504,6 +513,18 @@ mod tests {
         let mut state = MixerState::new();
         assert!(!state.handle_control(absolute(None, SemanticControl::Trim, 0, 127,)));
         assert_eq!(state.deck(DeckId::One).trim, MIXER_CONTROL_CENTER);
+    }
+
+    #[test]
+    fn a_latching_pfl_sets_the_state_it_reports() {
+        let mut state = MixerState::new();
+        assert!(state.handle_control(pressed(Some(DeckId::One), SemanticControl::PflSet, true)));
+        assert!(state.deck(DeckId::One).pfl_enabled);
+        // The same state again changes nothing; the release sets it off.
+        assert!(!state.handle_control(pressed(Some(DeckId::One), SemanticControl::PflSet, true)));
+        assert!(state.handle_control(pressed(Some(DeckId::One), SemanticControl::PflSet, false)));
+        assert!(!state.deck(DeckId::One).pfl_enabled);
+        assert!(!state.handle_control(pressed(None, SemanticControl::PflSet, true)));
     }
 
     #[test]

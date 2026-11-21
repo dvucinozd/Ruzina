@@ -51,6 +51,7 @@ them. The owner's listening checks are separate, shorter runs. The
 | Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings) | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md) |
 | Playlists and covers | Rekordbox's playlist tree in the Library, each deck's cover | [playlists and covers](reviews/2026-11-16-playlists-covers.md) |
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
+| Other controllers | DDJ-400, DJ2GO2 Touch, S2 MK3, Inpulse 500 profiles chosen by VID:PID; untested on this hardware, no audio yet for the S2 MK3 and Inpulse 500 | [profiles](reviews/2026-11-21-controller-profiles.md) |
 | Boot screen and screensaver | The owner's wordmark, its letters lit in turn; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md) |
 | Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted); play, cue, library, mixer, SYNC, four connections, soft takeover | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [Web Remote](reviews/2026-11-15-web-remote-play-cue.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md) |
 

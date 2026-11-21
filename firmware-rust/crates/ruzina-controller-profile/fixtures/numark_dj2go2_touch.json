@@ -1,0 +1,634 @@
+{
+  "schema": "p4-controller-profile-v1",
+  "name": "Numark DJ2GO2 Touch",
+  "vendor": "Numark",
+  "source": "Derived from the Mixxx mapping Numark_DJ2GO2_Touch.midi.xml and Numark_DJ2GO2_Touch_scripts.js (author tandy1000), Mixxx commit 0fffd3d0d07b755c34c1730f7b87afadd8f2be19. See README.md.",
+  "vid": "0x15E4",
+  "pid": "0x003C",
+  "decks": 2,
+  "capabilities": {
+    "led_feedback": true,
+    "usb_audio": true,
+    "jog_touch": true,
+    "pitch_14bit": true
+  },
+  "init_sysex": [
+    240,
+    0,
+    1,
+    63,
+    60,
+    72,
+    247
+  ],
+  "inputs": [
+    {
+      "type": "button",
+      "event": "deck1.play",
+      "status": "0x90",
+      "data1": "0x00"
+    },
+    {
+      "type": "button",
+      "event": "deck1.play",
+      "status": "0x80",
+      "data1": "0x00"
+    },
+    {
+      "type": "button",
+      "event": "deck1.cue",
+      "status": "0x90",
+      "data1": "0x01"
+    },
+    {
+      "type": "button",
+      "event": "deck1.cue",
+      "status": "0x80",
+      "data1": "0x01"
+    },
+    {
+      "type": "button",
+      "event": "deck1.sync",
+      "status": "0x90",
+      "data1": "0x02"
+    },
+    {
+      "type": "button",
+      "event": "deck1.sync",
+      "status": "0x80",
+      "data1": "0x02"
+    },
+    {
+      "type": "button",
+      "event": "deck1.pfl_set",
+      "status": "0x90",
+      "data1": "0x1B"
+    },
+    {
+      "type": "button",
+      "event": "deck1.pfl_set",
+      "status": "0x80",
+      "data1": "0x1B"
+    },
+    {
+      "type": "button",
+      "event": "deck1.jog_touch",
+      "status": "0x90",
+      "data1": "0x06"
+    },
+    {
+      "type": "button",
+      "event": "deck1.jog_touch",
+      "status": "0x80",
+      "data1": "0x06"
+    },
+    {
+      "type": "encoder_2c",
+      "event": "deck1.jog_scratch",
+      "status": "0xB0",
+      "data1": "0x06"
+    },
+    {
+      "type": "cc7_to14",
+      "event": "deck1.tempo",
+      "status": "0xB0",
+      "data1": "0x09",
+      "replay": false
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch1_volume",
+      "status": "0xB0",
+      "data1": "0x16",
+      "replay": true
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": false,
+      "status": "0x94",
+      "first_data1": "0x01",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": false,
+      "status": "0x84",
+      "first_data1": "0x01",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": true,
+      "status": "0x94",
+      "first_data1": "0x09",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": true,
+      "status": "0x84",
+      "first_data1": "0x09",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": false,
+      "status": "0x94",
+      "first_data1": "0x11",
+      "count": 4,
+      "mode": "beat_loop"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "shifted": false,
+      "status": "0x84",
+      "first_data1": "0x11",
+      "count": 4,
+      "mode": "beat_loop"
+    },
+    {
+      "type": "button",
+      "event": "deck1.loop_in",
+      "status": "0x94",
+      "data1": "0x21"
+    },
+    {
+      "type": "button",
+      "event": "deck1.loop_in",
+      "status": "0x84",
+      "data1": "0x21"
+    },
+    {
+      "type": "button",
+      "event": "deck1.loop_out",
+      "status": "0x94",
+      "data1": "0x22"
+    },
+    {
+      "type": "button",
+      "event": "deck1.loop_out",
+      "status": "0x84",
+      "data1": "0x22"
+    },
+    {
+      "type": "button",
+      "event": "deck1.reloop_exit",
+      "status": "0x94",
+      "data1": "0x23"
+    },
+    {
+      "type": "button",
+      "event": "deck1.reloop_exit",
+      "status": "0x84",
+      "data1": "0x23"
+    },
+    {
+      "type": "ext_action",
+      "deck": 1,
+      "action": "reloop_stop",
+      "status": "0x94",
+      "data1": "0x24"
+    },
+    {
+      "type": "ext_action",
+      "deck": 1,
+      "action": "reloop_stop",
+      "status": "0x84",
+      "data1": "0x24"
+    },
+    {
+      "type": "button",
+      "event": "browser.load_deck1",
+      "status": "0x9F",
+      "data1": "0x02"
+    },
+    {
+      "type": "button",
+      "event": "browser.load_deck1",
+      "status": "0x8F",
+      "data1": "0x02"
+    },
+    {
+      "type": "button",
+      "event": "deck2.play",
+      "status": "0x91",
+      "data1": "0x00"
+    },
+    {
+      "type": "button",
+      "event": "deck2.play",
+      "status": "0x81",
+      "data1": "0x00"
+    },
+    {
+      "type": "button",
+      "event": "deck2.cue",
+      "status": "0x91",
+      "data1": "0x01"
+    },
+    {
+      "type": "button",
+      "event": "deck2.cue",
+      "status": "0x81",
+      "data1": "0x01"
+    },
+    {
+      "type": "button",
+      "event": "deck2.sync",
+      "status": "0x91",
+      "data1": "0x02"
+    },
+    {
+      "type": "button",
+      "event": "deck2.sync",
+      "status": "0x81",
+      "data1": "0x02"
+    },
+    {
+      "type": "button",
+      "event": "deck2.pfl_set",
+      "status": "0x91",
+      "data1": "0x1B"
+    },
+    {
+      "type": "button",
+      "event": "deck2.pfl_set",
+      "status": "0x81",
+      "data1": "0x1B"
+    },
+    {
+      "type": "button",
+      "event": "deck2.jog_touch",
+      "status": "0x91",
+      "data1": "0x06"
+    },
+    {
+      "type": "button",
+      "event": "deck2.jog_touch",
+      "status": "0x81",
+      "data1": "0x06"
+    },
+    {
+      "type": "encoder_2c",
+      "event": "deck2.jog_scratch",
+      "status": "0xB1",
+      "data1": "0x06"
+    },
+    {
+      "type": "cc7_to14",
+      "event": "deck2.tempo",
+      "status": "0xB1",
+      "data1": "0x09",
+      "replay": false
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.ch2_volume",
+      "status": "0xB1",
+      "data1": "0x16",
+      "replay": true
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": false,
+      "status": "0x95",
+      "first_data1": "0x01",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": false,
+      "status": "0x85",
+      "first_data1": "0x01",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": true,
+      "status": "0x95",
+      "first_data1": "0x09",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": true,
+      "status": "0x85",
+      "first_data1": "0x09",
+      "count": 4,
+      "mode": "hot_cue"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": false,
+      "status": "0x95",
+      "first_data1": "0x11",
+      "count": 4,
+      "mode": "beat_loop"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "shifted": false,
+      "status": "0x85",
+      "first_data1": "0x11",
+      "count": 4,
+      "mode": "beat_loop"
+    },
+    {
+      "type": "button",
+      "event": "deck2.loop_in",
+      "status": "0x95",
+      "data1": "0x21"
+    },
+    {
+      "type": "button",
+      "event": "deck2.loop_in",
+      "status": "0x85",
+      "data1": "0x21"
+    },
+    {
+      "type": "button",
+      "event": "deck2.loop_out",
+      "status": "0x95",
+      "data1": "0x22"
+    },
+    {
+      "type": "button",
+      "event": "deck2.loop_out",
+      "status": "0x85",
+      "data1": "0x22"
+    },
+    {
+      "type": "button",
+      "event": "deck2.reloop_exit",
+      "status": "0x95",
+      "data1": "0x23"
+    },
+    {
+      "type": "button",
+      "event": "deck2.reloop_exit",
+      "status": "0x85",
+      "data1": "0x23"
+    },
+    {
+      "type": "ext_action",
+      "deck": 2,
+      "action": "reloop_stop",
+      "status": "0x95",
+      "data1": "0x24"
+    },
+    {
+      "type": "ext_action",
+      "deck": 2,
+      "action": "reloop_stop",
+      "status": "0x85",
+      "data1": "0x24"
+    },
+    {
+      "type": "button",
+      "event": "browser.load_deck2",
+      "status": "0x9F",
+      "data1": "0x03"
+    },
+    {
+      "type": "button",
+      "event": "browser.load_deck2",
+      "status": "0x8F",
+      "data1": "0x03"
+    },
+    {
+      "type": "button",
+      "event": "browser.press",
+      "status": "0x9F",
+      "data1": "0x06"
+    },
+    {
+      "type": "button",
+      "event": "browser.press",
+      "status": "0x8F",
+      "data1": "0x06"
+    },
+    {
+      "type": "encoder_2c",
+      "event": "browser.delta",
+      "status": "0xBF",
+      "data1": "0x00"
+    },
+    {
+      "type": "cc7_to14",
+      "event": "mixer.crossfader",
+      "status": "0xBF",
+      "data1": "0x08",
+      "replay": true
+    },
+    {
+      "type": "cc7_to14",
+      "event": "system.master_volume",
+      "status": "0xBF",
+      "data1": "0x0A",
+      "replay": true
+    },
+    {
+      "type": "cc7_to14",
+      "event": "system.headphone_level",
+      "status": "0xBF",
+      "data1": "0x0C",
+      "replay": true
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "note",
+      "led": "play",
+      "deck_status": [
+        "0x90",
+        "0x91"
+      ],
+      "data1": "0x00"
+    },
+    {
+      "kind": "note",
+      "led": "cue",
+      "deck_status": [
+        "0x90",
+        "0x91"
+      ],
+      "data1": "0x01"
+    },
+    {
+      "kind": "note",
+      "led": "sync",
+      "deck_status": [
+        "0x90",
+        "0x91"
+      ],
+      "data1": "0x02"
+    },
+    {
+      "kind": "note",
+      "led": "pfl",
+      "deck_status": [
+        "0x90",
+        "0x91"
+      ],
+      "data1": "0x1B"
+    },
+    {
+      "kind": "note",
+      "led": "loop_in",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x21"
+    },
+    {
+      "kind": "note",
+      "led": "loop_out",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x22"
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[0]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x01"
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[1]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x02"
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[2]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x03"
+    },
+    {
+      "kind": "note",
+      "led": "hot_cue_pads[3]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x04"
+    },
+    {
+      "kind": "note",
+      "led": "beat_loop_pads[0]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x11"
+    },
+    {
+      "kind": "note",
+      "led": "beat_loop_pads[1]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x12"
+    },
+    {
+      "kind": "note",
+      "led": "beat_loop_pads[2]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x13"
+    },
+    {
+      "kind": "note",
+      "led": "beat_loop_pads[3]",
+      "deck_status": [
+        "0x94",
+        "0x95"
+      ],
+      "data1": "0x14"
+    },
+    {
+      "kind": "note",
+      "led": "track_load_deck1",
+      "deck": "any",
+      "status": "0x9F",
+      "data1": "0x02"
+    },
+    {
+      "kind": "note",
+      "led": "track_load_deck2",
+      "deck": "any",
+      "status": "0x9F",
+      "data1": "0x03"
+    }
+  ],
+  "audio": {
+    "enabled": true,
+    "headphone_channels": [
+      3,
+      4
+    ],
+    "preferred_sample_rate": 44100
+  },
+  "omitted_inputs": [
+    {
+      "type": "pad_bank",
+      "deck": 1,
+      "mode": "sampler",
+      "status": "0x94",
+      "first_data1": "0x31",
+      "count": 4,
+      "reason": "P4 deck core ignores sampler pad mode (out of scope); not exported"
+    },
+    {
+      "type": "pad_bank",
+      "deck": 2,
+      "mode": "sampler",
+      "status": "0x95",
+      "first_data1": "0x31",
+      "count": 4,
+      "reason": "P4 deck core ignores sampler pad mode (out of scope); not exported"
+    },
+    {
+      "type": "output",
+      "led": "reloop_toggle_and_reloop_stop",
+      "status": "0x94/0x95",
+      "data1": "0x23/0x24",
+      "reason": "No P4 LED id for these two loop pads; their inputs are mapped"
+    }
+  ]
+}
