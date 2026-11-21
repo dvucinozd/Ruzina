@@ -68,6 +68,8 @@ def main():
     parser.add_argument('--slint-ui', action='store_true', help="The Slint deck screen with the live decks, and the deck's Wi-Fi and Web Remote unless --no-wifi")
     parser.add_argument('--screen-still', action='store_true',
                         help='Profile diagnostic: the deck screen stands still every other 30 s; requires --uac-profile and --slint-ui')
+    parser.add_argument('--fill-gap-cycle', action='store_true',
+                        help='Profile diagnostic: the deck screen does not wait for gaps between fills every other 30 s; requires --uac-profile and --slint-ui')
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
     parser.add_argument('--no-wifi', action='store_true', help="Leave out the deck screen image's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted)")
     parser.add_argument('--usb-stick', action='store_true', help='Media from a USB stick behind a hub on the HS port instead of the SD card')
@@ -86,6 +88,8 @@ def main():
         raise ValueError('IRAM packetizer experiment requires explicit UAC profiling')
     if args.screen_still and not (args.uac_profile and args.slint_ui):
         raise ValueError('The still screen diagnostic requires UAC profiling and the Slint UI')
+    if args.fill_gap_cycle and not (args.uac_profile and args.slint_ui and not args.screen_still):
+        raise ValueError('The fill gap cycle requires UAC profiling and the Slint UI, without the still screen')
     if args.uac_profile and args.variant != 'deck-engine':
         raise ValueError('UAC profiling is an explicit deck-engine diagnostic only')
     if args.producer_profile and (args.variant != 'deck-engine' or args.uac_profile or args.uac_pack_iram):
@@ -157,6 +161,7 @@ def main():
                             + (['idf-soak-autoplay'] if args.soak_autoplay else [])
                             + (['idf-slint-ui'] if args.slint_ui else [])
                             + (['idf-screen-still'] if args.screen_still else [])
+                            + (['idf-fill-gap-cycle'] if args.fill_gap_cycle else [])
                             + (['idf-web-remote'] if args.wifi else []))]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
@@ -431,6 +436,7 @@ def main():
                     soak_autoplay=args.soak_autoplay,
                     slint_ui=args.slint_ui,
                     screen_still=args.screen_still,
+                    fill_gap_cycle=args.fill_gap_cycle,
                     fill_iram=args.fill_iram,
                     wifi=args.wifi,
                     usb_stick=args.usb_stick,

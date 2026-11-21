@@ -8,7 +8,9 @@ extern void ruzina_legacy_uac_stats(uint32_t *out);
 extern void ruzina_legacy_play_diagnostics(uint32_t *out);
 #endif
 #if CONFIG_RUZINA_DECK_MIX
+#include <stdatomic.h>
 #include "esp_timer.h"
+#include "fill_gap.h"
 #if CONFIG_RUZINA_DECK_ENGINE
 #include "esp_heap_caps.h"
 #endif
@@ -97,6 +99,53 @@ static void uac_start_poll(void)
 #endif
 }
 
+#if CONFIG_RUZINA_DECK_MIX
+/* The fills as the screen's core sees them (fill_gap.h): odd edges while one runs, the
+ * last one's start and end, and the period between them. The screen waits for a gap
+ * before each step of memory work, asleep, so the decoders keep their core meanwhile;
+ * the fill's end wakes it. */
+static _Atomic uint32_t uac_fill_edges, uac_fill_start_us, uac_fill_end_us, uac_fill_period_us;
+static _Atomic(TaskHandle_t) uac_gap_waiter;
+static void uac_fill_began(uint32_t now)
+{
+    const uint32_t previous=atomic_load_explicit(&uac_fill_start_us,memory_order_relaxed);
+    atomic_store_explicit(&uac_fill_period_us,
+        fill_gap_period(previous,now,atomic_load_explicit(&uac_fill_period_us,memory_order_relaxed)),
+        memory_order_relaxed);
+    atomic_store_explicit(&uac_fill_start_us,now,memory_order_relaxed);
+    atomic_fetch_add_explicit(&uac_fill_edges,1,memory_order_acq_rel);
+}
+static void uac_fill_ended(uint32_t now)
+{
+    atomic_store_explicit(&uac_fill_end_us,now,memory_order_relaxed);
+    atomic_fetch_add_explicit(&uac_fill_edges,1,memory_order_acq_rel);
+    TaskHandle_t waiter=atomic_load_explicit(&uac_gap_waiter,memory_order_acquire);
+    if (waiter) xTaskNotifyGive(waiter);
+}
+static fill_gap_t uac_fill_gap(void)
+{
+    return (fill_gap_t){.running=(atomic_load_explicit(&uac_fill_edges,memory_order_acquire)&1u)!=0,
+        .start_us=atomic_load_explicit(&uac_fill_start_us,memory_order_relaxed),
+        .end_us=atomic_load_explicit(&uac_fill_end_us,memory_order_relaxed),
+        .period_us=atomic_load_explicit(&uac_fill_period_us,memory_order_relaxed)};
+}
+/* The screen's task only: returns once a step of `budget_us` may start, after at most
+ * three fills or ticks; the microseconds it waited. */
+uint32_t ruzina_uac_wait_gap(uint32_t budget_us)
+{
+    const uint32_t start=(uint32_t)esp_timer_get_time();
+    TaskHandle_t self=xTaskGetCurrentTaskHandle();
+    for (unsigned turn=0;turn<3;++turn) {
+        (void)ulTaskNotifyTake(pdTRUE,0);
+        atomic_store_explicit(&uac_gap_waiter,self,memory_order_release);
+        if (fill_gap_open(uac_fill_gap(),(uint32_t)esp_timer_get_time(),budget_us)) break;
+        (void)ulTaskNotifyTake(pdTRUE,1);
+    }
+    atomic_store_explicit(&uac_gap_waiter,NULL,memory_order_release);
+    return (uint32_t)esp_timer_get_time()-start;
+}
+#endif
+
 static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
 {
     uint32_t sizes[UAC_PACKETS];
@@ -117,12 +166,14 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
 #endif
 #if CONFIG_RUZINA_DECK_MIX
     int64_t start = esp_timer_get_time();
+    uac_fill_began((uint32_t)start);
 #endif
     uint32_t bytes = ruzina_legacy_uac_fill(transfer->data_buffer, (uint32_t)transfer->data_buffer_size,
                                             sizes, UAC_PACKETS);
 #if CONFIG_RUZINA_DECK_MIX
     int64_t elapsed = esp_timer_get_time() - start;
     uint32_t took = elapsed > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed;
+    uac_fill_ended((uint32_t)(start + elapsed));
 #if CONFIG_RUZINA_UAC_PROFILE
     const uac_activity_stamp_t activity_after=ruzina_uac_activity_stamp();
     uac_irq_stamp_t irq_after=ruzina_uac_irq_stamp();
@@ -374,9 +425,9 @@ static void uac_log_task(void *unused)
             for(unsigned k=0;k<2;++k) for(unsigned i=0;i<UAC_OVERLAPS;++i) {
                 const uac_profile_class_t *c=&uac_profile_overlap_logged.c[k][i];
                 if(!c->fills) continue;
-                printf("uac_profile_overlap gen=%" PRIu32 " class=%s still=%u screen=%u decoder=%u stick=%u fills=%" PRIu32
+                printf("uac_profile_overlap gen=%" PRIu32 " class=%s phase=%u screen=%u decoder=%u stick=%u move=%u flush=%u fills=%" PRIu32
                        " mean_us=%" PRIu32 " graph_fills=%" PRIu32 " graph_mean_us=%" PRIu32 " over_3000=%" PRIu32 " max_us=%" PRIu32 "\n",
-                       sample.generation,overlap_classes[k],(i>>3)&1u,i&1u,(i>>1)&1u,(i>>2)&1u,c->fills,
+                       sample.generation,overlap_classes[k],(i>>3)&1u,i&1u,(i>>1)&1u,(i>>2)&1u,(i>>4)&1u,(i>>5)&1u,c->fills,
                        (uint32_t)(c->whole_sum/c->fills),c->graph_fills,c->graph_fills ? (uint32_t)(c->graph_sum/c->graph_fills) : 0,
                        c->over,c->max_us);
             }
@@ -419,7 +470,9 @@ static void uac_report(void)
     sample.headroom=uac_profile_headroom; sample.headroom_seen=uac_profile_headroom_seen;
     sample.distribution=uac_profile_distribution;
     sample.classes=uac_profile_classes;
-    if(!atomic_load_explicit(&uac_profile_overlap_handed,memory_order_acquire)) {
+    /* Up to 128 lines: every fifth report, about every 30 s. */
+    static unsigned overlap_reports;
+    if(++overlap_reports%5==0 && !atomic_load_explicit(&uac_profile_overlap_handed,memory_order_acquire)) {
         uac_profile_overlap_logged=uac_profile_overlap;
         atomic_store_explicit(&uac_profile_overlap_handed,true,memory_order_release);
     }

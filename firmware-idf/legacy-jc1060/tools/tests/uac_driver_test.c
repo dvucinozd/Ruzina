@@ -62,7 +62,14 @@ static bool calibration_hooks=true;
 static void vTaskDelay(unsigned ticks);
 unsigned uac_test_core(void) { return 0; }
 void __real__global_interrupt_handler(intptr_t sp,int mcause) { (void)sp;(void)mcause; }
-static const void *xTaskGetCurrentTaskHandle(void) { return (void *)1; }
+#endif
+#if UAC_TEST_TIMING
+/* The screen's wait for a gap between fills: the fill's end wakes it. */
+typedef void *TaskHandle_t;
+static int gap_wakes;
+static TaskHandle_t xTaskGetCurrentTaskHandle(void) { return (void *)1; }
+static void xTaskNotifyGive(TaskHandle_t task) { assert(task);++gap_wakes; }
+static unsigned ulTaskNotifyTake(int clear,unsigned ticks) { (void)clear;(void)ticks;return 0; }
 #endif
 #if UAC_TEST_TIMING
 static int64_t mock_time, fill_duration=200;
@@ -268,6 +275,20 @@ int main(void) {
     stop();fill_duration=200;flushes=clears=0;
 #endif
     start();assert(live==4);
+#if UAC_TEST_TIMING
+    /* Each fill marks its start and end for the screen's core, and wakes a waiting screen
+     * at its end; just after a fill the screen goes on at once. */
+    {
+        const uint32_t edges=uac_fill_edges;
+        complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+        assert(uac_fill_edges==edges+2 && !uac_fill_gap().running);
+        assert(uac_fill_end_us==(uint32_t)mock_time && gap_wakes==0);
+        uac_gap_waiter=(TaskHandle_t)1;
+        complete(uac_iso[0],USB_TRANSFER_STATUS_COMPLETED);
+        assert(gap_wakes==1);uac_gap_waiter=NULL;
+        assert(ruzina_uac_wait_gap(100000)==0 && uac_gap_waiter==NULL);
+    }
+#endif
     uac_report_pending=true;uac_report();assert(log_waiting==1);
     uac_report_pending=true;uac_report();assert(uac_log_drops==1);
     uac_log_snapshot_t snapshot;assert(xQueueReceive(uac_log_queue,&snapshot,0)==1);
@@ -340,7 +361,7 @@ int main(void) {
         ruzina_uac_activity(UAC_ACTIVITY_DECODER,true);
         const uac_activity_stamp_t a=ruzina_uac_activity_stamp();
         ruzina_uac_activity(UAC_ACTIVITY_DECODER,true); /* already running: no edge */
-        ruzina_uac_screen_still(true);
+        ruzina_uac_phase(true);
         const uac_activity_stamp_t b=ruzina_uac_activity_stamp();
         assert(b.edges[UAC_ACTIVITY_DECODER]==a.edges[UAC_ACTIVITY_DECODER]);
         assert(uac_profile_overlap_of(a,b)==2u);
@@ -349,10 +370,16 @@ int main(void) {
         ruzina_uac_activity(UAC_ACTIVITY_DECODER,false);
         const uac_activity_stamp_t c=ruzina_uac_activity_stamp();
         assert(uac_profile_overlap_of(b,c)==(1u|2u|8u));
-        ruzina_uac_activity(UAC_ACTIVITY_STICK,true);ruzina_uac_screen_still(false);
+        ruzina_uac_activity(UAC_ACTIVITY_STICK,true);ruzina_uac_phase(false);
         const uac_activity_stamp_t d=ruzina_uac_activity_stamp();
         assert(uac_profile_overlap_of(d,ruzina_uac_activity_stamp())==4u);
         ruzina_uac_activity(UAC_ACTIVITY_STICK,false);
+        /* A lane moved and rows written back: bits 4 and 5, past the phase's bit 3. */
+        const uac_activity_stamp_t m=ruzina_uac_activity_stamp();
+        ruzina_uac_activity(UAC_ACTIVITY_MOVE,true);ruzina_uac_activity(UAC_ACTIVITY_MOVE,false);
+        ruzina_uac_activity(UAC_ACTIVITY_FLUSH,true);
+        assert(uac_profile_overlap_of(m,ruzina_uac_activity_stamp())==(16u|32u));
+        ruzina_uac_activity(UAC_ACTIVITY_FLUSH,false);
         ruzina_uac_activity(UAC_ACTIVITIES,true); /* no such activity */
         const uac_activity_stamp_t e=ruzina_uac_activity_stamp();
         assert(uac_profile_overlap_of(e,ruzina_uac_activity_stamp())==0);
@@ -362,10 +389,10 @@ int main(void) {
         uac_profile_overlap_t o={0};
         uac_profile_record_t r={.whole_us=3200,.overlap=1u|8u};
         uac_profile_overlap_count(&o,0,&r);
-        r.overlap=4u;r.whole_us=2000;uac_profile_overlap_count(&o,8,&r);
+        r.overlap=4u|32u;r.whole_us=2000;uac_profile_overlap_count(&o,8,&r);
         uac_profile_overlap_count(&o,7,&r);
         assert(o.c[0][9].fills==1 && o.c[0][9].over==1 && o.c[0][9].max_us==3200);
-        assert(o.c[1][4].fills==1 && o.c[1][4].over==0);
+        assert(o.c[1][36].fills==1 && o.c[1][36].over==0);
         uint32_t total=0;
         for(unsigned k=0;k<2;++k) for(unsigned i=0;i<UAC_OVERLAPS;++i) total+=o.c[k][i].fills;
         assert(total==2);
@@ -373,13 +400,15 @@ int main(void) {
     /* The report hands the logger a copy only once it has printed the last one. */
     {
         uac_profile_overlap_handed=false;
-        uac_report_pending=true;uac_report();
+        for(unsigned i=0;i<5 && !uac_profile_overlap_handed;++i) { uac_report_pending=true;uac_report(); }
         assert(uac_profile_overlap_handed);
         const uint32_t handed=uac_profile_overlap_logged.c[0][0].fills;
         uac_profile_overlap.c[0][0].fills++;
-        uac_report_pending=true;uac_report();
+        for(unsigned i=0;i<5;++i) { uac_report_pending=true;uac_report(); }
         assert(uac_profile_overlap_logged.c[0][0].fills==handed);
         uac_profile_overlap_handed=false;
+        for(unsigned i=0;i<4;++i) { uac_report_pending=true;uac_report(); }
+        assert(!uac_profile_overlap_handed);
         uac_report_pending=true;uac_report();
         assert(uac_profile_overlap_logged.c[0][0].fills==handed+1);
         uac_log_snapshot_t drained;(void)xQueueReceive(uac_log_queue,&drained,0);

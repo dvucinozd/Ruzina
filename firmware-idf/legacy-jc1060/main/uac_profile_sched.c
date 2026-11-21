@@ -75,13 +75,13 @@ static void IRAM_ATTR activity_switched(const void *task,bool off) {
 void ruzina_uac_activity_task(uint32_t which,const void *task) {
     if (which<UAC_ACTIVITIES) atomic_store_explicit(&activity_task[which],task,memory_order_release);
 }
-static _Atomic bool screen_still;
+static _Atomic bool phase;
 void ruzina_uac_activity(uint32_t which,bool running) {
     if (which<UAC_ACTIVITIES) activity_set(which,1u,running);
 }
-void ruzina_uac_screen_still(bool still) { atomic_store_explicit(&screen_still,still,memory_order_release); }
+void ruzina_uac_phase(bool on) { atomic_store_explicit(&phase,on,memory_order_release); }
 uac_activity_stamp_t ruzina_uac_activity_stamp(void) {
-    uac_activity_stamp_t stamp={.still=atomic_load_explicit(&screen_still,memory_order_acquire)};
+    uac_activity_stamp_t stamp={.phase=atomic_load_explicit(&phase,memory_order_acquire)};
     for (unsigned i=0;i<UAC_ACTIVITIES;++i) stamp.edges[i]=atomic_load_explicit(&activity[i],memory_order_acquire)>>2;
     return stamp;
 }

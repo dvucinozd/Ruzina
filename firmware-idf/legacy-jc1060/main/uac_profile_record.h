@@ -84,16 +84,19 @@ static inline unsigned uac_profile_classify(uac_profile_classes_t *k,const uac_p
     uac_profile_count(&k->c[i],r);
     return i;
 }
-/* What else ran during a fill: bit 0 the screen drew, 1 a decoder ran, 2 the stick was
- * read, each if it was running when the fill began or changed while it ran; bit 3 the
- * screen stood still throughout. Plain fills and Master Tempo fills are counted by it. */
-enum { UAC_OVERLAPS=16 };
+/* What else ran during a fill, each if it was running when the fill began or changed
+ * while it ran: bit 0 the screen drew a frame, 1 a decoder ran, 2 the stick was read,
+ * 4 the PPA moved a lane, 5 the screen wrote rows back from cache. Bit 3: the 30 s
+ * diagnostic phase was on throughout (`--screen-still`: the screen stood still;
+ * `--fill-gap-cycle`: the screen did not wait for fills). Plain fills and Master Tempo
+ * fills are counted by it. */
+enum { UAC_OVERLAPS=64 };
 typedef struct { uac_profile_class_t c[2][UAC_OVERLAPS]; } uac_profile_overlap_t;
 static inline uint32_t uac_profile_overlap_of(uac_activity_stamp_t before,uac_activity_stamp_t after) {
     uint32_t bits=0;
     for(unsigned i=0;i<UAC_ACTIVITIES;++i)
-        if((before.edges[i]&1u) || after.edges[i]!=before.edges[i]) bits|=1u<<i;
-    if(before.still && after.still) bits|=8u;
+        if((before.edges[i]&1u) || after.edges[i]!=before.edges[i]) bits|=1u<<(i<3 ? i : i+1);
+    if(before.phase && after.phase) bits|=8u;
     return bits;
 }
 static inline void uac_profile_overlap_count(uac_profile_overlap_t *o,unsigned class_index,const uac_profile_record_t *r) {
