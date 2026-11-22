@@ -50,6 +50,8 @@ fn deck_status(session: &Session, i: usize) -> DeckStatus<'_> {
         } else {
             DeckStateText::Ready
         },
+        tempo_x100: (t.bpm_milli + 5) / 10,
+        ..DeckStatus::EMPTY
     }
 }
 

@@ -677,6 +677,33 @@ pub(crate) struct WebTrack {
     pub(crate) title: String,
     pub(crate) artist: String,
     pub(crate) duration_ms: u32,
+    /// The overview, [`WEB_WAVE_COLUMNS`] columns of the loudest peak (0 to 255); empty
+    /// without an analysis.
+    pub(crate) wave: Vec<u8>,
+}
+
+/// Columns of the Web Remote's overview: as many as a wide phone shows.
+#[cfg(feature = "web-remote")]
+const WEB_WAVE_COLUMNS: usize = 400;
+
+/// `preview` in `columns` columns, each its range's loudest peak on 0 to 255.
+#[cfg(feature = "web-remote")]
+fn web_wave(preview: &[ruzina_track_analysis::WaveformColumn], columns: usize) -> Vec<u8> {
+    if preview.is_empty() {
+        return Vec::new();
+    }
+    (0..columns)
+        .map(|column| {
+            let start = column * preview.len() / columns;
+            let end = ((column + 1) * preview.len() / columns).max(start + 1);
+            let peak = preview[start..end.min(preview.len())]
+                .iter()
+                .map(|entry| entry.peak)
+                .max()
+                .unwrap_or(0);
+            (peak / 257) as u8
+        })
+        .collect()
 }
 
 #[cfg(feature = "web-remote")]
@@ -787,6 +814,8 @@ pub(crate) struct MixView {
     pub(crate) smart_fader: bool,
     pub(crate) sync: [bool; 2],
     pub(crate) sync_master: [bool; 2],
+    /// Each deck's Hot Cue pads that hold a cue, as bits.
+    pub(crate) hot_cues: [u8; 2],
 }
 
 #[cfg(feature = "web-remote")]
@@ -799,7 +828,9 @@ impl MixView {
             | u32::from(self.sync[0]) << 4
             | u32::from(self.sync[1]) << 5
             | u32::from(self.sync_master[0]) << 6
-            | u32::from(self.sync_master[1]) << 7;
+            | u32::from(self.sync_master[1]) << 7
+            | u32::from(self.hot_cues[0]) << 8
+            | u32::from(self.hot_cues[1]) << 16;
         let values = [
             u32::from(self.volume[0]),
             u32::from(self.volume[1]),
@@ -844,6 +875,7 @@ impl MixView {
             smart_fader: bit(3),
             sync: [bit(4), bit(5)],
             sync_master: [bit(6), bit(7)],
+            hot_cues: [(v[13] >> 8) as u8, (v[13] >> 16) as u8],
         })
     }
 }
@@ -925,6 +957,9 @@ pub(crate) static PEAKS: Peaks = Peaks::new();
 /// The controller's channel meters, read on their own so neither takes the other's
 /// peaks.
 pub(crate) static LED_PEAKS: Peaks = Peaks::new();
+/// The Web Remote's channel meters, read at each status request.
+#[cfg(feature = "web-remote")]
+pub(crate) static WEB_PEAKS: Peaks = Peaks::new();
 
 /// The controller's channel meter level, as the donor drives the FLX4's: the loudest
 /// sample on a linear 0 to 127 scale, rising at once and falling 12 an update.
@@ -1052,6 +1087,10 @@ pub(crate) fn publish_track(deck: usize, track: Box<LoadedTrack>) {
         title: track.title.clone(),
         artist: track.artist.clone(),
         duration_ms: track.duration_ms,
+        wave: web_wave(
+            view.as_ref().map_or(&[][..], |view| view.preview()),
+            WEB_WAVE_COLUMNS,
+        ),
     }));
     TRACKS[deck].put(track);
 }

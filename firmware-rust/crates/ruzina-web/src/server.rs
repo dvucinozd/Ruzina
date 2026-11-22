@@ -106,6 +106,11 @@ pub trait WebBackend {
     fn library(&self) -> Option<(u32, usize)>;
     /// Row `index` of that same catalog.
     fn library_row(&self, index: usize) -> Option<LibraryRow<'_>>;
+    /// The loaded track's `track_key` and its overview, one byte per column (0 silent,
+    /// 255 full scale); `None` while the deck has no track or no overview.
+    fn wave(&self, _deck: DeckId) -> Option<(u32, &[u8])> {
+        None
+    }
 }
 
 pub struct WebServer {
@@ -322,6 +327,7 @@ impl WebServer {
             | Route::App
             | Route::Status
             | Route::Library
+            | Route::Wave
             | Route::Control
             | Route::Load
                 if !parse::body_length_allowed(parse::BodyKind::Empty, request.content_length) =>
@@ -333,6 +339,7 @@ impl WebServer {
             Route::App => asset(assets::APP, out),
             Route::Status => self.status(backend, out),
             Route::Library => library(&request, backend, out),
+            Route::Wave => wave(&request, backend, out),
             Route::Control => {
                 let (status, body) = self.control(&request, backend);
                 text(status, body, out)
@@ -488,6 +495,25 @@ fn library<B: WebBackend>(
     json_response(out, |body| {
         json::write_library_page(revision, total, offset, rows, body)
     })
+}
+
+/// `GET /api/wave?deck=`: the deck's overview, or `track_key` 0 and no columns while it
+/// has none.
+fn wave<B: WebBackend>(
+    request: &Request<'_>,
+    backend: &mut B,
+    out: &mut [u8],
+) -> Result<usize, response::Overflow> {
+    let deck = match parse::query_value(request.query, "deck").and_then(parse::parse_u32) {
+        Some(1) => DeckId::One,
+        Some(2) => DeckId::Two,
+        _ => {
+            let refusal = Response::text(HttpStatus::BadRequest, "Invalid deck");
+            return response::write_response(&refusal, out);
+        }
+    };
+    let (track_key, peaks) = backend.wave(deck).unwrap_or((0, &[]));
+    json_response(out, |body| json::write_wave(track_key, peaks, body))
 }
 
 /// `POST /api/load?track_key=&generation=&deck=` (M2.5 names).

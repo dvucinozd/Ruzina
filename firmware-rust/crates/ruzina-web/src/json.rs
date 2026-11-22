@@ -41,6 +41,15 @@ pub struct DeckStatus<'a> {
     pub sync_enabled: bool,
     pub sync_master: bool,
     pub state: DeckStateText,
+    /// The playing tempo in hundredths of a BPM, for the page's two decimals.
+    pub tempo_x100: u32,
+    /// The channel meter's lit segments, 0 to 10, as the deck's screen shows them.
+    pub level: u8,
+    /// Hot Cue pads that hold a cue, as bits (pad 1 is bit 0).
+    pub hot_cues: u8,
+    /// The loaded track's `track_key` (as `/api/library` lists it); 0 for none. The
+    /// page asks `/api/wave` again when it changes.
+    pub track_key: u32,
 }
 
 impl DeckStatus<'_> {
@@ -56,6 +65,10 @@ impl DeckStatus<'_> {
         sync_enabled: false,
         sync_master: false,
         state: DeckStateText::Idle,
+        tempo_x100: 0,
+        level: 0,
+        hot_cues: 0,
+        track_key: 0,
     };
 }
 
@@ -218,7 +231,15 @@ pub fn write_status(status: &StatusSnapshot<'_>, out: &mut [u8]) -> Result<usize
         json.boolean(deck.sync_master)?;
         json.raw(",\"state_text\":\"")?;
         json.raw(deck.state.as_str())?;
-        json.raw("\"}")?;
+        json.raw("\",\"tempo_x100\":")?;
+        json.unsigned(deck.tempo_x100)?;
+        json.raw(",\"level\":")?;
+        json.unsigned(u32::from(deck.level))?;
+        json.raw(",\"hot_cues\":")?;
+        json.unsigned(u32::from(deck.hot_cues))?;
+        json.raw(",\"track_key\":")?;
+        json.unsigned(deck.track_key)?;
+        json.raw("}")?;
     }
     let mixer = status.mixer;
     let fields: [(&str, u16); 13] = [
@@ -257,6 +278,21 @@ pub fn write_status(status: &StatusSnapshot<'_>, out: &mut [u8]) -> Result<usize
 struct Writer<'a> {
     out: &'a mut [u8],
     len: usize,
+}
+
+/// `/api/wave`: the loaded track's `track_key` and its overview, one byte per column
+/// (0 silent, 255 full scale), as lowercase hex.
+pub fn write_wave(track_key: u32, peaks: &[u8], out: &mut [u8]) -> Result<usize, Overflow> {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut json = Writer { out, len: 0 };
+    json.raw("{\"track_key\":")?;
+    json.unsigned(track_key)?;
+    json.raw(",\"peaks\":\"")?;
+    for &peak in peaks {
+        json.bytes(&[HEX[usize::from(peak >> 4)], HEX[usize::from(peak & 15)]])?;
+    }
+    json.raw("\"}")?;
+    Ok(json.len)
 }
 
 /// Escapes one JSON string into a bounded caller-owned buffer.
@@ -373,6 +409,10 @@ mod tests {
                     sync_enabled: false,
                     sync_master: true,
                     state: DeckStateText::Playing,
+                    tempo_x100: 11_294,
+                    level: 7,
+                    hot_cues: 0b101,
+                    track_key: 12,
                 },
                 DeckStatus::EMPTY,
             ],
@@ -397,10 +437,12 @@ mod tests {
                 "\"deck1\":{\"title\":\"Helpless \\\"live\\\"\\\\\\u0001\",\"artist\":\"Grid Lab\",",
                 "\"bpm\":113,\"pitch_percent\":-6.25,\"pitch_raw\":100,\"position_ms\":1770,\"duration_ms\":10000,",
                 "\"playing\":true,\"sync_enabled\":false,\"sync_master\":true,",
-                "\"state_text\":\"PLAYING\"},",
+                "\"state_text\":\"PLAYING\",\"tempo_x100\":11294,\"level\":7,\"hot_cues\":5,",
+                "\"track_key\":12},",
                 "\"deck2\":{\"title\":\"\",\"artist\":\"\",\"bpm\":0,\"pitch_percent\":0.00,",
                 "\"pitch_raw\":8192,\"position_ms\":0,\"duration_ms\":0,\"playing\":false,\"sync_enabled\":false,",
-                "\"sync_master\":false,\"state_text\":\"IDLE\"},",
+                "\"sync_master\":false,\"state_text\":\"IDLE\",\"tempo_x100\":0,\"level\":0,",
+                "\"hot_cues\":0,\"track_key\":0},",
                 "\"mixer\":{\"volume1\":16383,\"volume2\":0,\"crossfader\":8192,",
                 "\"master_volume\":0,\"headphone_mix\":0,\"eq1_low\":0,\"eq1_mid\":0,",
                 "\"eq1_high\":0,\"eq2_low\":0,\"eq2_mid\":0,\"eq2_high\":0,\"filter1\":0,",
@@ -421,6 +463,17 @@ mod tests {
             write_status(&snapshot("x", true), &mut [0u8; 64]),
             Err(Overflow)
         );
+    }
+
+    #[test]
+    fn the_wave_is_its_track_key_and_hex_columns() {
+        let mut out = [0u8; 64];
+        let len = write_wave(12, &[0, 15, 160, 255], &mut out).unwrap();
+        assert_eq!(
+            core::str::from_utf8(&out[..len]).unwrap(),
+            "{\"track_key\":12,\"peaks\":\"000fa0ff\"}"
+        );
+        assert_eq!(write_wave(12, &[0; 40], &mut out), Err(Overflow));
     }
 
     fn row(track_key: u32) -> LibraryRow<'static> {

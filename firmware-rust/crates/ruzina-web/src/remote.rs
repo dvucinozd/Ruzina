@@ -9,7 +9,7 @@
 //!
 //! M2.5 actions: `play_pause`, `cue`, `pfl`, `sync`, `volume`, `pitch`,
 //! `crossfader`, `seek`, `loop_4` (Beat Loop pad 8, four beats) and
-//! `loop_clear` (RELOOP stop). Its `main_sink` switched the JC4880 USB/PCM5102A
+//! `loop_clear` (RELOOP stop). Ruzina adds `hot_cue` (`value` 1 to 8, a Hot Cue pad). Its `main_sink` switched the JC4880 USB/PCM5102A
 //! output and has no Guition counterpart. Ruzina adds the mixer the status
 //! already reports: `eq_low`, `eq_mid`, `eq_high`, `filter`, `master_volume`,
 //! `headphone_mix`, `smart_cfx` and `smart_fader`.
@@ -159,6 +159,22 @@ pub fn parse_remote(query: &str) -> Result<RemoteCommand, RemoteError> {
                 pressed,
             })
         }),
+        // A Hot Cue pad, 1 to 8, as the controller's in Hot Cue mode: it jumps to the cue,
+        // or sets one where the pad has none.
+        "hot_cue" => {
+            let pad = parse::query_value(query, "value")
+                .and_then(parse::parse_u32)
+                .filter(|pad| (1..=8).contains(pad))
+                .ok_or(RemoteError::Value)?;
+            tap_with(Some(deck()?), SemanticControl::PadAction, &|pressed| {
+                ControlValue::PadAction(PadAction {
+                    pad: (pad - 1) as u8,
+                    mode: PadMode::HotCue,
+                    shifted: false,
+                    pressed,
+                })
+            })
+        }
         "loop_clear" => tap_with(Some(deck()?), SemanticControl::DeckExtAction, &|pressed| {
             ControlValue::DeckExtAction(DeckExtActionValue {
                 action: DeckExtAction::ReloopStop,
@@ -311,6 +327,23 @@ mod tests {
             set[1].unwrap().value,
             ControlValue::PadAction(PadAction { pressed: false, .. })
         ));
+        let hot = events(parse_remote("action=hot_cue&deck=1&value=3").unwrap());
+        assert_eq!(
+            hot[0].unwrap().value,
+            ControlValue::PadAction(PadAction {
+                pad: 2,
+                mode: PadMode::HotCue,
+                shifted: false,
+                pressed: true
+            })
+        );
+        for query in [
+            "action=hot_cue&deck=1&value=0",
+            "action=hot_cue&deck=1&value=9",
+            "action=hot_cue&deck=1&value=x",
+        ] {
+            assert_eq!(parse_remote(query).unwrap_err(), RemoteError::Value);
+        }
         let clear = events(parse_remote("action=loop_clear&deck=1").unwrap());
         assert_eq!(
             clear[0].unwrap().value,

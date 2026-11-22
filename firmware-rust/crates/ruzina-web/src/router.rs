@@ -12,6 +12,7 @@ pub enum Route {
     Status,
     Resources,
     Library,
+    Wave,
     Control,
     Load,
     ControllerProfiles,
@@ -43,6 +44,7 @@ const ROUTES: &[(&str, Method, Route)] = &[
     ("/api/status", Method::Get, Route::Status),
     ("/api/resources", Method::Get, Route::Resources),
     ("/api/library", Method::Get, Route::Library),
+    ("/api/wave", Method::Get, Route::Wave),
     ("/api/control", Method::Post, Route::Control),
     ("/api/load", Method::Post, Route::Load),
     (

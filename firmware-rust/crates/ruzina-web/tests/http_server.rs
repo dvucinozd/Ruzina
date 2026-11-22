@@ -44,6 +44,7 @@ impl WebBackend for Fake {
                     sync_enabled: false,
                     sync_master: false,
                     state: DeckStateText::Playing,
+                    ..DeckStatus::EMPTY
                 },
                 DeckStatus::EMPTY,
             ],
@@ -82,6 +83,9 @@ impl WebBackend for Fake {
             bpm: 120,
             duration_ms: 10_000,
         })
+    }
+    fn wave(&self, deck: DeckId) -> Option<(u32, &[u8])> {
+        (deck == DeckId::One).then_some((7, &[0, 128, 255][..]))
     }
 }
 
@@ -372,6 +376,22 @@ X-DDJ-Control: 1\r\nContent-Length: 4\r\n\r\nbody",
 }
 
 #[test]
+fn the_wave_names_its_track_and_needs_a_deck() {
+    let mut server = WebServer::new(1, AP);
+    let mut fake = Fake::default();
+    let get = |query: &str| format!("GET /api/wave{query} HTTP/1.1\r\nHost: ruzina.local\r\n\r\n");
+    let one = exchange(&mut server, &mut fake, &get("?deck=1"));
+    assert_eq!(status_line(&one), "HTTP/1.1 200 OK");
+    assert_eq!(body(&one), "{\"track_key\":7,\"peaks\":\"0080ff\"}");
+    let two = exchange(&mut server, &mut fake, &get("?deck=2"));
+    assert_eq!(body(&two), "{\"track_key\":0,\"peaks\":\"\"}");
+    for query in ["", "?deck=3"] {
+        let bad = exchange(&mut server, &mut fake, &get(query));
+        assert_eq!(status_line(&bad), "HTTP/1.1 400 Bad Request");
+    }
+}
+
+#[test]
 fn library_pages_cover_one_catalog_revision() {
     let mut server = WebServer::new(1, AP);
     let mut fake = Fake::default();
@@ -436,7 +456,13 @@ fn the_web_remote_page_is_served_from_the_image() {
     }
     // The page uses only routes this server implements.
     let app = std::str::from_utf8(assets::APP.body).unwrap();
-    for route in ["/api/status", "/api/control", "/api/load", "/api/library"] {
+    for route in [
+        "/api/status",
+        "/api/control",
+        "/api/load",
+        "/api/library",
+        "/api/wave",
+    ] {
         assert!(app.contains(route), "{route}");
     }
     for unimplemented in [
