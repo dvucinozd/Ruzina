@@ -95,3 +95,11 @@ The mock-up is laid out top to bottom:
 ## Open
 
 - The manual's Web Remote screenshots (`docs/manual/web-remote-*.webp`) show the old page.
+
+## On the board
+
+- **s182** (app `818c8df5…`): s181 (the screen redesign, the Library filters and the FX
+  blink) with this branch merged on a local test branch.
+  - The flash read back to match.
+  - The Web Remote started with a 23 267-byte answer buffer.
+  - The owner checked the page on the phone, upright and sideways, and says "Sve radi".
