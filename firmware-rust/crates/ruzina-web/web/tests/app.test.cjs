@@ -17,8 +17,8 @@ class Element {
 }
 function harness() {
   const document=new Element(); document.createElement=()=>new Element();
-  const cards=[1,2].map(deck=>{const card=document.querySelector(`.deck[data-deck="${deck}"]`); card.dataset.deck=String(deck); return card;});
-  document.querySelectorAll=s=>s==='.deck'?cards:[];
+  const waves=[1,2].map(deck=>{const wave=document.querySelector(`.wave[data-deck="${deck}"]`); wave.dataset.deck=String(deck); return wave;});
+  document.querySelectorAll=s=>s==='.wave'?waves:[];
   const calls=[]; const timers=[]; let now=0;
   const context=vm.createContext({document, URLSearchParams, Uint32Array,
     crypto:{getRandomValues:a=>a}, Date:{now:()=>now},
@@ -93,7 +93,7 @@ test('a seek carries the load generation of the track it was meant for',async()=
   const h=harness(); const status=h.status(3); status.stamp.load_generations=[4,9];
   status.deck2={state_text:'READY',pitch_percent:0,duration_ms:1000,position_ms:0};
   h.reply(h.calls[0],status); await h.flush();
-  const bar=h.document.querySelector('.deck[data-deck="2"]').querySelector('[data-field="bar"]');
+  const bar=h.document.querySelector('.wave[data-deck="2"]').querySelector('[data-field="bar"]');
   bar.getBoundingClientRect=()=>({left:0,width:100});
   const before=h.calls.length; bar.listeners.click({clientX:25});
   const seek=new URL(h.calls[before].url,'http://deck').searchParams;
@@ -104,4 +104,29 @@ test('the page names the deck it drives',async()=>{
   const h=harness(); h.reply(h.calls[0],{...h.status(10),name:'Ruzina-AB2D'}); await h.flush();
   assert.equal(h.document.querySelector('#deck-name').textContent,'Ruzina-AB2D');
   assert.equal(h.document.title,'Ruzina-AB2D · RUZINA');
+});
+test('a deck shows its tempo to the hundredth and the master clock follows the sync master',async()=>{
+  const h=harness(); const status=h.status(null);
+  status.deck2={state_text:'PLAYING',playing:true,pitch_percent:-1.59,tempo_x100:12600,sync_master:true};
+  h.reply(h.calls[0],status); await h.flush();
+  const card=h.document.querySelector('.deck[data-deck="2"]');
+  assert.equal(card.querySelector('[data-field="bpm"]').textContent,'126');
+  assert.equal(card.querySelector('[data-field="bpm-fraction"]').textContent,'.00');
+  assert.equal(card.querySelector('[data-field="tempo"]').textContent,'-1.59%');
+  assert.equal(h.document.querySelector('#mclk').textContent,'126.00');
+});
+test('the overview is fetched once per track and a stale answer is dropped',async()=>{
+  const h=harness();
+  const fresh=()=>({...h.status(null),deck1:{state_text:'READY',pitch_percent:0,duration_ms:1000,track_key:7}});
+  h.reply(h.calls[0],fresh()); await h.flush();
+  assert.equal(h.calls[1].url,'/api/wave?deck=1');
+  h.reply(h.calls[1],{track_key:6,peaks:'00ff'}); await h.flush();
+  // A stale answer waits a second before the page asks again.
+  h.context.testApi.pollStatus(); h.reply(h.calls[2],fresh()); await h.flush();
+  assert.equal(h.calls.length,3);
+  h.setNow(1001); h.context.testApi.pollStatus(); h.reply(h.calls[3],fresh()); await h.flush();
+  assert.equal(h.calls[4].url,'/api/wave?deck=1');
+  h.reply(h.calls[4],{track_key:7,peaks:'00ff'}); await h.flush();
+  h.context.testApi.pollStatus(); h.reply(h.calls[5],fresh()); await h.flush();
+  assert.equal(h.calls.length,6);
 });

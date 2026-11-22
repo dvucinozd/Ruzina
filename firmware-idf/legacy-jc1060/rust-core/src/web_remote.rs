@@ -285,6 +285,11 @@ impl WebBackend for Backend<'_> {
                 } else {
                     DeckStateText::Ready
                 },
+                tempo_x100: (i64::from(live.bpm_x100) * (10_000 + i64::from(pitch)) / 10_000)
+                    .clamp(0, i64::from(u32::MAX)) as u32,
+                level: deck_view::meter_segments(deck_view::WEB_PEAKS.take(i)) as u8,
+                hot_cues: view.hot_cues[i],
+                track_key: track.map_or(0, |track| track.index + 1),
                 ..DeckStatus::EMPTY
             }
         };
@@ -396,6 +401,13 @@ impl WebBackend for Backend<'_> {
             .library
             .as_deref()
             .map(|library| (library.revision, library.rows.len()))
+    }
+
+    fn wave(&self, deck: DeckId) -> Option<(u32, &[u8])> {
+        self.state
+            .track(deck_index(deck))
+            .filter(|track| !track.wave.is_empty())
+            .map(|track| (track.index + 1, track.wave.as_slice()))
     }
 
     fn library_row(&self, index: usize) -> Option<LibraryRow<'_>> {
@@ -517,6 +529,7 @@ pub(crate) fn service(mix: &mut crate::deck_mix::Mix) {
         smart_fader: mixer.smart_fader_enabled(),
         sync: sync.map(|(on, _)| on),
         sync_master: sync.map(|(_, master)| master),
+        hot_cues: mix.engine().hot_cue_masks(),
     }
     .store();
 }

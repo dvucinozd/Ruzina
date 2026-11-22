@@ -3,133 +3,181 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#090c10">
 <title>RUZINA Web Remote</title>
 <!-- No web fonts: the page comes from the deck's own access point, which has no internet. -->
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<div class="head">
 <header class="top">
   <div class="brand">
     <span class="logo">RUZINA</span>
-    <span class="sub" id="deck-name">Web Remote</span>
+    <span class="product">WEB<br>REMOTE</span>
   </div>
-  <div class="pills">
-    <span class="pill d1"><b>D1</b> <span id="pill-1">—</span></span>
-    <span class="pill d2"><b>D2</b> <span id="pill-2">—</span></span>
-  </div>
-  <span class="live"><span id="conn" class="conn" title="Connection"></span>LIVE</span>
+  <div class="mclk" title="Master tempo"><span>M.CLK</span><b id="mclk">—</b></div>
+  <span class="live" title="Connection"><span id="conn" class="conn"></span><span id="live-text">OFFLINE</span></span>
 </header>
-<main>
-  <section class="perf">
-    <article class="deck" data-deck="1" aria-label="Deck 1">
-      <div class="deck-head">
-        <span class="tag"><span class="dot"></span>DECK 1</span>
-        <span class="badge master" data-field="master">MASTER</span>
-        <span class="badge" data-field="state">IDLE</span>
-      </div>
-      <div class="titlerow">
-        <div class="names">
-          <div class="title" data-field="title">No track loaded</div>
-          <div class="artist" data-field="artist"></div>
-        </div>
-        <div class="clock">
-          <div class="time" data-field="time">0:00 / 0:00</div>
-          <div class="remain" data-field="remain">-0:00</div>
-        </div>
-      </div>
-      <div class="bar" data-field="bar" role="slider" aria-label="Deck 1 position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><div class="fill"></div></div>
-      <div class="stats">
-        <div class="chip"><span>BPM</span><b data-field="bpm">—</b></div>
-        <div class="chip"><span>PITCH</span><b data-field="pitch">+0.00%</b></div>
-        <button class="sync" data-action="sync">SYNC</button>
-      </div>
-      <label class="tempo">TEMPO <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
-      <div class="transport">
-        <button class="cue" data-action="cue">CUE</button>
-        <button class="play" data-action="play_pause">PLAY</button>
-        <button class="loop" data-action="loop_4">4B LOOP</button>
-        <button class="loop" data-action="loop_clear">CLEAR</button>
-      </div>
-    </article>
+<div class="subrow">
+  <span class="now d1"><i></i><b>D1</b> <span id="pill-1">—</span></span>
+  <span class="now d2"><i></i><b>D2</b> <span id="pill-2">—</span></span>
+  <span class="link">LATENCY <b id="latency">—</b><span class="sep">|</span><span id="deck-name">Web Remote</span></span>
+</div>
+<nav class="tabs" aria-label="View">
+  <button type="button" data-view="1">DECK 1</button>
+  <button type="button" data-view="dual" class="on">DUAL / MIX</button>
+  <button type="button" data-view="2">DECK 2</button>
+</nav>
+</div>
 
-    <section class="mixer" aria-label="Mixer">
-      <div class="mixer-head">MIXER</div>
-      <div class="channels">
-        <div class="channel" data-deck="1">
-          <span class="ch">CH 1</span>
-          <details class="eq">
-            <summary>EQ</summary>
-            <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
-            <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
-            <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
-          </details>
-          <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
-          <button class="pfl" data-action="pfl" aria-label="Deck 1 headphone cue">PFL</button>
-          <label class="fader">VOL <input class="vertical" type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
-        </div>
-        <div class="channel" data-deck="2">
-          <span class="ch">CH 2</span>
-          <details class="eq">
-            <summary>EQ</summary>
-            <label>HI <input type="range" min="0" max="16383" value="8192" data-continuous="eq_high"></label>
-            <label>MID <input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid"></label>
-            <label>LOW <input type="range" min="0" max="16383" value="8192" data-continuous="eq_low"></label>
-          </details>
-          <label>FILTER <input type="range" min="0" max="16383" value="8192" data-continuous="filter"></label>
-          <button class="pfl" data-action="pfl" aria-label="Deck 2 headphone cue">PFL</button>
-          <label class="fader">VOL <input class="vertical" type="range" min="0" max="16383" value="16383" data-continuous="volume"></label>
-        </div>
+<main class="console" data-view="dual">
+  <section class="waves panel" aria-label="Track overviews">
+    <div class="wave" data-deck="1">
+      <div class="wave-head">
+        <span class="tag"><i></i>DECK 1</span>
+        <span class="wtitle" data-field="wtitle">No track</span>
+        <span class="clock"><b data-field="time">0:00</b> / <span data-field="length">0:00</span> <em data-field="remain">-0:00</em></span>
       </div>
-      <label class="xfader">
-        <span class="xfader-head"><b>1</b>CROSSFADER<b>2</b></span>
-        <input type="range" min="0" max="16383" value="8192" data-continuous="crossfader">
-      </label>
-      <label>MASTER <input type="range" min="0" max="16383" value="16383" data-continuous="master_volume"></label>
-      <label>HEADPHONES <span class="hint">CUE ↔ MASTER</span> <input type="range" min="0" max="16383" value="8192" data-continuous="headphone_mix"></label>
-      <div class="smart">
-        <button data-action="smart_cfx">SMART CFX</button>
-        <button data-action="smart_fader">SMART FADER</button>
+      <canvas class="overview" data-field="bar" role="slider" aria-label="Deck 1 position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"></canvas>
+      <div class="progress"><i data-field="progress"></i></div>
+    </div>
+    <div class="wave" data-deck="2">
+      <div class="wave-head">
+        <span class="tag"><i></i>DECK 2</span>
+        <span class="wtitle" data-field="wtitle">No track</span>
+        <span class="clock"><b data-field="time">0:00</b> / <span data-field="length">0:00</span> <em data-field="remain">-0:00</em></span>
       </div>
-      <div class="hint">Double-click a fader to reset it.</div>
-    </section>
-
-    <article class="deck" data-deck="2" aria-label="Deck 2">
-      <div class="deck-head">
-        <span class="tag"><span class="dot"></span>DECK 2</span>
-        <span class="badge master" data-field="master">MASTER</span>
-        <span class="badge" data-field="state">IDLE</span>
-      </div>
-      <div class="titlerow">
-        <div class="names">
-          <div class="title" data-field="title">No track loaded</div>
-          <div class="artist" data-field="artist"></div>
-        </div>
-        <div class="clock">
-          <div class="time" data-field="time">0:00 / 0:00</div>
-          <div class="remain" data-field="remain">-0:00</div>
-        </div>
-      </div>
-      <div class="bar" data-field="bar" role="slider" aria-label="Deck 2 position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><div class="fill"></div></div>
-      <div class="stats">
-        <div class="chip"><span>BPM</span><b data-field="bpm">—</b></div>
-        <div class="chip"><span>PITCH</span><b data-field="pitch">+0.00%</b></div>
-        <button class="sync" data-action="sync">SYNC</button>
-      </div>
-      <label class="tempo">TEMPO <input type="range" min="0" max="16383" value="8192" data-continuous="pitch"></label>
-      <div class="transport">
-        <button class="cue" data-action="cue">CUE</button>
-        <button class="play" data-action="play_pause">PLAY</button>
-        <button class="loop" data-action="loop_4">4B LOOP</button>
-        <button class="loop" data-action="loop_clear">CLEAR</button>
-      </div>
-    </article>
+      <canvas class="overview" data-field="bar" role="slider" aria-label="Deck 2 position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"></canvas>
+      <div class="progress"><i data-field="progress"></i></div>
+    </div>
   </section>
 
-  <details class="library">
+  <article class="deck" data-deck="1" aria-label="Deck 1">
+    <div class="deck-head">
+      <span class="tag"><i></i>DECK 1</span>
+      <span class="badge master" data-field="master">MASTER</span>
+      <span class="badge" data-field="state">EMPTY</span>
+    </div>
+    <div class="title" data-field="title">No track loaded</div>
+    <div class="artist" data-field="artist"></div>
+    <div class="readout">
+      <div class="bpm"><span>BPM</span><b data-field="bpm">—</b><small data-field="bpm-fraction"></small></div>
+      <div class="pitch"><span>PITCH</span><b data-field="pitch">+0.00%</b></div>
+    </div>
+    <button type="button" class="sync" data-action="sync">SYNC</button>
+    <label class="tempo"><span class="row"><span>TEMPO</span><em data-field="tempo">CENTER (0%)</em></span>
+      <input type="range" min="0" max="16383" value="8192" data-continuous="pitch" aria-label="Deck 1 tempo"></label>
+  </article>
+
+  <article class="deck" data-deck="2" aria-label="Deck 2">
+    <div class="deck-head">
+      <span class="tag"><i></i>DECK 2</span>
+      <span class="badge master" data-field="master">MASTER</span>
+      <span class="badge" data-field="state">EMPTY</span>
+    </div>
+    <div class="title" data-field="title">No track loaded</div>
+    <div class="artist" data-field="artist"></div>
+    <div class="readout">
+      <div class="bpm"><span>BPM</span><b data-field="bpm">—</b><small data-field="bpm-fraction"></small></div>
+      <div class="pitch"><span>PITCH</span><b data-field="pitch">+0.00%</b></div>
+    </div>
+    <button type="button" class="sync" data-action="sync">SYNC</button>
+    <label class="tempo"><span class="row"><span>TEMPO</span><em data-field="tempo">CENTER (0%)</em></span>
+      <input type="range" min="0" max="16383" value="8192" data-continuous="pitch" aria-label="Deck 2 tempo"></label>
+  </article>
+
+  <section class="mixer panel" aria-label="Mixer">
+    <div class="panel-head"><h2>MIXER</h2><span class="note">2-CHANNEL MASTER</span><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div>
+    <div class="channels">
+      <div class="channel" data-deck="1">
+        <div class="ch-head"><span class="ch">CH 1</span><button type="button" class="eq-toggle" aria-expanded="true">EQ ▾</button></div>
+        <div class="knobs">
+          <label class="knob"><span>HI</span><span class="dial"><i></i></span><input type="range" min="0" max="16383" value="8192" data-continuous="eq_high" aria-label="Channel 1 EQ high"></label>
+          <label class="knob"><span>MID</span><span class="dial"><i></i></span><input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid" aria-label="Channel 1 EQ mid"></label>
+          <label class="knob"><span>LOW</span><span class="dial"><i></i></span><input type="range" min="0" max="16383" value="8192" data-continuous="eq_low" aria-label="Channel 1 EQ low"></label>
+        </div>
+        <label class="filter"><span class="row"><span>FILTER</span><em>LPF/HPF</em></span>
+          <input type="range" min="0" max="16383" value="8192" data-continuous="filter" aria-label="Channel 1 filter"></label>
+        <button type="button" class="pfl" data-action="pfl" aria-label="Channel 1 headphone cue">PFL</button>
+        <div class="strip">
+          <div class="meter" data-field="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <input class="vertical" type="range" min="0" max="16383" value="16383" data-continuous="volume" aria-label="Channel 1 volume">
+          <div class="scale" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="channel" data-deck="2">
+        <div class="ch-head"><span class="ch">CH 2</span><button type="button" class="eq-toggle" aria-expanded="true">EQ ▾</button></div>
+        <div class="knobs">
+          <label class="knob"><span>HI</span><span class="dial"><i></i></span><input type="range" min="0" max="16383" value="8192" data-continuous="eq_high" aria-label="Channel 2 EQ high"></label>
+          <label class="knob"><span>MID</span><span class="dial"><i></i></span><input type="range" min="0" max="16383" value="8192" data-continuous="eq_mid" aria-label="Channel 2 EQ mid"></label>
+          <label class="knob"><span>LOW</span><span class="dial"><i></i></span><input type="range" min="0" max="16383" value="8192" data-continuous="eq_low" aria-label="Channel 2 EQ low"></label>
+        </div>
+        <label class="filter"><span class="row"><span>FILTER</span><em>LPF/HPF</em></span>
+          <input type="range" min="0" max="16383" value="8192" data-continuous="filter" aria-label="Channel 2 filter"></label>
+        <button type="button" class="pfl" data-action="pfl" aria-label="Channel 2 headphone cue">PFL</button>
+        <div class="strip">
+          <div class="meter" data-field="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <input class="vertical" type="range" min="0" max="16383" value="16383" data-continuous="volume" aria-label="Channel 2 volume">
+          <div class="scale" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </div>
+    <label class="master"><span class="row"><span>MASTER OUT</span><b id="master-value">100%</b></span>
+      <input type="range" min="0" max="16383" value="16383" data-continuous="master_volume" aria-label="Master volume"></label>
+    <label class="master"><span class="row"><span>HEADPHONES <span class="hint">CUE ↔ MASTER</span></span><b id="phones-value">50/50</b></span>
+      <input type="range" min="0" max="16383" value="8192" data-continuous="headphone_mix" aria-label="Headphone cue and master mix"></label>
+    <div class="smart">
+      <button type="button" data-action="smart_cfx">SMART CFX</button>
+      <button type="button" data-action="smart_fader">SMART FADER</button>
+    </div>
+    <p class="hint center">Double-tap a fader or knob to reset it.</p>
+  </section>
+
+  <section class="cues panel" data-deck="1" aria-label="Deck 1 pads">
+    <div class="panel-head"><h2><b>D1</b> HOT CUES</h2><span class="note">CH 1</span></div>
+    <div class="hot">
+      <button type="button" data-action="hot_cue" data-value="1">HOT 1</button>
+      <button type="button" data-action="hot_cue" data-value="2">HOT 2</button>
+      <button type="button" data-action="hot_cue" data-value="3">HOT 3</button>
+      <button type="button" data-action="hot_cue" data-value="4">HOT 4</button>
+      <button type="button" data-action="hot_cue" data-value="5">HOT 5</button>
+      <button type="button" data-action="hot_cue" data-value="6">HOT 6</button>
+      <button type="button" data-action="hot_cue" data-value="7">HOT 7</button>
+      <button type="button" data-action="hot_cue" data-value="8">HOT 8</button>
+    </div>
+    <div class="pads">
+      <button type="button" class="cue" data-action="cue">CUE<small>POINT</small></button>
+      <button type="button" class="play" data-action="play_pause"><span data-field="play">▶ PLAY</span><small data-field="play-state">READY</small></button>
+      <button type="button" class="loop" data-action="loop_4">4B LOOP<small>4 BEATS</small></button>
+      <button type="button" class="clear" data-action="loop_clear">CLEAR<small>LOOP</small></button>
+    </div>
+  </section>
+
+  <section class="cues panel" data-deck="2" aria-label="Deck 2 pads">
+    <div class="panel-head"><h2><b>D2</b> HOT CUES</h2><span class="note">CH 2</span></div>
+    <div class="hot">
+      <button type="button" data-action="hot_cue" data-value="1">HOT 1</button>
+      <button type="button" data-action="hot_cue" data-value="2">HOT 2</button>
+      <button type="button" data-action="hot_cue" data-value="3">HOT 3</button>
+      <button type="button" data-action="hot_cue" data-value="4">HOT 4</button>
+      <button type="button" data-action="hot_cue" data-value="5">HOT 5</button>
+      <button type="button" data-action="hot_cue" data-value="6">HOT 6</button>
+      <button type="button" data-action="hot_cue" data-value="7">HOT 7</button>
+      <button type="button" data-action="hot_cue" data-value="8">HOT 8</button>
+    </div>
+    <div class="pads">
+      <button type="button" class="cue" data-action="cue">CUE<small>POINT</small></button>
+      <button type="button" class="play" data-action="play_pause"><span data-field="play">▶ PLAY</span><small data-field="play-state">READY</small></button>
+      <button type="button" class="loop" data-action="loop_4">4B LOOP<small>4 BEATS</small></button>
+      <button type="button" class="clear" data-action="loop_clear">CLEAR<small>LOOP</small></button>
+    </div>
+  </section>
+
+  <details class="library panel" id="library">
     <summary>
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       <h2>LIBRARY</h2>
-      <span id="library-info" class="hint">Waiting for media…</span>
+      <span id="library-info" class="note">Waiting for media…</span>
     </summary>
     <div class="search">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -139,6 +187,15 @@
   </details>
   <p id="message" class="message" role="status"></p>
 </main>
+
+<footer class="xbar">
+  <label class="xfader"><span class="row"><b class="d1">CH 1</b><span>CROSSFADER</span><b class="d2">CH 2</b></span>
+    <input type="range" min="0" max="16383" value="8192" data-continuous="crossfader" aria-label="Crossfader"></label>
+  <div class="foot">
+    <span id="sync-lock" class="sync-lock"><i></i><span>SYNC OFF</span></span>
+    <a href="#library" id="to-library">LIBRARY ▾</a>
+  </div>
+</footer>
 <script src="/app.js"></script>
 </body>
 </html>

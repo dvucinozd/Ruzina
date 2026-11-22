@@ -1,7 +1,7 @@
 'use strict';
-// RUZINA Web Remote: polls /api/status, sends taps, loops and faders (decks
-// and mixer) to /api/control and loads from the paged /api/library
-// (ruzina-web). Every mutation carries
+// RUZINA Web Remote: polls /api/status, sends taps, pads, loops and faders (decks
+// and mixer) to /api/control, draws each deck's overview from /api/wave and loads
+// from the paged /api/library (ruzina-web). Every mutation carries
 // X-DDJ-Control; faders carry this page's client token and a sequence, so a
 // late request can never move a fader backwards.
 
@@ -15,11 +15,17 @@ let libraryInFlight = false;
 let retryAt = 0;
 let retryAttempt = 0;
 let tracks = [];
+let latency = null;          // smoothed status round trip, ms
 const dragging = new Set();  // sliders the user is moving now
+const painters = new Map();  // a knob's input -> redraws its dial
+// Per deck: the last status, when it came, and the overview it shows.
+const decks = { 1: {}, 2: {} };
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const deckCard = (deck) => $(`.deck[data-deck="${deck}"]`);
-// A deck's channel strip in the mixer: its PFL, volume, EQ and filter.
+const waveOf = (deck) => $(`.wave[data-deck="${deck}"]`);
+const padsOf = (deck) => $(`.cues[data-deck="${deck}"]`);
+// A deck's channel strip in the mixer: its PFL, meter, volume, EQ and filter.
 const channel = (deck) => $(`.channel[data-deck="${deck}"]`);
 
 function message(text) {
@@ -73,61 +79,188 @@ function clock(ms) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+const percent = (value) => Math.round((Number(value) || 0) * 100 / 16383);
+
 // Show a fader's reported value unless the user is moving it.
 function showValue(slider, value) {
-  if (slider && value !== undefined && !dragging.has(slider)) slider.value = value;
+  if (slider && value !== undefined && !dragging.has(slider)) {
+    slider.value = value;
+    painters.get(slider)?.();
+  }
+}
+
+// The playing tempo with two decimals: the status's hundredths, else its whole BPM.
+function tempoX100(data) {
+  if (Number.isFinite(data.tempo_x100) && data.tempo_x100 > 0) return data.tempo_x100;
+  return (Number(data.bpm) || 0) * 100;
 }
 
 function renderDeck(deck, data, mixer) {
   const card = deckCard(deck);
+  const wave = waveOf(deck);
+  const pads = padsOf(deck);
   const strip = channel(deck);
-  const field = (name) => $(`[data-field="${name}"]`, card);
+  const field = (name, root = card) => $(`[data-field="${name}"]`, root);
   const loaded = data.state_text !== 'IDLE';
-  card.dataset.duration = data.duration_ms;
+  decks[deck].data = data;
+  decks[deck].at = Date.now();
+  wave.dataset.duration = data.duration_ms;
   card.classList.toggle('playing', !!data.playing);
-  field('title').textContent = loaded ? data.title : 'No track loaded';
+  const title = loaded ? (data.title || 'Untitled') : 'No track loaded';
+  field('title').textContent = title;
   field('artist').textContent = data.artist || '';
-  $(`#pill-${deck}`).textContent = loaded ? data.title : '—';
-  field('bpm').textContent = loaded ? String(data.bpm) : '—';
-  field('time').textContent = `${clock(data.position_ms)} / ${clock(data.duration_ms)}`;
-  field('remain').textContent = `-${clock(Math.max(0, (data.duration_ms || 0) - (data.position_ms || 0)))}`;
-  field('state').textContent = data.state_text;
+  field('wtitle', wave).textContent = loaded ? title : 'No track';
+  $(`#pill-${deck}`).textContent = loaded ? title : '—';
+  const tempo = tempoX100(data);
+  field('bpm').textContent = loaded && tempo ? String(Math.floor(tempo / 100)) : '—';
+  field('bpm-fraction').textContent = loaded && tempo ? `.${String(tempo % 100).padStart(2, '0')}` : '';
+  field('state').textContent = { READY: 'PAUSED', IDLE: 'EMPTY' }[data.state_text] || data.state_text;
   field('master').classList.toggle('on', !!data.sync_master);
-  const pitch = Number(data.pitch_percent);
-  field('pitch').textContent = `${pitch >= 0 ? '+' : ''}${pitch.toFixed(2)}%`;
+  const pitch = Number(data.pitch_percent) || 0;
+  const signed = `${pitch >= 0 ? '+' : ''}${pitch.toFixed(2)}%`;
+  field('pitch').textContent = signed;
+  field('tempo').textContent = pitch === 0 ? 'CENTER (0%)' : signed;
   showValue($('[data-continuous="pitch"]', card), data.pitch_raw);
-  const fraction = data.duration_ms ? Math.min(1, data.position_ms / data.duration_ms) : 0;
-  $('.fill', field('bar')).style.width = `${(fraction * 100).toFixed(2)}%`;
-  field('bar').ariaValueNow = String(Math.round(fraction * 100));
-  const play = $('[data-action="play_pause"]', card);
-  play.textContent = data.playing ? 'PAUSE' : 'PLAY';
-  play.classList.toggle('active', data.playing);
-  $('[data-action="sync"]', card).classList.toggle('active', data.sync_enabled);
-  $('[data-action="pfl"]', strip).classList.toggle('active', mixer[`pfl${deck}`]);
-  for (const button of card.querySelectorAll('[data-action]')) {
-    if (button.dataset.action !== 'pfl') button.disabled = !loaded;
+  $('[data-action="sync"]', card).classList.toggle('active', !!data.sync_enabled);
+  $('[data-action="sync"]', card).disabled = !loaded;
+  // The pads: PLAY shows what a tap does next, and lit Hot Cues hold a cue.
+  const play = $('[data-action="play_pause"]', pads);
+  play.classList.toggle('active', !!data.playing);
+  field('play', pads).textContent = data.playing ? '❚❚ PAUSE' : '▶ PLAY';
+  field('play-state', pads).textContent = data.playing ? 'ACTIVE' : (loaded ? 'READY' : 'NO TRACK');
+  for (const button of pads.querySelectorAll('[data-action]')) {
+    button.disabled = !loaded;
+    if (button.dataset.action === 'hot_cue') {
+      button.classList.toggle('set', loaded && ((data.hot_cues || 0) >> (Number(button.dataset.value) - 1) & 1) === 1);
+    }
   }
+  $('[data-action="pfl"]', strip).classList.toggle('active', !!mixer[`pfl${deck}`]);
+  const lit = Math.max(0, Math.min(10, Number(data.level) || 0));
+  field('meter', strip).querySelectorAll('i').forEach((segment, index) => segment.classList.toggle('lit', index < lit));
   for (const action of ['volume', 'eq_low', 'eq_mid', 'eq_high', 'filter']) {
     const key = action === 'volume' || action === 'filter' ? `${action}${deck}` : action.replace('eq_', `eq${deck}_`);
     showValue($(`[data-continuous="${action}"]`, strip), mixer[key]);
   }
+  drawWave(deck);
 }
 
-function renderMixer(mixer) {
+function renderMixer(mixer, status) {
   const section = $('.mixer');
-  for (const action of ['crossfader', 'master_volume', 'headphone_mix']) {
+  for (const action of ['master_volume', 'headphone_mix']) {
     showValue($(`[data-continuous="${action}"]`, section), mixer[action]);
   }
-  $('[data-action="smart_cfx"]', section).classList.toggle('active', mixer.smart_cfx);
-  $('[data-action="smart_fader"]', section).classList.toggle('active', mixer.smart_fader);
+  showValue($('[data-continuous="crossfader"]'), mixer.crossfader);
+  $('#master-value').textContent = `${percent(mixer.master_volume)}%`;
+  const master = percent(mixer.headphone_mix);
+  $('#phones-value').textContent = `${100 - master}/${master}`;
+  $('[data-action="smart_cfx"]', section).classList.toggle('active', !!mixer.smart_cfx);
+  $('[data-action="smart_fader"]', section).classList.toggle('active', !!mixer.smart_fader);
+  // The master clock: the sync master's tempo, else a playing deck's, else deck 1's.
+  const pick = [status.deck1, status.deck2];
+  const lead = pick.find((d) => d && d.sync_master) || pick.find((d) => d && d.playing) ||
+    pick.find((d) => d && d.state_text && d.state_text !== 'IDLE');
+  const tempo = lead ? tempoX100(lead) : 0;
+  $('#mclk').textContent = tempo ? (tempo / 100).toFixed(2) : '—';
+  const synced = pick.some((d) => d && d.sync_enabled);
+  $('#sync-lock').classList.toggle('on', synced);
+  $('span', $('#sync-lock')).textContent = synced ? 'SYNC LOCK' : 'SYNC OFF';
+}
+
+// The overview: the peaks in the deck's colour, bright up to the playhead.
+function drawWave(deck) {
+  const wave = waveOf(deck);
+  const canvas = $('[data-field="bar"]', wave);
+  const state = decks[deck];
+  const data = state.data || {};
+  const duration = Number(data.duration_ms) || 0;
+  let position = Number(data.position_ms) || 0;
+  // Between polls a playing deck moves on at its tempo, for at most a second.
+  if (data.playing && state.at) {
+    position += Math.min(1000, Date.now() - state.at) * (1 + (Number(data.pitch_percent) || 0) / 100);
+  }
+  if (duration) position = Math.min(position, duration);
+  const fraction = duration ? position / duration : 0;
+  $('[data-field="time"]', wave).textContent = clock(position);
+  $('[data-field="length"]', wave).textContent = clock(duration);
+  $('[data-field="remain"]', wave).textContent = `-${clock(Math.max(0, duration - position))}`;
+  $('[data-field="progress"]', wave).style.width = `${(fraction * 100).toFixed(2)}%`;
+  canvas.ariaValueNow = String(Math.round(fraction * 100));
+  const context = canvas.getContext ? canvas.getContext('2d') : null;
+  if (!context) return;
+  const ratio = (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1;
+  const width = Math.max(1, Math.round(canvas.clientWidth * ratio));
+  const height = Math.max(1, Math.round(canvas.clientHeight * ratio));
+  if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+  const color = getComputedStyle(wave).getPropertyValue('--deck').trim() || '#ff5f1f';
+  context.clearRect(0, 0, width, height);
+  const middle = height / 2;
+  const peaks = state.peaks && data.track_key === state.key ? state.peaks : null;
+  const head = Math.round(fraction * width);
+  if (peaks && peaks.length) {
+    const bar = Math.max(1, Math.round(2 * ratio));
+    for (let x = 0; x < width; x += bar + 1) {
+      const from = Math.floor(x * peaks.length / width);
+      const to = Math.max(from + 1, Math.floor((x + bar) * peaks.length / width));
+      let peak = 0;
+      for (let i = from; i < to && i < peaks.length; i++) peak = Math.max(peak, peaks[i]);
+      const half = Math.max(1, peak / 255 * (middle - 2));
+      context.globalAlpha = x < head ? 1 : 0.38;
+      context.fillStyle = color;
+      context.fillRect(x, middle - half, bar, half * 2);
+    }
+  } else {
+    context.globalAlpha = 0.5;
+    context.fillStyle = color;
+    context.fillRect(0, middle - ratio / 2, head, ratio);
+    context.globalAlpha = 0.2;
+    context.fillRect(head, middle - ratio / 2, width - head, ratio);
+  }
+  context.globalAlpha = 1;
+  if (duration) {
+    context.fillStyle = '#f5f7fa';
+    context.fillRect(Math.min(width - 2 * ratio, head), 0, 2 * ratio, height);
+  }
+}
+
+function animate() {
+  for (const deck of [1, 2]) if (decks[deck].data && decks[deck].data.playing) drawWave(deck);
+  requestAnimationFrame(animate);
+}
+
+// The overview of the track a deck has: fetched once per track, again after a miss.
+async function loadWave(deck, key) {
+  const state = decks[deck];
+  if (state.waveInFlight || Date.now() < (state.waveRetryAt || 0)) return;
+  state.waveInFlight = true;
+  try {
+    const response = await fetch(`/api/wave?deck=${deck}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(String(response.status));
+    const body = await response.json();
+    if (body.track_key !== key) throw new Error('Track changed');
+    const hex = String(body.peaks || '');
+    const peaks = new Uint8Array(hex.length >> 1);
+    for (let i = 0; i < peaks.length; i++) peaks[i] = parseInt(hex.substr(i * 2, 2), 16);
+    state.key = key;
+    state.peaks = peaks;
+    drawWave(deck);
+  } catch (error) {
+    state.waveRetryAt = Date.now() + 1000;
+  } finally {
+    state.waveInFlight = false;
+  }
 }
 
 async function pollStatus() {
+  const sent = Date.now();
   try {
     const response = await fetch('/api/status', { cache: 'no-store' });
     if (!response.ok) throw new Error(String(response.status));
     const status = await response.json();
-    $('#conn').classList.add('ok');
+    const trip = Date.now() - sent;
+    latency = latency === null ? trip : latency * 0.8 + trip * 0.2;
+    $('#latency').textContent = `${Math.round(latency)}ms`;
+    $('.live').classList.add('ok');
+    $('#live-text').textContent = 'LIVE';
     // The deck's name: which deck this page drives, when there are several.
     if (status.name && $('#deck-name').textContent !== status.name) {
       $('#deck-name').textContent = status.name;
@@ -141,9 +274,11 @@ async function pollStatus() {
       // the deck has since replaced is refused.
       for (const deck of [1, 2]) {
         const generation = (status.stamp.load_generations || [])[deck - 1];
-        deckCard(deck).dataset.generation = generation === undefined ? '' : String(generation);
+        waveOf(deck).dataset.generation = generation === undefined ? '' : String(generation);
+        const key = status[`deck${deck}`].track_key;
+        if (Number.isInteger(key) && key > 0 && key !== decks[deck].key) loadWave(deck, key);
       }
-      renderMixer(status.mixer);
+      renderMixer(status.mixer, status);
       const identity = {boot: status.stamp.boot, revision: status.stamp.library_revision};
       if (!sameIdentity(identity, desiredIdentity)) {
         desiredIdentity = identity;
@@ -160,7 +295,8 @@ async function pollStatus() {
     if (desiredIdentity?.revision !== null && desiredIdentity && !loadedSnapshot &&
         !libraryInFlight && Date.now() >= retryAt) loadLibrary();
   } catch (error) {
-    $('#conn').classList.remove('ok');
+    $('.live').classList.remove('ok');
+    $('#live-text').textContent = 'OFFLINE';
   }
   setTimeout(pollStatus, 300);
 }
@@ -241,11 +377,46 @@ function renderLibrary() {
   }
 }
 
+// A knob: its hidden range input holds the value; a vertical drag on the dial turns it.
+function bindKnob(input, send) {
+  const dial = $('.dial', input.closest('.knob'));
+  const paint = () => {
+    const turn = (Number(input.value) / 16383 - 0.5) * 270;
+    dial.style.setProperty('--turn', `${turn.toFixed(1)}deg`);
+  };
+  painters.set(input, paint);
+  paint();
+  let start = null;
+  dial.addEventListener('pointerdown', (event) => {
+    start = { y: event.clientY, value: Number(input.value) };
+    dragging.add(input);
+    dial.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  dial.addEventListener('pointermove', (event) => {
+    if (!start) return;
+    const value = Math.round(Math.min(16383, Math.max(0, start.value + (start.y - event.clientY) * 16383 / 160)));
+    if (value !== Number(input.value)) { input.value = value; paint(); send(); }
+  });
+  const end = () => { start = null; dragging.delete(input); };
+  dial.addEventListener('pointerup', end);
+  dial.addEventListener('pointercancel', end);
+  dial.addEventListener('dblclick', () => { input.value = input.defaultValue; paint(); send(); });
+  input.addEventListener('input', paint);
+}
+
+function setView(view) {
+  $('.console').dataset.view = view;
+  for (const tab of document.querySelectorAll('.tabs button')) tab.classList.toggle('on', tab.dataset.view === view);
+  try { localStorage.setItem('ruzina-view', view); } catch (error) { /* private mode */ }
+  for (const deck of [1, 2]) drawWave(deck);
+}
+
 function bindControls() {
   // Deck controls and channel strips carry their deck; the master section carries none.
   const deckOf = (element) => element.closest('[data-deck]')?.dataset.deck || null;
   for (const button of document.querySelectorAll('[data-action]')) {
-    button.addEventListener('click', () => control(deckOf(button), button.dataset.action));
+    button.addEventListener('click', () => control(deckOf(button), button.dataset.action, button.dataset.value));
   }
   for (const slider of document.querySelectorAll('[data-continuous]')) {
     const deck = deckOf(slider);
@@ -256,22 +427,41 @@ function bindControls() {
     slider.addEventListener('change', () => dragging.delete(slider));
     slider.addEventListener('input', send);
     slider.addEventListener('dblclick', () => { slider.value = slider.defaultValue; send(); });
+    if (slider.closest('.knob')) bindKnob(slider, send);
   }
-  for (const card of document.querySelectorAll('.deck')) {
-    const deck = card.dataset.deck;
-    const bar = $('[data-field="bar"]', card);
+  for (const wave of document.querySelectorAll('.wave')) {
+    const deck = wave.dataset.deck;
+    const bar = $('[data-field="bar"]', wave);
     bar.addEventListener('click', (event) => {
-      const duration = Number(card.dataset.duration) || 0;
+      const duration = Number(wave.dataset.duration) || 0;
       const rect = bar.getBoundingClientRect();
       const fraction = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
       if (!duration) return;
       const params = new URLSearchParams({ action: 'seek', deck, value: Math.round(fraction * duration) });
-      if (card.dataset.generation) params.set('generation', card.dataset.generation);
+      if (wave.dataset.generation) params.set('generation', wave.dataset.generation);
       mutate(`/api/control?${params}`);
     });
   }
+  for (const toggle of document.querySelectorAll('.eq-toggle')) {
+    toggle.addEventListener('click', () => {
+      const folded = toggle.closest('.channel').classList.toggle('folded');
+      toggle.textContent = folded ? 'EQ ▸' : 'EQ ▾';
+      toggle.ariaExpanded = String(!folded);
+    });
+  }
+  for (const tab of document.querySelectorAll('.tabs button')) {
+    tab.addEventListener('click', () => setView(tab.dataset.view));
+  }
+  $('#to-library').addEventListener('click', () => { $('#library').open = true; });
   $('#search').addEventListener('input', renderLibrary);
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', () => { for (const deck of [1, 2]) drawWave(deck); });
+  }
+  let view = 'dual';
+  try { view = localStorage.getItem('ruzina-view') || 'dual'; } catch (error) { /* private mode */ }
+  if (['1', '2', 'dual'].includes(view) && view !== 'dual') setView(view);
 }
 
 bindControls();
 pollStatus();
+if (typeof requestAnimationFrame === 'function') requestAnimationFrame(animate);
