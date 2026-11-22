@@ -64,11 +64,11 @@ main section + section { border-top: 1px solid var(--line); padding-top: 2.3rem;
 
 .wiring, .note { margin: 1.35rem 0; padding: 1rem 1.2rem; background: var(--surface); border-radius: .6rem; border: 1px solid var(--line); }
 .wiring figcaption, .note h3 { font-weight: 730; font-size: 1.02rem; margin: 0; }
-.wiring dl, .definitions { margin: .75rem 0 0; }
-.wiring div + div, .definitions div + div { border-top: 1px solid var(--line); }
-.wiring dl div, .definitions div { padding-block: .65rem; }
-.wiring dt, .definitions dt { font-weight: 700; }
-.wiring dd, .definitions dd { margin: .15rem 0 0; color: var(--muted); }
+.definitions { margin: .75rem 0 0; }
+.definitions div + div { border-top: 1px solid var(--line); }
+.definitions div { padding-block: .65rem; }
+.definitions dt { font-weight: 700; }
+.definitions dd { margin: .15rem 0 0; color: var(--muted); }
 .note { border-left: 4px solid var(--warm); }
 .note p { margin: .45rem 0 0; }
 
@@ -109,4 +109,123 @@ details p { margin: 0 0 .9rem; }
   tr, .note, .steps li { break-inside: avoid; }
   details::details-content { content-visibility: visible; display: block; }
   .steps li::before { background: #eee; }
+}
+
+/* Visual references for setup, mixing, beat grids, and cue pads. */
+.section-icon {
+  display: inline-block;
+  font-size: .62em;
+  margin-inline-end: .52em;
+  vertical-align: .1em;
+}
+.manual-visual {
+  margin: 1.35rem 0;
+  padding: clamp(.85rem, 3vw, 1.2rem);
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  background: var(--surface);
+}
+.manual-visual > figcaption { font-weight: 730; }
+.manual-visual > p { margin: .65rem 0 0; color: var(--muted); font-size: .93rem; }
+.wiring-route {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .48rem;
+  margin-top: 1rem;
+  font-size: .94rem;
+}
+.wiring-node {
+  display: flex;
+  align-items: flex-start;
+  gap: .45rem;
+  max-width: 100%;
+  padding: .4rem .66rem;
+  border: 1px solid var(--line);
+  border-radius: .42rem;
+  background: var(--page);
+}
+.wiring-arrow { color: var(--lime); font-weight: 750; }
+.wiring-branches { list-style: none; display: grid; gap: .35rem; padding: 0; margin: 0; }
+.wiring-branches li { margin: 0; }
+.mix-chart { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin-top: .8rem; }
+.mix-stage {
+  min-width: 0;
+  padding: .62rem .73rem;
+  border: 1px solid var(--line);
+  border-radius: .42rem;
+  background: var(--page);
+}
+.mix-stage h3 { font-size: .92rem; margin: 0 0 .6rem; }
+.mix-bar-row { font-size: .86rem; }
+.mix-bar-row + .mix-bar-row { margin-top: .45rem; }
+.mix-bar { height: .42rem; margin-top: .14rem; border-radius: 100vw; background: var(--line); }
+.mix-bar span { display: block; inline-size: var(--level); block-size: 100%; border-radius: inherit; }
+.mix-deck-1 span { background: #73daf2; }
+.mix-deck-2 span { background: #a0edb4; }
+.cue-guide { display: grid; gap: .65rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cue-guide p { margin: 0; padding-inline-start: .75rem; border-inline-start: 2px solid var(--line); color: var(--muted); }
+.cue-guide strong { color: var(--ink); }
+.beat-grid { display: grid; gap: .65rem; margin-top: .85rem; }
+.beat-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: .65rem;
+  align-items: center;
+  padding: .45rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: .42rem;
+  background: var(--page);
+  font-size: .86rem;
+  font-weight: 680;
+}
+.beat-track {
+  position: relative;
+  block-size: 3.1rem;
+  margin-inline: .55rem;
+  background: linear-gradient(var(--line), var(--line)) center / 100% 2px no-repeat;
+}
+.beat-tick, .beat-cue { position: absolute; left: var(--at); transform: translateX(-50%); }
+.beat-tick { bottom: 0; color: var(--muted); font-size: .8rem; }
+.beat-tick::before { content: ""; display: block; width: 2px; height: .58rem; margin-inline: auto; background: var(--muted); }
+.beat-cue {
+  top: 0;
+  padding-inline: .38rem;
+  border-radius: .22rem;
+  background: var(--lime);
+  color: var(--dark);
+  font-size: .72rem;
+}
+.beat-cue::after { content: ""; position: absolute; top: 100%; left: calc(50% - 1px); width: 2px; height: .43rem; background: var(--lime); }
+.pad-reference { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: .8rem 1.15rem; align-items: center; margin-top: .7rem; }
+.pad-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .42rem; list-style: none; margin: 0; padding: 0; }
+.pad-grid li {
+  display: grid;
+  place-items: center;
+  padding: .38rem .18rem;
+  margin: 0;
+  min-block-size: 2.35rem;
+  border: 1px solid var(--pad-color);
+  border-radius: .33rem;
+  background: var(--page);
+  color: var(--ink);
+  font-weight: 730;
+}
+.pad-actions { margin-block: 0; font-size: .93rem; }
+.manual-shot { margin: 1.3rem 0; }
+.manual-shot a { display: block; border-radius: .55rem; }
+.manual-shot img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: inherit; }
+.manual-shot a:hover img { border-color: var(--lime); }
+.manual-shot figcaption { margin-top: .45rem; color: var(--muted); font-size: .92rem; }
+.library-shot { max-width: 34rem; }
+@media (max-width: 36rem) {
+  .wiring-route { flex-direction: column; align-items: flex-start; gap: .3rem; }
+  .wiring-arrow { transform: rotate(90deg); margin-inline-start: .8rem; }
+  .wiring-branches { padding-inline-start: .75rem; border-inline-start: 2px solid var(--line); }
+  .mix-chart, .cue-guide, .pad-reference { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  .manual-visual, .manual-shot, .cue-guide { break-inside: avoid; }
+  .mix-bar, .beat-track, .beat-cue { print-color-adjust: exact; }
+  .beat-cue { color: white; }
 }

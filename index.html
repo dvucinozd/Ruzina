@@ -49,7 +49,7 @@
 
     <main id="prirucnik" tabindex="-1">
       <section id="brzi-pocetak">
-        <h2>Quick start</h2>
+        <h2><span class="section-icon" aria-hidden="true">▶️</span>Quick start</h2>
         <p>This guide is for the <strong>JC1060P470C_I_W_Y with ESP32-P4 silicon revision 1.3 (103)</strong> and the matching Ruzina firmware already installed. It covers the build with the Slint touchscreen and a USB drive as its music source.</p>
         <ol class="steps">
           <li><strong>Prepare two tracks.</strong> Analyze them in rekordbox and export them to an exFAT USB drive with the classic Device Library database. <a href="#izvoz">USB export instructions</a></li>
@@ -60,20 +60,40 @@
       </section>
 
       <section id="oprema">
-        <h2>Equipment and connections</h2>
+        <h2><span class="section-icon" aria-hidden="true">🔌</span>Equipment and connections</h2>
         <ul>
           <li>Guition <strong>JC1060P470C_I_W_Y</strong> rev 1.3 with compatible Ruzina firmware.</li>
           <li>Pioneer <strong>DDJ-FLX4</strong> with a USB data cable for its computer or mobile-device port.</li>
           <li>USB hub and an exFAT USB drive with a rekordbox export.</li>
           <li>Powered speakers or an amplifier with a line input, a stereo RCA cable, and headphones.</li>
         </ul>
-        <figure class="wiring">
+        <figure class="wiring manual-visual">
           <figcaption>Connections used in the tested setup</figcaption>
-          <dl>
-            <div><dt>Computer <span aria-hidden="true">→</span> JC1060 FS USB-C</dt><dd>Powers the JC1060 board over USB.</dd></div>
-            <div><dt>JC1060 HS USB <span aria-hidden="true">→</span> hub</dt><dd>Connect the DDJ-FLX4 and USB drive to the hub.</dd></div>
-            <div><dt>FLX4 <span aria-hidden="true">→</span> speakers and headphones</dt><dd>Connect RCA MASTER to the line input. Plug the headphones into the FLX4 headphone jack.</dd></div>
-          </dl>
+          <div class="wiring-route">
+            <span class="wiring-node"><span aria-hidden="true">💻</span> Computer</span>
+            <span class="wiring-arrow" aria-hidden="true">→</span>
+            <span class="wiring-node"><span aria-hidden="true">⚡</span> JC1060 FS USB-C</span>
+          </div>
+          <p>The computer supplies power to the board through FS USB-C.</p>
+          <div class="wiring-route">
+            <span class="wiring-node"><span aria-hidden="true">🖥️</span> JC1060 HS USB</span>
+            <span class="wiring-arrow" aria-hidden="true">→</span>
+            <span class="wiring-node"><span aria-hidden="true">🔌</span> USB hub</span>
+            <span class="wiring-arrow" aria-hidden="true">→</span>
+            <ul class="wiring-branches">
+              <li class="wiring-node"><span aria-hidden="true">🎛️</span> DDJ-FLX4</li>
+              <li class="wiring-node"><span aria-hidden="true">💾</span> exFAT USB drive</li>
+            </ul>
+          </div>
+          <p>Use the HS port for both the controller and the music drive.</p>
+          <div class="wiring-route">
+            <span class="wiring-node"><span aria-hidden="true">🎛️</span> DDJ-FLX4</span>
+            <span class="wiring-arrow" aria-hidden="true">→</span>
+            <ul class="wiring-branches">
+              <li class="wiring-node"><span aria-hidden="true">🔊</span> RCA MASTER to a line input</li>
+              <li class="wiring-node"><span aria-hidden="true">🎧</span> Headphones to the headphone jack</li>
+            </ul>
+          </div>
         </figure>
         <aside class="note">
           <h3>USB hub power</h3>
@@ -82,7 +102,7 @@
       </section>
 
       <section id="izvoz">
-        <h2>Prepare a USB drive</h2>
+        <h2><span class="section-icon" aria-hidden="true">💾</span>Prepare a USB drive</h2>
         <ol>
           <li>Use a USB drive formatted as <strong>exFAT</strong>. If you need to format it, back up any existing files first because formatting erases the drive.</li>
           <li>Import your music into the desktop version of rekordbox and analyze it. For your first test, pick two local <strong>MP3, FLAC, or 16-bit PCM WAV</strong> files. Check their BPM and beatgrids if you plan to use SYNC or Quantize.</li>
@@ -94,7 +114,7 @@
       </section>
 
       <section id="zaslon">
-        <h2>Screen and library</h2>
+        <h2><span class="section-icon" aria-hidden="true">🖥️</span>Screen and library</h2>
         <dl class="definitions">
           <div><dt>OVERVIEW</dt><dd>Shows both decks, their waveforms, available cover art, position, time, BPM, and pitch, with markers for beats, cues, and loops. It has touchscreen PLAY and CUE controls, Master Tempo and Quantize indicators, and a Beat FX panel. On this build, turning the browse knob on the Overview zooms the waveforms.</dd></div>
           <div><dt>LIBRARY</dt><dd>Shows all tracks, folders, and playlists from the export. A track row can display its artist, BPM, key, and duration, plus a D1 or D2 label when loaded.</dd></div>
@@ -117,7 +137,7 @@
         <p>To load from the touchscreen, select a track and tap <b>LOAD D1</b> or <b>LOAD D2</b>. Before pressing PLAY, check that the title appears on the intended deck.</p>
       </section>
       <section id="miks">
-        <h2>First mix and headphones</h2>
+        <h2><span class="section-icon" aria-hidden="true">🎧</span>First mix and headphones</h2>
         <dl class="definitions">
           <div><dt>MAIN / MASTER</dt><dd>The audience hears the stereo mix through the FLX4’s RCA MASTER output. Its level depends on the channel faders, crossfader, MASTER LEVEL, and MAIN TRIM.</dd></div>
           <div><dt>PFL / HEADPHONES CUE</dt><dd>The mixer’s channel CUE button selects that channel for pre-fader listening. <b>HEADPHONES MIX</b> blends the selected PFL channels with MASTER. <b>HEADPHONES LEVEL</b> adjusts the overall headphone volume.</dd></div>
@@ -129,10 +149,35 @@
           <li>Line up the tempos and the start of a phrase. Move <b>HEADPHONES MIX</b> toward the center to compare the tracks. Use the tempo fader or SYNC and make small timing corrections with the jog wheel as needed.</li>
           <li>Gradually raise channel 2’s fader and lower channel 1’s. Listen for the rise in volume when both tracks are playing. If the <b>Limiter</b> counter in SETTINGS keeps climbing, reduce the channel levels or lower MAIN TRIM.</li>
         </ol>
+        <figure class="manual-visual">
+          <figcaption>Channel fader positions during a handover</figcaption>
+          <div class="mix-chart">
+            <div class="mix-stage">
+              <h3>Deck 1 plays out</h3>
+              <div class="mix-bar-row"><span>Deck 1 · open</span><div class="mix-bar mix-deck-1" aria-hidden="true"><span style="--level: 100%"></span></div></div>
+              <div class="mix-bar-row"><span>Deck 2 · down</span><div class="mix-bar mix-deck-2" aria-hidden="true"><span style="--level: 0%"></span></div></div>
+            </div>
+            <div class="mix-stage">
+              <h3>Blend the tracks</h3>
+              <div class="mix-bar-row"><span>Deck 1 · lower</span><div class="mix-bar mix-deck-1" aria-hidden="true"><span style="--level: 60%"></span></div></div>
+              <div class="mix-bar-row"><span>Deck 2 · raise</span><div class="mix-bar mix-deck-2" aria-hidden="true"><span style="--level: 60%"></span></div></div>
+            </div>
+            <div class="mix-stage">
+              <h3>Deck 2 takes over</h3>
+              <div class="mix-bar-row"><span>Deck 1 · down</span><div class="mix-bar mix-deck-1" aria-hidden="true"><span style="--level: 0%"></span></div></div>
+              <div class="mix-bar-row"><span>Deck 2 · open</span><div class="mix-bar mix-deck-2" aria-hidden="true"><span style="--level: 100%"></span></div></div>
+            </div>
+          </div>
+          <p>These are example fader positions with the crossfader centered. Adjust the overlap by ear.</p>
+        </figure>
+        <div class="cue-guide">
+          <p><span aria-hidden="true">🔊</span> <strong>Audience</strong><br>Leave channel 2 down while you prepare the next track.</p>
+          <p><span aria-hidden="true">🎧</span> <strong>Headphones</strong><br>Enable channel 2’s PFL and turn HEADPHONES MIX toward CUE.</p>
+        </div>
       </section>
 
       <section id="ritam">
-        <h2>Tempo, jog wheels, and loops</h2>
+        <h2><span class="section-icon" aria-hidden="true">⏱️</span>Tempo, jog wheels, and loops</h2>
         <h3>Tempo, BEAT SYNC, and Master Tempo</h3>
         <ul>
           <li>The <strong>tempo fader</strong> changes playback speed. On the FLX4, briefly press <b>SHIFT + BEAT SYNC</b> to cycle through the 6, 10, and 16 percent ranges. The range changes when you release the button.</li>
@@ -146,12 +191,38 @@
           <li><strong>Quantize</strong> uses the analyzed beatgrid when setting cue points and loop starts. On the FLX4, use <b>SHIFT + channel CUE</b> in the mixer to toggle it for that channel. The <b>Q</b> indicator on the Overview shows each deck’s setting. If cues land on the wrong beat, check the beatgrid in rekordbox and export again.</li>
           <li><strong>BEAT JUMP</strong> pads move the playhead by a set number of beats while preserving its position within the beat. Use them to skip part of a phrase.</li>
         </ul>
+        <figure class="manual-visual">
+          <figcaption>Where a new cue lands with Quantize</figcaption>
+          <div class="beat-grid" role="img" aria-label="On a four-beat grid, an example playhead sits between beats two and three, closer to beat three. With Quantize off, the cue is placed at the playhead. With Quantize on, the cue moves to beat three.">
+            <div class="beat-row" aria-hidden="true">
+              <span>Q off</span>
+              <div class="beat-track">
+                <span class="beat-tick" style="--at: 0%">1</span>
+                <span class="beat-tick" style="--at: 33.333%">2</span>
+                <span class="beat-tick" style="--at: 66.667%">3</span>
+                <span class="beat-tick" style="--at: 100%">4</span>
+                <span class="beat-cue" style="--at: 57%">CUE</span>
+              </div>
+            </div>
+            <div class="beat-row" aria-hidden="true">
+              <span>Q on</span>
+              <div class="beat-track">
+                <span class="beat-tick" style="--at: 0%">1</span>
+                <span class="beat-tick" style="--at: 33.333%">2</span>
+                <span class="beat-tick" style="--at: 66.667%">3</span>
+                <span class="beat-tick" style="--at: 100%">4</span>
+                <span class="beat-cue" style="--at: 66.667%">CUE</span>
+              </div>
+            </div>
+          </div>
+          <p>In this example, the playhead is closer to beat 3, so Quantize places the new cue there.</p>
+        </figure>
         <h3>Loops</h3>
         <p>Press <b>4 BEAT/EXIT</b> on the FLX4 to start a four-beat loop or exit an active loop. To set boundaries manually, press <b>IN</b> at the start and <b>OUT</b> at the end. In <b>BEAT LOOP</b> mode, choose the length with a pad. The waveform shows the active boundaries. After you exit, playback continues through the loop end.</p>
       </section>
 
       <section id="cue">
-        <h2>Cue points and effects</h2>
+        <h2><span class="section-icon" aria-hidden="true">🎛️</span>Cue points and effects</h2>
         <h3>Hot Cues and Memory Cues</h3>
         <ol>
           <li>Load a track and open <b>HOT CUES</b> or select <b>HOT CUE</b> mode on the FLX4. Tap or press an empty A–H slot to set a cue at the playhead. Tap or press a populated slot to recall its cue.</li>
@@ -159,13 +230,29 @@
           <li>To recall a cue imported from rekordbox, tap it in the <b>MEMORY</b> list. On the FLX4, select <b>SAMPLER</b> for that deck. Pads 1–8 recall cues 1–8. Hold SHIFT for cues 9–16. The deck stays in its current play or pause state. Recalling a Memory Loop activates the loop.</li>
         </ol>
         <p>To carry cue edits to other players, make the edits in rekordbox and export the media again.</p>
+        <figure class="manual-visual">
+          <figcaption>Hot Cue pads on one deck</figcaption>
+          <div class="pad-reference">
+            <ol class="pad-grid" aria-label="Positions of Hot Cues A through H">
+              <li style="--pad-color: #28e214">A</li><li style="--pad-color: #30d2e8">B</li>
+              <li style="--pad-color: #305aff">C</li><li style="--pad-color: #aa72ff">D</li>
+              <li style="--pad-color: #ff127b">E</li><li style="--pad-color: #ff8c00">F</li>
+              <li style="--pad-color: #e0ff00">G</li><li style="--pad-color: #10b176">H</li>
+            </ol>
+            <ul class="pad-actions">
+              <li><strong>Set</strong> · Tap an empty pad.</li>
+              <li><strong>Recall</strong> · Tap a saved pad.</li>
+              <li><strong>Delete</strong> · Use DELETE on the screen or SHIFT + pad on the FLX4.</li>
+            </ul>
+          </div>
+        </figure>
         <h3>Beat FX and Pad FX</h3>
         <p>On the Overview, tap the <b>FX</b> panel to the right of the waveforms. Choose <b>Filter</b>, <b>Echo</b>, <b>Flanger</b>, or <b>Delay</b>, then choose a beat value from ¼ to 4 and a target (<b>deck 1</b>, <b>deck 2</b>, or <b>both</b>). Set <b>DEPTH</b> and press <b>FX ON</b>. Start with a low depth and raise it by ear. <b>CLOSE</b> returns to the Overview. <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/DEVELOPMENT_STATUS.md#open">Device validation status for effects and channel selection</a></p>
         <p>For Pad FX, select <b>PAD FX</b> mode on the FLX4 and use a pad to trigger its assigned effect. Check the Beat FX target and on/off state before transitioning between tracks.</p>
       </section>
 
       <section id="postavke">
-        <h2>Device settings</h2>
+        <h2><span class="section-icon" aria-hidden="true">⚙️</span>Device settings</h2>
         <div class="table-wrap">
           <table>
             <thead><tr><th scope="col">Setting</th><th scope="col">What it does</th></tr></thead>
@@ -183,7 +270,7 @@
       </section>
 
       <section id="web-remote">
-        <h2>Web Remote</h2>
+        <h2><span class="section-icon" aria-hidden="true">📱</span>Web Remote</h2>
         <p>With Wi-Fi enabled, Ruzina creates its own local network. The Web Remote controls the physical decks. Audio plays through the FLX4.</p>
         <ol>
           <li>On Ruzina, open <b>SETTINGS</b> and look for <b>Wi-Fi</b> and <b>Password</b>.</li>
@@ -192,13 +279,25 @@
           <li>Open <b>LIBRARY</b>, search by title or artist, and load the track onto the intended deck. Check the load confirmation or rejection message. Use PLAY, CUE, SYNC, <b>4B LOOP</b>, <b>CLEAR</b>, and the position bar on each deck.</li>
           <li>The mixer offers EQ, filters, channel faders, crossfader, PFL, MASTER, and headphone mix. Check the control positions if several people are using the remote.</li>
         </ol>
+        <figure class="manual-shot">
+          <a href="docs/manual/web-remote-console.webp">
+            <img src="docs/manual/web-remote-console.webp" width="1260" height="747" loading="lazy" decoding="async" alt="Web Remote overview with deck 1 on the left, mixer controls in the center, and deck 2 on the right.">
+          </a>
+          <figcaption>Web Remote console rendered with example tracks. Select the image for a full-size view.</figcaption>
+        </figure>
+        <figure class="manual-shot library-shot">
+          <a href="docs/manual/web-remote-library.webp">
+            <img src="docs/manual/web-remote-library.webp" width="550" height="340" loading="lazy" decoding="async" alt="Expanded Web Remote library with a search field and LOAD 1 and LOAD 2 buttons beside each track.">
+          </a>
+          <figcaption>Search the library, then use LOAD 1 or LOAD 2 to choose the destination deck.</figcaption>
+        </figure>
         <aside class="note">
           <h3>Taking over from the Web Remote</h3>
           <p>If a browser slider was moved, bring the corresponding FLX4 fader or knob to the value shown in the Web Remote, or move it past that value. The physical control then takes over without a sudden jump.</p>
         </aside>
       </section>
       <section id="odrzavanje">
-        <h2>Media and firmware</h2>
+        <h2><span class="section-icon" aria-hidden="true">🗂️</span>Media and firmware</h2>
         <h3>Changing the USB drive and shutting down</h3>
         <ol>
           <li>Pause both decks. If you edited settings or Hot Cues, wait a few seconds for the device to save them.</li>
@@ -212,7 +311,7 @@
       </section>
 
       <section id="problemi">
-        <h2>Troubleshooting</h2>
+        <h2><span class="section-icon" aria-hidden="true">🛠️</span>Troubleshooting</h2>
         <details open>
           <summary>The library is empty or playlists are missing</summary>
           <p>Check that the exFAT USB drive is in the hub on the HS port and contains the classic <code>PIONEER/rekordbox/export.pdb</code>. Under Devices in rekordbox, check that your tracks and playlists appear in Device Library. Start with a small export of two familiar tracks and wait for the library scan to finish.</p>
@@ -250,7 +349,7 @@
       </section>
 
       <section id="kompatibilnost">
-        <h2>Compatibility and status</h2>
+        <h2><span class="section-icon" aria-hidden="true">✅</span>Compatibility and status</h2>
         <div class="table-wrap">
           <table>
             <thead><tr><th scope="col">Equipment or build</th><th scope="col">Status</th></tr></thead>
