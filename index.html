@@ -276,18 +276,26 @@
           <li>On Ruzina, open <b>SETTINGS</b> and look for <b>Wi-Fi</b> and <b>Password</b>.</li>
           <li>On your phone or computer, join the displayed network and enter the password. If your device reports that the network has no internet access, choose to stay connected.</li>
           <li>Enter <code>http://192.168.4.1</code> in your browser’s address bar. The page shows both decks, the mixer, and the library.</li>
-          <li>Open <b>LIBRARY</b>, search by title or artist, and load the track onto the intended deck. Check the load confirmation or rejection message. Use PLAY, CUE, SYNC, <b>4B LOOP</b>, <b>CLEAR</b>, and the position bar on each deck.</li>
-          <li>The mixer offers EQ, filters, channel faders, crossfader, PFL, MASTER, and headphone mix. Check the control positions if several people are using the remote.</li>
+          <li>Open <b>LIBRARY</b>, search by title or artist, and load the track onto the intended deck. Check the load confirmation or rejection message.</li>
+          <li>Each deck shows its waveform overview. Tap the overview to jump to that point in the track. The deck card shows the tempo, the pitch, <b>SYNC</b>, and the tempo fader. Under each deck are <b>HOT 1</b>–<b>HOT 8</b>, CUE, PLAY, <b>4B LOOP</b>, and <b>CLEAR</b>. A Hot Cue pad lights in its cue color when it holds a cue. Tap an empty pad to set a cue there.</li>
+          <li>The mixer offers EQ knobs, filters, channel meters and faders, PFL, MASTER, headphone mix, and SMART CFX and SMART FADER. To turn a knob, drag it up or down. Double-tap a knob or fader to reset it. The crossfader stays at the bottom of the screen. Check the control positions if several people are using the remote.</li>
+          <li>The page works with the phone upright or turned sideways. Turned sideways, deck 1, the mixer, and deck 2 sit side by side. Use <b>DECK 1</b> or <b>DECK 2</b> at the top to show only one deck, or <b>DUAL / MIX</b> to show both.</li>
         </ol>
         <figure class="manual-shot">
           <a href="docs/manual/web-remote-console.webp">
-            <img src="docs/manual/web-remote-console.webp" width="1260" height="747" loading="lazy" decoding="async" alt="Web Remote overview with deck 1 on the left, mixer controls in the center, and deck 2 on the right.">
+            <img src="docs/manual/web-remote-console.webp" width="1280" height="1060" loading="lazy" decoding="async" alt="Web Remote on a wide screen: both waveform overviews at the top, then deck 1 with its pads on the left, the mixer in the center, and deck 2 with its pads on the right, with the crossfader at the bottom.">
           </a>
-          <figcaption>Web Remote console rendered with example tracks. Select the image for a full-size view.</figcaption>
+          <figcaption>Web Remote on a wide screen or a phone turned sideways, shown with example tracks. Select the image for a full-size view.</figcaption>
+        </figure>
+        <figure class="manual-shot phone-shot">
+          <a href="docs/manual/web-remote-phone.webp">
+            <img src="docs/manual/web-remote-phone.webp" width="780" height="1688" loading="lazy" decoding="async" alt="Web Remote on an upright phone: the top bar with the master tempo, the DECK 1, DUAL / MIX and DECK 2 tabs, both waveform overviews, and the two deck cards side by side.">
+          </a>
+          <figcaption>On an upright phone, scroll down for the mixer, the pads, and the library.</figcaption>
         </figure>
         <figure class="manual-shot library-shot">
           <a href="docs/manual/web-remote-library.webp">
-            <img src="docs/manual/web-remote-library.webp" width="550" height="340" loading="lazy" decoding="async" alt="Expanded Web Remote library with a search field and LOAD 1 and LOAD 2 buttons beside each track.">
+            <img src="docs/manual/web-remote-library.webp" width="584" height="242" loading="lazy" decoding="async" alt="Expanded Web Remote library with a search field and LOAD 1 and LOAD 2 buttons beside each track.">
           </a>
           <figcaption>Search the library, then use LOAD 1 or LOAD 2 to choose the destination deck.</figcaption>
         </figure>
@@ -368,7 +376,7 @@
 
       <footer class="manual-footer">
         <p>This manual was checked against the public source at commit <a href="https://github.com/dvucinozd/Ruzina/commit/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5"><code>7a5ea74</code></a>.</p>
-        <p>Maintainer references. <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-idf/legacy-jc1060/rust-core/ui/overview.slint">Device screen</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-rust/crates/ruzina-web/web/index.html">Web Remote</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.json">FLX4 profile</a> · <a href="https://www.pioneerdj.com/-/media/pioneerdj/software-info/controller/ddj-flx4/ddj-flx4_midi_message_list_e1.pdf">FLX4 MIDI reference</a></p>
+        <p>Maintainer references. <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-idf/legacy-jc1060/rust-core/ui/overview.slint">Device screen</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/49caa194037c80d83ad8aaad03a1c48f3ffc44d4/firmware-rust/crates/ruzina-web/web/index.html">Web Remote</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.json">FLX4 profile</a> · <a href="https://www.pioneerdj.com/-/media/pioneerdj/software-info/controller/ddj-flx4/ddj-flx4_midi_message_list_e1.pdf">FLX4 MIDI reference</a></p>
         <a href="#vrh">Back to top ↑</a>
       </footer>
     </main>
