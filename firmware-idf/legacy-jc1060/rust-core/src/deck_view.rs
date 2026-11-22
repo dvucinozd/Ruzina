@@ -71,6 +71,8 @@ impl Live {
     }
 
     /// When the snapshot [`load`](Self::load) gives was stored, as [`clock_us`] counts.
+    /// The screen's; host tests build without it.
+    #[cfg_attr(test, allow(dead_code))]
     pub(crate) fn stored_us(&self) -> u32 {
         self.at_us.load(Ordering::Relaxed)
     }
