@@ -46,6 +46,8 @@ pub(crate) struct Live {
     flags: AtomicU32,
     pitch_centipercent: AtomicI32,
     bpm_x100: AtomicU32,
+    /// When the snapshot was stored, in microseconds since boot (low 32 bits).
+    at_us: AtomicU32,
 }
 
 impl Live {
@@ -55,6 +57,7 @@ impl Live {
             flags: AtomicU32::new(0),
             pitch_centipercent: AtomicI32::new(0),
             bpm_x100: AtomicU32::new(0),
+            at_us: AtomicU32::new(0),
         }
     }
 
@@ -64,6 +67,12 @@ impl Live {
         self.pitch_centipercent
             .store(deck.pitch_centipercent, Ordering::Relaxed);
         self.bpm_x100.store(deck.bpm_x100, Ordering::Relaxed);
+        self.at_us.store(clock_us(), Ordering::Relaxed);
+    }
+
+    /// When the snapshot [`load`](Self::load) gives was stored, as [`clock_us`] counts.
+    pub(crate) fn stored_us(&self) -> u32 {
+        self.at_us.load(Ordering::Relaxed)
     }
 
     pub(crate) fn load(&self) -> DeckSnapshot {
@@ -77,6 +86,44 @@ impl Live {
 }
 
 pub(crate) static LIVE: [Live; 2] = [Live::new(), Live::new()];
+
+/// Microseconds since boot, low 32 bits; 0 in host tests.
+pub(crate) fn clock_us() -> u32 {
+    #[cfg(all(feature = "idf-deck-engine", not(test)))]
+    {
+        unsafe extern "C" {
+            fn esp_timer_get_time() -> i64;
+        }
+        // SAFETY: IDF monotonic task-safe clock.
+        unsafe { esp_timer_get_time() as u32 }
+    }
+    #[cfg(not(all(feature = "idf-deck-engine", not(test))))]
+    0
+}
+
+/// The furthest a snapshot's position is carried forward: a little over two refreshes.
+const AHEAD_MAX_US: u32 = 40_000;
+
+/// `deck` as it will be `ahead_us` after its snapshot: a playing deck moves on at its
+/// pitched tempo, for at most [`AHEAD_MAX_US`]. A paused or looping deck stays where it
+/// is (a loop would jump back), and so does one given a time before its snapshot.
+///
+/// The engine stores a position once per USB audio fill, and a frame reaches the panel
+/// 20 to 40 ms after the screen read it, a different time each frame. Drawn as read, the
+/// lanes stepped unevenly; at the largest zoom (about 30 px a frame) the owner saw them
+/// stutter. Drawn where the deck will be when the frame shows, they move evenly.
+pub(crate) fn ahead(deck: DeckSnapshot, ahead_us: u32) -> DeckSnapshot {
+    if !deck.has(PLAYING) || deck.has(LOOPING) || ahead_us > AHEAD_MAX_US {
+        return deck;
+    }
+    let rate = 10_000 + i64::from(deck.pitch_centipercent);
+    let moved_ms = i64::from(ahead_us) * rate / 10_000_000;
+    DeckSnapshot {
+        position_ms: (i64::from(deck.position_ms) + moved_ms.max(0)).min(i64::from(u32::MAX))
+            as u32,
+        ..deck
+    }
+}
 
 /// What the lane marks on a deck's track: the Hot Cues by pad, and the running loop.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

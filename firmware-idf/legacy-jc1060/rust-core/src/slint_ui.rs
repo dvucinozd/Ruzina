@@ -584,6 +584,13 @@ impl Gate {
         result
     }
 
+    /// When refresh `target` comes, as `deck_view::clock_us` counts: the frame starts just
+    /// after a refresh, so `target` is that many refresh periods on.
+    fn show_us(&self, target: u32) -> u32 {
+        let refreshes = target.wrapping_sub(self.refreshes_at_start).min(8);
+        (self.frame_started as u32).wrapping_add(refreshes * self.refresh)
+    }
+
     /// The end of a frame: its waits, and its work without them.
     fn frame_done(&mut self) {
         #[cfg(feature = "idf-uac-profile")]
@@ -1909,7 +1916,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             continue;
         }
         let updates_started = now_us();
-        let decks = [deck_view::LIVE[0].load(), deck_view::LIVE[1].load()];
+        // Each deck where it will be when this frame reaches the panel (`deck_view::ahead`).
+        let show_us = gate.show_us(target);
+        let decks: [deck_view::DeckSnapshot; 2] = core::array::from_fn(|deck| {
+            let live = &deck_view::LIVE[deck];
+            let snapshot = live.load();
+            deck_view::ahead(snapshot, show_us.wrapping_sub(live.stored_us()))
+        });
         // The boot screen, then the screensaver once the deck has stood idle.
         let playing = decks.iter().any(|deck| deck.has(deck_view::PLAYING));
         let cover = saver.tick(ms as u32, touched.is_some(), playing, timeout_ms());

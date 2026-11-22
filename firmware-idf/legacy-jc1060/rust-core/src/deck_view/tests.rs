@@ -384,3 +384,39 @@ fn the_library_walks_the_playlists_and_comes_back_where_it_was() {
     publish_library(std::vec::Vec::new());
     take_library();
 }
+
+#[test]
+fn a_playing_deck_is_drawn_where_it_will_be_when_the_frame_shows() {
+    let playing = DeckSnapshot {
+        position_ms: 10_000,
+        flags: LOADED | PLAYING,
+        pitch_centipercent: 0,
+        bpm_x100: 12_800,
+    };
+    assert_eq!(ahead(playing, 25_000).position_ms, 10_025);
+    // At +8 % pitch the deck moves 8 % faster.
+    let pitched = DeckSnapshot {
+        pitch_centipercent: 800,
+        ..playing
+    };
+    assert_eq!(ahead(pitched, 25_000).position_ms, 10_027);
+    let slowed = DeckSnapshot {
+        pitch_centipercent: -800,
+        ..playing
+    };
+    assert_eq!(ahead(slowed, 25_000).position_ms, 10_023);
+    // Paused, looping, or a frame too far off: the position as read.
+    let paused = DeckSnapshot {
+        flags: LOADED,
+        ..playing
+    };
+    assert_eq!(ahead(paused, 25_000), paused);
+    let looping = DeckSnapshot {
+        flags: LOADED | PLAYING | LOOPING,
+        ..playing
+    };
+    assert_eq!(ahead(looping, 25_000), looping);
+    assert_eq!(ahead(playing, 40_001), playing);
+    // A time before the snapshot wraps to a large count: also as read.
+    assert_eq!(ahead(playing, 0u32.wrapping_sub(5_000)), playing);
+}
