@@ -218,6 +218,7 @@ details p { margin: 0 0 .9rem; }
 .manual-shot a:hover img { border-color: var(--lime); }
 .manual-shot figcaption { margin-top: .45rem; color: var(--muted); font-size: .92rem; }
 .library-shot { max-width: 34rem; }
+.phone-shot { max-width: 20rem; }
 @media (max-width: 36rem) {
   .wiring-route { flex-direction: column; align-items: flex-start; gap: .3rem; }
   .wiring-arrow { transform: rotate(90deg); margin-inline-start: .8rem; }
