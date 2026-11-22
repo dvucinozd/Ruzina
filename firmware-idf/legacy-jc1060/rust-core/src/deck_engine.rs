@@ -1406,7 +1406,7 @@ fn report_ms(ms: i32) -> u32 {
 
 /// Where `beats` puts `ms`: the beat at or before it, and how far into that beat, as a
 /// fraction. `None` before the first beat or from the last one on.
-fn beat_at(beats: &[Beat], ms: u32) -> Option<(usize, f32)> {
+pub(crate) fn beat_at(beats: &[Beat], ms: u32) -> Option<(usize, f32)> {
     let next = beats.partition_point(|beat| beat.time_ms <= ms);
     let at = next.checked_sub(1)?;
     let (start, end) = (beats[at].time_ms, beats.get(next)?.time_ms);

@@ -10,7 +10,9 @@
 //!
 //! The boot screen and the screensaver lie over everything (`screen_idle`); Rust then draws
 //! nothing.
+use crate::deck_phase::{self, PhaseDeck, Ticks};
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
+use crate::library_view::{self, Camelot, Column, KeyFit, Sort};
 use crate::screen_idle::{Cover, Saver};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -26,57 +28,77 @@ const HEIGHT: usize = 600;
 const REPORT_MS: u64 = 20_000;
 /// A Slint frame longer than this is logged on its own.
 const SLOW_FRAME_US: u32 = 30_000;
+/// How often the phase offset label may change, in milliseconds.
+const OFFSET_LABEL_MS: u64 = 250;
 
 // A rectangle Rust draws, which Slint must never write over. The numbers below match
 // the dark rectangles in `overview.slint`.
 use ruzina_screen_lines::Area;
 
-const LANE_WIDTH: usize = 872;
-const LANE_HEIGHT: usize = 201;
+const LANE_WIDTH: usize = 814;
+const LANE_HEIGHT: usize = 220;
+/// The two lanes, right of the deck buttons, with the phase strip's 24 pixels between them:
+/// their bar triangles touch it (the owner asked, on s185p).
 const LANES: [Area; 2] = [
     Area {
-        x: 82,
-        y: 46,
+        x: 136,
+        y: 8,
         width: LANE_WIDTH,
         height: LANE_HEIGHT,
     },
     Area {
-        x: 82,
-        y: 248,
+        x: 136,
+        y: 252,
         width: LANE_WIDTH,
         height: LANE_HEIGHT,
     },
 ];
+/// The overviews, at the bottom of the deck cards.
 const MINIS: [Area; 2] = [
     Area {
-        x: 8,
-        y: 552,
-        width: 496,
+        x: 60,
+        y: 548,
+        width: 466,
         height: 45,
     },
     Area {
-        x: 520,
-        y: 552,
-        width: 496,
+        x: 546,
+        y: 548,
+        width: 466,
         height: 45,
     },
 ];
-/// The channel meters, left of the lanes: ten segments, 11 pixels high and 14 apart.
+/// The channel meters, left of the lanes and centred on them: ten segments, 11 pixels
+/// high and 14 apart.
 const METERS: [Area; 2] = [
     Area {
-        x: 68,
-        y: 49,
+        x: 122,
+        y: 48,
         width: 10,
         height: 140,
     },
     Area {
-        x: 68,
-        y: 251,
+        x: 122,
+        y: 292,
         width: 10,
         height: 140,
     },
 ];
-const DIRECT: [Area; 6] = [LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1]];
+/// The phase strip between the lanes: deck 1's beats in its upper half, deck 2's in its
+/// lower, over four of the master's beats in real time, the playhead in the middle.
+const PHASE: Area = Area {
+    x: 136,
+    y: 228,
+    width: LANE_WIDTH,
+    height: 24,
+};
+const PHASE_BEATS: u32 = 4;
+const PHASE_BACK: u16 = rgb(0x1e, 0x15, 0x11);
+const PHASE_MIDDLE: u16 = rgb(0x38, 0x25, 0x1e);
+const DECK_COLORS: [u16; 2] = [rgb(0xe6, 0x4c, 0x0c), rgb(0x00, 0xe5, 0xff)];
+const DIRECT: [Area; 7] = [
+    LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1], PHASE,
+];
 /// The Library, Hot Cues, Settings and FX pages cover the lanes and meters; Rust then draws only
 /// the overviews.
 const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
@@ -87,47 +109,51 @@ const COVER_STEP_MS: u64 = 120;
 const COVER_HEADS: u64 = 6 + 5;
 /// The Library page's rows.
 const LIBRARY_ROWS: u32 = 12;
-const PANEL: u16 = rgb(0x0d, 0x0f, 0x11);
-const METER_OFF: u16 = rgb(0x1c, 0x22, 0x28);
-const METER_GREEN: u16 = rgb(0x6e, 0xe1, 0x28);
-const METER_AMBER: u16 = rgb(0xeb, 0x87, 0x0f);
-const METER_RED: u16 = rgb(0xff, 0x17, 0x44);
+// The owner's Rust palette (`docs/reviews/2026-11-21-rust-palette.md`). The main
+// background is #100C08, not the spec's #0F0B09, which RGB565 turns neutral grey.
+const PANEL: u16 = rgb(0x10, 0x0c, 0x08);
+/// The meters: acid green to 0 dB, deep coral red above it, laser red at the top.
+const METER_OFF: u16 = rgb(0x2a, 0x1b, 0x14);
+const METER_GREEN: u16 = rgb(0x39, 0xff, 0x14);
+const METER_AMBER: u16 = rgb(0xe6, 0x19, 0x3c);
+const METER_RED: u16 = rgb(0xff, 0x00, 0x33);
 
-const BACKGROUND: u16 = rgb(0x02, 0x04, 0x06);
-const BEAT_LINE: u16 = rgb(0x30, 0x34, 0x3b);
-const BAR_LINE: u16 = rgb(0x6e, 0x72, 0x78);
-const PLAYHEAD: u16 = rgb(0x00, 0xff, 0x00);
+const BACKGROUND: u16 = rgb(0x10, 0x0c, 0x08);
+const BEAT_LINE: u16 = rgb(0x38, 0x25, 0x1e);
+const BAR_LINE: u16 = rgb(0x57, 0x4b, 0x45);
+const PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
 const PLAYHEAD_X: usize = LANE_WIDTH / 2;
 /// Refreshes per frame: 30 frames a second, each shown exactly two refreshes after the
 /// last.
 const REFRESHES_PER_FRAME: u32 = 2;
 /// Half the mini overview's height, for a full-scale column.
 const MINI_HALF: u32 = 21;
-const PLAYED_SHADE: u16 = rgb(0x30, 0x30, 0x30);
-const MINI_PLAYHEAD: u16 = rgb(0xff, 0xff, 0xff);
-/// The donor's waveform palette, picked by a column's colour hint and loudness.
-const PINK: u16 = rgb(0xff, 0x2e, 0x6e);
-const BLUE: u16 = rgb(0x3a, 0x7b, 0xff);
-const CYAN: u16 = rgb(0x26, 0xe0, 0xff);
-const GREEN: u16 = rgb(0x38, 0xf5, 0x8c);
-const AMBER: u16 = rgb(0xff, 0xb7, 0x33);
-const PURPLE: u16 = rgb(0xb5, 0x7c, 0xff);
-/// The red triangle on each bar line, for beat matching: its base at the lane's edge
-/// towards the other deck, pointing into the lane.
-const BAR_CAP: u16 = rgb(0xff, 0x17, 0x44);
+const PLAYED_SHADE: u16 = rgb(0x38, 0x25, 0x1e);
+const MINI_PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
+/// The waveform by frequency: lows, mids and highs. Rekordbox's detail waveform (PWV3)
+/// has no bands, only how white each column is, 0 to 7: the whiter, the brighter the
+/// sound, so 0 to 2 draw as lows, 3 and 4 as mids, 5 to 7 as highs.
+const BANDS: [[u8; 3]; 3] = [[0xe6, 0x4c, 0x0c], [0x00, 0x88, 0xff], [0x00, 0xe5, 0xff]];
+const LOWS: u16 = rgb(BANDS[0][0], BANDS[0][1], BANDS[0][2]);
+const MIDS: u16 = rgb(BANDS[1][0], BANDS[1][1], BANDS[1][2]);
+const HIGHS: u16 = rgb(BANDS[2][0], BANDS[2][1], BANDS[2][2]);
+/// The acid green triangle on each bar line, for beat matching: its base at the lane's
+/// edge towards the other deck, pointing into the lane.
+const BAR_CAP: u16 = rgb(0x39, 0xff, 0x14);
 const BAR_CAP_REACH: i64 = 6;
 const BAR_CAP_HEIGHT: usize = 8;
 /// Hot Cues A to H: a line through the lane and a flag at the edge away from the bar
 /// triangles.
+/// A to D as the spec has them; E to H chosen with the owner (2026-11-21).
 const CUE_RGB: [[u8; 3]; 8] = [
-    [0x28, 0xe2, 0x14],
-    [0x30, 0xd2, 0xe8],
-    [0x30, 0x5a, 0xff],
-    [0xaa, 0x72, 0xff],
-    [0xff, 0x12, 0x7b],
-    [0xff, 0x8c, 0x00],
-    [0xe0, 0xff, 0x00],
-    [0x10, 0xb1, 0x76],
+    [0x00, 0xff, 0x66],
+    [0x00, 0xe5, 0xff],
+    [0xff, 0x00, 0x33],
+    [0xff, 0xd6, 0x00],
+    [0xa2, 0x59, 0xff],
+    [0xff, 0x2e, 0xc4],
+    [0x2f, 0x6b, 0xff],
+    [0xb6, 0xff, 0x00],
 ];
 const CUE_COLORS: [u16; 8] = {
     let mut colors = [0; 8];
@@ -141,18 +167,18 @@ const CUE_COLORS: [u16; 8] = {
 };
 const CUE_FLAG_WIDTH: i64 = 7;
 const CUE_FLAG_HEIGHT: usize = 7;
-/// Rekordbox's memory cues, red as Rekordbox draws them: a line through the lane (and at
-/// a memory loop's end), and at its start a triangle at the Hot Cue flags' edge, pointing
-/// into the lane. The overview marks them at its top and bottom.
-const MEMORY: u16 = rgb(0xff, 0x30, 0x30);
+/// Rekordbox's memory cues, in warm white (red is Hot Cue C's): a line through the lane
+/// (and at a memory loop's end), and at its start a triangle at the Hot Cue flags' edge,
+/// pointing into the lane. The overview marks them at its top and bottom.
+const MEMORY: u16 = rgb(0xf5, 0xf0, 0xed);
 const MEMORY_FLAG_REACH: i64 = 5;
 const MEMORY_FLAG_HEIGHT: usize = 7;
 const MINI_MEMORY_ROWS: usize = 5;
 /// The running loop: its ends as lines, and its span shaded behind the waveform.
-const LOOP_EDGE: u16 = rgb(0xff, 0x8c, 0x00);
+const LOOP_EDGE: u16 = rgb(0xff, 0x77, 0x00);
 const LOOP_SHADE: u16 = rgb(0x30, 0x1c, 0x00);
 /// The white edge on loud peaks.
-const TIP: u16 = rgb(0xff, 0xff, 0xff);
+const TIP: u16 = rgb(0xf5, 0xf0, 0xed);
 const TIP_LOUDNESS: u8 = 26;
 
 const fn rgb(red: u8, green: u8, blue: u8) -> u16 {
@@ -489,6 +515,17 @@ struct Gate {
     off: bool,
     /// This frame's waits, in microseconds.
     waited: u32,
+    /// When this frame started, and the panel's refresh count then.
+    frame_started: u64,
+    refreshes_at_start: u32,
+    /// The recent mean of a frame's work without its waits, and of the panel's refresh
+    /// period, in microseconds.
+    work: u32,
+    refresh: u32,
+    /// How long this frame may wait in all: what its slot of [`REFRESHES_PER_FRAME`]
+    /// refreshes leaves after its work. On s183 waiting whatever it took cost a frame in
+    /// three (about 20 fps instead of 29) and the lanes stuttered.
+    allowance: u32,
     /// Profile images: each step's time and each frame's waits.
     #[cfg(feature = "idf-uac-profile")]
     times: [Times; 4],
@@ -500,9 +537,27 @@ impl Gate {
             means: [0; 3],
             off: false,
             waited: 0,
+            frame_started: 0,
+            refreshes_at_start: 0,
+            work: 0,
+            refresh: 0,
+            allowance: 0,
             #[cfg(feature = "idf-uac-profile")]
             times: Default::default(),
         }
+    }
+
+    /// The start of a frame, at `now` with the panel's `refreshes` so far.
+    fn frame_start(&mut self, now: u64, refreshes: u32) {
+        let frames = refreshes.wrapping_sub(self.refreshes_at_start);
+        if self.frame_started != 0 && (1..=8).contains(&frames) {
+            let period = ((now - self.frame_started) / u64::from(frames)) as u32;
+            self.refresh = mean_of(self.refresh, period);
+        }
+        self.frame_started = now;
+        self.refreshes_at_start = refreshes;
+        self.waited = 0;
+        self.allowance = wait_allowance(self.refresh * REFRESHES_PER_FRAME, self.work);
     }
 
     fn run<R>(&mut self, step: Step, work: impl FnOnce() -> R) -> R {
@@ -513,6 +568,8 @@ impl Gate {
         let gated = !self.off;
         #[cfg(not(feature = "fill-gap-cycle"))]
         let gated = true;
+        // A wait takes up to a fill period; start one only while the frame has that left.
+        let gated = gated && self.allowance.saturating_sub(self.waited) >= GAP_WAIT_US;
         if gated {
             unsafe extern "C" {
                 fn ruzina_uac_wait_gap(budget_us: u32) -> u32;
@@ -523,20 +580,25 @@ impl Gate {
         let started = now_us();
         let result = work();
         let took = (now_us() - started) as u32;
-        *mean = if *mean == 0 {
-            took
-        } else {
-            (*mean * 7 + took) / 8
-        };
+        *mean = mean_of(*mean, took);
         #[cfg(feature = "idf-uac-profile")]
         self.times[step as usize].add(took);
         result
     }
 
-    /// The end of a frame: its waits.
+    /// When refresh `target` comes, as `deck_view::clock_us` counts: the frame starts just
+    /// after a refresh, so `target` is that many refresh periods on.
+    fn show_us(&self, target: u32) -> u32 {
+        let refreshes = target.wrapping_sub(self.refreshes_at_start).min(8);
+        (self.frame_started as u32).wrapping_add(refreshes * self.refresh)
+    }
+
+    /// The end of a frame: its waits, and its work without them.
     fn frame_done(&mut self) {
         #[cfg(feature = "idf-uac-profile")]
         self.times[3].add(self.waited);
+        let took = (now_us() - self.frame_started) as u32;
+        self.work = mean_of(self.work, took.saturating_sub(self.waited));
         self.waited = 0;
     }
 
@@ -547,6 +609,27 @@ impl Gate {
             times.report(33 + i as u32);
         }
     }
+}
+
+/// A wait for a gap between fills takes up to a fill period (about 6 ms), half on average.
+const GAP_WAIT_US: u32 = 3_000;
+/// Left free in each frame's slot, for the frames that run long.
+const SLOT_MARGIN_US: u32 = 2_000;
+
+/// A running mean over about eight values; the first value starts it.
+fn mean_of(mean: u32, value: u32) -> u32 {
+    if mean == 0 {
+        value
+    } else {
+        (mean * 7 + value) / 8
+    }
+}
+
+/// How long a frame may wait for gaps: what a `slot` leaves after the frame's `work` and a
+/// margin. Before the slot is known, nothing: the screen then draws as it did before the
+/// gate.
+fn wait_allowance(slot: u32, work: u32) -> u32 {
+    slot.saturating_sub(work + SLOT_MARGIN_US)
 }
 
 fn now_us() -> u64 {
@@ -701,23 +784,35 @@ fn ink(column: WaveformColumn) -> (u8, u16) {
     let hint = ((column.color_rgb565 >> 11) * 7 + 15) / 31;
     let shade = ((hint * 31 / 7) << 11) | ((hint * 63 / 7) << 5) | 31;
     if shade != column.color_rgb565 {
-        return (loudness, column.color_rgb565);
+        return (loudness, band_mix(column.color_rgb565));
     }
     let color = match hint {
-        1 => PINK,
-        2 => BLUE,
-        3 | 7 => CYAN,
-        4 => GREEN,
-        5 => AMBER,
-        6 => PURPLE,
-        _ => match loudness {
-            28.. => CYAN,
-            22.. => PINK,
-            14.. => BLUE,
-            _ => PURPLE,
-        },
+        0..=2 => LOWS,
+        3 | 4 => MIDS,
+        _ => HIGHS,
     };
     (loudness, color)
+}
+
+/// A Rekordbox colour column (PWV4), whose red, green and blue are its bass, mid and
+/// treble: the three band colours mixed in that measure.
+fn band_mix(rgb565: u16) -> u16 {
+    let weights = [
+        u32::from(rgb565 >> 11) * 2,
+        u32::from(rgb565 >> 5 & 0x3f),
+        u32::from(rgb565 & 0x1f) * 2,
+    ];
+    let total: u32 = weights.iter().sum();
+    if total == 0 {
+        return LOWS;
+    }
+    let channel = |c: usize| {
+        let sum: u32 = (0..3)
+            .map(|band| weights[band] * u32::from(BANDS[band][c]))
+            .sum();
+        (sum / total) as u8
+    };
+    rgb(channel(0), channel(1), channel(2))
 }
 
 /// The lane's view of `track` with `marks` and the playhead at `position_ms`, showing
@@ -1113,6 +1208,73 @@ fn draw_meter(frame: &mut [u16], area: Area, lit: i32) {
     flush(frame, area.y, area.height);
 }
 
+/// Draws the phase strip: each deck's beats as two-column ticks in its half, a line between
+/// the halves and the playhead in the middle. Its rows go through `strip` in internal RAM and
+/// the PPA copies them in, so the CPU does not write PSRAM during a fill; without a strip,
+/// or once a copy fails, they go straight into `frame` and are written back.
+fn draw_phase(frame: &mut [u16], strip: Option<&mut [u16]>, ticks: [Ticks; 2]) {
+    let mut plain = [PHASE_BACK; LANE_WIDTH];
+    let mut middle = [PHASE_MIDDLE; LANE_WIDTH];
+    let mut halves = [[PHASE_BACK; LANE_WIDTH]; 2];
+    for (deck, half) in halves.iter_mut().enumerate() {
+        for &column in ticks[deck].columns() {
+            let column = usize::from(column);
+            half[column..(column + 2).min(LANE_WIDTH)].fill(DECK_COLORS[deck]);
+        }
+    }
+    let [upper, lower] = &mut halves;
+    for row in [&mut plain, &mut middle, upper, lower] {
+        row[PLAYHEAD_X - 1..=PLAYHEAD_X + 1].fill(PLAYHEAD);
+    }
+    let line = |row: usize| match row {
+        2..=10 => &halves[0],
+        11..=12 => &middle,
+        13..=21 => &halves[1],
+        _ => &plain,
+    };
+    let mut row = 0;
+    if let Some(pixels) = strip {
+        // As many whole rows as the strip holds, a block at a time.
+        let rows = (pixels.len() / PHASE.width).min(PHASE.height);
+        while row < PHASE.height {
+            let count = rows.min(PHASE.height - row);
+            for (index, block) in pixels[..count * PHASE.width]
+                .chunks_exact_mut(PHASE.width)
+                .enumerate()
+            {
+                block.copy_from_slice(line(row + index));
+            }
+            mark(MOVE, true);
+            // SAFETY: the strip holds `count` rows of PHASE.width pixels; `frame` is one of
+            // the panel's frame buffers and C bounds the block to it.
+            let copied = unsafe {
+                ruzina_panel_blit(
+                    pixels.as_ptr(),
+                    PHASE.width as u32,
+                    0,
+                    frame.as_mut_ptr(),
+                    PHASE.x as u32,
+                    (PHASE.y + row) as u32,
+                    PHASE.width as u32,
+                    count as u32,
+                )
+            } == 0;
+            mark(MOVE, false);
+            if !copied {
+                break;
+            }
+            row += count;
+        }
+    }
+    if row < PHASE.height {
+        for row in row..PHASE.height {
+            let start = (PHASE.y + row) * WIDTH + PHASE.x;
+            frame[start..start + PHASE.width].copy_from_slice(line(row));
+        }
+        flush(frame, PHASE.y + row, PHASE.height - row);
+    }
+}
+
 /// Draws the whole-track overview, shaded up to the playhead at `x`, with each memory
 /// cue of a track `duration_ms` long marked at its top and bottom.
 fn draw_mini(
@@ -1302,6 +1464,9 @@ type LibraryState = (
     Option<u32>,
     [u32; 2],
     bool,
+    // The view's version (sort and filter), and the reference deck's key for the colours.
+    u32,
+    Option<Camelot>,
 );
 
 /// Shows the Library page's level from row `first`: the selected row, and each track's
@@ -1317,7 +1482,7 @@ fn show_library(
 ) {
     use deck_view::{Level, Row};
     use slint::Model;
-    let (_, _, level, first, selected, decks, gone) = state;
+    let (_, _, level, first, selected, decks, gone, _, reference_key) = state;
     let len = deck_view::level_len(level);
     let shelf = deck_view::shelf();
     let lines = (first..len.min(first + LIBRARY_ROWS)).filter_map(|index| {
@@ -1335,6 +1500,13 @@ fn show_library(
                     artist: row.artist.as_str().into(),
                     bpm: deck_view::bpm(row.bpm_x100, 0).into(),
                     key: row.key.as_str().into(),
+                    fit: match library_view::key_fit(reference_key, &row.key) {
+                        KeyFit::Unknown => 0,
+                        KeyFit::Fits => 1,
+                        KeyFit::Plus2 => 2,
+                        KeyFit::Plus7 => 3,
+                        KeyFit::Clash => 4,
+                    },
                     time: deck_view::clock(row.duration_ms).into(),
                     decks: match (on(0), on(1)) {
                         (true, true) => "D1 D2",
@@ -1568,6 +1740,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             deck_view::select(index);
         }
     });
+    // The Library's sort and BPM filter, which the screen task applies (`library_view`).
+    let library_sort: Rc<core::cell::Cell<Option<Sort>>> = Rc::default();
+    let sort = library_sort.clone();
+    ui.on_library_sort(move |column| {
+        if let Some(column) = Column::from_index(column) {
+            sort.set(Some(library_view::tap(sort.get(), column)));
+        }
+    });
+    let bpm_filter: Rc<core::cell::Cell<bool>> = Rc::default();
+    let filter = bpm_filter.clone();
+    ui.on_library_bpm_filter_toggled(move || filter.set(!filter.get()));
     ui.on_library_back(|| {
         deck_view::TOUCH.push(0, deck_view::TouchControl::LibraryBack);
     });
@@ -1657,6 +1840,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     });
     let mut library_version = 0u32;
     let mut shown_library: Option<LibraryState> = None;
+    let mut view_version = 0u32;
+    let mut shown_view = None;
     let library_model = Rc::new(slint::VecModel::<LibraryLine>::default());
     ui.set_library_rows(slint::ModelRc::from(library_model.clone()));
     // The Settings page's two columns keep their models: a refresh changes only the
@@ -1688,6 +1873,11 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // Per buffer and deck: the lane's left column and time span, and the overview's track
     // and playhead.
     let mut lane_at: [[Option<(i64, i64)>; 2]; 2] = [[None; 2]; 2];
+    // Per buffer: the beats the phase strip shows; and the offset its label shows.
+    let mut phase_at: [Option<[Ticks; 2]>; 2] = [None; 2];
+    let mut shown_offset: Option<Option<i32>> = None;
+    // When the offset label last changed, in milliseconds since start.
+    let mut offset_shown_ms = 0;
     let mut mini_at: [[Option<MiniState>; 2]; 2] = [[None; 2]; 2];
     // Per buffer and deck: the revision of the marks its lane shows.
     let mut marks_at: [[Option<u32>; 2]; 2] = [[None; 2]; 2];
@@ -1708,6 +1898,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let timeout_ms = || crate::deck_settings::current().screensaver.timeout_ms();
     let mut saver = Saver::new(0, timeout_ms());
     loop {
+        // SAFETY: reads a counter.
+        gate.frame_start(now_us(), unsafe { ruzina_panel_refreshes() });
         let ms = now_us() / 1_000 - start;
         if ms >= next_report {
             slint_times.report(21);
@@ -1728,7 +1920,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             continue;
         }
         let updates_started = now_us();
-        let decks = [deck_view::LIVE[0].load(), deck_view::LIVE[1].load()];
+        // Each deck where it will be when this frame reaches the panel (`deck_view::ahead`).
+        let show_us = gate.show_us(target);
+        let decks: [deck_view::DeckSnapshot; 2] = core::array::from_fn(|deck| {
+            let live = &deck_view::LIVE[deck];
+            let snapshot = live.load();
+            deck_view::ahead(snapshot, show_us.wrapping_sub(live.stored_us()))
+        });
         // The boot screen, then the screensaver once the deck has stood idle.
         let playing = decks.iter().any(|deck| deck.has(deck_view::PLAYING));
         let cover = saver.tick(ms as u32, touched.is_some(), playing, timeout_ms());
@@ -1794,6 +1992,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             // again in each buffer.
             lane_at = [[None; 2]; 2];
             meter_at = [[None; 2]; 2];
+            phase_at = [None; 2];
             was_covered = covered;
         }
         // The Settings page's figures, twice a second while it is open.
@@ -1819,6 +2018,94 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             library = rows;
             library_version = library_version.wrapping_add(1);
         }
+        // The Library's view: the level's tracks sorted and, with the filter on, only those
+        // within 4 % of the reference deck's tempo. The reference is the deck that plays,
+        // or with both or neither playing the master (deck 1, unless deck 1 alone has SYNC).
+        let reference = match (
+            decks[0].has(deck_view::PLAYING),
+            decks[1].has(deck_view::PLAYING),
+        ) {
+            (true, false) => 0,
+            (false, true) => 1,
+            _ => usize::from(decks[0].has(deck_view::SYNC) && !decks[1].has(deck_view::SYNC)),
+        };
+        let reference_track = tracks[reference].as_deref();
+        let reference_bpm = reference_track
+            .map(|_| {
+                deck_phase::playing_bpm_x100(
+                    decks[reference].bpm_x100,
+                    decks[reference].pitch_centipercent,
+                )
+            })
+            .filter(|&bpm| bpm != 0);
+        let reference_key = reference_track.and_then(|track| library_view::camelot(&track.key));
+        let sort = library_sort.get();
+        let filter = bpm_filter.get();
+        let level = deck_view::level();
+        let shelf = deck_view::shelf().map_or(0, |shelf| core::ptr::from_ref(shelf) as usize);
+        // The tempo counts to a tenth of a BPM, so a moving pitch does not rebuild the list
+        // at every frame.
+        let view = (
+            library_version,
+            shelf,
+            level,
+            sort,
+            filter,
+            reference,
+            if filter {
+                reference_bpm.map(|bpm| bpm / 10)
+            } else {
+                None
+            },
+        );
+        if shown_view != Some(view) {
+            let before = deck_view::selected_row();
+            let tracks_of_level: Option<alloc::vec::Vec<(u32, u32)>> = match level {
+                deck_view::Level::All => {
+                    Some((0..library.rows.len() as u32).map(|i| (i, i)).collect())
+                }
+                deck_view::Level::Node(node) => deck_view::shelf()
+                    .and_then(|shelf| shelf.nodes.get(node as usize))
+                    .filter(|node| !node.folder)
+                    .map(|node| {
+                        let first = node.children.len() as u32;
+                        node.tracks
+                            .iter()
+                            .enumerate()
+                            .map(|(at, &track)| (first + at as u32, track))
+                            .collect()
+                    }),
+                deck_view::Level::Top => None,
+            };
+            let reference_x100 = if filter { reference_bpm } else { None };
+            let rows = tracks_of_level
+                .filter(|_| sort.is_some() || reference_x100.is_some())
+                .map(|tracks| library_view::build(&library.rows, &tracks, sort, reference_x100));
+            // The selection stays on the row it was on, if the new view still shows it. It
+            // is found before the view goes out and published with it, so the engine never
+            // reads the new view with the old view's selection.
+            let shown_row = |i: u32| match &rows {
+                Some(rows) => rows
+                    .get(i as usize)
+                    .and_then(|&position| deck_view::base_row_at(level, position)),
+                None => deck_view::base_row_at(level, i),
+            };
+            let len = rows.as_ref().map_or_else(
+                || deck_view::base_len(level),
+                |rows| rows.len().min(deck_view::VIEW_MAX) as u32,
+            );
+            let at = before.and_then(|row| (0..len).find(|&i| shown_row(i) == Some(row)));
+            deck_view::publish_view(level, rows.as_deref(), at.unwrap_or(0));
+            ui.set_library_sort_column(sort.map_or(-1, |sort| sort.column.index()));
+            ui.set_library_sort_descending(sort.is_some_and(|sort| sort.descending));
+            ui.set_library_bpm_filter(filter);
+            ui.set_library_bpm_reference(match reference_bpm {
+                Some(bpm) => alloc::format!("D{} {}", reference + 1, deck_view::bpm(bpm, 0)).into(),
+                None => "NO TRACK".into(),
+            });
+            view_version = view_version.wrapping_add(1);
+            shown_view = Some(view);
+        }
         if library_open {
             let level = deck_view::level();
             let selected = deck_view::selected();
@@ -1831,9 +2118,18 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             let decks = core::array::from_fn(|deck| {
                 tracks[deck].as_ref().map_or(u32::MAX, |track| track.index)
             });
-            let shelf = deck_view::shelf().map_or(0, |shelf| core::ptr::from_ref(shelf) as usize);
             let gone = crate::media_signal::muted();
-            let state = (library_version, shelf, level, first, selected, decks, gone);
+            let state = (
+                library_version,
+                shelf,
+                level,
+                first,
+                selected,
+                decks,
+                gone,
+                view_version,
+                reference_key,
+            );
             if shown_library != Some(state) {
                 show_library(&ui, &library_model, &library.rows, state);
                 shown_library = Some(state);
@@ -1982,6 +2278,55 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 let memory = view.as_ref().map_or(&[][..], |view| view.memory_cues());
                 draw_mini(buffer, MINIS[deck], preview, playhead, memory, duration);
                 mini_at[drawing][deck] = mini;
+            }
+        }
+        if !covered {
+            // The master is deck 2 only while deck 1 alone follows it with SYNC.
+            let master =
+                usize::from(decks[0].has(deck_view::SYNC) && !decks[1].has(deck_view::SYNC));
+            let tempo = |deck: usize| {
+                deck_phase::playing_bpm_x100(decks[deck].bpm_x100, decks[deck].pitch_centipercent)
+            };
+            let span = deck_phase::span_ms(tempo(master), PHASE_BEATS);
+            let beats = |deck: usize| {
+                tracks[deck]
+                    .as_deref()
+                    .and_then(|track| track.analysis.as_ref())
+                    .and_then(|analysis| analysis.view().beat_grid())
+                    .map_or(&[][..], |grid| grid.beats())
+            };
+            let ticks = core::array::from_fn(|deck| {
+                let snapshot = decks[deck];
+                deck_phase::beat_columns(
+                    beats(deck),
+                    snapshot.position_ms,
+                    snapshot.pitch_centipercent,
+                    span,
+                    PHASE.width,
+                )
+            });
+            if phase_at[drawing] != Some(ticks) {
+                draw_phase(buffer, strip.as_deref_mut(), ticks);
+                phase_at[drawing] = Some(ticks);
+            }
+            let phase_deck = |deck: usize| PhaseDeck {
+                beats: beats(deck),
+                position_ms: decks[deck].position_ms,
+                bpm_x100: tempo(deck),
+            };
+            let offset = deck_phase::beat_offset_ms(phase_deck(master), phase_deck(1 - master));
+            // The offset moves by a millisecond most frames; redrawn each time, its text
+            // made every frame longer. It changes at most four times a second, and at once
+            // when a deck gains or loses its beats.
+            let due = ms >= offset_shown_ms + OFFSET_LABEL_MS
+                || shown_offset.flatten().is_some() != offset.is_some();
+            if shown_offset != Some(offset) && due {
+                offset_shown_ms = ms;
+                ui.set_phase(match offset {
+                    Some(ms) => alloc::format!("{ms:+} ms").into(),
+                    None => "—".into(),
+                });
+                shown_offset = Some(offset);
             }
         }
         wave_times.add((now_us() - drawn) as u32);

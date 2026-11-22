@@ -1,24 +1,33 @@
-// The deck screen on the JC1060's 1024 x 600 panel. The layout follows the Overview
-// page of the donor firmware (Pajoniiir), with its positions kept in pixels.
+// The deck screen on the JC1060's 1024 x 600 panel. The layout follows the donor
+// firmware's (Pajoniiir) ui-next Perform page: the pages on an icon rail at the left, the
+// two lanes with the phase strip between them, and the deck cards at the bottom.
 //
 // The waveforms are not here: Rust draws them directly into the framebuffer, in the
 // rectangles left dark below (`slint_ui.rs` keeps the same numbers), because they
 // change many times a second and everything else does not.
 
-component Tab inherits Rectangle {
-    in property <string> text;
+// A page on the rail at the left: its icon only, lit while the page is open.
+component RailButton inherits Rectangle {
+    in property <image> icon;
     in property <bool> active;
     callback clicked();
-    height: 38px;
-    background: active ? #10240c : #0d141b;
-    border-width: active ? 2px : 1px;
-    border-color: active ? #6ee128 : #2f6f8f;
-    Text {
-        text: root.text;
-        color: root.active ? #d8ff8a : #8fd2ee;
-        font-size: 14px;
-        horizontal-alignment: center;
-        vertical-alignment: center;
+    width: 48px;
+    height: 120px;
+    background: root.active ? #2a1b14 : transparent;
+    if root.active: Rectangle {
+        x: 0px;
+        y: 18px;
+        width: 3px;
+        height: parent.height - 36px;
+        background: #e64c0c;
+    }
+    Image {
+        x: (parent.width - 26px) / 2;
+        y: (parent.height - 26px) / 2;
+        width: 26px;
+        height: 26px;
+        source: root.icon;
+        colorize: root.active ? #e64c0c : #a3958e;
     }
     TouchArea {
         clicked => { root.clicked(); }
@@ -28,7 +37,7 @@ component Tab inherits Rectangle {
 // A button that reports going down and up, as the controller's buttons do.
 component SideButton inherits Rectangle {
     in property <string> text;
-    in property <color> ink: #101418;
+    in property <color> ink: #100c08;
     callback down(bool);
     width: 58px;
     height: 38px;
@@ -56,27 +65,28 @@ component DeckSide inherits Rectangle {
     in property <bool> has-cover;
     callback play();
     callback cue(bool);
-    width: 82px;
-    height: 201px;
+    width: 66px;
+    height: 220px;
     Rectangle {
         x: 4px;
-        y: 12px;
+        y: 4px;
         width: 58px;
-        height: 38px;
+        height: 26px;
         border-radius: 3px;
         background: root.accent;
         Text {
             text: "D" + root.number;
-            color: #101418;
-            font-size: 18px;
+            color: #100c08;
+            font-size: 16px;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
     }
     SideButton {
         x: 4px;
-        y: 60px;
-        background: root.playing ? #6ee128 : #e8574c;
+        y: 35px;
+        height: 34px;
+        background: root.playing ? #00ff66 : #b7410e;
         text: root.playing ? "PLAY" : "PAUSE";
         down(pressed) => {
             if (pressed) {
@@ -86,14 +96,15 @@ component DeckSide inherits Rectangle {
     }
     SideButton {
         x: 4px;
-        y: 102px;
-        background: #f3c631;
+        y: 74px;
+        height: 34px;
+        background: #ffd600;
         text: "CUE";
         down(pressed) => { root.cue(pressed); }
     }
     if root.has-cover: Image {
         x: 5px;
-        y: 143px;
+        y: 113px;
         width: 56px;
         height: 56px;
         source: root.cover;
@@ -112,40 +123,40 @@ component DeckInfo inherits Rectangle {
     in property <string> status;
     // MT tapped: Master Tempo on or off.
     callback mt-tapped();
-    width: 512px;
-    height: 40px;
-    Text { x: 8px; y: 2px; text: root.elapsed; color: #eef0f2; font-size: 24px; }
-    Text { x: 90px; y: 2px; text: root.remaining; color: #eef0f2; font-size: 24px; }
-    Text { x: 190px; y: 2px; text: root.bpm; color: #eef0f2; font-size: 24px; }
-    Text { x: 276px; y: 12px; text: "BPM"; color: #9a9ea4; font-size: 12px; }
+    width: 456px;
+    height: 30px;
+    Text { x: 0px; y: 2px; text: root.elapsed; color: #f5f0ed; font-size: 20px; }
+    Text { x: 76px; y: 2px; text: root.remaining; color: #a3958e; font-size: 20px; }
+    Text { x: 160px; y: 2px; text: root.bpm; color: #e64c0c; font-size: 20px; }
+    Text { x: 218px; y: 10px; text: "BPM"; color: #a3958e; font-size: 11px; }
     Rectangle {
-        x: 310px;
+        x: 248px;
         y: 2px;
-        width: 76px;
-        height: 28px;
+        width: 62px;
+        height: 26px;
         border-width: 2px;
-        border-color: #6ee128;
+        border-color: #ffd600;
         border-radius: 2px;
         Text {
             text: root.pitch;
-            color: #9aff5a;
+            color: #ffd600;
             font-size: 14px;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
     }
     Rectangle {
-        x: 394px;
+        x: 316px;
         y: 2px;
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
         border-width: 1px;
         border-radius: 4px;
-        border-color: root.master-tempo ? #6ee128 : #4a4e54;
-        background: root.master-tempo ? #10240c : #181a1d;
+        border-color: root.master-tempo ? #00ff66 : #574b45;
+        background: root.master-tempo ? #0b2614 : #1e1511;
         Text {
             text: "MT";
-            color: root.master-tempo ? #d8ff8a : #9a9ea4;
+            color: root.master-tempo ? #00ff66 : #a3958e;
             font-size: 12px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -161,29 +172,29 @@ component DeckInfo inherits Rectangle {
     }
     // Quantize: loops and cues land on the beat grid.
     Rectangle {
-        x: 426px;
+        x: 348px;
         y: 2px;
         width: 22px;
-        height: 28px;
+        height: 26px;
         border-width: 1px;
         border-radius: 4px;
-        border-color: root.quantize ? #ff8c00 : #4a4e54;
-        background: root.quantize ? #2a1700 : #181a1d;
+        border-color: root.quantize ? #ffd600 : #574b45;
+        background: root.quantize ? #2a2300 : #1e1511;
         Text {
             text: "Q";
-            color: root.quantize ? #ffc266 : #9a9ea4;
+            color: root.quantize ? #ffd600 : #a3958e;
             font-size: 12px;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
     }
-    Text { x: 452px; y: 8px; text: root.key; color: #eb870f; font-size: 14px; }
+    Text { x: 378px; y: 6px; text: root.key; color: #ff7700; font-size: 14px; }
     Text {
-        x: 476px;
-        y: 9px;
-        width: 34px;
+        x: 404px;
+        y: 7px;
+        width: 52px;
         text: root.status;
-        color: #9a9ea4;
+        color: #a3958e;
         font-size: 11px;
         horizontal-alignment: right;
     }
@@ -221,8 +232,8 @@ component CueDeck inherits Rectangle {
     callback call(int);
     property <bool> deleting: false;
     property <bool> listing: false;
-    width: 512px;
-    height: 430px;
+    width: 476px;
+    height: 474px;
     Rectangle {
         x: 10px;
         y: 6px;
@@ -232,35 +243,35 @@ component CueDeck inherits Rectangle {
         background: root.accent;
         Text {
             text: "D" + root.number;
-            color: #101418;
+            color: #100c08;
             font-size: 18px;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
     }
     Text {
-        x: 78px;
+        x: 76px;
         y: 6px;
-        width: 186px;
+        width: 166px;
         height: 34px;
         text: root.loaded ? root.title : "NO TRACK";
-        color: root.loaded ? #eef0f2 : #9a9ea4;
+        color: root.loaded ? #f5f0ed : #a3958e;
         font-size: 15px;
         overflow: elide;
         vertical-alignment: center;
     }
     Rectangle {
-        x: 272px;
+        x: 250px;
         y: 6px;
-        width: 112px;
+        width: 104px;
         height: 34px;
         border-radius: 3px;
         border-width: 1px;
-        border-color: #ff3030;
-        background: root.listing ? #ff3030 : #181a1d;
+        border-color: #f5f0ed;
+        background: root.listing ? #f5f0ed : #1e1511;
         Text {
             text: "MEMORY";
-            color: root.listing ? #101418 : #ff3030;
+            color: root.listing ? #100c08 : #f5f0ed;
             font-size: 14px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -273,17 +284,17 @@ component CueDeck inherits Rectangle {
         }
     }
     if !root.listing: Rectangle {
-        x: 392px;
+        x: 362px;
         y: 6px;
-        width: 110px;
+        width: 104px;
         height: 34px;
         border-radius: 3px;
         border-width: 1px;
-        border-color: #e8574c;
-        background: root.deleting ? #e8574c : #181a1d;
+        border-color: #ff2e63;
+        background: root.deleting ? #ff2e63 : #1e1511;
         Text {
             text: "DELETE";
-            color: root.deleting ? #101418 : #e8574c;
+            color: root.deleting ? #100c08 : #ff2e63;
             font-size: 14px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -296,30 +307,30 @@ component CueDeck inherits Rectangle {
     if root.listing && root.memory.length == 0: Text {
         x: 10px;
         y: 52px;
-        width: 492px;
-        height: 368px;
+        width: 456px;
+        height: 410px;
         text: root.loaded ? "NO MEMORY CUES" : "NO TRACK";
-        color: #9a9ea4;
+        color: #a3958e;
         font-size: 18px;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
     for line[i] in root.memory: Rectangle {
         visible: root.listing;
-        x: 10px + Math.floor(i / 8) * 248px;
-        y: 52px + Math.mod(i, 8) * 46px;
-        width: 240px;
+        x: 10px + Math.floor(i / 8) * 232px;
+        y: 52px + Math.mod(i, 8) * 50px;
+        width: 224px;
         height: 40px;
         border-radius: 4px;
         border-width: 1px;
-        border-color: #ff3030;
-        background: #14181c;
+        border-color: #f5f0ed;
+        background: #1e1511;
         opacity: memory-touch.pressed ? 0.6 : 1.0;
         Text {
             x: 10px;
             width: 40px;
             text: line.number;
-            color: #ff3030;
+            color: #f5f0ed;
             font-size: 18px;
             vertical-alignment: center;
         }
@@ -327,7 +338,7 @@ component CueDeck inherits Rectangle {
             x: 54px;
             width: 110px;
             text: line.time;
-            color: #eef0f2;
+            color: #f5f0ed;
             font-size: 18px;
             vertical-alignment: center;
         }
@@ -335,7 +346,7 @@ component CueDeck inherits Rectangle {
             x: 170px;
             width: 60px;
             text: "LOOP";
-            color: #ff8c00;
+            color: #ff7700;
             font-size: 14px;
             vertical-alignment: center;
         }
@@ -345,28 +356,28 @@ component CueDeck inherits Rectangle {
     }
     for tile[i] in root.tiles: Rectangle {
         visible: !root.listing;
-        x: 10px + Math.mod(i, 4) * 124px;
-        y: 52px + Math.floor(i / 4) * 188px;
-        width: 116px;
-        height: 180px;
+        x: 10px + Math.mod(i, 4) * 116px;
+        y: 52px + Math.floor(i / 4) * 210px;
+        width: 108px;
+        height: 200px;
         border-radius: 4px;
         border-width: root.deleting && tile.set ? 4px : 2px;
-        border-color: root.deleting && tile.set ? #e8574c : tile.tint;
-        background: tile.set ? tile.tint : #14181c;
+        border-color: root.deleting && tile.set ? #ff2e63 : tile.tint;
+        background: tile.set ? tile.tint : #1e1511;
         opacity: !root.loaded ? 0.4 : touch.pressed ? 0.6 : 1.0;
         Text {
-            y: 24px;
+            y: 30px;
             width: parent.width;
             text: tile.letter;
-            color: tile.set ? #101418 : tile.tint;
+            color: tile.set ? #100c08 : tile.tint;
             font-size: 44px;
             horizontal-alignment: center;
         }
         Text {
-            y: 120px;
+            y: 136px;
             width: parent.width;
             text: tile.time;
-            color: tile.set ? #101418 : #9a9ea4;
+            color: tile.set ? #100c08 : #a3958e;
             font-size: tile.set ? 20px : 13px;
             horizontal-alignment: center;
         }
@@ -402,12 +413,12 @@ component Choice inherits Rectangle {
     height: 56px;
     border-radius: 4px;
     border-width: root.selected ? 2px : 1px;
-    border-color: root.selected ? #8fd2ee : #2f6f8f;
-    background: root.selected ? #2a6fa8 : #12161a;
+    border-color: root.selected ? #e64c0c : #38251e;
+    background: root.selected ? #b7410e : #1e1511;
     opacity: touch.pressed ? 0.6 : 1.0;
     Text {
         text: root.text;
-        color: root.selected ? #ffffff : #c6cad0;
+        color: root.selected ? #f5f0ed : #f5f0ed;
         font-size: 18px;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -420,11 +431,11 @@ component Choice inherits Rectangle {
 // One setting: its name, and its choices to the right.
 component SettingRow inherits Rectangle {
     in property <string> label;
-    x: 16px;
-    width: 488px;
+    x: 12px;
+    width: 460px;
     height: 48px;
-    background: #12161a;
-    Text { x: 8px; width: 160px; text: root.label; color: #9a9ea4; font-size: 15px; vertical-alignment: center; }
+    background: #1e1511;
+    Text { x: 8px; width: 140px; text: root.label; color: #a3958e; font-size: 15px; vertical-alignment: center; }
 }
 
 // What the deck reports about itself (the decks' audio, the mix and the firmware), and
@@ -442,44 +453,44 @@ component SettingsPage inherits Rectangle {
     // step, 4 the MAIN trim, 5 the screensaver) and to: 1 for on, CDJ or a step up, else
     // 0; the trim 0 to 2; the screensaver 0 OFF, then 1 to 3 for 2, 5 and 10 minutes.
     callback change(int, int);
-    width: 1024px;
-    height: 430px;
-    background: #0d0f11;
+    width: 952px;
+    height: 474px;
+    background: #100c08;
     // Takes the taps that miss the buttons, away from the page below.
     TouchArea { }
-    Text { x: 24px; y: 10px; text: "DECKS"; color: #8fd2ee; font-size: 16px; }
-    Text { x: 536px; y: 10px; text: "MIX AND SYSTEM"; color: #8fd2ee; font-size: 16px; }
-    Text { x: 24px; y: 150px; text: "SETTINGS"; color: #8fd2ee; font-size: 16px; }
+    Text { x: 20px; y: 10px; text: "DECKS"; color: #e64c0c; font-size: 16px; }
+    Text { x: 492px; y: 10px; text: "MIX AND SYSTEM"; color: #e64c0c; font-size: 16px; }
+    Text { x: 20px; y: 150px; text: "SETTINGS"; color: #e64c0c; font-size: 16px; }
     SettingRow {
         y: 176px;
         label: "LOAD LOCK";
-        Choice { x: 176px; y: 4px; width: 150px; height: 40px; text: "ON"; selected: root.load-lock; clicked => { root.change(0, 1); } }
-        Choice { x: 332px; y: 4px; width: 150px; height: 40px; text: "OFF"; selected: !root.load-lock; clicked => { root.change(0, 0); } }
+        Choice { x: 150px; y: 4px; width: 150px; height: 40px; text: "ON"; selected: root.load-lock; clicked => { root.change(0, 1); } }
+        Choice { x: 306px; y: 4px; width: 150px; height: 40px; text: "OFF"; selected: !root.load-lock; clicked => { root.change(0, 0); } }
     }
     SettingRow {
         y: 226px;
         label: "JOG DECK 1";
-        Choice { x: 176px; y: 4px; width: 150px; height: 40px; text: "VINYL"; selected: !root.jog-cdj-1; clicked => { root.change(1, 0); } }
-        Choice { x: 332px; y: 4px; width: 150px; height: 40px; text: "CDJ"; selected: root.jog-cdj-1; clicked => { root.change(1, 1); } }
+        Choice { x: 150px; y: 4px; width: 150px; height: 40px; text: "VINYL"; selected: !root.jog-cdj-1; clicked => { root.change(1, 0); } }
+        Choice { x: 306px; y: 4px; width: 150px; height: 40px; text: "CDJ"; selected: root.jog-cdj-1; clicked => { root.change(1, 1); } }
     }
     SettingRow {
         y: 276px;
         label: "JOG DECK 2";
-        Choice { x: 176px; y: 4px; width: 150px; height: 40px; text: "VINYL"; selected: !root.jog-cdj-2; clicked => { root.change(2, 0); } }
-        Choice { x: 332px; y: 4px; width: 150px; height: 40px; text: "CDJ"; selected: root.jog-cdj-2; clicked => { root.change(2, 1); } }
+        Choice { x: 150px; y: 4px; width: 150px; height: 40px; text: "VINYL"; selected: !root.jog-cdj-2; clicked => { root.change(2, 0); } }
+        Choice { x: 306px; y: 4px; width: 150px; height: 40px; text: "CDJ"; selected: root.jog-cdj-2; clicked => { root.change(2, 1); } }
     }
     SettingRow {
         y: 326px;
         label: "BRIGHTNESS";
-        Choice { x: 176px; y: 4px; width: 90px; height: 40px; text: "-"; clicked => { root.change(3, 0); } }
-        Text { x: 266px; width: 126px; height: 48px; text: root.backlight + " %"; color: #eef0f2; font-size: 18px; horizontal-alignment: center; vertical-alignment: center; }
-        Choice { x: 392px; y: 4px; width: 90px; height: 40px; text: "+"; clicked => { root.change(3, 1); } }
+        Choice { x: 150px; y: 4px; width: 90px; height: 40px; text: "-"; clicked => { root.change(3, 0); } }
+        Text { x: 240px; width: 126px; height: 48px; text: root.backlight + " %"; color: #f5f0ed; font-size: 18px; horizontal-alignment: center; vertical-alignment: center; }
+        Choice { x: 366px; y: 4px; width: 90px; height: 40px; text: "+"; clicked => { root.change(3, 1); } }
     }
     SettingRow {
         y: 376px;
         label: "MAIN TRIM";
         for name[i] in ["0 dB", "-3 dB", "-6 dB"]: Choice {
-            x: 176px + i * 104px;
+            x: 150px + i * 104px;
             y: 4px;
             width: 98px;
             height: 40px;
@@ -490,12 +501,12 @@ component SettingsPage inherits Rectangle {
     }
     // Under the ten lines of the right column.
     SettingRow {
-        x: 520px;
+        x: 480px;
         y: 382px;
         height: 44px;
         label: "SCREENSAVER";
         for name[i] in ["OFF", "2 MIN", "5 MIN", "10 MIN"]: Choice {
-            x: 176px + i * 78px;
+            x: 150px + i * 78px;
             y: 4px;
             width: 72px;
             height: 36px;
@@ -505,22 +516,22 @@ component SettingsPage inherits Rectangle {
         }
     }
     for line[i] in root.left: Rectangle {
-        x: 16px;
+        x: 12px;
         y: 40px + i * 34px;
-        width: 488px;
+        width: 460px;
         height: 32px;
-        background: Math.mod(i, 2) == 0 ? #12161a : #0f1215;
-        Text { x: 8px; width: 90px; text: line.label; color: #9a9ea4; font-size: 15px; vertical-alignment: center; }
-        Text { x: 100px; width: 380px; text: line.value; color: #eef0f2; font-size: 16px; overflow: elide; vertical-alignment: center; }
+        background: Math.mod(i, 2) == 0 ? #1e1511 : #181210;
+        Text { x: 8px; width: 90px; text: line.label; color: #a3958e; font-size: 15px; vertical-alignment: center; }
+        Text { x: 100px; width: 352px; text: line.value; color: #f5f0ed; font-size: 16px; overflow: elide; vertical-alignment: center; }
     }
     for line[i] in root.right: Rectangle {
-        x: 520px;
+        x: 480px;
         y: 40px + i * 34px;
-        width: 488px;
+        width: 460px;
         height: 32px;
-        background: Math.mod(i, 2) == 0 ? #12161a : #0f1215;
-        Text { x: 8px; width: 160px; text: line.label; color: #9a9ea4; font-size: 15px; vertical-alignment: center; }
-        Text { x: 170px; width: 310px; text: line.value; color: #eef0f2; font-size: 16px; overflow: elide; vertical-alignment: center; }
+        background: Math.mod(i, 2) == 0 ? #1e1511 : #181210;
+        Text { x: 8px; width: 160px; text: line.label; color: #a3958e; font-size: 15px; vertical-alignment: center; }
+        Text { x: 170px; width: 282px; text: line.value; color: #f5f0ed; font-size: 16px; overflow: elide; vertical-alignment: center; }
     }
 }
 
@@ -536,6 +547,9 @@ export struct LibraryLine {
     selected: bool,
     // 0 a track, 1 a folder, 2 a playlist.
     kind: int,
+    // How its key sits with the reference deck's: 0 no reference, 1 fits, 2 two steps
+    // up, 3 seven steps up, 4 none of these.
+    fit: int,
 }
 
 // The catalog or a level of its playlists, a page at a time around the selection, which
@@ -547,41 +561,56 @@ component LibraryPage inherits Rectangle {
     in property <string> count;
     in property <string> heading;
     in property <bool> can-back;
+    // The column the list is sorted on (0 title, 1 artist, 2 BPM, 3 key, 4 time; -1 none),
+    // and which way.
+    in property <int> sort-column: -1;
+    in property <bool> sort-descending;
+    // Only tracks within 4 % of the reference deck's tempo, and that deck ("D1 128.0").
+    in property <bool> bpm-filter;
+    in property <string> bpm-reference;
     callback pick(int);
     callback load(int);
     callback back();
-    width: 1024px;
-    height: 430px;
-    background: #0d0f11;
+    // A column's heading tapped: sort on it, or turn its sort over.
+    callback sort(int);
+    callback bpm-filter-toggled();
+    width: 952px;
+    height: 474px;
+    background: #100c08;
     // Takes the taps that miss the rows and buttons, away from the page below.
     TouchArea { }
-    Text { x: 8px; y: 6px; text: "#"; color: #9a9ea4; font-size: 11px; }
+    // The column headings, as large as the titles: a tap sorts on one (the title's is the
+    // level's name), and the sorted one shows in yellow with its arrow, on a rust band.
+    Rectangle { x: 0px; y: 0px; width: 820px; height: 34px; background: #b7410e; }
+    Text { x: 8px; y: 0px; height: 34px; text: "#"; color: #f5f0ed; font-size: 16px; vertical-alignment: center; }
     Text {
         x: 48px;
-        y: 4px;
-        width: 412px;
-        text: root.heading;
-        color: #d8ff8a;
-        font-size: 13px;
+        y: 0px;
+        width: 360px;
+        height: 34px;
+        text: root.heading + (root.sort-column == 0 ? (root.sort-descending ? "▼" : "▲") : "");
+        color: root.sort-column == 0 ? #ffd600 : #f5f0ed;
+        font-size: 16px;
         overflow: elide;
+        vertical-alignment: center;
     }
-    Text { x: 470px; y: 6px; text: "ARTIST"; color: #9a9ea4; font-size: 11px; }
-    Text { x: 700px; y: 6px; text: "BPM"; color: #9a9ea4; font-size: 11px; }
-    Text { x: 770px; y: 6px; text: "KEY"; color: #9a9ea4; font-size: 11px; }
-    Text { x: 820px; y: 6px; text: "TIME"; color: #9a9ea4; font-size: 11px; }
+    Text { x: 416px; y: 0px; height: 34px; text: "ARTIST" + (root.sort-column == 1 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 1 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 622px; y: 0px; height: 34px; text: "BPM" + (root.sort-column == 2 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 2 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 686px; y: 0px; height: 34px; text: "KEY" + (root.sort-column == 3 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 3 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 734px; y: 0px; height: 34px; text: "TIME" + (root.sort-column == 4 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 4 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
     for row[i] in root.rows: Rectangle {
         x: 0px;
-        y: 26px + i * 33px;
-        width: 900px;
+        y: 38px + i * 33px;
+        width: 820px;
         height: 32px;
-        background: row.selected ? #10240c : #12161a;
+        background: row.selected ? #0b2614 : #1e1511;
         border-width: row.selected ? 1px : 0px;
-        border-color: #6ee128;
+        border-color: #00ff66;
         Text {
             x: 8px;
             width: 36px;
             text: row.number;
-            color: #9a9ea4;
+            color: #a3958e;
             font-size: 13px;
             vertical-alignment: center;
         }
@@ -592,45 +621,45 @@ component LibraryPage inherits Rectangle {
             width: 8px;
             height: 14px;
             border-radius: 2px;
-            background: row.kind == 1 ? #eb870f : #38d6f0;
+            background: row.kind == 1 ? #ff7700 : #e64c0c;
         }
         Text {
             x: 48px;
-            width: 412px;
+            width: 360px;
             text: row.title;
-            color: row.selected ? #d8ff8a : #eef0f2;
+            color: row.selected ? #00ff66 : #f5f0ed;
             font-size: 15px;
             overflow: elide;
             vertical-alignment: center;
         }
         Text {
-            x: 470px;
-            width: 222px;
+            x: 416px;
+            width: 200px;
             text: row.artist;
-            color: row.kind == 0 ? #c6cad0 : #9a9ea4;
+            color: row.kind == 0 ? #f5f0ed : #a3958e;
             font-size: 14px;
             overflow: elide;
             vertical-alignment: center;
         }
-        Text { x: 700px; width: 64px; text: row.bpm; color: #eef0f2; font-size: 14px; vertical-alignment: center; }
-        Text { x: 770px; width: 46px; text: row.key; color: #eb870f; font-size: 14px; vertical-alignment: center; }
-        Text { x: 820px; width: 46px; text: row.time; color: #eef0f2; font-size: 14px; vertical-alignment: center; }
-        Text { x: 866px; width: 32px; text: row.decks; color: #38d6f0; font-size: 11px; vertical-alignment: center; }
+        Text { x: 622px; width: 60px; text: row.bpm; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
+        Text { x: 686px; width: 44px; text: row.key; color: row.fit == 1 ? #00ff66 : row.fit == 2 ? #ffd600 : row.fit == 3 ? #0088ff : row.fit == 4 ? #a3958e : #ff7700; font-size: 14px; vertical-alignment: center; }
+        Text { x: 734px; width: 46px; text: row.time; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
+        Text { x: 782px; width: 32px; text: row.decks; color: #e64c0c; font-size: 11px; vertical-alignment: center; }
         TouchArea {
             clicked => { root.pick(i); }
         }
     }
     for deck[i] in [1, 2]: Rectangle {
-        x: 912px;
+        x: 832px;
         y: 40px + i * 96px;
-        width: 104px;
+        width: 112px;
         height: 84px;
         border-radius: 4px;
-        background: i == 0 ? #38d6f0 : #6ee1a8;
+        background: i == 0 ? #e64c0c : #00e5ff;
         opacity: load.pressed ? 0.6 : 1.0;
         Text {
             text: "LOAD\nD" + deck;
-            color: #101418;
+            color: #100c08;
             font-size: 18px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -640,17 +669,17 @@ component LibraryPage inherits Rectangle {
         }
     }
     Rectangle {
-        x: 912px;
+        x: 832px;
         y: 236px;
-        width: 104px;
+        width: 112px;
         height: 56px;
         border-radius: 4px;
         border-width: 1px;
-        border-color: root.can-back ? #6ee128 : #2a2f35;
-        background: back.pressed ? #10240c : #12161a;
+        border-color: root.can-back ? #00ff66 : #38251e;
+        background: back.pressed ? #0b2614 : #1e1511;
         Text {
             text: "BACK";
-            color: root.can-back ? #d8ff8a : #4a4f55;
+            color: root.can-back ? #00ff66 : #574b45;
             font-size: 18px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -660,12 +689,36 @@ component LibraryPage inherits Rectangle {
             clicked => { root.back(); }
         }
     }
+    // The headings take a tap: the title's over the heading, then each column's.
+    for column[i] in [{ x: 40px, w: 368px }, { x: 408px, w: 206px }, { x: 614px, w: 64px }, { x: 678px, w: 48px }, { x: 726px, w: 56px }]: TouchArea {
+        x: column.x;
+        y: 0px;
+        width: column.w;
+        height: 36px;
+        clicked => { root.sort(i); }
+    }
+    Rectangle {
+        x: 832px;
+        y: 304px;
+        width: 112px;
+        height: 72px;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: root.bpm-filter ? #e64c0c : #38251e;
+        background: root.bpm-filter ? #b7410e : #1e1511;
+        opacity: bpm.pressed ? 0.6 : 1.0;
+        Text { y: 14px; width: parent.width; text: "BPM ±4%"; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; }
+        Text { y: 44px; width: parent.width; text: root.bpm-reference; color: root.bpm-filter ? #f5f0ed : #a3958e; font-size: 11px; horizontal-alignment: center; }
+        bpm := TouchArea {
+            clicked => { root.bpm-filter-toggled(); }
+        }
+    }
     Text {
-        x: 912px;
-        y: 400px;
-        width: 104px;
+        x: 832px;
+        y: 440px;
+        width: 112px;
         text: root.count;
-        color: #9a9ea4;
+        color: #a3958e;
         font-size: 13px;
         horizontal-alignment: center;
     }
@@ -682,13 +735,13 @@ component FxPage inherits Rectangle {
     // What changed (0 effect, 1 beat, 2 channel, 3 depth from 0 to 127, 4 FX ON) and to.
     callback set(int, float);
     callback close();
-    width: 1024px;
-    height: 430px;
-    background: #0d0f11;
+    width: 952px;
+    height: 474px;
+    background: #100c08;
     // Takes the taps that miss the buttons, away from the page below.
     TouchArea { }
-    Text { x: 16px; y: 12px; text: "BEAT FX"; color: #eef0f2; font-size: 20px; }
-    Text { x: 16px; y: 54px; text: "EFFECT"; color: #9a9ea4; font-size: 12px; }
+    Text { x: 16px; y: 12px; text: "BEAT FX"; color: #f5f0ed; font-size: 20px; }
+    Text { x: 16px; y: 54px; text: "EFFECT"; color: #a3958e; font-size: 12px; }
     for name[i] in ["FILTER", "ECHO", "FLANGER", "DELAY"]: Choice {
         x: 16px + i * 198px;
         y: 72px;
@@ -697,7 +750,7 @@ component FxPage inherits Rectangle {
         selected: name == root.effect;
         clicked => { root.set(0, i); }
     }
-    Text { x: 16px; y: 140px; text: "BEAT"; color: #9a9ea4; font-size: 12px; }
+    Text { x: 16px; y: 140px; text: "BEAT"; color: #a3958e; font-size: 12px; }
     for name[i] in ["1/4", "1/2", "1", "2", "4"]: Choice {
         x: 16px + i * 158px;
         y: 158px;
@@ -706,7 +759,7 @@ component FxPage inherits Rectangle {
         selected: name == root.beat;
         clicked => { root.set(1, i); }
     }
-    Text { x: 16px; y: 226px; text: "CHANNEL"; color: #9a9ea4; font-size: 12px; }
+    Text { x: 16px; y: 226px; text: "CHANNEL"; color: #a3958e; font-size: 12px; }
     for name[i] in ["DECK 1", "DECK 2", "BOTH"]: Choice {
         x: 16px + i * 198px;
         y: 244px;
@@ -716,7 +769,7 @@ component FxPage inherits Rectangle {
         selected: Math.mod(i + 1, 3) == root.target;
         clicked => { root.set(2, Math.mod(i + 1, 3)); }
     }
-    Text { x: 16px; y: 312px; text: "DEPTH"; color: #9a9ea4; font-size: 12px; }
+    Text { x: 16px; y: 312px; text: "DEPTH"; color: #a3958e; font-size: 12px; }
     Rectangle {
         x: 16px;
         y: 330px;
@@ -724,15 +777,15 @@ component FxPage inherits Rectangle {
         height: 64px;
         border-radius: 4px;
         border-width: 1px;
-        border-color: #2f6f8f;
-        background: #12161a;
+        border-color: #38251e;
+        background: #1e1511;
         Rectangle {
             x: 1px;
             y: 1px;
             width: (parent.width - 2px) * root.depth / 100;
             height: parent.height - 2px;
             border-radius: 3px;
-            background: #2a6fa8;
+            background: #b7410e;
         }
         // Down on the bar and dragged along it, as the depth knob turns.
         slide := TouchArea {
@@ -750,33 +803,33 @@ component FxPage inherits Rectangle {
         width: 76px;
         height: 64px;
         text: root.depth + "%";
-        color: #eef0f2;
+        color: #f5f0ed;
         font-size: 22px;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
     Choice {
-        x: 824px;
+        x: 812px;
         y: 8px;
-        width: 184px;
+        width: 132px;
         height: 48px;
         text: "CLOSE";
         selected: false;
         clicked => { root.close(); }
     }
     Rectangle {
-        x: 824px;
+        x: 812px;
         y: 72px;
-        width: 184px;
+        width: 132px;
         height: 322px;
         border-radius: 6px;
         border-width: 2px;
-        border-color: #6ee128;
-        background: root.on ? #6ee128 : #181a1d;
+        border-color: #00ff66;
+        background: root.on ? #00ff66 : #1e1511;
         opacity: toggle.pressed ? 0.6 : 1.0;
         Text {
             text: root.on ? "FX ON" : "FX OFF";
-            color: root.on ? #101418 : #6ee128;
+            color: root.on ? #100c08 : #00ff66;
             font-size: 28px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -796,20 +849,35 @@ component FxPanel inherits Rectangle {
     in property <bool> on;
     callback open();
     width: 64px;
-    height: 428px;
-    background: #0d141b;
+    height: 464px;
+    background: #160f0c;
     border-width: 1px;
-    border-color: #2f6f8f;
+    // Each effect has its colour, as on the donor's overview (`ui_overview_fx_effect_color`):
+    // FILTER blue, ECHO amber, FLANGER violet, DELAY teal. While the effect is on, the
+    // panel's edge, the FX label, the effect, the routed channels, the beat and the depth
+    // take it; off, they stay dim.
+    property <color> tint: root.effect == "ECHO" ? #eb870f
+        : root.effect == "FLANGER" ? #b44ae0
+        : root.effect == "DELAY" ? #27c7c7
+        : #2d85cd;
+    border-color: root.on ? root.tint : #38251e;
     TouchArea {
         clicked => { root.open(); }
+    }
+    // While the effect is on, the FX label blinks in its colour.
+    property <bool> lit;
+    Timer {
+        interval: 400ms;
+        running: root.on;
+        triggered => { root.lit = !root.lit; }
     }
     Rectangle {
         x: 4px;
         y: 4px;
         width: 56px;
         height: 22px;
-        background: root.on ? #2a6fa8 : #1c2228;
-        Text { text: "FX"; color: #eef0f2; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+        background: !root.on ? #1e1511 : root.lit ? root.tint : root.tint.darker(70%);
+        Text { text: "FX"; color: root.on && root.lit ? #100c08 : #f5f0ed; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Rectangle {
         x: 4px;
@@ -817,10 +885,11 @@ component FxPanel inherits Rectangle {
         width: 56px;
         height: 34px;
         border-width: 1px;
-        border-color: #8fd2ee;
-        Text { text: root.effect; color: #eef0f2; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+        border-color: root.on ? root.tint : #574b45;
+        background: root.on ? root.tint : transparent;
+        Text { text: root.effect; color: root.on ? #100c08 : #a3958e; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
     }
-    Text { x: 0px; y: 68px; width: 64px; text: "TARGET"; color: #9a9ea4; font-size: 11px; horizontal-alignment: center; }
+    Text { x: 0px; y: 68px; width: 64px; text: "TARGET"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
     for pill in 2: Rectangle {
         x: 5px + pill * 29px;
         y: 84px;
@@ -828,44 +897,45 @@ component FxPanel inherits Rectangle {
         height: 22px;
         border-radius: 11px;
         border-width: 1px;
-        border-color: #8fd2ee;
-        background: root.target == 0 || root.target == pill + 1 ? #2a6fa8 : #0d141b;
-        Text { text: pill + 1; color: #eef0f2; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+        property <bool> routed: root.on && (root.target == 0 || root.target == pill + 1);
+        border-color: self.routed ? root.tint : #574b45;
+        background: self.routed ? root.tint : #160f0c;
+        Text { text: pill + 1; color: parent.routed ? #100c08 : #a3958e; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
     }
-    Text { x: 0px; y: 112px; width: 64px; text: "BEAT"; color: #9a9ea4; font-size: 11px; horizontal-alignment: center; }
+    Text { x: 0px; y: 112px; width: 64px; text: "BEAT"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
     Rectangle {
         x: 12px;
         y: 128px;
         width: 40px;
         height: 26px;
         border-width: 1px;
-        border-color: #8fd2ee;
-        Text { text: root.beat; color: #eef0f2; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+        border-color: root.on ? root.tint : #574b45;
+        Text { text: root.beat; color: root.on ? #f5f0ed : #a3958e; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
     }
-    Text { x: 0px; y: 160px; width: 64px; text: "DEPTH"; color: #9a9ea4; font-size: 11px; horizontal-alignment: center; }
+    Text { x: 0px; y: 160px; width: 64px; text: "DEPTH"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
     Rectangle {
         x: 22px;
         y: 176px;
         width: 20px;
-        height: 216px;
+        height: parent.height - 212px;
         border-width: 1px;
-        border-color: #4a4e54;
+        border-color: #574b45;
         Rectangle {
             x: 1px;
             y: parent.height - 1px - self.height;
             width: 18px;
             height: (parent.height - 2px) * root.depth / 100;
-            background: #2a6fa8;
+            background: root.on ? root.tint : #574b45;
         }
     }
-    Text { x: 0px; y: 398px; width: 64px; text: root.depth + "%"; color: #eef0f2; font-size: 14px; horizontal-alignment: center; }
+    Text { x: 0px; y: parent.height - 30px; width: 64px; text: root.depth + "%"; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; }
 }
 
 export component Overview inherits Window {
     width: 1024px;
     height: 600px;
     default-font-family: "DejaVu Sans";
-    background: #0d0f11;
+    background: #100c08;
     in property <string> title-1;
     in property <string> title-2;
     in property <string> elapsed-1;
@@ -900,6 +970,10 @@ export component Overview inherits Window {
     in property <string> library-count;
     in property <string> library-heading;
     in property <bool> library-can-back;
+    in property <int> library-sort-column: -1;
+    in property <bool> library-sort-descending;
+    in property <bool> library-bpm-filter;
+    in property <string> library-bpm-reference;
     in property <[CueTile]> cues-1;
     in property <[CueTile]> cues-2;
     in property <[MemoryLine]> memory-1;
@@ -919,6 +993,8 @@ export component Overview inherits Window {
     // The cover's lit letter, which moves along the word from before its first letter to
     // past its last; the letters around it glow less the further they are.
     in property <int> cover-head;
+    // How far the other deck's beat is ahead of the master's ("+12 ms"), or a dash.
+    in property <string> phase: "—";
 
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
@@ -927,6 +1003,9 @@ export component Overview inherits Window {
     callback pick(int);
     callback load(int);
     callback library-back();
+    // The Library's column heading 0 to 4 tapped, and its BPM filter.
+    callback library-sort(int);
+    callback library-bpm-filter-toggled();
     // The Hot Cues page: deck 0 or 1, its pad 0 to 7 down or up, and whether it deletes.
     callback hot-cue(int, int, bool, bool);
     // The Hot Cues page's MEMORY list: deck 0 or 1, its memory cue 0 to 15 tapped.
@@ -941,23 +1020,54 @@ export component Overview inherits Window {
     // Each tab has a page. The FX panel opens page 4, which no tab marks.
     in-out property <int> active-tab: 0;
 
-    for name[index] in ["OVERVIEW", "LIBRARY", "HOT CUES", "SETTINGS"]: Tab {
-        x: 8px + index * 253px;
-        y: 4px;
-        width: 248px;
-        text: name;
-        active: index == root.active-tab;
-        clicked => { root.active-tab = index; }
+    // The pages, on a rail at the left: icons only.
+    Rectangle {
+        x: 0px;
+        y: 0px;
+        width: 48px;
+        height: 600px;
+        background: #1e1511;
+        Rectangle { x: 47px; width: 1px; height: 600px; background: #38251e; }
+        RailButton {
+            y: 0px;
+            icon: @image-url("icons/overview.png");
+            active: root.active-tab == 0;
+            clicked => { root.active-tab = 0; }
+        }
+        RailButton {
+            y: 120px;
+            icon: @image-url("icons/library.png");
+            active: root.active-tab == 1;
+            clicked => { root.active-tab = 1; }
+        }
+        RailButton {
+            y: 240px;
+            icon: @image-url("icons/cues.png");
+            active: root.active-tab == 2;
+            clicked => { root.active-tab = 2; }
+        }
+        RailButton {
+            y: 360px;
+            icon: @image-url("icons/fx.png");
+            active: root.active-tab == 4;
+            clicked => { root.active-tab = 4; }
+        }
+        RailButton {
+            y: 480px;
+            icon: @image-url("icons/settings.png");
+            active: root.active-tab == 3;
+            clicked => { root.active-tab = 3; }
+        }
     }
 
     // The decks, waveforms and FX panel lie under every other page, which covers them
     // whole: hidden there, so that Slint does not draw them only to draw over them.
     DeckSide {
         visible: root.active-tab == 0;
-        x: 0px;
-        y: 46px;
+        x: 52px;
+        y: 8px;
         number: 1;
-        accent: #38d6f0;
+        accent: #e64c0c;
         playing: root.playing-1;
         cover: root.cover-1;
         has-cover: root.has-cover-1;
@@ -966,10 +1076,10 @@ export component Overview inherits Window {
     }
     DeckSide {
         visible: root.active-tab == 0;
-        x: 0px;
-        y: 248px;
+        x: 52px;
+        y: 252px;
         number: 2;
-        accent: #6ee1a8;
+        accent: #00e5ff;
         playing: root.playing-2;
         cover: root.cover-2;
         has-cover: root.has-cover-2;
@@ -977,13 +1087,26 @@ export component Overview inherits Window {
         cue(down) => { root.cue(1, down); }
     }
     // Rust draws here: the two waveforms.
-    Rectangle { visible: root.active-tab == 0; x: 82px; y: 46px; width: 872px; height: 201px; background: #020406; }
-    Rectangle { visible: root.active-tab == 0; x: 82px; y: 248px; width: 872px; height: 201px; background: #020406; }
+    Rectangle { visible: root.active-tab == 0; x: 136px; y: 8px; width: 814px; height: 220px; background: #100c08; }
+    Rectangle { visible: root.active-tab == 0; x: 136px; y: 252px; width: 814px; height: 220px; background: #100c08; }
+    // Between the lanes: the phase strip, which Rust draws, and its offset. At 24 px there
+    // is room for one line: the offset alone.
+    Rectangle {
+        visible: root.active-tab == 0;
+        x: 52px;
+        y: 228px;
+        width: 80px;
+        height: 24px;
+        border-radius: 3px;
+        background: #1e1511;
+        Text { y: 3px; width: parent.width; text: root.phase; color: root.phase == "—" ? #574b45 : #ffd600; font-size: 14px; horizontal-alignment: center; }
+    }
+    Rectangle { visible: root.active-tab == 0; x: 136px; y: 228px; width: 814px; height: 24px; background: #1e1511; }
 
     FxPanel {
         visible: root.active-tab == 0;
-        x: 960px;
-        y: 46px;
+        x: 956px;
+        y: 8px;
         effect: root.fx-effect;
         beat: root.fx-beat;
         depth: root.fx-depth;
@@ -995,20 +1118,26 @@ export component Overview inherits Window {
     // Made once and kept: opening the page then only draws it.
     LibraryPage {
         visible: root.active-tab == 1;
-        x: 0px;
-        y: 46px;
+        x: 48px;
+        y: 0px;
         rows: root.library-rows;
         count: root.library-count;
         heading: root.library-heading;
         can-back: root.library-can-back;
+        sort-column: root.library-sort-column;
+        sort-descending: root.library-sort-descending;
+        bpm-filter: root.library-bpm-filter;
+        bpm-reference: root.library-bpm-reference;
         pick(row) => { root.pick(row); }
         load(deck) => { root.load(deck); }
         back => { root.library-back(); }
+        sort(column) => { root.library-sort(column); }
+        bpm-filter-toggled => { root.library-bpm-filter-toggled(); }
     }
 
     if root.active-tab == 4: FxPage {
-        x: 0px;
-        y: 46px;
+        x: 48px;
+        y: 0px;
         effect: root.fx-effect;
         beat: root.fx-beat;
         depth: root.fx-depth;
@@ -1019,8 +1148,8 @@ export component Overview inherits Window {
     }
 
     if root.active-tab == 3: SettingsPage {
-        x: 0px;
-        y: 46px;
+        x: 48px;
+        y: 0px;
         left: root.settings-left;
         right: root.settings-right;
         load-lock: root.setting-load-lock;
@@ -1033,17 +1162,17 @@ export component Overview inherits Window {
     }
 
     if root.active-tab == 2: Rectangle {
-        x: 0px;
-        y: 46px;
-        width: 1024px;
-        height: 430px;
-        background: #0d0f11;
+        x: 48px;
+        y: 0px;
+        width: 952px;
+        height: 474px;
+        background: #100c08;
         // Takes the taps that miss the pads and buttons, away from the page below.
         TouchArea { }
         CueDeck {
             x: 0px;
             number: 1;
-            accent: #38d6f0;
+            accent: #e64c0c;
             title: root.title-1;
             loaded: root.loaded-1;
             tiles: root.cues-1;
@@ -1051,11 +1180,11 @@ export component Overview inherits Window {
             pad(pad, down, delete) => { root.hot-cue(0, pad, down, delete); }
             call(n) => { root.memory-cue(0, n); }
         }
-        Rectangle { x: 511px; y: 8px; width: 2px; height: 414px; background: #2f6f8f; }
+        Rectangle { x: 475px; y: 8px; width: 2px; height: 458px; background: #38251e; }
         CueDeck {
-            x: 512px;
+            x: 476px;
             number: 2;
-            accent: #6ee1a8;
+            accent: #00e5ff;
             title: root.title-2;
             loaded: root.loaded-2;
             tiles: root.cues-2;
@@ -1065,36 +1194,34 @@ export component Overview inherits Window {
         }
     }
 
-    // Track titles, across the screen: deck 1 from the left, deck 2 to the right.
-    Rectangle {
-        x: 0px;
+    // The deck cards, on every page: title, times and tempo, and the overview.
+    for deck in 2: Rectangle {
+        x: 52px + deck * 486px;
         y: 478px;
-        width: 1024px;
-        height: 30px;
-        background: #1565c0;
+        width: 482px;
+        height: 116px;
+        border-radius: 3px;
+        border-width: 1px;
+        border-color: #38251e;
+        background: #1e1511;
+        Rectangle { x: 7px; y: 8px; width: 6px; height: 22px; background: deck == 0 ? #e64c0c : #00e5ff; }
         Text {
-            x: 8px;
-            width: 500px;
-            text: root.title-1;
-            color: #ffffff;
-            font-size: 20px;
+            x: 21px;
+            y: 6px;
+            width: 452px;
+            height: 26px;
+            text: deck == 0 ? root.title-1 : root.title-2;
+            color: #f5f0ed;
+            font-size: 18px;
             overflow: elide;
             vertical-alignment: center;
         }
-        Text {
-            x: 516px;
-            width: 500px;
-            text: root.title-2;
-            color: #ffffff;
-            font-size: 20px;
-            overflow: elide;
-            horizontal-alignment: right;
-            vertical-alignment: center;
-        }
+        // Rust draws the overview here.
+        Rectangle { x: 8px; y: 70px; width: 466px; height: 45px; background: #100c08; }
     }
     DeckInfo {
-        x: 0px;
-        y: 510px;
+        x: 59px;
+        y: 515px;
         elapsed: root.elapsed-1;
         remaining: root.remaining-1;
         bpm: root.bpm-1;
@@ -1106,8 +1233,8 @@ export component Overview inherits Window {
         mt-tapped => { root.master-tempo(0); }
     }
     DeckInfo {
-        x: 512px;
-        y: 510px;
+        x: 545px;
+        y: 515px;
         elapsed: root.elapsed-2;
         remaining: root.remaining-2;
         bpm: root.bpm-2;
@@ -1118,9 +1245,6 @@ export component Overview inherits Window {
         status: root.status-2;
         mt-tapped => { root.master-tempo(1); }
     }
-    // Rust draws here: the two overviews.
-    Rectangle { x: 8px; y: 552px; width: 496px; height: 45px; background: #020406; }
-    Rectangle { x: 520px; y: 552px; width: 496px; height: 45px; background: #020406; }
 
     // Track titles and artists use more than ASCII. The software renderer only has
     // the glyphs it embedded at build time: ASCII, plus every character in a string
@@ -1132,7 +1256,7 @@ export component Overview inherits Window {
         width: 0px;
         height: 0px;
         color: transparent;
-        text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™";
+        text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™▲▼";
     }
 
     // The boot screen and the screensaver, as the donor's: the owner's RUZINA wordmark, its

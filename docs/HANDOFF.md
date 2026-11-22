@@ -428,9 +428,48 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   for the Hercules (asynchronous) and the S2 MK3 (UAC2) is still to come. s173 (app
   `fd4d6e1b…`), no controller attached: works, owner "Sve radi". No controller has been
   tested on it yet.
+- **Rust palette (2026-11-21):** [the deck screen in the owner's Rust palette](reviews/2026-11-21-rust-palette.md).
+  The first step of the screen redesign. It changes:
+  - the shell and deck colours;
+  - the waveform in three bands (PWV3 whiteness mapped to lows, mids and highs; PWV4
+    band mixes blended);
+  - the Hot Cues A–H chosen with the owner;
+  - the memory cues (now warm white) and the bar markers (now acid green).
+
+  s174 (app `586c7ec6…`) works; owner: "Izgleda dobro".
+- **Screen layout (2026-11-21):** [the deck screen's new layout](reviews/2026-11-21-screen-layout.md).
+  The second step of the redesign, after the palette:
+  - a 48 px icon rail instead of the tabs;
+  - lanes of 814×210 with the phase strip's place between them;
+  - deck cards at the bottom on every page;
+  - the pages narrowed to 952 px.
+
+  s176 (app `72498c59…`): owner "Izgleda dobro"; s175 had a 72 px rail, which the owner
+  narrowed. The phase strip followed. It shows both decks' beats between the lanes over
+  four master beats, and the PHASE offset in ms. s177 (app `4041be8c…`): owner "Izgleda
+  dobro".
+- **Library filters (2026-11-21):** [the Library's sort, BPM filter and key colours](reviews/2026-11-21-library-filters.md).
+  These follow the donor's ui-next Browse:
+  - a tap on a heading sorts, and a second tap reverses;
+  - BPM ±4 % of the deck that plays (or the master);
+  - each key coloured by how it fits that deck.
+
+  The browse knob and LOAD follow the list as shown, through a lock-free view in
+  `deck_view`. The headings are 16 px on a rust band. s180 (app `68235527…`): owner "Sve
+  radi". After it, the Overview's FX label blinks green while the effect is on (s181, app
+  `f47e264d…`, owner "Sve radi").
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - s181 (app `f47e264d…`) is the play image flags on the redesign branch with the
+    Library filters and the blinking FX label.
+  - s180 (app `68235527…`) is the play image flags on the redesign branch with the
+    Library filters.
+  - s177 (app `4041be8c…`) is the play image flags on the redesign branch: palette,
+    layout and phase strip.
+  - s176 (app `72498c59…`) is the play image flags on the redesign branch: palette and
+    layout.
+  - s174 (app `586c7ec6…`) is the play image flags on the Rust palette branch.
   - s173 (app `fd4d6e1b…`) is the play image flags on the controller profiles branch.
   - s172 (app `d0863dcc…`) is the play image flags on the screensaver branch.
   - s162 (app `4b6044fa…`) is the `--usb-stick` image of the Web Remote send branch, with

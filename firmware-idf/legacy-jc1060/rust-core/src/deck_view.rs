@@ -46,6 +46,8 @@ pub(crate) struct Live {
     flags: AtomicU32,
     pitch_centipercent: AtomicI32,
     bpm_x100: AtomicU32,
+    /// When the snapshot was stored, in microseconds since boot (low 32 bits).
+    at_us: AtomicU32,
 }
 
 impl Live {
@@ -55,6 +57,7 @@ impl Live {
             flags: AtomicU32::new(0),
             pitch_centipercent: AtomicI32::new(0),
             bpm_x100: AtomicU32::new(0),
+            at_us: AtomicU32::new(0),
         }
     }
 
@@ -64,6 +67,14 @@ impl Live {
         self.pitch_centipercent
             .store(deck.pitch_centipercent, Ordering::Relaxed);
         self.bpm_x100.store(deck.bpm_x100, Ordering::Relaxed);
+        self.at_us.store(clock_us(), Ordering::Relaxed);
+    }
+
+    /// When the snapshot [`load`](Self::load) gives was stored, as [`clock_us`] counts.
+    /// The screen's; host tests build without it.
+    #[cfg_attr(test, allow(dead_code))]
+    pub(crate) fn stored_us(&self) -> u32 {
+        self.at_us.load(Ordering::Relaxed)
     }
 
     pub(crate) fn load(&self) -> DeckSnapshot {
@@ -77,6 +88,44 @@ impl Live {
 }
 
 pub(crate) static LIVE: [Live; 2] = [Live::new(), Live::new()];
+
+/// Microseconds since boot, low 32 bits; 0 in host tests.
+pub(crate) fn clock_us() -> u32 {
+    #[cfg(all(feature = "idf-deck-engine", not(test)))]
+    {
+        unsafe extern "C" {
+            fn esp_timer_get_time() -> i64;
+        }
+        // SAFETY: IDF monotonic task-safe clock.
+        unsafe { esp_timer_get_time() as u32 }
+    }
+    #[cfg(not(all(feature = "idf-deck-engine", not(test))))]
+    0
+}
+
+/// The furthest a snapshot's position is carried forward: a little over two refreshes.
+const AHEAD_MAX_US: u32 = 40_000;
+
+/// `deck` as it will be `ahead_us` after its snapshot: a playing deck moves on at its
+/// pitched tempo, for at most [`AHEAD_MAX_US`]. A paused or looping deck stays where it
+/// is (a loop would jump back), and so does one given a time before its snapshot.
+///
+/// The engine stores a position once per USB audio fill, and a frame reaches the panel
+/// 20 to 40 ms after the screen read it, a different time each frame. Drawn as read, the
+/// lanes stepped unevenly; at the largest zoom (about 30 px a frame) the owner saw them
+/// stutter. Drawn where the deck will be when the frame shows, they move evenly.
+pub(crate) fn ahead(deck: DeckSnapshot, ahead_us: u32) -> DeckSnapshot {
+    if !deck.has(PLAYING) || deck.has(LOOPING) || ahead_us > AHEAD_MAX_US {
+        return deck;
+    }
+    let rate = 10_000 + i64::from(deck.pitch_centipercent);
+    let moved_ms = i64::from(ahead_us) * rate / 10_000_000;
+    DeckSnapshot {
+        position_ms: (i64::from(deck.position_ms) + moved_ms.max(0)).min(i64::from(u32::MAX))
+            as u32,
+        ..deck
+    }
+}
 
 /// What the lane marks on a deck's track: the Hot Cues by pad, and the running loop.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -521,8 +570,88 @@ pub(crate) fn level() -> Level {
     }
 }
 
-/// How many rows `level` has.
+/// The Library page's view of a track list, sorted and filtered (`library_view`): for one
+/// level, the positions of the rows it shows, in order. The screen task writes it; the
+/// engine reads it, on the other core, for the browse knob and LOAD. A sequence count
+/// guards it: odd while the screen task writes, so a reader that saw it change reads again.
+pub(crate) const VIEW_MAX: usize = 1_024;
+const NO_VIEW: u32 = u32::MAX - 2;
+static VIEW_SEQUENCE: AtomicU32 = AtomicU32::new(0);
+static VIEW_LEVEL: AtomicU32 = AtomicU32::new(NO_VIEW);
+static VIEW_LEN: AtomicU32 = AtomicU32::new(0);
+static VIEW_ROWS: [AtomicU32; VIEW_MAX] = [const { AtomicU32::new(0) }; VIEW_MAX];
+
+const fn level_code(level: Level) -> u32 {
+    match level {
+        Level::All => ALL,
+        Level::Top => TOP,
+        Level::Node(node) => node,
+    }
+}
+
+/// Shows `level` through `rows`, positions of its rows (`None`: as the level has them),
+/// with row `selected` of it selected. The selection is written with the mapping, so LOAD
+/// never pairs a new view with the old view's selection. The screen task's side. Rows
+/// past `VIEW_MAX` are left out.
+pub(crate) fn publish_view(level: Level, rows: Option<&[u32]>, selected: u32) {
+    VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+    SELECTED.store(selected, Ordering::Relaxed);
+    match rows {
+        Some(rows) => {
+            let rows = &rows[..rows.len().min(VIEW_MAX)];
+            for (slot, &row) in VIEW_ROWS.iter().zip(rows) {
+                slot.store(row, Ordering::Relaxed);
+            }
+            VIEW_LEN.store(rows.len() as u32, Ordering::Relaxed);
+            VIEW_LEVEL.store(level_code(level), Ordering::Relaxed);
+        }
+        None => VIEW_LEVEL.store(NO_VIEW, Ordering::Relaxed),
+    }
+    VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+}
+
+/// What a read through the view found.
+#[derive(Debug, Eq, PartialEq)]
+enum ViewRead<R> {
+    /// The view of the level, read whole.
+    Shown(R),
+    /// No view of the level: it shows its rows as it has them.
+    Absent,
+    /// The screen task kept writing the view: nothing is known of it. Reading the level
+    /// as it is would map a row shown in a sorted list to another track.
+    Busy,
+}
+
+/// What the view says of `level`, read whole by `read`. A read the screen task keeps
+/// overwriting gives up after a few tries.
+fn through_view<R>(level: Level, read: impl Fn() -> R) -> ViewRead<R> {
+    for _ in 0..64 {
+        let before = VIEW_SEQUENCE.load(Ordering::Acquire);
+        if before.is_multiple_of(2) {
+            let seen = VIEW_LEVEL.load(Ordering::Relaxed) == level_code(level);
+            let value = seen.then(&read);
+            core::sync::atomic::fence(Ordering::Acquire);
+            if VIEW_SEQUENCE.load(Ordering::Relaxed) == before {
+                return value.map_or(ViewRead::Absent, ViewRead::Shown);
+            }
+        }
+        core::hint::spin_loop();
+    }
+    ViewRead::Busy
+}
+
+/// How many rows `level` shows: its view's, or all of them; 0 while the view is being
+/// written (so the knob and LOAD wait for the next turn).
 pub(crate) fn level_len(level: Level) -> u32 {
+    match through_view(level, || VIEW_LEN.load(Ordering::Relaxed)) {
+        ViewRead::Shown(len) => len,
+        ViewRead::Absent => base_len(level),
+        ViewRead::Busy => 0,
+    }
+}
+
+/// How many rows `level` has, before any view.
+pub(crate) fn base_len(level: Level) -> u32 {
     match level {
         Level::All => LIBRARY_LEN.load(Ordering::Acquire),
         Level::Top => shelf().map_or(0, |shelf| shelf.top.len() as u32),
@@ -532,8 +661,21 @@ pub(crate) fn level_len(level: Level) -> u32 {
     }
 }
 
-/// Row `index` of `level`.
+/// Row `index` of what `level` shows.
 pub(crate) fn row_at(level: Level, index: u32) -> Option<Row> {
+    let position = through_view(level, || {
+        (index < VIEW_LEN.load(Ordering::Relaxed))
+            .then(|| VIEW_ROWS[index as usize].load(Ordering::Relaxed))
+    });
+    match position {
+        ViewRead::Shown(position) => base_row_at(level, position?),
+        ViewRead::Absent => base_row_at(level, index),
+        ViewRead::Busy => None,
+    }
+}
+
+/// Row `index` of `level`, before any view.
+pub(crate) fn base_row_at(level: Level, index: u32) -> Option<Row> {
     let index = index as usize;
     match level {
         Level::All => (index < LIBRARY_LEN.load(Ordering::Acquire) as usize)
@@ -549,9 +691,29 @@ pub(crate) fn row_at(level: Level, index: u32) -> Option<Row> {
     }
 }
 
-/// The selected row of the level shown.
+/// The selected row of the level shown, read with the view in one go: the screen task
+/// publishes a new view and its selection together (`publish_view`). `None` with nothing
+/// selected, or while the view is being written: LOAD then does nothing rather than load
+/// another track.
 pub(crate) fn selected_row() -> Option<Row> {
-    row_at(level(), selected()?)
+    let level = level();
+    let position = through_view(level, || {
+        let len = VIEW_LEN.load(Ordering::Relaxed);
+        (len != 0).then(|| {
+            let index = SELECTED.load(Ordering::Relaxed).min(len - 1);
+            VIEW_ROWS[index as usize].load(Ordering::Relaxed)
+        })
+    });
+    match position {
+        ViewRead::Shown(position) => base_row_at(level, position?),
+        ViewRead::Absent => {
+            let len = base_len(level);
+            (len != 0)
+                .then(|| SELECTED.load(Ordering::Relaxed).min(len - 1))
+                .and_then(|index| base_row_at(level, index))
+        }
+        ViewRead::Busy => None,
+    }
 }
 
 /// Opens the selected folder or playlist; false on a track or with nothing selected.
@@ -572,7 +734,8 @@ pub(crate) fn open() -> bool {
 pub(crate) fn back() -> bool {
     let (up, selected) = match level() {
         Level::All => {
-            if level_len(Level::Top) == 0 {
+            // The top level has no view.
+            if base_len(Level::Top) == 0 {
                 return false;
             }
             ALL_SELECTED.store(SELECTED.load(Ordering::Relaxed), Ordering::Relaxed);

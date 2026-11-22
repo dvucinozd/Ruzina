@@ -63,6 +63,9 @@ mod deck_keylock;
 mod deck_engine;
 
 #[cfg(feature = "deck-engine")]
+mod deck_phase;
+
+#[cfg(feature = "deck-engine")]
 mod deck_transport;
 
 #[cfg(feature = "deck-engine")]
@@ -76,6 +79,9 @@ mod deck_settings;
 
 #[cfg(feature = "deck-engine")]
 mod screen_idle;
+
+#[cfg(feature = "deck-engine")]
+mod library_view;
 
 #[cfg(feature = "soak-autoplay")]
 mod soak_autoplay;
