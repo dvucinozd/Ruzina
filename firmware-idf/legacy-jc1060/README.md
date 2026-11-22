@@ -45,6 +45,8 @@ python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --outp
 | `--soak-autoplay` | The soak DJ: both decks keep loading and playing, with a gesture every few seconds; a deck the operator paused stays paused, and the controller keeps working | `deck-engine`, no `--producer-profile` |
 | `--uac-profile` | The fill profiler: `uac_profile` records and the overlap counts | `deck-engine` |
 | `--screen-still` | The screen stands still every other 30 s, to compare fills with and without it | `--uac-profile` and `--slint-ui` |
+| `--fill-gap-cycle` | The screen stops waiting for gaps between fills every other 30 s, to compare fills with and without the wait | `--uac-profile` and `--slint-ui`, no `--screen-still` |
+| `--contention-bench` | A boot bench: the fill timed while the other core repeats one kind of the screen's memory work. Never in a play image: on s165 it left artefacts at the screen's edges | `--uac-profile` and `--slint-ui` |
 
 - **PowerShell:** `tools/build_legacy.ps1` passes only `-UacProfile` of these flags. For
   the recipes above, call Python directly.

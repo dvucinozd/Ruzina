@@ -74,6 +74,14 @@ config RUZINA_UAC_PROFILE
     select ESP_TIMER_IN_IRAM
     default n
 
+config RUZINA_CONTENTION_BENCH
+    bool "Boot bench: the fill timed against the screen's memory work on the other core"
+    depends on RUZINA_UAC_PROFILE && RUZINA_SLINT_UI
+    default n
+    help
+        Runs once at boot, before the screen starts. On s165 the screen then showed
+        artefacts at its edges until the next image, so profile images leave it out.
+
 config RUZINA_MEDIA_USB_STICK
     bool "Read the media from a USB stick behind a hub on the HS port instead of the SD card"
     depends on RUZINA_SD_RUST_BRIDGE && RUZINA_USB_HOST_ENUM && USB_HOST_HUBS_SUPPORTED

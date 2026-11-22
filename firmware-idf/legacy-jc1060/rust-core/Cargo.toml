@@ -111,6 +111,9 @@ idf-slint-ui = ["idf-deck-engine", "slint-ui"]
 # Profile diagnostic: the screen stands still every other 30 s, to measure the fill without it.
 screen-still = ["slint-ui", "uac-profile"]
 idf-screen-still = ["idf-slint-ui", "idf-uac-profile", "screen-still"]
+# Profile diagnostic: the screen does not wait for gaps between fills every other 30 s.
+fill-gap-cycle = ["slint-ui", "uac-profile"]
+idf-fill-gap-cycle = ["idf-slint-ui", "idf-uac-profile", "fill-gap-cycle"]
 
 # The Web Remote on the deck's own Wi-Fi (the C6 probe): ruzina-web over the engine.
 web-remote = ["slint-ui", "dep:ruzina-web", "dep:ruzina-media-catalog", "dep:ruzina-media-session"]

@@ -174,6 +174,18 @@ unsafe extern "C" {
         height: u32,
         dx: u32,
     ) -> i32;
+    /// A strip of `pixels` pixels in internal RAM, made on the first call, or null.
+    fn ruzina_panel_strip(pixels: u32) -> *mut u16;
+    fn ruzina_panel_blit(
+        from: *const u16,
+        from_width: u32,
+        from_x: u32,
+        to: *mut u16,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) -> i32;
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
     /// The running app's description (IDF `esp_app_desc_t`).
     fn esp_app_get_description() -> *const AppDescription;
@@ -407,31 +419,134 @@ fn wifi_credentials() -> (alloc::string::String, alloc::string::String) {
     (c_text(&ssid).into(), c_text(&password).into())
 }
 
-/// Profile images: the USB audio fill learns whether a frame was being drawn while it ran
-/// (`uac_profile_sched.h`).
+#[cfg(all(feature = "screen-still", feature = "fill-gap-cycle"))]
+compile_error!("The still screen and the fill gap cycle each need the diagnostic phase");
+
+/// What the USB audio fill's profile learns ran beside it (`uac_profile_sched.h`).
+const SCREEN: u32 = 0;
+const MOVE: u32 = 3;
+const FLUSH: u32 = 4;
+
+/// Profile images: the USB audio fill learns whether a frame was being drawn, a lane
+/// moved or rows written back while it ran.
 #[cfg(feature = "idf-uac-profile")]
-fn mark_drawing(running: bool) {
+fn mark(which: u32, running: bool) {
     unsafe extern "C" {
         fn ruzina_uac_activity(which: u32, running: bool);
     }
-    // SAFETY: two scalars; only this task marks the screen.
-    unsafe { ruzina_uac_activity(0, running) };
+    // SAFETY: two scalars; only this task marks these activities.
+    unsafe { ruzina_uac_activity(which, running) };
 }
 #[cfg(not(feature = "idf-uac-profile"))]
-fn mark_drawing(_: bool) {}
+fn mark(_: u32, _: bool) {}
 
-/// A diagnostic (`--screen-still`): the screen stands still every other 30 s, so the fill
-/// can be measured with it and without it. The fill's profile is told which.
-#[cfg(feature = "screen-still")]
-fn standing_still() -> bool {
+/// Profile images: the screen counts only while this task is on the CPU, not while it
+/// sleeps waiting for a gap between fills. A lane's move goes on in the PPA meanwhile and
+/// counts as its own activity.
+#[cfg(feature = "idf-uac-profile")]
+fn mark_own_task() {
+    unsafe extern "C" {
+        fn xTaskGetCurrentTaskHandle() -> *mut core::ffi::c_void;
+        fn ruzina_uac_activity_task(which: u32, task: *const core::ffi::c_void);
+    }
+    // SAFETY: the running task's handle, kept by C only to compare in its switch hooks.
+    unsafe { ruzina_uac_activity_task(SCREEN, xTaskGetCurrentTaskHandle()) };
+}
+
+/// The 30 s diagnostic phases (`--screen-still`, `--fill-gap-cycle`): on every other 30 s.
+/// The fill's profile is told which.
+#[cfg(any(feature = "screen-still", feature = "fill-gap-cycle"))]
+fn diagnostic_phase() -> bool {
     const PHASE_US: u64 = 30_000_000;
     unsafe extern "C" {
-        fn ruzina_uac_screen_still(still: bool);
+        fn ruzina_uac_phase(on: bool);
     }
-    let still = (now_us() / PHASE_US) % 2 == 1;
+    let on = (now_us() / PHASE_US) % 2 == 1;
     // SAFETY: a scalar.
-    unsafe { ruzina_uac_screen_still(still) };
-    still
+    unsafe { ruzina_uac_phase(on) };
+    on
+}
+
+/// The steps of a frame that move the most memory, each kept out of the USB audio fills.
+#[derive(Clone, Copy)]
+enum Step {
+    /// Slint's lines, their copy into the frame buffer and its write-back.
+    Slint = 0,
+    /// The PPA moving a lane.
+    Move = 1,
+    /// A lane's new columns and its write-back.
+    Columns = 2,
+}
+
+/// Keeps the screen's memory work out of the USB audio fills: on s163 a screen frame
+/// during a fill made 88 % of the Master Tempo fills over 3 ms. Each step waits, asleep,
+/// for a gap between fills that it fits, by how long it took before (`fill_gap.h`).
+struct Gate {
+    /// Each step's recent mean, in microseconds.
+    means: [u32; 3],
+    /// The diagnostic phase in which the screen does not wait (`--fill-gap-cycle`).
+    #[cfg_attr(not(feature = "fill-gap-cycle"), allow(dead_code))]
+    off: bool,
+    /// This frame's waits, in microseconds.
+    waited: u32,
+    /// Profile images: each step's time and each frame's waits.
+    #[cfg(feature = "idf-uac-profile")]
+    times: [Times; 4],
+}
+
+impl Gate {
+    fn new() -> Self {
+        Self {
+            means: [0; 3],
+            off: false,
+            waited: 0,
+            #[cfg(feature = "idf-uac-profile")]
+            times: Default::default(),
+        }
+    }
+
+    fn run<R>(&mut self, step: Step, work: impl FnOnce() -> R) -> R {
+        let mean = &mut self.means[step as usize];
+        // A quarter over the mean, for the steps that run long.
+        let budget = *mean + *mean / 4;
+        #[cfg(feature = "fill-gap-cycle")]
+        let gated = !self.off;
+        #[cfg(not(feature = "fill-gap-cycle"))]
+        let gated = true;
+        if gated {
+            unsafe extern "C" {
+                fn ruzina_uac_wait_gap(budget_us: u32) -> u32;
+            }
+            // SAFETY: a scalar; this is the screen's task, the only one that waits.
+            self.waited += unsafe { ruzina_uac_wait_gap(budget) };
+        }
+        let started = now_us();
+        let result = work();
+        let took = (now_us() - started) as u32;
+        *mean = if *mean == 0 {
+            took
+        } else {
+            (*mean * 7 + took) / 8
+        };
+        #[cfg(feature = "idf-uac-profile")]
+        self.times[step as usize].add(took);
+        result
+    }
+
+    /// The end of a frame: its waits.
+    fn frame_done(&mut self) {
+        #[cfg(feature = "idf-uac-profile")]
+        self.times[3].add(self.waited);
+        self.waited = 0;
+    }
+
+    /// Profile images: each step's longest and mean time, and the frames' waits.
+    #[cfg(feature = "idf-uac-profile")]
+    fn report(&mut self) {
+        for (i, times) in self.times.iter_mut().enumerate() {
+            times.report(33 + i as u32);
+        }
+    }
 }
 
 fn now_us() -> u64 {
@@ -634,10 +749,64 @@ fn wave(track: Option<&LoadedTrack>, window_ms: u32, marks: Marks, position_ms: 
     }
 }
 
+/// Columns of a lane's strip in internal RAM (`draw_strips`): 25 KiB.
+const STRIP_COLUMNS: usize = 64;
+/// The strip in internal RAM: 16 of Slint's lines (`ruzina_screen_lines::Stage`), 32 KiB,
+/// or a lane's columns in its start.
+const STRIP_PIXELS: usize = 16 * WIDTH;
+const _: () = assert!(STRIP_COLUMNS * LANE_HEIGHT <= STRIP_PIXELS);
+
+/// Copies a block of Slint's lines from the strip into a frame buffer, by the PPA.
+fn copy_block(strip: &[u16], frame: &mut [u16], block: ruzina_screen_lines::Block) -> bool {
+    mark(MOVE, true);
+    // SAFETY: the block lies inside `strip`, `stage_width` to a row (screen-lines makes
+    // it so); `frame` is one of the panel's frame buffers and C bounds the block to it.
+    let copied = unsafe {
+        ruzina_panel_blit(
+            strip.as_ptr(),
+            block.stage_width as u32,
+            block.stage_x as u32,
+            frame.as_mut_ptr(),
+            block.x as u32,
+            block.y as u32,
+            block.width as u32,
+            block.height as u32,
+        )
+    } == 0;
+    mark(MOVE, false);
+    copied
+}
+
+/// Where a lane's pixels go: the frame buffer, or a strip that holds columns `first` and
+/// up of all the lane's rows, `stride` to a row.
+struct Canvas<'a> {
+    pixels: &'a mut [u16],
+    stride: usize,
+    /// The index of the lane's top left pixel, or of the strip's.
+    base: usize,
+    first: usize,
+}
+
+impl<'a> Canvas<'a> {
+    fn frame(frame: &'a mut [u16], area: Area) -> Self {
+        Self {
+            pixels: frame,
+            stride: WIDTH,
+            base: area.y * WIDTH + area.x,
+            first: 0,
+        }
+    }
+
+    /// The index of the lane's column `x`, at or after `first`, in row `y`.
+    fn index(&self, x: usize, y: usize) -> usize {
+        self.base + y * self.stride + x - self.first
+    }
+}
+
 /// Draws columns `columns` of the lane whose left edge shows detail column `left`. Each
 /// row is built in internal RAM and written in one copy; rows mirror below the middle.
 fn draw_columns(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -688,21 +857,21 @@ fn draw_columns(
         }
         for row in [middle - distance, middle + distance] {
             if row < LANE_HEIGHT {
-                let start = (area.y + row) * WIDTH + area.x + columns.start;
-                frame[start..start + width].copy_from_slice(&line[..width]);
+                let start = canvas.index(columns.start, row);
+                canvas.pixels[start..start + width].copy_from_slice(&line[..width]);
             }
         }
     }
-    draw_bar_caps(frame, area, wave, left, columns.clone());
-    draw_memory_flags(frame, area, wave, left, columns.clone());
-    draw_cue_flags(frame, area, wave, left, columns);
+    draw_bar_caps(canvas, area, wave, left, columns.clone());
+    draw_memory_flags(canvas, area, wave, left, columns.clone());
+    draw_cue_flags(canvas, area, wave, left, columns);
 }
 
 /// Draws the triangles of the memory cues near columns `columns`, clipped to them and
 /// clear of the playhead: at the Hot Cue flags' edge, pointing into the lane. A Hot Cue's
 /// flag is drawn over one.
 fn draw_memory_flags(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -722,11 +891,11 @@ fn draw_memory_flags(
             let reach =
                 MEMORY_FLAG_REACH * (MEMORY_FLAG_HEIGHT - row) as i64 / MEMORY_FLAG_HEIGHT as i64;
             let y = if at_top { row } else { LANE_HEIGHT - 1 - row };
-            let line = (area.y + y) * WIDTH + area.x;
             for x in (centre - reach).max(first)..=(centre + reach).min(end - 1) {
                 let x = x as usize;
                 if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
-                    frame[line + x] = MEMORY;
+                    let at = canvas.index(x, y);
+                    canvas.pixels[at] = MEMORY;
                 }
             }
         }
@@ -737,7 +906,7 @@ fn draw_memory_flags(
 /// the playhead: a square right of the cue's line, at the edge away from the bar
 /// triangles (the top of deck 1's lane, the bottom of deck 2's).
 fn draw_cue_flags(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -751,11 +920,11 @@ fn draw_cue_flags(
         };
         for row in 0..CUE_FLAG_HEIGHT {
             let y = if at_top { row } else { LANE_HEIGHT - 1 - row };
-            let start = (area.y + y) * WIDTH + area.x;
             for x in line.max(first)..(line + CUE_FLAG_WIDTH).min(end) {
                 let x = x as usize;
                 if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
-                    frame[start + x] = CUE_COLORS[pad];
+                    let at = canvas.index(x, y);
+                    canvas.pixels[at] = CUE_COLORS[pad];
                 }
             }
         }
@@ -765,7 +934,7 @@ fn draw_cue_flags(
 /// Draws the red triangles of the bar lines near columns `columns`, clipped to them and
 /// clear of the playhead. Deck 1's lane has them at the bottom, deck 2's at the top.
 fn draw_bar_caps(
-    frame: &mut [u16],
+    canvas: &mut Canvas<'_>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
@@ -785,58 +954,138 @@ fn draw_bar_caps(
             } else {
                 row
             };
-            let line = (area.y + y) * WIDTH + area.x;
             for x in (centre - reach).max(first)..=(centre + reach).min(end - 1) {
                 let x = x as usize;
                 if !(PLAYHEAD_X - 1..=PLAYHEAD_X + 1).contains(&x) {
-                    frame[line + x] = BAR_CAP;
+                    let at = canvas.index(x, y);
+                    canvas.pixels[at] = BAR_CAP;
                 }
             }
         }
     }
 }
 
-/// Brings the lane in `back` to show track pixel `left` at its left edge. When `shown`
-/// holds it at most half a lane earlier, the hardware copies those pixels, moved left,
-/// and the CPU draws only the new columns and the playhead; otherwise the CPU draws the
-/// whole lane. `back` holds the frame before `shown`, so it is never left as it was.
+/// Draws columns `columns` of the lane in `frame`: in strips in internal RAM that the PPA
+/// copies into `frame`, so the CPU does not write PSRAM. Without a strip, or once a copy
+/// fails, it draws straight into `frame` and drops the strip, and the caller then writes
+/// the lane's rows back: a later copy would discard what the CPU wrote there.
+fn draw_strips(
+    frame: &mut [u16],
+    strip: &mut Option<&mut [u16]>,
+    area: Area,
+    wave: Wave<'_>,
+    left: i64,
+    columns: core::ops::Range<usize>,
+) {
+    let mut start = columns.start;
+    while start < columns.end {
+        let Some(pixels) = strip.as_deref_mut() else {
+            draw_columns(
+                &mut Canvas::frame(frame, area),
+                area,
+                wave,
+                left,
+                start..columns.end,
+            );
+            return;
+        };
+        let end = (start + STRIP_COLUMNS).min(columns.end);
+        let width = end - start;
+        let pixels = &mut pixels[..width * LANE_HEIGHT];
+        let mut canvas = Canvas {
+            pixels,
+            stride: width,
+            base: 0,
+            first: start,
+        };
+        draw_columns(&mut canvas, area, wave, left, start..end);
+        mark(MOVE, true);
+        // SAFETY: the strip holds `width` by LANE_HEIGHT pixels; `frame` is one of the
+        // panel's frame buffers and C bounds the block to it.
+        let copied = unsafe {
+            ruzina_panel_blit(
+                canvas.pixels.as_ptr(),
+                width as u32,
+                0,
+                frame.as_mut_ptr(),
+                (area.x + start) as u32,
+                area.y as u32,
+                width as u32,
+                LANE_HEIGHT as u32,
+            )
+        } == 0;
+        mark(MOVE, false);
+        if copied {
+            start = end;
+        } else {
+            *strip = None;
+        }
+    }
+}
+
+/// Brings the lane in `back` to show track pixel `left` at its left edge. When `shown`,
+/// the other frame buffer, holds it at most half a lane earlier (its lane starts at the
+/// pixel given with it), the hardware copies those pixels, moved left, and only the new
+/// columns and the playhead are drawn; otherwise the whole lane is. The columns are drawn
+/// through `strip` (`draw_strips`). `back` holds the frame before `shown`, so it is never
+/// left as it was. Each of the two steps starts between USB audio fills (`Gate`).
 fn draw_lane(
+    gate: &mut Gate,
+    strip: Option<&mut [u16]>,
     back: &mut [u16],
-    shown: &[u16],
-    shown_left: Option<i64>,
+    shown: Option<(&[u16], i64)>,
     area: Area,
     wave: Wave<'_>,
     left: i64,
 ) {
-    let step = shown_left.map(|shown_left| left - shown_left);
-    let moved = step.is_some_and(|dx| {
+    let step = shown.map(|(_, shown_left)| left - shown_left);
+    let moved = shown.zip(step).is_some_and(|((shown, _), dx)| {
         dx >= 0
             && dx < LANE_WIDTH as i64 / 2
-            // SAFETY: both are the panel's frame buffers; C bounds the block to them.
-            && unsafe {
-                ruzina_panel_move(
-                    shown.as_ptr(),
-                    back.as_mut_ptr(),
-                    area.x as u32,
-                    area.y as u32,
-                    LANE_WIDTH as u32,
-                    LANE_HEIGHT as u32,
-                    dx as u32,
-                )
-            } == 0
+            && gate.run(Step::Move, || {
+                mark(MOVE, true);
+                // SAFETY: both are the panel's frame buffers; C bounds the block to them.
+                let moved = unsafe {
+                    ruzina_panel_move(
+                        shown.as_ptr(),
+                        back.as_mut_ptr(),
+                        area.x as u32,
+                        area.y as u32,
+                        LANE_WIDTH as u32,
+                        LANE_HEIGHT as u32,
+                        dx as u32,
+                    )
+                };
+                mark(MOVE, false);
+                moved
+            }) == 0
     });
-    match (moved, step) {
-        // A paused deck: the copy is the whole frame.
-        (true, Some(0)) => {}
-        (true, Some(dx)) => {
-            let dx = dx as usize;
-            draw_columns(back, area, wave, left, LANE_WIDTH - dx..LANE_WIDTH);
-            // The old playhead moved left with the rest.
-            draw_columns(back, area, wave, left, PLAYHEAD_X - 1 - dx..PLAYHEAD_X + 2);
+    gate.run(Step::Columns, || {
+        let mut strip = strip;
+        match (moved, step) {
+            // A paused deck: the copy is the whole frame.
+            (true, Some(0)) => {}
+            (true, Some(dx)) => {
+                let dx = dx as usize;
+                draw_strips(
+                    back,
+                    &mut strip,
+                    area,
+                    wave,
+                    left,
+                    LANE_WIDTH - dx..LANE_WIDTH,
+                );
+                // The old playhead moved left with the rest.
+                let playhead = PLAYHEAD_X - 1 - dx..PLAYHEAD_X + 2;
+                draw_strips(back, &mut strip, area, wave, left, playhead);
+            }
+            _ => draw_strips(back, &mut strip, area, wave, left, 0..LANE_WIDTH),
         }
-        _ => draw_columns(back, area, wave, left, 0..LANE_WIDTH),
-    }
-    flush(back, area.y, LANE_HEIGHT);
+        // The PPA wrote memory itself; what the CPU wrote is still in cache.
+        if strip.is_none() {
+            flush(back, area.y, LANE_HEIGHT);
+        }
+    });
 }
 
 /// Draws a channel meter with `lit` of its ten segments lit from the bottom: green, then
@@ -918,8 +1167,10 @@ fn draw_mini(
 
 /// Writes `rows` rows of the buffer `frame` back from cache, for the panel's DMA.
 fn flush(frame: &mut [u16], y: usize, rows: usize) {
+    mark(FLUSH, true);
     // SAFETY: `frame` is one of the two frame buffers; C bounds the rows to it.
     unsafe { ruzina_panel_flush(frame.as_mut_ptr(), y as u32, rows as u32) };
+    mark(FLUSH, false);
 }
 
 #[derive(Clone, Copy, Default)]
@@ -1444,6 +1695,14 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let start = now_us() / 1_000;
     let mut next_report = REPORT_MS;
     let mut drawing = 1;
+    let mut gate = Gate::new();
+    // SAFETY: C makes the strip once and hands it only to this task.
+    let mut strip = unsafe {
+        let pixels = ruzina_panel_strip(STRIP_PIXELS as u32);
+        (!pixels.is_null()).then(|| core::slice::from_raw_parts_mut(pixels, STRIP_PIXELS))
+    };
+    #[cfg(feature = "idf-uac-profile")]
+    mark_own_task();
     // SAFETY: reads a counter.
     let mut target = unsafe { ruzina_panel_refreshes() } + REFRESHES_PER_FRAME;
     let timeout_ms = || crate::deck_settings::current().screensaver.timeout_ms();
@@ -1453,11 +1712,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         if ms >= next_report {
             slint_times.report(21);
             wave_times.report(22);
+            #[cfg(feature = "idf-uac-profile")]
+            gate.report();
             next_report = ms + REPORT_MS;
         }
         touch(ui.window(), &mut touched, &mut touch_errors);
+        #[cfg(feature = "fill-gap-cycle")]
+        {
+            gate.off = diagnostic_phase();
+        }
         #[cfg(feature = "screen-still")]
-        if standing_still() {
+        if diagnostic_phase() {
             // SAFETY: waits on the panel's refresh.
             unsafe { ruzina_panel_wait_refresh() };
             continue;
@@ -1586,7 +1851,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         } else {
             (&mut **second, &**first)
         };
-        mark_drawing(true);
+        mark(SCREEN, true);
         let allocs_before = crate::idf_alloc::counted();
         let started = now_us();
         let mut rows_drawn = 0;
@@ -1602,19 +1867,32 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         // Every frame goes through Slint, which then also brings this buffer up to date
         // with what changed while the other one was shown.
         window.request_redraw();
-        window.draw_if_needed(|renderer| {
-            // Made in its own crate, built for speed (`ruzina-screen-lines`).
-            let lines = ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us);
-            drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));
-            let mut flush_us = 0;
-            if lines.bottom > lines.top {
-                let (top, bottom) = (lines.top, lines.bottom);
-                let flushing = now_us();
-                flush(buffer, top, bottom - top);
-                flush_us = (now_us() - flushing) as u32;
-                rows_drawn = bottom - top;
-            }
-            split = Some((lines.prepare_us, lines.lines_us, lines.copy_us, flush_us));
+        gate.run(Step::Slint, || {
+            window.draw_if_needed(|renderer| {
+                // Made in its own crate, built for speed (`ruzina-screen-lines`). Its lines
+                // go through the strip and the PPA, off the CPU's writes to PSRAM.
+                let stage = strip
+                    .as_deref_mut()
+                    .map(|pixels| ruzina_screen_lines::Stage {
+                        pixels,
+                        copy: copy_block,
+                    });
+                let lines =
+                    ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us, stage);
+                drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));
+                let mut flush_us = 0;
+                if lines.bottom > lines.top {
+                    let (top, bottom) = (lines.top, lines.bottom);
+                    rows_drawn = bottom - top;
+                    // What the PPA copied is in memory; what the CPU wrote is in cache.
+                    if lines.cpu_wrote {
+                        let flushing = now_us();
+                        flush(buffer, top, bottom - top);
+                        flush_us = (now_us() - flushing) as u32;
+                    }
+                }
+                split = Some((lines.prepare_us, lines.lines_us, lines.copy_us, flush_us));
+            })
         });
         let drawn = now_us();
         let slint_us = (drawn - started) as u32;
@@ -1678,7 +1956,15 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 // The shown lane is copied only when it has the same marks.
                 let shown_left = at_scale(lane_at[1 - drawing][deck])
                     .filter(|_| marks_at[1 - drawing][deck] == Some(revision));
-                draw_lane(buffer, shown, shown_left, LANES[deck], wave, left);
+                draw_lane(
+                    &mut gate,
+                    strip.as_deref_mut(),
+                    buffer,
+                    shown_left.map(|shown_left| (shown, shown_left)),
+                    LANES[deck],
+                    wave,
+                    left,
+                );
                 lane_at[drawing][deck] = Some((left, wave.window_ms));
             }
             let index = track.map_or(u32::MAX, |track| track.index);
@@ -1699,7 +1985,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             }
         }
         wave_times.add((now_us() - drawn) as u32);
-        mark_drawing(false);
+        gate.frame_done();
+        mark(SCREEN, false);
         // The screen runs above the decoding client on its core. After a long frame (a
         // page full of text) it steps aside for two refreshes, so a run of them cannot
         // hold the decoders off: on s97 such a run kept them out for 250 ms, and a deck

@@ -12,6 +12,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#if CONFIG_RUZINA_CONTENTION_BENCH
+#include <stdatomic.h>
+#include <string.h>
+#include "driver/ppa.h"
+#include "esp_cache.h"
+#include "esp_heap_caps.h"
+#endif
 
 #if ESP_IDF_VERSION != ESP_IDF_VERSION_VAL(6, 1, 0)
 #error "This compile experiment is pinned to ESP-IDF 6.1"
@@ -58,6 +65,124 @@ static void render_bench(void)
     }
     vSemaphoreDelete(bench.done);
 }
+
+#if CONFIG_RUZINA_CONTENTION_BENCH
+/* The same graph while core 1 keeps doing one kind of the screen's memory work, over and
+ * over, on a lane of two frame buffers of its own: which kind slows the fill (s163). The
+ * screen does each in bursts; here it never stops, so each is at its worst. */
+enum { LOAD_NONE, LOAD_MOVE, LOAD_DRAW, LOAD_DRAW_FLUSH, LOAD_FLUSH, LOAD_COPY, LOADS };
+enum { LANE_X = 82, LANE_Y = 46, LANE_W = 872, LANE_H = 201, FRAME_W = 1024, FRAME_H = 600 };
+typedef struct {
+    uint32_t kind, rounds;
+    _Atomic bool stop;
+    uint16_t *a, *b;
+    ppa_client_handle_t ppa;
+    SemaphoreHandle_t done;
+} screen_load_t;
+
+static void screen_load_task(void *arg)
+{
+    screen_load_t *l = arg;
+    uint16_t ink = 1;
+    while (!atomic_load_explicit(&l->stop, memory_order_acquire)) {
+        uint16_t *rows = l->b + LANE_Y * FRAME_W;
+        switch (l->kind) {
+        case LOAD_MOVE: {
+            /* A lane scrolled by 8 columns, as ruzina_panel_move does it. */
+            ppa_srm_oper_config_t move = {
+                .in = {.buffer = l->a, .pic_w = FRAME_W, .pic_h = FRAME_H, .block_w = LANE_W - 8, .block_h = LANE_H,
+                       .block_offset_x = LANE_X + 8, .block_offset_y = LANE_Y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
+                .out = {.buffer = l->b, .buffer_size = FRAME_W * FRAME_H * 2, .pic_w = FRAME_W, .pic_h = FRAME_H,
+                        .block_offset_x = LANE_X, .block_offset_y = LANE_Y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
+                .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
+                .mode = PPA_TRANS_MODE_BLOCKING,
+            };
+            if (ppa_do_scale_rotate_mirror(l->ppa, &move) != ESP_OK) atomic_store(&l->stop, true);
+            break;
+        }
+        case LOAD_DRAW:
+        case LOAD_DRAW_FLUSH:
+            /* A whole lane's columns written by the CPU, row by row. */
+            for (unsigned y = 0; y < LANE_H; ++y)
+                for (unsigned x = 0; x < LANE_W; ++x) rows[y * FRAME_W + LANE_X + x] = ink;
+            ++ink;
+            if (l->kind == LOAD_DRAW) break;
+            /* And written back for the panel. */
+            __attribute__((fallthrough));
+        case LOAD_FLUSH:
+            esp_cache_msync(rows, FRAME_W * LANE_H * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+            break;
+        case LOAD_COPY:
+            memcpy(rows, l->a + LANE_Y * FRAME_W, FRAME_W * LANE_H * 2);
+            break;
+        default:
+            break;
+        }
+        ++l->rounds;
+    }
+    xSemaphoreGive(l->done);
+    vTaskDelete(NULL);
+}
+
+static void render_contention(void)
+{
+    static const char *const loads[LOADS] = {"none", "ppa_move", "cpu_draw", "cpu_draw_flush", "flush_only", "cpu_copy"};
+    /* The PSRAM-ring graph a plain fill runs, and the graph with both keylocks. */
+    static const uint32_t cases[] = {4, 12};
+    static const char *const case_names[] = {"psram_ring_acquire", "graph_keylock"};
+    screen_load_t load = {.done = xSemaphoreCreateBinary()};
+    render_bench_t bench = {.done = xSemaphoreCreateBinary()};
+    load.a = heap_caps_aligned_calloc(64, FRAME_W * FRAME_H, 2, MALLOC_CAP_SPIRAM);
+    load.b = heap_caps_aligned_calloc(64, FRAME_W * FRAME_H, 2, MALLOC_CAP_SPIRAM);
+    ppa_client_config_t client = {.oper_type = PPA_OPERATION_SRM, .max_pending_trans_num = 1};
+    if (!load.done || !bench.done || !load.a || !load.b || ppa_register_client(&client, &load.ppa) != ESP_OK) {
+        printf("render_contention result=NO_RESOURCES\n");
+        goto done;
+    }
+    esp_cache_msync(load.a, FRAME_W * FRAME_H * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    for (uint32_t kind = 0; kind < LOADS; ++kind) {
+        for (unsigned c = 0; c < sizeof(cases) / sizeof(cases[0]); ++c) {
+            load.kind = kind; load.rounds = 0;
+            atomic_store_explicit(&load.stop, false, memory_order_release);
+            if (kind != LOAD_NONE &&
+                xTaskCreatePinnedToCore(screen_load_task, "screen_load", 4096, &load, 3, NULL, 1) != pdPASS) {
+                printf("render_contention load=%s result=TASK_FAILED\n", loads[kind]);
+                goto done;
+            }
+            vTaskDelay(pdMS_TO_TICKS(20));
+            const int64_t started = esp_timer_get_time();
+            bench.render_case = cases[c]; bench.ok = 0;
+            if (xTaskCreatePinnedToCore(render_bench_task, "render_bench", 16384, &bench, 4, NULL, 0) != pdPASS) {
+                printf("render_contention load=%s result=TASK_FAILED\n", loads[kind]);
+                atomic_store_explicit(&load.stop, true, memory_order_release);
+                if (kind != LOAD_NONE) xSemaphoreTake(load.done, portMAX_DELAY);
+                goto done;
+            }
+            xSemaphoreTake(bench.done, portMAX_DELAY);
+            const int64_t took = esp_timer_get_time() - started;
+            atomic_store_explicit(&load.stop, true, memory_order_release);
+            if (kind != LOAD_NONE) xSemaphoreTake(load.done, portMAX_DELAY);
+            /* Rounds of the load a second, against about 60 moves and draws the screen does. */
+            const uint32_t per_s = took > 0 ? (uint32_t)((uint64_t)load.rounds * 1000000u / (uint64_t)took) : 0;
+            if (bench.ok) {
+                printf("render_contention load=%s case=%s fills=300 mean_us=%" PRIu32 " min_us=%" PRIu32
+                       " max_us=%" PRIu32 " load_per_s=%" PRIu32 "\n",
+                       loads[kind], case_names[c], bench.words[0], bench.words[1], bench.words[2], per_s);
+            } else {
+                printf("render_contention load=%s case=%s result=FAILED\n", loads[kind], case_names[c]);
+            }
+            fflush(stdout);
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+    }
+done:
+    if (load.ppa) ppa_unregister_client(load.ppa);
+    heap_caps_free(load.a);
+    heap_caps_free(load.b);
+    if (load.done) vSemaphoreDelete(load.done);
+    if (bench.done) vSemaphoreDelete(bench.done);
+}
+#endif
 #endif
 
 #if !CONFIG_APP_BUILD_TYPE_PURE_RAM_APP
@@ -156,6 +281,9 @@ void app_main(void)
 #endif
 #if CONFIG_RUZINA_UAC_PROFILE
     render_bench();
+#if CONFIG_RUZINA_CONTENTION_BENCH
+    render_contention();
+#endif
 #endif
     fflush(stdout);
 #endif
