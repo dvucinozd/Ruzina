@@ -18,14 +18,16 @@ The owner's mockup is the "Ruzina deck screen" design canvas.
     colours, so they add no font size.
   - The owner narrowed the rail from 72 px on s175: it had too much empty space around
     the icons.
-- **Lanes:** two lanes of 814×210 at x 136, y 8 and y 262 (they were 872×201).
+- **Lanes:** two lanes of 814×210 at x 136, y 8 and y 262 (they were 872×201). Since
+  2026-11-22 they are 814×220 at y 8 and y 252; see
+  [the redesign on the fill gap](2026-11-22-redesign-on-fill-gap.md).
   - Left of each lane: D1/D2, PLAY, CUE and the cover in a 66 px column.
   - The meter sits at x 122, centred on the lane.
 - **Phase strip:** the 36 px between the lanes holds the phase strip's place, with its
   PHASE label. The strip itself is the next step.
 - **FX panel:** right of the lanes, 64×464. While the effect is on, its FX label blinks
   green (`#00FF66` and dark green, every 400 ms, a Slint `Timer`), as the owner asked;
-  off, it stays dark.
+  off, it stays dark. Since 2026-11-22 it blinks in the effect's colour instead.
 - **Deck cards:** two cards of 482×116 at the bottom, on every page.
   - Each card has the deck's colour bar and title, then elapsed, remaining, BPM (rust),
     pitch, MT, Q, the key and the deck status, then the overview of 466×45.
