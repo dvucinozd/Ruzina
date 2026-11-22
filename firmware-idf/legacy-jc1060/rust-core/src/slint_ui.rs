@@ -28,15 +28,17 @@ const HEIGHT: usize = 600;
 const REPORT_MS: u64 = 20_000;
 /// A Slint frame longer than this is logged on its own.
 const SLOW_FRAME_US: u32 = 30_000;
+/// How often the phase offset label may change, in milliseconds.
+const OFFSET_LABEL_MS: u64 = 250;
 
 // A rectangle Rust draws, which Slint must never write over. The numbers below match
 // the dark rectangles in `overview.slint`.
 use ruzina_screen_lines::Area;
 
 const LANE_WIDTH: usize = 814;
-const LANE_HEIGHT: usize = 210;
-/// The two lanes, right of the deck buttons, with the phase strip's 24 pixels (and 10 either
-/// side) between them.
+const LANE_HEIGHT: usize = 220;
+/// The two lanes, right of the deck buttons, with the phase strip's 24 pixels between them:
+/// their bar triangles touch it (the owner asked, on s185p).
 const LANES: [Area; 2] = [
     Area {
         x: 136,
@@ -46,7 +48,7 @@ const LANES: [Area; 2] = [
     },
     Area {
         x: 136,
-        y: 262,
+        y: 252,
         width: LANE_WIDTH,
         height: LANE_HEIGHT,
     },
@@ -71,13 +73,13 @@ const MINIS: [Area; 2] = [
 const METERS: [Area; 2] = [
     Area {
         x: 122,
-        y: 43,
+        y: 48,
         width: 10,
         height: 140,
     },
     Area {
         x: 122,
-        y: 297,
+        y: 292,
         width: 10,
         height: 140,
     },
@@ -1874,6 +1876,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // Per buffer: the beats the phase strip shows; and the offset its label shows.
     let mut phase_at: [Option<[Ticks; 2]>; 2] = [None; 2];
     let mut shown_offset: Option<Option<i32>> = None;
+    // When the offset label last changed, in milliseconds since start.
+    let mut offset_shown_ms = 0;
     let mut mini_at: [[Option<MiniState>; 2]; 2] = [[None; 2]; 2];
     // Per buffer and deck: the revision of the marks its lane shows.
     let mut marks_at: [[Option<u32>; 2]; 2] = [[None; 2]; 2];
@@ -2302,7 +2306,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 bpm_x100: tempo(deck),
             };
             let offset = deck_phase::beat_offset_ms(phase_deck(master), phase_deck(1 - master));
-            if shown_offset != Some(offset) {
+            // The offset moves by a millisecond most frames; redrawn each time, its text
+            // made every frame longer. It changes at most four times a second, and at once
+            // when a deck gains or loses its beats.
+            let due = ms >= offset_shown_ms + OFFSET_LABEL_MS
+                || shown_offset.flatten().is_some() != offset.is_some();
+            if shown_offset != Some(offset) && due {
+                offset_shown_ms = ms;
                 ui.set_phase(match offset {
                     Some(ms) => alloc::format!("{ms:+} ms").into(),
                     None => "—".into(),

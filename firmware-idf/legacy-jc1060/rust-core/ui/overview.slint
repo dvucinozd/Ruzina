@@ -66,7 +66,7 @@ component DeckSide inherits Rectangle {
     callback play();
     callback cue(bool);
     width: 66px;
-    height: 210px;
+    height: 220px;
     Rectangle {
         x: 4px;
         y: 4px;
@@ -852,11 +852,19 @@ component FxPanel inherits Rectangle {
     height: 464px;
     background: #160f0c;
     border-width: 1px;
-    border-color: #38251e;
+    // Each effect has its colour, as on the donor's overview (`ui_overview_fx_effect_color`):
+    // FILTER blue, ECHO amber, FLANGER violet, DELAY teal. While the effect is on, the
+    // panel's edge, the FX label, the effect, the routed channels, the beat and the depth
+    // take it; off, they stay dim.
+    property <color> tint: root.effect == "ECHO" ? #eb870f
+        : root.effect == "FLANGER" ? #b44ae0
+        : root.effect == "DELAY" ? #27c7c7
+        : #2d85cd;
+    border-color: root.on ? root.tint : #38251e;
     TouchArea {
         clicked => { root.open(); }
     }
-    // While the effect is on, the FX label blinks green.
+    // While the effect is on, the FX label blinks in its colour.
     property <bool> lit;
     Timer {
         interval: 400ms;
@@ -868,7 +876,7 @@ component FxPanel inherits Rectangle {
         y: 4px;
         width: 56px;
         height: 22px;
-        background: !root.on ? #1e1511 : root.lit ? #00ff66 : #0b2614;
+        background: !root.on ? #1e1511 : root.lit ? root.tint : root.tint.darker(70%);
         Text { text: "FX"; color: root.on && root.lit ? #100c08 : #f5f0ed; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Rectangle {
@@ -877,8 +885,9 @@ component FxPanel inherits Rectangle {
         width: 56px;
         height: 34px;
         border-width: 1px;
-        border-color: #e64c0c;
-        Text { text: root.effect; color: #f5f0ed; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+        border-color: root.on ? root.tint : #574b45;
+        background: root.on ? root.tint : transparent;
+        Text { text: root.effect; color: root.on ? #100c08 : #a3958e; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Text { x: 0px; y: 68px; width: 64px; text: "TARGET"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
     for pill in 2: Rectangle {
@@ -888,9 +897,10 @@ component FxPanel inherits Rectangle {
         height: 22px;
         border-radius: 11px;
         border-width: 1px;
-        border-color: #e64c0c;
-        background: root.target == 0 || root.target == pill + 1 ? #b7410e : #160f0c;
-        Text { text: pill + 1; color: #f5f0ed; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+        property <bool> routed: root.on && (root.target == 0 || root.target == pill + 1);
+        border-color: self.routed ? root.tint : #574b45;
+        background: self.routed ? root.tint : #160f0c;
+        Text { text: pill + 1; color: parent.routed ? #100c08 : #a3958e; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Text { x: 0px; y: 112px; width: 64px; text: "BEAT"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
     Rectangle {
@@ -899,8 +909,8 @@ component FxPanel inherits Rectangle {
         width: 40px;
         height: 26px;
         border-width: 1px;
-        border-color: #e64c0c;
-        Text { text: root.beat; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+        border-color: root.on ? root.tint : #574b45;
+        Text { text: root.beat; color: root.on ? #f5f0ed : #a3958e; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Text { x: 0px; y: 160px; width: 64px; text: "DEPTH"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
     Rectangle {
@@ -915,7 +925,7 @@ component FxPanel inherits Rectangle {
             y: parent.height - 1px - self.height;
             width: 18px;
             height: (parent.height - 2px) * root.depth / 100;
-            background: #b7410e;
+            background: root.on ? root.tint : #574b45;
         }
     }
     Text { x: 0px; y: parent.height - 30px; width: 64px; text: root.depth + "%"; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; }
@@ -1067,7 +1077,7 @@ export component Overview inherits Window {
     DeckSide {
         visible: root.active-tab == 0;
         x: 52px;
-        y: 262px;
+        y: 252px;
         number: 2;
         accent: #00e5ff;
         playing: root.playing-2;
@@ -1077,19 +1087,19 @@ export component Overview inherits Window {
         cue(down) => { root.cue(1, down); }
     }
     // Rust draws here: the two waveforms.
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 8px; width: 814px; height: 210px; background: #100c08; }
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 262px; width: 814px; height: 210px; background: #100c08; }
-    // Between the lanes: the phase strip, which Rust draws, and its offset.
+    Rectangle { visible: root.active-tab == 0; x: 136px; y: 8px; width: 814px; height: 220px; background: #100c08; }
+    Rectangle { visible: root.active-tab == 0; x: 136px; y: 252px; width: 814px; height: 220px; background: #100c08; }
+    // Between the lanes: the phase strip, which Rust draws, and its offset. At 24 px there
+    // is room for one line: the offset alone.
     Rectangle {
         visible: root.active-tab == 0;
         x: 52px;
-        y: 222px;
+        y: 228px;
         width: 80px;
-        height: 36px;
+        height: 24px;
         border-radius: 3px;
         background: #1e1511;
-        Text { y: 3px; width: parent.width; text: "PHASE"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
-        Text { y: 16px; width: parent.width; text: root.phase; color: root.phase == "—" ? #574b45 : #ffd600; font-size: 14px; horizontal-alignment: center; }
+        Text { y: 3px; width: parent.width; text: root.phase; color: root.phase == "—" ? #574b45 : #ffd600; font-size: 14px; horizontal-alignment: center; }
     }
     Rectangle { visible: root.active-tab == 0; x: 136px; y: 228px; width: 814px; height: 24px; background: #1e1511; }
 
