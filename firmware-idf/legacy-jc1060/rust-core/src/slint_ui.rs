@@ -35,7 +35,7 @@ use ruzina_screen_lines::Area;
 
 const LANE_WIDTH: usize = 814;
 const LANE_HEIGHT: usize = 210;
-/// The two lanes, right of the deck buttons, with the phase strip's 36 pixels (and 4 either
+/// The two lanes, right of the deck buttons, with the phase strip's 24 pixels (and 10 either
 /// side) between them.
 const LANES: [Area; 2] = [
     Area {
@@ -86,9 +86,9 @@ const METERS: [Area; 2] = [
 /// lower, over four of the master's beats in real time, the playhead in the middle.
 const PHASE: Area = Area {
     x: 136,
-    y: 222,
+    y: 228,
     width: LANE_WIDTH,
-    height: 36,
+    height: 24,
 };
 const PHASE_BEATS: u32 = 4;
 const PHASE_BACK: u16 = rgb(0x1e, 0x15, 0x11);
@@ -513,6 +513,17 @@ struct Gate {
     off: bool,
     /// This frame's waits, in microseconds.
     waited: u32,
+    /// When this frame started, and the panel's refresh count then.
+    frame_started: u64,
+    refreshes_at_start: u32,
+    /// The recent mean of a frame's work without its waits, and of the panel's refresh
+    /// period, in microseconds.
+    work: u32,
+    refresh: u32,
+    /// How long this frame may wait in all: what its slot of [`REFRESHES_PER_FRAME`]
+    /// refreshes leaves after its work. On s183 waiting whatever it took cost a frame in
+    /// three (about 20 fps instead of 29) and the lanes stuttered.
+    allowance: u32,
     /// Profile images: each step's time and each frame's waits.
     #[cfg(feature = "idf-uac-profile")]
     times: [Times; 4],
@@ -524,9 +535,27 @@ impl Gate {
             means: [0; 3],
             off: false,
             waited: 0,
+            frame_started: 0,
+            refreshes_at_start: 0,
+            work: 0,
+            refresh: 0,
+            allowance: 0,
             #[cfg(feature = "idf-uac-profile")]
             times: Default::default(),
         }
+    }
+
+    /// The start of a frame, at `now` with the panel's `refreshes` so far.
+    fn frame_start(&mut self, now: u64, refreshes: u32) {
+        let frames = refreshes.wrapping_sub(self.refreshes_at_start);
+        if self.frame_started != 0 && (1..=8).contains(&frames) {
+            let period = ((now - self.frame_started) / u64::from(frames)) as u32;
+            self.refresh = mean_of(self.refresh, period);
+        }
+        self.frame_started = now;
+        self.refreshes_at_start = refreshes;
+        self.waited = 0;
+        self.allowance = wait_allowance(self.refresh * REFRESHES_PER_FRAME, self.work);
     }
 
     fn run<R>(&mut self, step: Step, work: impl FnOnce() -> R) -> R {
@@ -537,6 +566,8 @@ impl Gate {
         let gated = !self.off;
         #[cfg(not(feature = "fill-gap-cycle"))]
         let gated = true;
+        // A wait takes up to a fill period; start one only while the frame has that left.
+        let gated = gated && self.allowance.saturating_sub(self.waited) >= GAP_WAIT_US;
         if gated {
             unsafe extern "C" {
                 fn ruzina_uac_wait_gap(budget_us: u32) -> u32;
@@ -547,20 +578,18 @@ impl Gate {
         let started = now_us();
         let result = work();
         let took = (now_us() - started) as u32;
-        *mean = if *mean == 0 {
-            took
-        } else {
-            (*mean * 7 + took) / 8
-        };
+        *mean = mean_of(*mean, took);
         #[cfg(feature = "idf-uac-profile")]
         self.times[step as usize].add(took);
         result
     }
 
-    /// The end of a frame: its waits.
+    /// The end of a frame: its waits, and its work without them.
     fn frame_done(&mut self) {
         #[cfg(feature = "idf-uac-profile")]
         self.times[3].add(self.waited);
+        let took = (now_us() - self.frame_started) as u32;
+        self.work = mean_of(self.work, took.saturating_sub(self.waited));
         self.waited = 0;
     }
 
@@ -571,6 +600,27 @@ impl Gate {
             times.report(33 + i as u32);
         }
     }
+}
+
+/// A wait for a gap between fills takes up to a fill period (about 6 ms), half on average.
+const GAP_WAIT_US: u32 = 3_000;
+/// Left free in each frame's slot, for the frames that run long.
+const SLOT_MARGIN_US: u32 = 2_000;
+
+/// A running mean over about eight values; the first value starts it.
+fn mean_of(mean: u32, value: u32) -> u32 {
+    if mean == 0 {
+        value
+    } else {
+        (mean * 7 + value) / 8
+    }
+}
+
+/// How long a frame may wait for gaps: what a `slot` leaves after the frame's `work` and a
+/// margin. Before the slot is known, nothing: the screen then draws as it did before the
+/// gate.
+fn wait_allowance(slot: u32, work: u32) -> u32 {
+    slot.saturating_sub(work + SLOT_MARGIN_US)
 }
 
 fn now_us() -> u64 {
@@ -1168,9 +1218,9 @@ fn draw_phase(frame: &mut [u16], strip: Option<&mut [u16]>, ticks: [Ticks; 2]) {
         row[PLAYHEAD_X - 1..=PLAYHEAD_X + 1].fill(PLAYHEAD);
     }
     let line = |row: usize| match row {
-        3..=17 => &halves[0],
-        18 => &middle,
-        19..=33 => &halves[1],
+        2..=10 => &halves[0],
+        11..=12 => &middle,
+        13..=21 => &halves[1],
         _ => &plain,
     };
     let mut row = 0;
@@ -1837,6 +1887,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let timeout_ms = || crate::deck_settings::current().screensaver.timeout_ms();
     let mut saver = Saver::new(0, timeout_ms());
     loop {
+        // SAFETY: reads a counter.
+        gate.frame_start(now_us(), unsafe { ruzina_panel_refreshes() });
         let ms = now_us() / 1_000 - start;
         if ms >= next_report {
             slint_times.report(21);
