@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Ružina user manual for the Guition JC1060 board and Pioneer DDJ-FLX4 controller.">
-  <title>Ružina – User Manual</title>
+  <meta name="description" content="Ruzina user manual for the Guition JC1060 board and Pioneer DDJ-FLX4 controller.">
+  <title>Ruzina – User Manual</title>
   <link rel="icon" href="docs/manual/emblem.webp" type="image/webp">
   <link rel="stylesheet" href="docs/manual/manual.css">
 </head>
@@ -12,7 +12,7 @@
   <a class="skip" href="#prirucnik">Skip to the manual</a>
   <header class="site-header">
     <div class="shell header-inner">
-      <a class="brand" href="#vrh">Ružina <span>/ Manual</span></a>
+      <a class="brand" href="#vrh">Ruzina <span>/ Manual</span></a>
       <a class="repo-link" href="https://github.com/dvucinozd/Ruzina">GitHub <span aria-hidden="true">↗</span></a>
     </div>
   </header>
@@ -50,11 +50,11 @@
     <main id="prirucnik" tabindex="-1">
       <section id="brzi-pocetak">
         <h2>Quick start</h2>
-        <p>This guide is for the <strong>JC1060P470C_I_W_Y with ESP32-P4 silicon revision 1.3 (103)</strong> and the matching Ružina firmware already installed. It covers the build with the Slint touchscreen and a USB drive as its music source.</p>
+        <p>This guide is for the <strong>JC1060P470C_I_W_Y with ESP32-P4 silicon revision 1.3 (103)</strong> and the matching Ruzina firmware already installed. It covers the build with the Slint touchscreen and a USB drive as its music source.</p>
         <ol class="steps">
           <li><strong>Prepare two tracks.</strong> Analyze them in rekordbox and export them to an exFAT USB drive with the classic Device Library database. <a href="#izvoz">USB export instructions</a></li>
           <li><strong>Connect your equipment.</strong> Plug the DDJ-FLX4 and USB drive into a hub connected to the JC1060’s HS port. Connect your speakers and headphones to the FLX4 with their levels turned down. <a href="#oprema">Connection diagram</a></li>
-          <li><strong>Start Ružina.</strong> Power the board through its FS USB-C port. Wait for the startup screen and library scan to finish. Open <b>LIBRARY</b>, select a track, then press <b>LOAD</b> for deck 1.</li>
+          <li><strong>Start Ruzina.</strong> Power the board through its FS USB-C port. Wait for the startup screen and library scan to finish. Open <b>LIBRARY</b>, select a track, then press <b>LOAD</b> for deck 1.</li>
           <li><strong>Check both outputs.</strong> Center the crossfader, raise channel 1’s fader, press <b>PLAY</b>, and slowly bring up the volume. To check the headphones, turn <b>HEADPHONES MIX</b> toward <b>MASTER</b> and raise <b>HEADPHONES LEVEL</b>. <a href="#miks">Headphone cueing and your first mix</a></li>
         </ol>
       </section>
@@ -62,7 +62,7 @@
       <section id="oprema">
         <h2>Equipment and connections</h2>
         <ul>
-          <li>Guition <strong>JC1060P470C_I_W_Y</strong> rev 1.3 with compatible Ružina firmware.</li>
+          <li>Guition <strong>JC1060P470C_I_W_Y</strong> rev 1.3 with compatible Ruzina firmware.</li>
           <li>Pioneer <strong>DDJ-FLX4</strong> with a USB data cable for its computer or mobile-device port.</li>
           <li>USB hub and an exFAT USB drive with a rekordbox export.</li>
           <li>Powered speakers or an amplifier with a line input, a stereo RCA cable, and headphones.</li>
@@ -86,9 +86,9 @@
         <ol>
           <li>Use a USB drive formatted as <strong>exFAT</strong>. If you need to format it, back up any existing files first because formatting erases the drive.</li>
           <li>Import your music into the desktop version of rekordbox and analyze it. For your first test, pick two local <strong>MP3, FLAC, or 16-bit PCM WAV</strong> files. Check their BPM and beatgrids if you plan to use SYNC or Quantize.</li>
-          <li>In <b>EXPORT</b> mode, export tracks or a playlist to the USB drive. Ružina reads the classic <b>Device Library</b>. On your computer, check that the drive contains <code>PIONEER/rekordbox/export.pdb</code>. OneLibrary, formerly Device Library Plus, can coexist with that database.</li>
-          <li>Keep the folder structure created by rekordbox. Ružina uses the database to locate the music and analysis files at their exported paths. Safely eject the drive when the export finishes.</li>
-          <li>Plug the drive into Ružina’s hub. In <b>LIBRARY</b>, check that your tracks and playlists appear, then load one track onto each deck.</li>
+          <li>In <b>EXPORT</b> mode, export tracks or a playlist to the USB drive. Ruzina reads the classic <b>Device Library</b>. On your computer, check that the drive contains <code>PIONEER/rekordbox/export.pdb</code>. OneLibrary, formerly Device Library Plus, can coexist with that database.</li>
+          <li>Keep the folder structure created by rekordbox. Ruzina uses the database to locate the music and analysis files at their exported paths. Safely eject the drive when the export finishes.</li>
+          <li>Plug the drive into Ruzina’s hub. In <b>LIBRARY</b>, check that your tracks and playlists appear, then load one track onto each deck.</li>
         </ol>
         <p>The rekordbox export links the tracks in the library to their audio files. If BPM, beatgrids, cue points, or cover art are missing, check that those items were available in the export. <a href="https://rekordbox.com/en/support/usb-export/">Official rekordbox USB export guide</a></p>
       </section>
@@ -136,7 +136,7 @@
         <h3>Tempo, BEAT SYNC, and Master Tempo</h3>
         <ul>
           <li>The <strong>tempo fader</strong> changes playback speed. On the FLX4, briefly press <b>SHIFT + BEAT SYNC</b> to cycle through the 6, 10, and 16 percent ranges. The range changes when you release the button.</li>
-          <li><strong>BEAT SYNC</strong> toggles tempo following. With both decks playing and a beatgrid on each track, Ružina can align their beat phase too. If either beatgrid is missing, it matches tempo when BPM data is available. Phase alignment may wait until you release the jog wheel or exit a loop.</li>
+          <li><strong>BEAT SYNC</strong> toggles tempo following. With both decks playing and a beatgrid on each track, Ruzina can align their beat phase too. If either beatgrid is missing, it matches tempo when BPM data is available. Phase alignment may wait until you release the jog wheel or exit a loop.</li>
           <li><strong>Continuous SYNC</strong> follows tempo changes on the reference deck within the supported range. To return to manual tempo control, move the following deck’s tempo fader or press SYNC again.</li>
           <li><strong>Master Tempo (MT)</strong> preserves pitch while you change tempo. Tap <b>MT</b> on the Overview or hold <b>SHIFT + BEAT SYNC</b> for about one second on that deck.</li>
         </ul>
@@ -155,7 +155,7 @@
         <h3>Hot Cues and Memory Cues</h3>
         <ol>
           <li>Load a track and open <b>HOT CUES</b> or select <b>HOT CUE</b> mode on the FLX4. Tap or press an empty A–H slot to set a cue at the playhead. Tap or press a populated slot to recall its cue.</li>
-          <li>To delete a Hot Cue, tap <b>DELETE</b> on the appropriate side of the touchscreen, then tap the populated slot. On the FLX4, press <b>SHIFT + pad</b> in HOT CUE mode. Ružina saves cue edits on the device. Pause both decks and leave the device on for a few seconds to let it save.</li>
+          <li>To delete a Hot Cue, tap <b>DELETE</b> on the appropriate side of the touchscreen, then tap the populated slot. On the FLX4, press <b>SHIFT + pad</b> in HOT CUE mode. Ruzina saves cue edits on the device. Pause both decks and leave the device on for a few seconds to let it save.</li>
           <li>To recall a cue imported from rekordbox, tap it in the <b>MEMORY</b> list. On the FLX4, select <b>SAMPLER</b> for that deck. Pads 1–8 recall cues 1–8. Hold SHIFT for cues 9–16. The deck stays in its current play or pause state. Recalling a Memory Loop activates the loop.</li>
         </ol>
         <p>To carry cue edits to other players, make the edits in rekordbox and export the media again.</p>
@@ -170,7 +170,7 @@
           <table>
             <thead><tr><th scope="col">Setting</th><th scope="col">What it does</th></tr></thead>
             <tbody>
-              <tr><th scope="row">LOAD LOCK</th><td><b>ON</b> prevents accidentally loading a new track onto a playing deck. <b>OFF</b> allows replacement while playing. Ružina defaults to ON.</td></tr>
+              <tr><th scope="row">LOAD LOCK</th><td><b>ON</b> prevents accidentally loading a new track onto a playing deck. <b>OFF</b> allows replacement while playing. Ruzina defaults to ON.</td></tr>
               <tr><th scope="row">JOG DECK 1 / 2</th><td><b>VINYL</b> (default) enables scratching. In <b>CDJ</b> mode, touching the top of the jog wheel leaves playback running.</td></tr>
               <tr><th scope="row">BRIGHTNESS</th><td>The − and + buttons change brightness in five-percentage-point steps between 10 and 50 percent. The default is 25 percent.</td></tr>
               <tr><th scope="row">MAIN TRIM</th><td>0, −3, or −6 dB. Adjusts MAIN gain before the limiter. Use HEADPHONES LEVEL for headphone volume.</td></tr>
@@ -184,9 +184,9 @@
 
       <section id="web-remote">
         <h2>Web Remote</h2>
-        <p>With Wi-Fi enabled, Ružina creates its own local network. The Web Remote controls the physical decks. Audio plays through the FLX4.</p>
+        <p>With Wi-Fi enabled, Ruzina creates its own local network. The Web Remote controls the physical decks. Audio plays through the FLX4.</p>
         <ol>
-          <li>On Ružina, open <b>SETTINGS</b> and look for <b>Wi-Fi</b> and <b>Password</b>.</li>
+          <li>On Ruzina, open <b>SETTINGS</b> and look for <b>Wi-Fi</b> and <b>Password</b>.</li>
           <li>On your phone or computer, join the displayed network and enter the password. If your device reports that the network has no internet access, choose to stay connected.</li>
           <li>Enter <code>http://192.168.4.1</code> in your browser’s address bar. The page shows both decks, the mixer, and the library.</li>
           <li>Open <b>LIBRARY</b>, search by title or artist, and load the track onto the intended deck. Check the load confirmation or rejection message. Use PLAY, CUE, SYNC, <b>4B LOOP</b>, <b>CLEAR</b>, and the position bar on each deck.</li>
@@ -235,7 +235,7 @@
         </details>
         <details>
           <summary>The Web Remote does not open</summary>
-          <p>Check that your phone stays connected to the Wi-Fi network shown in SETTINGS. Enter the full address with <code>http://</code>. After a restart, wait for the network to return and try again. If SETTINGS has no Wi-Fi information, check that your Ružina build includes Wi-Fi.</p>
+          <p>Check that your phone stays connected to the Wi-Fi network shown in SETTINGS. Enter the full address with <code>http://</code>. After a restart, wait for the network to return and try again. If SETTINGS has no Wi-Fi information, check that your Ruzina build includes Wi-Fi.</p>
         </details>
         <details>
           <summary>A control seems unresponsive after a period of inactivity</summary>
