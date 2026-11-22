@@ -1,24 +1,37 @@
 # Current development status
 
-Updated 2026-11-21. This page is the one place that names the board's images; the other
+Updated 2026-11-22. This page is the one place that names the board's images; the other
 documents link here.
 
 ## The board's images
 
-- **Kept for play:** s162 (app `4b6044fa…`), the `--usb-stick` image, built with the
-  [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image).
-  Its firmware is `main` at `830a46b`, with all 11 fixes of the first outside review
-  ([its last run](reviews/2026-11-21-web-send-in-pieces.md)). `main` after it (#158) adds
-  profile diagnostics.
-- **Last documented measurement:** s163 (app `2ce5c0aa…`), the fill contention profile
-  image, in its 15-minute run on 2026-11-21 ([fill contention](reviews/2026-11-21-fill-contention.md)).
-  The handoff records it as left on the board after that run, with s162 to go back for
-  play.
-- **Where this comes from:** the dated reviews and the [handoff](HANDOFF.md), as of
-  2026-11-21. This page does not read the flash: what is on the board right now is
-  whatever its boot log's app hash says.
-- **The SD build** s136 (app `a666ac6e…`) is from before even fills. The handoff lists the
-  older images and where each flash backup is kept.
+- **Kept for play:** s188 (app `eb4d42c3…`), the `--slint-ui --fill-iram --usb-stick`
+  image without the soak DJ. Its firmware is `main` at `d6ef0d0`, which has:
+  - the fill gap (#165);
+  - the screen redesign (#166);
+  - the Web Remote console (#163).
+
+  It was built with the
+  [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image),
+  less `--soak-autoplay`. The owner loaded and played tracks from the FLX4 on it on
+  2026-11-22 ("sve je ok"); Master Tempo fills were not measured on it.
+- **Before it, the same day:**
+  - s187 (app `a5251962…`), the same firmware with the soak DJ. On it the owner checked
+    LOAD in the sorted and filtered Library.
+  - s182 (app `818c8df5…`), the board's image at the start of the day. On it the owner
+    checked the FLX4 (binding, pads and SAMPLER, LEDs, the FX label, the Library and
+    LOAD, the screensaver wake).
+- **Last documented measurements** (profile images, the FLX4, 15 minutes each, 2026-11-22):
+  - **s169 and s170:** the fill gap against s163
+    ([fill gap](reviews/2026-11-22-fill-gap.md)).
+  - **s184p, s185p and s186p:** the redesign's frame rate
+    ([redesign on the fill gap](reviews/2026-11-22-redesign-on-fill-gap.md)).
+- **Where this comes from:** the dated reviews and the board log in
+  `D:\BoardEvidence\JC1060-20261030-COM3` (`FLX4-DAY.md`), as of 2026-11-22.
+  - This page does not read the flash: what is on the board right now is whatever its
+    boot log's app hash says.
+  - The handoff lists the older images and where each flash backup is kept.
+- **The SD build** s136 (app `a666ac6e…`) is from before even fills.
 
 ## What runs on the board
 
@@ -41,51 +54,61 @@ them. The owner's listening checks are separate, shorter runs. The
 | Long runs | Soaks of 35 to 42 minutes, and 45 minutes of scripted gestures, 0/0 underruns; logs and counters only, nobody listened | [soak](reviews/2026-11-04-soak-autoplay.md), [every control](reviews/2026-11-06-full-control-soak.md), [stick soak](reviews/2026-11-19-stick-soak.md) |
 | Music from a USB stick | exFAT stick behind a hub on the HS port, with the FLX4; MEDIA REMOVED when pulled out, an app restart when put back; no SD card | [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md), [8 KiB reads](reviews/2026-11-19-stick-8k-reads.md) |
 | Loops and scratch | From a played-audio history, with 5.8 ms crossfades | [loops](reviews/2026-11-05-loops.md), [scratch](reviews/2026-11-05-scratch.md) |
-| Beat FX and Pad FX | In the render graph; FX page by touch | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md) |
+| Beat FX and Pad FX | In the render graph; FX page by touch; the Overview's FX column in the effect's colour | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md) |
 | Hot Cues | From Rekordbox, own ones in a flash journal, erased ahead | [Hot Cues](reviews/2026-11-06-hot-cues.md), [erase ahead](reviews/2026-11-13-hot-cue-erase-ahead.md), [page](reviews/2026-11-12-hot-cues-page.md) |
 | Memory cues | Rekordbox memory cues on the lane, the HOT CUES page and the SAMPLER pads | [memory cues](reviews/2026-11-17-memory-cues.md) |
 | FLX4 LEDs | Pad modes, SYNC, PFL, Smart buttons, Beat FX ON | [LEDs](reviews/2026-11-06-controller-leds.md) |
 | SYNC and Quantize | Beat sync, continuous SYNC, Quantize | [beat sync](reviews/2026-11-11-beat-sync.md), [continuous](reviews/2026-11-13-continuous-sync.md), [Quantize](reviews/2026-11-12-quantize.md) |
 | Master Tempo | Its own keylock; with SYNC, phase within 1 ms | [Master Tempo](reviews/2026-11-13-master-tempo.md), [stops](reviews/2026-11-13-mt-phase.md), [controller](reviews/2026-11-14-mt-on-controller.md), [with SYNC](reviews/2026-11-16-sync-mt-line.md) |
-| Deck screen | Slint, with waveforms drawn by Rust; marks, Library, covers, Croatian letters | [screen](reviews/2026-11-10-deck-screen.md), [marks](reviews/2026-11-12-lane-marks.md), [Library](reviews/2026-11-12-library.md), [letters](reviews/2026-11-13-latin-glyphs.md) |
-| Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings) | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md) |
+| USB audio fill and the screen | The screen waits for gaps between fills and moves the lanes, Slint's lines and the phase strip through the PPA from internal RAM; on s170, 5.5 % of Master Tempo fills over 3 ms (s163: 18.3 %), all under 5 ms | [fill contention](reviews/2026-11-21-fill-contention.md), [fill gap](reviews/2026-11-22-fill-gap.md) |
+| Deck screen | Slint, with waveforms drawn by Rust; the redesign: Rust palette, icon rail, 814×220 lanes with a phase strip between them, deck cards; Library sort, BPM ±4 % and key colours; Croatian letters | [screen](reviews/2026-11-10-deck-screen.md), [palette](reviews/2026-11-21-rust-palette.md), [layout](reviews/2026-11-21-screen-layout.md), [Library filters](reviews/2026-11-21-library-filters.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [letters](reviews/2026-11-13-latin-glyphs.md) |
+| Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings); the Overview at about 28 of 30.5 frames a second | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md) |
 | Playlists and covers | Rekordbox's playlist tree in the Library, each deck's cover | [playlists and covers](reviews/2026-11-16-playlists-covers.md) |
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
-| Other controllers | DDJ-400, DJ2GO2 Touch, S2 MK3, Inpulse 500 profiles chosen by VID:PID; untested on this hardware, no audio yet for the S2 MK3 and Inpulse 500 | [profiles](reviews/2026-11-21-controller-profiles.md) |
+| Controllers | The FLX4, checked again on s182 (2026-11-22). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware, and the S2 MK3 and Inpulse 500 have no audio yet | [profiles](reviews/2026-11-21-controller-profiles.md) |
 | Boot screen and screensaver | The owner's wordmark, its letters lit in turn; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md) |
-| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted); play, cue, library, mixer, SYNC, four connections, soft takeover | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [Web Remote](reviews/2026-11-15-web-remote-play-cue.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md) |
+| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md) |
 
 ## Still to come
 
-The final layout: the board's own power on CN2 and the stick on the FS port. The console
-is already on UART0 (CN2, GPIO37/38, 921600 baud; see the
-[UART0 service link](boards/JC1060_UART0_SERVICE.md)); today the FLX4 and the stick share a
-hub on the HS port.
+- **The final layout:**
+  - the board's own power on CN2, and the stick on the FS port. Today the FLX4 and the
+    stick share a hub on the HS port. The console is already on UART0 (CN2, GPIO37/38,
+    921600 baud; see the [UART0 service link](boards/JC1060_UART0_SERVICE.md));
+  - with that power, the brightness cap (50 %) can rise.
+- **The RTC:** the Epson RX8025T at I2C 0x32 is on the board, not yet used.
+- **External audio:** see the [external audio plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md).
 
 ## Open
 
-- **USB audio fill:** some fills go over the 3 ms target, with no underruns. Each figure
-  belongs to its own image, workload and metric:
-  - **s163, profile image, 2026-11-21** (the soak DJ, then Master Tempo on both decks,
-    15 minutes; [fill contention](reviews/2026-11-21-fill-contention.md)): of Master Tempo
-    fills, 18.3 % took over 3 ms in the phases with the screen drawing, against 1.7 % in the
-    phases with it still; the longest took 5.35 ms against 3.9 ms. 88 % of Master Tempo
-    fills over 3 ms overlapped a screen frame. That is a count of fills, not a share of
-    CPU time.
-  - **s162, play image, 2026-11-21** (Web Remote from a phone, about 4 minutes): all
-    fills, 42 000, the longest 4.2 ms ([Web Remote sends](reviews/2026-11-21-web-send-in-pieces.md)).
-  - **s148, play image flags, 2026-11-20** (the soak DJ alone, 16 minutes, 159 000 fills):
-    all fills, 0.23 % over 3 ms, the longest 4.16 ms, after a
-    [faster render](reviews/2026-11-19-fx-fill-cost.md)
-    ([soak](reviews/2026-11-20-fast-render-soak.md); 3.75 % on s142 before it).
-
-  Work on keeping the screen's frames from slowing the fill is in progress.
-- **Screen:** Slint's scene preparation is still 16 to 26 ms of a big frame.
-- **SD (SD build only):** an SD clock failure at the first boot after a flash. Since s132 the card is
-  tried three times ([retry](reviews/2026-11-18-sd-retry.md)), not yet seen working on a
-  failing boot. Since s116 it no longer
-  takes the Wi-Fi's slot down with it ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
+- **USB audio fill:** no underruns, and since the fill gap every measured Master Tempo
+  fill stays under 5 ms. Some still go over the 3 ms target. Each figure belongs to its
+  own image and workload:
+  - **s170, profile image, gate always on** (the soak DJ, then Master Tempo on both decks,
+    15 minutes; [fill gap](reviews/2026-11-22-fill-gap.md)): 5.5 % over 3 ms, longest
+    4168 µs.
+  - **s184p, profile image, gate limited to the frame's slot** (the first minutes of a
+    run): 22 % over 3 ms, longest 4.6 ms
+    ([redesign on the fill gap](reviews/2026-11-22-redesign-on-fill-gap.md)).
+  - **The play image s188:** Master Tempo not measured yet.
+- **Screen:**
+  - The Overview draws about 28 frames a second against a refresh-limited 30.5, so about
+    one frame in twelve misses its refresh. It shows as a stutter at the largest zoom.
+  - Two lane moves take about 8.2 ms each, and the Slint step 5–7 ms. Slint's scene
+    preparation is still 16 to 26 ms of a big frame (Library, Settings).
+- **Boot:** the FLX4 drops and enumerates again once at every boot
+  (`Enqueue URB error: ESP_ERR_INVALID_STATE`); it then works.
+- **Stick:** putting a stick back needs an app restart.
+- **SD (SD build only):** an SD clock failure at the first boot after a flash.
+  - Since s132 the card is tried three times ([retry](reviews/2026-11-18-sd-retry.md)).
+    This has not yet been seen working on a failing boot.
+  - Since s116 the failure no longer takes the Wi-Fi's slot down with it
+    ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
 - **Not in a device log yet:** the Delay effect and the Beat FX channel switch.
+- **Web Remote:**
+  - There are no settings, controller profile or firmware pages on the board.
+  - OTA exists on the host only (no partition, radio or TLS adapter).
+  - The network password is a build setting.
 
 ## Evidence layers
 
