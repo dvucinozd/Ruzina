@@ -174,7 +174,7 @@ fn the_browse_knob_and_load_follow_the_sorted_filtered_view() {
     let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
     publish_library(std::vec![LibraryRow::default(); 4]);
     // The page shows tracks 3 and 1, in that order.
-    publish_view(Level::All, Some(&[3, 1]));
+    publish_view(Level::All, Some(&[3, 1]), 0);
     assert_eq!(level_len(Level::All), 2);
     assert_eq!(base_len(Level::All), 4);
     assert_eq!(row_at(Level::All, 0), Some(Row::Track(3)));
@@ -189,11 +189,33 @@ fn the_browse_knob_and_load_follow_the_sorted_filtered_view() {
         "LOAD takes the row shown"
     );
     // A view of another level leaves this one as it is.
-    publish_view(Level::Top, Some(&[0]));
+    publish_view(Level::Top, Some(&[0]), 0);
     assert_eq!(level_len(Level::All), 4);
     assert_eq!(row_at(Level::All, 3), Some(Row::Track(3)));
-    publish_view(Level::All, None);
+    publish_view(Level::All, None, 0);
     assert_eq!(level_len(Level::All), 4);
+    publish_library(std::vec::Vec::new());
+}
+
+#[test]
+fn load_reads_a_new_view_with_its_own_selection_and_waits_out_a_write() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    publish_library(std::vec![LibraryRow::default(); 4]);
+    publish_view(Level::All, Some(&[3, 1]), 1);
+    assert_eq!(selected_row(), Some(Row::Track(1)));
+    // The list is sorted again: track 1 is now first, and the selection comes with it.
+    publish_view(Level::All, Some(&[1, 2, 3]), 0);
+    assert_eq!(selected_row(), Some(Row::Track(1)));
+    // While the screen task writes the view, nothing is selected: the catalog's own
+    // order would put another track under the selection.
+    VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+    assert_eq!(selected_row(), None);
+    assert_eq!(row_at(Level::All, 0), None);
+    assert_eq!(level_len(Level::All), 0);
+    VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+    assert_eq!(selected_row(), Some(Row::Track(1)));
+    publish_view(Level::All, None, 2);
+    assert_eq!(selected_row(), Some(Row::Track(2)));
     publish_library(std::vec::Vec::new());
 }
 

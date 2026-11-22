@@ -572,7 +572,7 @@ pub(crate) fn level() -> Level {
 /// level, the positions of the rows it shows, in order. The screen task writes it; the
 /// engine reads it, on the other core, for the browse knob and LOAD. A sequence count
 /// guards it: odd while the screen task writes, so a reader that saw it change reads again.
-const VIEW_MAX: usize = 1_024;
+pub(crate) const VIEW_MAX: usize = 1_024;
 const NO_VIEW: u32 = u32::MAX - 2;
 static VIEW_SEQUENCE: AtomicU32 = AtomicU32::new(0);
 static VIEW_LEVEL: AtomicU32 = AtomicU32::new(NO_VIEW);
@@ -587,10 +587,13 @@ const fn level_code(level: Level) -> u32 {
     }
 }
 
-/// Shows `level` through `rows`, positions of its rows (`None`: as the level has them).
-/// The screen task's side. Rows past `VIEW_MAX` are left out.
-pub(crate) fn publish_view(level: Level, rows: Option<&[u32]>) {
+/// Shows `level` through `rows`, positions of its rows (`None`: as the level has them),
+/// with row `selected` of it selected. The selection is written with the mapping, so LOAD
+/// never pairs a new view with the old view's selection. The screen task's side. Rows
+/// past `VIEW_MAX` are left out.
+pub(crate) fn publish_view(level: Level, rows: Option<&[u32]>, selected: u32) {
     VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+    SELECTED.store(selected, Ordering::Relaxed);
     match rows {
         Some(rows) => {
             let rows = &rows[..rows.len().min(VIEW_MAX)];
@@ -605,9 +608,21 @@ pub(crate) fn publish_view(level: Level, rows: Option<&[u32]>) {
     VIEW_SEQUENCE.fetch_add(1, Ordering::AcqRel);
 }
 
-/// What the view says of `level`: `None` when it has no view of it. A read the screen task
-/// keeps overwriting gives up after a few tries and reads the level as it is.
-fn through_view<R>(level: Level, read: impl Fn() -> R) -> Option<R> {
+/// What a read through the view found.
+#[derive(Debug, Eq, PartialEq)]
+enum ViewRead<R> {
+    /// The view of the level, read whole.
+    Shown(R),
+    /// No view of the level: it shows its rows as it has them.
+    Absent,
+    /// The screen task kept writing the view: nothing is known of it. Reading the level
+    /// as it is would map a row shown in a sorted list to another track.
+    Busy,
+}
+
+/// What the view says of `level`, read whole by `read`. A read the screen task keeps
+/// overwriting gives up after a few tries.
+fn through_view<R>(level: Level, read: impl Fn() -> R) -> ViewRead<R> {
     for _ in 0..64 {
         let before = VIEW_SEQUENCE.load(Ordering::Acquire);
         if before.is_multiple_of(2) {
@@ -615,17 +630,22 @@ fn through_view<R>(level: Level, read: impl Fn() -> R) -> Option<R> {
             let value = seen.then(&read);
             core::sync::atomic::fence(Ordering::Acquire);
             if VIEW_SEQUENCE.load(Ordering::Relaxed) == before {
-                return value;
+                return value.map_or(ViewRead::Absent, ViewRead::Shown);
             }
         }
         core::hint::spin_loop();
     }
-    None
+    ViewRead::Busy
 }
 
-/// How many rows `level` shows: its view's, or all of them.
+/// How many rows `level` shows: its view's, or all of them; 0 while the view is being
+/// written (so the knob and LOAD wait for the next turn).
 pub(crate) fn level_len(level: Level) -> u32 {
-    through_view(level, || VIEW_LEN.load(Ordering::Relaxed)).unwrap_or_else(|| base_len(level))
+    match through_view(level, || VIEW_LEN.load(Ordering::Relaxed)) {
+        ViewRead::Shown(len) => len,
+        ViewRead::Absent => base_len(level),
+        ViewRead::Busy => 0,
+    }
 }
 
 /// How many rows `level` has, before any view.
@@ -646,8 +666,9 @@ pub(crate) fn row_at(level: Level, index: u32) -> Option<Row> {
             .then(|| VIEW_ROWS[index as usize].load(Ordering::Relaxed))
     });
     match position {
-        Some(position) => base_row_at(level, position?),
-        None => base_row_at(level, index),
+        ViewRead::Shown(position) => base_row_at(level, position?),
+        ViewRead::Absent => base_row_at(level, index),
+        ViewRead::Busy => None,
     }
 }
 
@@ -668,9 +689,29 @@ pub(crate) fn base_row_at(level: Level, index: u32) -> Option<Row> {
     }
 }
 
-/// The selected row of the level shown.
+/// The selected row of the level shown, read with the view in one go: the screen task
+/// publishes a new view and its selection together (`publish_view`). `None` with nothing
+/// selected, or while the view is being written: LOAD then does nothing rather than load
+/// another track.
 pub(crate) fn selected_row() -> Option<Row> {
-    row_at(level(), selected()?)
+    let level = level();
+    let position = through_view(level, || {
+        let len = VIEW_LEN.load(Ordering::Relaxed);
+        (len != 0).then(|| {
+            let index = SELECTED.load(Ordering::Relaxed).min(len - 1);
+            VIEW_ROWS[index as usize].load(Ordering::Relaxed)
+        })
+    });
+    match position {
+        ViewRead::Shown(position) => base_row_at(level, position?),
+        ViewRead::Absent => {
+            let len = base_len(level);
+            (len != 0)
+                .then(|| SELECTED.load(Ordering::Relaxed).min(len - 1))
+                .and_then(|index| base_row_at(level, index))
+        }
+        ViewRead::Busy => None,
+    }
 }
 
 /// Opens the selected folder or playlist; false on a track or with nothing selected.
@@ -691,7 +732,8 @@ pub(crate) fn open() -> bool {
 pub(crate) fn back() -> bool {
     let (up, selected) = match level() {
         Level::All => {
-            if level_len(Level::Top) == 0 {
+            // The top level has no view.
+            if base_len(Level::Top) == 0 {
                 return false;
             }
             ALL_SELECTED.store(SELECTED.load(Ordering::Relaxed), Ordering::Relaxed);

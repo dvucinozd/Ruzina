@@ -44,9 +44,13 @@ deck is the one that plays; with both or neither playing, it is the master.
   - The screen task builds the view (`library_view.rs`, host-tested) and publishes it to
     `deck_view`: up to 1024 row positions, guarded by a sequence count.
   - The engine reads the view through `level_len` and `row_at` on the other core, without a
-    lock. If it catches the view mid-write, it reads again; after 64 tries it reads the level
-    as it is.
-  - When the view changes, the selection stays on the row it was on.
+    lock. If it catches the view mid-write, it reads again. After 64 tries it gives up: the
+    knob and LOAD do nothing that turn, rather than read the catalog's own order (Codex on
+    #166).
+  - When the view changes, the selection stays on the row it was on. The screen finds that
+    row in the new view first and publishes the selection with the view, and LOAD reads
+    the two together (`selected_row`), so it never pairs a new view with the old
+    selection (Codex on #166).
 
 ## Tests
 

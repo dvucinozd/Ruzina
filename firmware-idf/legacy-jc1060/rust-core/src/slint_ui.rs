@@ -2081,12 +2081,21 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             let rows = tracks_of_level
                 .filter(|_| sort.is_some() || reference_x100.is_some())
                 .map(|tracks| library_view::build(&library.rows, &tracks, sort, reference_x100));
-            deck_view::publish_view(level, rows.as_deref());
-            // The selection stays on the row it was on, if the view still shows it.
-            let len = deck_view::level_len(level);
-            let at =
-                before.and_then(|row| (0..len).find(|&i| deck_view::row_at(level, i) == Some(row)));
-            deck_view::select(at.unwrap_or(0));
+            // The selection stays on the row it was on, if the new view still shows it. It
+            // is found before the view goes out and published with it, so the engine never
+            // reads the new view with the old view's selection.
+            let shown_row = |i: u32| match &rows {
+                Some(rows) => rows
+                    .get(i as usize)
+                    .and_then(|&position| deck_view::base_row_at(level, position)),
+                None => deck_view::base_row_at(level, i),
+            };
+            let len = rows.as_ref().map_or_else(
+                || deck_view::base_len(level),
+                |rows| rows.len().min(deck_view::VIEW_MAX) as u32,
+            );
+            let at = before.and_then(|row| (0..len).find(|&i| shown_row(i) == Some(row)));
+            deck_view::publish_view(level, rows.as_deref(), at.unwrap_or(0));
             ui.set_library_sort_column(sort.map_or(-1, |sort| sort.column.index()));
             ui.set_library_sort_descending(sort.is_some_and(|sort| sort.descending));
             ui.set_library_bpm_filter(filter);
