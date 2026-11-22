@@ -1150,8 +1150,10 @@ fn draw_meter(frame: &mut [u16], area: Area, lit: i32) {
 }
 
 /// Draws the phase strip: each deck's beats as two-column ticks in its half, a line between
-/// the halves and the playhead in the middle.
-fn draw_phase(frame: &mut [u16], ticks: [Ticks; 2]) {
+/// the halves and the playhead in the middle. Its rows go through `strip` in internal RAM and
+/// the PPA copies them in, so the CPU does not write PSRAM during a fill; without a strip,
+/// or once a copy fails, they go straight into `frame` and are written back.
+fn draw_phase(frame: &mut [u16], strip: Option<&mut [u16]>, ticks: [Ticks; 2]) {
     let mut plain = [PHASE_BACK; LANE_WIDTH];
     let mut middle = [PHASE_MIDDLE; LANE_WIDTH];
     let mut halves = [[PHASE_BACK; LANE_WIDTH]; 2];
@@ -1165,17 +1167,53 @@ fn draw_phase(frame: &mut [u16], ticks: [Ticks; 2]) {
     for row in [&mut plain, &mut middle, upper, lower] {
         row[PLAYHEAD_X - 1..=PLAYHEAD_X + 1].fill(PLAYHEAD);
     }
-    for row in 0..PHASE.height {
-        let line = match row {
-            3..=17 => &halves[0],
-            18 => &middle,
-            19..=33 => &halves[1],
-            _ => &plain,
-        };
-        let start = (PHASE.y + row) * WIDTH + PHASE.x;
-        frame[start..start + PHASE.width].copy_from_slice(line);
+    let line = |row: usize| match row {
+        3..=17 => &halves[0],
+        18 => &middle,
+        19..=33 => &halves[1],
+        _ => &plain,
+    };
+    let mut row = 0;
+    if let Some(pixels) = strip {
+        // As many whole rows as the strip holds, a block at a time.
+        let rows = (pixels.len() / PHASE.width).min(PHASE.height);
+        while row < PHASE.height {
+            let count = rows.min(PHASE.height - row);
+            for (index, block) in pixels[..count * PHASE.width]
+                .chunks_exact_mut(PHASE.width)
+                .enumerate()
+            {
+                block.copy_from_slice(line(row + index));
+            }
+            mark(MOVE, true);
+            // SAFETY: the strip holds `count` rows of PHASE.width pixels; `frame` is one of
+            // the panel's frame buffers and C bounds the block to it.
+            let copied = unsafe {
+                ruzina_panel_blit(
+                    pixels.as_ptr(),
+                    PHASE.width as u32,
+                    0,
+                    frame.as_mut_ptr(),
+                    PHASE.x as u32,
+                    (PHASE.y + row) as u32,
+                    PHASE.width as u32,
+                    count as u32,
+                )
+            } == 0;
+            mark(MOVE, false);
+            if !copied {
+                break;
+            }
+            row += count;
+        }
     }
-    flush(frame, PHASE.y, PHASE.height);
+    if row < PHASE.height {
+        for row in row..PHASE.height {
+            let start = (PHASE.y + row) * WIDTH + PHASE.x;
+            frame[start..start + PHASE.width].copy_from_slice(line(row));
+        }
+        flush(frame, PHASE.y + row, PHASE.height - row);
+    }
 }
 
 /// Draws the whole-track overview, shaded up to the playhead at `x`, with each memory
@@ -2190,7 +2228,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 )
             });
             if phase_at[drawing] != Some(ticks) {
-                draw_phase(buffer, ticks);
+                draw_phase(buffer, strip.as_deref_mut(), ticks);
                 phase_at[drawing] = Some(ticks);
             }
             let phase_deck = |deck: usize| PhaseDeck {
