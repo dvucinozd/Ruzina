@@ -75,6 +75,33 @@ int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32
         .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
         .mode = PPA_TRANS_MODE_BLOCKING,
     };
+#if CONFIG_RUZINA_UAC_PROFILE
+    /* Profile images: every 16th move, where its time goes. The cache write-back of the
+       rows read and the invalidation of the rows written run first, timed, as the PPA
+       driver runs them; the driver's own then find the lines done, so the move's time
+       that follows is the copy itself. The means print every 32 samples. */
+    static uint32_t moves, samples, c2m_us, m2c_us, copy_us, copy_max_us;
+    if ((moves++ & 15) == 0) {
+        const int64_t t0 = esp_timer_get_time();
+        esp_cache_msync((void *)(from + y * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+        const int64_t t1 = esp_timer_get_time();
+        esp_cache_msync((void *)(to + y * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+        const int64_t t2 = esp_timer_get_time();
+        const bool ok = ppa_do_scale_rotate_mirror(mover, &move) == ESP_OK;
+        const uint32_t copy = (uint32_t)(esp_timer_get_time() - t2);
+        c2m_us += (uint32_t)(t1 - t0);
+        m2c_us += (uint32_t)(t2 - t1);
+        copy_us += copy;
+        if (copy > copy_max_us) copy_max_us = copy;
+        if (++samples == 32) {
+            printf("panel_move samples=32 w=%" PRIu32 " h=%" PRIu32 " c2m_us=%" PRIu32 " m2c_us=%" PRIu32
+                   " copy_us=%" PRIu32 " copy_max_us=%" PRIu32 "\n",
+                   w - dx, h, c2m_us / 32, m2c_us / 32, copy_us / 32, copy_max_us);
+            samples = c2m_us = m2c_us = copy_us = copy_max_us = 0;
+        }
+        return ok ? 0 : -1;
+    }
+#endif
     return ppa_do_scale_rotate_mirror(mover, &move) == ESP_OK ? 0 : -1;
 }
 

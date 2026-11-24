@@ -1882,6 +1882,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // Per buffer and deck: the revision of the marks its lane shows.
     let mut marks_at: [[Option<u32>; 2]; 2] = [[None; 2]; 2];
     let (mut slint_times, mut wave_times) = (Times::default(), Times::default());
+    // Whether both buffers hold all Slint drew (see the frame loop).
+    let mut slint_settled = false;
     let start = now_us() / 1_000;
     let mut next_report = REPORT_MS;
     let mut drawing = 1;
@@ -2160,9 +2162,13 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         } else {
             &DIRECT
         };
-        // Every frame goes through Slint, which then also brings this buffer up to date
-        // with what changed while the other one was shown.
-        window.request_redraw();
+        // A frame goes through Slint while either buffer may lack what Slint drew last;
+        // once a render drew nothing, both buffers hold the same and Slint draws only when
+        // something changes. Its preparation, about 5 ms of every frame on the Overview,
+        // is then skipped while nothing does.
+        if !slint_settled {
+            window.request_redraw();
+        }
         gate.run(Step::Slint, || {
             window.draw_if_needed(|renderer| {
                 // Made in its own crate, built for speed (`ruzina-screen-lines`). Its lines
@@ -2190,6 +2196,12 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 split = Some((lines.prepare_us, lines.lines_us, lines.copy_us, flush_us));
             })
         });
+        // A render that drew nothing repainted what changed in neither of its last two
+        // frames: both buffers agree (`SwappedBuffers`). A frame Slint skipped changes
+        // nothing.
+        if split.is_some() {
+            slint_settled = rows_drawn == 0;
+        }
         let drawn = now_us();
         let slint_us = (drawn - started) as u32;
         slint_times.add(slint_us);
