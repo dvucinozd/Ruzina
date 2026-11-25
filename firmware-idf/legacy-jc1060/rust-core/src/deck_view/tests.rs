@@ -442,3 +442,38 @@ fn a_playing_deck_is_drawn_where_it_will_be_when_the_frame_shows() {
     // A time before the snapshot wraps to a large count: also as read.
     assert_eq!(ahead(playing, 0u32.wrapping_sub(5_000)), playing);
 }
+
+#[test]
+fn a_playing_deck_is_drawn_from_a_steady_clock_that_follows_the_engine() {
+    let at = |ms: u32| DeckSnapshot {
+        position_ms: ms,
+        flags: LOADED | PLAYING,
+        pitch_centipercent: 0,
+        bpm_x100: 12_800,
+    };
+    // A first frame is drawn where it is read.
+    let (drawn, state, _) = steady(None, at(10_000), 1_000_000);
+    assert_eq!(drawn.position_ms, 10_000);
+    // The engine reads 12 ms ahead one frame and 4 ms behind the next: the drawn
+    // position moves 16 ms a 16 ms frame, closing an eighth of each gap.
+    let (drawn, state, gap) = steady(state, at(10_028), 1_016_000);
+    assert_eq!((drawn.position_ms, gap), (10_017, 12_000));
+    let (drawn, state, gap) = steady(state, at(10_028), 1_032_000);
+    assert_eq!(gap, -5_500);
+    assert_eq!(drawn.position_ms, 10_032);
+    // A jump (a cue, a seek) is drawn at once.
+    let (drawn, state, gap) = steady(state, at(2_000), 1_048_000);
+    assert_eq!(drawn.position_ms, 2_000);
+    assert!(gap < -30_000);
+    // Paused or looping: as read.
+    let paused = DeckSnapshot {
+        flags: LOADED,
+        ..at(5_000)
+    };
+    assert_eq!(steady(state, paused, 1_064_000).0, paused);
+    let looping = DeckSnapshot {
+        flags: LOADED | PLAYING | LOOPING,
+        ..at(5_000)
+    };
+    assert_eq!(steady(state, looping, 1_064_000).0, looping);
+}

@@ -1,33 +1,34 @@
 # Current development status
 
-Updated 2026-11-22. This page is the one place that names the board's images; the other
+Updated 2026-11-25. This page is the one place that names the board's images; the other
 documents link here.
 
 ## The board's images
 
-- **Kept for play:** s188 (app `eb4d42c3…`), the `--slint-ui --fill-iram --usb-stick`
-  image without the soak DJ. Its firmware is `main` at `d6ef0d0`, which has:
-  - the fill gap (#165);
-  - the screen redesign (#166);
-  - the Web Remote console (#163).
+- **Kept for play:** s198 (app `1f8e8267…`), the `--slint-ui --fill-iram --usb-stick`
+  image without the soak DJ. Its firmware is `ogranak/jc1060-faster-screen`: main
+  `fd4cbb7` with [smooth lanes](reviews/2026-11-25-smooth-lanes.md), which use
+  - one frame buffer;
+  - a ring cache per lane, copied in at every refresh by its own task, for both waveforms
+    and both halves of the phase strip.
 
   It was built with the
   [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image),
-  less `--soak-autoplay`. The owner loaded and played tracks from the FLX4 on it on
-  2026-11-22 ("sve je ok"); Master Tempo fills were not measured on it.
-- **Before it, the same day:**
-  - s187 (app `a5251962…`), the same firmware with the soak DJ. On it the owner checked
-    LOAD in the sorted and filtered Library.
-  - s182 (app `818c8df5…`), the board's image at the start of the day. On it the owner
-    checked the FLX4 (binding, pads and SAMPLER, LEDs, the FX label, the Library and
-    LOAD, the screensaver wake).
-- **Last documented measurements** (profile images, the FLX4, 15 minutes each, 2026-11-22):
+  less `--soak-autoplay`. The owner played on it on 2026-11-25 ("Sve radi").
+- **Before it:**
+  - s197p (app `8c88f7ac…`), the same firmware as a profile image with the soak DJ. On
+    it the owner saw the lanes and the phase strip run smooth.
+  - s188 (app `eb4d42c3…`), main `d6ef0d0`, the play image of 2026-11-22. The owner
+    played tracks from the FLX4 on it ("sve je ok").
+- **Last documented measurements** (profile images, the FLX4):
+  - **s189p to s197p (2026-11-25):** the lanes, from main to smooth
+    ([smooth lanes](reviews/2026-11-25-smooth-lanes.md)).
   - **s169 and s170:** the fill gap against s163
     ([fill gap](reviews/2026-11-22-fill-gap.md)).
   - **s184p, s185p and s186p:** the redesign's frame rate
     ([redesign on the fill gap](reviews/2026-11-22-redesign-on-fill-gap.md)).
 - **Where this comes from:** the dated reviews and the board log in
-  `D:\BoardEvidence\JC1060-20261030-COM3` (`FLX4-DAY.md`), as of 2026-11-22.
+  `D:\BoardEvidence\JC1060-20261030-COM3` (`FLX4-DAY.md`), as of 2026-11-25.
   - This page does not read the flash: what is on the board right now is whatever its
     boot log's app hash says.
   - The handoff lists the older images and where each flash backup is kept.
@@ -60,9 +61,9 @@ them. The owner's listening checks are separate, shorter runs. The
 | FLX4 LEDs | Pad modes, SYNC, PFL, Smart buttons, Beat FX ON | [LEDs](reviews/2026-11-06-controller-leds.md) |
 | SYNC and Quantize | Beat sync, continuous SYNC, Quantize | [beat sync](reviews/2026-11-11-beat-sync.md), [continuous](reviews/2026-11-13-continuous-sync.md), [Quantize](reviews/2026-11-12-quantize.md) |
 | Master Tempo | Its own keylock; with SYNC, phase within 1 ms | [Master Tempo](reviews/2026-11-13-master-tempo.md), [stops](reviews/2026-11-13-mt-phase.md), [controller](reviews/2026-11-14-mt-on-controller.md), [with SYNC](reviews/2026-11-16-sync-mt-line.md) |
-| USB audio fill and the screen | The screen waits for gaps between fills and moves the lanes, Slint's lines and the phase strip through the PPA from internal RAM; on s170, 5.5 % of Master Tempo fills over 3 ms (s163: 18.3 %), all under 5 ms | [fill contention](reviews/2026-11-21-fill-contention.md), [fill gap](reviews/2026-11-22-fill-gap.md) |
+| USB audio fill and the screen | The screen waits for gaps between fills and draws Slint's lines and the lane caches through the PPA from internal RAM; on s170, 5.5 % of Master Tempo fills over 3 ms (s163: 18.3 %), all under 5 ms | [fill contention](reviews/2026-11-21-fill-contention.md), [fill gap](reviews/2026-11-22-fill-gap.md) |
 | Deck screen | Slint, with waveforms drawn by Rust; the redesign: Rust palette, icon rail, 814×220 lanes with a phase strip between them, deck cards; Library sort, BPM ±4 % and key colours; Croatian letters | [screen](reviews/2026-11-10-deck-screen.md), [palette](reviews/2026-11-21-rust-palette.md), [layout](reviews/2026-11-21-screen-layout.md), [Library filters](reviews/2026-11-21-library-filters.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [letters](reviews/2026-11-13-latin-glyphs.md) |
-| Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings); the Overview at about 28 of 30.5 frames a second | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md) |
+| Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings); the lanes and the phase strip move at every refresh (61 a second) | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [smooth lanes](reviews/2026-11-25-smooth-lanes.md) |
 | Playlists and covers | Rekordbox's playlist tree in the Library, each deck's cover | [playlists and covers](reviews/2026-11-16-playlists-covers.md) |
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
 | Controllers | The FLX4, checked again on s182 (2026-11-22). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware, and the S2 MK3 and Inpulse 500 have no audio yet | [profiles](reviews/2026-11-21-controller-profiles.md) |
@@ -90,12 +91,18 @@ them. The owner's listening checks are separate, shorter runs. The
   - **s184p, profile image, gate limited to the frame's slot** (the first minutes of a
     run): 22 % over 3 ms, longest 4.6 ms
     ([redesign on the fill gap](reviews/2026-11-22-redesign-on-fill-gap.md)).
-  - **The play image s188:** Master Tempo not measured yet.
+  - **s189p, profile image of main `fd4cbb7`** (15 minutes): 15.3 % over 3 ms, longest
+    4.24 ms.
+  - **s197p, profile image with smooth lanes** (8 minutes, 4 without Master Tempo and 4
+    with it; [smooth lanes](reviews/2026-11-25-smooth-lanes.md)): 13.5 % over 3 ms,
+    longest 4.81 ms.
 - **Screen:**
-  - The Overview draws about 28 frames a second against a refresh-limited 30.5, so about
-    one frame in twelve misses its refresh. It shows as a stutter at the largest zoom.
-  - Two lane moves take about 8.2 ms each, and the Slint step 5–7 ms. Slint's scene
-    preparation is still 16 to 26 ms of a big frame (Library, Settings).
+  - The lanes and the phase strip move at every refresh
+    ([smooth lanes](reviews/2026-11-25-smooth-lanes.md)).
+  - Text drawn straight into the shown buffer can tear for one refresh.
+  - While the pitch fader moves, the phase strip's ticks can pause for a refresh.
+  - A short loop at the largest zoom can hold a lane for a refresh at each wrap.
+  - Slint's scene preparation is still 16 to 26 ms of a big frame (Library, Settings).
 - **Boot:** the FLX4 drops and enumerates again once at every boot
   (`Enqueue URB error: ESP_ERR_INVALID_STATE`); it then works.
 - **Stick:** putting a stick back needs an app restart.

@@ -11,6 +11,9 @@
 #include "esp_lcd_panel_ops.h"
 #if CONFIG_RUZINA_SLINT_UI
 #include "driver/ppa.h"
+#include "esp_private/dma2d.h"
+#include "hal/dma2d_types.h"
+#include "soc/dma2d_channel.h"
 #endif
 #include "esp_ldo_regulator.h"
 #include "esp_timer.h"
@@ -35,6 +38,8 @@ static uint16_t *back_frame;
 static SemaphoreHandle_t refreshed;
 static volatile uint32_t refreshes;
 static ppa_client_handle_t mover;
+/* The lanes' task, woken at each refresh (`lane_task`). */
+static TaskHandle_t lane_task_handle;
 
 static IRAM_ATTR bool frame_done(esp_lcd_panel_handle_t panel_handle, esp_lcd_dpi_panel_event_data_t *event, void *context)
 {
@@ -42,6 +47,7 @@ static IRAM_ATTR bool frame_done(esp_lcd_panel_handle_t panel_handle, esp_lcd_dp
     BaseType_t woken = pdFALSE;
     refreshes++;
     xSemaphoreGiveFromISR(refreshed, &woken);
+    if (lane_task_handle) vTaskNotifyGiveFromISR(lane_task_handle, &woken);
     return woken == pdTRUE;
 }
 
@@ -50,10 +56,7 @@ uint16_t *ruzina_panel_back(void) { return back_frame; }
 /* Panel refreshes since start, about 61 a second: the clock the waveforms scroll by. */
 uint32_t ruzina_panel_refreshes(void) { return refreshes; }
 
-/* Copies the block at (x + dx, y), `w - dx` by `h` pixels, of frame buffer `from` to
-   (x, y) of frame buffer `to`, in hardware: the waveform scrolls by `dx` columns without
-   the CPU touching its pixels. The PPA driver writes `from` back from cache first and
-   invalidates the rows of `to`, so the caller writes those rows back before. */
+/* The PPA's client for the blits into frames and lane caches. */
 static bool mover_ready(void)
 {
     if (!mover) {
@@ -63,19 +66,306 @@ static bool mover_ready(void)
     return true;
 }
 
-int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
-                          uint32_t w, uint32_t h, uint32_t dx)
+/* A lane move as a plain 2D-DMA memory-to-memory copy. The PPA's SRM engine moved a lane
+   (811 by 220 pixels) in 8.1 ms on s190p, its cache work taking under 0.05 ms: the scaling
+   engine is the bottleneck, not the memory. The 2D-DMA copies the same block without it,
+   in 2.5 ms on s191p. Up to twelve copies at a time, one in each slot, all from the lanes'
+   task (`lane_task`). Each slot's descriptors and transaction are kept. */
+#define COPY_SLOTS 12
+static dma2d_pool_handle_t copy_pool;
+static dma2d_descriptor_t *copy_tx[COPY_SLOTS], *copy_rx[COPY_SLOTS];
+static void *copy_slot[COPY_SLOTS];
+static dma2d_trans_config_t copy_job[COPY_SLOTS];
+static SemaphoreHandle_t copy_done[COPY_SLOTS];
+static bool copy_busy[COPY_SLOTS];
+static bool copy_failed;
+
+static bool copy_eof(dma2d_channel_handle_t chan, dma2d_event_data_t *event, void *user)
 {
-    if (dx >= w || !mover_ready()) return -1;
-    ppa_srm_oper_config_t move = {
-        .in = {.buffer = from, .pic_w = 1024, .pic_h = 600, .block_w = w - dx, .block_h = h,
-               .block_offset_x = x + dx, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
-        .out = {.buffer = to, .buffer_size = 1024 * 600 * 2, .pic_w = 1024, .pic_h = 600,
-                .block_offset_x = x, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
+    (void)chan;
+    (void)event;
+    const uintptr_t slot = (uintptr_t)user;
+    BaseType_t woken = pdFALSE;
+    xSemaphoreGiveFromISR(copy_done[slot], &woken);
+    return woken == pdTRUE;
+}
+
+static bool copy_picked(uint32_t num, const dma2d_trans_channel_info_t *chans, void *user)
+{
+    if (num != 2) return false;
+    const uintptr_t slot = (uintptr_t)user;
+    dma2d_channel_handle_t tx = chans[0].dir == DMA2D_CHANNEL_DIRECTION_TX ? chans[0].chan : chans[1].chan;
+    dma2d_channel_handle_t rx = chans[0].dir == DMA2D_CHANNEL_DIRECTION_TX ? chans[1].chan : chans[0].chan;
+    dma2d_trigger_t trig = {.periph = DMA2D_TRIG_PERIPH_M2M, .periph_sel_id = SOC_DMA2D_TRIG_PERIPH_M2M_TX};
+    dma2d_connect(tx, &trig);
+    trig.periph_sel_id = SOC_DMA2D_TRIG_PERIPH_M2M_RX;
+    dma2d_connect(rx, &trig);
+    dma2d_transfer_ability_t ability = {
+        .access_ext_mem = true, .data_burst_length = 128,
+        .desc_burst_en = true, .mb_size = DMA2D_MACRO_BLOCK_SIZE_NONE,
+    };
+    dma2d_set_transfer_ability(tx, &ability);
+    dma2d_set_transfer_ability(rx, &ability);
+    dma2d_rx_event_callbacks_t cbs = {.on_recv_eof = copy_eof};
+    dma2d_register_rx_event_callbacks(rx, &cbs, user);
+    dma2d_set_desc_addr(tx, (intptr_t)copy_tx[slot]);
+    dma2d_set_desc_addr(rx, (intptr_t)copy_rx[slot]);
+    dma2d_start(tx);
+    dma2d_start(rx);
+    return false;
+}
+
+static bool copy_ready(void)
+{
+    if (copy_failed) return false;
+    if (!copy_pool) {
+        bool made = true;
+        for (int slot = 0; slot < COPY_SLOTS; slot++) {
+            copy_tx[slot] = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+            copy_rx[slot] = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+            copy_slot[slot] = heap_caps_calloc(1, SIZEOF_DMA2D_TRANS_T, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+            copy_done[slot] = xSemaphoreCreateBinary();
+            made = made && copy_tx[slot] && copy_rx[slot] && copy_slot[slot] && copy_done[slot];
+        }
+        dma2d_pool_config_t pool = {.pool_id = 0};
+        if (!made || dma2d_acquire_pool(&pool, &copy_pool) != ESP_OK) {
+            copy_failed = true;
+            printf("panel_copy dma2d=UNAVAILABLE\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Waits for the copy in `slot` to end. A copy that never ends stops the 2D-DMA for good. */
+static bool copy_end(uint32_t slot)
+{
+    if (!copy_busy[slot]) return false;
+    copy_busy[slot] = false;
+    if (xSemaphoreTake(copy_done[slot], pdMS_TO_TICKS(50)) != pdTRUE) {
+        copy_failed = true;
+        printf("panel_copy dma2d=TIMEOUT\n");
+        return false;
+    }
+    return true;
+}
+
+/* Starts copying the w by h block at (fx, fy) of `from` to (tx, ty) of `to`, in `slot`;
+   both are 1024 pixels to a row, `from_h` and `to_h` rows. A frame buffer's rows are synced
+   first: the CPU must not write the rows written until `copy_end`, as their cache lines are
+   dropped now and one written back later would put old pixels over the copy's. A lane
+   cache's are not (`lane_task`). */
+static bool copy_begin(uint32_t slot, const uint16_t *from, uint32_t from_h, uint32_t fx, uint32_t fy,
+                       uint16_t *to, uint32_t to_h, uint32_t tx, uint32_t ty, uint32_t w, uint32_t h)
+{
+    if (slot >= COPY_SLOTS || !copy_ready()) return false;
+    if (copy_busy[slot] && !copy_end(slot)) return false;
+    const uint32_t pbyte = DMA2D_DESCRIPTOR_PBYTE_2B0_PER_PIXEL;
+    *copy_tx[slot] = (dma2d_descriptor_t){
+        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 1,
+        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = from_h, .ha_length = 1024, .pbyte = pbyte,
+        .y = fy, .x = fx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = (void *)from, .next = NULL,
+    };
+    *copy_rx[slot] = (dma2d_descriptor_t){
+        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 0,
+        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = to_h, .ha_length = 1024, .pbyte = pbyte,
+        .y = ty, .x = tx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = to, .next = NULL,
+    };
+    esp_cache_msync(copy_tx[slot], 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    esp_cache_msync(copy_rx[slot], 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    /* The rows read go to memory first; the rows written are dropped from the cache. */
+    if (from_h == 600) {
+        esp_cache_msync((void *)(from + fy * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+        esp_cache_msync((void *)(to + ty * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+    }
+    copy_job[slot] = (dma2d_trans_config_t){
+        .tx_channel_num = 1, .rx_channel_num = 1, .channel_flags = DMA2D_CHANNEL_FUNCTION_FLAG_SIBLING,
+        .on_job_picked = copy_picked, .user_config = (void *)(uintptr_t)slot,
+    };
+    xSemaphoreTake(copy_done[slot], 0);
+    if (dma2d_enqueue(copy_pool, &copy_job[slot], (dma2d_trans_t *)copy_slot[slot]) != ESP_OK) return false;
+    copy_busy[slot] = true;
+    return true;
+}
+
+/* The lanes as the donor draws them. Each deck's waveform is drawn ahead into a ring
+   cache, a 1024-pixel-wide picture of the lane's 220 rows whose column `p mod 1024` holds
+   track pixel `p`. At each refresh a task above the deck screen's copies the visible
+   window from the cache into the shown frame by the 2D-DMA, around the playhead, whose
+   columns it never touches. So the lanes move at every refresh, at the position each one
+   is scanned out at, however long the deck screen's frame takes; on s195p a frame that
+   ran long held both lanes for a refresh and then jumped them twice as far.
+   The phase strip's two halves, each deck's beats, move the same way: on s196p, drawn at
+   the deck screen's frames, they still jerked.
+   The deck screen draws the cache ahead (`ruzina_lanes_publish`) and keeps its columns in
+   memory: it writes them through the PPA, and nothing writes the lanes' rows of the
+   frame from the CPU, so neither copy needs its cache lines synced. */
+#define LANE_SLOTS COPY_SLOTS
+#define LANES 4                  /* both decks' waveforms, then both halves of the phase strip */
+#define LINE_US 26               /* one of the panel's 635 lines at 61 refreshes a second */
+#define BLANK_US 900             /* the blanking between a refresh's end and line 0 */
+typedef struct {
+    bool shown;
+    int64_t lo, hi;              /* the track pixels the cache holds */
+    int64_t anchor_us;           /* when the deck was at `anchor_track_us` (esp_timer) */
+    int64_t anchor_track_us;
+    int32_t rate_x10000;         /* 10000 at normal speed; 0 when the deck stands */
+    int64_t loop_from_us, loop_to_us; /* a running loop, or both 0 */
+    uint32_t window_ms;
+    uint32_t revision;           /* bumped when shown columns change */
+} lane_model_t;
+static lane_model_t lane_models[LANES];
+static portMUX_TYPE lane_lock = portMUX_INITIALIZER_UNLOCKED;
+static uint16_t *lane_caches[LANES];
+static uint16_t *lane_frame;
+static uint32_t lane_count, lane_x, lane_y[LANES], lane_h[LANES], lane_w, lane_playhead;
+
+static int64_t floor_div(int64_t a, int64_t b) { return a / b - (a % b != 0 && (a < 0) != (b < 0)); }
+
+/* Copies screen columns [s, e) of lane `d` from its cache, the lane's left edge
+   at track pixel `left`, in one or two blocks; returns the next free slot. */
+static uint32_t lane_copy(int d, int64_t left, uint32_t s, uint32_t e, uint32_t slot)
+{
+    while (s < e && slot < LANE_SLOTS) {
+        const int64_t c = ((left + s) % 1024 + 1024) % 1024;
+        uint32_t n = e - s;
+        if (c + n > 1024) n = (uint32_t)(1024 - c);
+        if (!copy_begin(slot, lane_caches[d], lane_h[d], (uint32_t)c, 0, lane_frame, 600,
+                        lane_x + s, lane_y[d], n, lane_h[d])) break;
+        slot++;
+        s += n;
+    }
+    return slot;
+}
+
+static void lane_task(void *arg)
+{
+    (void)arg;
+    int64_t shown_left[LANES];
+    uint32_t shown_revision[LANES] = {0};
+    for (int d = 0; d < LANES; d++) shown_left[d] = INT64_MIN;
+#if CONFIG_RUZINA_UAC_PROFILE
+    uint32_t refreshes_seen = 0, copies = 0, misses = 0, start_max = 0, done_max = 0;
+    uint64_t done_total = 0;
+    int64_t report_at = esp_timer_get_time() + 20000000;
+#endif
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        const int64_t now = esp_timer_get_time();
+        uint32_t slot = 0;
+        for (int d = 0; d < (int)lane_count; d++) {
+            portENTER_CRITICAL(&lane_lock);
+            const lane_model_t m = lane_models[d];
+            portEXIT_CRITICAL(&lane_lock);
+            if (!m.shown || !m.window_ms || m.hi <= m.lo) {
+                shown_left[d] = INT64_MIN;
+                continue;
+            }
+            /* Where the deck is when the beam reaches the lane's middle. */
+            const int64_t at = now + BLANK_US + (int64_t)(lane_y[d] + lane_h[d] / 2) * LINE_US;
+            int64_t track_us = m.anchor_track_us + (at - m.anchor_us) * m.rate_x10000 / 10000;
+            if (m.loop_to_us > m.loop_from_us && track_us >= m.loop_to_us)
+                track_us = m.loop_from_us + (track_us - m.loop_from_us) % (m.loop_to_us - m.loop_from_us);
+            const int64_t left = floor_div(track_us * lane_w, (int64_t)m.window_ms * 1000) - lane_playhead;
+            if (left < m.lo || left + lane_w > m.hi) {
+#if CONFIG_RUZINA_UAC_PROFILE
+                misses++;
+#endif
+                continue;
+            }
+            if (left == shown_left[d] && m.revision == shown_revision[d]) continue;
+            /* Left of the playhead's three columns, then right of them. */
+            slot = lane_copy(d, left, 0, lane_playhead - 1, slot);
+            slot = lane_copy(d, left, lane_playhead + 2, lane_w, slot);
+            shown_left[d] = left;
+            shown_revision[d] = m.revision;
+        }
+#if CONFIG_RUZINA_UAC_PROFILE
+        const uint32_t started = (uint32_t)(esp_timer_get_time() - now);
+#endif
+        for (uint32_t s = 0; s < slot; s++) copy_end(s);
+#if CONFIG_RUZINA_UAC_PROFILE
+        /* Profile images: refreshes, the copies made and the deck positions the cache did
+           not hold yet, and when the copies were started and done after the refresh. */
+        refreshes_seen++;
+        if (slot) {
+            const uint32_t done = (uint32_t)(esp_timer_get_time() - now);
+            copies++;
+            done_total += done;
+            if (done > done_max) done_max = done;
+            if (started > start_max) start_max = started;
+        }
+        if (now >= report_at) {
+            printf("lanes refreshes=%" PRIu32 " copied=%" PRIu32 " misses=%" PRIu32 " start_max_us=%" PRIu32
+                   " done_mean_us=%" PRIu32 " done_max_us=%" PRIu32 "\n", refreshes_seen, copies, misses,
+                   start_max, copies ? (uint32_t)(done_total / copies) : 0, done_max);
+            refreshes_seen = copies = misses = start_max = done_max = 0;
+            done_total = 0;
+            report_at = now + 20000000;
+        }
+#endif
+    }
+}
+
+/* Starts the lanes: lane `d` of `count` is `w` by `h[d]` pixels at (x, y[d]) of `frame`,
+   the shown frame buffer, with its playhead in columns playhead - 1 to playhead + 1. Makes
+   each lane's cache, 1024 by h[d] pixels, and returns them in `caches`; false if they or the
+   task cannot be had. */
+bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t w, uint32_t playhead, uint32_t count,
+                        const uint32_t *y, const uint32_t *h, uint16_t **caches)
+{
+    if (lane_task_handle || count > LANES) return false;
+    if (w > 1024 || playhead < 1 || playhead + 2 > w || !copy_ready()) return false;
+    for (uint32_t d = 0; d < count; d++) {
+        if (!h[d] || y[d] + h[d] > 600) return false;
+        lane_caches[d] = heap_caps_aligned_calloc(64, 1024 * h[d], 2, MALLOC_CAP_SPIRAM);
+        if (!lane_caches[d]) return false;
+        caches[d] = lane_caches[d];
+        lane_y[d] = y[d];
+        lane_h[d] = h[d];
+    }
+    lane_frame = frame;
+    lane_x = x;
+    lane_w = w;
+    lane_playhead = playhead;
+    lane_count = count;
+    /* On the deck screen's core, above it (4) and the SD client (3). */
+    return xTaskCreatePinnedToCore(lane_task, "lanes", 4096, NULL, 6, &lane_task_handle, 1) == pdPASS;
+}
+
+/* Lane `d` from now on: whether it is shown, the track pixels its cache holds, and where
+   its deck is: at `track_us` of the track at esp_timer `at_us`, going at
+   `rate_x10000` / 10000 of normal speed, in a loop from `loop_from_us` to `loop_to_us` (both
+   0 for none). `revision` changes when columns already shown were drawn again. */
+void ruzina_lanes_publish(uint32_t d, bool shown, int64_t lo, int64_t hi, int64_t at_us, int64_t track_us,
+                          int32_t rate_x10000, int64_t loop_from_us, int64_t loop_to_us, uint32_t window_ms,
+                          uint32_t revision)
+{
+    if (d >= LANES) return;
+    portENTER_CRITICAL(&lane_lock);
+    lane_models[d] = (lane_model_t){
+        .shown = shown, .lo = lo, .hi = hi, .anchor_us = at_us, .anchor_track_us = track_us,
+        .rate_x10000 = rate_x10000, .loop_from_us = loop_from_us, .loop_to_us = loop_to_us,
+        .window_ms = window_ms, .revision = revision,
+    };
+    portEXIT_CRITICAL(&lane_lock);
+}
+
+/* Copies a w by h block of pixels from column `from_x` of `from`, `from_w` to a row, to
+   column x of a lane cache of h rows, by the PPA. */
+int32_t ruzina_lanes_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *cache,
+                          uint32_t x, uint32_t w, uint32_t h)
+{
+    if (!w || !h || from_x + w > from_w || x + w > 1024 || h > 600 || !mover_ready()) return -1;
+    ppa_srm_oper_config_t blit = {
+        .in = {.buffer = from, .pic_w = from_w, .pic_h = h, .block_w = w, .block_h = h,
+               .block_offset_x = from_x, .block_offset_y = 0, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
+        .out = {.buffer = cache, .buffer_size = 1024 * h * 2, .pic_w = 1024, .pic_h = h,
+                .block_offset_x = x, .block_offset_y = 0, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
         .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
         .mode = PPA_TRANS_MODE_BLOCKING,
     };
-    return ppa_do_scale_rotate_mirror(mover, &move) == ESP_OK ? 0 : -1;
+    return ppa_do_scale_rotate_mirror(mover, &blit) == ESP_OK ? 0 : -1;
 }
 
 /* A strip of `pixels` pixels in internal RAM, made on the first call, or NULL. The deck
@@ -94,8 +384,8 @@ uint16_t *ruzina_panel_strip(uint32_t pixels)
 }
 
 /* Copies the `w` by `h` pixels at column `from_x` of `from`, `from_w` to a row, to (x, y)
-   of frame buffer `to`, in hardware. As for ruzina_panel_move, the PPA driver invalidates
-   the rows of `to`, so the caller writes them back before. */
+   of frame buffer `to`, in hardware. The PPA driver invalidates the rows of `to`, so the
+   caller writes them back before. */
 int32_t ruzina_panel_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *to,
                           uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
@@ -118,14 +408,6 @@ void ruzina_panel_wait_refresh(void)
     xSemaphoreTake(refreshed, pdMS_TO_TICKS(50));
 }
 
-/* Shows `buffer` from the next refresh on and waits until it is on the panel, so the
-   other buffer is free to draw into. The caller wrote its changed rows back from cache. */
-void ruzina_panel_present(uint16_t *buffer)
-{
-    xSemaphoreTake(refreshed, 0);
-    esp_lcd_panel_draw_bitmap(panel, 0, 0, 1, 1, buffer);
-    xSemaphoreTake(refreshed, pdMS_TO_TICKS(50));
-}
 #endif
 
 static esp_err_t brightness(unsigned duty)
