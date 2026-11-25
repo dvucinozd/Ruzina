@@ -262,6 +262,31 @@ fn touch(event: &ControlEvent) -> Option<(usize, Option<TouchControl>)> {
     }
 }
 
+/// The running firmware's version, build date and build time (the deck screen reads
+/// IDF's app description).
+#[cfg(not(test))]
+fn firmware_texts() -> (&'static str, &'static str, &'static str) {
+    crate::slint_ui::firmware_texts()
+}
+#[cfg(test)]
+fn firmware_texts() -> (&'static str, &'static str, &'static str) {
+    ("test", "", "")
+}
+
+/// Microseconds since boot (IDF's monotonic clock).
+#[cfg(not(test))]
+fn now_us() -> i64 {
+    unsafe extern "C" {
+        fn esp_timer_get_time() -> i64;
+    }
+    // SAFETY: IDF's monotonic clock, callable from any task.
+    unsafe { esp_timer_get_time() }
+}
+#[cfg(test)]
+fn now_us() -> i64 {
+    0
+}
+
 /// A setting from the SETUP page, as the deck's Settings page would set it.
 fn edit_setting(settings: &mut ruzina_settings::ProductSettings, change: SettingChange) {
     use ruzina_settings::{JogMode, MasterTrim, Screensaver};
@@ -301,7 +326,7 @@ impl WebBackend for Backend<'_> {
     fn settings(&mut self) -> Option<SettingsView<'_>> {
         use ruzina_settings::{JogMode, MasterTrim, Screensaver};
         let settings = crate::deck_settings::current();
-        let (firmware, date, time) = crate::slint_ui::firmware_texts();
+        let (firmware, date, time) = firmware_texts();
         self.built = alloc::format!("{date} {time}");
         self.controller = match crate::controller_midi::attached() {
             None => alloc::string::String::new(),
@@ -315,11 +340,7 @@ impl WebBackend for Backend<'_> {
         } else {
             Media::Ready
         };
-        unsafe extern "C" {
-            fn esp_timer_get_time() -> i64;
-        }
-        // SAFETY: IDF's monotonic clock, callable from any task.
-        let uptime_s = (unsafe { esp_timer_get_time() } / 1_000_000).clamp(0, i64::from(u32::MAX));
+        let uptime_s = (now_us() / 1_000_000).clamp(0, i64::from(u32::MAX));
         let jog = |deck: usize| match settings.jog_modes[deck] {
             JogMode::Cdj => Jog::Cdj,
             JogMode::Vinyl => Jog::Vinyl,
@@ -356,11 +377,7 @@ impl WebBackend for Backend<'_> {
     /// Through the same store as the deck's Settings page; the screen's brightness and
     /// that page follow on the screen's next frame, and the save waits as theirs does.
     fn change_setting(&mut self, change: SettingChange) -> bool {
-        unsafe extern "C" {
-            fn esp_timer_get_time() -> i64;
-        }
-        // SAFETY: IDF's monotonic clock, callable from any task.
-        let now_ms = (unsafe { esp_timer_get_time() } / 1_000) as u32;
+        let now_ms = (now_us() / 1_000) as u32;
         crate::deck_settings::change(now_ms, |settings| edit_setting(settings, change));
         true
     }

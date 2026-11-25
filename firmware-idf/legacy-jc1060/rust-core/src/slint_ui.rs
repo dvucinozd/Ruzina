@@ -305,7 +305,7 @@ struct AppDescription {
 }
 
 /// A C string field as text, up to its first zero.
-/// The running firmware's version, build date and build time.
+/// The running firmware's version, build date and build time, for the Web Remote.
 #[cfg(feature = "web-remote")]
 pub(crate) fn firmware_texts() -> (&'static str, &'static str, &'static str) {
     // SAFETY: IDF returns its static app description, valid for the program's life.
