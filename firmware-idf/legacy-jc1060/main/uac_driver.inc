@@ -90,6 +90,10 @@ static void uac_start_poll(void)
     if (gone || !device) { uac_wait_resources=false; return; }
     uint32_t state=ruzina_legacy_resources_state();
     if (state==0 || state==1) return;
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    /* The stick went before the decks were ready: a stick put back prepares them again. */
+    if (state==3) return;
+#endif
     uac_wait_resources=false;
     if (state!=2) {
         uac_step=UAC_OFF; uac_health.state=UAC_HEALTH_FAULT_HELD;

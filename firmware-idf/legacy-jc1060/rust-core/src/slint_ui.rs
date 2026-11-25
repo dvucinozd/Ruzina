@@ -239,6 +239,8 @@ unsafe extern "C" {
         height: u32,
     ) -> i32;
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+    /// Whether media put back are read again without an app restart (a USB stick).
+    fn ruzina_media_reinsertable() -> bool;
     /// The running app's description (IDF `esp_app_desc_t`).
     fn esp_app_get_description() -> *const AppDescription;
     /// GT911 touches now (0 when none or no touch controller), the first one mapped to
@@ -1933,10 +1935,19 @@ fn show_library(
     while model.row_count() > count {
         model.remove(model.row_count() - 1);
     }
-    // The media went away: the rows stay as they were read, but none of them loads until
-    // the app restarts (a USB stick put back restarts it by itself).
+    // The media went away: the rows stay as they were read, but none of them loads. A USB
+    // stick put back is read again from the start; an SD card needs an app restart.
     if gone {
-        ui.set_library_count("RESTART NEEDED".into());
+        // SAFETY: reads a build constant.
+        let again = unsafe { ruzina_media_reinsertable() };
+        ui.set_library_count(
+            if again {
+                "PUT IT BACK"
+            } else {
+                "RESTART NEEDED"
+            }
+            .into(),
+        );
         ui.set_library_heading("MEDIA REMOVED".into());
         ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
         return;

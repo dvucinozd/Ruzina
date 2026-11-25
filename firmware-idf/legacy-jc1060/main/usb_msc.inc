@@ -79,7 +79,7 @@ static _Atomic bool msc_busy;
 static bool msc_stuck;
 /* The transfer the owner waits for; another one's completion does not wake it. */
 static usb_transfer_t *_Atomic msc_awaited;
-/* A stick went away in this run: the media owner has stopped for good. */
+/* A stick went away in this run. */
 static bool msc_lost;
 static uint32_t msc_tag;
 static uint32_t msc_commands, msc_errors, msc_stalls, msc_resets, msc_retries;
@@ -154,10 +154,12 @@ static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
     uint8_t interface, in, out;
     uint16_t mps;
     if (!msc_find(config, &interface, &in, &out, &mps)) return false;
-    /* The media owner stopped when the last stick went, and the catalog and decks belong
-     * to that stick: a stick put back restarts the app, which reads it from the start. A
-     * restart is no harsher than a power cut, which the settings and Hot Cue stores take. */
-    if (msc_lost) {
+    /* A stick put back is read from the start by the media owner's next session (s201p);
+     * before, it restarted the app. One given up with a transfer still in flight cannot
+     * reuse the transfers, so that one still restarts the app, which reads the stick put
+     * back from the start. A restart is no harsher than a power cut, which the settings
+     * and Hot Cue stores take. */
+    if (msc_lost && msc_stuck) {
         printf("usb_msc reinserted restart=YES\n");
         fflush(stdout);
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -179,7 +181,8 @@ static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
     msc_out = out;
     msc_mps_in = mps;
     msc_present = true;
-    printf("usb_msc bound interface=%u in=%02x out=%02x mps=%u\n", interface, in, out, mps);
+    printf("usb_msc bound interface=%u in=%02x out=%02x mps=%u again=%d\n", interface, in, out, mps,
+           (int)msc_lost);
     fflush(stdout);
     xSemaphoreGive(msc_bound);
     return true;

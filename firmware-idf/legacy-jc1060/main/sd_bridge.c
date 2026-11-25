@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include "sdkconfig.h"
 #include "driver/sdmmc_host.h"
@@ -11,6 +12,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "sdmmc_cmd.h"
 #include "sd_pwr_ctrl_by_on_chip_ldo.h"
 #if CONFIG_RUZINA_UAC_PROFILE
@@ -49,6 +51,23 @@ static atomic_bool stop_requested;
 static esp_err_t (*host_transaction)(int, sdmmc_command_t *);
 #endif
 static uint32_t reads, sectors_read, denied_commands;
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+/* A stick put back: the owner starts each media session after the first on the client,
+ * which waits here once its last one has stopped. */
+static StaticSemaphore_t session_storage;
+static SemaphoreHandle_t session_ready;
+#endif
+
+/* Whether media put back are read again without an app restart: a USB stick is (the
+ * deck screen's Library says so); an SD card is not. */
+bool ruzina_media_reinsertable(void)
+{
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    return true;
+#else
+    return false;
+#endif
+}
 static uint64_t read_us_sum;
 static uint32_t read_us_max;
 
@@ -254,20 +273,27 @@ static void client(void *unused)
      * it on this core preempts them. */
     ACTIVITY_TASK(UAC_ACTIVITY_DECODER);
     ACTIVITY(UAC_ACTIVITY_DECODER, true);
+    for(;;) {
 #if CONFIG_RUZINA_SD_RUST_LOAD
-    int32_t result=ruzina_legacy_load_run();
+        int32_t result=ruzina_legacy_load_run();
 #elif CONFIG_RUZINA_SD_RUST_EXFAT
-    int32_t result=ruzina_legacy_exfat_run();
+        int32_t result=ruzina_legacy_exfat_run();
 #else
-    int32_t result=ruzina_legacy_bridge_run();
+        int32_t result=ruzina_legacy_bridge_run();
 #endif
-    (void)ruzina_legacy_bridge_invalidate();
-    atomic_store_explicit(&stop_requested,true,memory_order_release);
-    ruzina_bridge_notify_worker();
-    printf("rust_sd_client=STOPPED result=%" PRId32 " pending_drain=OWNER\n",result);
-    fflush(stdout);
-    LOAD_NOTE("Load stopped");
-    vTaskSuspend(NULL);
+        (void)ruzina_legacy_bridge_invalidate();
+        atomic_store_explicit(&stop_requested,true,memory_order_release);
+        ruzina_bridge_notify_worker();
+        printf("rust_sd_client=STOPPED result=%" PRId32 " pending_drain=OWNER\n",result);
+        fflush(stdout);
+        LOAD_NOTE("Load stopped");
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+        /* The next session, once a stick is put back and the owner has it ready. */
+        xSemaphoreTake(session_ready,portMAX_DELAY);
+#else
+        vTaskSuspend(NULL);
+#endif
+    }
 }
 
 static void owner(void *unused)
@@ -277,12 +303,17 @@ static void owner(void *unused)
     uint8_t *bounce=NULL;
     esp_err_t err;
 #if CONFIG_RUZINA_MEDIA_USB_STICK
-    /* The media come from the stick: wait for it, make it ready, read its size. */
-    uint32_t capacity=0;
-    err=ruzina_msc_open(&capacity); if(err!=ESP_OK) goto finish;
     /* The USB transfer has its own DMA buffer; this one only receives the copy. */
     bounce=heap_caps_malloc(BRIDGE_BOUNCE_BYTES,MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT);
     if(!bounce) {err=ESP_ERR_NO_MEM;goto finish;}
+    session_ready=xSemaphoreCreateBinaryStatic(&session_storage);
+    bool client_started=false;
+    uint32_t capacity=0;
+    /* Each media session: a stick, at boot or put back after one went. */
+session:
+    /* The media come from the stick: wait for it, make it ready, read its size. */
+    capacity=0;
+    err=ruzina_msc_open(&capacity); if(err!=ESP_OK) goto finish;
     if(ruzina_legacy_bridge_init(capacity)!=0) {err=ESP_ERR_INVALID_STATE;goto finish;}
     printf("S6_RUST_USB_STICK sectors=%" PRIu32 " sector_bytes=512 max_sectors=%u readonly=1\n",
            capacity,BRIDGE_MAX_SECTORS);
@@ -356,7 +387,16 @@ static void owner(void *unused)
 #else
     const uint32_t client_stack=16384;
 #endif
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    if(client_started) {
+        xSemaphoreGive(session_ready);
+    } else {
+        if(xTaskCreatePinnedToCore(client,"sd_rust_client",client_stack,NULL,3,NULL,1)!=pdPASS) {err=ESP_ERR_NO_MEM;goto finish;}
+        client_started=true;
+    }
+#else
     if(xTaskCreatePinnedToCore(client,"sd_rust_client",client_stack,NULL,3,NULL,1)!=pdPASS) {err=ESP_ERR_NO_MEM;goto finish;}
+#endif
     for(;;) {
         ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(1000));
         if(atomic_load_explicit(&stop_requested,memory_order_acquire)) {err=ESP_FAIL;break;}
@@ -414,6 +454,20 @@ finish:
      * and goes only once no slot is left on it. */
     if(slot_up) sdmmc_host_deinit_slot(SDMMC_HOST_SLOT_0);
     if(power) sd_pwr_ctrl_del_on_chip_ldo(power);
+#endif
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+    /* The stick went: once this session's client has stopped, wait for one put back and
+     * read it from the start. A stick still there (a client that stopped by itself, or one
+     * this firmware cannot read) is left as before. */
+    if(bounce && !ruzina_msc_present()) {
+        while(client_started && !atomic_load_explicit(&stop_requested,memory_order_acquire))
+            ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(100));
+        printf("rust_sd_owner=QUIESCED error=%s reads=%" PRIu32 " reinsert=WAITING\n",esp_err_to_name(err),reads);
+        fflush(stdout);
+        LOAD_NOTE("Stick removed - put it back");
+        atomic_store_explicit(&stop_requested,false,memory_order_release);
+        goto session;
+    }
 #endif
     heap_caps_free(bounce);
     printf("rust_sd_owner=QUIESCED error=%s reads=%" PRIu32 " denied_commands=%" PRIu32 " reinsert=APP_RESTART_REQUIRED\n",

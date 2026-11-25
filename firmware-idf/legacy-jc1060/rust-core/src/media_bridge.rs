@@ -169,6 +169,17 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> ReadQueue<B> {
         };
     }
 
+    /// After `invalidate`, once no worker holds a buffer: drops a stale completion whose
+    /// client is gone (a media session that ended), so the queue can be activated again
+    /// for the next medium. Returns whether one was dropped.
+    pub fn forget_stale(&mut self) -> bool {
+        if self.binding.is_none() && matches!(self.slot, Slot::Complete { .. }) {
+            self.slot = Slot::Empty;
+            return true;
+        }
+        false
+    }
+
     /// False while a worker can still be using DMA/card memory. A completed
     /// buffer may await client recovery after it is safe to deinitialize hardware.
     pub fn can_deinitialize(&self) -> bool {

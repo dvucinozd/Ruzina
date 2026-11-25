@@ -150,19 +150,35 @@ fn block_on<F: Future>(future: F) -> F::Output {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn ruzina_legacy_bridge_init(sectors: u32) -> i32 {
+    let source = MediaSourceId::new(0x5344_0001).unwrap();
+    let geometry = BlockGeometry {
+        block_size: 512,
+        block_count: sectors.into(),
+    };
     with_state(|state| {
-        if state.is_some() {
-            return -1;
+        // A medium after the last one went (a stick put back): the same queue, once
+        // nothing of the last session can still touch its memory, with a new lease and
+        // handle. The last session's leases are stale from here on.
+        if let Some(s) = state.as_mut() {
+            if !(s.queue.can_deinitialize() && s.active.is_none() && !s.copying) {
+                return -1;
+            }
+            s.queue.forget_stale();
+            let Some(handle) = MediaHandle::new(s.binding.handle.get().wrapping_add(1).max(1))
+            else {
+                return -2;
+            };
+            let Ok(binding) = s.queue.activate(source, handle, geometry) else {
+                return -2;
+            };
+            #[cfg(feature = "deck-play")]
+            crate::media_signal::activate(binding.lease);
+            s.binding = binding;
+            s.waker = None;
+            return 0;
         }
         let mut queue = ReadQueue::new();
-        let Ok(binding) = queue.activate(
-            MediaSourceId::new(0x5344_0001).unwrap(),
-            MediaHandle::new(1).unwrap(),
-            BlockGeometry {
-                block_size: 512,
-                block_count: sectors.into(),
-            },
-        ) else {
+        let Ok(binding) = queue.activate(source, MediaHandle::new(1).unwrap(), geometry) else {
             return -2;
         };
         #[cfg(feature = "deck-play")]
@@ -806,9 +822,13 @@ pub extern "C" fn ruzina_legacy_load_run() -> i32 {
     let current = || Port.is_current(binding);
     #[cfg(feature = "idf-deck-engine")]
     let prepared = {
-        use crate::deck_resources::{GATE, prepare};
+        use crate::deck_resources::{GATE, prepare, prepare_again};
         report(0, 14, 0); // resource preparation starts, before mount/catalog/UAC
-        let Some(producers) = prepare(&GATE, &crate::deck_play::RINGS, current) else {
+        // A later session (a stick put back) keeps the rings and takes new producers.
+        let rings = &crate::deck_play::RINGS;
+        let Some(producers) =
+            prepare(&GATE, rings, current).or_else(|| prepare_again(&GATE, rings, current))
+        else {
             report(0, load_event::FAILED, 2 << 8 | 1);
             return -7;
         };
@@ -1291,8 +1311,12 @@ fn serve_decks<D: OwnedBlockDevice<Buffer = Sector>, C: Fn() -> bool, P: AsRef<s
     let mut screen_tracks: [Option<(u32, bool)>; 2] = [None; 2];
     #[cfg(feature = "idf-deck-engine")]
     let lease = with_state(|s| s.as_ref().unwrap().binding.lease);
+    // A lease the deck engine never took, from a session before, gives way to this one.
     #[cfg(feature = "idf-deck-engine")]
-    let _ = crate::deck_transport::MEDIA.put(lease);
+    {
+        let _ = crate::deck_transport::MEDIA.take();
+        let _ = crate::deck_transport::MEDIA.put(lease);
+    }
     #[cfg(feature = "idf-deck-engine")]
     let mut hot_cues = Some(hot_cue_flash::store());
     // USB audio fills as last seen, and when they last moved; whether spare journal
