@@ -253,7 +253,7 @@ static void lane_task(void *arg)
     const uint16_t *shown_cache[LANES] = {0};
     for (int d = 0; d < LANES; d++) shown_left[d] = INT64_MIN;
 #if CONFIG_RUZINA_UAC_PROFILE
-    uint32_t refreshes_seen = 0, copies = 0, misses = 0, start_max = 0, done_max = 0;
+    uint32_t refreshes_seen = 0, copies = 0, misses = 0, spares = 0, start_max = 0, done_max = 0;
     uint64_t done_total = 0;
     int64_t report_at = esp_timer_get_time() + 20000000;
 #endif
@@ -278,7 +278,12 @@ static void lane_task(void *arg)
             /* The front cache, or the spare one: a loop gone round. */
             const uint16_t *cache = NULL;
             if (left >= m.lo && left + lane_w <= m.hi) cache = lane_caches[d][m.front & 1];
-            else if (left >= m.spare_lo && left + lane_w <= m.spare_hi) cache = lane_caches[d][~m.front & 1];
+            else if (left >= m.spare_lo && left + lane_w <= m.spare_hi) {
+                cache = lane_caches[d][~m.front & 1];
+#if CONFIG_RUZINA_UAC_PROFILE
+                spares++;
+#endif
+            }
             if (!cache) {
 #if CONFIG_RUZINA_UAC_PROFILE
                 misses++;
@@ -309,10 +314,10 @@ static void lane_task(void *arg)
             if (started > start_max) start_max = started;
         }
         if (now >= report_at) {
-            printf("lanes refreshes=%" PRIu32 " copied=%" PRIu32 " misses=%" PRIu32 " start_max_us=%" PRIu32
+            printf("lanes refreshes=%" PRIu32 " copied=%" PRIu32 " misses=%" PRIu32 " spares=%" PRIu32 " start_max_us=%" PRIu32
                    " done_mean_us=%" PRIu32 " done_max_us=%" PRIu32 "\n", refreshes_seen, copies, misses,
-                   start_max, copies ? (uint32_t)(done_total / copies) : 0, done_max);
-            refreshes_seen = copies = misses = start_max = done_max = 0;
+                   spares, start_max, copies ? (uint32_t)(done_total / copies) : 0, done_max);
+            refreshes_seen = copies = misses = spares = start_max = done_max = 0;
             done_total = 0;
             report_at = now + 20000000;
         }
