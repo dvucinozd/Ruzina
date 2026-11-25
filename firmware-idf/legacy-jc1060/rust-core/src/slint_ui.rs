@@ -1391,6 +1391,41 @@ fn flush(frame: &mut [u16], y: usize, rows: usize) {
     mark(FLUSH, false);
 }
 
+/// The late frames' time from the frame's start to its present, and its parts: the updates
+/// before Slint (with the lanes' moves started), Slint, the lanes and the rest, and the
+/// gate's waits within them. Reported as means: 48 the count and the whole, 49 the updates
+/// and Slint, 50 the lanes and the waits.
+#[derive(Default)]
+struct LateParts {
+    count: u32,
+    sums: [u64; 5],
+}
+
+impl LateParts {
+    fn add(&mut self, whole: u32, updates: u32, slint: u32, wave: u32, waited: u32) {
+        self.count += 1;
+        for (sum, us) in self
+            .sums
+            .iter_mut()
+            .zip([whole, updates, slint, wave, waited])
+        {
+            *sum += u64::from(us);
+        }
+    }
+    fn report(&mut self) {
+        if self.count != 0 {
+            let mean = |i: usize| (self.sums[i] / u64::from(self.count)) as u32;
+            // SAFETY: diagnostic telemetry passes three u32 values only.
+            unsafe {
+                ruzina_bridge_load_report(self.count, 48, mean(0));
+                ruzina_bridge_load_report(mean(1), 49, mean(2));
+                ruzina_bridge_load_report(mean(3), 50, mean(4));
+            }
+        }
+        *self = Self::default();
+    }
+}
+
 #[derive(Clone, Copy, Default)]
 struct Times {
     count: u32,
@@ -1943,8 +1978,11 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // Each deck's steady drawing clock, and the size of its corrections (event 37).
     let mut steadies: [Option<deck_view::Steady>; 2] = [None; 2];
     let mut gap_times = Times::default();
-    // Frames, and those that missed their refresh and showed a refresh late (event 38).
-    let (mut frames, mut late) = (0u32, 0u32);
+    // Frames, and those that missed their refresh and showed a refresh late: event 38 while
+    // the gate waits for gaps, 39 while it does not (`fill-gap-cycle` images).
+    let mut late_counts = [(0u32, 0u32); 2];
+    // Where the late frames' time went (events 48 to 50).
+    let mut late_parts = LateParts::default();
     let start = now_us() / 1_000;
     let mut next_report = REPORT_MS;
     let mut drawing = 1;
@@ -1968,9 +2006,14 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             slint_times.report(21);
             wave_times.report(22);
             gap_times.report(37);
-            // SAFETY: diagnostic telemetry passes three u32 values only.
-            unsafe { ruzina_bridge_load_report(frames, 38, late) };
-            (frames, late) = (0, 0);
+            for (off, (frames, late)) in late_counts.iter().enumerate() {
+                if *frames != 0 {
+                    // SAFETY: diagnostic telemetry passes three u32 values only.
+                    unsafe { ruzina_bridge_load_report(*frames, 38 + off as u32, *late) };
+                }
+            }
+            late_counts = [(0, 0); 2];
+            late_parts.report();
             #[cfg(feature = "idf-uac-profile")]
             gate.report();
             next_report = ms + REPORT_MS;
@@ -2435,7 +2478,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 shown_offset = Some(offset);
             }
         }
-        wave_times.add((now_us() - drawn) as u32);
+        let wave_us = (now_us() - drawn) as u32;
+        wave_times.add(wave_us);
+        let waited = gate.waited;
         gate.frame_done();
         mark(SCREEN, false);
         // The screen runs above the decoding client on its core. After a long frame (a
@@ -2452,9 +2497,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         // next one.
         // SAFETY: reads a counter and waits on the panel's refresh.
         let now = unsafe { ruzina_panel_refreshes() };
-        frames += 1;
+        let counts = &mut late_counts[usize::from(gate.off)];
+        counts.0 += 1;
         if now >= target {
-            late += 1;
+            counts.1 += 1;
+            late_parts.add(
+                (now_us() - gate.frame_started) as u32,
+                (started - updates_started) as u32,
+                slint_us,
+                wave_us,
+                waited,
+            );
             target = now + 1;
         }
         while unsafe { ruzina_panel_refreshes() } + 1 < target {
