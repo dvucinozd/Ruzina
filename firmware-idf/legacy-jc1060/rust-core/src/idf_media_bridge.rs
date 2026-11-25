@@ -631,6 +631,10 @@ mod settings_event {
     pub const SAVED: u32 = 30;
     /// Saving failed, and the settings are not saved again until the next boot.
     pub const FAILED: u32 = 33;
+    /// The deck's network took a new password; value 0, or C's failure code (-1 invalid,
+    /// -2 NVS, -3 the access point).
+    #[cfg(feature = "idf-web-remote")]
+    pub const NETWORK: u32 = 36;
     /// A save waits for USB audio to stand still, as it would erase a sector.
     pub const WAITS: u32 = 34;
     /// The sector the saves move on to was erased ahead of time, while no USB audio
@@ -672,6 +676,25 @@ pub extern "C" fn ruzina_legacy_settings_service() {
     let fills = crate::controller_audio::FILLS.load(Relaxed);
     let audio_still = FILLS.swap(fills, Relaxed) == fills;
     let started = now_us();
+    // A new password for the deck's network (or the default), once no deck plays: NVS
+    // writes flash, and this task's stack is internal RAM.
+    #[cfg(feature = "idf-web-remote")]
+    if !crate::media_signal::playing().into_iter().any(|p| p)
+        && let Some(mut password) = crate::deck_network::take()
+    {
+        unsafe extern "C" {
+            fn ruzina_wifi_change_password(password: *const u8) -> i32;
+        }
+        let pointer = if password[0] == 0 {
+            core::ptr::null()
+        } else {
+            password.as_ptr()
+        };
+        // SAFETY: a NUL-terminated buffer that outlives the call, or null; C copies it.
+        let result = unsafe { ruzina_wifi_change_password(pointer) };
+        password.fill(0);
+        report(settings_event::NETWORK, result as u32);
+    }
     if !crate::media_signal::playing().into_iter().any(|p| p)
         && let Some(settings) = crate::deck_settings::take_owed((started / 1_000) as u32)
     {

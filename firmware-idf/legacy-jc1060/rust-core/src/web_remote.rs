@@ -24,7 +24,9 @@ use ruzina_web::json::{DeckStateText, DeckStatus, LibraryRow, MixerStatus};
 use ruzina_web::server::{
     ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend, WebServer,
 };
-use ruzina_web::settings::{Jog, Media, SettingChange, SettingsInfo, SettingsView};
+use ruzina_web::settings::{
+    Jog, Media, PasswordOutcome, SettingChange, SettingsInfo, SettingsView,
+};
 
 /// The access point's address; the guard admits requests for it.
 const AP_IPV4: &str = "192.168.4.1";
@@ -364,6 +366,7 @@ impl WebBackend for Backend<'_> {
                 Screensaver::Minutes10 => 10,
             },
             info: SettingsInfo {
+                network: self.state.name.as_str(),
                 firmware,
                 built: &self.built,
                 controller: &self.controller,
@@ -380,6 +383,22 @@ impl WebBackend for Backend<'_> {
         let now_ms = (now_us() / 1_000) as u32;
         crate::deck_settings::change(now_ms, |settings| edit_setting(settings, change));
         true
+    }
+
+    /// Handed to the app main task, which saves it and restarts the network with it. Not
+    /// while a deck plays: the save writes flash, which stalls the audio.
+    fn change_network_password(&mut self, password: &str) -> PasswordOutcome {
+        if !crate::deck_network::valid(password) {
+            return PasswordOutcome::Invalid;
+        }
+        if crate::media_signal::playing()
+            .into_iter()
+            .any(|playing| playing)
+            || !crate::deck_network::put(Some(password))
+        {
+            return PasswordOutcome::Busy;
+        }
+        PasswordOutcome::Accepted
     }
 
     fn status(&mut self) -> StatusParts<'_> {

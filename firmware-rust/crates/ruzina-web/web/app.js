@@ -428,6 +428,7 @@ function renderSettings(data) {
   mark('[data-setting="screensaver"]', data.screensaver_min);
   $('#brightness').textContent = `${data.brightness.percent} %`;
   const info = data.info || {};
+  $('#info-network').textContent = info.network || '—';
   $('#info-firmware').textContent = info.firmware || '—';
   $('#info-built').textContent = info.built || '—';
   $('#info-controller').textContent = info.controller || 'none';
@@ -449,6 +450,31 @@ function settingParams(name, value, jog) {
   }
   if (jog) params.set('deck', jog);
   return params;
+}
+// A new password for the deck's network: checked here as the deck checks it, sent in the
+// body only, and never kept by the page.
+function passwordProblem(password) {
+  if (/^[0-9a-fA-F]{64}$/.test(password)) return null;
+  if (password.length < 8 || password.length > 63) return 'Password must be 8 to 63 characters';
+  if (!/^[\x20-\x7e]*$/.test(password)) return 'Use letters, digits, spaces and common symbols only';
+  if (/["\\]/.test(password)) return 'Quotes and backslashes cannot be used';
+  return null;
+}
+async function changePassword(password) {
+  const problem = passwordProblem(password);
+  if (problem) { message(problem); return false; }
+  try {
+    const response = await fetch('/api/network', {
+      method: 'POST',
+      headers: { 'X-DDJ-Control': '1', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    message(await response.text() || `Request failed (${response.status})`);
+    return response.ok;
+  } catch (error) {
+    message('Deck unreachable');
+    return false;
+  }
 }
 async function loadSettings() {
   try {
@@ -532,6 +558,16 @@ function bindControls() {
   for (const button of document.querySelectorAll('[data-brightness]')) {
     button.addEventListener('click', () => changeSetting(settingParams('brightness', button.dataset.brightness)));
   }
+  $('#password-show').addEventListener('click', () => {
+    const input = $('#password');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    $('#password-show').textContent = input.type === 'password' ? 'SHOW' : 'HIDE';
+  });
+  $('#password-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const input = $('#password');
+    if (await changePassword(input.value)) input.value = '';
+  });
   $('#to-library').addEventListener('click', () => { $('#library').open = true; });
   $('#search').addEventListener('input', renderLibrary);
   if (typeof window !== 'undefined') {

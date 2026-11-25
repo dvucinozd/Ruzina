@@ -120,6 +120,11 @@ pub trait WebBackend {
     fn change_setting(&mut self, _change: crate::settings::SettingChange) -> bool {
         false
     }
+    /// A new password for the deck's own network, from the SETUP page. The deck checks it,
+    /// saves it and restarts its network with it; the page's phone then has to join again.
+    fn change_network_password(&mut self, _password: &str) -> crate::settings::PasswordOutcome {
+        crate::settings::PasswordOutcome::Unavailable
+    }
 }
 
 pub struct WebServer {
@@ -360,6 +365,49 @@ impl WebServer {
                 text(status, body, out)
             }
             Route::Settings => settings(backend, out),
+            Route::NetworkPassword => {
+                use crate::settings::PasswordOutcome;
+                // The password travels in the body only, never in a query or a log.
+                if !request.query.is_empty() {
+                    return text(
+                        HttpStatus::BadRequest,
+                        "Credentials do not belong in a query",
+                        out,
+                    );
+                }
+                if !parse::body_length_allowed(parse::BodyKind::Json, request.content_length) {
+                    return text(HttpStatus::PayloadTooLarge, "Body too large", out);
+                }
+                let body = bytes
+                    .get(request.head_len..)
+                    .filter(|body| body.len() == request.content_length)
+                    .and_then(|body| core::str::from_utf8(body).ok());
+                let Some(password) = body.and_then(crate::settings::parse_password) else {
+                    return text(
+                        HttpStatus::BadRequest,
+                        "Password must be 8 to 63 characters",
+                        out,
+                    );
+                };
+                match backend.change_network_password(password) {
+                    PasswordOutcome::Accepted => text(
+                        HttpStatus::Ok,
+                        "Saved. The deck's network restarts with the new password.",
+                        out,
+                    ),
+                    PasswordOutcome::Busy => {
+                        text(HttpStatus::Conflict, "Stop both decks first", out)
+                    }
+                    PasswordOutcome::Invalid => text(
+                        HttpStatus::BadRequest,
+                        "Password must be 8 to 63 characters",
+                        out,
+                    ),
+                    PasswordOutcome::Unavailable => {
+                        text(HttpStatus::NotImplemented, "Not implemented yet", out)
+                    }
+                }
+            }
             Route::SettingsChange => match crate::settings::parse_change(request.query) {
                 Err(error) => text(HttpStatus::BadRequest, error.text(), out),
                 Ok(change) if backend.change_setting(change) => settings(backend, out),

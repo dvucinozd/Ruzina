@@ -200,7 +200,17 @@
       <div class="seg" data-setting="trim"><button type="button" data-value="0">0 dB</button><button type="button" data-value="3">−3 dB</button><button type="button" data-value="6">−6 dB</button></div></div>
     <div class="setting"><span>SCREENSAVER</span>
       <div class="seg" data-setting="screensaver"><button type="button" data-value="0">OFF</button><button type="button" data-value="2">2 MIN</button><button type="button" data-value="5">5 MIN</button><button type="button" data-value="10">10 MIN</button></div></div>
+    <form class="setting password" id="password-form" autocomplete="off">
+      <label for="password"><span>WI-FI PASSWORD</span></label>
+      <div class="password-row">
+        <input id="password" type="password" minlength="8" maxlength="63" placeholder="8 to 63 characters" autocomplete="new-password" spellcheck="false">
+        <button type="button" id="password-show" aria-label="Show the password">SHOW</button>
+        <button type="submit">SAVE</button>
+      </div>
+      <p class="note">Saved on the deck. Its network restarts, and this phone has to join again with the new password. The deck's Settings page shows it, and DEFAULT there puts the old one back.</p>
+    </form>
     <dl class="info">
+      <dt>NETWORK</dt><dd id="info-network">—</dd>
       <dt>FIRMWARE</dt><dd id="info-firmware">—</dd>
       <dt>BUILT</dt><dd id="info-built">—</dd>
       <dt>CONTROLLER</dt><dd id="info-controller">—</dd>

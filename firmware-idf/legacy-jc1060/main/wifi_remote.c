@@ -2,7 +2,9 @@
  *
  * ESP-Hosted carries Wi-Fi from the C6 over SDIO. The deck starts a WPA2 access point,
  * "Ruzina-XXXX", with the password CONFIG_RUZINA_WIFI_PASSWORD (the owner's choice), shown
- * on the Settings page (ruzina_wifi_credentials). On 192.168.4.1 a small
+ * on the Settings page (ruzina_wifi_credentials). A password set from the Web Remote's
+ * SETUP page replaces it (ruzina_wifi_change_password); it is kept in NVS, and the deck's
+ * Settings page can put the default back. On 192.168.4.1 a small
  * server serves up to four connections at once (web_client.h) and hands each request to
  * ruzina-web (ruzina_web_handle): the Web Remote page, its status and its controls.
  * The log carries counts and timings only: no addresses or names of the devices that
@@ -27,6 +29,8 @@
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/sockets.h"
@@ -55,9 +59,16 @@ static const char *const hosted_tasks[] = {
 };
 
 static char ap_ssid[33];
-static const char ap_password[] = CONFIG_RUZINA_WIFI_PASSWORD;
-_Static_assert(sizeof ap_password <= sizeof(((wifi_ap_config_t *)0)->password),
+static const char default_password[] = CONFIG_RUZINA_WIFI_PASSWORD;
+_Static_assert(sizeof default_password <= sizeof(((wifi_ap_config_t *)0)->password),
                "CONFIG_RUZINA_WIFI_PASSWORD is longer than WPA2 allows");
+/* The password in force: the default, or one the owner set (kept in NVS). Read and written
+ * under ap_lock: the Settings page reads it on the screen's task, a change comes on the
+ * app main task. */
+static char ap_password[65] = CONFIG_RUZINA_WIFI_PASSWORD;
+static portMUX_TYPE ap_lock = portMUX_INITIALIZER_UNLOCKED;
+#define NVS_NAMESPACE "ruzina"
+#define NVS_PASSWORD_KEY "ap_password"
 static atomic_bool ap_ready;
 static atomic_int clients;
 static atomic_uint requests;
@@ -88,8 +99,107 @@ bool ruzina_wifi_credentials(char *ssid, size_t ssid_len, char *password, size_t
 {
     if (!atomic_load(&ap_ready) || ssid_len == 0 || password_len == 0) return false;
     snprintf(ssid, ssid_len, "%s", ap_ssid);
-    snprintf(password, password_len, "%s", ap_password);
+    char copy[sizeof ap_password];
+    portENTER_CRITICAL(&ap_lock);
+    memcpy(copy, ap_password, sizeof copy);
+    portEXIT_CRITICAL(&ap_lock);
+    snprintf(password, password_len, "%s", copy);
+    memset(copy, 0, sizeof copy);
     return true;
+}
+
+/* WPA2: 8 to 63 printable ASCII characters, or 64 hex digits. */
+static bool password_valid(const char *password)
+{
+    const size_t len = strlen(password);
+    if (len == 64) {
+        for (size_t i = 0; i < len; ++i)
+            if (!isxdigit((unsigned char)password[i])) return false;
+        return true;
+    }
+    if (len < 8 || len > 63) return false;
+    for (size_t i = 0; i < len; ++i)
+        if (password[i] < 0x20 || password[i] > 0x7e) return false;
+    return true;
+}
+
+/* The access point's configuration with the password in force. */
+static void ap_config(wifi_config_t *config)
+{
+    memset(config, 0, sizeof *config);
+    memcpy(config->ap.ssid, ap_ssid, strlen(ap_ssid));
+    config->ap.ssid_len = (uint8_t)strlen(ap_ssid);
+    portENTER_CRITICAL(&ap_lock);
+    const size_t password_len = strlen(ap_password);
+    memcpy(config->ap.password, ap_password, password_len);
+    portEXIT_CRITICAL(&ap_lock);
+    config->ap.channel = AP_CHANNEL;
+    config->ap.max_connection = AP_MAX_CLIENTS;
+    /* WPA2 needs 8 to 63 characters (or 64 hex digits); anything else leaves the network
+     * open. */
+    config->ap.authmode = password_len >= 8 && password_len <= 64 ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
+    config->ap.pmf_cfg.capable = true;
+}
+
+/* At boot, with the deck's settings and before the screen and USB audio start: the
+ * password the owner set, if NVS holds a valid one. NVS reads flash, which stalls the USB
+ * audio fill; read later, from the Wi-Fi task, it made one fill of 7.5 ms on s206. */
+void ruzina_wifi_load_password(void)
+{
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        /* A partition never written by NVS, or by another version: start it afresh. */
+        err = nvs_flash_erase();
+        if (err == ESP_OK) err = nvs_flash_init();
+    }
+    nvs_handle_t nvs;
+    char stored[sizeof ap_password] = {0};
+    size_t len = sizeof stored;
+    bool owner = false;
+    if (err == ESP_OK && nvs_open(NVS_NAMESPACE, NVS_READONLY, &nvs) == ESP_OK) {
+        owner = nvs_get_str(nvs, NVS_PASSWORD_KEY, stored, &len) == ESP_OK && password_valid(stored);
+        nvs_close(nvs);
+    }
+    if (owner) {
+        portENTER_CRITICAL(&ap_lock);
+        memcpy(ap_password, stored, sizeof ap_password);
+        portEXIT_CRITICAL(&ap_lock);
+    }
+    memset(stored, 0, sizeof stored);
+    printf("wifi_ap nvs=%s password=%s\n", esp_err_to_name(err), owner ? "OWNER" : "DEFAULT");
+}
+
+/* A new password for the deck's network, or NULL for the default: kept in NVS, then the
+ * running access point takes it (its stations drop and join again). On the app main task:
+ * NVS writes flash, which wants an internal-RAM stack, and the caller has checked that no
+ * deck plays. 0 when done, -1 for a password WPA2 cannot take, -2 when NVS failed, -3 when
+ * the access point did not take it. Never logs the password. */
+int32_t ruzina_wifi_change_password(const char *password)
+{
+    if (password && !password_valid(password)) return -1;
+    if (!atomic_load(&ap_ready)) return -3;
+    nvs_handle_t nvs;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs);
+    if (err == ESP_OK) {
+        err = password ? nvs_set_str(nvs, NVS_PASSWORD_KEY, password) : nvs_erase_key(nvs, NVS_PASSWORD_KEY);
+        if (err == ESP_ERR_NVS_NOT_FOUND) err = ESP_OK;
+        if (err == ESP_OK) err = nvs_commit(nvs);
+        nvs_close(nvs);
+    }
+    if (err != ESP_OK) {
+        printf("wifi_ap password_change nvs=%s\n", esp_err_to_name(err));
+        return -2;
+    }
+    portENTER_CRITICAL(&ap_lock);
+    memset(ap_password, 0, sizeof ap_password);
+    memcpy(ap_password, password ? password : default_password, strlen(password ? password : default_password));
+    portEXIT_CRITICAL(&ap_lock);
+    wifi_config_t config;
+    ap_config(&config);
+    err = esp_wifi_set_config(WIFI_IF_AP, &config);
+    memset(&config, 0, sizeof config);
+    printf("wifi_ap password_change=%s source=%s\n", esp_err_to_name(err), password ? "OWNER" : "DEFAULT");
+    return err == ESP_OK ? 0 : -3;
 }
 
 static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
@@ -116,21 +226,14 @@ static esp_err_t start_access_point(void)
     uint8_t mac[6] = {0};
     esp_wifi_get_mac(WIFI_IF_AP, mac);
     snprintf(ap_ssid, sizeof ap_ssid, "Ruzina-%02X%02X", mac[4], mac[5]);
-    wifi_config_t config = {0};
-    memcpy(config.ap.ssid, ap_ssid, strlen(ap_ssid));
-    config.ap.ssid_len = (uint8_t)strlen(ap_ssid);
-    memcpy(config.ap.password, ap_password, strlen(ap_password));
-    config.ap.channel = AP_CHANNEL;
-    config.ap.max_connection = AP_MAX_CLIENTS;
-    /* WPA2 needs 8 to 63 characters; anything else leaves the network open. */
-    const size_t password_len = strlen(ap_password);
-    config.ap.authmode = password_len >= 8 && password_len <= 63 ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
-    config.ap.pmf_cfg.capable = true;
+    wifi_config_t config;
+    ap_config(&config);
     err = esp_wifi_set_mode(WIFI_MODE_AP);
     if (err == ESP_OK) err = esp_wifi_set_config(WIFI_IF_AP, &config);
     if (err == ESP_OK) err = esp_wifi_start();
     printf("wifi_ap start=%s ssid=%s channel=%d auth=%s\n", esp_err_to_name(err), ap_ssid, AP_CHANNEL,
            config.ap.authmode == WIFI_AUTH_WPA2_PSK ? "wpa2" : "open");
+    memset(&config, 0, sizeof config);
     if (err == ESP_OK) {
         /* The page shows which deck it drives: the network's name. */
         ruzina_web_set_name((const uint8_t *)ap_ssid, strlen(ap_ssid));

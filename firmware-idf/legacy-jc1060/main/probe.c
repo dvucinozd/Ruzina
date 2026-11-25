@@ -279,6 +279,11 @@ void app_main(void)
     extern void ruzina_display_backlight(uint32_t percent);
     ruzina_display_backlight(settings & 0xff);
 #endif
+#if CONFIG_RUZINA_WIFI_REMOTE
+    /* The deck's network's password, from NVS, before USB audio runs (wifi_remote.c). */
+    extern void ruzina_wifi_load_password(void);
+    ruzina_wifi_load_password();
+#endif
 #if CONFIG_RUZINA_UAC_PROFILE
     render_bench();
 #if CONFIG_RUZINA_CONTENTION_BENCH

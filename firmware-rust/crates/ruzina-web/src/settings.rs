@@ -46,9 +46,30 @@ impl Media {
     }
 }
 
+/// What became of a new password for the deck's own network.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PasswordOutcome {
+    /// Taken: the deck saves it and restarts its network with it.
+    Accepted,
+    /// Not while a deck plays: saving stalls the audio.
+    Busy,
+    /// Not a WPA2 password (8 to 63 printable characters).
+    Invalid,
+    /// The deck has no network it can change.
+    Unavailable,
+}
+
+/// The password a `POST /api/network` body `{"password":"…"}` carries: the field alone,
+/// with no escapes, at most 64 bytes. The deck checks the rest.
+pub fn parse_password(body: &str) -> Option<&str> {
+    crate::parse::json_string(body, "password", 64).filter(|password| !password.is_empty())
+}
+
 /// What the deck tells about itself, as its Settings page does.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SettingsInfo<'a> {
+    /// The deck's own network's name.
+    pub network: &'a str,
     /// The firmware's version and build time.
     pub firmware: &'a str,
     pub built: &'a str,
@@ -210,5 +231,17 @@ mod tests {
             parse_change("name=screensaver&value=3"),
             Err(ChangeError::Value)
         );
+    }
+
+    #[test]
+    fn a_password_comes_from_its_json_field_only() {
+        assert_eq!(
+            parse_password("{\"password\":\"club night 42\"}"),
+            Some("club night 42")
+        );
+        assert_eq!(parse_password("{\"password\":\"\"}"), None);
+        assert_eq!(parse_password("{\"password\":\"a\\\"b\"}"), None);
+        assert_eq!(parse_password("{\"pass\":\"secret123\"}"), None);
+        assert_eq!(parse_password("password=secret123"), None);
     }
 }

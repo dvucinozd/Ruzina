@@ -25,7 +25,7 @@ function harness() {
     setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},
     fetch:url=>new Promise((resolve,reject)=>calls.push({url,resolve,reject}))});
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../app.js'),'utf8')+
-    '\nglobalThis.testApi={pollStatus,renderDeck,dragging,renderSettings,settingParams};',context);
+    '\nglobalThis.testApi={pollStatus,renderDeck,dragging,renderSettings,settingParams,passwordProblem,changePassword};',context);
   const status=(revision,boot=1)=>({stamp:{boot,sequence:calls.length,library_revision:revision},
     deck1:{state_text:'IDLE',pitch_percent:0},deck2:{state_text:'IDLE',pitch_percent:0},mixer:{}});
   const reply=(call,body)=>call.resolve({ok:true,json:async()=>body,text:async()=>''});
@@ -131,7 +131,7 @@ test('the overview is fetched once per track and a stale answer is dropped',asyn
   assert.equal(h.calls.length,6);
 });
 const deckSettings=()=>({load_lock:false,jog:['vinyl','cdj'],brightness:{percent:25,min:10,max:50,step:5},
-  trim_db:3,screensaver_min:2,info:{firmware:'v1',built:'Nov 25 2026 12:00:00',controller:'',tracks:25,media:'removed',uptime_s:3725}});
+  trim_db:3,screensaver_min:2,info:{network:'Ruzina-AB2D',firmware:'v1',built:'Nov 25 2026 12:00:00',controller:'',tracks:25,media:'removed',uptime_s:3725}});
 test('the setup page shows the deck\'s settings and information',()=>{
   const h=harness(); h.context.testApi.renderSettings(deckSettings());
   assert.equal(h.document.querySelector('#brightness').textContent,'25 %');
@@ -150,4 +150,24 @@ test('a setting change names one setting, and the brightness steps within its ra
   assert.equal(api.settingParams('brightness','1'),null);
   assert.equal(String(api.settingParams('jog','cdj','2')),'name=jog&value=cdj&deck=2');
   assert.equal(String(api.settingParams('load_lock','1')),'name=load_lock&value=1');
+});
+test('a new network password is checked, then sent in the body only',async()=>{
+  const h=harness(); const api=h.context.testApi;
+  assert.equal(api.passwordProblem('short'),'Password must be 8 to 63 characters');
+  assert.equal(api.passwordProblem('lozinka čaša'),'Use letters, digits, spaces and common symbols only');
+  assert.equal(api.passwordProblem('say "hi" now'),'Quotes and backslashes cannot be used');
+  assert.equal(api.passwordProblem('club night 42'),null);
+  assert.equal(api.passwordProblem('ab'.repeat(32)),null);
+  const before=h.calls.length;
+  assert.equal(await api.changePassword('short'),false);
+  assert.equal(h.calls.length,before);
+  const sent=api.changePassword('club night 42');
+  const call=h.calls[h.calls.length-1];
+  assert.equal(call.url,'/api/network');
+  call.resolve({ok:true,text:async()=>'Saved.'});
+  assert.equal(await sent,true);
+});
+test('the setup page names the deck\'s network',()=>{
+  const h=harness(); h.context.testApi.renderSettings(deckSettings());
+  assert.equal(h.document.querySelector('#info-network').textContent,'Ruzina-AB2D');
 });
