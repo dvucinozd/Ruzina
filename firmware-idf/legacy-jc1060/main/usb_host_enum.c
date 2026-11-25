@@ -378,7 +378,18 @@ static void client_task(void *unused)
 #if CONFIG_RUZINA_PRODUCER_PROFILE
         uint64_t service_handled=(uint64_t)esp_timer_get_time();
 #endif
+#if CONFIG_RUZINA_MEDIA_USB_STICK
+        /* The media owner may be inside a command with the handle: close once it is out.
+         * Before the new devices, so a stick put back quickly binds once the last is closed;
+         * until then they wait. */
+        if (stick_gone && msc_idle()) {
+            stick_gone = false;
+            msc_unbind();
+        }
+        while (pending_count && !stick_gone) {
+#else
         while (pending_count) {
+#endif
             const uint8_t address = pending_addresses[--pending_count];
 #if CONFIG_RUZINA_MEDIA_USB_STICK
             /* With the controller attached, only a stick can still bind. */
@@ -393,13 +404,6 @@ static void client_task(void *unused)
 #endif
             if (!device) report(address);
         }
-#if CONFIG_RUZINA_MEDIA_USB_STICK
-        /* The media owner may be inside a command with the handle: close once it is out. */
-        if (stick_gone && msc_idle()) {
-            stick_gone = false;
-            msc_unbind();
-        }
-#endif
         if (gone && device) {
 #if CONFIG_RUZINA_USB_HOST_UAC
             if (!uac_stop()) continue;

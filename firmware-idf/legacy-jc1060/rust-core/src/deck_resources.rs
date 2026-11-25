@@ -34,6 +34,12 @@ impl Gate {
             .compare_exchange(PREPARING, READY, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
     }
+    /// A failed gate prepares again: a later media session (a stick put back).
+    pub(crate) fn restart(&self) -> bool {
+        self.0
+            .compare_exchange(FAILED, PREPARING, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
     pub(crate) fn fail(&self) {
         self.0.store(FAILED, Ordering::Release);
     }
@@ -150,6 +156,30 @@ pub(crate) fn prepare<File>(
     }
     result
 }
+/// A later media session (a stick put back) after the last one failed the gate: the rings
+/// published by the first stay, as the USB task reads them for good, and the session takes
+/// new producers for them. Nothing before the rings were published can be prepared again.
+pub(crate) fn prepare_again<File>(
+    gate: &Gate,
+    rings: &[Ring; 2],
+    current: impl FnOnce() -> bool,
+) -> Option<[Producer<File>; 2]> {
+    if !rings.iter().all(Ring::has_storage) || !gate.restart() {
+        return None;
+    }
+    let result = (|| {
+        let producers = [Producer::try_new()?, Producer::try_new()?];
+        if !current() || !gate.ready() {
+            return None;
+        }
+        Some(producers)
+    })();
+    if result.is_none() {
+        gate.fail();
+    }
+    result
+}
+
 impl<File> Prepared<File> {
     pub(crate) fn try_new() -> Option<Self> {
         Some(Self {
@@ -382,6 +412,36 @@ mod tests {
         }
         assert_eq!(counting.finish(), (0, 0));
         assert_eq!(gate.state(), READY);
+    }
+
+    #[test]
+    fn a_later_media_session_takes_new_producers_for_the_published_rings() {
+        // Nothing was published: a failed gate stays failed.
+        let g = Gate::new();
+        let rings = [Ring::new(), Ring::new()];
+        assert!(prepare::<()>(&g, &rings, || false).is_none());
+        assert!(prepare_again::<()>(&g, &rings, || panic!("no rings to prepare for")).is_none());
+        assert_eq!(g.state(), FAILED);
+        // Published, then the medium went: the next session prepares again, once.
+        let g = Gate::new();
+        let first = prepare::<()>(&g, &rings, || true).unwrap();
+        assert!(prepare_again::<()>(&g, &rings, || panic!("still ready")).is_none());
+        g.fail();
+        drop(first);
+        let again = prepare_again::<()>(&g, &rings, || true).unwrap();
+        assert_eq!(g.state(), READY);
+        assert!(rings.iter().all(Ring::has_storage));
+        // A session whose medium went while it prepared fails the gate again.
+        g.fail();
+        drop(again);
+        assert!(prepare_again::<()>(&g, &rings, || false).is_none());
+        assert_eq!(g.state(), FAILED);
+        // Its allocations can fail too, and leave the gate failed for the next.
+        FAIL_AT.with(|n| n.set(Some(0)));
+        assert!(prepare_again::<()>(&g, &rings, || true).is_none());
+        FAIL_AT.with(|n| n.set(None));
+        assert_eq!(g.state(), FAILED);
+        assert!(prepare_again::<()>(&g, &rings, || true).is_some());
     }
 
     #[test]

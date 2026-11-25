@@ -320,6 +320,48 @@ fn remount_waits_for_drain_and_never_revives_an_old_client() {
 }
 
 #[test]
+fn a_stale_completion_whose_client_is_gone_is_dropped_for_the_next_medium() {
+    let (port, old, mut old_client) = setup();
+    let drops = Rc::new(Cell::new(0));
+    let request = Buffer {
+        bytes: vec![0; 512],
+        id: 28,
+        drops: drops.clone(),
+    };
+    let mut future = Box::pin(old_client.read_blocks_owned(0, 1, request));
+    assert!(poll(future.as_mut()).is_pending());
+    // The session ends: its client goes without collecting the stale completion.
+    drop(future);
+    drop(old_client);
+    port.0.borrow_mut().queue.invalidate();
+    assert!(port.0.borrow().queue.can_deinitialize());
+    assert_eq!(drops.get(), 0);
+    assert!(port.0.borrow_mut().queue.forget_stale());
+    assert_eq!(drops.get(), 1);
+    assert!(!port.0.borrow_mut().queue.forget_stale());
+    let fresh = port
+        .0
+        .borrow_mut()
+        .queue
+        .activate(source(), handle(), geometry())
+        .unwrap();
+    assert_ne!(fresh.lease.generation, old.lease.generation);
+    assert!(!port.0.borrow().queue.is_current(old));
+}
+
+#[test]
+fn an_active_read_is_never_forgotten() {
+    let (port, _, mut client) = setup();
+    let mut future = Box::pin(client.read_blocks_owned(0, 1, buffer(29, 512)));
+    assert!(poll(future.as_mut()).is_pending());
+    let request = port.0.borrow_mut().queue.take_request().unwrap();
+    port.0.borrow_mut().queue.invalidate();
+    assert!(!port.0.borrow().queue.can_deinitialize());
+    assert!(!port.0.borrow_mut().queue.forget_stale());
+    complete(&port, request, Ok(512));
+}
+
+#[test]
 fn io_errors_and_short_reads_return_the_original_buffer() {
     for (result, expected) in [
         (Err(0x107), Error::Device(0x107)),

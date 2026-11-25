@@ -217,6 +217,8 @@ unsafe extern "C" {
         caches: *mut *mut u16,
     ) -> bool;
     fn ruzina_lanes_publish(lane: u32, model: *const LaneModel);
+    /// Returns once the lanes' task has finished any copies it had begun.
+    fn ruzina_lanes_settle();
     fn ruzina_lanes_blit(
         from: *const u16,
         from_width: u32,
@@ -239,6 +241,8 @@ unsafe extern "C" {
         height: u32,
     ) -> i32;
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
+    /// Whether media put back are read again without an app restart (a USB stick).
+    fn ruzina_media_reinsertable() -> bool;
     /// The running app's description (IDF `esp_app_desc_t`).
     fn esp_app_get_description() -> *const AppDescription;
     /// GT911 touches now (0 when none or no touch controller), the first one mapped to
@@ -1285,6 +1289,17 @@ impl LaneCache {
         }
     }
 
+    /// Hides a shown lane at once, as last published: a page or cover is about to be drawn
+    /// over it. The caller then waits for the lanes' task (`ruzina_lanes_settle`).
+    fn hide(&mut self) {
+        if self.shown
+            && let Some(motion) = self.published
+        {
+            self.publish(false, motion);
+            self.shown = false;
+        }
+    }
+
     /// Tells the lanes' task what the caches hold and where the deck is.
     fn publish(&mut self, shown: bool, motion: Motion) {
         self.published = Some(motion);
@@ -1933,10 +1948,19 @@ fn show_library(
     while model.row_count() > count {
         model.remove(model.row_count() - 1);
     }
-    // The media went away: the rows stay as they were read, but none of them loads until
-    // the app restarts (a USB stick put back restarts it by itself).
+    // The media went away: the rows stay as they were read, but none of them loads. A USB
+    // stick put back is read again from the start; an SD card needs an app restart.
     if gone {
-        ui.set_library_count("RESTART NEEDED".into());
+        // SAFETY: reads a build constant.
+        let again = unsafe { ruzina_media_reinsertable() };
+        ui.set_library_count(
+            if again {
+                "PUT IT BACK"
+            } else {
+                "RESTART NEEDED"
+            }
+            .into(),
+        );
         ui.set_library_heading("MEDIA REMOVED".into());
         ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
         return;
@@ -2562,6 +2586,18 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
         }
         slint::platform::update_timers_and_animations();
         let buffer = &mut *frame;
+        // A page or cover drawn over the lanes: they are hidden, and the lanes' task done
+        // with any copy it had begun, before Slint draws it.
+        if covered && let Some(lanes) = lanes.as_mut() {
+            let shown = lanes.iter().any(|lane| lane.shown);
+            for lane in lanes.iter_mut() {
+                lane.hide();
+            }
+            if shown {
+                // SAFETY: waits on the lanes' task; no arguments.
+                unsafe { ruzina_lanes_settle() };
+            }
+        }
         mark(SCREEN, true);
         let allocs_before = crate::idf_alloc::counted();
         let started = now_us();

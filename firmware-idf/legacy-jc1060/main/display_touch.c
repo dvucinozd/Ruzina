@@ -225,6 +225,9 @@ static lane_model_t lane_models[LANES];
 static portMUX_TYPE lane_lock = portMUX_INITIALIZER_UNLOCKED;
 static uint16_t *lane_caches[LANES][2];
 static uint16_t *lane_frame;
+/* Held by the lanes' task through each refresh's copies (`ruzina_lanes_settle`). */
+static StaticSemaphore_t lane_pass_storage;
+static SemaphoreHandle_t lane_pass;
 static uint32_t lane_count, lane_x, lane_y[LANES], lane_h[LANES], lane_w, lane_playhead;
 
 static int64_t floor_div(int64_t a, int64_t b) { return a / b - (a % b != 0 && (a < 0) != (b < 0)); }
@@ -259,6 +262,7 @@ static void lane_task(void *arg)
 #endif
     for (;;) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        xSemaphoreTake(lane_pass, portMAX_DELAY);
         const int64_t now = esp_timer_get_time();
         uint32_t slot = 0;
         for (int d = 0; d < (int)lane_count; d++) {
@@ -302,6 +306,7 @@ static void lane_task(void *arg)
         const uint32_t started = (uint32_t)(esp_timer_get_time() - now);
 #endif
         for (uint32_t s = 0; s < slot; s++) copy_end(s);
+        xSemaphoreGive(lane_pass);
 #if CONFIG_RUZINA_UAC_PROFILE
         /* Profile images: refreshes, the copies made and the deck positions the cache did
            not hold yet, and when the copies were started and done after the refresh. */
@@ -344,6 +349,7 @@ bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t w, uint32_t playhe
         lane_y[d] = y[d];
         lane_h[d] = h[d];
     }
+    lane_pass = xSemaphoreCreateMutexStatic(&lane_pass_storage);
     lane_frame = frame;
     lane_x = x;
     lane_w = w;
@@ -351,6 +357,17 @@ bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t w, uint32_t playhe
     lane_count = count;
     /* On the deck screen's core, above it (4) and the SD client (3). */
     return xTaskCreatePinnedToCore(lane_task, "lanes", 4096, NULL, 6, &lane_task_handle, 1) == pdPASS;
+}
+
+/* Returns once the lanes' task has finished any copies it had begun: from then on it
+   copies by what was last published. The deck screen hides the lanes this way before Slint
+   draws a page over them; on s201p a copy that began before a page's model said hidden
+   put waveforms over the Library. */
+void ruzina_lanes_settle(void)
+{
+    if (!lane_pass) return;
+    xSemaphoreTake(lane_pass, portMAX_DELAY);
+    xSemaphoreGive(lane_pass);
 }
 
 /* Lane `d` from now on (`lane_model_t`). */
