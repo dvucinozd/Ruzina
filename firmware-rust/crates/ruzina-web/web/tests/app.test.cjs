@@ -25,7 +25,7 @@ function harness() {
     setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},
     fetch:url=>new Promise((resolve,reject)=>calls.push({url,resolve,reject}))});
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../app.js'),'utf8')+
-    '\nglobalThis.testApi={pollStatus,renderDeck,dragging};',context);
+    '\nglobalThis.testApi={pollStatus,renderDeck,dragging,renderSettings,settingParams};',context);
   const status=(revision,boot=1)=>({stamp:{boot,sequence:calls.length,library_revision:revision},
     deck1:{state_text:'IDLE',pitch_percent:0},deck2:{state_text:'IDLE',pitch_percent:0},mixer:{}});
   const reply=(call,body)=>call.resolve({ok:true,json:async()=>body,text:async()=>''});
@@ -129,4 +129,25 @@ test('the overview is fetched once per track and a stale answer is dropped',asyn
   h.reply(h.calls[4],{track_key:7,peaks:'00ff'}); await h.flush();
   h.context.testApi.pollStatus(); h.reply(h.calls[5],fresh()); await h.flush();
   assert.equal(h.calls.length,6);
+});
+const deckSettings=()=>({load_lock:false,jog:['vinyl','cdj'],brightness:{percent:25,min:10,max:50,step:5},
+  trim_db:3,screensaver_min:2,info:{firmware:'v1',built:'Nov 25 2026 12:00:00',controller:'',tracks:25,media:'removed',uptime_s:3725}});
+test('the setup page shows the deck\'s settings and information',()=>{
+  const h=harness(); h.context.testApi.renderSettings(deckSettings());
+  assert.equal(h.document.querySelector('#brightness').textContent,'25 %');
+  assert.equal(h.document.querySelector('#info-controller').textContent,'none');
+  assert.equal(h.document.querySelector('#info-media').textContent,'REMOVED');
+  assert.equal(h.document.querySelector('#info-tracks').textContent,'25');
+  assert.equal(h.document.querySelector('#info-uptime').textContent,'1 h 2 min');
+});
+test('a setting change names one setting, and the brightness steps within its range',()=>{
+  const h=harness(); const api=h.context.testApi;
+  assert.equal(api.settingParams('brightness','1'),null);
+  api.renderSettings(deckSettings());
+  assert.equal(String(api.settingParams('brightness','1')),'name=brightness&value=30');
+  assert.equal(String(api.settingParams('brightness','-1')),'name=brightness&value=20');
+  api.renderSettings({...deckSettings(),brightness:{percent:50,min:10,max:50,step:5}});
+  assert.equal(api.settingParams('brightness','1'),null);
+  assert.equal(String(api.settingParams('jog','cdj','2')),'name=jog&value=cdj&deck=2');
+  assert.equal(String(api.settingParams('load_lock','1')),'name=load_lock&value=1');
 });

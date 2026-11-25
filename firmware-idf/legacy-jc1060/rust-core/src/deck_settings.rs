@@ -62,20 +62,30 @@ pub(crate) fn publish_loaded(settings: &ProductSettings) {
     CURRENT.store(pack(&sanitized(*settings)), Ordering::Release);
 }
 
-/// Changes the settings in force from the Settings page (one writer: the UI task) and
-/// owes a save. Returns the new settings.
+/// Changes the settings in force, from the Settings page (the UI task) or the Web Remote's
+/// SETUP page (the web task), and owes a save. Returns the new settings. Two writers: the
+/// edit is applied to the settings as they are when it lands, so neither undoes the
+/// other's change.
 #[cfg(any(test, feature = "slint-ui"))]
-pub(crate) fn change(now_ms: u32, edit: impl FnOnce(&mut ProductSettings)) -> ProductSettings {
-    let mut settings = current();
-    edit(&mut settings);
-    let settings = sanitized(settings);
-    let packed = pack(&settings);
-    if packed != CURRENT.load(Ordering::Relaxed) {
-        CURRENT.store(packed, Ordering::Release);
-        CHANGED_MS.store(now_ms, Ordering::Relaxed);
-        OWED.store(true, Ordering::Release);
+pub(crate) fn change(now_ms: u32, edit: impl Fn(&mut ProductSettings)) -> ProductSettings {
+    let mut before = CURRENT.load(Ordering::Acquire);
+    loop {
+        let mut settings = unpack(before);
+        edit(&mut settings);
+        let settings = sanitized(settings);
+        let packed = pack(&settings);
+        if packed == before {
+            return settings;
+        }
+        match CURRENT.compare_exchange(before, packed, Ordering::AcqRel, Ordering::Acquire) {
+            Ok(_) => {
+                CHANGED_MS.store(now_ms, Ordering::Relaxed);
+                OWED.store(true, Ordering::Release);
+                return settings;
+            }
+            Err(now) => before = now,
+        }
     }
-    settings
 }
 
 /// The settings to save now, once the last change has been quiet long enough. Taking

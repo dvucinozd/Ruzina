@@ -295,6 +295,47 @@ pub fn write_wave(track_key: u32, peaks: &[u8], out: &mut [u8]) -> Result<usize,
     Ok(json.len)
 }
 
+/// `/api/settings`: the settings in force and the deck's information.
+pub fn write_settings(
+    view: &crate::settings::SettingsView<'_>,
+    out: &mut [u8],
+) -> Result<usize, Overflow> {
+    let mut json = Writer { out, len: 0 };
+    json.raw("{\"load_lock\":")?;
+    json.boolean(view.load_lock)?;
+    json.raw(",\"jog\":[")?;
+    json.string(view.jog[0].text())?;
+    json.raw(",")?;
+    json.string(view.jog[1].text())?;
+    json.raw("],\"brightness\":{\"percent\":")?;
+    json.unsigned(u32::from(view.brightness_percent))?;
+    json.raw(",\"min\":")?;
+    json.unsigned(u32::from(view.brightness_min))?;
+    json.raw(",\"max\":")?;
+    json.unsigned(u32::from(view.brightness_max))?;
+    json.raw(",\"step\":")?;
+    json.unsigned(u32::from(view.brightness_step))?;
+    json.raw("},\"trim_db\":")?;
+    json.unsigned(u32::from(view.trim_db))?;
+    json.raw(",\"screensaver_min\":")?;
+    json.unsigned(u32::from(view.screensaver_min))?;
+    let info = &view.info;
+    json.raw(",\"info\":{\"firmware\":")?;
+    json.string(info.firmware)?;
+    json.raw(",\"built\":")?;
+    json.string(info.built)?;
+    json.raw(",\"controller\":")?;
+    json.string(info.controller)?;
+    json.raw(",\"tracks\":")?;
+    json.unsigned(info.tracks)?;
+    json.raw(",\"media\":")?;
+    json.string(info.media.text())?;
+    json.raw(",\"uptime_s\":")?;
+    json.unsigned(info.uptime_s)?;
+    json.raw("}}")?;
+    Ok(json.len)
+}
+
 /// Escapes one JSON string into a bounded caller-owned buffer.
 pub fn write_string(value: &str, out: &mut [u8]) -> Result<usize, Overflow> {
     let mut writer = Writer { out, len: 0 };

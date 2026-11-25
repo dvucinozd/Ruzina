@@ -405,10 +405,81 @@ function bindKnob(input, send) {
   input.addEventListener('input', paint);
 }
 
+// SETUP: the deck's settings, read while the view is open and changed one at a time;
+// each change answers with the settings as they then are.
+let settings = null;
+let settingsTimer = null;
+function uptime(seconds) {
+  const s = Number(seconds) || 0;
+  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+  return h ? `${h} h ${m} min` : `${m} min ${s % 60} s`;
+}
+function renderSettings(data) {
+  settings = data;
+  const mark = (selector, value) => {
+    for (const button of document.querySelectorAll(`${selector} button`)) {
+      button.classList.toggle('on', button.dataset.value === String(value));
+    }
+  };
+  mark('[data-setting="load_lock"]', data.load_lock ? 1 : 0);
+  mark('[data-setting="jog"][data-jog="1"]', data.jog[0]);
+  mark('[data-setting="jog"][data-jog="2"]', data.jog[1]);
+  mark('[data-setting="trim"]', data.trim_db);
+  mark('[data-setting="screensaver"]', data.screensaver_min);
+  $('#brightness').textContent = `${data.brightness.percent} %`;
+  const info = data.info || {};
+  $('#info-firmware').textContent = info.firmware || '—';
+  $('#info-built').textContent = info.built || '—';
+  $('#info-controller').textContent = info.controller || 'none';
+  $('#info-media').textContent = { ready: 'READY', reading: 'READING…', removed: 'REMOVED' }[info.media] || '—';
+  $('#info-tracks').textContent = String(info.tracks ?? '—');
+  $('#info-uptime').textContent = uptime(info.uptime_s);
+}
+// The query that changes one setting; null for a brightness already at its end.
+function settingParams(name, value, jog) {
+  const params = new URLSearchParams({ name });
+  if (name === 'brightness') {
+    if (!settings) return null;
+    const b = settings.brightness;
+    const next = Math.min(b.max, Math.max(b.min, b.percent + Number(value) * b.step));
+    if (next === b.percent) return null;
+    params.set('value', next);
+  } else {
+    params.set('value', value);
+  }
+  if (jog) params.set('deck', jog);
+  return params;
+}
+async function loadSettings() {
+  try {
+    const response = await fetch('/api/settings', { cache: 'no-store' });
+    if (response.ok) renderSettings(await response.json());
+    else message('Settings unavailable');
+  } catch (error) {
+    message('Deck unreachable');
+  }
+}
+async function changeSetting(params) {
+  if (!params) return;
+  try {
+    const response = await fetch(`/api/settings?${params}`, { method: 'POST', headers: { 'X-DDJ-Control': '1' } });
+    if (response.ok) { message(''); renderSettings(await response.json()); }
+    else message(await response.text() || `Request failed (${response.status})`);
+  } catch (error) {
+    message('Deck unreachable');
+  }
+}
+
 function setView(view) {
   $('.console').dataset.view = view;
   for (const tab of document.querySelectorAll('.tabs button')) tab.classList.toggle('on', tab.dataset.view === view);
   try { localStorage.setItem('ruzina-view', view); } catch (error) { /* private mode */ }
+  if (settingsTimer) { clearInterval(settingsTimer); settingsTimer = null; }
+  if (view === 'setup') {
+    loadSettings();
+    settingsTimer = setInterval(loadSettings, 2000);
+    return;
+  }
   for (const deck of [1, 2]) drawWave(deck);
 }
 
@@ -452,6 +523,15 @@ function bindControls() {
   for (const tab of document.querySelectorAll('.tabs button')) {
     tab.addEventListener('click', () => setView(tab.dataset.view));
   }
+  for (const group of document.querySelectorAll('[data-setting]')) {
+    for (const button of group.querySelectorAll('button')) {
+      button.addEventListener('click', () =>
+        changeSetting(settingParams(group.dataset.setting, button.dataset.value, group.dataset.jog)));
+    }
+  }
+  for (const button of document.querySelectorAll('[data-brightness]')) {
+    button.addEventListener('click', () => changeSetting(settingParams('brightness', button.dataset.brightness)));
+  }
   $('#to-library').addEventListener('click', () => { $('#library').open = true; });
   $('#search').addEventListener('input', renderLibrary);
   if (typeof window !== 'undefined') {
@@ -459,7 +539,7 @@ function bindControls() {
   }
   let view = 'dual';
   try { view = localStorage.getItem('ruzina-view') || 'dual'; } catch (error) { /* private mode */ }
-  if (['1', '2', 'dual'].includes(view) && view !== 'dual') setView(view);
+  if (['1', '2', 'dual', 'setup'].includes(view) && view !== 'dual') setView(view);
 }
 
 bindControls();

@@ -111,6 +111,15 @@ pub trait WebBackend {
     fn wave(&self, _deck: DeckId) -> Option<(u32, &[u8])> {
         None
     }
+    /// The SETUP page's settings and information; `None` where the deck has none.
+    fn settings(&mut self) -> Option<crate::settings::SettingsView<'_>> {
+        None
+    }
+    /// One setting changed from the SETUP page, through the deck's own settings store;
+    /// false where it cannot be.
+    fn change_setting(&mut self, _change: crate::settings::SettingChange) -> bool {
+        false
+    }
 }
 
 pub struct WebServer {
@@ -330,6 +339,8 @@ impl WebServer {
             | Route::Wave
             | Route::Control
             | Route::Load
+            | Route::Settings
+            | Route::SettingsChange
                 if !parse::body_length_allowed(parse::BodyKind::Empty, request.content_length) =>
             {
                 text(HttpStatus::PayloadTooLarge, "No body expected", out)
@@ -348,6 +359,12 @@ impl WebServer {
                 let (status, body) = load(&request, backend);
                 text(status, body, out)
             }
+            Route::Settings => settings(backend, out),
+            Route::SettingsChange => match crate::settings::parse_change(request.query) {
+                Err(error) => text(HttpStatus::BadRequest, error.text(), out),
+                Ok(change) if backend.change_setting(change) => settings(backend, out),
+                Ok(_) => text(HttpStatus::NotImplemented, "Not implemented yet", out),
+            },
             _ => text(HttpStatus::NotImplemented, "Not implemented yet", out),
         }
     }
@@ -445,6 +462,17 @@ impl WebServer {
 }
 
 /// A generated JSON body, written after room for its head and moved up.
+/// The SETUP page's settings, or 501 where the deck has none.
+fn settings<B: WebBackend>(backend: &mut B, out: &mut [u8]) -> Result<usize, response::Overflow> {
+    match backend.settings() {
+        Some(view) => json_response(out, |body| json::write_settings(&view, body)),
+        None => response::write_response(
+            &Response::text(HttpStatus::NotImplemented, "Not implemented yet"),
+            out,
+        ),
+    }
+}
+
 fn json_response(
     out: &mut [u8],
     write: impl FnOnce(&mut [u8]) -> Result<usize, json::Overflow>,

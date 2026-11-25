@@ -305,6 +305,14 @@ struct AppDescription {
 }
 
 /// A C string field as text, up to its first zero.
+/// The running firmware's version, build date and build time, for the Web Remote.
+#[cfg(feature = "web-remote")]
+pub(crate) fn firmware_texts() -> (&'static str, &'static str, &'static str) {
+    // SAFETY: IDF returns its static app description, valid for the program's life.
+    let app: &'static AppDescription = unsafe { &*esp_app_get_description() };
+    (c_text(&app.version), c_text(&app.date), c_text(&app.time))
+}
+
 fn c_text(bytes: &[u8]) -> &str {
     let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
     core::str::from_utf8(&bytes[..end]).unwrap_or("?")
@@ -2258,6 +2266,10 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     let mut shown_cues: Option<CueState> = None;
     // When the Settings page next refreshes its figures.
     let mut settings_at = 0u64;
+    // The settings the screen shows, and its brightness: a change from the Web Remote's
+    // SETUP page reaches both on the next frame.
+    let mut settings_shown = crate::deck_settings::current_packed();
+    let mut backlight_shown = crate::deck_settings::current().backlight_percent;
     let mut was_covered = false;
     let mut shown_cover = Cover::Boot;
     let mut shown_head = None;
@@ -2438,6 +2450,20 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
             meter_at = [None; 2];
             phase_at = None;
             was_covered = covered;
+        }
+        let packed = crate::deck_settings::current_packed();
+        if packed != settings_shown {
+            let settings = crate::deck_settings::current();
+            if settings.backlight_percent != backlight_shown {
+                unsafe extern "C" {
+                    fn ruzina_display_backlight(percent: u32);
+                }
+                // SAFETY: a scalar; the C side clamps it and drives the backlight PWM.
+                unsafe { ruzina_display_backlight(u32::from(settings.backlight_percent)) };
+                backlight_shown = settings.backlight_percent;
+            }
+            show_setting_values(&ui);
+            settings_shown = packed;
         }
         // The Settings page's figures, twice a second while it is open.
         if tab == 3 {
