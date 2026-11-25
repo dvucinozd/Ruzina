@@ -5,15 +5,18 @@ documents link here.
 
 ## The board's images
 
-- **Kept for play:** s203 (app `17de0ea8…`), the `--slint-ui --fill-iram --usb-stick`
-  image without the soak DJ. Its firmware is `ogranak/jc1060-stick-reinsert`: main
-  `e9d796e` (smooth lanes with one frame buffer and spare caches, #168 and #169) with
-  [a stick put back read again](reviews/2026-11-25-stick-reinsert.md).
+- **Kept for play:** s205 (app `2f9cd29e…`), the `--slint-ui --fill-iram --usb-stick`
+  image without the soak DJ. Its firmware is `ogranak/web-remote-settings`: main
+  `cac3bab` (smooth lanes, a stick put back read again: #168, #169 and #170) with the
+  [Web Remote's SETUP page](reviews/2026-11-25-web-remote-setup.md).
 
   It was built with the
   [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image),
-  less `--soak-autoplay`. The owner played on it on 2026-11-25 ("Sve radi").
+  less `--soak-autoplay`. The owner used SETUP from a phone on it on 2026-11-25 ("Sve
+  radi").
 - **Before it:**
+  - s203 (app `17de0ea8…`), the play image of #170. On it the owner tried Delay and the
+    Beat FX channel switch ("Radi").
   - s201p and s202p (apps `35074ecd…`, `89f53247…`), profile images of the stick work. On
     them the owner pulled the stick out and put it back ("Radi").
   - s200 (app `86c0351a…`), the play image of #169.
@@ -70,7 +73,7 @@ them. The owner's listening checks are separate, shorter runs. The
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
 | Controllers | The FLX4, checked again on s182 (2026-11-22). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware, and the S2 MK3 and Inpulse 500 have no audio yet | [profiles](reviews/2026-11-21-controller-profiles.md) |
 | Boot screen and screensaver | The owner's wordmark, its letters lit in turn; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md) |
-| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md) |
+| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover; a SETUP view for the deck's settings and information | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md), [SETUP](reviews/2026-11-25-web-remote-setup.md) |
 
 ## Still to come
 
@@ -113,7 +116,7 @@ them. The owner's listening checks are separate, shorter runs. The
   - Since s116 the failure no longer takes the Wi-Fi's slot down with it
     ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
 - **Web Remote:**
-  - There are no settings, controller profile or firmware pages on the board.
+  - SETUP covers the deck's settings; there are no network, controller profile or firmware pages.
   - OTA exists on the host only (no partition, radio or TLS adapter).
   - The network password is a build setting.
 
