@@ -334,7 +334,30 @@ pub fn write_settings(
     json.string(info.media.text())?;
     json.raw(",\"uptime_s\":")?;
     json.unsigned(info.uptime_s)?;
-    json.raw("}}")?;
+    json.raw("},\"profiles\":[")?;
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    for (index, profile) in view.profiles.iter().enumerate() {
+        if index != 0 {
+            json.raw(",")?;
+        }
+        json.raw("{\"name\":")?;
+        json.string(profile.name)?;
+        json.raw(",\"id\":\"")?;
+        for value in [profile.vid, profile.pid] {
+            for shift in [12, 8, 4, 0] {
+                json.bytes(&[HEX[usize::from(value >> shift & 15)]])?;
+            }
+            if value == profile.vid {
+                json.raw(":")?;
+            }
+        }
+        json.raw("\",\"tested\":")?;
+        json.boolean(profile.tested)?;
+        json.raw(",\"active\":")?;
+        json.boolean(profile.active)?;
+        json.raw("}")?;
+    }
+    json.raw("]}")?;
     Ok(json.len)
 }
 

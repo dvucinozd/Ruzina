@@ -25,7 +25,7 @@ use ruzina_web::server::{
     ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend, WebServer,
 };
 use ruzina_web::settings::{
-    Jog, Media, PasswordOutcome, SettingChange, SettingsInfo, SettingsView,
+    ControllerProfile, Jog, Media, PasswordOutcome, SettingChange, SettingsInfo, SettingsView,
 };
 
 /// The access point's address; the guard admits requests for it.
@@ -240,6 +240,7 @@ struct Backend<'a> {
     /// The SETUP page's texts made for one answer.
     built: alloc::string::String,
     controller: alloc::string::String,
+    profiles: alloc::vec::Vec<ControllerProfile<'static>>,
 }
 
 fn deck_index(deck: DeckId) -> usize {
@@ -343,6 +344,15 @@ impl WebBackend for Backend<'_> {
             Media::Ready
         };
         let uptime_s = (now_us() / 1_000_000).clamp(0, i64::from(u32::MAX));
+        self.profiles = crate::controller_midi::profiles()
+            .map(|(name, vid, pid, tested, active)| ControllerProfile {
+                name,
+                vid,
+                pid,
+                tested,
+                active,
+            })
+            .collect();
         let jog = |deck: usize| match settings.jog_modes[deck] {
             JogMode::Cdj => Jog::Cdj,
             JogMode::Vinyl => Jog::Vinyl,
@@ -374,6 +384,7 @@ impl WebBackend for Backend<'_> {
                 media,
                 uptime_s: uptime_s as u32,
             },
+            profiles: &self.profiles,
         })
     }
 
@@ -843,6 +854,7 @@ pub unsafe extern "C" fn ruzina_web_handle(
         state,
         built: alloc::string::String::new(),
         controller: alloc::string::String::new(),
+        profiles: alloc::vec::Vec::new(),
     };
     server.handle(request, &mut backend, out)
 }

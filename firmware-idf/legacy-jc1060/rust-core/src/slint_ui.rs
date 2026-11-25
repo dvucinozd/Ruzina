@@ -1370,7 +1370,11 @@ impl LaneCache {
             // Before the old front cache, now the spare, can be drawn over.
             self.publish(shown, motion);
         }
-        let jumped = lane_end <= self.lo || left >= self.hi || left < self.lo - CACHE_BEHIND;
+        // A move the cache cannot follow by topping up: back past its margin, or forward past
+        // what it holds. Drawn whole into the spare cache, as a new zoom is; topped up, the
+        // lanes' task would be told the new place before its columns were in, and miss the
+        // refreshes until they were (about once in 80 s on s199p).
+        let jumped = left < self.lo - CACHE_BEHIND || lane_end > self.hi;
         if self.key != Some(key) || jumped {
             // The lanes' task keeps the front cache meanwhile; it stops using the spare.
             self.drop_spare(shown);
@@ -1396,7 +1400,9 @@ impl LaneCache {
         let (want_lo, want_hi) = (left - CACHE_BEHIND, lane_end + CACHE_AHEAD);
         if want_lo < self.lo {
             self.hi = self.hi.min(want_lo + CACHE_WIDTH);
-            self.publish(shown, motion);
+            // The place last published until the columns behind are in: it is still held.
+            let published = self.published.unwrap_or(motion);
+            self.publish(shown, published);
             let range = want_lo..self.lo;
             gate.run(Step::Columns, || {
                 draw_cache(&mut *self.pixels[front], strip, self.area, content, range);
