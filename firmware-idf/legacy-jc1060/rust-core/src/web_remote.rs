@@ -24,6 +24,7 @@ use ruzina_web::json::{DeckStateText, DeckStatus, LibraryRow, MixerStatus};
 use ruzina_web::server::{
     ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend, WebServer,
 };
+use ruzina_web::settings::{Jog, Media, SettingChange, SettingsInfo, SettingsView};
 
 /// The access point's address; the guard admits requests for it.
 const AP_IPV4: &str = "192.168.4.1";
@@ -234,6 +235,9 @@ const LEASE: MediaLease = MediaLease {
 
 struct Backend<'a> {
     state: &'a WebState,
+    /// The SETUP page's texts made for one answer.
+    built: alloc::string::String,
+    controller: alloc::string::String,
 }
 
 fn deck_index(deck: DeckId) -> usize {
@@ -258,7 +262,109 @@ fn touch(event: &ControlEvent) -> Option<(usize, Option<TouchControl>)> {
     }
 }
 
+/// A setting from the SETUP page, as the deck's Settings page would set it.
+fn edit_setting(settings: &mut ruzina_settings::ProductSettings, change: SettingChange) {
+    use ruzina_settings::{JogMode, MasterTrim, Screensaver};
+    match change {
+        SettingChange::LoadLock(on) => settings.load_lock = on,
+        SettingChange::Jog(deck, jog) => {
+            settings.jog_modes[deck_index(deck)] = match jog {
+                Jog::Vinyl => JogMode::Vinyl,
+                Jog::Cdj => JogMode::Cdj,
+            }
+        }
+        SettingChange::Brightness(percent) => {
+            settings.backlight_percent = percent.clamp(
+                ruzina_settings::BACKLIGHT_MIN_PERCENT,
+                crate::deck_settings::BACKLIGHT_MAX_PERCENT,
+            )
+        }
+        SettingChange::TrimDb(db) => {
+            settings.master_trim = match db {
+                3 => MasterTrim::Minus3Db,
+                6 => MasterTrim::Minus6Db,
+                _ => MasterTrim::ZeroDb,
+            }
+        }
+        SettingChange::ScreensaverMin(minutes) => {
+            settings.screensaver = match minutes {
+                0 => Screensaver::Off,
+                5 => Screensaver::Minutes5,
+                10 => Screensaver::Minutes10,
+                _ => Screensaver::Minutes2,
+            }
+        }
+    }
+}
+
 impl WebBackend for Backend<'_> {
+    fn settings(&mut self) -> Option<SettingsView<'_>> {
+        use ruzina_settings::{JogMode, MasterTrim, Screensaver};
+        let settings = crate::deck_settings::current();
+        let (firmware, date, time) = crate::slint_ui::firmware_texts();
+        self.built = alloc::format!("{date} {time}");
+        self.controller = match crate::controller_midi::attached() {
+            None => alloc::string::String::new(),
+            Some((_, _, Some(name))) => name.into(),
+            Some((vid, pid, None)) => alloc::format!("{vid:04X}:{pid:04X}"),
+        };
+        let media = if crate::media_signal::muted() {
+            Media::Removed
+        } else if self.state.library.is_none() {
+            Media::Reading
+        } else {
+            Media::Ready
+        };
+        unsafe extern "C" {
+            fn esp_timer_get_time() -> i64;
+        }
+        // SAFETY: IDF's monotonic clock, callable from any task.
+        let uptime_s = (unsafe { esp_timer_get_time() } / 1_000_000).clamp(0, i64::from(u32::MAX));
+        let jog = |deck: usize| match settings.jog_modes[deck] {
+            JogMode::Cdj => Jog::Cdj,
+            JogMode::Vinyl => Jog::Vinyl,
+        };
+        Some(SettingsView {
+            load_lock: settings.load_lock,
+            jog: [jog(0), jog(1)],
+            brightness_percent: settings.backlight_percent,
+            brightness_min: ruzina_settings::BACKLIGHT_MIN_PERCENT,
+            brightness_max: crate::deck_settings::BACKLIGHT_MAX_PERCENT,
+            brightness_step: crate::deck_settings::BACKLIGHT_STEP_PERCENT,
+            trim_db: match settings.master_trim {
+                MasterTrim::ZeroDb => 0,
+                MasterTrim::Minus3Db => 3,
+                MasterTrim::Minus6Db => 6,
+            },
+            screensaver_min: match settings.screensaver {
+                Screensaver::Off => 0,
+                Screensaver::Minutes2 => 2,
+                Screensaver::Minutes5 => 5,
+                Screensaver::Minutes10 => 10,
+            },
+            info: SettingsInfo {
+                firmware,
+                built: &self.built,
+                controller: &self.controller,
+                tracks: deck_view::library_len(),
+                media,
+                uptime_s: uptime_s as u32,
+            },
+        })
+    }
+
+    /// Through the same store as the deck's Settings page; the screen's brightness and
+    /// that page follow on the screen's next frame, and the save waits as theirs does.
+    fn change_setting(&mut self, change: SettingChange) -> bool {
+        unsafe extern "C" {
+            fn esp_timer_get_time() -> i64;
+        }
+        // SAFETY: IDF's monotonic clock, callable from any task.
+        let now_ms = (unsafe { esp_timer_get_time() } / 1_000) as u32;
+        crate::deck_settings::change(now_ms, |settings| edit_setting(settings, change));
+        true
+    }
+
     fn status(&mut self) -> StatusParts<'_> {
         let state = self.state;
         let deck = |i: usize| {
@@ -697,7 +803,12 @@ pub unsafe extern "C" fn ruzina_web_handle(
     let (server, state) = unsafe { &mut *SERVER.0.get() }
         .get_or_insert_with(|| (WebServer::new(boot, AP_IPV4), WebState::default()));
     state.refresh();
-    server.handle(request, &mut Backend { state }, out)
+    let mut backend = Backend {
+        state,
+        built: alloc::string::String::new(),
+        controller: alloc::string::String::new(),
+    };
+    server.handle(request, &mut backend, out)
 }
 
 /// The largest page asset, for the response buffer the C side allocates.

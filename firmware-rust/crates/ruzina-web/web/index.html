@@ -27,6 +27,7 @@
   <button type="button" data-view="1">DECK 1</button>
   <button type="button" data-view="dual" class="on">DUAL / MIX</button>
   <button type="button" data-view="2">DECK 2</button>
+  <button type="button" data-view="setup">SETUP</button>
 </nav>
 </div>
 
@@ -185,6 +186,29 @@
     </div>
     <ul id="tracks"></ul>
   </details>
+  <section class="setup panel" aria-label="Deck setup">
+    <div class="panel-head"><h2>SETUP</h2><span class="note" id="setup-note">The deck's own settings, saved on the deck</span></div>
+    <div class="setting"><span>LOAD LOCK</span>
+      <div class="seg" data-setting="load_lock"><button type="button" data-value="0">OFF</button><button type="button" data-value="1">ON</button></div></div>
+    <div class="setting"><span><b class="d1">D1</b> JOG</span>
+      <div class="seg" data-setting="jog" data-jog="1"><button type="button" data-value="vinyl">VINYL</button><button type="button" data-value="cdj">CDJ</button></div></div>
+    <div class="setting"><span><b class="d2">D2</b> JOG</span>
+      <div class="seg" data-setting="jog" data-jog="2"><button type="button" data-value="vinyl">VINYL</button><button type="button" data-value="cdj">CDJ</button></div></div>
+    <div class="setting"><span>BRIGHTNESS</span>
+      <div class="stepper"><button type="button" data-brightness="-1" aria-label="Darker">−</button><b id="brightness">—</b><button type="button" data-brightness="1" aria-label="Brighter">+</button></div></div>
+    <div class="setting"><span>MAIN TRIM</span>
+      <div class="seg" data-setting="trim"><button type="button" data-value="0">0 dB</button><button type="button" data-value="3">−3 dB</button><button type="button" data-value="6">−6 dB</button></div></div>
+    <div class="setting"><span>SCREENSAVER</span>
+      <div class="seg" data-setting="screensaver"><button type="button" data-value="0">OFF</button><button type="button" data-value="2">2 MIN</button><button type="button" data-value="5">5 MIN</button><button type="button" data-value="10">10 MIN</button></div></div>
+    <dl class="info">
+      <dt>FIRMWARE</dt><dd id="info-firmware">—</dd>
+      <dt>BUILT</dt><dd id="info-built">—</dd>
+      <dt>CONTROLLER</dt><dd id="info-controller">—</dd>
+      <dt>MEDIA</dt><dd id="info-media">—</dd>
+      <dt>TRACKS</dt><dd id="info-tracks">—</dd>
+      <dt>UPTIME</dt><dd id="info-uptime">—</dd>
+    </dl>
+  </section>
   <p id="message" class="message" role="status"></p>
 </main>
 

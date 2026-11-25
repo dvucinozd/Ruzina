@@ -25,6 +25,9 @@ pub enum Route {
     RecordingStart,
     RecordingStop,
     DiagnosticLog,
+    /// The SETUP page: the deck's settings and information.
+    Settings,
+    SettingsChange,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -65,6 +68,8 @@ const ROUTES: &[(&str, Method, Route)] = &[
     ("/api/recording/start", Method::Post, Route::RecordingStart),
     ("/api/recording/stop", Method::Post, Route::RecordingStop),
     ("/api/diagnostic-log", Method::Get, Route::DiagnosticLog),
+    ("/api/settings", Method::Get, Route::Settings),
+    ("/api/settings", Method::Post, Route::SettingsChange),
 ];
 
 pub fn route(method: Method, path: &str) -> Result<Route, RouteMiss> {

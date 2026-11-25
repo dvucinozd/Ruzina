@@ -32,6 +32,7 @@ pub mod remote;
 pub mod response;
 pub mod router;
 pub mod server;
+pub mod settings;
 pub mod status;
 pub mod upload;
 

@@ -71,11 +71,12 @@ h2 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: .06em; }
 
 /* The view tabs. */
 .tabs {
-  display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 4px; margin: 0 16px 12px; padding: 4px;
+  display: grid; grid-template-columns: 1fr 1.25fr 1fr 0.9fr; gap: 4px; margin: 0 16px 12px; padding: 4px;
   background: var(--well); border: 1px solid var(--line); border-radius: 10px;
 }
 .tabs button {
-  min-height: 40px; border: 1px solid transparent; border-radius: 7px; background: none;
+  min-height: 40px; padding: 0 2px; border: 1px solid transparent; border-radius: 7px; background: none;
+  font-size: 13px; white-space: nowrap;
   color: var(--muted); font-weight: 800; letter-spacing: .06em; cursor: pointer;
 }
 .tabs button.on { background: var(--raise); border-color: var(--line-hi); color: var(--ink); }
@@ -344,7 +345,7 @@ details > summary::-webkit-details-marker { display: none; }
   .top { display: contents; }
   .subrow { display: none; }
   .logo { font-size: 20px; }
-  .tabs { grid-column: 2; grid-row: 1; margin: 0; padding: 3px; max-width: 460px; justify-self: center; width: 100%; }
+  .tabs { grid-column: 2; grid-row: 1; margin: 0; padding: 3px; max-width: 560px; justify-self: center; width: 100%; }
   .tabs button { min-height: 32px; font-size: 12px; }
   .xfader { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
   .xfader .row { display: contents; }
@@ -361,3 +362,33 @@ details > summary::-webkit-details-marker { display: none; }
   .xfader { max-width: 900px; }
   .xfader input { height: 40px; margin: 0; }
 }
+
+/* SETUP: the deck's own settings and what it tells about itself, on its own view. */
+.setup { display: none; grid-area: setup; gap: 10px; align-content: start; }
+.console[data-view="setup"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "setup" "msg"; }
+.console[data-view="setup"] > :not(.setup):not(.message) { display: none; }
+.console[data-view="setup"] .setup { display: grid; width: 100%; max-width: 720px; justify-self: center; }
+.setting {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 8px 0; border-top: 1px solid var(--line);
+}
+.setting > span { font: 700 12px var(--mono); letter-spacing: .08em; color: var(--muted); }
+.setting > span b { margin-right: 4px; }
+.setting .d1 { color: var(--d1); } .setting .d2 { color: var(--d2); }
+.seg, .stepper {
+  display: inline-flex; gap: 4px; padding: 3px; background: var(--well);
+  border: 1px solid var(--line); border-radius: 10px;
+}
+.seg button, .stepper button {
+  min-width: 44px; min-height: 36px; padding: 6px 10px; border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--muted); font: 800 12px var(--mono); letter-spacing: .06em; cursor: pointer;
+}
+.seg button.on { background: var(--raise); border-color: var(--line-hi); color: var(--ink); }
+.stepper b { min-width: 56px; align-self: center; text-align: center; font: 800 14px var(--mono); }
+.info {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 4px 0 0;
+  padding-top: 10px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12px;
+}
+.info dt { color: var(--muted); letter-spacing: .08em; }
+.info dd { margin: 0; overflow-wrap: anywhere; }
+

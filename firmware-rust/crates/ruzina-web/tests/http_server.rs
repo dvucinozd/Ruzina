@@ -8,6 +8,7 @@ use ruzina_web::{
         CAPTIVE_PORTAL, ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend,
         WebServer,
     },
+    settings::{Jog, Media, SettingChange, SettingsInfo, SettingsView},
 };
 
 const AP: &str = "192.168.4.1";
@@ -23,6 +24,9 @@ struct Fake {
     duration: Option<u32>,
     /// (revision, rows) of the listed catalog.
     library: Option<(u32, Vec<(u32, String)>)>,
+    /// The deck's settings, where it has them, and the changes it took.
+    settings: Option<(bool, u8)>,
+    setting_changes: Vec<SettingChange>,
 }
 
 impl WebBackend for Fake {
@@ -87,6 +91,39 @@ impl WebBackend for Fake {
     fn wave(&self, deck: DeckId) -> Option<(u32, &[u8])> {
         (deck == DeckId::One).then_some((7, &[0, 128, 255][..]))
     }
+    fn settings(&mut self) -> Option<SettingsView<'_>> {
+        let (load_lock, brightness_percent) = self.settings?;
+        Some(SettingsView {
+            load_lock,
+            jog: [Jog::Vinyl, Jog::Cdj],
+            brightness_percent,
+            brightness_min: 10,
+            brightness_max: 50,
+            brightness_step: 5,
+            trim_db: 3,
+            screensaver_min: 2,
+            info: SettingsInfo {
+                firmware: "v1 \"test\"",
+                built: "Nov 25 2026 12:00:00",
+                controller: "DDJ-FLX4",
+                tracks: 25,
+                media: Media::Ready,
+                uptime_s: 61,
+            },
+        })
+    }
+    fn change_setting(&mut self, change: SettingChange) -> bool {
+        let Some((load_lock, brightness)) = self.settings.as_mut() else {
+            return false;
+        };
+        match change {
+            SettingChange::LoadLock(on) => *load_lock = on,
+            SettingChange::Brightness(percent) => *brightness = percent.clamp(10, 50),
+            _ => {}
+        }
+        self.setting_changes.push(change);
+        true
+    }
 }
 
 fn exchange(server: &mut WebServer, fake: &mut Fake, request: &str) -> String {
@@ -112,6 +149,85 @@ fn status_line(response: &str) -> &str {
 
 fn body(response: &str) -> &str {
     response.split_once("\r\n\r\n").unwrap().1
+}
+
+#[test]
+fn the_setup_page_reads_and_changes_the_decks_settings() {
+    let mut server = WebServer::new(1, AP);
+    let mut fake = Fake {
+        settings: Some((false, 25)),
+        ..Fake::default()
+    };
+    let read = exchange(
+        &mut server,
+        &mut fake,
+        "GET /api/settings HTTP/1.1\r\nHost: ruzina.local\r\n\r\n",
+    );
+    assert_eq!(status_line(&read), "HTTP/1.1 200 OK");
+    assert!(read.contains("\r\nContent-Type: application/json\r\n"));
+    assert_eq!(
+        body(&read),
+        "{\"load_lock\":false,\"jog\":[\"vinyl\",\"cdj\"],\
+\"brightness\":{\"percent\":25,\"min\":10,\"max\":50,\"step\":5},\"trim_db\":3,\
+\"screensaver_min\":2,\"info\":{\"firmware\":\"v1 \\\"test\\\"\",\
+\"built\":\"Nov 25 2026 12:00:00\",\"controller\":\"DDJ-FLX4\",\"tracks\":25,\
+\"media\":\"ready\",\"uptime_s\":61}}"
+    );
+    // A change answers with the settings as they then are.
+    let changed = exchange(
+        &mut server,
+        &mut fake,
+        &post("/api/settings?name=load_lock&value=1"),
+    );
+    assert_eq!(status_line(&changed), "HTTP/1.1 200 OK");
+    assert!(body(&changed).starts_with("{\"load_lock\":true,"));
+    let changed = exchange(
+        &mut server,
+        &mut fake,
+        &post("/api/settings?name=brightness&value=90"),
+    );
+    assert!(body(&changed).contains("\"percent\":50,"));
+    assert_eq!(
+        fake.setting_changes,
+        [SettingChange::LoadLock(true), SettingChange::Brightness(90)]
+    );
+    // A wrong name or value changes nothing.
+    for query in [
+        "/api/settings?name=wifi&value=1",
+        "/api/settings?name=trim&value=2",
+        "/api/settings?name=jog&deck=3&value=cdj",
+    ] {
+        let refused = exchange(&mut server, &mut fake, &post(query));
+        assert_eq!(status_line(&refused), "HTTP/1.1 400 Bad Request");
+    }
+    assert_eq!(fake.setting_changes.len(), 2);
+    // A change needs the control marker, as every other change does.
+    let unmarked = exchange(
+        &mut server,
+        &mut fake,
+        "POST /api/settings?name=load_lock&value=0 HTTP/1.1\r\nHost: ruzina.local\r\n\
+Content-Length: 0\r\n\r\n",
+    );
+    assert_eq!(status_line(&unmarked), "HTTP/1.1 403 Forbidden");
+    assert_eq!(fake.setting_changes.len(), 2);
+}
+
+#[test]
+fn a_deck_without_settings_answers_not_implemented() {
+    let mut server = WebServer::new(1, AP);
+    let mut fake = Fake::default();
+    let read = exchange(
+        &mut server,
+        &mut fake,
+        "GET /api/settings HTTP/1.1\r\nHost: ruzina.local\r\n\r\n",
+    );
+    assert_eq!(status_line(&read), "HTTP/1.1 501 Not Implemented");
+    let change = exchange(
+        &mut server,
+        &mut fake,
+        &post("/api/settings?name=load_lock&value=1"),
+    );
+    assert_eq!(status_line(&change), "HTTP/1.1 501 Not Implemented");
 }
 
 #[test]
