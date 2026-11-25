@@ -141,8 +141,10 @@ static void ap_config(wifi_config_t *config)
     config->ap.pmf_cfg.capable = true;
 }
 
-/* At start: the password the owner set, if NVS holds a valid one. */
-static void load_password(void)
+/* At boot, with the deck's settings and before the screen and USB audio start: the
+ * password the owner set, if NVS holds a valid one. NVS reads flash, which stalls the USB
+ * audio fill; read later, from the Wi-Fi task, it made one fill of 7.5 ms on s206. */
+void ruzina_wifi_load_password(void)
 {
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -224,7 +226,6 @@ static esp_err_t start_access_point(void)
     uint8_t mac[6] = {0};
     esp_wifi_get_mac(WIFI_IF_AP, mac);
     snprintf(ap_ssid, sizeof ap_ssid, "Ruzina-%02X%02X", mac[4], mac[5]);
-    load_password();
     wifi_config_t config;
     ap_config(&config);
     err = esp_wifi_set_mode(WIFI_MODE_AP);
