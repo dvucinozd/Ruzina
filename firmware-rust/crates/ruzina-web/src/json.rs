@@ -320,7 +320,9 @@ pub fn write_settings(
     json.raw(",\"screensaver_min\":")?;
     json.unsigned(u32::from(view.screensaver_min))?;
     let info = &view.info;
-    json.raw(",\"info\":{\"firmware\":")?;
+    json.raw(",\"info\":{\"network\":")?;
+    json.string(info.network)?;
+    json.raw(",\"firmware\":")?;
     json.string(info.firmware)?;
     json.raw(",\"built\":")?;
     json.string(info.built)?;

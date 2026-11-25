@@ -28,6 +28,8 @@ pub enum Route {
     /// The SETUP page: the deck's settings and information.
     Settings,
     SettingsChange,
+    /// The SETUP page: a new password for the deck's own network.
+    NetworkPassword,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -70,6 +72,7 @@ const ROUTES: &[(&str, Method, Route)] = &[
     ("/api/diagnostic-log", Method::Get, Route::DiagnosticLog),
     ("/api/settings", Method::Get, Route::Settings),
     ("/api/settings", Method::Post, Route::SettingsChange),
+    ("/api/network", Method::Post, Route::NetworkPassword),
 ];
 
 pub fn route(method: Method, path: &str) -> Result<Route, RouteMiss> {

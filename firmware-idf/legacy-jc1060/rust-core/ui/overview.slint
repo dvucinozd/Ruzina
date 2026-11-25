@@ -449,9 +449,12 @@ component SettingsPage inherits Rectangle {
     in property <int> backlight;
     in property <int> trim;
     in property <int> screensaver;
+    // Whether the deck has its own network, whose password DEFAULT puts back.
+    in property <bool> wifi;
     // What changed (0 LOAD LOCK, 1 deck 1's jog, 2 deck 2's jog, 3 the brightness one
-    // step, 4 the MAIN trim, 5 the screensaver) and to: 1 for on, CDJ or a step up, else
-    // 0; the trim 0 to 2; the screensaver 0 OFF, then 1 to 3 for 2, 5 and 10 minutes.
+    // step, 4 the MAIN trim, 5 the screensaver, 6 the network's password back to the
+    // default) and to: 1 for on, CDJ or a step up, else 0; the trim 0 to 2; the
+    // screensaver 0 OFF, then 1 to 3 for 2, 5 and 10 minutes.
     callback change(int, int);
     width: 952px;
     height: 474px;
@@ -514,6 +517,15 @@ component SettingsPage inherits Rectangle {
             selected: i == root.screensaver;
             clicked => { root.change(5, i); }
         }
+    }
+    // Under the screensaver: the network's password set from the Web Remote, back to the
+    // default shown above.
+    if root.wifi: SettingRow {
+        x: 480px;
+        y: 428px;
+        height: 42px;
+        label: "WI-FI PASSWORD";
+        Choice { x: 306px; y: 3px; width: 150px; height: 36px; text: "DEFAULT"; clicked => { root.change(6, 0); } }
     }
     for line[i] in root.left: Rectangle {
         x: 12px;
@@ -988,6 +1000,7 @@ export component Overview inherits Window {
     in property <int> setting-backlight: 25;
     in property <int> setting-trim;
     in property <int> setting-screensaver: 1;
+    in property <bool> setting-wifi: false;
     // Over everything: 0 nothing, 1 the boot screen, 2 the screensaver (`screen_idle.rs`).
     in property <int> cover: 1;
     // The cover's lit letter, which moves along the word from before its first letter to
@@ -1158,6 +1171,7 @@ export component Overview inherits Window {
         backlight: root.setting-backlight;
         trim: root.setting-trim;
         screensaver: root.setting-screensaver;
+        wifi: root.setting-wifi;
         change(kind, value) => { root.setting(kind, value); }
     }
 

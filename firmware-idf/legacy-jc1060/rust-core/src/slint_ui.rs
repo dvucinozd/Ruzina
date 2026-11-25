@@ -2205,8 +2205,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     // A setting tapped: in force at once (the USB client task applies it on its next
     // turn, the brightness here), saved by the load task once it has been quiet.
     let weak = ui.as_weak();
+    // The deck's network's password back to the default (the Settings page's DEFAULT), for
+    // an owner who forgot the one set from the Web Remote.
+    #[cfg(feature = "idf-web-remote")]
+    ui.set_setting_wifi(true);
     ui.on_setting(move |kind, value| {
         use ruzina_settings::{JogMode, MasterTrim, Screensaver};
+        if kind == 6 {
+            #[cfg(feature = "idf-web-remote")]
+            crate::deck_network::put(None);
+            return;
+        }
         let jog = if value == 1 {
             JogMode::Cdj
         } else {

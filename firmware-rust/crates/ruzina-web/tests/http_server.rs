@@ -8,7 +8,7 @@ use ruzina_web::{
         CAPTIVE_PORTAL, ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend,
         WebServer,
     },
-    settings::{Jog, Media, SettingChange, SettingsInfo, SettingsView},
+    settings::{Jog, Media, PasswordOutcome, SettingChange, SettingsInfo, SettingsView},
 };
 
 const AP: &str = "192.168.4.1";
@@ -27,6 +27,9 @@ struct Fake {
     /// The deck's settings, where it has them, and the changes it took.
     settings: Option<(bool, u8)>,
     setting_changes: Vec<SettingChange>,
+    /// What a new network password gets, and the passwords taken.
+    password_outcome: Option<PasswordOutcome>,
+    passwords: Vec<String>,
 }
 
 impl WebBackend for Fake {
@@ -103,6 +106,7 @@ impl WebBackend for Fake {
             trim_db: 3,
             screensaver_min: 2,
             info: SettingsInfo {
+                network: "Ruzina-AB2D",
                 firmware: "v1 \"test\"",
                 built: "Nov 25 2026 12:00:00",
                 controller: "DDJ-FLX4",
@@ -123,6 +127,15 @@ impl WebBackend for Fake {
         }
         self.setting_changes.push(change);
         true
+    }
+    fn change_network_password(&mut self, password: &str) -> PasswordOutcome {
+        let Some(outcome) = self.password_outcome else {
+            return PasswordOutcome::Unavailable;
+        };
+        if outcome == PasswordOutcome::Accepted {
+            self.passwords.push(password.into());
+        }
+        outcome
     }
 }
 
@@ -169,7 +182,7 @@ fn the_setup_page_reads_and_changes_the_decks_settings() {
         body(&read),
         "{\"load_lock\":false,\"jog\":[\"vinyl\",\"cdj\"],\
 \"brightness\":{\"percent\":25,\"min\":10,\"max\":50,\"step\":5},\"trim_db\":3,\
-\"screensaver_min\":2,\"info\":{\"firmware\":\"v1 \\\"test\\\"\",\
+\"screensaver_min\":2,\"info\":{\"network\":\"Ruzina-AB2D\",\"firmware\":\"v1 \\\"test\\\"\",\
 \"built\":\"Nov 25 2026 12:00:00\",\"controller\":\"DDJ-FLX4\",\"tracks\":25,\
 \"media\":\"ready\",\"uptime_s\":61}}"
     );
@@ -210,6 +223,67 @@ Content-Length: 0\r\n\r\n",
     );
     assert_eq!(status_line(&unmarked), "HTTP/1.1 403 Forbidden");
     assert_eq!(fake.setting_changes.len(), 2);
+}
+
+fn post_body(path: &str, body: &str) -> String {
+    format!(
+        "POST {path} HTTP/1.1\r\nHost: ruzina.local\r\nX-DDJ-Control: 1\r\n\
+Origin: http://ruzina.local\r\nContent-Length: {}\r\n\r\n{body}",
+        body.len()
+    )
+}
+
+#[test]
+fn a_new_network_password_travels_in_the_body_only() {
+    let mut server = WebServer::new(1, AP);
+    let mut fake = Fake {
+        password_outcome: Some(PasswordOutcome::Accepted),
+        ..Fake::default()
+    };
+    let taken = exchange(
+        &mut server,
+        &mut fake,
+        &post_body("/api/network", "{\"password\":\"club night 42\"}"),
+    );
+    assert_eq!(status_line(&taken), "HTTP/1.1 200 OK");
+    assert_eq!(fake.passwords, ["club night 42"]);
+    // In a query, empty, escaped, cut short or without the marker: refused.
+    for request in [
+        post("/api/network?password=club12345"),
+        post_body("/api/network", "{\"password\":\"\"}"),
+        post_body("/api/network", "{\"password\":\"a\\\"bcdefgh\"}"),
+        post_body("/api/network", "{\"password\":\"club night 42\"}")
+            .replace("Content-Length: 28", "Content-Length: 31"),
+    ] {
+        let refused = exchange(&mut server, &mut fake, &request);
+        assert_eq!(
+            status_line(&refused),
+            "HTTP/1.1 400 Bad Request",
+            "{request}"
+        );
+    }
+    let unmarked = post_body("/api/network", "{\"password\":\"club night 42\"}")
+        .replace("X-DDJ-Control: 1\r\n", "");
+    assert_eq!(
+        status_line(&exchange(&mut server, &mut fake, &unmarked)),
+        "HTTP/1.1 403 Forbidden"
+    );
+    assert_eq!(fake.passwords.len(), 1);
+    // The deck's own answers.
+    fake.password_outcome = Some(PasswordOutcome::Busy);
+    let busy = exchange(
+        &mut server,
+        &mut fake,
+        &post_body("/api/network", "{\"password\":\"club night 42\"}"),
+    );
+    assert_eq!(status_line(&busy), "HTTP/1.1 409 Conflict");
+    fake.password_outcome = Some(PasswordOutcome::Invalid);
+    let short = exchange(
+        &mut server,
+        &mut fake,
+        &post_body("/api/network", "{\"password\":\"short\"}"),
+    );
+    assert_eq!(status_line(&short), "HTTP/1.1 400 Bad Request");
 }
 
 #[test]
