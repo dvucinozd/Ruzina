@@ -217,6 +217,8 @@ unsafe extern "C" {
         caches: *mut *mut u16,
     ) -> bool;
     fn ruzina_lanes_publish(lane: u32, model: *const LaneModel);
+    /// Returns once the lanes' task has finished any copies it had begun.
+    fn ruzina_lanes_settle();
     fn ruzina_lanes_blit(
         from: *const u16,
         from_width: u32,
@@ -1284,6 +1286,17 @@ impl LaneCache {
             && let Some(motion) = self.published
         {
             self.publish(shown, motion);
+        }
+    }
+
+    /// Hides a shown lane at once, as last published: a page or cover is about to be drawn
+    /// over it. The caller then waits for the lanes' task (`ruzina_lanes_settle`).
+    fn hide(&mut self) {
+        if self.shown
+            && let Some(motion) = self.published
+        {
+            self.publish(false, motion);
+            self.shown = false;
         }
     }
 
@@ -2573,6 +2586,18 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
         }
         slint::platform::update_timers_and_animations();
         let buffer = &mut *frame;
+        // A page or cover drawn over the lanes: they are hidden, and the lanes' task done
+        // with any copy it had begun, before Slint draws it.
+        if covered && let Some(lanes) = lanes.as_mut() {
+            let shown = lanes.iter().any(|lane| lane.shown);
+            for lane in lanes.iter_mut() {
+                lane.hide();
+            }
+            if shown {
+                // SAFETY: waits on the lanes' task; no arguments.
+                unsafe { ruzina_lanes_settle() };
+            }
+        }
         mark(SCREEN, true);
         let allocs_before = crate::idf_alloc::counted();
         let started = now_us();
