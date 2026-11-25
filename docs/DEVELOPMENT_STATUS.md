@@ -5,14 +5,20 @@ documents link here.
 
 ## The board's images
 
-- **Kept for play:** s209 (app `91b83e13…`), the `--slint-ui --fill-iram --usb-stick`
-  image without the soak DJ. Its firmware is `ogranak/profiles-and-polish`: main `4dccc9b`
-  (#168 to #172) with
-  [controller profiles in SETUP and the day's fixes](reviews/2026-11-25-profiles-and-polish.md).
-  It was built with the
-  [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image),
-  less `--soak-autoplay`. The owner played on it on 2026-11-25 ("Sve radi").
+- **On the board:** s213 (app `95f00c31…`, version `s213`), in slot ota_1. Its firmware
+  is `ogranak/web-remote-ota`: main `2a68ea8` (#173) with
+  [firmware updates from the browser](reviews/2026-11-25-web-remote-ota.md), the
+  UPDATING FIRMWARE screen and the panel's interrupt running while flash is written. It
+  is the play image recipe, less `--soak-autoplay`, with `--version s213`. It reached the
+  deck from the Web Remote, as a signed bundle. On it the screen held still through an
+  update ("ne blica!").
 - **Before it:**
+  - s212 (app `28728a57…`) and s211 (app `a1f398fa…`), the same branch before the
+    screen's fixes, sent from the Web Remote.
+  - s210 (app `0d976bb1…`), the same firmware: the first image with two app slots, flashed
+    over USB to ota_0.
+  - s209 (app `91b83e13…`), the play image of #173. The owner played on it on 2026-11-25
+    ("Sve radi").
   - s208p (app `50175f51…`), the same firmware as a profile image. On it the owner checked
     the profiles, jumps at the largest zoom and the stick put back ("Sve radi").
   - s207 (app `6f8be16a…`), the play image of #172.
@@ -119,8 +125,8 @@ them. The owner's listening checks are separate, shorter runs. The
   - Since s116 the failure no longer takes the Wi-Fi's slot down with it
     ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
 - **Web Remote:**
-  - SETUP covers the deck's settings, its network's password and a list of the controller profiles; profiles cannot be uploaded, there is no firmware page, and the network's name stays.
-  - OTA exists on the host only (no partition, radio or TLS adapter).
+  - SETUP covers the deck's settings, its network's password, a list of the controller profiles and firmware updates; profiles cannot be uploaded, and the network's name stays.
+  - Firmware updates: a `.ddjota` bundle signed with the Ruzina key (`ruz-001`) goes to the slot the deck is not running, with rollback (tried on s210 and s211). During an upload the screen shows UPDATING FIRMWARE and USB audio stalls; there is no pull from a server.
   - The network's default password is a build setting; the owner's own is kept in NVS.
 
 ## Evidence layers
