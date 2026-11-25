@@ -72,11 +72,11 @@ static bool mover_ready(void)
 /* A lane move as a plain 2D-DMA memory-to-memory copy. The PPA's SRM engine moved a lane
    (811 by 220 pixels) in 8.1 ms on s190p, its cache work taking under 0.05 ms: the scaling
    engine is the bottleneck, not the memory. The 2D-DMA copies the same block without it,
-   in 2.5 ms on s191p. Up to six copies at a time, one in each slot, from one task at a
+   in 2.5 ms on s191p. Up to twelve copies at a time, one in each slot, from one task at a
    time: the lanes' task (`lane_task`), or before it the deck screen. Each slot's
    descriptors and transaction are kept. Falls back to the PPA if the 2D-DMA cannot be
    had. */
-#define COPY_SLOTS 6
+#define COPY_SLOTS 12
 static dma2d_pool_handle_t copy_pool;
 static dma2d_descriptor_t *copy_tx[COPY_SLOTS], *copy_rx[COPY_SLOTS];
 static void *copy_slot[COPY_SLOTS];
@@ -318,10 +318,13 @@ int32_t ruzina_panel_move_finish(uint32_t slot)
    columns it never touches. So the lanes move at every refresh, at the position each one
    is scanned out at, however long the deck screen's frame takes; on s195p a frame that
    ran long held both lanes for a refresh and then jumped them twice as far.
+   The phase strip's two halves, each deck's beats, move the same way: on s196p, drawn at
+   the deck screen's frames, they still jerked.
    The deck screen draws the cache ahead (`ruzina_lanes_publish`) and keeps its columns in
    memory: it writes them through the PPA, and nothing writes the lanes' rows of the
    frame from the CPU, so neither copy needs its cache lines synced. */
-#define LANE_SLOTS 6
+#define LANE_SLOTS COPY_SLOTS
+#define LANES 4                  /* both decks' waveforms, then both halves of the phase strip */
 #define LINE_US 26               /* one of the panel's 635 lines at 61 refreshes a second */
 #define BLANK_US 900             /* the blanking between a refresh's end and line 0 */
 typedef struct {
@@ -334,15 +337,15 @@ typedef struct {
     uint32_t window_ms;
     uint32_t revision;           /* bumped when shown columns change */
 } lane_model_t;
-static lane_model_t lane_models[2];
+static lane_model_t lane_models[LANES];
 static portMUX_TYPE lane_lock = portMUX_INITIALIZER_UNLOCKED;
-static uint16_t *lane_caches[2];
+static uint16_t *lane_caches[LANES];
 static uint16_t *lane_frame;
-static uint32_t lane_x, lane_y[2], lane_w, lane_h, lane_playhead;
+static uint32_t lane_count, lane_x, lane_y[LANES], lane_h[LANES], lane_w, lane_playhead;
 
 static int64_t floor_div(int64_t a, int64_t b) { return a / b - (a % b != 0 && (a < 0) != (b < 0)); }
 
-/* Copies screen columns [s, e) of deck `d`'s lane from its cache, the lane's left edge
+/* Copies screen columns [s, e) of lane `d` from its cache, the lane's left edge
    at track pixel `left`, in one or two blocks; returns the next free slot. */
 static uint32_t lane_copy(int d, int64_t left, uint32_t s, uint32_t e, uint32_t slot)
 {
@@ -350,8 +353,8 @@ static uint32_t lane_copy(int d, int64_t left, uint32_t s, uint32_t e, uint32_t 
         const int64_t c = ((left + s) % 1024 + 1024) % 1024;
         uint32_t n = e - s;
         if (c + n > 1024) n = (uint32_t)(1024 - c);
-        if (!copy_begin(slot, lane_caches[d], lane_h, (uint32_t)c, 0, lane_frame, 600,
-                        lane_x + s, lane_y[d], n, lane_h)) break;
+        if (!copy_begin(slot, lane_caches[d], lane_h[d], (uint32_t)c, 0, lane_frame, 600,
+                        lane_x + s, lane_y[d], n, lane_h[d])) break;
         slot++;
         s += n;
     }
@@ -361,8 +364,9 @@ static uint32_t lane_copy(int d, int64_t left, uint32_t s, uint32_t e, uint32_t 
 static void lane_task(void *arg)
 {
     (void)arg;
-    int64_t shown_left[2] = {INT64_MIN, INT64_MIN};
-    uint32_t shown_revision[2] = {0, 0};
+    int64_t shown_left[LANES];
+    uint32_t shown_revision[LANES] = {0};
+    for (int d = 0; d < LANES; d++) shown_left[d] = INT64_MIN;
 #if CONFIG_RUZINA_UAC_PROFILE
     uint32_t refreshes_seen = 0, copies = 0, misses = 0, start_max = 0, done_max = 0;
     uint64_t done_total = 0;
@@ -372,7 +376,7 @@ static void lane_task(void *arg)
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         const int64_t now = esp_timer_get_time();
         uint32_t slot = 0;
-        for (int d = 0; d < 2; d++) {
+        for (int d = 0; d < (int)lane_count; d++) {
             portENTER_CRITICAL(&lane_lock);
             const lane_model_t m = lane_models[d];
             portEXIT_CRITICAL(&lane_lock);
@@ -381,7 +385,7 @@ static void lane_task(void *arg)
                 continue;
             }
             /* Where the deck is when the beam reaches the lane's middle. */
-            const int64_t at = now + BLANK_US + (int64_t)(lane_y[d] + lane_h / 2) * LINE_US;
+            const int64_t at = now + BLANK_US + (int64_t)(lane_y[d] + lane_h[d] / 2) * LINE_US;
             int64_t track_us = m.anchor_track_us + (at - m.anchor_us) * m.rate_x10000 / 10000;
             if (m.loop_to_us > m.loop_from_us && track_us >= m.loop_to_us)
                 track_us = m.loop_from_us + (track_us - m.loop_from_us) % (m.loop_to_us - m.loop_from_us);
@@ -426,39 +430,41 @@ static void lane_task(void *arg)
     }
 }
 
-/* Starts the lanes: deck `d`'s lane is `w` by `h` pixels at (x, y[d]) of `frame`, the shown
-   frame buffer, with its playhead in columns playhead - 1 to playhead + 1. Makes each deck's
-   cache and returns them in `caches`; false if they or the task cannot be had. */
-bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t y0, uint32_t y1, uint32_t w, uint32_t h,
-                        uint32_t playhead, uint16_t **caches)
+/* Starts the lanes: lane `d` of `count` is `w` by `h[d]` pixels at (x, y[d]) of `frame`,
+   the shown frame buffer, with its playhead in columns playhead - 1 to playhead + 1. Makes
+   each lane's cache, 1024 by h[d] pixels, and returns them in `caches`; false if they or the
+   task cannot be had. */
+bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t w, uint32_t playhead, uint32_t count,
+                        const uint32_t *y, const uint32_t *h, uint16_t **caches)
 {
-    if (lane_task_handle) return false;
+    if (lane_task_handle || count > LANES) return false;
     if (w > 1024 || playhead < 1 || playhead + 2 > w || !copy_ready()) return false;
-    for (int d = 0; d < 2; d++) {
-        lane_caches[d] = heap_caps_aligned_calloc(64, 1024 * h, 2, MALLOC_CAP_SPIRAM);
+    for (uint32_t d = 0; d < count; d++) {
+        if (!h[d] || y[d] + h[d] > 600) return false;
+        lane_caches[d] = heap_caps_aligned_calloc(64, 1024 * h[d], 2, MALLOC_CAP_SPIRAM);
         if (!lane_caches[d]) return false;
         caches[d] = lane_caches[d];
+        lane_y[d] = y[d];
+        lane_h[d] = h[d];
     }
     lane_frame = frame;
     lane_x = x;
-    lane_y[0] = y0;
-    lane_y[1] = y1;
     lane_w = w;
-    lane_h = h;
     lane_playhead = playhead;
+    lane_count = count;
     /* On the deck screen's core, above it (4) and the SD client (3). */
     return xTaskCreatePinnedToCore(lane_task, "lanes", 4096, NULL, 6, &lane_task_handle, 1) == pdPASS;
 }
 
-/* Deck `d`'s lane from now on: whether it is shown, the track pixels its cache holds, and
-   where the deck is: at `track_us` of the track at esp_timer `at_us`, going at
+/* Lane `d` from now on: whether it is shown, the track pixels its cache holds, and where
+   its deck is: at `track_us` of the track at esp_timer `at_us`, going at
    `rate_x10000` / 10000 of normal speed, in a loop from `loop_from_us` to `loop_to_us` (both
    0 for none). `revision` changes when columns already shown were drawn again. */
 void ruzina_lanes_publish(uint32_t d, bool shown, int64_t lo, int64_t hi, int64_t at_us, int64_t track_us,
                           int32_t rate_x10000, int64_t loop_from_us, int64_t loop_to_us, uint32_t window_ms,
                           uint32_t revision)
 {
-    if (d > 1) return;
+    if (d >= LANES) return;
     portENTER_CRITICAL(&lane_lock);
     lane_models[d] = (lane_model_t){
         .shown = shown, .lo = lo, .hi = hi, .anchor_us = at_us, .anchor_track_us = track_us,
@@ -469,11 +475,11 @@ void ruzina_lanes_publish(uint32_t d, bool shown, int64_t lo, int64_t hi, int64_
 }
 
 /* Copies a w by h block of pixels from column `from_x` of `from`, `from_w` to a row, to
-   column x of a lane cache (1024 by h), by the PPA. */
+   column x of a lane cache of h rows, by the PPA. */
 int32_t ruzina_lanes_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *cache,
                           uint32_t x, uint32_t w, uint32_t h)
 {
-    if (!w || !h || from_x + w > from_w || x + w > 1024 || h != lane_h || !mover_ready()) return -1;
+    if (!w || !h || from_x + w > from_w || x + w > 1024 || h > 600 || !mover_ready()) return -1;
     ppa_srm_oper_config_t blit = {
         .in = {.buffer = from, .pic_w = from_w, .pic_h = h, .block_w = w, .block_h = h,
                .block_offset_x = from_x, .block_offset_y = 0, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},

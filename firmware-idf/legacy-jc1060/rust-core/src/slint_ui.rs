@@ -93,6 +93,21 @@ const PHASE: Area = Area {
     height: 24,
 };
 const PHASE_BEATS: u32 = 4;
+/// The phase strip's halves that move: each deck's beats (`draw_phase` draws the rest).
+const PHASE_HALVES: [Area; 2] = [
+    Area {
+        x: PHASE.x,
+        y: PHASE.y + 2,
+        width: LANE_WIDTH,
+        height: 9,
+    },
+    Area {
+        x: PHASE.x,
+        y: PHASE.y + 13,
+        width: LANE_WIDTH,
+        height: 9,
+    },
+];
 const PHASE_BACK: u16 = rgb(0x1e, 0x15, 0x11);
 const PHASE_MIDDLE: u16 = rgb(0x38, 0x25, 0x1e);
 const DECK_COLORS: [u16; 2] = [rgb(0xe6, 0x4c, 0x0c), rgb(0x00, 0xe5, 0xff)];
@@ -194,11 +209,11 @@ unsafe extern "C" {
     fn ruzina_lanes_start(
         frame: *mut u16,
         x: u32,
-        y0: u32,
-        y1: u32,
         width: u32,
-        height: u32,
         playhead: u32,
+        count: u32,
+        y: *const u32,
+        height: *const u32,
         caches: *mut *mut u16,
     ) -> bool;
     fn ruzina_lanes_publish(
@@ -1132,8 +1147,52 @@ fn draw_strips(
     }
 }
 
-/// A lane cache's width: a frame buffer's row, so each cache is a `WIDTH` by `LANE_HEIGHT`
-/// picture whose column `p mod WIDTH` holds track pixel `p` (`ruzina_lanes_start`).
+/// What a lane cache holds: a deck's waveform, or its beats in a half of the phase strip
+/// spanning `window_ms` of the track, as ticks two columns wide in `color`.
+#[derive(Clone, Copy)]
+enum Content<'a> {
+    Wave(Wave<'a>),
+    Ticks {
+        beats: &'a [Beat],
+        window_ms: i64,
+        color: u16,
+    },
+}
+
+/// Draws track pixels `at` to `at + width` of `content` into columns 0 to `width` of
+/// `canvas`, a lane of `area`.
+fn paint(canvas: &mut Canvas<'_>, area: Area, content: Content<'_>, at: i64, width: usize) {
+    match content {
+        Content::Wave(wave) => draw_columns(canvas, area, wave, at, 0..width),
+        Content::Ticks {
+            beats,
+            window_ms,
+            color,
+        } => {
+            let ms = |pixel: i64| pixel * window_ms / LANE_WIDTH as i64;
+            let mut line = [PHASE_BACK; STRIP_COLUMNS];
+            for (x, ink) in line[..width].iter_mut().enumerate() {
+                // A beat in this pixel or the one before: its tick is two columns wide.
+                let pixel = at + x as i64;
+                let (from, to) = (ms(pixel - 1), ms(pixel + 1));
+                let next = beats.partition_point(|beat| i64::from(beat.time_ms) < from);
+                if beats
+                    .get(next)
+                    .is_some_and(|beat| i64::from(beat.time_ms) < to)
+                {
+                    *ink = color;
+                }
+            }
+            for row in 0..area.height {
+                let start = canvas.index(0, row);
+                canvas.pixels[start..start + width].copy_from_slice(&line[..width]);
+            }
+        }
+    }
+}
+
+/// A lane cache's width: a frame buffer's row, so each cache is a `WIDTH` by its lane's
+/// height picture whose column `p mod WIDTH` holds track pixel `p` (`ruzina_lanes_start`).
 const CACHE_WIDTH: i64 = WIDTH as i64;
 /// Track pixels kept behind the lane's left edge, for a deck that steps back a little.
 const CACHE_BEHIND: i64 = 32;
@@ -1157,11 +1216,14 @@ struct Motion {
     window_ms: u32,
 }
 
-/// A deck's lane as the donor draws it: a ring cache the deck screen draws the waveform
-/// into ahead of the playhead, and the track pixels it holds. The lanes' task copies the
-/// window the lane shows from it into the frame at each refresh.
+/// A lane as the donor draws it: a ring cache the deck screen draws a deck's waveform (or
+/// its beats, in the phase strip) into ahead of the playhead, and the track pixels it
+/// holds. The lanes' task copies the window the lane shows from it into the frame at each
+/// refresh.
 struct LaneCache {
-    deck: u32,
+    /// The lane's number for the lanes' task.
+    lane: u32,
+    area: Area,
     pixels: &'static mut [u16],
     /// What the cache was drawn for: the track, the time the lane shows and the marks.
     key: Option<(usize, i64, u32)>,
@@ -1177,9 +1239,10 @@ struct LaneCache {
 }
 
 impl LaneCache {
-    fn new(deck: u32, pixels: &'static mut [u16]) -> Self {
+    fn new(lane: u32, area: Area, pixels: &'static mut [u16]) -> Self {
         Self {
-            deck,
+            lane,
+            area,
             pixels,
             key: None,
             lo: 0,
@@ -1196,7 +1259,7 @@ impl LaneCache {
         // SAFETY: scalars only; C copies them under its lock.
         unsafe {
             ruzina_lanes_publish(
-                self.deck,
+                self.lane,
                 shown,
                 self.lo,
                 self.hi,
@@ -1221,8 +1284,7 @@ impl LaneCache {
         &mut self,
         gate: &mut Gate,
         strip: &mut Option<&mut [u16]>,
-        area: Area,
-        wave: Wave<'_>,
+        content: Content<'_>,
         left: i64,
         key: (usize, i64, u32),
         shown: bool,
@@ -1243,7 +1305,7 @@ impl LaneCache {
             self.publish(shown, motion);
             let range = want_lo..self.lo;
             gate.run(Step::Columns, || {
-                draw_cache(self.pixels, strip, area, wave, range);
+                draw_cache(self.pixels, strip, self.area, content, range);
             });
             self.lo = want_lo;
         }
@@ -1252,19 +1314,23 @@ impl LaneCache {
             self.publish(shown, motion);
             let range = self.hi..want_hi;
             gate.run(Step::Columns, || {
-                draw_cache(self.pixels, strip, area, wave, range);
+                draw_cache(self.pixels, strip, self.area, content, range);
             });
             self.hi = want_hi;
         }
         // The shading from a Loop In to the playhead: the columns the playhead passed.
-        if wave.marks.pending_in.is_some() {
+        let shading = match content {
+            Content::Wave(wave) => wave.marks.pending_in.is_some(),
+            Content::Ticks { .. } => false,
+        };
+        if shading {
             let playhead = left + PLAYHEAD_X as i64;
             let from = self.shaded_to.unwrap_or(playhead);
             let range =
                 (from.min(playhead) - 1).max(self.lo)..(from.max(playhead) + 2).min(self.hi);
             if !range.is_empty() {
                 gate.run(Step::Columns, || {
-                    draw_cache(self.pixels, strip, area, wave, range);
+                    draw_cache(self.pixels, strip, self.area, content, range);
                 });
                 self.revision = self.revision.wrapping_add(1);
             }
@@ -1280,14 +1346,15 @@ impl LaneCache {
     }
 }
 
-/// Draws track pixels `range` of a lane into its ring cache `cache`, in strips in internal
-/// RAM that the PPA copies in, so the CPU does not write PSRAM. Without a strip, or once a
-/// copy fails, it draws straight into the cache and writes it back.
+/// Draws track pixels `range` of `content` into the ring cache `cache` of a lane of `area`,
+/// in strips in internal RAM that the PPA copies in, so the CPU does not write PSRAM.
+/// Without a strip, or once a copy fails, it draws straight into the cache and writes it
+/// back.
 fn draw_cache(
     cache: &mut [u16],
     strip: &mut Option<&mut [u16]>,
     area: Area,
-    wave: Wave<'_>,
+    content: Content<'_>,
     range: core::ops::Range<i64>,
 ) {
     let mut at = range.start;
@@ -1300,17 +1367,18 @@ fn draw_cache(
         let width = (end - at) as usize;
         let column = column as usize;
         if let Some(pixels) = strip.as_deref_mut() {
-            let pixels = &mut pixels[..width * LANE_HEIGHT];
+            let pixels = &mut pixels[..width * area.height];
             let mut canvas = Canvas {
                 pixels,
                 stride: width,
                 base: 0,
                 first: 0,
             };
-            draw_columns(&mut canvas, area, wave, at, 0..width);
+            paint(&mut canvas, area, content, at, width);
             mark(MOVE, true);
-            // SAFETY: the strip holds `width` by LANE_HEIGHT pixels and the cache is a
-            // lane cache from `ruzina_lanes_start`; C bounds the block to both.
+            // SAFETY: the strip holds `width` by `area.height` pixels and the cache is a
+            // lane cache of that height from `ruzina_lanes_start`; C bounds the block to
+            // both.
             let copied = unsafe {
                 ruzina_lanes_blit(
                     canvas.pixels.as_ptr(),
@@ -1319,7 +1387,7 @@ fn draw_cache(
                     cache.as_mut_ptr(),
                     column as u32,
                     width as u32,
-                    LANE_HEIGHT as u32,
+                    area.height as u32,
                 )
             } == 0;
             mark(MOVE, false);
@@ -1334,9 +1402,9 @@ fn draw_cache(
                 base: column,
                 first: 0,
             };
-            draw_columns(&mut canvas, area, wave, at, 0..width);
-            // The cache has a frame buffer's rows: its LANE_HEIGHT rows go back.
-            flush(cache, 0, LANE_HEIGHT);
+            paint(&mut canvas, area, content, at, width);
+            // The cache has a frame buffer's rows: its `area.height` rows go back.
+            flush(cache, 0, area.height);
         }
         at = end;
     }
@@ -2110,33 +2178,39 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     mark_own_task();
     // The lanes' caches, and the task that copies them into the frame at each refresh. If
     // they cannot be had, the lanes are drawn whole into the frame when they move.
-    let mut lanes: Option<[LaneCache; 2]> = {
-        let mut caches = [core::ptr::null_mut(); 2];
-        // SAFETY: `frame` is the shown frame buffer; C fills `caches` with two lane caches
-        // of WIDTH by LANE_HEIGHT pixels, made for this task alone.
+    let mut lanes: Option<[LaneCache; 4]> = {
+        let areas = [LANES[0], LANES[1], PHASE_HALVES[0], PHASE_HALVES[1]];
+        let y = areas.map(|area| area.y as u32);
+        let height = areas.map(|area| area.height as u32);
+        let mut caches = [core::ptr::null_mut(); 4];
+        // SAFETY: `frame` is the shown frame buffer; C fills `caches` with a lane cache of
+        // WIDTH by each lane's height pixels, made for this task alone.
         let started = unsafe {
             ruzina_lanes_start(
                 frame.as_mut_ptr(),
                 LANES[0].x as u32,
-                LANES[0].y as u32,
-                LANES[1].y as u32,
                 LANE_WIDTH as u32,
-                LANE_HEIGHT as u32,
                 PLAYHEAD_X as u32,
+                4,
+                y.as_ptr(),
+                height.as_ptr(),
                 caches.as_mut_ptr(),
             )
         };
         started.then(|| {
-            let mut deck = 0;
+            let mut lane = 0;
             caches.map(|pixels| {
-                deck += 1;
+                lane += 1;
+                let area = areas[lane - 1];
                 // SAFETY: as above.
-                LaneCache::new(deck - 1, unsafe {
-                    core::slice::from_raw_parts_mut(pixels, WIDTH * LANE_HEIGHT)
+                LaneCache::new(lane as u32 - 1, area, unsafe {
+                    core::slice::from_raw_parts_mut(pixels, WIDTH * area.height)
                 })
             })
         })
     };
+    // Each deck's motion for the lanes' task, as this frame found it.
+    let mut motions: [Option<Motion>; 2] = [None; 2];
     // Without the lanes' task: each lane's left column and time span as drawn.
     let mut lane_at: [Option<(i64, i64)>; 2] = [None; 2];
     let timeout_ms = || crate::deck_settings::current().screensaver.timeout_ms();
@@ -2497,6 +2571,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     looped,
                     window_ms: wave.window_ms as u32,
                 };
+                motions[deck] = Some(motion);
                 let lane = &mut lanes[deck];
                 let key = (
                     track.map_or(0, |track| core::ptr::from_ref(track) as usize),
@@ -2506,8 +2581,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 lane.update(
                     &mut gate,
                     &mut strip,
-                    LANES[deck],
-                    wave,
+                    Content::Wave(wave),
                     left,
                     key,
                     !covered,
@@ -2543,21 +2617,52 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                 mini_at[deck] = mini;
             }
         }
+        // The master is deck 2 only while deck 1 alone follows it with SYNC.
+        let master = usize::from(decks[0].has(deck_view::SYNC) && !decks[1].has(deck_view::SYNC));
+        let tempo = |deck: usize| {
+            deck_phase::playing_bpm_x100(decks[deck].bpm_x100, decks[deck].pitch_centipercent)
+        };
+        let span = deck_phase::span_ms(tempo(master), PHASE_BEATS);
+        let beats = |deck: usize| {
+            tracks[deck]
+                .as_deref()
+                .and_then(|track| track.analysis.as_ref())
+                .and_then(|analysis| analysis.view().beat_grid())
+                .map_or(&[][..], |grid| grid.beats())
+        };
+        // Each deck's beats in its half of the phase strip, a lane of the lanes' task: the
+        // strip spans `span` of real time, so `span` at the deck's speed of its track.
+        if let Some(lanes) = lanes.as_mut() {
+            for deck in 0..2 {
+                let rate = 10_000 + i64::from(decks[deck].pitch_centipercent);
+                let window_ms = i64::from(span) * rate / 10_000;
+                let Some(motion) = motions[deck].filter(|_| window_ms > 0) else {
+                    continue;
+                };
+                let left = i64::from(decks[deck].position_ms) * LANE_WIDTH as i64 / window_ms
+                    - PLAYHEAD_X as i64;
+                let beats = beats(deck);
+                let content = Content::Ticks {
+                    beats,
+                    window_ms,
+                    color: DECK_COLORS[deck],
+                };
+                let key = (beats.as_ptr() as usize, window_ms, beats.len() as u32);
+                let motion = Motion {
+                    window_ms: window_ms as u32,
+                    ..motion
+                };
+                lanes[2 + deck].update(&mut gate, &mut strip, content, left, key, !covered, motion);
+            }
+            // Shown again: the strip's still rows and its playhead, under the halves.
+            if !covered && !lanes[2].shown {
+                draw_phase(buffer, strip.as_deref_mut(), [Ticks::default(); 2]);
+            }
+            for lane in &mut lanes[2..] {
+                lane.shown = !covered;
+            }
+        }
         if !covered {
-            // The master is deck 2 only while deck 1 alone follows it with SYNC.
-            let master =
-                usize::from(decks[0].has(deck_view::SYNC) && !decks[1].has(deck_view::SYNC));
-            let tempo = |deck: usize| {
-                deck_phase::playing_bpm_x100(decks[deck].bpm_x100, decks[deck].pitch_centipercent)
-            };
-            let span = deck_phase::span_ms(tempo(master), PHASE_BEATS);
-            let beats = |deck: usize| {
-                tracks[deck]
-                    .as_deref()
-                    .and_then(|track| track.analysis.as_ref())
-                    .and_then(|analysis| analysis.view().beat_grid())
-                    .map_or(&[][..], |grid| grid.beats())
-            };
             let ticks = core::array::from_fn(|deck| {
                 let snapshot = decks[deck];
                 deck_phase::beat_columns(
@@ -2568,7 +2673,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     PHASE.width,
                 )
             });
-            if phase_at != Some(ticks) {
+            // Without the lanes' task, the strip is drawn as it moves.
+            if lanes.is_none() && phase_at != Some(ticks) {
                 draw_phase(buffer, strip.as_deref_mut(), ticks);
                 phase_at = Some(ticks);
             }
