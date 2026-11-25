@@ -11,6 +11,9 @@
 #include "esp_lcd_panel_ops.h"
 #if CONFIG_RUZINA_SLINT_UI
 #include "driver/ppa.h"
+#include "esp_private/dma2d.h"
+#include "hal/dma2d_types.h"
+#include "soc/dma2d_channel.h"
 #endif
 #include "esp_ldo_regulator.h"
 #include "esp_timer.h"
@@ -63,10 +66,132 @@ static bool mover_ready(void)
     return true;
 }
 
+/* A lane move as a plain 2D-DMA memory-to-memory copy. The PPA's SRM engine moved a lane
+   (811 by 220 pixels) in 8.1 ms on s190p, its cache work taking under 0.05 ms: the scaling
+   engine is the bottleneck, not the memory. The 2D-DMA copies the same block without it.
+   One copy at a time, from the screen task; its descriptors and transaction slot are
+   kept. Falls back to the PPA if the 2D-DMA cannot be had. */
+static dma2d_pool_handle_t copy_pool;
+static dma2d_descriptor_t *copy_tx, *copy_rx;
+static void *copy_slot;
+static dma2d_trans_config_t copy_job;
+static SemaphoreHandle_t copy_done;
+static bool copy_failed;
+
+static bool copy_eof(dma2d_channel_handle_t chan, dma2d_event_data_t *event, void *user)
+{
+    (void)chan;
+    (void)event;
+    (void)user;
+    BaseType_t woken = pdFALSE;
+    xSemaphoreGiveFromISR(copy_done, &woken);
+    return woken == pdTRUE;
+}
+
+static bool copy_picked(uint32_t num, const dma2d_trans_channel_info_t *chans, void *user)
+{
+    (void)user;
+    if (num != 2) return false;
+    dma2d_channel_handle_t tx = chans[0].dir == DMA2D_CHANNEL_DIRECTION_TX ? chans[0].chan : chans[1].chan;
+    dma2d_channel_handle_t rx = chans[0].dir == DMA2D_CHANNEL_DIRECTION_TX ? chans[1].chan : chans[0].chan;
+    dma2d_trigger_t trig = {.periph = DMA2D_TRIG_PERIPH_M2M, .periph_sel_id = SOC_DMA2D_TRIG_PERIPH_M2M_TX};
+    dma2d_connect(tx, &trig);
+    trig.periph_sel_id = SOC_DMA2D_TRIG_PERIPH_M2M_RX;
+    dma2d_connect(rx, &trig);
+    dma2d_transfer_ability_t ability = {
+        .access_ext_mem = true, .data_burst_length = 128,
+        .desc_burst_en = true, .mb_size = DMA2D_MACRO_BLOCK_SIZE_NONE,
+    };
+    dma2d_set_transfer_ability(tx, &ability);
+    dma2d_set_transfer_ability(rx, &ability);
+    dma2d_rx_event_callbacks_t cbs = {.on_recv_eof = copy_eof};
+    dma2d_register_rx_event_callbacks(rx, &cbs, NULL);
+    dma2d_set_desc_addr(tx, (intptr_t)copy_tx);
+    dma2d_set_desc_addr(rx, (intptr_t)copy_rx);
+    dma2d_start(tx);
+    dma2d_start(rx);
+    return false;
+}
+
+static bool copy_ready(void)
+{
+    if (copy_failed) return false;
+    if (!copy_pool) {
+        dma2d_pool_config_t pool = {.pool_id = 0};
+        copy_tx = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+        copy_rx = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+        copy_slot = heap_caps_calloc(1, SIZEOF_DMA2D_TRANS_T, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        copy_done = xSemaphoreCreateBinary();
+        if (!copy_tx || !copy_rx || !copy_slot || !copy_done || dma2d_acquire_pool(&pool, &copy_pool) != ESP_OK) {
+            copy_failed = true;
+            printf("panel_copy dma2d=UNAVAILABLE\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Copies the w by h block at (fx, fy) of frame buffer `from` to (tx, ty) of `to`. */
+static bool dma2d_block_copy(const uint16_t *from, uint32_t fx, uint32_t fy, uint16_t *to, uint32_t tx,
+                             uint32_t ty, uint32_t w, uint32_t h)
+{
+    if (!copy_ready()) return false;
+    const uint32_t pbyte = DMA2D_DESCRIPTOR_PBYTE_2B0_PER_PIXEL;
+    *copy_tx = (dma2d_descriptor_t){
+        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 1,
+        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = 600, .ha_length = 1024, .pbyte = pbyte,
+        .y = fy, .x = fx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = (void *)from, .next = NULL,
+    };
+    *copy_rx = (dma2d_descriptor_t){
+        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 0,
+        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = 600, .ha_length = 1024, .pbyte = pbyte,
+        .y = ty, .x = tx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = to, .next = NULL,
+    };
+    esp_cache_msync(copy_tx, 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    esp_cache_msync(copy_rx, 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    /* The rows read go to memory first; the rows written are dropped from the cache. */
+    esp_cache_msync((void *)(from + fy * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+    esp_cache_msync((void *)(to + ty * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+    copy_job = (dma2d_trans_config_t){
+        .tx_channel_num = 1, .rx_channel_num = 1, .channel_flags = DMA2D_CHANNEL_FUNCTION_FLAG_SIBLING,
+        .on_job_picked = copy_picked,
+    };
+    xSemaphoreTake(copy_done, 0);
+    if (dma2d_enqueue(copy_pool, &copy_job, (dma2d_trans_t *)copy_slot) != ESP_OK) return false;
+    if (xSemaphoreTake(copy_done, pdMS_TO_TICKS(50)) != pdTRUE) {
+        /* A copy that never ended: stop using the 2D-DMA for good. */
+        copy_failed = true;
+        printf("panel_copy dma2d=TIMEOUT\n");
+        return false;
+    }
+    return true;
+}
+
 int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
                           uint32_t w, uint32_t h, uint32_t dx)
 {
-    if (dx >= w || !mover_ready()) return -1;
+    if (dx >= w) return -1;
+#if CONFIG_RUZINA_UAC_PROFILE
+    static uint32_t dma_moves, dma_samples, dma_us, dma_max_us;
+    const int64_t dma_start = esp_timer_get_time();
+#endif
+    if (dma2d_block_copy(from, x + dx, y, to, x, y, w - dx, h)) {
+#if CONFIG_RUZINA_UAC_PROFILE
+        /* Profile images: the copy's time, the means of every 16th of 32 samples. */
+        if ((dma_moves++ & 15) == 0) {
+            const uint32_t took = (uint32_t)(esp_timer_get_time() - dma_start);
+            dma_us += took;
+            if (took > dma_max_us) dma_max_us = took;
+            if (++dma_samples == 32) {
+                printf("panel_move via=dma2d samples=32 w=%" PRIu32 " h=%" PRIu32 " copy_us=%" PRIu32
+                       " copy_max_us=%" PRIu32 "\n", w - dx, h, dma_us / 32, dma_max_us);
+                dma_samples = dma_us = dma_max_us = 0;
+            }
+        }
+#endif
+        return 0;
+    }
+    if (!mover_ready()) return -1;
     ppa_srm_oper_config_t move = {
         .in = {.buffer = from, .pic_w = 1024, .pic_h = 600, .block_w = w - dx, .block_h = h,
                .block_offset_x = x + dx, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
@@ -94,7 +219,7 @@ int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32
         copy_us += copy;
         if (copy > copy_max_us) copy_max_us = copy;
         if (++samples == 32) {
-            printf("panel_move samples=32 w=%" PRIu32 " h=%" PRIu32 " c2m_us=%" PRIu32 " m2c_us=%" PRIu32
+            printf("panel_move via=ppa samples=32 w=%" PRIu32 " h=%" PRIu32 " c2m_us=%" PRIu32 " m2c_us=%" PRIu32
                    " copy_us=%" PRIu32 " copy_max_us=%" PRIu32 "\n",
                    w - dx, h, c2m_us / 32, m2c_us / 32, copy_us / 32, copy_max_us);
             samples = c2m_us = m2c_us = copy_us = copy_max_us = 0;
