@@ -115,6 +115,7 @@ impl WebBackend for Fake {
                 tracks: 25,
                 media: Media::Ready,
                 uptime_s: 61,
+                slot: "ota_1",
             },
             profiles: &[
                 ControllerProfile {
@@ -202,7 +203,7 @@ fn the_setup_page_reads_and_changes_the_decks_settings() {
 \"brightness\":{\"percent\":25,\"min\":10,\"max\":50,\"step\":5},\"trim_db\":3,\
 \"screensaver_min\":2,\"info\":{\"network\":\"Ruzina-AB2D\",\"firmware\":\"v1 \\\"test\\\"\",\
 \"built\":\"Nov 25 2026 12:00:00\",\"controller\":\"DDJ-FLX4\",\"tracks\":25,\
-\"media\":\"ready\",\"uptime_s\":61},\"profiles\":[\
+\"media\":\"ready\",\"uptime_s\":61,\"slot\":\"ota_1\"},\"profiles\":[\
 {\"name\":\"Pioneer DDJ-FLX4\",\"id\":\"2B73:0045\",\"tested\":true,\"active\":true},\
 {\"name\":\"Numark DJ2GO2 Touch\",\"id\":\"15E4:0050\",\"tested\":false,\"active\":false}]}"
     );
@@ -672,11 +673,12 @@ fn the_web_remote_page_is_served_from_the_image() {
         "/api/load",
         "/api/library",
         "/api/wave",
+        "/api/ota/p4",
     ] {
         assert!(app.contains(route), "{route}");
     }
     for unimplemented in [
-        "/api/ota",
+        "/api/ota/config",
         "/api/firmware",
         "/api/recording",
         "/api/controller-profile",

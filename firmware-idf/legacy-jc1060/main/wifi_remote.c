@@ -6,7 +6,9 @@
  * SETUP page replaces it (ruzina_wifi_change_password); it is kept in NVS, and the deck's
  * Settings page can put the default back. On 192.168.4.1 a small
  * server serves up to four connections at once (web_client.h) and hands each request to
- * ruzina-web (ruzina_web_handle): the Web Remote page, its status and its controls.
+ * ruzina-web (ruzina_web_handle): the Web Remote page, its status and its controls. A
+ * firmware bundle streams through ruzina-web into the update slot (ota_slot.c); once it is
+ * in and checked, the deck restarts into it, and keeps it when the server listens again.
  * The log carries counts and timings only: no addresses or names of the devices that
  * join, and never the password.
  *
@@ -27,6 +29,7 @@
 #include "esp_hosted.h"
 #include "esp_netif.h"
 #include "esp_random.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "nvs.h"
@@ -45,6 +48,13 @@ extern size_t ruzina_web_handle(uint32_t boot, const uint8_t *request, size_t re
                                 size_t out_len);
 extern size_t ruzina_web_largest_asset(void);
 extern void ruzina_web_set_name(const uint8_t *name, size_t len);
+extern int ruzina_web_stream_open(uint32_t boot, const uint8_t *head, size_t len);
+extern int ruzina_web_stream_feed(const uint8_t *bytes, size_t len);
+extern void ruzina_web_stream_cancel(void);
+extern size_t ruzina_web_stream_finish(int status, uint8_t *out, size_t out_len);
+extern bool ruzina_web_restart_due(void);
+extern void ruzina_ota_report(void);
+extern void ruzina_ota_settle(bool healthy);
 
 /* Called from ruzina_web_handle: the web task waits a moment for the USB task to answer a
  * load or a seek. At least one tick, so the USB task gets its turn. */
@@ -250,18 +260,30 @@ static void web_close(int sock)
     shutdown(sock, SHUT_RDWR);
     close(sock);
 }
+/* Differs on each start, so the page notices a reboot. */
+static uint32_t boot;
+/* A firmware bundle streams to ruzina-web (deck_ota.rs): the signed header and up to a
+ * slot's 6 MiB. */
+#define WEB_STREAM_MAX (188 + 0x600000)
+static int web_stream_open(const uint8_t *head, size_t len) { return ruzina_web_stream_open(boot, head, len); }
+static int web_stream_feed(const uint8_t *bytes, size_t len) { return ruzina_web_stream_feed(bytes, len); }
+static void web_stream_cancel(void) { ruzina_web_stream_cancel(); }
 #include "web_client.h"
 
 /* Connections the server serves at once. */
 #define CLIENTS 4
 
 static atomic_uint dropped;
-static uint32_t boot;
 static size_t response_cap;
 
-/* A complete request's answer, from ruzina-web, into the connection's own buffer. */
+/* A complete request's answer, from ruzina-web, into the connection's own buffer. A
+ * streamed body is finished there (or its refusal answered). */
 static size_t answer(struct client *c)
 {
+    if (c->streaming) {
+        c->streaming = false;
+        return ruzina_web_stream_finish(c->stream_status, c->out, response_cap);
+    }
     return ruzina_web_handle(boot, c->buffer, c->len, c->out, response_cap);
 }
 
@@ -304,9 +326,8 @@ static void server_task(void *unused)
         vTaskDelete(NULL);
         return;
     }
-    atomic_store(&server_state, SERVER_LISTENING);
-    /* Differs on each start, so the page notices a reboot. */
     boot = esp_random();
+    atomic_store(&server_state, SERVER_LISTENING);
     for (;;) {
         /* A connection still sending its request waits to be read; one with an answer
          * waits until its socket takes more. */
@@ -357,6 +378,12 @@ static void server_task(void *unused)
                     const unsigned took = (unsigned)(esp_timer_get_time() - c->start);
                     atomic_fetch_add(&requests, 1);
                     if (took > atomic_load(&request_max_us)) atomic_store(&request_max_us, took);
+                    /* A new image is in its slot and set to boot: the answer has gone. */
+                    if (ruzina_web_restart_due()) {
+                        printf("ota restart\n");
+                        vTaskDelay(pdMS_TO_TICKS(1000));
+                        esp_restart();
+                    }
                     break;
                 }
                 case CLIENT_DROPPED: atomic_fetch_add(&dropped, 1); break;
@@ -369,6 +396,7 @@ static void server_task(void *unused)
 static void wifi_task(void *unused)
 {
     (void)unused;
+    ruzina_ota_report();
     lower_hosted_tasks("start");
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_init());
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_event_loop_create_default());
@@ -385,12 +413,18 @@ static void wifi_task(void *unused)
     }
     if (err != ESP_OK) {
         printf("wifi error=%s\n", esp_err_to_name(err));
+        /* No Web Remote: a new image that cannot take the next one goes back. */
+        ruzina_ota_settle(false);
         vTaskDelete(NULL);
         return;
     }
-    for (;;) {
+    for (unsigned reports = 1;; ++reports) {
         vTaskDelay(pdMS_TO_TICKS(REPORT_PERIOD_MS));
         lower_hosted_tasks("report");
+        /* A new image is kept once it has run 30 s with the server listening; it goes
+         * back if the server failed, or has not started within three reports. */
+        const int state = atomic_load(&server_state);
+        if (state != SERVER_STARTING || reports >= 3) ruzina_ota_settle(state == SERVER_LISTENING);
         static const char *const server_names[] = {"starting", "listening", "failed"};
         printf("wifi_ap server=%s clients=%d requests=%u request_max_us=%u dropped=%u internal_free=%u\n",
                server_names[atomic_load(&server_state)], atomic_load(&clients), atomic_load(&requests),

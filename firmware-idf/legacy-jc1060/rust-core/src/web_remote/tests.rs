@@ -388,3 +388,48 @@ fn the_status_shows_the_loaded_tracks_title_and_duration() {
     while deck_view::take_track(0).is_some() {}
     while deck_view::take_grid(0).is_some() {}
 }
+
+/// A firmware upload's request head for `len` body bytes, with or without the marker.
+fn ota_head(len: usize, marker: bool) -> std::string::String {
+    std::format!(
+        "POST /api/ota/p4 HTTP/1.1\r\nHost: 192.168.4.1\r\n{}Content-Type: application/octet-stream\r\nContent-Length: {len}\r\n\r\n",
+        if marker { "X-DDJ-Control: 1\r\n" } else { "" }
+    )
+}
+
+fn stream_finish(status: i32) -> std::string::String {
+    let mut out = [0u8; 512];
+    // SAFETY: `out` is valid for its length.
+    let len = unsafe { ruzina_web_stream_finish(status, out.as_mut_ptr(), out.len()) };
+    std::string::String::from_utf8_lossy(&out[..len]).into_owned()
+}
+
+#[test]
+fn a_streamed_firmware_upload_passes_the_guard_and_answers_what_ended_it() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    const SAMPLE: &[u8] = include_bytes!("../../tests/fixtures/ruz-001-sample.ddjota");
+    let open = |head: &str| unsafe { ruzina_web_stream_open(7, head.as_ptr(), head.len()) };
+    // Without the control marker, or longer than a slot, nothing starts.
+    assert_eq!(open(&ota_head(SAMPLE.len(), false)), 403);
+    assert_eq!(open(&ota_head(188 + 0x60_0001, true)), 413);
+    // A signed bundle starts; the host has no slot, so its header stops at the slot.
+    assert_eq!(open(&ota_head(SAMPLE.len(), true)), 0);
+    // SAFETY: the bytes are valid for their length.
+    let fed = unsafe { ruzina_web_stream_feed(SAMPLE.as_ptr(), 212) };
+    assert_eq!(fed, 500);
+    let answer = stream_finish(fed);
+    assert!(answer.starts_with("HTTP/1.1 500"), "{answer}");
+    assert!(!ruzina_web_restart_due());
+    // A dropped upload ends it, and the next one may start.
+    assert_eq!(open(&ota_head(SAMPLE.len(), true)), 0);
+    ruzina_web_stream_cancel();
+    assert_eq!(open(&ota_head(SAMPLE.len(), true)), 0);
+    // SAFETY: as above.
+    let tampered = [&SAMPLE[..100], &[SAMPLE[100] ^ 1], &SAMPLE[101..212]].concat();
+    assert_eq!(
+        unsafe { ruzina_web_stream_feed(tampered.as_ptr(), tampered.len()) },
+        400
+    );
+    assert!(stream_finish(400).starts_with("HTTP/1.1 400"));
+    assert!(stream_finish(0).starts_with("HTTP/1.1 409"));
+}

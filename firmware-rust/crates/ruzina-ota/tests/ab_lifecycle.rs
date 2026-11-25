@@ -8,8 +8,8 @@ use ruzina_ota::boot::{
     BootControl, BootHealth, ImageState, Readiness, STARTUP_TIMEOUT_MS, StartupGate, StartupVerdict,
 };
 use ruzina_ota::bundle::{
-    ESP32P4_CHIP_ID, Expected, HEADER_SIZE, MAX_IMAGE_SIZE, ManifestError, RELEASE_PUBLIC_KEY,
-    TARGET_P4,
+    ESP32P4_CHIP_ID, Expected, HEADER_SIZE, MAX_IMAGE_SIZE, ManifestError, RELEASE_KEY_ID,
+    RELEASE_PUBLIC_KEY, TARGET_P4,
 };
 use ruzina_ota::channel::{self, Offer};
 use ruzina_ota::install::{
@@ -30,6 +30,7 @@ const EXPECTED: Expected<'static> = Expected {
     chip_id: ESP32P4_CHIP_ID,
     project: PROJECT,
     max_image_size: MAX_IMAGE_SIZE,
+    key_id: RELEASE_KEY_ID,
 };
 
 /// HTTP composition over the same A/B device and playback models used by the
@@ -62,8 +63,10 @@ impl ruzina_web::server::WebBackend for HttpOta {
         if self.push.is_some() {
             return Err(ruzina_web::HttpStatus::ServiceUnavailable);
         }
-        self.push =
-            Some(ruzina_ota::push::Push::new(len).map_err(|_| ruzina_web::HttpStatus::BadRequest)?);
+        self.push = Some(
+            ruzina_ota::push::Push::new(len, EXPECTED.max_image_size)
+                .map_err(|_| ruzina_web::HttpStatus::BadRequest)?,
+        );
         Ok(())
     }
     fn upload_write(&mut self, bytes: &[u8]) -> Result<(), ruzina_web::HttpStatus> {

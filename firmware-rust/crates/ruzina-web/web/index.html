@@ -214,9 +214,19 @@
       <ul id="profiles"></ul>
       <p class="note">The deck picks a profile by the controller's USB VID:PID when it attaches.</p>
     </div>
+    <form class="setting firmware" id="firmware-form">
+      <label for="firmware-file"><span>FIRMWARE UPDATE</span></label>
+      <div class="firmware-row">
+        <input id="firmware-file" type="file" accept=".ddjota">
+        <button type="submit">INSTALL</button>
+      </div>
+      <progress id="firmware-progress" max="100" value="0" hidden></progress>
+      <p class="note">A .ddjota bundle signed with the Ruzina key. Stop both decks first. The deck checks the signature before it writes anything, then restarts into the new firmware, and goes back to this one if the new one cannot start its Web Remote.</p>
+    </form>
     <dl class="info">
       <dt>NETWORK</dt><dd id="info-network">—</dd>
       <dt>FIRMWARE</dt><dd id="info-firmware">—</dd>
+      <dt>SLOT</dt><dd id="info-slot">—</dd>
       <dt>BUILT</dt><dd id="info-built">—</dd>
       <dt>CONTROLLER</dt><dd id="info-controller">—</dd>
       <dt>MEDIA</dt><dd id="info-media">—</dd>

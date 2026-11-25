@@ -1,6 +1,7 @@
 /* The Web Remote server's connections (main/web_client.h) over fake sockets: a large
  * answer goes out in pieces as its socket takes them, and a small request from another
- * client is answered meanwhile. */
+ * client is answered meanwhile. A body too long for the request buffer (a firmware bundle)
+ * streams to its taker in pieces, and is read to its end even when refused. */
 #define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
@@ -58,14 +59,39 @@ static int web_send(int sock, const uint8_t *buffer, size_t len)
 
 static void web_close(int sock) { socks[sock].closed = true; }
 
+/* The streamed body's taker: counts what it is fed, and refuses once `refuse_after` bytes
+ * are in (0: never). */
+#define WEB_STREAM_MAX 100000
+static size_t streamed, refuse_after;
+static int opens, cancels;
+static int web_stream_open(const uint8_t *head, size_t len)
+{
+    assert(memmem(head, len, "\r\n\r\n", 4) == head + len - 4);
+    opens++;
+    return 0;
+}
+static int web_stream_feed(const uint8_t *bytes, size_t len)
+{
+    assert(len <= REQUEST_MAX && bytes[0] == 'x');
+    streamed += len;
+    return refuse_after && streamed >= refuse_after ? 409 : 0;
+}
+static void web_stream_cancel(void) { cancels++; }
+
 #include "web_client.h"
 
 /* Answers: the page asset is 12 000 bytes, anything else 200. */
 #define ASSET_BYTES 12000
 #define CONTROL_BYTES 200
 static uint8_t outs[4][ASSET_BYTES];
+static int finished = -1;
 static size_t answer(struct client *c)
 {
+    if (c->streaming) {
+        c->streaming = false;
+        finished = c->stream_status;
+        return CONTROL_BYTES;
+    }
     return memmem(c->buffer, c->len, "GET /app.js", 11) ? ASSET_BYTES : CONTROL_BYTES;
 }
 
@@ -125,6 +151,42 @@ int main(void)
     struct client partial = open_client(0, "GET /app.js HTTP/1.1\r\n", 1000, 0);
     assert(client_step(&partial, true, false, 0, answer) == CLIENT_WAITING);
     assert(client_step(&partial, false, false, CLIENT_TIMEOUT_US + 1, answer) == CLIENT_DROPPED);
+
+    /* A 10 000-byte body streams to its taker, at most a request buffer a piece, and is
+     * answered once it is all in. */
+    static char upload[20000];
+    const int head = snprintf(upload, sizeof upload,
+                              "POST /api/ota/p4 HTTP/1.1\r\nContent-Length: 10000\r\n\r\n");
+    memset(upload + head, 'x', 10000);
+    struct client stream = open_client(1, upload, 4096, 0);
+    event = CLIENT_WAITING;
+    for (int64_t at = 0; event == CLIENT_WAITING; at += 1000) event = client_step(&stream, true, false, at, answer);
+    assert(event == CLIENT_ANSWERED && streamed == 10000 && finished == 0 && opens == 1 && cancels == 0);
+    assert(socks[1].got == CONTROL_BYTES && socks[1].closed);
+
+    /* A refused body is still read to its end, so its answer reaches the client. */
+    streamed = 0;
+    refuse_after = 3000;
+    struct client refused = open_client(1, upload, 4096, 0);
+    event = CLIENT_WAITING;
+    while (event == CLIENT_WAITING) event = client_step(&refused, true, false, 0, answer);
+    assert(event == CLIENT_ANSWERED && finished == 409 && streamed < 10000);
+    assert(socks[1].request_at == strlen(upload) && cancels == 0);
+
+    /* A body that stops coming is dropped once it has paused STREAM_TIMEOUT_US, and its
+     * taker hears it end unfinished. */
+    refuse_after = 0;
+    upload[head + 5000] = '\0';
+    struct client stalled_upload = open_client(1, upload, 4096, 0);
+    for (int i = 0; i < 4; ++i) assert(client_step(&stalled_upload, true, false, 1000, answer) == CLIENT_WAITING);
+    assert(client_step(&stalled_upload, false, false, 1000 + STREAM_TIMEOUT_US, answer) == CLIENT_WAITING);
+    assert(client_step(&stalled_upload, false, false, 1001 + STREAM_TIMEOUT_US, answer) == CLIENT_DROPPED);
+    assert(cancels == 1 && socks[1].closed);
+
+    /* A body over WEB_STREAM_MAX is not taken. */
+    struct client huge = open_client(1, "POST /api/ota/p4 HTTP/1.1\r\nContent-Length: 100001\r\n\r\nxx", 4096, 0);
+    assert(client_step(&huge, true, false, 0, answer) == CLIENT_DROPPED && opens == 3);
+    puts("web_client_test streamed_ok refused_read_to_end stalled_dropped");
     puts("web_client_test ok");
     return 0;
 }

@@ -75,7 +75,12 @@ def main():
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
     parser.add_argument('--no-wifi', action='store_true', help="Leave out the deck screen image's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted)")
     parser.add_argument('--usb-stick', action='store_true', help='Media from a USB stick behind a hub on the HS port instead of the SD card')
+    parser.add_argument('--version', default='',
+                        help="The image's version in its app description (printable ASCII, no spaces, under 32 "
+                             "bytes), e.g. the build's name; the Web Remote shows it and a firmware bundle names it")
     args = parser.parse_args()
+    if args.version and (len(args.version) > 31 or not all(0x21 <= ord(ch) <= 0x7e for ch in args.version)):
+        raise ValueError('--version must be 1..31 printable ASCII characters without spaces')
     # The deck screen image carries the deck's Wi-Fi and Web Remote unless asked not to.
     args.wifi = args.slint_ui and args.variant == 'deck-engine' and not args.no_wifi
     # The UAC profile may watch the fill next to the screen and the soak DJ; the producer
@@ -243,6 +248,8 @@ def main():
     os.environ['IDF_COMPONENT_MANAGER'] = '0'
     # The Wi-Fi components (CMakeLists.txt, main/CMakeLists.txt).
     os.environ['RUZINA_WIFI'] = '1' if args.wifi else '0'
+    # The image's version (CMakeLists.txt); empty keeps the default.
+    os.environ['RUZINA_VERSION'] = args.version
     command = [sys.executable, idf / 'tools/idf.py', '-C', APP, '-B', output / 'build',
                '-DSDKCONFIG=' + (output / 'sdkconfig').as_posix(),
                '-DSDKCONFIG_DEFAULTS=' + ';'.join(x.as_posix() for x in defaults),
@@ -292,6 +299,9 @@ def main():
     image = LoadFirmwareImage('ESP32-P4', data)
     if image.chip_id != 18 or (image.min_rev_full, image.max_rev_full) != (100, 199):
         raise ValueError('Wrong image header')
+    # With Wi-Fi the image goes to one of two 6 MiB slots (partitions-ota.csv).
+    if args.wifi and ('CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y' not in config or len(data) > 0x600000):
+        raise ValueError('The Wi-Fi image needs the rollback bootloader and must fit a 6 MiB slot')
     if args.variant == 'pure-ram':
         from run_ram_probe import validate_segments
         validate_segments(image.entrypoint, [(s.addr, len(s.data)) for s in image.segments])
@@ -448,6 +458,7 @@ def main():
                     contention_bench=args.contention_bench,
                     fill_iram=args.fill_iram,
                     wifi=args.wifi,
+                    version=args.version,
                     usb_stick=args.usb_stick,
                     # The explicit --config override only; empty does not mean a lower opt-level
                     # (rust-core/Cargo.toml sets 3 for nanomp3-core and nanoaudio-mp3 either way).

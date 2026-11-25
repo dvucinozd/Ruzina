@@ -9,7 +9,8 @@
 //! value: first and last column, 16 bits each) and 26 the lines (pass) and pixels drawn.
 //!
 //! The boot screen and the screensaver lie over everything (`screen_idle`); Rust then draws
-//! nothing.
+//! nothing. So does UPDATING FIRMWARE while the Web Remote writes a new image; once it is
+//! drawn, the screen draws nothing at all until the update ends.
 use crate::deck_phase::{self, PhaseDeck, Ticks};
 use crate::deck_view::{self, DeckSnapshot, FxSnapshot, Library, LibraryRow, LoadedTrack, Marks};
 use crate::library_view::{self, Camelot, Column, KeyFit, Sort};
@@ -2361,7 +2362,14 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     let mut lane_at: [Option<(i64, i64)>; 2] = [None; 2];
     let timeout_ms = || crate::deck_settings::current().screensaver.timeout_ms();
     let mut saver = Saver::new(0, timeout_ms());
+    // UPDATING FIRMWARE is on the screen: nothing more is drawn while the update runs.
+    let mut updating_drawn = false;
     loop {
+        if updating_drawn && crate::screen_idle::updating() {
+            // SAFETY: waits on the panel's refresh.
+            unsafe { ruzina_panel_wait_refresh() };
+            continue;
+        }
         // SAFETY: reads a counter.
         gate.frame_start(now_us(), unsafe { ruzina_panel_refreshes() });
         let ms = now_us() / 1_000 - start;
@@ -2403,18 +2411,28 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
         // The boot screen, then the screensaver once the deck has stood idle.
         let playing = decks.iter().any(|deck| deck.has(deck_view::PLAYING));
         let cover = saver.tick(ms as u32, touched.is_some(), playing, timeout_ms());
+        // A firmware update covers everything, the boot screen and screensaver too.
+        let cover = if crate::screen_idle::updating() {
+            Cover::Updating
+        } else {
+            cover
+        };
         if cover != shown_cover {
             ui.set_cover(match cover {
                 Cover::None => 0,
                 Cover::Boot => 1,
                 Cover::Screensaver => 2,
+                Cover::Updating => 3,
             });
             // Off again: the overviews come back, drawn anew.
             mini_at = [None; 2];
             shown_cover = cover;
         }
         let hidden = cover != Cover::None;
-        let head = hidden.then(|| ((ms / COVER_STEP_MS) % COVER_HEADS) as i32 - 2);
+        // The letters move on the boot screen and screensaver; under UPDATING FIRMWARE
+        // they stand still, so nothing is drawn after it.
+        let head = (hidden && cover != Cover::Updating)
+            .then(|| ((ms / COVER_STEP_MS) % COVER_HEADS) as i32 - 2);
         if head != shown_head {
             ui.set_cover_head(head.unwrap_or(0));
             shown_head = head;
@@ -2679,6 +2697,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
                 split = Some((lines.prepare_us, lines.lines_us, lines.copy_us, flush_us));
             })
         });
+        // This frame drew UPDATING FIRMWARE: the screen stands still from the next.
+        updating_drawn = cover == Cover::Updating;
         let drawn = now_us();
         let slint_us = (drawn - started) as u32;
         slint_times.add(slint_us);

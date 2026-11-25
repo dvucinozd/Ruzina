@@ -35,11 +35,23 @@ python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --outp
 python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --output /absolute/new/profile --variant deck-engine --uac-profile --screen-still --soak-autoplay --slint-ui --fill-iram --usb-stick
 ```
 
+An image with Wi-Fi uses `partitions-ota.csv`: two 6 MiB app slots, and the bootloader
+rolls back to the previous image if a new one restarts before it is kept. Flashed over USB
+for the first time, it goes to `ota_0`, with otadata (0xD14000) erased. After that, a
+build reaches the deck from the Web Remote's SETUP page as a bundle signed with the Ruzina
+key, whose private half stays outside the repository
+([firmware updates](../../docs/reviews/2026-11-25-web-remote-ota.md)):
+
+```sh
+python firmware-idf/legacy-jc1060/tools/ota_bundle.py bundle --private-key KEY.pem --input /absolute/new/play/build/ruzina_legacy_probe.bin --output NAME.ddjota
+```
+
 | Flag | What it does | Requires |
 |---|---|---|
 | `--variant deck-engine` | The product deck engine in charge of transport, with the mix | — |
 | `--slint-ui` | The Slint deck screen with the live decks; also builds in the deck's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted) | `deck-engine`, no `--producer-profile` |
 | `--no-wifi` | Leaves the Wi-Fi and Web Remote out of the screen image | Only matters with `--slint-ui` |
+| `--version NAME` | The image's version in its app description (for example `s211`), shown on the Web Remote and named by a firmware bundle | — |
 | `--usb-stick` | Media from an exFAT stick behind a hub on the HS port; no SD card | `deck-engine` |
 | `--fill-iram` | The USB audio fill code in internal RAM | — |
 | `--soak-autoplay` | The soak DJ: both decks keep loading and playing, with a gesture every few seconds; a deck the operator paused stays paused, and the controller keeps working | `deck-engine`, no `--producer-profile` |

@@ -334,6 +334,8 @@ pub fn write_settings(
     json.string(info.media.text())?;
     json.raw(",\"uptime_s\":")?;
     json.unsigned(info.uptime_s)?;
+    json.raw(",\"slot\":")?;
+    json.string(info.slot)?;
     json.raw("},\"profiles\":[")?;
     const HEX: &[u8; 16] = b"0123456789ABCDEF";
     for (index, profile) in view.profiles.iter().enumerate() {

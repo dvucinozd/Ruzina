@@ -1,0 +1,11 @@
+# The deck with Wi-Fi: two 6 MiB app slots for firmware updates from the Web Remote, the
+# Hot Cue journal and the settings where partitions-slint.csv has them, and the OTA state
+# behind them. Flashed over USB, the image goes to ota_0 with otadata erased.
+# Name,   Type, SubType, Offset,   Size
+nvs,      data, nvs,     0x9000,   0x6000
+phy_init, data, phy,     0xf000,   0x1000
+ota_0,    app,  ota_0,   0x10000,  6M
+ota_1,    app,  ota_1,   0x610000, 6M
+hotcues,  data, 0x40,    0xC10000, 1M
+settings, data, 0x41,    0xD10000, 16K
+otadata,  data, ota,     0xD14000, 0x2000
