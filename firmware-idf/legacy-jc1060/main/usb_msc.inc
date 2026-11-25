@@ -151,8 +151,8 @@ static bool msc_find(const usb_config_desc_t *config, uint8_t *interface, uint8_
 /* Client task: takes the device as the stick when it has a Bulk-Only interface. */
 static bool msc_bind(usb_device_handle_t dev, const usb_config_desc_t *config)
 {
-    uint8_t interface, in, out;
-    uint16_t mps;
+    uint8_t interface = 0, in = 0, out = 0;
+    uint16_t mps = 0;
     if (!msc_find(config, &interface, &in, &out, &mps)) return false;
     /* A stick put back is read from the start by the media owner's next session (s201p);
      * before, it restarted the app. One given up with a transfer still in flight cannot
