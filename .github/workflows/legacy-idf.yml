@@ -127,6 +127,10 @@ jobs:
           git -C "$RUNNER_TEMP/idf" checkout "$IDF_COMMIT"
           retry git -C "$RUNNER_TEMP/idf" submodule update --init --recursive
           retry "$RUNNER_TEMP/idf/install.sh" esp32p4
+          # The builder checks esptool 5.6.0, the board's toolchain. IDF's requirements let
+          # pip take a newer one (5.7.0 on 2026-11-25), so it is pinned back here.
+          . "$RUNNER_TEMP/idf/export.sh"
+          retry python -m pip install 'esptool==5.6.0'
       - name: Offline tests and fresh build
         shell: bash
         run: |
