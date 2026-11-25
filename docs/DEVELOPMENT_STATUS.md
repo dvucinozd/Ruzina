@@ -57,7 +57,7 @@ them. The owner's listening checks are separate, shorter runs. The
 | Long runs | Soaks of 35 to 42 minutes, and 45 minutes of scripted gestures, 0/0 underruns; logs and counters only, nobody listened | [soak](reviews/2026-11-04-soak-autoplay.md), [every control](reviews/2026-11-06-full-control-soak.md), [stick soak](reviews/2026-11-19-stick-soak.md) |
 | Music from a USB stick | exFAT stick behind a hub on the HS port, with the FLX4; MEDIA REMOVED when pulled out, read again from the start when put back, with no restart; no SD card | [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md), [8 KiB reads](reviews/2026-11-19-stick-8k-reads.md), [put back](reviews/2026-11-25-stick-reinsert.md) |
 | Loops and scratch | From a played-audio history, with 5.8 ms crossfades | [loops](reviews/2026-11-05-loops.md), [scratch](reviews/2026-11-05-scratch.md) |
-| Beat FX and Pad FX | In the render graph; FX page by touch; the Overview's FX column in the effect's colour | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md) |
+| Beat FX and Pad FX | In the render graph, Delay and the channel switch included (s203); FX page by touch; the Overview's FX column in the effect's colour | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md) |
 | Hot Cues | From Rekordbox, own ones in a flash journal, erased ahead | [Hot Cues](reviews/2026-11-06-hot-cues.md), [erase ahead](reviews/2026-11-13-hot-cue-erase-ahead.md), [page](reviews/2026-11-12-hot-cues-page.md) |
 | Memory cues | Rekordbox memory cues on the lane, the HOT CUES page and the SAMPLER pads | [memory cues](reviews/2026-11-17-memory-cues.md) |
 | FLX4 LEDs | Pad modes, SYNC, PFL, Smart buttons, Beat FX ON | [LEDs](reviews/2026-11-06-controller-leds.md) |
@@ -112,7 +112,6 @@ them. The owner's listening checks are separate, shorter runs. The
     This has not yet been seen working on a failing boot.
   - Since s116 the failure no longer takes the Wi-Fi's slot down with it
     ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
-- **Not in a device log yet:** the Delay effect and the Beat FX channel switch.
 - **Web Remote:**
   - There are no settings, controller profile or firmware pages on the board.
   - OTA exists on the host only (no partition, radio or TLS adapter).
