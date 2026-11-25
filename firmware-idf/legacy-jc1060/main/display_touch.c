@@ -350,7 +350,7 @@ static uint32_t lane_copy(int d, int64_t left, uint32_t s, uint32_t e, uint32_t 
         const int64_t c = ((left + s) % 1024 + 1024) % 1024;
         uint32_t n = e - s;
         if (c + n > 1024) n = (uint32_t)(1024 - c);
-        if (!copy_begin(slot, lane_caches[d], 1024, lane_h, (uint32_t)c, 0, lane_frame, 600,
+        if (!copy_begin(slot, lane_caches[d], lane_h, (uint32_t)c, 0, lane_frame, 600,
                         lane_x + s, lane_y[d], n, lane_h)) break;
         slot++;
         s += n;
