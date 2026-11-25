@@ -314,12 +314,11 @@ static void ui_task(void *unused)
 
 #if CONFIG_RUZINA_SLINT_UI
 /* Rust (slint_ui.rs): renders into the scanned-out framebuffer; never returns. */
-extern void ruzina_legacy_slint_run(uint16_t *shown, uint16_t *back);
-extern uint16_t *ruzina_panel_back(void);
+extern void ruzina_legacy_slint_run(uint16_t *shown);
 static void slint_task(void *unused)
 {
     (void)unused;
-    ruzina_legacy_slint_run(frame, ruzina_panel_back());
+    ruzina_legacy_slint_run(frame);
     vTaskDelete(NULL);
 }
 /* Writes rendered rows of `buffer`, one of the two frame buffers, back from cache. */

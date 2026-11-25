@@ -216,19 +216,7 @@ unsafe extern "C" {
         height: *const u32,
         caches: *mut *mut u16,
     ) -> bool;
-    fn ruzina_lanes_publish(
-        deck: u32,
-        shown: bool,
-        lo: i64,
-        hi: i64,
-        at_us: i64,
-        track_us: i64,
-        rate_x10000: i32,
-        loop_from_us: i64,
-        loop_to_us: i64,
-        window_ms: u32,
-        revision: u32,
-    );
+    fn ruzina_lanes_publish(lane: u32, model: *const LaneModel);
     fn ruzina_lanes_blit(
         from: *const u16,
         from_width: u32,
@@ -1216,69 +1204,121 @@ struct Motion {
     window_ms: u32,
 }
 
-/// A lane as the donor draws it: a ring cache the deck screen draws a deck's waveform (or
-/// its beats, in the phase strip) into ahead of the playhead, and the track pixels it
-/// holds. The lanes' task copies the window the lane shows from it into the frame at each
-/// refresh.
+/// A lane as the lanes' task reads it (`lane_model_t` in display_touch.c, the same
+/// layout): the track pixels its front and spare caches hold, and where its deck is.
+#[repr(C)]
+struct LaneModel {
+    lo: i64,
+    hi: i64,
+    spare_lo: i64,
+    spare_hi: i64,
+    at_us: i64,
+    track_us: i64,
+    loop_from_us: i64,
+    loop_to_us: i64,
+    rate_x10000: i32,
+    window_ms: u32,
+    revision: u32,
+    front: u8,
+    shown: bool,
+}
+const _: () = assert!(core::mem::size_of::<LaneModel>() == 80);
+
+/// What a lane cache was drawn for: the track (or its beats), the time the lane shows and
+/// the marks.
+type CacheKey = (usize, i64, u32);
+
+/// A lane as the donor draws it: ring caches the deck screen draws a deck's waveform (or
+/// its beats, in the phase strip) into ahead of the playhead. The lanes' task copies the
+/// window the lane shows from the front cache into the frame at each refresh. The spare
+/// cache takes a window drawn anew, which then becomes the front, and while a loop runs
+/// it holds the window from the loop's start, for when the loop goes round.
 struct LaneCache {
     /// The lane's number for the lanes' task.
     lane: u32,
     area: Area,
-    pixels: &'static mut [u16],
-    /// What the cache was drawn for: the track, the time the lane shows and the marks.
-    key: Option<(usize, i64, u32)>,
-    /// The track pixels the cache holds, `[lo, hi)`.
+    pixels: [&'static mut [u16]; 2],
+    /// Which cache is the front one.
+    front: usize,
+    key: Option<CacheKey>,
+    /// The track pixels the front cache holds, `[lo, hi)`.
     lo: i64,
     hi: i64,
+    /// The spare cache's window from a loop's start: what it was drawn for, and its first
+    /// track pixel; it holds CACHE_WIDTH pixels from there.
+    spare: Option<(CacheKey, i64)>,
     /// Bumped when columns the lane may show are drawn again.
     revision: u32,
     /// The playhead's track pixel when the Loop In shading last followed it.
     shaded_to: Option<i64>,
     /// Whether the lane was shown in the last frame; on showing, its playhead is drawn.
     shown: bool,
+    /// The deck's motion as last published, at the scale the front cache holds.
+    published: Option<Motion>,
 }
 
 impl LaneCache {
-    fn new(lane: u32, area: Area, pixels: &'static mut [u16]) -> Self {
+    fn new(lane: u32, area: Area, pixels: [&'static mut [u16]; 2]) -> Self {
         Self {
             lane,
             area,
             pixels,
+            front: 0,
             key: None,
             lo: 0,
             hi: 0,
+            spare: None,
             revision: 0,
             shaded_to: None,
             shown: false,
+            published: None,
         }
     }
 
-    /// Tells the lanes' task what the cache holds and where the deck is.
-    fn publish(&self, shown: bool, motion: Motion) {
-        let (loop_from, loop_to) = motion.looped.unwrap_or((0, 0));
-        // SAFETY: scalars only; C copies them under its lock.
-        unsafe {
-            ruzina_lanes_publish(
-                self.lane,
-                shown,
-                self.lo,
-                self.hi,
-                motion.at_us,
-                motion.track_us,
-                motion.rate_x10000,
-                loop_from,
-                loop_to,
-                motion.window_ms,
-                self.revision,
-            );
+    /// Stops the lanes' task using the spare cache, before it is drawn over: publishes
+    /// again what it last had, without the spare.
+    fn drop_spare(&mut self, shown: bool) {
+        if self.spare.take().is_some()
+            && let Some(motion) = self.published
+        {
+            self.publish(shown, motion);
         }
     }
 
-    /// Brings the cache to the lane at track pixel `left` and tells the lanes' task:
-    /// draws it anew for a new track, zoom or marks or after a jump, else tops it up ahead
-    /// (or behind, for a deck going back), and follows the playhead with the Loop In
-    /// shading. It gives up the columns it is about to draw over before it draws them, and
-    /// offers the new ones once they are in.
+    /// Tells the lanes' task what the caches hold and where the deck is.
+    fn publish(&mut self, shown: bool, motion: Motion) {
+        self.published = Some(motion);
+        let (loop_from_us, loop_to_us) = motion.looped.unwrap_or((0, 0));
+        let (spare_lo, spare_hi) = self
+            .spare
+            .filter(|&(key, _)| Some(key) == self.key)
+            .map_or((0, 0), |(_, lo)| (lo, lo + CACHE_WIDTH));
+        let model = LaneModel {
+            lo: self.lo,
+            hi: self.hi,
+            spare_lo,
+            spare_hi,
+            at_us: motion.at_us,
+            track_us: motion.track_us,
+            loop_from_us,
+            loop_to_us,
+            rate_x10000: motion.rate_x10000,
+            window_ms: motion.window_ms,
+            revision: self.revision,
+            front: self.front as u8,
+            shown,
+        };
+        // SAFETY: C copies the model under its lock before this returns.
+        unsafe { ruzina_lanes_publish(self.lane, &model) };
+    }
+
+    /// Brings the caches to the lane at track pixel `left` and tells the lanes' task. A
+    /// loop gone round makes the spare cache the front one. A new track, zoom or marks, or
+    /// a jump, is drawn whole into the spare cache, which then becomes the front; else the
+    /// front one is topped up ahead (or behind, for a deck going back) and follows the
+    /// playhead with the Loop In shading. While a loop runs, whose window from its start
+    /// (`loop_left`) the front cache does not hold, the spare one holds it. Columns are
+    /// given up before they are drawn over, and offered once they are in.
     #[allow(clippy::too_many_arguments)]
     fn update(
         &mut self,
@@ -1286,26 +1326,57 @@ impl LaneCache {
         strip: &mut Option<&mut [u16]>,
         content: Content<'_>,
         left: i64,
-        key: (usize, i64, u32),
+        key: CacheKey,
         shown: bool,
         motion: Motion,
+        loop_left: Option<i64>,
     ) {
         let lane_end = left + LANE_WIDTH as i64;
+        let holds = |lo: i64, hi: i64| left >= lo && lane_end <= hi;
+        // The loop went round: the spare cache holds its start.
+        if let Some((spare_key, lo)) = self.spare
+            && self.key == Some(key)
+            && spare_key == key
+            && !holds(self.lo, self.hi)
+            && holds(lo, lo + CACHE_WIDTH)
+        {
+            self.front = 1 - self.front;
+            (self.lo, self.hi) = (lo, lo + CACHE_WIDTH);
+            self.spare = None;
+            self.revision = self.revision.wrapping_add(1);
+            // Before the old front cache, now the spare, can be drawn over.
+            self.publish(shown, motion);
+        }
         let jumped = lane_end <= self.lo || left >= self.hi || left < self.lo - CACHE_BEHIND;
         if self.key != Some(key) || jumped {
+            // The lanes' task keeps the front cache meanwhile; it stops using the spare.
+            self.drop_spare(shown);
+            let back = 1 - self.front;
+            let lo = left - CACHE_BEHIND;
+            gate.run(Step::Columns, || {
+                draw_cache(
+                    &mut *self.pixels[back],
+                    strip,
+                    self.area,
+                    content,
+                    lo..lo + CACHE_WIDTH,
+                );
+            });
+            self.front = back;
             self.key = Some(key);
-            (self.lo, self.hi) = (left - CACHE_BEHIND, left - CACHE_BEHIND);
+            (self.lo, self.hi) = (lo, lo + CACHE_WIDTH);
             self.revision = self.revision.wrapping_add(1);
             self.shaded_to = None;
             self.publish(shown, motion);
         }
+        let front = self.front;
         let (want_lo, want_hi) = (left - CACHE_BEHIND, lane_end + CACHE_AHEAD);
         if want_lo < self.lo {
             self.hi = self.hi.min(want_lo + CACHE_WIDTH);
             self.publish(shown, motion);
             let range = want_lo..self.lo;
             gate.run(Step::Columns, || {
-                draw_cache(self.pixels, strip, self.area, content, range);
+                draw_cache(&mut *self.pixels[front], strip, self.area, content, range);
             });
             self.lo = want_lo;
         }
@@ -1314,7 +1385,7 @@ impl LaneCache {
             self.publish(shown, motion);
             let range = self.hi..want_hi;
             gate.run(Step::Columns, || {
-                draw_cache(self.pixels, strip, self.area, content, range);
+                draw_cache(&mut *self.pixels[front], strip, self.area, content, range);
             });
             self.hi = want_hi;
         }
@@ -1330,13 +1401,36 @@ impl LaneCache {
                 (from.min(playhead) - 1).max(self.lo)..(from.max(playhead) + 2).min(self.hi);
             if !range.is_empty() {
                 gate.run(Step::Columns, || {
-                    draw_cache(self.pixels, strip, self.area, content, range);
+                    draw_cache(&mut *self.pixels[front], strip, self.area, content, range);
                 });
                 self.revision = self.revision.wrapping_add(1);
             }
             self.shaded_to = Some(playhead);
         } else {
             self.shaded_to = None;
+        }
+        // A running loop's start, unless the front cache holds it: in the spare cache.
+        let start = loop_left
+            .map(|start| start - CACHE_BEHIND)
+            .filter(|&lo| lo < self.lo || lo + CACHE_WIDTH - CACHE_AHEAD > self.hi);
+        match start {
+            Some(lo) if self.spare != Some((key, lo)) => {
+                // The lanes' task stops using the spare before it is drawn over.
+                self.drop_spare(shown);
+                let back = 1 - front;
+                gate.run(Step::Columns, || {
+                    draw_cache(
+                        &mut *self.pixels[back],
+                        strip,
+                        self.area,
+                        content,
+                        lo..lo + CACHE_WIDTH,
+                    );
+                });
+                self.spare = Some((key, lo));
+            }
+            Some(_) => {}
+            None => self.spare = None,
         }
         if shown != self.shown {
             // Shown again: the lanes' task copies it whole.
@@ -1985,11 +2079,10 @@ fn show_fx(ui: &Overview, fx: FxSnapshot) {
 /// for a refresh and then jumped them twice as far.
 ///
 /// # Safety
-/// `shown` and `back` must be the panel's two `1024 * 600` RGB565 frame buffers, `shown`
-/// the one on the panel, written by no other code but the lanes' task. `back` is not
-/// used.
+/// `shown` must be the panel's `1024 * 600` RGB565 frame buffer, written by no other code
+/// but the lanes' task.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16) {
+pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     // This task's small allocations come from a pool, and the slow-frame log counts
     // them (`idf_alloc`).
     crate::idf_alloc::serve_task();
@@ -2147,7 +2240,6 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over the shown frame buffer.
     let frame = unsafe { core::slice::from_raw_parts_mut(shown, WIDTH * HEIGHT) };
-    let _ = back;
     let mut tracks: [Option<Box<LoadedTrack>>; 2] = [None, None];
     let mut shown_texts: [Option<DeckTexts>; 2] = [None, None];
     let mut shown_fx = None;
@@ -2182,9 +2274,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let areas = [LANES[0], LANES[1], PHASE_HALVES[0], PHASE_HALVES[1]];
         let y = areas.map(|area| area.y as u32);
         let height = areas.map(|area| area.height as u32);
-        let mut caches = [core::ptr::null_mut(); 4];
-        // SAFETY: `frame` is the shown frame buffer; C fills `caches` with a lane cache of
-        // WIDTH by each lane's height pixels, made for this task alone.
+        let mut caches = [core::ptr::null_mut(); 8];
+        // SAFETY: `frame` is the shown frame buffer; C fills `caches` with two lane caches
+        // for each lane, of WIDTH by its height pixels, made for this task alone.
         let started = unsafe {
             ruzina_lanes_start(
                 frame.as_mut_ptr(),
@@ -2198,14 +2290,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             )
         };
         started.then(|| {
-            let mut lane = 0;
-            caches.map(|pixels| {
-                lane += 1;
-                let area = areas[lane - 1];
+            core::array::from_fn(|lane| {
+                let area = areas[lane];
                 // SAFETY: as above.
-                LaneCache::new(lane as u32 - 1, area, unsafe {
+                let cache = |pixels: *mut u16| unsafe {
                     core::slice::from_raw_parts_mut(pixels, WIDTH * area.height)
-                })
+                };
+                LaneCache::new(
+                    lane as u32,
+                    area,
+                    [cache(caches[2 * lane]), cache(caches[2 * lane + 1])],
+                )
             })
         })
     };
@@ -2578,6 +2673,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     wave.window_ms,
                     revision,
                 );
+                let loop_left = motion
+                    .looped
+                    .map(|(from, _)| wave.track_pixel((from / 1_000) as u32) - PLAYHEAD_X as i64);
                 lane.update(
                     &mut gate,
                     &mut strip,
@@ -2586,6 +2684,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     key,
                     !covered,
                     motion,
+                    loop_left,
                 );
                 if !covered && !lane.shown {
                     draw_playhead(buffer, &mut strip, LANES[deck]);
@@ -2652,7 +2751,12 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
                     window_ms: window_ms as u32,
                     ..motion
                 };
-                lanes[2 + deck].update(&mut gate, &mut strip, content, left, key, !covered, motion);
+                let loop_left = motion.looped.map(|(from, _)| {
+                    from / 1_000 * LANE_WIDTH as i64 / window_ms - PLAYHEAD_X as i64
+                });
+                lanes[2 + deck].update(
+                    &mut gate, &mut strip, content, left, key, !covered, motion, loop_left,
+                );
             }
             // Shown again: the strip's still rows and its playhead, under the halves.
             if !covered && !lanes[2].shown {

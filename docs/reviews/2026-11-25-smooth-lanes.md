@@ -101,12 +101,41 @@ corrections average under 1 ms, so the lanes' task sees an almost straight line.
   - 0/0 underruns.
   - For comparison, s189p (main): MT 15.3 % over 3 ms, max 4.24 ms.
 
+## After #168: one buffer and spare caches
+
+Branch `ogranak/jc1060-lane-polish`, from main `b4a479d`.
+
+**One frame buffer.** The second one went unused once the lanes moved in place. The
+panel now has only one, which frees 1.2 MB of PSRAM. The Slint entry takes the shown buffer
+alone.
+
+**A spare cache for each lane.** Each lane has two ring caches.
+
+- A window drawn anew goes into the spare cache, which then becomes the front one. That
+  covers a new track, zoom, marks or pitch (for the phase strip), and a jump. The lanes'
+  task keeps the old front cache meanwhile, so it no longer misses a refresh for it.
+- While a loop runs that the front cache cannot hold whole, the spare cache holds the
+  window from the loop's start. That is any loop of more than about half a beat at the
+  largest zoom, where a beat is 407 pixels. When the loop goes round, the lanes' task takes
+  that window, and the screen makes it the front.
+- The model goes to C as one struct (`LaneModel` and `lane_model_t`), with its size checked
+  on both sides.
+
+**s199p** (app `08c53e6f…`), 8 minutes, 4 without Master Tempo and 4 with it:
+
+- The owner tried a short loop at the largest zoom, the pitch fader and the zoom: "Sve
+  glatko".
+- Lane copies: 6 misses in the run (25 on s197p); 38 refreshes copied from the spare
+  cache; done in 5.1 ms on average, 5.9 ms at most.
+- MT fills: 14.2 % over 3 ms, max 4.80 ms.
+- Plain fills: 0.3 % over 3 ms, max 4.26 ms.
+- 0/0 underruns.
+
 ## Known limits
 
 - **Text:** Slint draws into the shown buffer, so a changing text can tear for one
   refresh. The donor has the same.
-- **Pitch fader:** while it moves, a phase-strip half's cache is drawn anew each frame,
-  so its ticks can pause for a refresh.
-- **Short loops:** a short loop at the largest zoom jumps back past the cache. Each
-  wrap redraws it, and the lane can hold for a refresh.
-- **Unused memory:** the second frame buffer (1.2 MB of PSRAM) is still allocated.
+- **Pitch fader and loops:** fixed after #168 by the spare caches (above).
+- **Misses:** about one in 80 s remains on s199p, unexplained.
+- **Spare cache cost:** while a loop that does not fit runs, the screen draws the spare
+  cache whole (1024 columns) once per loop.

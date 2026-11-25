@@ -5,23 +5,22 @@ documents link here.
 
 ## The board's images
 
-- **Kept for play:** s198 (app `1f8e8267…`), the `--slint-ui --fill-iram --usb-stick`
-  image without the soak DJ. Its firmware is `ogranak/jc1060-faster-screen`: main
-  `fd4cbb7` with [smooth lanes](reviews/2026-11-25-smooth-lanes.md), which use
-  - one frame buffer;
-  - a ring cache per lane, copied in at every refresh by its own task, for both waveforms
-    and both halves of the phase strip.
+- **Kept for play:** s200 (app `86c0351a…`), the `--slint-ui --fill-iram --usb-stick`
+  image without the soak DJ. Its firmware is `ogranak/jc1060-lane-polish`: main `b4a479d`
+  ([smooth lanes, #168](reviews/2026-11-25-smooth-lanes.md)) with one frame buffer and a
+  spare cache for each lane.
 
   It was built with the
   [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image),
   less `--soak-autoplay`. The owner played on it on 2026-11-25 ("Sve radi").
 - **Before it:**
-  - s197p (app `8c88f7ac…`), the same firmware as a profile image with the soak DJ. On
-    it the owner saw the lanes and the phase strip run smooth.
-  - s188 (app `eb4d42c3…`), main `d6ef0d0`, the play image of 2026-11-22. The owner
-    played tracks from the FLX4 on it ("sve je ok").
+  - s199p (app `08c53e6f…`), the same firmware as a profile image with the soak DJ. On
+    it the owner tried short loops at the largest zoom, the pitch fader and the zoom ("Sve
+    glatko").
+  - s198 (app `1f8e8267…`), the play image of #168.
+  - s188 (app `eb4d42c3…`), main `d6ef0d0`, the play image of 2026-11-22.
 - **Last documented measurements** (profile images, the FLX4):
-  - **s189p to s197p (2026-11-25):** the lanes, from main to smooth
+  - **s189p to s199p (2026-11-25):** the lanes, from main to smooth
     ([smooth lanes](reviews/2026-11-25-smooth-lanes.md)).
   - **s169 and s170:** the fill gap against s163
     ([fill gap](reviews/2026-11-22-fill-gap.md)).
@@ -100,8 +99,8 @@ them. The owner's listening checks are separate, shorter runs. The
   - The lanes and the phase strip move at every refresh
     ([smooth lanes](reviews/2026-11-25-smooth-lanes.md)).
   - Text drawn straight into the shown buffer can tear for one refresh.
-  - While the pitch fader moves, the phase strip's ticks can pause for a refresh.
-  - A short loop at the largest zoom can hold a lane for a refresh at each wrap.
+  - Loops, zooms and the pitch fader keep the lanes moving: each lane has a spare cache
+    (s199p).
   - Slint's scene preparation is still 16 to 26 ms of a big frame (Library, Settings).
 - **Boot:** the FLX4 drops and enumerates again once at every boot
   (`Enqueue URB error: ESP_ERR_INVALID_STATE`); it then works.
