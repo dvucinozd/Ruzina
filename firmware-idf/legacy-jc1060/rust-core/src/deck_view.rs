@@ -127,6 +127,77 @@ pub(crate) fn ahead(deck: DeckSnapshot, ahead_us: u32) -> DeckSnapshot {
     }
 }
 
+/// A deck's drawn position, kept steady from frame to frame (see [`steady`]).
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct Steady {
+    /// The frame time it was drawn for, as [`clock_us`] counts.
+    at_us: u32,
+    /// The position drawn, in microseconds of the track.
+    position_us: i64,
+}
+
+/// A correction this large or larger is a jump (a cue, a seek, a loop, a scratch): the
+/// drawn position goes straight to the read one.
+const STEADY_JUMP_US: i64 = 30_000;
+/// The part of the gap to the read position closed each frame.
+const STEADY_SHARE: i64 = 8;
+
+/// Where to draw a playing deck at frame time `show_us`: the last drawn position moved on
+/// at the deck's pitched tempo, then an eighth of the way towards `deck`, the position
+/// read and carried to that time ([`ahead`]).
+///
+/// The engine's position is the audio it rendered, which runs ahead of what is heard by
+/// the transfers in flight, 0 to 24 ms, and so jumps back and forth by up to a dozen
+/// milliseconds from one frame to the next. At the largest zoom that is about 10 pixels,
+/// and on s192p (55 frames a second) the owner still saw the lanes stutter. Drawn from a
+/// steady clock that follows the engine slowly, they move evenly.
+///
+/// A paused or looping deck, or a first frame, is drawn where it is read. Returns the
+/// position to draw, the state for the next frame and the correction this frame made.
+pub(crate) fn steady(
+    previous: Option<Steady>,
+    deck: DeckSnapshot,
+    show_us: u32,
+) -> (DeckSnapshot, Option<Steady>, i64) {
+    let read_us = i64::from(deck.position_ms) * 1_000;
+    let as_read = |deck: DeckSnapshot| {
+        (
+            deck,
+            Some(Steady {
+                at_us: show_us,
+                position_us: read_us,
+            }),
+            0,
+        )
+    };
+    let Some(previous) = previous.filter(|_| deck.has(PLAYING) && !deck.has(LOOPING)) else {
+        return as_read(deck);
+    };
+    let elapsed = i64::from(show_us.wrapping_sub(previous.at_us));
+    if !(0..=100_000).contains(&elapsed) {
+        return as_read(deck);
+    }
+    let rate = 10_000 + i64::from(deck.pitch_centipercent);
+    let predicted = previous.position_us + elapsed * rate / 10_000;
+    let gap = read_us - predicted;
+    if gap.abs() >= STEADY_JUMP_US {
+        let (deck, state, _) = as_read(deck);
+        return (deck, state, gap);
+    }
+    let position_us = predicted + gap / STEADY_SHARE;
+    (
+        DeckSnapshot {
+            position_ms: (position_us.max(0) / 1_000).min(i64::from(u32::MAX)) as u32,
+            ..deck
+        },
+        Some(Steady {
+            at_us: show_us,
+            position_us,
+        }),
+        gap,
+    )
+}
+
 /// What the lane marks on a deck's track: the Hot Cues by pad, and the running loop.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Marks {

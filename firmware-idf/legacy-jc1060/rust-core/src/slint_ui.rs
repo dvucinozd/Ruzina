@@ -1886,6 +1886,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     let (mut slint_times, mut wave_times) = (Times::default(), Times::default());
     // Whether both buffers hold all Slint drew (see the frame loop).
     let mut slint_settled = false;
+    // Each deck's steady drawing clock, and the size of its corrections (event 37).
+    let mut steadies: [Option<deck_view::Steady>; 2] = [None; 2];
+    let mut gap_times = Times::default();
     let start = now_us() / 1_000;
     let mut next_report = REPORT_MS;
     let mut drawing = 1;
@@ -1908,6 +1911,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         if ms >= next_report {
             slint_times.report(21);
             wave_times.report(22);
+            gap_times.report(37);
             #[cfg(feature = "idf-uac-profile")]
             gate.report();
             next_report = ms + REPORT_MS;
@@ -1926,10 +1930,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         let updates_started = now_us();
         // Each deck where it will be when this frame reaches the panel (`deck_view::ahead`).
         let show_us = gate.show_us(target);
+        // Then from a steady clock that follows the engine slowly (`deck_view::steady`).
         let decks: [deck_view::DeckSnapshot; 2] = core::array::from_fn(|deck| {
             let live = &deck_view::LIVE[deck];
             let snapshot = live.load();
-            deck_view::ahead(snapshot, show_us.wrapping_sub(live.stored_us()))
+            let read = deck_view::ahead(snapshot, show_us.wrapping_sub(live.stored_us()));
+            let (drawn, state, gap) = deck_view::steady(steadies[deck], read, show_us);
+            steadies[deck] = state;
+            if gap != 0 && gap.abs() < 30_000 {
+                gap_times.add(gap.unsigned_abs().min(u64::from(u32::MAX)) as u32);
+            }
+            drawn
         });
         // The boot screen, then the screensaver once the deck has stood idle.
         let playing = decks.iter().any(|deck| deck.has(deck_view::PLAYING));
