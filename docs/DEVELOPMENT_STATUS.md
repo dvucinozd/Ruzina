@@ -5,15 +5,18 @@ documents link here.
 
 ## The board's images
 
-- **Kept for play:** s200 (app `86c0351a…`), the `--slint-ui --fill-iram --usb-stick`
-  image without the soak DJ. Its firmware is `ogranak/jc1060-lane-polish`: main `b4a479d`
-  ([smooth lanes, #168](reviews/2026-11-25-smooth-lanes.md)) with one frame buffer and a
-  spare cache for each lane.
+- **Kept for play:** s203 (app `17de0ea8…`), the `--slint-ui --fill-iram --usb-stick`
+  image without the soak DJ. Its firmware is `ogranak/jc1060-stick-reinsert`: main
+  `e9d796e` (smooth lanes with one frame buffer and spare caches, #168 and #169) with
+  [a stick put back read again](reviews/2026-11-25-stick-reinsert.md).
 
   It was built with the
   [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image),
   less `--soak-autoplay`. The owner played on it on 2026-11-25 ("Sve radi").
 - **Before it:**
+  - s201p and s202p (apps `35074ecd…`, `89f53247…`), profile images of the stick work. On
+    them the owner pulled the stick out and put it back ("Radi").
+  - s200 (app `86c0351a…`), the play image of #169.
   - s199p (app `08c53e6f…`), the same firmware as a profile image with the soak DJ. On
     it the owner tried short loops at the largest zoom, the pitch fader and the zoom ("Sve
     glatko").
@@ -52,7 +55,7 @@ them. The owner's listening checks are separate, shorter runs. The
 | Storage and speed | A read-ahead: 8 KiB per stick read, up to 16 sectors from an SD card; QIO 80 MHz flash; 200 MHz PSRAM | [SD reads](reviews/2026-11-04-sd-multisector.md), [flash](reviews/2026-11-04-flash-qio80.md), [PSRAM](reviews/2026-11-04-psram-200m.md) |
 | Seeks | Indexed MP3 seeks, untagged VBR included | [MP3 index](reviews/2026-11-04-mp3-seek-index.md), [VBR](reviews/2026-11-05-untagged-vbr-seek.md) |
 | Long runs | Soaks of 35 to 42 minutes, and 45 minutes of scripted gestures, 0/0 underruns; logs and counters only, nobody listened | [soak](reviews/2026-11-04-soak-autoplay.md), [every control](reviews/2026-11-06-full-control-soak.md), [stick soak](reviews/2026-11-19-stick-soak.md) |
-| Music from a USB stick | exFAT stick behind a hub on the HS port, with the FLX4; MEDIA REMOVED when pulled out, an app restart when put back; no SD card | [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md), [8 KiB reads](reviews/2026-11-19-stick-8k-reads.md) |
+| Music from a USB stick | exFAT stick behind a hub on the HS port, with the FLX4; MEDIA REMOVED when pulled out, read again from the start when put back, with no restart; no SD card | [stick behind a hub](reviews/2026-11-19-usb-stick-hub.md), [8 KiB reads](reviews/2026-11-19-stick-8k-reads.md), [put back](reviews/2026-11-25-stick-reinsert.md) |
 | Loops and scratch | From a played-audio history, with 5.8 ms crossfades | [loops](reviews/2026-11-05-loops.md), [scratch](reviews/2026-11-05-scratch.md) |
 | Beat FX and Pad FX | In the render graph; FX page by touch; the Overview's FX column in the effect's colour | [FX](reviews/2026-11-05-fx.md), [FX by touch](reviews/2026-11-12-fx-touch.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md) |
 | Hot Cues | From Rekordbox, own ones in a flash journal, erased ahead | [Hot Cues](reviews/2026-11-06-hot-cues.md), [erase ahead](reviews/2026-11-13-hot-cue-erase-ahead.md), [page](reviews/2026-11-12-hot-cues-page.md) |
@@ -104,7 +107,6 @@ them. The owner's listening checks are separate, shorter runs. The
   - Slint's scene preparation is still 16 to 26 ms of a big frame (Library, Settings).
 - **Boot:** the FLX4 drops and enumerates again once at every boot
   (`Enqueue URB error: ESP_ERR_INVALID_STATE`); it then works.
-- **Stick:** putting a stick back needs an app restart.
 - **SD (SD build only):** an SD clock failure at the first boot after a flash.
   - Since s132 the card is tried three times ([retry](reviews/2026-11-18-sd-retry.md)).
     This has not yet been seen working on a failing boot.

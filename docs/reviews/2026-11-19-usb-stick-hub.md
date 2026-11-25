@@ -74,7 +74,7 @@ The owner asked for the quick fix:
     no fault.
   - The owner: "Radi".
 - Reading a stick again without a restart (the media session, catalog and decks started
-  over) is left for later.
+  over) came later: see [a stick put back](2026-11-25-stick-reinsert.md).
 
 ## Hub power
 
