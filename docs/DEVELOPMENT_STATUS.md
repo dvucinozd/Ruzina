@@ -5,15 +5,17 @@ documents link here.
 
 ## The board's images
 
-- **Kept for play:** s207 (app `6f8be16a…`), the `--slint-ui --fill-iram --usb-stick`
-  image without the soak DJ. Its firmware is `ogranak/web-remote-network`: main
-  `986c1c9` (#168 to #171) with
-  [the network's password from the SETUP page](reviews/2026-11-25-web-remote-network.md).
+- **Kept for play:** s209 (app `91b83e13…`), the `--slint-ui --fill-iram --usb-stick`
+  image without the soak DJ. Its firmware is `ogranak/profiles-and-polish`: main `4dccc9b`
+  (#168 to #172) with
+  [controller profiles in SETUP and the day's fixes](reviews/2026-11-25-profiles-and-polish.md).
   It was built with the
   [play image recipe](../firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image),
-  less `--soak-autoplay`. The owner changed the password on s206 and put the default back
-  ("Radi").
+  less `--soak-autoplay`. The owner played on it on 2026-11-25 ("Sve radi").
 - **Before it:**
+  - s208p (app `50175f51…`), the same firmware as a profile image. On it the owner checked
+    the profiles, jumps at the largest zoom and the stick put back ("Sve radi").
+  - s207 (app `6f8be16a…`), the play image of #172.
   - s205 (app `2f9cd29e…`), the play image of #171 (SETUP, "Sve radi").
   - s203 (app `17de0ea8…`), the play image of #170. On it the owner tried Delay and the
     Beat FX channel switch ("Radi").
@@ -71,7 +73,7 @@ them. The owner's listening checks are separate, shorter runs. The
 | Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings); the lanes and the phase strip move at every refresh (61 a second) | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [smooth lanes](reviews/2026-11-25-smooth-lanes.md) |
 | Playlists and covers | Rekordbox's playlist tree in the Library, each deck's cover | [playlists and covers](reviews/2026-11-16-playlists-covers.md) |
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
-| Controllers | The FLX4, checked again on s182 (2026-11-22). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware, and the S2 MK3 and Inpulse 500 have no audio yet | [profiles](reviews/2026-11-21-controller-profiles.md) |
+| Controllers | The FLX4, checked again on s182 (2026-11-22). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware, and the S2 MK3 and Inpulse 500 have no audio yet. The Web Remote's SETUP lists them | [profiles](reviews/2026-11-21-controller-profiles.md), [in SETUP](reviews/2026-11-25-profiles-and-polish.md) |
 | Boot screen and screensaver | The owner's wordmark, its letters lit in turn; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md) |
 | Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover; a SETUP view for the deck's settings and information, and the network's password | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md), [SETUP](reviews/2026-11-25-web-remote-setup.md), [password](reviews/2026-11-25-web-remote-network.md) |
 
@@ -104,9 +106,10 @@ them. The owner's listening checks are separate, shorter runs. The
 - **Screen:**
   - The lanes and the phase strip move at every refresh
     ([smooth lanes](reviews/2026-11-25-smooth-lanes.md)).
-  - Text drawn straight into the shown buffer can tear for one refresh.
   - Loops, zooms and the pitch fader keep the lanes moving: each lane has a spare cache
     (s199p).
+  - No lane misses on s208p (they were about once in 80 s), and putting the stick back no
+    longer lengthens a fill ([profiles and fixes](reviews/2026-11-25-profiles-and-polish.md)).
   - Slint's scene preparation is still 16 to 26 ms of a big frame (Library, Settings).
 - **Boot:** the FLX4 drops and enumerates again once at every boot
   (`Enqueue URB error: ESP_ERR_INVALID_STATE`); it then works.
@@ -116,7 +119,7 @@ them. The owner's listening checks are separate, shorter runs. The
   - Since s116 the failure no longer takes the Wi-Fi's slot down with it
     ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
 - **Web Remote:**
-  - SETUP covers the deck's settings and its network's password; there are no controller profile or firmware pages, and the network's name stays.
+  - SETUP covers the deck's settings, its network's password and a list of the controller profiles; profiles cannot be uploaded, there is no firmware page, and the network's name stays.
   - OTA exists on the host only (no partition, radio or TLS adapter).
   - The network's default password is a build setting; the owner's own is kept in NVS.
 

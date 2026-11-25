@@ -131,7 +131,8 @@ test('the overview is fetched once per track and a stale answer is dropped',asyn
   assert.equal(h.calls.length,6);
 });
 const deckSettings=()=>({load_lock:false,jog:['vinyl','cdj'],brightness:{percent:25,min:10,max:50,step:5},
-  trim_db:3,screensaver_min:2,info:{network:'Ruzina-AB2D',firmware:'v1',built:'Nov 25 2026 12:00:00',controller:'',tracks:25,media:'removed',uptime_s:3725}});
+  trim_db:3,screensaver_min:2,info:{network:'Ruzina-AB2D',firmware:'v1',built:'Nov 25 2026 12:00:00',controller:'',tracks:25,media:'removed',uptime_s:3725},
+  profiles:[{name:'Pioneer DDJ-FLX4',id:'2B73:0045',tested:true,active:true},{name:'Numark DJ2GO2 Touch',id:'15E4:0050',tested:false,active:false}]});
 test('the setup page shows the deck\'s settings and information',()=>{
   const h=harness(); h.context.testApi.renderSettings(deckSettings());
   assert.equal(h.document.querySelector('#brightness').textContent,'25 %');
@@ -170,4 +171,12 @@ test('a new network password is checked, then sent in the body only',async()=>{
 test('the setup page names the deck\'s network',()=>{
   const h=harness(); h.context.testApi.renderSettings(deckSettings());
   assert.equal(h.document.querySelector('#info-network').textContent,'Ruzina-AB2D');
+});
+test('the setup page lists the controller profiles, the attached one marked',()=>{
+  const h=harness(); h.context.testApi.renderSettings(deckSettings());
+  const rows=h.document.querySelector('#profiles').children;
+  assert.equal(rows.length,2);
+  assert.equal(rows[0].className,'active');
+  assert.equal(rows[0].children.map(c=>c.textContent).join('|'),'Pioneer DDJ-FLX4|2B73:0045|ACTIVE|TESTED');
+  assert.equal(rows[1].children.map(c=>c.textContent).join('|'),'Numark DJ2GO2 Touch|15E4:0050');
 });

@@ -95,6 +95,26 @@ fn controller_for(vid: u16, pid: u16) -> Option<(usize, Profile<'static>)> {
 static ATTACHED: AtomicU32 = AtomicU32::new(0);
 static KNOWN: AtomicU8 = AtomicU8::new(0);
 
+/// Every profile the deck carries: its name and VID:PID, whether it was tried on this
+/// hardware (the FLX4 only), and whether it is the attached controller's.
+#[cfg(feature = "web-remote")]
+pub(crate) fn profiles() -> impl Iterator<Item = (&'static str, u16, u16, bool, bool)> {
+    let known = usize::from(KNOWN.load(Ordering::Acquire));
+    CONTROLLERS
+        .iter()
+        .enumerate()
+        .filter_map(move |(index, controller)| {
+            let profile = Profile::parse(controller.profile).ok()?;
+            Some((
+                controller.name,
+                profile.vid(),
+                profile.pid(),
+                index == FLX4,
+                known == index + 1,
+            ))
+        })
+}
+
 /// The attached controller: `None` when none is, else its VID:PID and, when the deck knows
 /// it, its name.
 #[cfg_attr(not(feature = "slint-ui"), allow(dead_code))]

@@ -80,6 +80,18 @@ pub struct SettingsInfo<'a> {
     pub uptime_s: u32,
 }
 
+/// A controller profile the deck carries.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ControllerProfile<'a> {
+    pub name: &'a str,
+    pub vid: u16,
+    pub pid: u16,
+    /// Tried on this deck's hardware.
+    pub tested: bool,
+    /// The attached controller's.
+    pub active: bool,
+}
+
 /// The settings in force and the deck's information.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SettingsView<'a> {
@@ -95,6 +107,8 @@ pub struct SettingsView<'a> {
     /// The screensaver's wait in minutes: 0 (off), 2, 5 or 10.
     pub screensaver_min: u8,
     pub info: SettingsInfo<'a>,
+    /// The controller profiles the deck carries, chosen by VID:PID when one attaches.
+    pub profiles: &'a [ControllerProfile<'a>],
 }
 
 /// One setting changed from the page.

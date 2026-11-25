@@ -8,7 +8,9 @@ use ruzina_web::{
         CAPTIVE_PORTAL, ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend,
         WebServer,
     },
-    settings::{Jog, Media, PasswordOutcome, SettingChange, SettingsInfo, SettingsView},
+    settings::{
+        ControllerProfile, Jog, Media, PasswordOutcome, SettingChange, SettingsInfo, SettingsView,
+    },
 };
 
 const AP: &str = "192.168.4.1";
@@ -114,6 +116,22 @@ impl WebBackend for Fake {
                 media: Media::Ready,
                 uptime_s: 61,
             },
+            profiles: &[
+                ControllerProfile {
+                    name: "Pioneer DDJ-FLX4",
+                    vid: 0x2b73,
+                    pid: 0x0045,
+                    tested: true,
+                    active: true,
+                },
+                ControllerProfile {
+                    name: "Numark DJ2GO2 Touch",
+                    vid: 0x15e4,
+                    pid: 0x0050,
+                    tested: false,
+                    active: false,
+                },
+            ],
         })
     }
     fn change_setting(&mut self, change: SettingChange) -> bool {
@@ -184,7 +202,9 @@ fn the_setup_page_reads_and_changes_the_decks_settings() {
 \"brightness\":{\"percent\":25,\"min\":10,\"max\":50,\"step\":5},\"trim_db\":3,\
 \"screensaver_min\":2,\"info\":{\"network\":\"Ruzina-AB2D\",\"firmware\":\"v1 \\\"test\\\"\",\
 \"built\":\"Nov 25 2026 12:00:00\",\"controller\":\"DDJ-FLX4\",\"tracks\":25,\
-\"media\":\"ready\",\"uptime_s\":61}}"
+\"media\":\"ready\",\"uptime_s\":61},\"profiles\":[\
+{\"name\":\"Pioneer DDJ-FLX4\",\"id\":\"2B73:0045\",\"tested\":true,\"active\":true},\
+{\"name\":\"Numark DJ2GO2 Touch\",\"id\":\"15E4:0050\",\"tested\":false,\"active\":false}]}"
     );
     // A change answers with the settings as they then are.
     let changed = exchange(

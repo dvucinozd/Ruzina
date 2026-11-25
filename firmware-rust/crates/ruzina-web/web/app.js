@@ -435,6 +435,30 @@ function renderSettings(data) {
   $('#info-media').textContent = { ready: 'READY', reading: 'READING…', removed: 'REMOVED' }[info.media] || '—';
   $('#info-tracks').textContent = String(info.tracks ?? '—');
   $('#info-uptime').textContent = uptime(info.uptime_s);
+  renderProfiles(data.profiles || []);
+}
+// The controller profiles the deck carries: the attached controller's marked ACTIVE, and
+// those tried on this deck's hardware TESTED.
+function renderProfiles(profiles) {
+  const list = $('#profiles');
+  list.replaceChildren();
+  for (const profile of profiles) {
+    const row = document.createElement('li');
+    row.className = profile.active ? 'active' : '';
+    const name = document.createElement('b');
+    name.textContent = profile.name;
+    const id = document.createElement('code');
+    id.textContent = profile.id;
+    row.append(name, id);
+    for (const [shown, text, on] of [[profile.active, 'ACTIVE', true], [profile.tested, 'TESTED', false]]) {
+      if (!shown) continue;
+      const tag = document.createElement('span');
+      tag.className = on ? 'tag on' : 'tag';
+      tag.textContent = text;
+      row.append(tag);
+    }
+    list.append(row);
+  }
 }
 // The query that changes one setting; null for a brightness already at its end.
 function settingParams(name, value, jog) {

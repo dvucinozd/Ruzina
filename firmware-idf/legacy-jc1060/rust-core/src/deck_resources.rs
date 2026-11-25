@@ -5,7 +5,7 @@ use crate::deck_play::{Producer, RING_STORAGE_FRAMES, Ring, install_ring};
 use alloc::boxed::Box;
 #[cfg(feature = "deck-engine")]
 use core::sync::atomic::AtomicPtr;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use ruzina_audio_dsp::PcmFrame;
 #[cfg(feature = "deck-engine")]
 use ruzina_audio_runtime::fx::{FX_DECK_STORAGE_SAMPLES, FX_TOTAL_STORAGE_SAMPLES};
@@ -68,6 +68,46 @@ fn allowed() -> bool {
     #[cfg(not(test))]
     true
 }
+/// While set, [`try_copy`] and [`try_zeros`] write their storage in [`PACE_BYTES`] steps
+/// with a pause between. A later media session (a stick put back) makes new producers while
+/// USB audio runs; written in one burst, their PSRAM held a fill to 6-7 ms on s201p.
+static PACED: AtomicBool = AtomicBool::new(false);
+/// One step of paced writes.
+const PACE_BYTES: usize = 16 * 1024;
+
+/// The pause between paced steps: one tick on the SD client task.
+fn pause() {
+    #[cfg(all(feature = "idf-media-load", not(test)))]
+    {
+        unsafe extern "C" {
+            fn ruzina_bridge_fixture_yield();
+        }
+        // SAFETY: the SD client task's own delay; no arguments.
+        unsafe { ruzina_bridge_fixture_yield() };
+    }
+}
+
+/// Copies `len` bytes from `from` to `to`, in paced steps while [`PACED`] is set.
+/// # Safety
+/// As `core::ptr::copy_nonoverlapping` for `len` bytes.
+unsafe fn copy_paced(from: *const u8, to: *mut u8, len: usize) {
+    if !PACED.load(Ordering::Relaxed) {
+        // SAFETY: the caller's.
+        unsafe { core::ptr::copy_nonoverlapping(from, to, len) };
+        return;
+    }
+    let mut done = 0;
+    while done < len {
+        let step = PACE_BYTES.min(len - done);
+        // SAFETY: the caller's, within `len`.
+        unsafe { core::ptr::copy_nonoverlapping(from.add(done), to.add(done), step) };
+        done += step;
+        if done < len {
+            pause();
+        }
+    }
+}
+
 /// Caller supplies audited bitwise-copy-safe inline storage, not owning pointers.
 pub(crate) unsafe fn try_copy<T>(value: &'static T) -> Option<Box<T>> {
     if !allowed() {
@@ -82,7 +122,11 @@ pub(crate) unsafe fn try_copy<T>(value: &'static T) -> Option<Box<T>> {
         return None;
     }
     unsafe {
-        core::ptr::copy_nonoverlapping(value, raw, 1);
+        copy_paced(
+            core::ptr::from_ref(value).cast(),
+            raw.cast(),
+            core::mem::size_of::<T>(),
+        );
         Some(Box::from_raw(raw))
     }
 }
@@ -100,9 +144,14 @@ pub(crate) fn try_zeros<T: Default + Copy>(len: usize) -> Option<Box<[T]>> {
     if raw.is_null() {
         return None;
     }
+    // In paced steps while PACED is set, as `copy_paced`.
+    let per_step = (PACE_BYTES / core::mem::size_of::<T>().max(1)).max(1);
     for i in 0..len {
         unsafe {
             raw.add(i).write(T::default());
+        }
+        if PACED.load(Ordering::Relaxed) && (i + 1) % per_step == 0 && i + 1 < len {
+            pause();
         }
     }
     Some(unsafe { Box::from_raw(core::ptr::slice_from_raw_parts_mut(raw, len)) })
@@ -168,7 +217,10 @@ pub(crate) fn prepare_again<File>(
         return None;
     }
     let result = (|| {
-        let producers = [Producer::try_new()?, Producer::try_new()?];
+        PACED.store(true, Ordering::Relaxed);
+        let producers = (|| Some([Producer::try_new()?, Producer::try_new()?]))();
+        PACED.store(false, Ordering::Relaxed);
+        let producers = producers?;
         if !current() || !gate.ready() {
             return None;
         }
