@@ -68,30 +68,41 @@ static bool mover_ready(void)
 
 /* A lane move as a plain 2D-DMA memory-to-memory copy. The PPA's SRM engine moved a lane
    (811 by 220 pixels) in 8.1 ms on s190p, its cache work taking under 0.05 ms: the scaling
-   engine is the bottleneck, not the memory. The 2D-DMA copies the same block without it.
-   One copy at a time, from the screen task; its descriptors and transaction slot are
-   kept. Falls back to the PPA if the 2D-DMA cannot be had. */
+   engine is the bottleneck, not the memory. The 2D-DMA copies the same block without it,
+   in 2.5 ms on s191p. Two copies at a time, one in each slot, from the screen task: the
+   deck screen starts both lanes' moves before Slint draws and waits for them after, so
+   the copies run while the CPU draws (`ruzina_panel_move_start`). Each slot's
+   descriptors and transaction are kept. Falls back to the PPA if the 2D-DMA cannot be
+   had. */
+#define COPY_SLOTS 2
 static dma2d_pool_handle_t copy_pool;
-static dma2d_descriptor_t *copy_tx, *copy_rx;
-static void *copy_slot;
-static dma2d_trans_config_t copy_job;
-static SemaphoreHandle_t copy_done;
+static dma2d_descriptor_t *copy_tx[COPY_SLOTS], *copy_rx[COPY_SLOTS];
+static void *copy_slot[COPY_SLOTS];
+static dma2d_trans_config_t copy_job[COPY_SLOTS];
+static SemaphoreHandle_t copy_done[COPY_SLOTS];
+static bool copy_busy[COPY_SLOTS];
 static bool copy_failed;
+#if CONFIG_RUZINA_UAC_PROFILE
+static volatile int64_t copy_begun[COPY_SLOTS], copy_ended[COPY_SLOTS];
+#endif
 
 static bool copy_eof(dma2d_channel_handle_t chan, dma2d_event_data_t *event, void *user)
 {
     (void)chan;
     (void)event;
-    (void)user;
+    const uintptr_t slot = (uintptr_t)user;
+#if CONFIG_RUZINA_UAC_PROFILE
+    copy_ended[slot] = esp_timer_get_time();
+#endif
     BaseType_t woken = pdFALSE;
-    xSemaphoreGiveFromISR(copy_done, &woken);
+    xSemaphoreGiveFromISR(copy_done[slot], &woken);
     return woken == pdTRUE;
 }
 
 static bool copy_picked(uint32_t num, const dma2d_trans_channel_info_t *chans, void *user)
 {
-    (void)user;
     if (num != 2) return false;
+    const uintptr_t slot = (uintptr_t)user;
     dma2d_channel_handle_t tx = chans[0].dir == DMA2D_CHANNEL_DIRECTION_TX ? chans[0].chan : chans[1].chan;
     dma2d_channel_handle_t rx = chans[0].dir == DMA2D_CHANNEL_DIRECTION_TX ? chans[1].chan : chans[0].chan;
     dma2d_trigger_t trig = {.periph = DMA2D_TRIG_PERIPH_M2M, .periph_sel_id = SOC_DMA2D_TRIG_PERIPH_M2M_TX};
@@ -105,9 +116,9 @@ static bool copy_picked(uint32_t num, const dma2d_trans_channel_info_t *chans, v
     dma2d_set_transfer_ability(tx, &ability);
     dma2d_set_transfer_ability(rx, &ability);
     dma2d_rx_event_callbacks_t cbs = {.on_recv_eof = copy_eof};
-    dma2d_register_rx_event_callbacks(rx, &cbs, NULL);
-    dma2d_set_desc_addr(tx, (intptr_t)copy_tx);
-    dma2d_set_desc_addr(rx, (intptr_t)copy_rx);
+    dma2d_register_rx_event_callbacks(rx, &cbs, user);
+    dma2d_set_desc_addr(tx, (intptr_t)copy_tx[slot]);
+    dma2d_set_desc_addr(rx, (intptr_t)copy_rx[slot]);
     dma2d_start(tx);
     dma2d_start(rx);
     return false;
@@ -117,12 +128,16 @@ static bool copy_ready(void)
 {
     if (copy_failed) return false;
     if (!copy_pool) {
+        bool made = true;
+        for (int slot = 0; slot < COPY_SLOTS; slot++) {
+            copy_tx[slot] = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+            copy_rx[slot] = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+            copy_slot[slot] = heap_caps_calloc(1, SIZEOF_DMA2D_TRANS_T, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+            copy_done[slot] = xSemaphoreCreateBinary();
+            made = made && copy_tx[slot] && copy_rx[slot] && copy_slot[slot] && copy_done[slot];
+        }
         dma2d_pool_config_t pool = {.pool_id = 0};
-        copy_tx = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-        copy_rx = heap_caps_aligned_calloc(64, 1, 64, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
-        copy_slot = heap_caps_calloc(1, SIZEOF_DMA2D_TRANS_T, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        copy_done = xSemaphoreCreateBinary();
-        if (!copy_tx || !copy_rx || !copy_slot || !copy_done || dma2d_acquire_pool(&pool, &copy_pool) != ESP_OK) {
+        if (!made || dma2d_acquire_pool(&pool, &copy_pool) != ESP_OK) {
             copy_failed = true;
             printf("panel_copy dma2d=UNAVAILABLE\n");
             return false;
@@ -131,40 +146,61 @@ static bool copy_ready(void)
     return true;
 }
 
-/* Copies the w by h block at (fx, fy) of frame buffer `from` to (tx, ty) of `to`. */
-static bool dma2d_block_copy(const uint16_t *from, uint32_t fx, uint32_t fy, uint16_t *to, uint32_t tx,
-                             uint32_t ty, uint32_t w, uint32_t h)
+/* Waits for the copy in `slot` to end. A copy that never ends stops the 2D-DMA for good. */
+static bool copy_end(uint32_t slot)
 {
-    if (!copy_ready()) return false;
-    const uint32_t pbyte = DMA2D_DESCRIPTOR_PBYTE_2B0_PER_PIXEL;
-    *copy_tx = (dma2d_descriptor_t){
-        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 1,
-        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = 600, .ha_length = 1024, .pbyte = pbyte,
-        .y = fy, .x = fx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = (void *)from, .next = NULL,
-    };
-    *copy_rx = (dma2d_descriptor_t){
-        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 0,
-        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = 600, .ha_length = 1024, .pbyte = pbyte,
-        .y = ty, .x = tx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = to, .next = NULL,
-    };
-    esp_cache_msync(copy_tx, 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-    esp_cache_msync(copy_rx, 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
-    /* The rows read go to memory first; the rows written are dropped from the cache. */
-    esp_cache_msync((void *)(from + fy * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
-    esp_cache_msync((void *)(to + ty * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
-    copy_job = (dma2d_trans_config_t){
-        .tx_channel_num = 1, .rx_channel_num = 1, .channel_flags = DMA2D_CHANNEL_FUNCTION_FLAG_SIBLING,
-        .on_job_picked = copy_picked,
-    };
-    xSemaphoreTake(copy_done, 0);
-    if (dma2d_enqueue(copy_pool, &copy_job, (dma2d_trans_t *)copy_slot) != ESP_OK) return false;
-    if (xSemaphoreTake(copy_done, pdMS_TO_TICKS(50)) != pdTRUE) {
-        /* A copy that never ended: stop using the 2D-DMA for good. */
+    if (!copy_busy[slot]) return false;
+    copy_busy[slot] = false;
+    if (xSemaphoreTake(copy_done[slot], pdMS_TO_TICKS(50)) != pdTRUE) {
         copy_failed = true;
         printf("panel_copy dma2d=TIMEOUT\n");
         return false;
     }
     return true;
+}
+
+/* Starts copying the w by h block at (fx, fy) of frame buffer `from` to (tx, ty) of `to`,
+   in `slot`. The CPU must not write the rows written until `copy_end`: their cache lines
+   are dropped now, and one written back later would put old pixels over the copy's. */
+static bool copy_begin(uint32_t slot, const uint16_t *from, uint32_t fx, uint32_t fy, uint16_t *to,
+                       uint32_t tx, uint32_t ty, uint32_t w, uint32_t h)
+{
+    if (slot >= COPY_SLOTS || !copy_ready()) return false;
+    if (copy_busy[slot] && !copy_end(slot)) return false;
+    const uint32_t pbyte = DMA2D_DESCRIPTOR_PBYTE_2B0_PER_PIXEL;
+    *copy_tx[slot] = (dma2d_descriptor_t){
+        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 1,
+        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = 600, .ha_length = 1024, .pbyte = pbyte,
+        .y = fy, .x = fx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = (void *)from, .next = NULL,
+    };
+    *copy_rx[slot] = (dma2d_descriptor_t){
+        .vb_size = h, .hb_length = w, .err_eof = 0, .dma2d_en = 1, .suc_eof = 0,
+        .owner = DMA2D_DESCRIPTOR_BUFFER_OWNER_DMA, .va_size = 600, .ha_length = 1024, .pbyte = pbyte,
+        .y = ty, .x = tx, .mode = DMA2D_DESCRIPTOR_BLOCK_RW_MODE_SINGLE, .buffer = to, .next = NULL,
+    };
+    esp_cache_msync(copy_tx[slot], 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    esp_cache_msync(copy_rx[slot], 64, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
+    /* The rows read go to memory first; the rows written are dropped from the cache. */
+    esp_cache_msync((void *)(from + fy * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+    esp_cache_msync((void *)(to + ty * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
+    copy_job[slot] = (dma2d_trans_config_t){
+        .tx_channel_num = 1, .rx_channel_num = 1, .channel_flags = DMA2D_CHANNEL_FUNCTION_FLAG_SIBLING,
+        .on_job_picked = copy_picked, .user_config = (void *)(uintptr_t)slot,
+    };
+    xSemaphoreTake(copy_done[slot], 0);
+#if CONFIG_RUZINA_UAC_PROFILE
+    copy_begun[slot] = esp_timer_get_time();
+#endif
+    if (dma2d_enqueue(copy_pool, &copy_job[slot], (dma2d_trans_t *)copy_slot[slot]) != ESP_OK) return false;
+    copy_busy[slot] = true;
+    return true;
+}
+
+/* Copies the block at once, in slot 0. */
+static bool dma2d_block_copy(const uint16_t *from, uint32_t fx, uint32_t fy, uint16_t *to, uint32_t tx,
+                             uint32_t ty, uint32_t w, uint32_t h)
+{
+    return copy_begin(0, from, fx, fy, to, tx, ty, w, h) && copy_end(0);
 }
 
 int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
@@ -228,6 +264,45 @@ int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32
     }
 #endif
     return ppa_do_scale_rotate_mirror(mover, &move) == ESP_OK ? 0 : -1;
+}
+
+/* Starts moving the w by h block at (x, y) of frame buffer `to` left by dx columns, from the
+   same block of frame buffer `from`, by the 2D-DMA in `slot` (0 or 1); 0 once started, -1
+   if not (the caller then moves it with ruzina_panel_move). Until ruzina_panel_move_finish
+   the CPU must leave the block's rows of `to` alone. */
+int32_t ruzina_panel_move_start(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
+                                uint32_t w, uint32_t h, uint32_t dx, uint32_t slot)
+{
+    if (dx >= w) return -1;
+    return copy_begin(slot, from, x + dx, y, to, x, y, w - dx, h) ? 0 : -1;
+}
+
+/* Waits for the move started in `slot`: 0 once it is done, -1 if it failed (the caller then
+   draws the block whole). */
+int32_t ruzina_panel_move_finish(uint32_t slot)
+{
+    if (slot >= COPY_SLOTS) return -1;
+#if CONFIG_RUZINA_UAC_PROFILE
+    /* Profile images: each copy's time from its start to its end, and how long the screen
+       still waited for it; the means of every 8th of 32 samples. */
+    static uint32_t finishes, samples, copy_us, wait_us, wait_max_us;
+    const int64_t waiting = esp_timer_get_time();
+    const bool done = copy_end(slot);
+    if (done && (finishes++ & 7) == 0) {
+        const uint32_t waited = (uint32_t)(esp_timer_get_time() - waiting);
+        copy_us += (uint32_t)(copy_ended[slot] - copy_begun[slot]);
+        wait_us += waited;
+        if (waited > wait_max_us) wait_max_us = waited;
+        if (++samples == 32) {
+            printf("panel_move via=dma2d-async samples=32 copy_us=%" PRIu32 " wait_us=%" PRIu32
+                   " wait_max_us=%" PRIu32 "\n", copy_us / 32, wait_us / 32, wait_max_us);
+            samples = copy_us = wait_us = wait_max_us = 0;
+        }
+    }
+    return done ? 0 : -1;
+#else
+    return copy_end(slot) ? 0 : -1;
+#endif
 }
 
 /* A strip of `pixels` pixels in internal RAM, made on the first call, or NULL. The deck

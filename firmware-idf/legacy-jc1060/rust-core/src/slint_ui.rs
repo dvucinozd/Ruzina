@@ -202,6 +202,17 @@ unsafe extern "C" {
         height: u32,
         dx: u32,
     ) -> i32;
+    fn ruzina_panel_move_start(
+        from: *const u16,
+        to: *mut u16,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+        dx: u32,
+        slot: u32,
+    ) -> i32;
+    fn ruzina_panel_move_finish(slot: u32) -> i32;
     /// A strip of `pixels` pixels in internal RAM, made on the first call, or null.
     fn ruzina_panel_strip(pixels: u32) -> *mut u16;
     fn ruzina_panel_blit(
@@ -500,9 +511,9 @@ fn diagnostic_phase() -> bool {
 enum Step {
     /// Slint's lines, their copy into the frame buffer and its write-back.
     Slint = 0,
-    /// The PPA moving a lane.
+    /// Starting a lane's move (`start_lane`).
     Move = 1,
-    /// A lane's new columns and its write-back.
+    /// The end of a lane's move, its new columns and their write-back (`finish_lane`).
     Columns = 2,
 }
 
@@ -1120,50 +1131,93 @@ fn draw_strips(
     }
 }
 
-/// Brings the lane in `back` to show track pixel `left` at its left edge. When `shown`,
-/// the other frame buffer, holds it at most half a lane earlier (its lane starts at the
-/// pixel given with it), the hardware copies those pixels, moved left, and only the new
-/// columns and the playhead are drawn; otherwise the whole lane is. The columns are drawn
-/// through `strip` (`draw_strips`). `back` holds the frame before `shown`, so it is never
-/// left as it was. Each of the two steps starts between USB audio fills (`Gate`).
-fn draw_lane(
+/// How the lane being drawn gets the pixels the shown lane already holds.
+#[derive(Clone, Copy)]
+enum LaneMove {
+    /// It does not: the lane is drawn whole.
+    Whole,
+    /// They were moved left by this many columns.
+    Moved(usize),
+    /// The 2D-DMA is moving them left by this many columns, in the background, in this
+    /// slot (`ruzina_panel_move_start`).
+    Moving(usize, u32),
+}
+
+/// Starts bringing the lane in `back` to show track pixel `left` at its left edge. When
+/// `shown`, the other frame buffer, holds it at most half a lane earlier (its lane starts at
+/// the pixel given with it), the hardware copies those pixels, moved left: in the
+/// background in `slot` when `background`, while Slint draws, or else at once. Otherwise
+/// the whole lane is drawn (`finish_lane`). The move starts between USB audio fills
+/// (`Gate`).
+fn start_lane(
     gate: &mut Gate,
-    strip: Option<&mut [u16]>,
     back: &mut [u16],
     shown: Option<(&[u16], i64)>,
     area: Area,
+    left: i64,
+    slot: u32,
+    background: bool,
+) -> LaneMove {
+    let Some((shown, shown_left)) = shown else {
+        return LaneMove::Whole;
+    };
+    let dx = left - shown_left;
+    if !(0..LANE_WIDTH as i64 / 2).contains(&dx) {
+        return LaneMove::Whole;
+    }
+    let dx = dx as usize;
+    gate.run(Step::Move, || {
+        mark(MOVE, true);
+        let (from, to) = (shown.as_ptr(), back.as_mut_ptr());
+        let (x, y) = (area.x as u32, area.y as u32);
+        let (width, height) = (LANE_WIDTH as u32, LANE_HEIGHT as u32);
+        // SAFETY: both are the panel's frame buffers; C bounds the block to them. A move in
+        // the background ends in `finish_lane` before the CPU writes the lane's rows.
+        let moving = background
+            && unsafe { ruzina_panel_move_start(from, to, x, y, width, height, dx as u32, slot) }
+                == 0;
+        let lane = if moving {
+            LaneMove::Moving(dx, slot)
+        } else if unsafe { ruzina_panel_move(from, to, x, y, width, height, dx as u32) } == 0 {
+            LaneMove::Moved(dx)
+        } else {
+            LaneMove::Whole
+        };
+        mark(MOVE, false);
+        lane
+    })
+}
+
+/// Ends what `start_lane` began: waits for a move in the background, then draws the new
+/// columns and the playhead, or the whole lane when nothing was moved. The columns are drawn
+/// through `strip` (`draw_strips`). `back` holds the frame before `shown`, so it is never
+/// left as it was. The step starts between USB audio fills (`Gate`).
+fn finish_lane(
+    gate: &mut Gate,
+    strip: Option<&mut [u16]>,
+    back: &mut [u16],
+    area: Area,
     wave: Wave<'_>,
     left: i64,
+    lane: LaneMove,
 ) {
-    let step = shown.map(|(_, shown_left)| left - shown_left);
-    let moved = shown.zip(step).is_some_and(|((shown, _), dx)| {
-        dx >= 0
-            && dx < LANE_WIDTH as i64 / 2
-            && gate.run(Step::Move, || {
-                mark(MOVE, true);
-                // SAFETY: both are the panel's frame buffers; C bounds the block to them.
-                let moved = unsafe {
-                    ruzina_panel_move(
-                        shown.as_ptr(),
-                        back.as_mut_ptr(),
-                        area.x as u32,
-                        area.y as u32,
-                        LANE_WIDTH as u32,
-                        LANE_HEIGHT as u32,
-                        dx as u32,
-                    )
-                };
-                mark(MOVE, false);
-                moved
-            }) == 0
-    });
     gate.run(Step::Columns, || {
+        let moved = match lane {
+            LaneMove::Whole => None,
+            LaneMove::Moved(dx) => Some(dx),
+            LaneMove::Moving(dx, slot) => {
+                mark(MOVE, true);
+                // SAFETY: waits on a slot `start_lane` started; scalars only.
+                let done = unsafe { ruzina_panel_move_finish(slot) } == 0;
+                mark(MOVE, false);
+                done.then_some(dx)
+            }
+        };
         let mut strip = strip;
-        match (moved, step) {
+        match moved {
             // A paused deck: the copy is the whole frame.
-            (true, Some(0)) => {}
-            (true, Some(dx)) => {
-                let dx = dx as usize;
+            Some(0) => {}
+            Some(dx) => {
                 draw_strips(
                     back,
                     &mut strip,
@@ -1176,7 +1230,7 @@ fn draw_lane(
                 let playhead = PLAYHEAD_X - 1 - dx..PLAYHEAD_X + 2;
                 draw_strips(back, &mut strip, area, wave, left, playhead);
             }
-            _ => draw_strips(back, &mut strip, area, wave, left, 0..LANE_WIDTH),
+            None => draw_strips(back, &mut strip, area, wave, left, 0..LANE_WIDTH),
         }
         // The PPA wrote memory itself; what the CPU wrote is still in cache.
         if strip.is_none() {
@@ -1889,6 +1943,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
     // Each deck's steady drawing clock, and the size of its corrections (event 37).
     let mut steadies: [Option<deck_view::Steady>; 2] = [None; 2];
     let mut gap_times = Times::default();
+    // Frames, and those that missed their refresh and showed a refresh late (event 38).
+    let (mut frames, mut late) = (0u32, 0u32);
     let start = now_us() / 1_000;
     let mut next_report = REPORT_MS;
     let mut drawing = 1;
@@ -1912,6 +1968,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             slint_times.report(21);
             wave_times.report(22);
             gap_times.report(37);
+            // SAFETY: diagnostic telemetry passes three u32 values only.
+            unsafe { ruzina_bridge_load_report(frames, 38, late) };
+            (frames, late) = (0, 0);
             #[cfg(feature = "idf-uac-profile")]
             gate.report();
             next_report = ms + REPORT_MS;
@@ -2163,6 +2222,55 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
             (&mut **second, &**first)
         };
         mark(SCREEN, true);
+        // Each lane's waveform and left edge, and its meter. The lanes' moves start here,
+        // the 2D-DMA copying the shown lanes while Slint draws; the new columns follow once
+        // Slint is done (`finish_lane`). On s193p the copies, 2 x 2.5 ms with the CPU
+        // waiting, made one frame in five miss its refresh at 61 fps. Without the strip
+        // Slint's lines are the CPU's, written back over whole rows, so the moves are made
+        // at once. The meters come first: their cache lines reach into the lanes.
+        let mut lanes: [Option<(Wave<'_>, i64, LaneMove)>; 2] = [None, None];
+        for deck in 0..2 {
+            let track = tracks[deck].as_deref();
+            // New marks redraw the whole lane, once in each buffer.
+            let (revision, marks) = deck_view::MARKS[deck].load();
+            if marks_at[drawing][deck] != Some(revision) {
+                lane_at[drawing][deck] = None;
+                marks_at[drawing][deck] = Some(revision);
+            }
+            let wave = wave(
+                track,
+                deck_view::window_ms(decks[deck].bpm_x100),
+                marks,
+                decks[deck].position_ms,
+            );
+            let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
+            // Under the pages only the overviews are Rust's.
+            if !covered && meter_at[drawing][deck] != Some(meters[deck]) {
+                draw_meter(buffer, METERS[deck], meters[deck]);
+                meter_at[drawing][deck] = Some(meters[deck]);
+            }
+            // After a zoom the shown lane is at another scale: draw it all.
+            let at_scale = |at: Option<(i64, i64)>| {
+                at.filter(|&(_, window_ms)| window_ms == wave.window_ms)
+                    .map(|(left, _)| left)
+            };
+            // A paused or empty deck's lane is drawn once into each buffer, then left.
+            if !covered && at_scale(lane_at[drawing][deck]) != Some(left) {
+                // The shown lane is copied only when it has the same marks.
+                let shown_left = at_scale(lane_at[1 - drawing][deck])
+                    .filter(|_| marks_at[1 - drawing][deck] == Some(revision));
+                let lane = start_lane(
+                    &mut gate,
+                    buffer,
+                    shown_left.map(|shown_left| (shown, shown_left)),
+                    LANES[deck],
+                    left,
+                    deck as u32,
+                    strip.is_some(),
+                );
+                lanes[deck] = Some((wave, left, lane));
+            }
+        }
         let allocs_before = crate::idf_alloc::counted();
         let started = now_us();
         let mut rows_drawn = 0;
@@ -2249,42 +2357,15 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         }
         for deck in 0..2 {
             let track = tracks[deck].as_deref();
-            // New marks redraw the whole lane, once in each buffer.
-            let (revision, marks) = deck_view::MARKS[deck].load();
-            if marks_at[drawing][deck] != Some(revision) {
-                lane_at[drawing][deck] = None;
-                marks_at[drawing][deck] = Some(revision);
-            }
-            let wave = wave(
-                track,
-                deck_view::window_ms(decks[deck].bpm_x100),
-                marks,
-                decks[deck].position_ms,
-            );
-            let left = wave.track_pixel(decks[deck].position_ms) - PLAYHEAD_X as i64;
-            // Under the pages only the overviews are Rust's.
-            if !covered && meter_at[drawing][deck] != Some(meters[deck]) {
-                draw_meter(buffer, METERS[deck], meters[deck]);
-                meter_at[drawing][deck] = Some(meters[deck]);
-            }
-            // After a zoom the shown lane is at another scale: draw it all.
-            let at_scale = |at: Option<(i64, i64)>| {
-                at.filter(|&(_, window_ms)| window_ms == wave.window_ms)
-                    .map(|(left, _)| left)
-            };
-            // A paused or empty deck's lane is drawn once into each buffer, then left.
-            if !covered && at_scale(lane_at[drawing][deck]) != Some(left) {
-                // The shown lane is copied only when it has the same marks.
-                let shown_left = at_scale(lane_at[1 - drawing][deck])
-                    .filter(|_| marks_at[1 - drawing][deck] == Some(revision));
-                draw_lane(
+            if let Some((wave, left, lane)) = lanes[deck] {
+                finish_lane(
                     &mut gate,
                     strip.as_deref_mut(),
                     buffer,
-                    shown_left.map(|shown_left| (shown, shown_left)),
                     LANES[deck],
                     wave,
                     left,
+                    lane,
                 );
                 lane_at[drawing][deck] = Some((left, wave.window_ms));
             }
@@ -2371,7 +2452,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16, back: *mut u16
         // next one.
         // SAFETY: reads a counter and waits on the panel's refresh.
         let now = unsafe { ruzina_panel_refreshes() };
+        frames += 1;
         if now >= target {
+            late += 1;
             target = now + 1;
         }
         while unsafe { ruzina_panel_refreshes() } + 1 < target {
