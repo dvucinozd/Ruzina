@@ -430,6 +430,7 @@ function renderSettings(data) {
   const info = data.info || {};
   $('#info-network').textContent = info.network || '—';
   $('#info-firmware').textContent = info.firmware || '—';
+  $('#info-slot').textContent = info.slot || '—';
   $('#info-built').textContent = info.built || '—';
   $('#info-controller').textContent = info.controller || 'none';
   $('#info-media').textContent = { ready: 'READY', reading: 'READING…', removed: 'REMOVED' }[info.media] || '—';
@@ -499,6 +500,54 @@ async function changePassword(password) {
     message('Deck unreachable');
     return false;
   }
+}
+// A firmware bundle: the signed header (188 bytes) and an image of at most a 6 MiB slot.
+const BUNDLE_MIN = 188 + 24;
+const BUNDLE_MAX = 188 + 6 * 1024 * 1024;
+function firmwareProblem(file) {
+  if (!file) return 'Choose a .ddjota bundle';
+  if (!/\.ddjota$/i.test(file.name)) return 'A firmware bundle ends in .ddjota';
+  if (file.size < BUNDLE_MIN || file.size > BUNDLE_MAX) return 'That file is not a firmware bundle';
+  return null;
+}
+// What the deck's refusal means.
+function firmwareRefusal(status, text) {
+  return {
+    400: 'Not a bundle signed for this deck',
+    409: 'Stop both decks first',
+    413: 'That file is not a firmware bundle',
+    500: 'The deck could not write the firmware; it keeps the one it runs',
+    503: 'Another update is in progress',
+  }[status] || text || `Update failed (${status})`;
+}
+// Sends the bundle whole as the request body, showing its progress. The deck answers
+// once the firmware is in its slot and checked, then restarts into it.
+function installFirmware(file) {
+  const problem = firmwareProblem(file);
+  if (problem) { message(problem); return false; }
+  const progress = $('#firmware-progress');
+  const request = new XMLHttpRequest();
+  request.open('POST', '/api/ota/p4');
+  request.setRequestHeader('X-DDJ-Control', '1');
+  request.setRequestHeader('Content-Type', 'application/octet-stream');
+  progress.hidden = false;
+  progress.value = 0;
+  message('Sending the firmware…');
+  request.upload.onprogress = (event) => {
+    if (event.lengthComputable) progress.value = Math.round(event.loaded / event.total * 100);
+  };
+  request.onload = () => {
+    if (request.status === 200) {
+      progress.value = 100;
+      message('Installed: the deck restarts, and this page reconnects');
+    } else {
+      progress.hidden = true;
+      message(firmwareRefusal(request.status, request.responseText));
+    }
+  };
+  request.onerror = () => { progress.hidden = true; message('Upload interrupted: the deck keeps its firmware'); };
+  request.send(file);
+  return true;
 }
 async function loadSettings() {
   try {
@@ -591,6 +640,10 @@ function bindControls() {
     event.preventDefault();
     const input = $('#password');
     if (await changePassword(input.value)) input.value = '';
+  });
+  $('#firmware-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    installFirmware($('#firmware-file').files?.[0]);
   });
   $('#to-library').addEventListener('click', () => { $('#library').open = true; });
   $('#search').addEventListener('input', renderLibrary);

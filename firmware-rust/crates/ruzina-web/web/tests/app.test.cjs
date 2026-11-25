@@ -19,18 +19,24 @@ function harness() {
   const document=new Element(); document.createElement=()=>new Element();
   const waves=[1,2].map(deck=>{const wave=document.querySelector(`.wave[data-deck="${deck}"]`); wave.dataset.deck=String(deck); return wave;});
   document.querySelectorAll=s=>s==='.wave'?waves:[];
-  const calls=[]; const timers=[]; let now=0;
-  const context=vm.createContext({document, URLSearchParams, Uint32Array,
+  const calls=[]; const timers=[]; let now=0; const uploads=[];
+  class XMLHttpRequest {
+    constructor() { this.headers={}; this.upload={}; uploads.push(this); }
+    open(method,url) { this.method=method; this.url=url; }
+    setRequestHeader(name,value) { this.headers[name]=value; }
+    send(body) { this.body=body; }
+  }
+  const context=vm.createContext({document, URLSearchParams, Uint32Array, XMLHttpRequest,
     crypto:{getRandomValues:a=>a}, Date:{now:()=>now},
     setTimeout:(fn,delay)=>{timers.push({fn,delay});return timers.length;},
     fetch:url=>new Promise((resolve,reject)=>calls.push({url,resolve,reject}))});
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../app.js'),'utf8')+
-    '\nglobalThis.testApi={pollStatus,renderDeck,dragging,renderSettings,settingParams,passwordProblem,changePassword};',context);
+    '\nglobalThis.testApi={pollStatus,renderDeck,dragging,renderSettings,settingParams,passwordProblem,changePassword,firmwareProblem,installFirmware};',context);
   const status=(revision,boot=1)=>({stamp:{boot,sequence:calls.length,library_revision:revision},
     deck1:{state_text:'IDLE',pitch_percent:0},deck2:{state_text:'IDLE',pitch_percent:0},mixer:{}});
   const reply=(call,body)=>call.resolve({ok:true,json:async()=>body,text:async()=>''});
   const flush=async()=>{for(let i=0;i<12;i++) await Promise.resolve();};
-  return {document,calls,context,reply,flush,status,setNow:n=>{now=n}};
+  return {document,calls,context,reply,flush,status,setNow:n=>{now=n},uploads};
 }
 const track=(title='Old')=>({track_key:42,title,artist:'Artist',bpm:120,duration_ms:1000});
 test('old row cannot load with a new generation',async()=>{
@@ -131,7 +137,7 @@ test('the overview is fetched once per track and a stale answer is dropped',asyn
   assert.equal(h.calls.length,6);
 });
 const deckSettings=()=>({load_lock:false,jog:['vinyl','cdj'],brightness:{percent:25,min:10,max:50,step:5},
-  trim_db:3,screensaver_min:2,info:{network:'Ruzina-AB2D',firmware:'v1',built:'Nov 25 2026 12:00:00',controller:'',tracks:25,media:'removed',uptime_s:3725},
+  trim_db:3,screensaver_min:2,info:{network:'Ruzina-AB2D',firmware:'v1',built:'Nov 25 2026 12:00:00',controller:'',tracks:25,media:'removed',uptime_s:3725,slot:'ota_1'},
   profiles:[{name:'Pioneer DDJ-FLX4',id:'2B73:0045',tested:true,active:true},{name:'Numark DJ2GO2 Touch',id:'15E4:0050',tested:false,active:false}]});
 test('the setup page shows the deck\'s settings and information',()=>{
   const h=harness(); h.context.testApi.renderSettings(deckSettings());
@@ -179,4 +185,29 @@ test('the setup page lists the controller profiles, the attached one marked',()=
   assert.equal(rows[0].className,'active');
   assert.equal(rows[0].children.map(c=>c.textContent).join('|'),'Pioneer DDJ-FLX4|2B73:0045|ACTIVE|TESTED');
   assert.equal(rows[1].children.map(c=>c.textContent).join('|'),'Numark DJ2GO2 Touch|15E4:0050');
+});
+test('the setup page shows the slot the firmware runs from',()=>{
+  const h=harness(); h.context.testApi.renderSettings(deckSettings());
+  assert.equal(h.document.querySelector('#info-slot').textContent,'ota_1');
+});
+test('a firmware bundle is checked, then sent whole with the control marker',()=>{
+  const h=harness(); const api=h.context.testApi;
+  assert.equal(api.firmwareProblem(undefined),'Choose a .ddjota bundle');
+  assert.equal(api.firmwareProblem({name:'s210.bin',size:4000000}),'A firmware bundle ends in .ddjota');
+  assert.equal(api.firmwareProblem({name:'s210.ddjota',size:100}),'That file is not a firmware bundle');
+  assert.equal(api.firmwareProblem({name:'s210.ddjota',size:188+6*1024*1024+1}),'That file is not a firmware bundle');
+  assert.equal(api.installFirmware({name:'notes.txt',size:5000}),false);
+  assert.equal(h.uploads.length,0);
+  const file={name:'s210.ddjota',size:3431308};
+  assert.equal(api.installFirmware(file),true);
+  const [sent]=h.uploads;
+  assert.equal(sent.method,'POST');
+  assert.equal(sent.url,'/api/ota/p4');
+  assert.equal(sent.headers['X-DDJ-Control'],'1');
+  assert.equal(sent.headers['Content-Type'],'application/octet-stream');
+  assert.equal(sent.body,file);
+  sent.upload.onprogress({lengthComputable:true,loaded:1715654,total:3431308});
+  assert.equal(h.document.querySelector('#firmware-progress').value,50);
+  sent.status=409; sent.responseText='Conflict'; sent.onload();
+  assert.equal(h.document.querySelector('#firmware-progress').hidden,true);
 });

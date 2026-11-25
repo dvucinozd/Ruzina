@@ -22,6 +22,9 @@ pub const ESP32P4_CHIP_ID: u16 = 0x0012;
 /// ESP application image header: magic 0xE9, chip id at offset 12.
 pub const IMAGE_HEADER_SIZE: usize = 24;
 pub const MAX_IMAGE_SIZE: u32 = 0x40_0000;
+/// The largest image any firmware may accept: its 6 MiB A/B slots. A firmware states its
+/// own limit in [`Expected::max_image_size`].
+pub const SLOT_IMAGE_SIZE_MAX: u32 = 0x60_0000;
 
 /// M2.5 release public key (`ddj_ota_release_public.der`, prime256v1),
 /// as an uncompressed SEC1 point.
@@ -100,6 +103,8 @@ pub struct Expected<'a> {
     pub chip_id: u16,
     pub project: &'a str,
     pub max_image_size: u32,
+    /// The signing key's id the header must name ([`RELEASE_KEY_ID`] for M2.5's key).
+    pub key_id: &'a str,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -185,7 +190,7 @@ pub fn parse_header(header: &[u8], expected: &Expected<'_>) -> Result<Manifest, 
     let version = Version::from_field(&header[OFFSET_VERSION..OFFSET_VERSION + VERSION_SIZE])
         .ok_or(ManifestError::Version)?;
     FixedText::<KEY_ID_SIZE>::from_field(&header[OFFSET_KEY_ID..OFFSET_KEY_ID + KEY_ID_SIZE])
-        .filter(|key| key.as_str() == RELEASE_KEY_ID)
+        .filter(|key| key.as_str() == expected.key_id)
         .ok_or(ManifestError::Key)?;
     let mut image_sha256 = [0; 32];
     image_sha256.copy_from_slice(&header[OFFSET_SHA256..OFFSET_SHA256 + 32]);
@@ -230,6 +235,7 @@ mod tests {
         chip_id: ESP32P4_CHIP_ID,
         project: "ruzina-m1-test",
         max_image_size: MAX_IMAGE_SIZE,
+        key_id: RELEASE_KEY_ID,
     };
 
     fn header(bundle: &[u8]) -> [u8; HEADER_SIZE] {
@@ -293,6 +299,12 @@ mod tests {
             Err(ManifestError::Version)
         );
         assert_eq!(mutate(OFFSET_KEY_ID + 6, b'2'), Err(ManifestError::Key));
+        // A firmware that names another key refuses a bundle signed for this one.
+        let other_key = Expected {
+            key_id: "ruz-001",
+            ..EXPECTED
+        };
+        assert_eq!(parse_header(&good, &other_key), Err(ManifestError::Key));
         let mut tiny = good;
         tiny[OFFSET_IMAGE_SIZE..OFFSET_IMAGE_SIZE + 4].copy_from_slice(&23u32.to_le_bytes());
         assert_eq!(

@@ -403,6 +403,16 @@ details > summary::-webkit-details-marker { display: none; }
   background: var(--raise); font: 800 12px var(--mono); letter-spacing: .06em; cursor: pointer;
 }
 .password .note { margin: 0; line-height: 1.4; }
+.firmware { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.firmware label span { font: 700 12px var(--mono); letter-spacing: .08em; color: var(--muted); }
+.firmware-row { display: flex; gap: 6px; align-items: center; }
+.firmware-row input { flex: 1; min-width: 0; font: 13px var(--mono); color: var(--muted); }
+.firmware-row button {
+  min-height: 40px; padding: 6px 12px; border: 1px solid var(--line-hi); border-radius: 8px;
+  background: var(--raise); font: 800 12px var(--mono); letter-spacing: .06em; cursor: pointer;
+}
+.firmware progress { width: 100%; height: 8px; accent-color: var(--play); }
+.firmware .note { margin: 0; line-height: 1.4; }
 .profiles { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .profiles .label { font: 700 12px var(--mono); letter-spacing: .08em; color: var(--muted); }
 .profiles ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }

@@ -7,6 +7,9 @@ use crate::{
     router::{self, Route},
 };
 
+/// The longest firmware bundle: the signed header and a 6 MiB image, an A/B slot's size.
+pub const OTA_BUNDLE_MAX: usize = 188 + 0x60_0000;
+
 #[derive(Clone, Copy, Debug)]
 pub enum UploadKind {
     Config,
@@ -54,7 +57,7 @@ pub fn kind(request: &Request<'_>) -> Result<Option<UploadKind>, HttpStatus> {
             )
         }
         Some(Route::OtaUpload) => {
-            if !(212..=4_194_492).contains(&request.content_length) {
+            if !(212..=OTA_BUNDLE_MAX).contains(&request.content_length) {
                 return Err(HttpStatus::PayloadTooLarge);
             }
             if request.content_type != Some("application/octet-stream") {

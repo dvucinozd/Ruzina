@@ -95,6 +95,9 @@ mod web_remote;
 #[cfg(feature = "web-remote")]
 mod deck_network;
 
+#[cfg(feature = "web-remote")]
+mod deck_ota;
+
 // This probe reuses the existing HAL-independent product crate. The native
 // firmware entry point, esp-hal and esp-rtos are deliberately not linked.
 #[unsafe(no_mangle)]

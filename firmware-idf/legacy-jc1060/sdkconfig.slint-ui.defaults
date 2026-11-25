@@ -1,3 +1,9 @@
 CONFIG_RUZINA_SLINT_UI=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-slint.csv"
+
+# The panel's refresh interrupt runs while flash is written (a firmware update, the Hot Cue
+# journal, settings): held off, it left the panel without its next frame and the screen
+# flickered through the 70 s of an update (s211, s212). frame_done (display_touch.c) is in
+# IRAM and calls only FromISR functions, which IDF keeps in IRAM.
+CONFIG_LCD_DSI_ISR_CACHE_SAFE=y

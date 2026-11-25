@@ -30,6 +30,24 @@ pub(crate) const BOOT_MS: u32 = 3_000;
 static ACTIVITY: AtomicBool = AtomicBool::new(false);
 /// The screensaver shows: the screen task's word, for the USB client task.
 static SHOWN: AtomicBool = AtomicBool::new(false);
+/// A firmware update is being written (`deck_ota`), from the web task.
+#[cfg(any(feature = "web-remote", all(feature = "slint-ui", not(test))))]
+static UPDATING: AtomicBool = AtomicBool::new(false);
+
+/// From the web task: a firmware update starts writing its slot, or ends unfinished. While
+/// it is written the screen shows UPDATING FIRMWARE over everything and, once that is
+/// drawn, draws nothing more: writing flash stalls the screen's tasks, and frames drawn
+/// across the stalls flickered (s211).
+#[cfg(feature = "web-remote")]
+pub(crate) fn set_updating(on: bool) {
+    UPDATING.store(on, Ordering::Release);
+}
+
+/// A firmware update is being written.
+#[cfg(any(feature = "web-remote", all(feature = "slint-ui", not(test))))]
+pub(crate) fn updating() -> bool {
+    UPDATING.load(Ordering::Acquire)
+}
 
 /// What the screen shows over the deck.
 #[cfg(any(test, feature = "slint-ui"))]
@@ -38,6 +56,9 @@ pub(crate) enum Cover {
     None,
     Boot,
     Screensaver,
+    /// A firmware update is being written (`updating`); only the screen shows it.
+    #[cfg_attr(test, allow(dead_code))]
+    Updating,
 }
 
 /// A controller event, on the USB client task: whether it goes on to the deck. While the

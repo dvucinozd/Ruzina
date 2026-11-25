@@ -25,8 +25,10 @@ pub enum PushError {
     Inactive,
 }
 impl Push {
-    pub fn new(total: usize) -> Result<Self, PushError> {
-        if !(HEADER_SIZE + IMAGE_HEADER_SIZE..=HEADER_SIZE + bundle::MAX_IMAGE_SIZE as usize)
+    /// Admits a bundle of `total` bytes for an image no larger than `max_image_size`.
+    pub fn new(total: usize, max_image_size: u32) -> Result<Self, PushError> {
+        let max_image_size = max_image_size.min(bundle::SLOT_IMAGE_SIZE_MAX);
+        if !(HEADER_SIZE + IMAGE_HEADER_SIZE..=HEADER_SIZE + max_image_size as usize)
             .contains(&total)
         {
             return Err(PushError::Length);

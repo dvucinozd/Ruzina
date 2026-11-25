@@ -1001,7 +1001,8 @@ export component Overview inherits Window {
     in property <int> setting-trim;
     in property <int> setting-screensaver: 1;
     in property <bool> setting-wifi: false;
-    // Over everything: 0 nothing, 1 the boot screen, 2 the screensaver (`screen_idle.rs`).
+    // Over everything: 0 nothing, 1 the boot screen, 2 the screensaver, 3 a firmware
+    // update being written (`screen_idle.rs`).
     in property <int> cover: 1;
     // The cover's lit letter, which moves along the word from before its first letter to
     // past its last; the letters around it glow less the further they are.
@@ -1305,6 +1306,23 @@ export component Overview inherits Window {
             text: "touch me.....or don't ;)";
             color: #a3958e;
             font-size: 20px;
+            horizontal-alignment: center;
+        }
+        if root.cover == 3: Text {
+            y: 420px;
+            width: 1024px;
+            text: "UPDATING FIRMWARE";
+            color: #f0e6e0;
+            font-size: 28px;
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
+        if root.cover == 3: Text {
+            y: 470px;
+            width: 1024px;
+            text: "Keep the deck switched on. It restarts when the update is in.";
+            color: #a3958e;
+            font-size: 18px;
             horizontal-alignment: center;
         }
     }

@@ -78,6 +78,8 @@ pub struct SettingsInfo<'a> {
     pub tracks: u32,
     pub media: Media,
     pub uptime_s: u32,
+    /// The app slot the firmware runs from (`ota_0` or `ota_1`).
+    pub slot: &'a str,
 }
 
 /// A controller profile the deck carries.

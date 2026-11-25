@@ -59,6 +59,26 @@ impl HttpStatus {
         self as u16
     }
 
+    /// The status with this code, if the server answers with it.
+    pub const fn from_code(code: u16) -> Option<Self> {
+        Some(match code {
+            200 => Self::Ok,
+            302 => Self::Found,
+            400 => Self::BadRequest,
+            403 => Self::Forbidden,
+            404 => Self::NotFound,
+            405 => Self::MethodNotAllowed,
+            409 => Self::Conflict,
+            413 => Self::PayloadTooLarge,
+            431 => Self::HeaderFieldsTooLarge,
+            500 => Self::InternalServerError,
+            501 => Self::NotImplemented,
+            503 => Self::ServiceUnavailable,
+            505 => Self::VersionNotSupported,
+            _ => return None,
+        })
+    }
+
     pub const fn reason(self) -> &'static str {
         match self {
             Self::Ok => "OK",

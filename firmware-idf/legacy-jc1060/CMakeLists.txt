@@ -11,7 +11,13 @@ set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/third_party/esp-usb-1.6.0/us
 if("$ENV{RUZINA_WIFI}" STREQUAL "1")
     list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/third_party/esp-hosted-2.11.7/esp_hosted")
 endif()
-set(PROJECT_VER "0.1.0-legacy-eval")
+# The image's version (its app description): the build's name from build_legacy.py
+# --version, which the Web Remote shows and a firmware bundle names.
+if(NOT "$ENV{RUZINA_VERSION}" STREQUAL "")
+    set(PROJECT_VER "$ENV{RUZINA_VERSION}")
+else()
+    set(PROJECT_VER "0.1.0-legacy-eval")
+endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(ruzina_legacy_probe)
 

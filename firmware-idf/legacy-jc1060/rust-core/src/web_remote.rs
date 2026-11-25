@@ -13,6 +13,10 @@
 //! the same admission as a LOAD, without moving the screen's selection. A seek goes
 //! through [`WEB_SEEK`]. For both, the web task waits for the engine's answer, so the page
 //! hears what the deck did, not only that the request was queued.
+//!
+//! A firmware bundle (`POST /api/ota/p4`) is too long for one request buffer: the C side
+//! streams its body through [`ruzina_web_stream_open`], [`ruzina_web_stream_feed`] and
+//! [`ruzina_web_stream_finish`] into [`crate::deck_ota`].
 use crate::deck_view::{self, MixView, TouchControl, WebLibrary, WebTrack};
 use alloc::boxed::Box;
 use core::cell::UnsafeCell;
@@ -20,6 +24,7 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
 use ruzina_media_catalog::CatalogPublicationId;
 use ruzina_media_session::{MediaGeneration, MediaLease, MediaSourceId};
+use ruzina_web::HttpStatus;
 use ruzina_web::json::{DeckStateText, DeckStatus, LibraryRow, MixerStatus};
 use ruzina_web::server::{
     ControlOutcome, LoadOutcome, SeekOutcome, StatusParts, WebBackend, WebServer,
@@ -237,6 +242,8 @@ const LEASE: MediaLease = MediaLease {
 
 struct Backend<'a> {
     state: &'a WebState,
+    /// The firmware upload in progress, if any.
+    upload: &'a mut Option<crate::deck_ota::Upload>,
     /// The SETUP page's texts made for one answer.
     built: alloc::string::String,
     controller: alloc::string::String,
@@ -383,9 +390,44 @@ impl WebBackend for Backend<'_> {
                 tracks: deck_view::library_len(),
                 media,
                 uptime_s: uptime_s as u32,
+                slot: crate::deck_ota::running_slot(),
             },
             profiles: &self.profiles,
         })
+    }
+
+    fn upload_begin(
+        &mut self,
+        kind: ruzina_web::upload::UploadKind,
+        length: usize,
+    ) -> Result<(), HttpStatus> {
+        if !matches!(kind, ruzina_web::upload::UploadKind::Ota) {
+            return Err(HttpStatus::NotImplemented);
+        }
+        if let Some(mut stale) = self.upload.take() {
+            stale.cancel();
+        }
+        *self.upload = Some(crate::deck_ota::Upload::new(length).map_err(push_status)?);
+        Ok(())
+    }
+
+    fn upload_write(&mut self, bytes: &[u8]) -> Result<(), HttpStatus> {
+        self.upload
+            .as_mut()
+            .ok_or(HttpStatus::Conflict)?
+            .feed(bytes)
+            .map_err(push_status)
+    }
+
+    fn upload_finish(&mut self) -> Result<(), HttpStatus> {
+        let mut upload = self.upload.take().ok_or(HttpStatus::Conflict)?;
+        upload.finish().map_err(push_status)
+    }
+
+    fn upload_cancel(&mut self) {
+        if let Some(mut upload) = self.upload.take() {
+            upload.cancel();
+        }
     }
 
     /// Through the same store as the deck's Settings page; the screen's brightness and
@@ -814,12 +856,178 @@ pub unsafe extern "C" fn ruzina_web_set_name(name: *const u8, len: usize) {
     NAME_LEN.store(len, Ordering::Release);
 }
 
-struct Server(UnsafeCell<Option<(WebServer, WebState)>>);
+/// What the web task keeps: the server, its state between requests, and a streamed
+/// firmware upload's lease and progress.
+struct Web {
+    server: WebServer,
+    state: WebState,
+    lease: Option<ruzina_web::upload::UploadLease>,
+    upload: Option<crate::deck_ota::Upload>,
+}
 
-// SAFETY: only the web task calls `ruzina_web_handle`, one request at a time.
+struct Server(UnsafeCell<Option<Web>>);
+
+// SAFETY: only the web task calls `ruzina_web_handle` and the stream functions, one
+// request at a time.
 unsafe impl Sync for Server {}
 
 static SERVER: Server = Server(UnsafeCell::new(None));
+
+/// The web task's server, made on its first request.
+///
+/// # Safety
+/// Web task only, and no other reference to it may be live.
+unsafe fn web(boot: u32) -> &'static mut Web {
+    // SAFETY: the caller's.
+    unsafe { &mut *SERVER.0.get() }.get_or_insert_with(|| Web {
+        server: WebServer::new(boot, AP_IPV4),
+        state: WebState::default(),
+        lease: None,
+        upload: None,
+    })
+}
+
+/// The HTTP status for an upload `ruzina-ota` refused.
+fn push_status(error: crate::deck_ota::PushError) -> HttpStatus {
+    use crate::deck_ota::PushError;
+    match error {
+        // A deck plays: stop both first, as for the network's password.
+        PushError::Busy | PushError::Inactive => HttpStatus::Conflict,
+        PushError::Flash => HttpStatus::InternalServerError,
+        PushError::Length | PushError::Invalid => HttpStatus::BadRequest,
+    }
+}
+
+/// Starts a streamed body from its request head (`head`, `len` bytes): 0 when a firmware
+/// upload takes it, else the HTTP status refusing it.
+///
+/// # Safety
+/// `head` must be valid for `len` reads. Web task only.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_web_stream_open(boot: u32, head: *const u8, len: usize) -> i32 {
+    if head.is_null() {
+        return i32::from(HttpStatus::BadRequest.code());
+    }
+    // SAFETY: the caller hands over the head for this call; the web task is the only one
+    // to hold the server.
+    let (head, web) = unsafe { (core::slice::from_raw_parts(head, len), web(boot)) };
+    if let Some(lease) = web.lease.take() {
+        let mut backend = upload_backend(&web.state, &mut web.upload);
+        web.server.cancel_body(lease, &mut backend);
+    }
+    let mut backend = upload_backend(&web.state, &mut web.upload);
+    match web.server.begin_body(head, &mut backend) {
+        Ok(Some(lease)) => {
+            web.lease = Some(lease);
+            0
+        }
+        // Not an upload: no other request carries a body this long.
+        Ok(None) => i32::from(HttpStatus::PayloadTooLarge.code()),
+        Err(status) => i32::from(status.code()),
+    }
+}
+
+/// Hands on `len` bytes of the streamed body: 0, else the HTTP status that ended it.
+///
+/// # Safety
+/// `bytes` must be valid for `len` reads. Web task only.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_web_stream_feed(bytes: *const u8, len: usize) -> i32 {
+    // SAFETY: as `ruzina_web_stream_open`.
+    let web = unsafe { web(0) };
+    let Some(lease) = web.lease else {
+        return i32::from(HttpStatus::Conflict.code());
+    };
+    if bytes.is_null() {
+        return i32::from(HttpStatus::BadRequest.code());
+    }
+    // SAFETY: the caller hands over the bytes for this call.
+    let bytes = unsafe { core::slice::from_raw_parts(bytes, len) };
+    let mut backend = upload_backend(&web.state, &mut web.upload);
+    match web.server.body_chunk(lease, bytes, &mut backend) {
+        Ok(_) => 0,
+        Err(status) => {
+            web.lease = None;
+            i32::from(status.code())
+        }
+    }
+}
+
+/// The streamed body is all in: finishes the upload (or, with `status` not 0, answers the
+/// refusal) and writes the answer to `out`. Returns its length.
+///
+/// # Safety
+/// `out` must be valid for `out_len` writes. Web task only.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_web_stream_finish(
+    status: i32,
+    out: *mut u8,
+    out_len: usize,
+) -> usize {
+    if out.is_null() {
+        return 0;
+    }
+    // SAFETY: as `ruzina_web_stream_open`; the caller hands over `out` for this call.
+    let (web, out) = unsafe { (web(0), core::slice::from_raw_parts_mut(out, out_len)) };
+    let status = match (status, web.lease.take()) {
+        (0, Some(lease)) => {
+            let mut backend = upload_backend(&web.state, &mut web.upload);
+            match web.server.finish_body(lease, &mut backend) {
+                Ok(()) => HttpStatus::Ok,
+                Err(status) => status,
+            }
+        }
+        (0, None) => HttpStatus::Conflict,
+        (code, lease) => {
+            if let Some(lease) = lease {
+                let mut backend = upload_backend(&web.state, &mut web.upload);
+                web.server.cancel_body(lease, &mut backend);
+            }
+            u16::try_from(code)
+                .ok()
+                .and_then(HttpStatus::from_code)
+                .unwrap_or(HttpStatus::BadRequest)
+        }
+    };
+    let body = if status == HttpStatus::Ok {
+        "Installed; restarting"
+    } else {
+        status.reason()
+    };
+    ruzina_web::response::write_response(&ruzina_web::response::Response::text(status, body), out)
+        .unwrap_or(0)
+}
+
+/// The streamed body ended unfinished (the connection dropped or timed out).
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_web_stream_cancel() {
+    // SAFETY: web task only, as the other stream functions.
+    let web = unsafe { web(0) };
+    if let Some(lease) = web.lease.take() {
+        let mut backend = upload_backend(&web.state, &mut web.upload);
+        web.server.cancel_body(lease, &mut backend);
+    }
+}
+
+/// A new image is set to boot: the web task restarts once its answer has gone.
+#[unsafe(no_mangle)]
+pub extern "C" fn ruzina_web_restart_due() -> bool {
+    crate::deck_ota::restart_due()
+}
+
+/// A backend for the upload calls only.
+fn upload_backend<'a>(
+    state: &'a WebState,
+    upload: &'a mut Option<crate::deck_ota::Upload>,
+) -> Backend<'a> {
+    Backend {
+        state,
+        upload,
+        built: alloc::string::String::new(),
+        controller: alloc::string::String::new(),
+        profiles: alloc::vec::Vec::new(),
+    }
+}
 
 /// Answers one HTTP request: `request` holds its head and any body, and the complete
 /// response is written to `out`. Returns the response's length; 0 means close without
@@ -847,16 +1055,10 @@ pub unsafe extern "C" fn ruzina_web_handle(
         )
     };
     // SAFETY: the web task is the only caller, so nothing else holds the server.
-    let (server, state) = unsafe { &mut *SERVER.0.get() }
-        .get_or_insert_with(|| (WebServer::new(boot, AP_IPV4), WebState::default()));
-    state.refresh();
-    let mut backend = Backend {
-        state,
-        built: alloc::string::String::new(),
-        controller: alloc::string::String::new(),
-        profiles: alloc::vec::Vec::new(),
-    };
-    server.handle(request, &mut backend, out)
+    let web = unsafe { web(boot) };
+    web.state.refresh();
+    let mut backend = upload_backend(&web.state, &mut web.upload);
+    web.server.handle(request, &mut backend, out)
 }
 
 /// The largest page asset, for the response buffer the C side allocates.
