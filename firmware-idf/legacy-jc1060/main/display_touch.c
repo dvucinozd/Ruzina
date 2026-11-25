@@ -32,9 +32,8 @@ static esp_lcd_panel_handle_t panel;
 static uint16_t *frame;
 static bool pwm_ready;
 #if CONFIG_RUZINA_SLINT_UI
-/* The deck screen draws into the buffer the panel does not show, then swaps them at the
-   end of a refresh, so the panel never shows a half-drawn frame. */
-static uint16_t *back_frame;
+/* The deck screen draws into the one frame buffer the panel shows; its lanes move at each
+   refresh in their own task (`lane_task`). */
 static SemaphoreHandle_t refreshed;
 static volatile uint32_t refreshes;
 static ppa_client_handle_t mover;
@@ -50,8 +49,6 @@ static IRAM_ATTR bool frame_done(esp_lcd_panel_handle_t panel_handle, esp_lcd_dp
     if (lane_task_handle) vTaskNotifyGiveFromISR(lane_task_handle, &woken);
     return woken == pdTRUE;
 }
-
-uint16_t *ruzina_panel_back(void) { return back_frame; }
 
 /* Panel refreshes since start, about 61 a second: the clock the waveforms scroll by. */
 uint32_t ruzina_panel_refreshes(void) { return refreshes; }
@@ -199,38 +196,48 @@ static bool copy_begin(uint32_t slot, const uint16_t *from, uint32_t from_h, uin
    the deck screen's frames, they still jerked.
    The deck screen draws the cache ahead (`ruzina_lanes_publish`) and keeps its columns in
    memory: it writes them through the PPA, and nothing writes the lanes' rows of the
-   frame from the CPU, so neither copy needs its cache lines synced. */
+   frame from the CPU, so neither copy needs its cache lines synced.
+   Each lane has two caches: the front one the screen tops up, and a spare one. A window
+   drawn anew (a new track, zoom, pitch or a jump) goes into the spare one, which then
+   becomes the front, so the lanes never miss a refresh for it; on s197p they missed about
+   one in 18 s, and each change of the pitch fader held the phase strip. While a loop
+   runs, the spare one holds the window from the loop's start, ready for when the loop
+   goes round. */
 #define LANE_SLOTS COPY_SLOTS
 #define LANES 4                  /* both decks' waveforms, then both halves of the phase strip */
 #define LINE_US 26               /* one of the panel's 635 lines at 61 refreshes a second */
 #define BLANK_US 900             /* the blanking between a refresh's end and line 0 */
+/* A lane as the deck screen publishes it (`LaneModel` in slint_ui.rs, the same layout). */
 typedef struct {
-    bool shown;
-    int64_t lo, hi;              /* the track pixels the cache holds */
+    int64_t lo, hi;              /* the track pixels the front cache holds */
+    int64_t spare_lo, spare_hi;  /* and the spare one, at the same scale; empty when lo == hi */
     int64_t anchor_us;           /* when the deck was at `anchor_track_us` (esp_timer) */
     int64_t anchor_track_us;
-    int32_t rate_x10000;         /* 10000 at normal speed; 0 when the deck stands */
     int64_t loop_from_us, loop_to_us; /* a running loop, or both 0 */
+    int32_t rate_x10000;         /* 10000 at normal speed; 0 when the deck stands */
     uint32_t window_ms;
     uint32_t revision;           /* bumped when shown columns change */
+    uint8_t front;               /* which cache is the front one: 0 or 1 */
+    bool shown;
 } lane_model_t;
+_Static_assert(sizeof(lane_model_t) == 80, "lane_model_t must match LaneModel in slint_ui.rs");
 static lane_model_t lane_models[LANES];
 static portMUX_TYPE lane_lock = portMUX_INITIALIZER_UNLOCKED;
-static uint16_t *lane_caches[LANES];
+static uint16_t *lane_caches[LANES][2];
 static uint16_t *lane_frame;
 static uint32_t lane_count, lane_x, lane_y[LANES], lane_h[LANES], lane_w, lane_playhead;
 
 static int64_t floor_div(int64_t a, int64_t b) { return a / b - (a % b != 0 && (a < 0) != (b < 0)); }
 
-/* Copies screen columns [s, e) of lane `d` from its cache, the lane's left edge
-   at track pixel `left`, in one or two blocks; returns the next free slot. */
-static uint32_t lane_copy(int d, int64_t left, uint32_t s, uint32_t e, uint32_t slot)
+/* Copies screen columns [s, e) of lane `d` from `cache`, the lane's left edge at track
+   pixel `left`, in one or two blocks; returns the next free slot. */
+static uint32_t lane_copy(int d, const uint16_t *cache, int64_t left, uint32_t s, uint32_t e, uint32_t slot)
 {
     while (s < e && slot < LANE_SLOTS) {
         const int64_t c = ((left + s) % 1024 + 1024) % 1024;
         uint32_t n = e - s;
         if (c + n > 1024) n = (uint32_t)(1024 - c);
-        if (!copy_begin(slot, lane_caches[d], lane_h[d], (uint32_t)c, 0, lane_frame, 600,
+        if (!copy_begin(slot, cache, lane_h[d], (uint32_t)c, 0, lane_frame, 600,
                         lane_x + s, lane_y[d], n, lane_h[d])) break;
         slot++;
         s += n;
@@ -243,6 +250,7 @@ static void lane_task(void *arg)
     (void)arg;
     int64_t shown_left[LANES];
     uint32_t shown_revision[LANES] = {0};
+    const uint16_t *shown_cache[LANES] = {0};
     for (int d = 0; d < LANES; d++) shown_left[d] = INT64_MIN;
 #if CONFIG_RUZINA_UAC_PROFILE
     uint32_t refreshes_seen = 0, copies = 0, misses = 0, start_max = 0, done_max = 0;
@@ -267,18 +275,23 @@ static void lane_task(void *arg)
             if (m.loop_to_us > m.loop_from_us && track_us >= m.loop_to_us)
                 track_us = m.loop_from_us + (track_us - m.loop_from_us) % (m.loop_to_us - m.loop_from_us);
             const int64_t left = floor_div(track_us * lane_w, (int64_t)m.window_ms * 1000) - lane_playhead;
-            if (left < m.lo || left + lane_w > m.hi) {
+            /* The front cache, or the spare one: a loop gone round. */
+            const uint16_t *cache = NULL;
+            if (left >= m.lo && left + lane_w <= m.hi) cache = lane_caches[d][m.front & 1];
+            else if (left >= m.spare_lo && left + lane_w <= m.spare_hi) cache = lane_caches[d][~m.front & 1];
+            if (!cache) {
 #if CONFIG_RUZINA_UAC_PROFILE
                 misses++;
 #endif
                 continue;
             }
-            if (left == shown_left[d] && m.revision == shown_revision[d]) continue;
+            if (left == shown_left[d] && m.revision == shown_revision[d] && cache == shown_cache[d]) continue;
             /* Left of the playhead's three columns, then right of them. */
-            slot = lane_copy(d, left, 0, lane_playhead - 1, slot);
-            slot = lane_copy(d, left, lane_playhead + 2, lane_w, slot);
+            slot = lane_copy(d, cache, left, 0, lane_playhead - 1, slot);
+            slot = lane_copy(d, cache, left, lane_playhead + 2, lane_w, slot);
             shown_left[d] = left;
             shown_revision[d] = m.revision;
+            shown_cache[d] = cache;
         }
 #if CONFIG_RUZINA_UAC_PROFILE
         const uint32_t started = (uint32_t)(esp_timer_get_time() - now);
@@ -309,8 +322,8 @@ static void lane_task(void *arg)
 
 /* Starts the lanes: lane `d` of `count` is `w` by `h[d]` pixels at (x, y[d]) of `frame`,
    the shown frame buffer, with its playhead in columns playhead - 1 to playhead + 1. Makes
-   each lane's cache, 1024 by h[d] pixels, and returns them in `caches`; false if they or the
-   task cannot be had. */
+   each lane's two caches, 1024 by h[d] pixels, and returns them in `caches` (lane d's at
+   2d and 2d + 1); false if they or the task cannot be had. */
 bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t w, uint32_t playhead, uint32_t count,
                         const uint32_t *y, const uint32_t *h, uint16_t **caches)
 {
@@ -318,9 +331,11 @@ bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t w, uint32_t playhe
     if (w > 1024 || playhead < 1 || playhead + 2 > w || !copy_ready()) return false;
     for (uint32_t d = 0; d < count; d++) {
         if (!h[d] || y[d] + h[d] > 600) return false;
-        lane_caches[d] = heap_caps_aligned_calloc(64, 1024 * h[d], 2, MALLOC_CAP_SPIRAM);
-        if (!lane_caches[d]) return false;
-        caches[d] = lane_caches[d];
+        for (int c = 0; c < 2; c++) {
+            lane_caches[d][c] = heap_caps_aligned_calloc(64, 1024 * h[d], 2, MALLOC_CAP_SPIRAM);
+            if (!lane_caches[d][c]) return false;
+            caches[2 * d + c] = lane_caches[d][c];
+        }
         lane_y[d] = y[d];
         lane_h[d] = h[d];
     }
@@ -333,21 +348,12 @@ bool ruzina_lanes_start(uint16_t *frame, uint32_t x, uint32_t w, uint32_t playhe
     return xTaskCreatePinnedToCore(lane_task, "lanes", 4096, NULL, 6, &lane_task_handle, 1) == pdPASS;
 }
 
-/* Lane `d` from now on: whether it is shown, the track pixels its cache holds, and where
-   its deck is: at `track_us` of the track at esp_timer `at_us`, going at
-   `rate_x10000` / 10000 of normal speed, in a loop from `loop_from_us` to `loop_to_us` (both
-   0 for none). `revision` changes when columns already shown were drawn again. */
-void ruzina_lanes_publish(uint32_t d, bool shown, int64_t lo, int64_t hi, int64_t at_us, int64_t track_us,
-                          int32_t rate_x10000, int64_t loop_from_us, int64_t loop_to_us, uint32_t window_ms,
-                          uint32_t revision)
+/* Lane `d` from now on (`lane_model_t`). */
+void ruzina_lanes_publish(uint32_t d, const lane_model_t *model)
 {
-    if (d >= LANES) return;
+    if (d >= LANES || !model) return;
     portENTER_CRITICAL(&lane_lock);
-    lane_models[d] = (lane_model_t){
-        .shown = shown, .lo = lo, .hi = hi, .anchor_us = at_us, .anchor_track_us = track_us,
-        .rate_x10000 = rate_x10000, .loop_from_us = loop_from_us, .loop_to_us = loop_to_us,
-        .window_ms = window_ms, .revision = revision,
-    };
+    lane_models[d] = *model;
     portEXIT_CRITICAL(&lane_lock);
 }
 
@@ -462,27 +468,17 @@ esp_err_t ruzina_panel_start(void (*fill)(uint16_t *frame), uint16_t **frame_out
     esp_lcd_dpi_panel_config_t dpi = {.virtual_channel=0, .dpi_clk_src=MIPI_DSI_DPI_CLK_SRC_DEFAULT,
         .dpi_clock_freq_mhz=52, .in_color_format=LCD_COLOR_FMT_RGB565,
         .out_color_format=LCD_COLOR_FMT_RGB565,
-#if CONFIG_RUZINA_SLINT_UI
-        .num_fbs=2,
-#else
         .num_fbs=1,
-#endif
         .video_timing={.h_size=1024,.v_size=600,.hsync_back_porch=136,.hsync_pulse_width=24,
             .hsync_front_porch=160,.vsync_back_porch=21,.vsync_pulse_width=2,.vsync_front_porch=12}};
     TRY(esp_lcd_new_panel_dpi(bus, &dpi, &panel));
     void *frame_storage = NULL;
+    TRY(esp_lcd_dpi_panel_get_frame_buffer(panel, 1, &frame_storage));
 #if CONFIG_RUZINA_SLINT_UI
-    void *back_storage = NULL;
-    TRY(esp_lcd_dpi_panel_get_frame_buffer(panel, 2, &frame_storage, &back_storage));
-    back_frame = back_storage;
-    fill(back_frame);
-    TRY(esp_cache_msync(back_frame, 1024*600*2, ESP_CACHE_MSYNC_FLAG_DIR_C2M));
     refreshed = xSemaphoreCreateBinary();
     if (!refreshed) { err = ESP_ERR_NO_MEM; goto fail; }
     esp_lcd_dpi_panel_event_callbacks_t callbacks = {.on_frame_buf_complete = frame_done};
     TRY(esp_lcd_dpi_panel_register_event_callbacks(panel, &callbacks, NULL));
-#else
-    TRY(esp_lcd_dpi_panel_get_frame_buffer(panel, 1, &frame_storage));
 #endif
     frame = frame_storage;
     fill(frame);
