@@ -56,10 +56,7 @@ uint16_t *ruzina_panel_back(void) { return back_frame; }
 /* Panel refreshes since start, about 61 a second: the clock the waveforms scroll by. */
 uint32_t ruzina_panel_refreshes(void) { return refreshes; }
 
-/* Copies the block at (x + dx, y), `w - dx` by `h` pixels, of frame buffer `from` to
-   (x, y) of frame buffer `to`, in hardware: the waveform scrolls by `dx` columns without
-   the CPU touching its pixels. The PPA driver writes `from` back from cache first and
-   invalidates the rows of `to`, so the caller writes those rows back before. */
+/* The PPA's client for the blits into frames and lane caches. */
 static bool mover_ready(void)
 {
     if (!mover) {
@@ -72,10 +69,8 @@ static bool mover_ready(void)
 /* A lane move as a plain 2D-DMA memory-to-memory copy. The PPA's SRM engine moved a lane
    (811 by 220 pixels) in 8.1 ms on s190p, its cache work taking under 0.05 ms: the scaling
    engine is the bottleneck, not the memory. The 2D-DMA copies the same block without it,
-   in 2.5 ms on s191p. Up to twelve copies at a time, one in each slot, from one task at a
-   time: the lanes' task (`lane_task`), or before it the deck screen. Each slot's
-   descriptors and transaction are kept. Falls back to the PPA if the 2D-DMA cannot be
-   had. */
+   in 2.5 ms on s191p. Up to twelve copies at a time, one in each slot, all from the lanes'
+   task (`lane_task`). Each slot's descriptors and transaction are kept. */
 #define COPY_SLOTS 12
 static dma2d_pool_handle_t copy_pool;
 static dma2d_descriptor_t *copy_tx[COPY_SLOTS], *copy_rx[COPY_SLOTS];
@@ -84,18 +79,12 @@ static dma2d_trans_config_t copy_job[COPY_SLOTS];
 static SemaphoreHandle_t copy_done[COPY_SLOTS];
 static bool copy_busy[COPY_SLOTS];
 static bool copy_failed;
-#if CONFIG_RUZINA_UAC_PROFILE
-static volatile int64_t copy_begun[COPY_SLOTS], copy_ended[COPY_SLOTS];
-#endif
 
 static bool copy_eof(dma2d_channel_handle_t chan, dma2d_event_data_t *event, void *user)
 {
     (void)chan;
     (void)event;
     const uintptr_t slot = (uintptr_t)user;
-#if CONFIG_RUZINA_UAC_PROFILE
-    copy_ended[slot] = esp_timer_get_time();
-#endif
     BaseType_t woken = pdFALSE;
     xSemaphoreGiveFromISR(copy_done[slot], &woken);
     return woken == pdTRUE;
@@ -194,121 +183,9 @@ static bool copy_begin(uint32_t slot, const uint16_t *from, uint32_t from_h, uin
         .on_job_picked = copy_picked, .user_config = (void *)(uintptr_t)slot,
     };
     xSemaphoreTake(copy_done[slot], 0);
-#if CONFIG_RUZINA_UAC_PROFILE
-    copy_begun[slot] = esp_timer_get_time();
-#endif
     if (dma2d_enqueue(copy_pool, &copy_job[slot], (dma2d_trans_t *)copy_slot[slot]) != ESP_OK) return false;
     copy_busy[slot] = true;
     return true;
-}
-
-/* Copies the block at once, in slot 0. */
-static bool dma2d_block_copy(const uint16_t *from, uint32_t fx, uint32_t fy, uint16_t *to, uint32_t tx,
-                             uint32_t ty, uint32_t w, uint32_t h)
-{
-    return copy_begin(0, from, 600, fx, fy, to, 600, tx, ty, w, h) && copy_end(0);
-}
-
-int32_t ruzina_panel_move(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
-                          uint32_t w, uint32_t h, uint32_t dx)
-{
-    if (dx >= w) return -1;
-#if CONFIG_RUZINA_UAC_PROFILE
-    static uint32_t dma_moves, dma_samples, dma_us, dma_max_us;
-    const int64_t dma_start = esp_timer_get_time();
-#endif
-    if (dma2d_block_copy(from, x + dx, y, to, x, y, w - dx, h)) {
-#if CONFIG_RUZINA_UAC_PROFILE
-        /* Profile images: the copy's time, the means of every 16th of 32 samples. */
-        if ((dma_moves++ & 15) == 0) {
-            const uint32_t took = (uint32_t)(esp_timer_get_time() - dma_start);
-            dma_us += took;
-            if (took > dma_max_us) dma_max_us = took;
-            if (++dma_samples == 32) {
-                printf("panel_move via=dma2d samples=32 w=%" PRIu32 " h=%" PRIu32 " copy_us=%" PRIu32
-                       " copy_max_us=%" PRIu32 "\n", w - dx, h, dma_us / 32, dma_max_us);
-                dma_samples = dma_us = dma_max_us = 0;
-            }
-        }
-#endif
-        return 0;
-    }
-    if (!mover_ready()) return -1;
-    ppa_srm_oper_config_t move = {
-        .in = {.buffer = from, .pic_w = 1024, .pic_h = 600, .block_w = w - dx, .block_h = h,
-               .block_offset_x = x + dx, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
-        .out = {.buffer = to, .buffer_size = 1024 * 600 * 2, .pic_w = 1024, .pic_h = 600,
-                .block_offset_x = x, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
-        .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
-        .mode = PPA_TRANS_MODE_BLOCKING,
-    };
-#if CONFIG_RUZINA_UAC_PROFILE
-    /* Profile images: every 16th move, where its time goes. The cache write-back of the
-       rows read and the invalidation of the rows written run first, timed, as the PPA
-       driver runs them; the driver's own then find the lines done, so the move's time
-       that follows is the copy itself. The means print every 32 samples. */
-    static uint32_t moves, samples, c2m_us, m2c_us, copy_us, copy_max_us;
-    if ((moves++ & 15) == 0) {
-        const int64_t t0 = esp_timer_get_time();
-        esp_cache_msync((void *)(from + y * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
-        const int64_t t1 = esp_timer_get_time();
-        esp_cache_msync((void *)(to + y * 1024), 1024 * h * 2, ESP_CACHE_MSYNC_FLAG_DIR_M2C);
-        const int64_t t2 = esp_timer_get_time();
-        const bool ok = ppa_do_scale_rotate_mirror(mover, &move) == ESP_OK;
-        const uint32_t copy = (uint32_t)(esp_timer_get_time() - t2);
-        c2m_us += (uint32_t)(t1 - t0);
-        m2c_us += (uint32_t)(t2 - t1);
-        copy_us += copy;
-        if (copy > copy_max_us) copy_max_us = copy;
-        if (++samples == 32) {
-            printf("panel_move via=ppa samples=32 w=%" PRIu32 " h=%" PRIu32 " c2m_us=%" PRIu32 " m2c_us=%" PRIu32
-                   " copy_us=%" PRIu32 " copy_max_us=%" PRIu32 "\n",
-                   w - dx, h, c2m_us / 32, m2c_us / 32, copy_us / 32, copy_max_us);
-            samples = c2m_us = m2c_us = copy_us = copy_max_us = 0;
-        }
-        return ok ? 0 : -1;
-    }
-#endif
-    return ppa_do_scale_rotate_mirror(mover, &move) == ESP_OK ? 0 : -1;
-}
-
-/* Starts moving the w by h block at (x, y) of frame buffer `to` left by dx columns, from the
-   same block of frame buffer `from`, by the 2D-DMA in `slot` (0 or 1); 0 once started, -1
-   if not (the caller then moves it with ruzina_panel_move). Until ruzina_panel_move_finish
-   the CPU must leave the block's rows of `to` alone. */
-int32_t ruzina_panel_move_start(const uint16_t *from, uint16_t *to, uint32_t x, uint32_t y,
-                                uint32_t w, uint32_t h, uint32_t dx, uint32_t slot)
-{
-    if (dx >= w) return -1;
-    return copy_begin(slot, from, 600, x + dx, y, to, 600, x, y, w - dx, h) ? 0 : -1;
-}
-
-/* Waits for the move started in `slot`: 0 once it is done, -1 if it failed (the caller then
-   draws the block whole). */
-int32_t ruzina_panel_move_finish(uint32_t slot)
-{
-    if (slot >= COPY_SLOTS) return -1;
-#if CONFIG_RUZINA_UAC_PROFILE
-    /* Profile images: each copy's time from its start to its end, and how long the screen
-       still waited for it; the means of every 8th of 32 samples. */
-    static uint32_t finishes, samples, copy_us, wait_us, wait_max_us;
-    const int64_t waiting = esp_timer_get_time();
-    const bool done = copy_end(slot);
-    if (done && (finishes++ & 7) == 0) {
-        const uint32_t waited = (uint32_t)(esp_timer_get_time() - waiting);
-        copy_us += (uint32_t)(copy_ended[slot] - copy_begun[slot]);
-        wait_us += waited;
-        if (waited > wait_max_us) wait_max_us = waited;
-        if (++samples == 32) {
-            printf("panel_move via=dma2d-async samples=32 copy_us=%" PRIu32 " wait_us=%" PRIu32
-                   " wait_max_us=%" PRIu32 "\n", copy_us / 32, wait_us / 32, wait_max_us);
-            samples = copy_us = wait_us = wait_max_us = 0;
-        }
-    }
-    return done ? 0 : -1;
-#else
-    return copy_end(slot) ? 0 : -1;
-#endif
 }
 
 /* The lanes as the donor draws them. Each deck's waveform is drawn ahead into a ring
@@ -507,8 +384,8 @@ uint16_t *ruzina_panel_strip(uint32_t pixels)
 }
 
 /* Copies the `w` by `h` pixels at column `from_x` of `from`, `from_w` to a row, to (x, y)
-   of frame buffer `to`, in hardware. As for ruzina_panel_move, the PPA driver invalidates
-   the rows of `to`, so the caller writes them back before. */
+   of frame buffer `to`, in hardware. The PPA driver invalidates the rows of `to`, so the
+   caller writes them back before. */
 int32_t ruzina_panel_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *to,
                           uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
@@ -531,14 +408,6 @@ void ruzina_panel_wait_refresh(void)
     xSemaphoreTake(refreshed, pdMS_TO_TICKS(50));
 }
 
-/* Shows `buffer` from the next refresh on and waits until it is on the panel, so the
-   other buffer is free to draw into. The caller wrote its changed rows back from cache. */
-void ruzina_panel_present(uint16_t *buffer)
-{
-    xSemaphoreTake(refreshed, 0);
-    esp_lcd_panel_draw_bitmap(panel, 0, 0, 1, 1, buffer);
-    xSemaphoreTake(refreshed, pdMS_TO_TICKS(50));
-}
 #endif
 
 static esp_err_t brightness(unsigned duty)

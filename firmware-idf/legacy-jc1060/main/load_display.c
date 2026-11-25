@@ -418,10 +418,11 @@ esp_err_t ruzina_load_display_start(void)
     esp_err_t err = ruzina_panel_start(dark, &frame);
     if (err != ESP_OK) return err;
 #if CONFIG_RUZINA_SLINT_UI
-    /* On the other core from USB audio, above the SD owner (3): a late frame shows as a
-       jerk, while the decoders have over a second of ring to cover the few milliseconds
-       of CPU a frame takes (the PPA moves the waveforms). Stack in internal RAM: the
-       Slint renderer recurses per item, and the waveform columns live there. */
+    /* On the other core from USB audio, above the SD owner (3): the decoders have over a
+       second of ring to cover the few milliseconds of CPU a frame takes. The lanes move in
+       their own task above this one, at each refresh (display_touch.c, `lane_task`).
+       Stack in internal RAM: the Slint renderer recurses per item, and the waveform
+       columns live there. */
     (void)ui_task;
     /* The Slint task reads the touch controller itself, so it starts first. */
     err = ruzina_touch_start();
