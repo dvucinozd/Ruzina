@@ -123,9 +123,11 @@ const BEAT_LINE: u16 = rgb(0x38, 0x25, 0x1e);
 const BAR_LINE: u16 = rgb(0x57, 0x4b, 0x45);
 const PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
 const PLAYHEAD_X: usize = LANE_WIDTH / 2;
-/// Refreshes per frame: 30 frames a second, each shown exactly two refreshes after the
-/// last.
-const REFRESHES_PER_FRAME: u32 = 2;
+/// Refreshes per frame: 61 frames a second, each shown at the refresh after the last. With
+/// the lanes moved by the 2D-DMA (2.5 ms each instead of the PPA's 8.1 ms) and Slint drawing
+/// only on change, a frame's work fits one refresh (16.4 ms); at two, a lane at the largest
+/// zoom stepped about 30 pixels a frame and the owner saw it stutter.
+const REFRESHES_PER_FRAME: u32 = 1;
 /// Half the mini overview's height, for a full-scale column.
 const MINI_HALF: u32 = 21;
 const PLAYED_SHADE: u16 = rgb(0x38, 0x25, 0x1e);
