@@ -80,6 +80,8 @@ def main():
     parser.add_argument('--version', default='',
                         help="The image's version in its app description (printable ASCII, no spaces, under 32 "
                              "bytes), e.g. the build's name; the Web Remote shows it and a firmware bundle names it")
+    parser.add_argument('--usb-debug', action='store_true',
+                        help="Diagnostic: the USB host's hub, port and enumeration logs at debug level")
     args = parser.parse_args()
     if args.version and (len(args.version) > 31 or not all(0x21 <= ord(ch) <= 0x7e for ch in args.version)):
         raise ValueError('--version must be 1..31 printable ASCII characters without spaces')
@@ -246,6 +248,8 @@ def main():
         defaults += [APP / 'sdkconfig.usb-stick.defaults']
     if args.contention_bench:
         defaults += [APP / 'sdkconfig.contention-bench.defaults']
+    if args.usb_debug:
+        defaults += [APP / 'sdkconfig.usb-debug.defaults']
     os.environ['IDF_PATH'] = str(idf)
     os.environ['ESP_IDF_VERSION'] = '6.1'
     # Offline build: vendored components only; the component manager would
@@ -466,6 +470,7 @@ def main():
                     wifi=args.wifi,
                     version=args.version,
                     usb_stick=args.usb_stick,
+                    usb_debug=args.usb_debug,
                     # The explicit --config override only; empty does not mean a lower opt-level
                     # (rust-core/Cargo.toml sets 3 for nanomp3-core and nanoaudio-mp3 either way).
                     rust_release_overrides={'nanomp3-core': {'opt-level': 3}} if args.mp3_core_opt3 else {},
