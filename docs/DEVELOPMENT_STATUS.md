@@ -115,7 +115,13 @@ them. The owner's listening checks are separate, shorter runs. The
   - **s208p, profile image of #173** (10 minutes, Master Tempo for the last part;
     [profiles and fixes](reviews/2026-11-25-profiles-and-polish.md)): Master Tempo fills
     13.1 % over 3 ms, longest 5.14 ms; plain fills 0.1 %, longest 3.94 ms.
-  - The GUI pass's images (s214 to s229) were not measured in play.
+  - **s230p, profile image of main `9e1dec8`** (the GUI pass; 8 minutes, two 44.1 kHz
+    tracks, no FX, on the overview, 4 minutes without Master Tempo and 4 with it):
+    Master Tempo fills 7.6 % over 3 ms, longest 4.37 ms; plain fills 0.2 %, longest
+    3.85 ms; 0/0 underruns, no lane misses. Slint now takes about 3.2 ms a frame on the
+    overview (s208p: 0.14 ms), about 58 frames a second; the lanes are copied at every
+    refresh. A first run with a 48 kHz track and the Library open is not comparable
+    (20.3 % over 3 ms, longest 4.74 ms).
 - **Screen:**
   - The lanes and the phase strip move at every refresh
     ([smooth lanes](reviews/2026-11-25-smooth-lanes.md)).
