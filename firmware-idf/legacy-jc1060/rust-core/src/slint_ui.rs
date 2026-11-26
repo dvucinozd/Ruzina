@@ -1956,12 +1956,17 @@ type LibraryState = (
 ///
 /// The page's model lasts: only the lines that differ are replaced, so moving the
 /// selection redraws two rows, not the page.
+///
+/// Returns whether any row changed, and the count to show under the buttons ("3 / 25").
+/// The caller shows the count only in a frame where no row changes: Slint keeps at most a
+/// few dirty rectangles, and a row and the count, drawn in one frame, merged into one
+/// that took every row between them, 45 to 70 ms a step (s208p, s230p).
 fn show_library(
     ui: &Overview,
     model: &slint::VecModel<LibraryLine>,
     rows: &[LibraryRow],
     state: LibraryState,
-) {
+) -> (bool, Option<slint::SharedString>) {
     use deck_view::{Level, Row};
     use slint::Model;
     let (_, _, level, first, selected, decks, gone, _, reference_key) = state;
@@ -2023,16 +2028,20 @@ fn show_library(
         })
     });
     let mut count = 0;
+    let mut changed = false;
     for (row, line) in lines.enumerate() {
         count = row + 1;
         if row >= model.row_count() {
             model.push(line);
+            changed = true;
         } else if model.row_data(row).as_ref() != Some(&line) {
             model.set_row_data(row, line);
+            changed = true;
         }
     }
     while model.row_count() > count {
         model.remove(model.row_count() - 1);
+        changed = true;
     }
     // The media went away: the rows stay as they were read, but none of them loads. A USB
     // stick put back is read again from the start; an SD card needs an app restart.
@@ -2049,13 +2058,13 @@ fn show_library(
         );
         ui.set_library_heading("MEDIA REMOVED".into());
         ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
-        return;
+        return (changed, None);
     }
-    ui.set_library_count(match selected {
+    let count_text = match selected {
         Some(index) => alloc::format!("{} / {}", index + 1, len).into(),
         None if level == Level::All => "NO TRACKS".into(),
         None => "EMPTY".into(),
-    });
+    };
     let mut heading = alloc::string::String::from(match level {
         Level::All => "ALL TRACKS",
         Level::Top | Level::Node(_) => "PLAYLISTS",
@@ -2066,6 +2075,7 @@ fn show_library(
     }
     ui.set_library_heading(heading.into());
     ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
+    (changed, Some(count_text))
 }
 
 /// The Library page's first row: when the selection leaves the page, the list turns a
@@ -2341,6 +2351,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     });
     let mut library_version = 0u32;
     let mut shown_library: Option<LibraryState> = None;
+    // The Library's count, waiting for a frame in which no row changes (`show_library`).
+    let mut pending_count: Option<slint::SharedString> = None;
     let mut view_version = 0u32;
     let mut shown_view = None;
     let library_model = Rc::new(slint::VecModel::<LibraryLine>::default());
@@ -2723,9 +2735,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
                 view_version,
                 reference_key,
             );
+            let mut rows_changed = false;
             if shown_library != Some(state) {
-                show_library(&ui, &library_model, &library.rows, state);
+                let (changed, count) = show_library(&ui, &library_model, &library.rows, state);
+                rows_changed = changed;
+                if count.is_some() {
+                    pending_count = count;
+                }
                 shown_library = Some(state);
+            }
+            if !rows_changed && let Some(count) = pending_count.take() {
+                ui.set_library_count(count);
             }
         }
         let fx = FxSnapshot::unpack(deck_view::FX.load(core::sync::atomic::Ordering::Relaxed));
