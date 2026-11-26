@@ -118,11 +118,18 @@ const DIRECT: [Area; 7] = [
 /// The Library, Hot Cues, Settings and FX pages cover the lanes and meters; Rust then draws only
 /// the overviews.
 const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
-/// The cover's lit letter moves one letter on each step.
-const COVER_STEP_MS: u64 = 120;
-/// The cover's word has six letters; its lit letter runs from two before the first to two
-/// past the last.
-const COVER_HEADS: u64 = 6 + 5;
+/// The cover's shine: one sweep across the word every `SHINE_PERIOD_MS`, taking
+/// `SHINE_SWEEP_MS`, from `SHINE_FROM` to `SHINE_TO` pixels from the word's left edge (the
+/// word is 720 px wide; the band's soft edges start and end off it).
+const SHINE_PERIOD_MS: u64 = 4_000;
+const SHINE_SWEEP_MS: u64 = 2_500;
+const SHINE_FROM: i64 = -150;
+const SHINE_TO: i64 = 720 + 150;
+/// Between sweeps the shine rests off the word.
+const SHINE_OFF: i32 = -1_000;
+/// The screensaver's sayings: one a minute, of three.
+const QUOTE_MS: u64 = 60_000;
+const QUOTES: u64 = 3;
 /// The Library page's rows.
 const LIBRARY_ROWS: u32 = 12;
 // The owner's Rust palette (`docs/reviews/2026-11-21-rust-palette.md`). The main
@@ -2288,7 +2295,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     let mut backlight_shown = crate::deck_settings::current().backlight_percent;
     let mut was_covered = false;
     let mut shown_cover = Cover::Boot;
-    let mut shown_head = None;
+    let mut shown_shine = SHINE_OFF;
+    let mut shown_quote = 0;
     let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over the shown frame buffer.
     let frame = unsafe { core::slice::from_raw_parts_mut(shown, WIDTH * HEIGHT) };
@@ -2429,13 +2437,22 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
             shown_cover = cover;
         }
         let hidden = cover != Cover::None;
-        // The letters move on the boot screen and screensaver; under UPDATING FIRMWARE
-        // they stand still, so nothing is drawn after it.
-        let head = (hidden && cover != Cover::Updating)
-            .then(|| ((ms / COVER_STEP_MS) % COVER_HEADS) as i32 - 2);
-        if head != shown_head {
-            ui.set_cover_head(head.unwrap_or(0));
-            shown_head = head;
+        // The shine slides across the word on the boot screen and screensaver; under
+        // UPDATING FIRMWARE nothing moves, so nothing is drawn after it.
+        let shine = (hidden && cover != Cover::Updating)
+            .then_some(ms % SHINE_PERIOD_MS)
+            .filter(|&at| at < SHINE_SWEEP_MS)
+            .map_or(SHINE_OFF, |at| {
+                (SHINE_FROM + (SHINE_TO - SHINE_FROM) * at as i64 / SHINE_SWEEP_MS as i64) as i32
+            });
+        if shine != shown_shine {
+            ui.set_cover_shine(shine);
+            shown_shine = shine;
+        }
+        let quote = ((ms / QUOTE_MS) % QUOTES) as i32;
+        if cover == Cover::Screensaver && quote != shown_quote {
+            ui.set_cover_quote(quote);
+            shown_quote = quote;
         }
         for deck in 0..2 {
             if let Some(track) = deck_view::take_track(deck) {
@@ -2673,13 +2690,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
         gate.run(Step::Slint, || {
             window.draw_if_needed(|renderer| {
                 // Made in its own crate, built for speed (`ruzina-screen-lines`). Its lines
-                // go through the strip and the PPA, off the CPU's writes to PSRAM.
-                let stage = strip
-                    .as_deref_mut()
-                    .map(|pixels| ruzina_screen_lines::Stage {
+                // go through the strip and the PPA, off the CPU's writes to PSRAM. Under
+                // the boot screen, screensaver and UPDATING FIRMWARE no deck plays, so the
+                // CPU writes the frame itself: the shine's small copies, one each refresh,
+                // left a PPA copy that never ended and the screen standing still (s214,
+                // s215d: 58 copies begun, 57 done).
+                let stage = strip.as_deref_mut().filter(|_| !hidden).map(|pixels| {
+                    ruzina_screen_lines::Stage {
                         pixels,
                         copy: copy_block,
-                    });
+                    }
+                });
                 let lines =
                     ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us, stage);
                 drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));

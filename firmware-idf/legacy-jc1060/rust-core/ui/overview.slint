@@ -1004,9 +1004,11 @@ export component Overview inherits Window {
     // Over everything: 0 nothing, 1 the boot screen, 2 the screensaver, 3 a firmware
     // update being written (`screen_idle.rs`).
     in property <int> cover: 1;
-    // The cover's lit letter, which moves along the word from before its first letter to
-    // past its last; the letters around it glow less the further they are.
-    in property <int> cover-head;
+    // The shine's centre on the boot screen and screensaver, in pixels from the word's left
+    // edge; it slides across the word and rests off it (-1000) between sweeps.
+    in property <int> cover-shine: -1000;
+    // The screensaver's saying, 0 to 2: it changes every minute.
+    in property <int> cover-quote;
     // How far the other deck's beat is ahead of the master's ("+12 ms"), or a dash.
     in property <string> phase: "—";
 
@@ -1274,12 +1276,12 @@ export component Overview inherits Window {
         text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™▲▼";
     }
 
-    // The boot screen and the screensaver, as the donor's: the owner's RUZINA wordmark, its
-    // letters lit in turn.
+    // The boot screen and the screensaver: the owner's RUZINA wordmark, with a shine that
+    // slides across it. The screensaver is on black, with a saying under the word.
     if root.cover != 0: Rectangle {
         width: 1024px;
         height: 600px;
-        background: #100c08;
+        background: root.cover == 2 ? #000000 : #100c08;
         // Takes every tap: one that wakes the screensaver presses nothing below.
         TouchArea { }
         // The wordmark cut into its letters (`wordmark/make.sh`), side by side as drawn.
@@ -1297,15 +1299,45 @@ export component Overview inherits Window {
                 @image-url("wordmark/A.png"),
             ]: Image {
                 source: letter;
-                opacity: Math.abs(i - root.cover-head) >= 4 ? 0.27 : (255 - Math.abs(i - root.cover-head) * 46) / 255;
+                // A little dimmed, so the shine shows; steady under UPDATING FIRMWARE.
+                opacity: root.cover == 3 ? 1.0 : 0.75;
             }
         }
+        // The shine: the word brightened (`wordmark/shine.py`), seen through a band that
+        // slides across it. Three bands, wide to narrow, each adding some of it, make the
+        // band's edges soft. The word is 720 px wide, from x 152.
+        for band in [120, 80, 40]: Rectangle {
+            visible: root.cover-shine > -500;
+            x: (152 + root.cover-shine - band / 2) * 1px;
+            y: 244px;
+            width: band * 1px;
+            height: 112px;
+            clip: true;
+            opacity: 0.4;
+            Image {
+                x: (band / 2 - root.cover-shine) * 1px;
+                source: @image-url("wordmark/word-shine.png");
+            }
+        }
+        // The owner's sayings, one a minute.
         if root.cover == 2: Text {
-            y: 540px;
+            y: 468px;
             width: 1024px;
-            text: "touch me.....or don't ;)";
+            text: root.cover-quote == 0 ? "“Without music, life would be a mistake.”"
+                : root.cover-quote == 1 ? "“Music is liquid architecture; architecture is frozen music.”"
+                : "“Techno is everything you haven't imagined yet.”";
             color: #a3958e;
-            font-size: 20px;
+            font-size: 22px;
+            horizontal-alignment: center;
+        }
+        if root.cover == 2: Text {
+            y: 506px;
+            width: 1024px;
+            text: root.cover-quote == 0 ? "- Friedrich Nietzsche -"
+                : root.cover-quote == 1 ? "- Goethe -"
+                : "- Jeff Mills -";
+            color: #b7410e;
+            font-size: 16px;
             horizontal-alignment: center;
         }
         if root.cover == 3: Text {
