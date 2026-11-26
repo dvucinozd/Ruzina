@@ -5,12 +5,16 @@ documents link here.
 
 ## The board's images
 
-- **On the board:** s229 (app `f57f5908…`, version `s229`), in slot ota_0. Its firmware
-  is main `9e1dec8`: #175,
-  [the deck screen, page by page](reviews/2026-11-26-gui-pass.md). It is the play image
-  recipe, less `--soak-autoplay`, with `--version s229`, sent from the Web Remote. The
-  owner checked every page on it ("Sve je gotovo"); fills during play were not measured.
+- **On the board:** s232 (app `2779d955…`, version `s232`), in slot ota_0: main `35d0235`
+  with the Library's count drawn apart from its rows (`ogranak/library-redraw`), the play
+  image recipe with `--version s232`, sent from the Web Remote.
 - **Before it:**
+  - s231p (app `c6e44bc2…`), the same firmware as a profile image: no step of the Library's
+    selection over 30 ms (s230p: 44 to 60 ms).
+  - s230p (app `a2bf0b23…`), the profile image of main `9e1dec8`.
+  - s229 (app `f57f5908…`), main `9e1dec8` (#175, [the deck screen, page by
+    page](reviews/2026-11-26-gui-pass.md)); the owner checked every page on it ("Sve je
+    gotovo").
   - s214 to s228, the GUI pass's steps; s215d, s216d and s218d were diagnostic images
     (the screen standing still under the screensaver's shine, and the PPA's time limit).
   - s213 (app `95f00c31…`), the play image of #174. On it the screen held still through
@@ -130,6 +134,11 @@ them. The owner's listening checks are separate, shorter runs. The
   - No lane misses on s208p (they were about once in 80 s), and putting the stick back no
     longer lengthens a fill ([profiles and fixes](reviews/2026-11-25-profiles-and-polish.md)).
   - Slint's scene preparation is still 16 to 26 ms of a big frame (Library, Settings).
+  - A step of the Library's selection drew every row from the selected one down to the
+    count under the buttons ("3 / 25"): Slint merged the two into one dirty rectangle,
+    44 to 60 ms a step (s208p, s230p). The count now waits for a frame without row
+    changes; on s231p no step went over 30 ms. A whole page (a page turn, opening the
+    Library) still takes 60 to 96 ms, about half of it the scene's preparation.
   - A PPA copy that never ended stood the screen still under the screensaver's shine
     (s214). Copies are now waited for 50 ms at most, then the CPU draws; the boot screen,
     screensaver and UPDATING FIRMWARE are drawn by the CPU
