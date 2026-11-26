@@ -2739,9 +2739,10 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
             if shown_library != Some(state) {
                 let (changed, count) = show_library(&ui, &library_model, &library.rows, state);
                 rows_changed = changed;
-                if count.is_some() {
-                    pending_count = count;
-                }
+                // A newer state replaces any count still waiting. With the media gone,
+                // `show_library` has shown its message itself (no count), and a count
+                // left from before must not overwrite it.
+                pending_count = count;
                 shown_library = Some(state);
             }
             if !rows_changed && let Some(count) = pending_count.take() {
