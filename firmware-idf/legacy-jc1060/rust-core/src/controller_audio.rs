@@ -13,7 +13,7 @@
 //! MAIN and the headphones from both decks.
 use core::cell::UnsafeCell;
 use ruzina_audio_dsp::PcmFrame;
-use ruzina_uac::descriptor::{DescriptorError, Rejection, Selected, UsbSpeed, choose};
+use ruzina_uac::descriptor::{DescriptorError, Rejection, Selected, UsbSpeed, choose_preferring};
 #[cfg(all(test, feature = "idf-uac-profile"))]
 use ruzina_uac::descriptor::{parse_playback_formats, select};
 use ruzina_uac::packet::{Cadence, ChannelMap, Pair, pack};
@@ -27,6 +27,14 @@ const SINE_HALF: [i16; 24] = [
 
 /// Frames in the largest 1 ms packet (48 kHz).
 const MAX_FRAMES: usize = 48;
+
+/// The rate tried first: the render rate, or 44.1 kHz to check the
+/// conversion on the board (`uac-44k1`).
+const PREFERRED_RATE: u32 = if cfg!(feature = "uac-44k1") {
+    44_100
+} else {
+    48_000
+};
 
 /// FLX4 four-channel output: MAIN on 1/2, headphones on 3/4.
 const MAIN: Pair = Pair { left: 0, right: 1 };
@@ -110,7 +118,7 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
         UsbSpeed::Full
     };
     with(|state| {
-        let chosen = choose(bytes, speed);
+        let chosen = choose_preferring(bytes, speed, PREFERRED_RATE);
         state.rejection = match chosen {
             Ok(chosen) if chosen.format.channels != 4 => [
                 REJECT_CHANNELS,

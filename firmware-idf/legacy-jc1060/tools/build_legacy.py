@@ -73,6 +73,8 @@ def main():
     parser.add_argument('--contention-bench', action='store_true',
                         help="Profile diagnostic: the boot bench times the fill against the screen's memory work; requires --uac-profile and --slint-ui")
     parser.add_argument('--fill-iram', action='store_true', help='Experiment: the USB audio fill path in internal RAM')
+    parser.add_argument('--uac-44k1', action='store_true',
+                        help='Board check: the controller streams at 44.1 kHz where it can, through the 48 -> 44.1 kHz conversion')
     parser.add_argument('--no-wifi', action='store_true', help="Leave out the deck screen image's Wi-Fi and Web Remote (ESP32-C6 over ESP-Hosted)")
     parser.add_argument('--usb-stick', action='store_true', help='Media from a USB stick behind a hub on the HS port instead of the SD card')
     parser.add_argument('--version', default='',
@@ -87,6 +89,8 @@ def main():
     # profile stays on its own.
     if args.slint_ui and (args.variant != 'deck-engine' or args.producer_profile):
         raise ValueError('The Slint UI diagnostic is deck-engine only and excludes producer profiling')
+    if args.uac_44k1 and (args.variant != 'deck-engine' or args.producer_profile):
+        raise ValueError('The 44.1 kHz board check requires the deck-engine variant')
     if args.usb_stick and args.variant != 'deck-engine':
         raise ValueError('The USB stick media path is deck-engine only')
     if args.soak_autoplay and (args.variant != 'deck-engine' or args.producer_profile):
@@ -171,6 +175,7 @@ def main():
                             + (['idf-slint-ui'] if args.slint_ui else [])
                             + (['idf-screen-still'] if args.screen_still else [])
                             + (['idf-fill-gap-cycle'] if args.fill_gap_cycle else [])
+                            + (['uac-44k1'] if args.uac_44k1 else [])
                             + (['idf-web-remote'] if args.wifi else []))]
     rust(['clippy', *common, '--', '-D', 'warnings'])
     (output / 'rust-build.log').write_text(rust(['build', *(['--verbose'] if args.mp3_core_opt3 else []), *common]))
@@ -457,6 +462,7 @@ def main():
                     fill_gap_cycle=args.fill_gap_cycle,
                     contention_bench=args.contention_bench,
                     fill_iram=args.fill_iram,
+                    uac_44k1=args.uac_44k1,
                     wifi=args.wifi,
                     version=args.version,
                     usb_stick=args.usb_stick,

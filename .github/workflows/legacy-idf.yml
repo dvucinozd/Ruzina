@@ -36,6 +36,9 @@ jobs:
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-deck-play --tests -- -D warnings
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-deck-mix
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-deck-mix --tests -- -D warnings
+          # The 44.1 kHz board check (build_legacy.py --uac-44k1).
+          cargo +1.95.0 test --locked --manifest-path "$manifest" --features "idf-deck-mix uac-44k1"
+          cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features "idf-deck-mix uac-44k1" --tests -- -D warnings
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-deck-engine
           cargo +1.95.0 clippy --locked --manifest-path "$manifest" --features idf-deck-engine --tests -- -D warnings
           cargo +1.95.0 test --locked --manifest-path "$manifest" --features idf-uac-profile

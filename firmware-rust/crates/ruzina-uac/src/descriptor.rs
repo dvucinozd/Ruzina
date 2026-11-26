@@ -297,14 +297,28 @@ pub struct Selected {
 /// Prefers 48 kHz (the render rate), then four channels, then the higher
 /// alternate setting (M2.5 scoring).
 pub fn select(formats: &PlaybackFormats, speed: UsbSpeed) -> Option<Selected> {
+    select_preferring(formats, speed, 48_000)
+}
+
+/// [`select`] with `preferred` (44.1 or 48 kHz) first instead of 48 kHz.
+pub fn select_preferring(
+    formats: &PlaybackFormats,
+    speed: UsbSpeed,
+    preferred: u32,
+) -> Option<Selected> {
+    let rates = if preferred == 44_100 {
+        [44_100, 48_000]
+    } else {
+        [48_000, 44_100]
+    };
     formats
         .as_slice()
         .iter()
         .filter_map(|format| {
-            let rate = [48_000, 44_100]
+            let rate = rates
                 .into_iter()
                 .find(|rate| format.supports(*rate, speed))?;
-            let score = u32::from(rate == 48_000) * 1000
+            let score = u32::from(rate == rates[0]) * 1000
                 + u32::from(format.channels == 4) * 40
                 + u32::from(format.alternate);
             Some((
@@ -394,8 +408,17 @@ impl PlaybackFormat {
 /// alternate's reason is reported before others', the highest alternate's
 /// first: that is the setting the deck would have used.
 pub fn choose(config: &[u8], speed: UsbSpeed) -> Result<Selected, Rejection> {
+    choose_preferring(config, speed, 48_000)
+}
+
+/// [`choose`] with `preferred` first, as [`select_preferring`].
+pub fn choose_preferring(
+    config: &[u8],
+    speed: UsbSpeed,
+    preferred: u32,
+) -> Result<Selected, Rejection> {
     let formats = parse_playback_formats(config).map_err(Rejection::Descriptor)?;
-    if let Some(selected) = select(&formats, speed) {
+    if let Some(selected) = select_preferring(&formats, speed, preferred) {
         return Ok(selected);
     }
     Err(formats
@@ -591,6 +614,33 @@ pub(crate) mod tests {
             assert_eq!(select(&formats, UsbSpeed::Full), None, "{why}");
             assert_eq!(choose(&bytes, UsbSpeed::Full), Err(reason), "{why}");
         }
+    }
+
+    #[test]
+    fn a_preferred_44k1_wins_where_the_alternate_has_it() {
+        let both = controller(&[alternate(1, 1, 4, 2, 16, &[44_100, 48_000], 0x09, 384, 1)]);
+        let formats = parse_playback_formats(&both).unwrap();
+        assert_eq!(select(&formats, UsbSpeed::Full).unwrap().rate, 48_000);
+        assert_eq!(
+            select_preferring(&formats, UsbSpeed::Full, 44_100)
+                .unwrap()
+                .rate,
+            44_100
+        );
+        assert_eq!(
+            choose_preferring(&both, UsbSpeed::Full, 44_100)
+                .unwrap()
+                .rate,
+            44_100
+        );
+        // Without 44.1 kHz the preference falls back to 48 kHz.
+        let only = controller(&[alternate(1, 1, 4, 2, 16, &[48_000], 0x09, 384, 1)]);
+        assert_eq!(
+            choose_preferring(&only, UsbSpeed::Full, 44_100)
+                .unwrap()
+                .rate,
+            48_000
+        );
     }
 
     #[test]

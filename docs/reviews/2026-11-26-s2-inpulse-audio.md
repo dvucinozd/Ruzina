@@ -74,3 +74,32 @@ Steps 4 to 8 are host-tested until the controllers come.
   - A refused interface claim logs its error, instead of nothing:
     `usb_uac interface=… alt=… ep=… mps=… claim=…`.
   - Nothing that streams changes.
+
+## Step 2: 48 → 44.1 kHz in the fill
+
+Branch `ogranak/uac-44k1`, from `main` at `a090534`.
+
+- **`deck_mix`:** a packet for a device at 44.1 kHz now carries the mix. Before
+  this change it was silence.
+  - The packet takes exactly the 48 kHz render frames its 44 or 45 output frames
+    need (`Resampler::input_needed`). MAIN and headphones are converted together,
+    in one four-channel frame, so they share the phase.
+  - Render work per fill stays the same: 6 ms of audio is still 288 render frames.
+  - The resampler and its two 64-frame buffers live in `Mix`, not on the USB
+    callback's stack.
+  - It is dropped at 48 kHz and when the media is muted.
+  - Any rate other than 44.1 or 48 kHz still gets silence.
+- **IRAM:** `--fill-iram` also moves `ruzina_uac::resample` to internal RAM.
+- **Board check without an Inpulse 500:**
+  - `build_legacy.py --uac-44k1` (Cargo feature `uac-44k1`, deck-engine only)
+    makes the deck try 44.1 kHz first. The FLX4 offers it, so the FLX4 then
+    streams through the conversion.
+  - `ruzina-uac` gains `select_preferring` and `choose_preferring` for this;
+    `select` and `choose` still put 48 kHz first.
+  - Play images are built without the flag.
+- **Tests:**
+  - The `deck_mix` test plays 200 packets at 44.1 kHz. Deck 2 comes out at unity
+    on MAIN, and the render takes 48 frames per millisecond.
+  - Back at 48 kHz the resampler is gone; at 96 kHz, 32 kHz and 0 the output is
+    silent.
+  - CI runs the host tests and clippy with `uac-44k1` too.
