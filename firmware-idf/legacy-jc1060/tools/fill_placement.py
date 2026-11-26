@@ -16,6 +16,7 @@ FILL_PATH = re.compile(
     r'|_ZN28ruzina_legacy_idf_core_probe12deck_keylock'
     r'|_ZN12ruzina_mixer'
     r'|_ZN10ruzina_uac6packet'
+    r'|_ZN10ruzina_uac8resample'
     r'|_ZN28ruzina_legacy_idf_core_probe8deck_mix'
     r'|_ZN28ruzina_legacy_idf_core_probe9deck_play6Reader'
     r'|_ZN28ruzina_legacy_idf_core_probe16controller_audio)'

@@ -134,13 +134,41 @@ fn two_decks_mix_through_the_product_graph() {
     run(&mut mix, 100, [true, false]);
     assert_eq!(mix.stats()[1], dry);
 
-    // A device not at 48 kHz gets silence.
-    source(1, 44_100, 9_000, 4_000);
-    let (mut main, mut headphones) = (
-        [PcmFrame { left: 1, right: 1 }; 44],
-        [PcmFrame::default(); 44],
-    );
-    mix.fill(&mut main, &mut headphones, 44_100, [true, true]);
-    assert!(main.iter().all(|f| *f == PcmFrame::default()));
-    assert!(mix.stats()[0] > 0);
+    // A device at 44.1 kHz gets the same mix, converted: deck 2 at unity on
+    // MAIN, every packet exactly its 44 or 45 frames, 48 render frames per ms.
+    source(1, 44_100, 9_000, 40_000);
+    let mut cadence = ruzina_uac::packet::Cadence::new(44_100);
+    let rendered = mix.stats()[0];
+    let mut last = Vec::new();
+    for _ in 0..200 {
+        let frames = cadence.next_frames();
+        let (mut main, mut headphones) = (
+            [PcmFrame { left: 1, right: 1 }; 45],
+            [PcmFrame::default(); 45],
+        );
+        mix.fill(
+            &mut main[..frames],
+            &mut headphones[..frames],
+            44_100,
+            [true, true],
+        );
+        last = main[..frames].iter().map(|f| f.left).collect();
+    }
+    assert!(near(&last, 9_000), "{last:?}");
+    let taken = mix.stats()[0] - rendered;
+    assert!((i64::from(taken) - 9_600).abs() <= 96, "{taken}");
+    assert!(mix.resampler.is_some());
+
+    // Back at 48 kHz the conversion is dropped; any other rate gets silence.
+    let (main, _) = run(&mut mix, 2, [true, true]);
+    assert!(near(&main, 9_000), "{main:?}");
+    assert!(mix.resampler.is_none());
+    for rate in [96_000, 32_000, 0] {
+        let (mut main, mut headphones) = (
+            [PcmFrame { left: 1, right: 1 }; 44],
+            [PcmFrame::default(); 44],
+        );
+        mix.fill(&mut main, &mut headphones, rate, [true, true]);
+        assert!(main.iter().all(|f| *f == PcmFrame::default()), "{rate} Hz");
+    }
 }

@@ -114,6 +114,10 @@ idf-producer-profile = ["idf-deck-engine", "producer-profile"]
 slint-ui = ["deck-engine", "dep:slint", "dep:slint-build", "dep:ruzina-screen-lines"]
 idf-slint-ui = ["idf-deck-engine", "slint-ui"]
 
+# Board check of the 48 -> 44.1 kHz conversion: the controller streams at 44.1 kHz when
+# its alternate offers it (the FLX4 does), as the Inpulse 500 must.
+uac-44k1 = ["deck-mix"]
+
 # Profile diagnostic: the screen stands still every other 30 s, to measure the fill without it.
 screen-still = ["slint-ui", "uac-profile"]
 idf-screen-still = ["idf-slint-ui", "idf-uac-profile", "screen-still"]

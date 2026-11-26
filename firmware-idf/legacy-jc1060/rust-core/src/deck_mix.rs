@@ -8,6 +8,10 @@
 //! headphone mix of the PFL taps and MAIN. The FLX4's mixer controls reach
 //! `ruzina-mixer`'s `MixerState` as on the native firmware.
 //!
+//! A controller that streams at 44.1 kHz (the Inpulse 500 runs only at that
+//! rate) gets the same frames through `ruzina-uac`'s `Resampler`, MAIN and
+//! headphones together, pulled one packet at a time.
+//!
 //! Two departures from the product, for a diagnostic on headphones:
 //! - Master Volume and Headphone Level start at a quarter until each knob
 //!   first moves, instead of the product's full scale.
@@ -24,12 +28,24 @@ use ruzina_audio_runtime::render::{
 };
 use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
 use ruzina_mixer::{MIXER_CONTROL_MAX, MixerState};
+use ruzina_uac::resample::Resampler;
 
 /// Frames per render block: each 6 ms USB transfer of 288 frames takes exactly three,
 /// so every fill renders the same work. 128-frame blocks gave fills of two or three
 /// blocks, and the three-block fills ran over 3 ms.
 pub(crate) const MIX_BLOCK_FRAMES: usize = 96;
 const _: () = assert!(MIX_BLOCK_FRAMES <= RENDER_BLOCK_FRAMES && 288 % MIX_BLOCK_FRAMES == 0);
+
+/// Render frames one resampled packet may take: a 1 ms packet at 44.1 kHz
+/// needs at most 50 (`ruzina-uac` tests), with room for its 45 output frames.
+const RESAMPLE_FRAMES: usize = 64;
+
+/// The one device rate below 48 kHz the deck converts to: the descriptor
+/// selection offers only 44.1 and 48 kHz.
+const CONVERTED_RATE_HZ: u32 = 44_100;
+
+/// MAIN left and right, then headphones left and right.
+type Frame4 = [i16; 4];
 
 /// Fixed headphone headroom on top of the product mix (-12 dB).
 const HEADPHONE_CEILING: f32 = 0.25;
@@ -75,6 +91,11 @@ pub(crate) struct Mix {
     settings: Option<u32>,
     #[cfg(feature = "deck-engine")]
     trim: f32,
+    /// 48 kHz to the device's rate, and the rate it was made for; none at
+    /// 48 kHz. Its buffers live here, not on the USB callback's stack.
+    resampler: Option<(u32, Resampler<4>)>,
+    resample_in: [Frame4; RESAMPLE_FRAMES],
+    resample_out: [Frame4; RESAMPLE_FRAMES],
 }
 
 impl Mix {
@@ -105,6 +126,9 @@ impl Mix {
             settings: None,
             #[cfg(feature = "deck-engine")]
             trim: 1.0,
+            resampler: None,
+            resample_in: [[0; 4]; RESAMPLE_FRAMES],
+            resample_out: [[0; 4]; RESAMPLE_FRAMES],
         }
     }
 
@@ -481,8 +505,8 @@ impl Mix {
         self.engine.transport();
     }
 
-    /// Fills one packet of MAIN and headphone frames; silent unless the
-    /// device runs at the render rate.
+    /// Fills one packet of MAIN and headphone frames: at the render rate as
+    /// they are, at 44.1 kHz through the resampler, silent at any other rate.
     pub(crate) fn fill(
         &mut self,
         main: &mut [PcmFrame],
@@ -504,6 +528,7 @@ impl Mix {
                 pfl.fill(PcmFrame::default());
             }
             self.position = MIX_BLOCK_FRAMES;
+            self.resampler = None;
             if let Some(graph) = self.graph.as_mut() {
                 graph.reset_deck(0);
                 graph.reset_deck(1);
@@ -512,24 +537,90 @@ impl Mix {
             headphones.fill(PcmFrame::default());
             return;
         }
-        if device_rate != RENDER_SAMPLE_RATE_HZ {
+        uac_profile::stage(Stage::Copy);
+        if device_rate == RENDER_SAMPLE_RATE_HZ {
+            self.resampler = None;
+            for (main, headphones) in main.iter_mut().zip(headphones.iter_mut()) {
+                (*main, *headphones) = self.next_frame(playing);
+            }
+        } else if device_rate != CONVERTED_RATE_HZ
+            || !self.fill_resampled(main, headphones, device_rate, playing)
+        {
             main.fill(PcmFrame::default());
             headphones.fill(PcmFrame::default());
-            return;
         }
-        uac_profile::stage(Stage::Copy);
-        for (main, headphones) in main.iter_mut().zip(headphones.iter_mut()) {
-            if self.position >= MIX_BLOCK_FRAMES {
-                self.render(playing);
-            }
-            *main = self.block.main[self.position];
-            let monitor = self.block.headphones[self.position];
-            *headphones = PcmFrame {
+    }
+
+    /// The next 48 kHz MAIN and headphone frame, rendering a block when the
+    /// last one is used up.
+    fn next_frame(&mut self, playing: [bool; 2]) -> (PcmFrame, PcmFrame) {
+        if self.position >= MIX_BLOCK_FRAMES {
+            self.render(playing);
+        }
+        let main = self.block.main[self.position];
+        let monitor = self.block.headphones[self.position];
+        self.position += 1;
+        (
+            main,
+            PcmFrame {
                 left: (f32::from(monitor.left) * HEADPHONE_CEILING) as i16,
                 right: (f32::from(monitor.right) * HEADPHONE_CEILING) as i16,
-            };
-            self.position += 1;
+            },
+        )
+    }
+
+    /// One packet at `device_rate` (44.1 kHz): exactly the render frames it
+    /// needs, converted. False, and nothing taken, when the rate or the packet
+    /// cannot be served.
+    fn fill_resampled(
+        &mut self,
+        main: &mut [PcmFrame],
+        headphones: &mut [PcmFrame],
+        device_rate: u32,
+        playing: [bool; 2],
+    ) -> bool {
+        let frames = main.len().min(headphones.len());
+        if self.resampler.is_none_or(|(rate, _)| rate != device_rate) {
+            self.resampler = Resampler::new(RENDER_SAMPLE_RATE_HZ, device_rate)
+                .ok()
+                .map(|resampler| (device_rate, resampler));
         }
+        let Some(needed) = self
+            .resampler
+            .as_ref()
+            .map(|(_, resampler)| resampler.input_needed(frames))
+            .filter(|needed| *needed <= RESAMPLE_FRAMES && frames <= RESAMPLE_FRAMES)
+        else {
+            return false;
+        };
+        for at in 0..needed {
+            let (main, monitor) = self.next_frame(playing);
+            self.resample_in[at] = [main.left, main.right, monitor.left, monitor.right];
+        }
+        let Some((_, resampler)) = self.resampler.as_mut() else {
+            return false;
+        };
+        let produced = resampler.process(&self.resample_in[..needed], &mut self.resample_out);
+        if produced != Ok(frames) {
+            // Never expected: start the conversion over on the next packet.
+            self.resampler = None;
+            return false;
+        }
+        for ((main, headphones), [ml, mr, hl, hr]) in main
+            .iter_mut()
+            .zip(headphones.iter_mut())
+            .zip(self.resample_out.iter().copied())
+        {
+            *main = PcmFrame {
+                left: ml,
+                right: mr,
+            };
+            *headphones = PcmFrame {
+                left: hl,
+                right: hr,
+            };
+        }
+        true
     }
 
     /// Rendered frames, underrun blocks per deck, buffered frames and rate
