@@ -7,6 +7,8 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "usb/usb_host.h"
+#include "soc/usb_dwc_struct.h"
+#include "usb_fifo.h"
 #include "uac_recovery.h"
 
 /* Isolated USB host diagnostic on the HS (UTMI) port. It logs the device,
@@ -436,8 +438,31 @@ esp_err_t ruzina_usb_host_enum_start(void)
 {
     /* peripheral_map 0 selects the default, high-speed (UTMI) peripheral. The stick and the
      * controller share it behind a hub, so USB Serial/JTAG keeps the FS PHY. */
-    const usb_host_config_t host = {.skip_phy_setup = false, .intr_flags = ESP_INTR_FLAG_LEVEL1};
+    usb_host_config_t host = {.skip_phy_setup = false, .intr_flags = ESP_INTR_FLAG_LEVEL1,
+                              .root_port_unpowered = true};
+    /* esp-usb splits the FIFO only at install, and its total is in the controller's hardware
+     * configuration, readable once installed. A first install leaves the root port unpowered,
+     * so no device is seen, and reads it; the second gives the deck's split (usb_fifo.h). */
     esp_err_t err = usb_host_install(&host);
+    if (err != ESP_OK) return err;
+    const uint32_t fifo_lines = USB_DWC_HS.ghwcfg3_reg.dfifodepth;
+    usb_fifo_plan_t fifo = {0};
+    bool split = usb_fifo_plan(fifo_lines, &fifo);
+    if (split && usb_host_uninstall() == ESP_OK) {
+        host.root_port_unpowered = false;
+        host.fifo_settings_custom.rx_fifo_lines = fifo.rx;
+        host.fifo_settings_custom.nptx_fifo_lines = fifo.nptx;
+        host.fifo_settings_custom.ptx_fifo_lines = fifo.ptx;
+        err = usb_host_install(&host);
+    } else {
+        /* Keep the first install, with esp-usb's own split, and power its root port. */
+        split = false;
+        fifo = (usb_fifo_plan_t){0};
+        err = usb_host_lib_set_root_port_power(true);
+    }
+    printf("S6_USB_FIFO total_lines=%" PRIu32 " split=%s rx=%" PRIu32 " nptx=%" PRIu32 " ptx=%" PRIu32
+           " install=%s\n", fifo_lines, split ? "DECK" : "DEFAULT", fifo.rx, fifo.nptx, fifo.ptx,
+           esp_err_to_name(err));
     if (err != ESP_OK) return err;
 #if CONFIG_RUZINA_MEDIA_USB_STICK
     msc_init(); /* before the client task can bind a stick */
