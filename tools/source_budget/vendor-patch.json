@@ -23,6 +23,10 @@
     "i-slint-renderer-software-1.18.1/draw_functions.rs": {
       "upstream_sha256": "8d79deb5b757b5b2d177c4bca747340d7008b3de618c434300ef875251a7cf12",
       "patched_sha256": "506ff4f2418cfdc0cd5177ac6e041ad0d9a605d6e2dd7353d1c37ae5e28e63d4"
+    },
+    "i-slint-renderer-software-1.18.1/lib.rs": {
+      "upstream_sha256": "b41da29d43b7ab9d0122e50126b4637aec32baac53673341d8d36f44d0dedc74",
+      "patched_sha256": "ae02688ba2c4dcd29850ab2b208a1a786d8b3dfc5a5fed13f271e98a8951a3b7"
     }
   }
 }

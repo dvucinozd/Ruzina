@@ -60,10 +60,17 @@ pub struct Block {
 
 /// Internal RAM to draw lines in, and how its blocks get into the frame: the PPA on the
 /// board, so the CPU does not write PSRAM while the USB audio fill runs on the other core.
-/// `copy` returns false when a block did not get there.
+///
+/// A stage of two lines or more is used in two halves: while a band's blocks copy out of
+/// one, the next band is drawn in the other.
 pub struct Stage<'a> {
     pub pixels: &'a mut [u16],
-    pub copy: fn(&[u16], &mut [u16], Block) -> bool,
+    /// Begins copying a block, once the copy before it has ended; false when it did not
+    /// begin. The copy reads the stage and writes the frame until `wait` returns.
+    pub start: fn(&[u16], &mut [u16], Block) -> bool,
+    /// Waits for the copy begun last; false when it did not end. True when none is under
+    /// way.
+    pub wait: fn() -> bool,
 }
 
 /// Draws what changed into `frame`, `WIDTH` pixels a row, around the `direct` rectangles.
@@ -71,9 +78,10 @@ pub struct Stage<'a> {
 /// `frame` is the buffer the panel is not showing. Slint fills every pixel of each range
 /// it draws, background first. With a `stage`, lines are drawn there, in bands of
 /// consecutive lines with the same columns, and each band's parts outside the
-/// rectangles go to `frame` as blocks. Without one, or once a block fails, the CPU writes
-/// `frame`: a line no rectangle crosses straight, one that a rectangle crosses drawn in
-/// internal RAM and copied out around it.
+/// rectangles go to `frame` as blocks, the last one copying while the next band is drawn.
+/// Without a stage, or once a block fails, the CPU writes `frame`: a line no rectangle
+/// crosses straight, one that a rectangle crosses drawn in internal RAM and copied out
+/// around it. Every copy has ended when `render` returns.
 ///
 /// `clock` gives microseconds; it times the parts of the draw for the slow-frame log.
 #[inline(never)]
@@ -87,7 +95,7 @@ pub fn render(
     let started = clock();
     let mut lines = Lines::new(frame, direct, clock, stage);
     renderer.render_by_line(&mut lines);
-    lines.finish_band();
+    lines.finish();
     if lines.drawn.calls == 0 {
         lines.drawn.prepare_us = (clock() - started) as u32;
     }
@@ -101,7 +109,13 @@ struct Lines<'a, 's> {
     started: u64,
     drawn: Drawn,
     stage: Option<Stage<'s>>,
+    /// The stage's halves (one or two), and the one the band is drawn in.
+    halves: usize,
+    half: usize,
     band: Band,
+    /// The block copying now, and where its band starts in the stage: what the CPU copies
+    /// if it does not end.
+    copying: Option<(usize, Block)>,
 }
 
 /// Consecutive lines drawn in the stage, one after another, `range.len()` pixels each:
@@ -120,6 +134,12 @@ impl<'a, 's> Lines<'a, 's> {
         clock: fn() -> u64,
         stage: Option<Stage<'s>>,
     ) -> Self {
+        // A band tells its lines apart by the rectangles crossing them, one bit each.
+        let stage = stage.filter(|stage| direct.len() <= 32 && stage.pixels.len() >= WIDTH);
+        let halves = match &stage {
+            Some(stage) if stage.pixels.len() >= 2 * WIDTH => 2,
+            _ => 1,
+        };
         Self {
             frame,
             direct,
@@ -137,70 +157,126 @@ impl<'a, 's> Lines<'a, 's> {
                 copy_us: 0,
                 cpu_wrote: false,
             },
-            // A band tells its lines apart by the rectangles crossing them, one bit each.
-            stage: stage.filter(|stage| direct.len() <= 32 && stage.pixels.len() >= WIDTH),
+            stage,
+            halves,
+            half: 0,
             band: Band {
                 first: 0,
                 lines: 0,
                 range: 0..0,
                 crossed: 0,
             },
+            copying: None,
         }
     }
 
-    /// Sends the band's blocks to the frame. A block that fails goes by the CPU instead,
-    /// and so does every line after it: a later block would discard from the cache rows
-    /// the CPU wrote.
+    /// The pixels of one half of the stage.
+    fn half_len(&self) -> usize {
+        self.stage
+            .as_ref()
+            .map_or(0, |stage| stage.pixels.len() / self.halves)
+    }
+
+    /// Sends the band's blocks to the frame and moves to the other half; the last block is
+    /// still copying when this returns.
     fn finish_band(&mut self) {
-        let Lines {
-            frame,
-            direct,
-            clock,
-            drawn,
-            stage,
-            band,
-            ..
-        } = self;
-        if band.lines == 0 {
+        if self.band.lines == 0 || self.stage.is_none() {
             return;
         }
-        let Some(staged) = stage.as_ref() else {
-            return;
-        };
-        let started = clock();
+        let started = (self.clock)();
+        let base = self.half * self.half_len();
+        let band = &self.band;
         let width = band.range.len();
-        let pixels = &staged.pixels[..band.lines * width];
-        let mut failed = false;
-        let mut send = |span: Range<usize>| {
-            let block = Block {
-                stage_width: width,
-                stage_x: span.start - band.range.start,
-                x: span.start,
-                y: band.first,
-                width: span.len(),
-                height: band.lines,
-            };
-            if !failed && (staged.copy)(pixels, frame, block) {
-                return;
-            }
-            failed = true;
-            for row in 0..band.lines {
-                let from = row * width + block.stage_x;
-                let to = (band.first + row) * WIDTH + block.x;
-                frame[to..to + block.width].copy_from_slice(&pixels[from..from + block.width]);
-            }
+        let mut blocks = [Block {
+            stage_width: width,
+            stage_x: 0,
+            x: 0,
+            y: band.first,
+            width: 0,
+            height: band.lines,
+        }; 33];
+        let mut count = 0;
+        let mut add = |span: Range<usize>| {
+            blocks[count].stage_x = span.start - band.range.start;
+            blocks[count].x = span.start;
+            blocks[count].width = span.len();
+            count += 1;
         };
         if band.crossed == 0 {
-            send(band.range.clone());
+            add(band.range.clone());
         } else {
-            outside(direct, band.first, band.range.clone(), send);
+            outside(self.direct, band.first, band.range.clone(), add);
         }
-        band.lines = 0;
-        drawn.copy_us += (clock() - started) as u32;
-        if failed {
-            drawn.cpu_wrote = true;
-            *stage = None;
+        for &block in &blocks[..count] {
+            self.send(base, block);
         }
+        self.band.lines = 0;
+        self.half = (self.half + 1) % self.halves;
+        // With one half, the next band is drawn where this one copies from.
+        if self.halves == 1 {
+            self.settle();
+        }
+        self.leave_if_failed();
+        self.drawn.copy_us += ((self.clock)() - started) as u32;
+    }
+
+    /// Copies a block of the band that starts at `base` in the stage, once the block before
+    /// it has ended. A block that does not begin or end goes by the CPU instead, and so
+    /// does every block after it: a later copy would discard from the cache rows the CPU
+    /// wrote.
+    fn send(&mut self, base: usize, block: Block) {
+        self.settle();
+        let Some(stage) = self.stage.as_ref() else {
+            return;
+        };
+        let pixels = &stage.pixels[base..base + block.height * block.stage_width];
+        if !self.drawn.cpu_wrote && (stage.start)(pixels, self.frame, block) {
+            self.copying = Some((base, block));
+        } else {
+            self.cpu_copy(base, block);
+        }
+    }
+
+    /// Waits for the block copying, if any; one that does not end goes by the CPU.
+    fn settle(&mut self) {
+        let Some((base, block)) = self.copying.take() else {
+            return;
+        };
+        if let Some(stage) = self.stage.as_ref()
+            && !(stage.wait)()
+        {
+            self.cpu_copy(base, block);
+        }
+    }
+
+    /// Copies a block from the stage by the CPU.
+    fn cpu_copy(&mut self, base: usize, block: Block) {
+        let Some(stage) = self.stage.as_ref() else {
+            return;
+        };
+        for row in 0..block.height {
+            let from = base + row * block.stage_width + block.stage_x;
+            let to = (block.y + row) * WIDTH + block.x;
+            self.frame[to..to + block.width]
+                .copy_from_slice(&stage.pixels[from..from + block.width]);
+        }
+        self.drawn.cpu_wrote = true;
+    }
+
+    /// Once the CPU has copied a block, the lines after it are drawn in the frame too.
+    fn leave_if_failed(&mut self) {
+        if self.drawn.cpu_wrote && self.copying.is_none() {
+            self.stage = None;
+        }
+    }
+
+    /// Sends the last band and waits for its copy.
+    fn finish(&mut self) {
+        self.finish_band();
+        let started = (self.clock)();
+        self.settle();
+        self.leave_if_failed();
+        self.drawn.copy_us += ((self.clock)() - started) as u32;
     }
 }
 
@@ -244,7 +320,8 @@ impl LineBufferProvider for &mut Lines<'_, '_> {
         }
         self.drawn.note(line, &range);
         let crossed = crossing(self.direct, line, &range);
-        if let Some(room) = self.stage.as_ref().map(|stage| stage.pixels.len()) {
+        if self.stage.is_some() {
+            let room = self.half_len();
             let width = range.len();
             let band = &self.band;
             let joins = band.lines > 0
@@ -264,8 +341,9 @@ impl LineBufferProvider for &mut Lines<'_, '_> {
                 };
             }
             // A failed block above dropped the stage.
+            let base = self.half * self.half_len();
             if let Some(stage) = self.stage.as_mut() {
-                let at = self.band.lines * width;
+                let at = base + self.band.lines * width;
                 render_fn(pixels_of(&mut stage.pixels[at..at + width]));
                 self.band.lines += 1;
                 self.drawn.lines_us += ((self.clock)() - before) as u32;
@@ -359,17 +437,53 @@ mod tests {
         0
     }
 
-    /// What the PPA does: the block, row by row. Counted, and failing after `LIMIT`.
+    /// What the PPA does: the block, row by row, but only when it is waited for, so a band
+    /// drawn over a half still copying would show. Counted; the start of block `NO_START`
+    /// fails, and so does the wait for block `NO_END`.
     static BLOCKS: AtomicUsize = AtomicUsize::new(0);
-    static LIMIT: AtomicUsize = AtomicUsize::new(usize::MAX);
-    fn copy(stage: &[u16], frame: &mut [u16], block: Block) -> bool {
-        if BLOCKS.fetch_add(1, Ordering::Relaxed) >= LIMIT.load(Ordering::Relaxed) {
+    static NO_START: AtomicUsize = AtomicUsize::new(usize::MAX);
+    static NO_END: AtomicUsize = AtomicUsize::new(usize::MAX);
+    /// The copy begun and not yet waited for: the stage's and frame's addresses, its block
+    /// and its number.
+    static COPYING: std::sync::Mutex<Option<(usize, usize, Block, usize)>> =
+        std::sync::Mutex::new(None);
+    fn start(stage: &[u16], frame: &mut [u16], block: Block) -> bool {
+        let mut copying = COPYING.lock().unwrap();
+        assert!(
+            copying.is_none(),
+            "a copy began before the one before it ended"
+        );
+        let number = BLOCKS.fetch_add(1, Ordering::Relaxed);
+        if number == NO_START.load(Ordering::Relaxed) {
+            return false;
+        }
+        assert!(block.height * block.stage_width <= stage.len());
+        assert!((block.y + block.height - 1) * WIDTH + block.x + block.width <= frame.len());
+        *copying = Some((
+            stage.as_ptr() as usize,
+            frame.as_mut_ptr() as usize,
+            block,
+            number,
+        ));
+        true
+    }
+    fn wait() -> bool {
+        let Some((stage, frame, block, number)) = COPYING.lock().unwrap().take() else {
+            return true;
+        };
+        if number == NO_END.load(Ordering::Relaxed) {
             return false;
         }
         for row in 0..block.height {
             let from = row * block.stage_width + block.stage_x;
             let to = (block.y + row) * WIDTH + block.x;
-            frame[to..to + block.width].copy_from_slice(&stage[from..from + block.width]);
+            // SAFETY: `start` checked the block lies in both, and `render` keeps them
+            // alive and the stage's half untouched until this wait.
+            unsafe {
+                let from = (stage as *const u16).add(from);
+                let to = (frame as *mut u16).add(to);
+                core::ptr::copy_nonoverlapping(from, to, block.width);
+            }
         }
         true
     }
@@ -378,16 +492,19 @@ mod tests {
     /// returns the frame, whether the CPU wrote it, and the blocks sent.
     fn draw(
         stage_pixels: usize,
-        limit: usize,
+        no_start: usize,
+        no_end: usize,
         lines: &[(usize, Range<usize>)],
     ) -> (Vec<u16>, bool, usize) {
         BLOCKS.store(0, Ordering::Relaxed);
-        LIMIT.store(limit, Ordering::Relaxed);
+        NO_START.store(no_start, Ordering::Relaxed);
+        NO_END.store(no_end, Ordering::Relaxed);
         let mut frame = vec![0xffff; WIDTH * HEIGHT];
         let mut stage = vec![0; stage_pixels];
         let stage = (stage_pixels > 0).then(|| Stage {
             pixels: &mut stage,
-            copy,
+            start,
+            wait,
         });
         let direct = [LANE];
         let mut drawn = Lines::new(&mut frame, &direct, clock, stage);
@@ -397,7 +514,11 @@ mod tests {
                 pixels.fill(Rgb565Pixel(colour));
             });
         }
-        drawn.finish_band();
+        drawn.finish();
+        assert!(
+            COPYING.lock().unwrap().is_none(),
+            "a copy was left under way"
+        );
         let cpu_wrote = drawn.drawn.cpu_wrote;
         (frame, cpu_wrote, BLOCKS.load(Ordering::Relaxed))
     }
@@ -425,36 +546,54 @@ mod tests {
     // The tests share the copy counters: one test runs them all in turn.
     #[test]
     fn stage_draws_what_the_cpu_does() {
+        const ALL: usize = usize::MAX;
         let lines = screen();
         let want = expected(&lines);
 
         // Without a stage: the CPU, as before.
-        let (frame, cpu_wrote, blocks) = draw(0, usize::MAX, &lines);
+        let (frame, cpu_wrote, blocks) = draw(0, ALL, ALL, &lines);
         assert!(frame == want && cpu_wrote && blocks == 0);
 
-        // A stage of 16 lines: bands of 10 above the lane, 16 and 4 across it (two
-        // blocks each, either side) and 10 below.
-        let (frame, cpu_wrote, blocks) = draw(16 * WIDTH, usize::MAX, &lines);
+        // A stage of 32 lines, two halves of 16: bands of 10 above the lane, 16 and 4
+        // across it (two blocks each, either side) and 10 below.
+        let (frame, cpu_wrote, blocks) = draw(32 * WIDTH, ALL, ALL, &lines);
         assert!(frame == want);
         assert!(!cpu_wrote);
         assert_eq!(blocks, 1 + 2 + 2 + 1);
+
+        // Halves of 8 lines: 8 and 2 above, 8, 8 and 4 across, 8 and 2 below.
+        let (frame, cpu_wrote, blocks) = draw(16 * WIDTH, ALL, ALL, &lines);
+        assert!(frame == want && !cpu_wrote);
+        assert_eq!(blocks, 2 + 2 * 3 + 2);
 
         // A narrower range than a whole line, and lines that skip: new bands.
         let partial: Vec<_> = [(2, 10..50), (3, 10..50), (5, 10..50), (6, 20..50)]
             .into_iter()
             .collect();
-        let (frame, cpu_wrote, blocks) = draw(16 * WIDTH, usize::MAX, &partial);
+        let (frame, cpu_wrote, blocks) = draw(16 * WIDTH, ALL, ALL, &partial);
         assert!(frame == expected(&partial) && !cpu_wrote);
         assert_eq!(blocks, 3);
 
-        // The second block fails: the CPU writes it and every line after it.
-        let (frame, cpu_wrote, blocks) = draw(16 * WIDTH, 1, &lines);
+        // The second block does not begin: the CPU writes it and every line after it.
+        let (frame, cpu_wrote, blocks) = draw(32 * WIDTH, 1, ALL, &lines);
         assert!(frame == want);
         assert!(cpu_wrote);
         assert_eq!(blocks, 2);
 
+        // The first block does not end, found out while the next band was drawn in the
+        // other half: the CPU copies it from its half, and every line after it.
+        let (frame, cpu_wrote, blocks) = draw(16 * WIDTH, ALL, 0, &lines);
+        assert!(frame == want);
+        assert!(cpu_wrote);
+        assert_eq!(blocks, 1);
+
+        // A stage of one line: one half, each band waited for before the next.
+        let (frame, cpu_wrote, blocks) = draw(WIDTH, ALL, ALL, &lines);
+        assert!(frame == want && !cpu_wrote);
+        assert_eq!(blocks, 10 + 20 * 2 + 10);
+
         // A stage smaller than a line is not used.
-        let (frame, cpu_wrote, blocks) = draw(WIDTH - 1, usize::MAX, &lines);
+        let (frame, cpu_wrote, blocks) = draw(WIDTH - 1, ALL, ALL, &lines);
         assert!(frame == want && cpu_wrote && blocks == 0);
     }
 
@@ -467,15 +606,19 @@ mod tests {
         TICKS.fetch_add(1000, Ordering::Relaxed);
         true
     }
+    fn done() -> bool {
+        true
+    }
 
     #[test]
     fn a_band_finished_by_the_next_line_counts_only_as_copying() {
         let mut frame = vec![0xffff; WIDTH * HEIGHT];
-        let mut stage = vec![0; 16 * WIDTH];
+        let mut stage = vec![0; 32 * WIDTH];
         let direct = [LANE];
         let stage = Some(Stage {
             pixels: &mut stage,
-            copy: slow_copy,
+            start: slow_copy,
+            wait: done,
         });
         let mut drawn = Lines::new(&mut frame, &direct, ticks, stage);
         for (line, range) in screen() {
@@ -483,7 +626,7 @@ mod tests {
                 TICKS.fetch_add(1, Ordering::Relaxed);
             });
         }
-        drawn.finish_band();
+        drawn.finish();
         // 40 lines, and six blocks: three bands finished by the next line, one at the end.
         assert_eq!(drawn.drawn.lines_us, 40);
         assert_eq!(drawn.drawn.copy_us, 6 * 1000);

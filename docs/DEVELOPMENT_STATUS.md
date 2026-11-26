@@ -139,6 +139,11 @@ them. The owner's listening checks are separate, shorter runs. The
     44 to 60 ms a step (s208p, s230p). The count now waits for a frame without row
     changes; on s231p no step went over 30 ms. A whole page (a page turn, opening the
     Library) still takes 60 to 96 ms, about half of it the scene's preparation.
+  - Since s233p the PPA copies a band of Slint's lines while the next band is drawn in the
+    other half of the strip ([big frames](reviews/2026-11-26-big-frames.md)): a page turn
+    55 ms (s231p 63), opening the Library 80 ms (s231p 89). Of a page turn's 29 ms of
+    preparation, the dirty tracking over the whole item tree takes 14 ms and the items
+    12 ms, 7.6 ms of it the texts (events 50 to 52).
   - A PPA copy that never ended stood the screen still under the screensaver's shine
     (s214). Copies are now waited for 50 ms at most, then the CPU draws; the boot screen,
     screensaver and UPDATING FIRMWARE are drawn by the CPU

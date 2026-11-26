@@ -452,6 +452,31 @@ pub struct SoftwareRenderer {
     rendering_metrics_collector: Option<Rc<RenderingMetricsCollector>>,
     #[cfg(feature = "systemfonts")]
     text_layout_cache: sharedparley::TextLayoutCache,
+    // Ruzina (JC1060 deck screen): the clock that times the scene's preparation, and what
+    // the last one took (`ScenePrep`).
+    probe_clock: Cell<Option<fn() -> u64>>,
+    probe: Cell<ScenePrep>,
+}
+
+/// Ruzina (JC1060 deck screen): where the last `render_by_line` call's preparation of the
+/// scene went, in microseconds of the clock `SoftwareRenderer::set_probe_clock` gave; all
+/// zero without one.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ScenePrep {
+    /// Finding what changed: the dirty tracking over the whole item tree.
+    pub dirty_us: u32,
+    /// Going over the items and making the scene's commands, the texts' included.
+    pub items_us: u32,
+    /// Of `items_us`, the texts: their fonts, layout and glyphs.
+    pub text_us: u32,
+    /// Sorting the scene's commands by line.
+    pub scene_us: u32,
+    /// The texts gone over.
+    pub texts: u32,
+    /// Their glyphs laid out.
+    pub glyphs: u32,
+    /// The scene's commands.
+    pub commands: u32,
 }
 
 impl Default for SoftwareRenderer {
@@ -465,6 +490,8 @@ impl Default for SoftwareRenderer {
             repaint_buffer_type: Default::default(),
             #[cfg(feature = "systemfonts")]
             text_layout_cache: Default::default(),
+            probe_clock: Default::default(),
+            probe: Default::default(),
         }
     }
 }
@@ -481,6 +508,17 @@ impl SoftwareRenderer {
     /// Create a new Renderer
     pub fn new() -> Self {
         Default::default()
+    }
+
+    /// Ruzina (JC1060 deck screen): times each scene preparation from now on with `clock`,
+    /// in microseconds (`scene_prep`).
+    pub fn set_probe_clock(&self, clock: fn() -> u64) {
+        self.probe_clock.set(Some(clock));
+    }
+
+    /// Ruzina (JC1060 deck screen): where the last scene preparation went.
+    pub fn scene_prep(&self) -> ScenePrep {
+        self.probe.get()
     }
 
     /// Create a new SoftwareRenderer.
@@ -1472,7 +1510,7 @@ fn prepare_scene(
     software_renderer: &SoftwareRenderer,
 ) -> Scene {
     let factor = ScaleFactor::new(window.scale_factor());
-    let prepare_scene = SceneBuilder::new(
+    let mut prepare_scene = SceneBuilder::new(
         size,
         factor,
         window,
@@ -1481,6 +1519,11 @@ fn prepare_scene(
         #[cfg(feature = "systemfonts")]
         &software_renderer.text_layout_cache,
     );
+    // Ruzina (JC1060 deck screen): the parts of the preparation (`ScenePrep`).
+    let clock = software_renderer.probe_clock.get();
+    let now = || clock.map_or(0, |clock| clock());
+    let mut prep = ScenePrep::default();
+    prepare_scene.probe_clock = clock;
     let mut renderer =
         software_renderer.partial_rendering_state.create_partial_renderer(prepare_scene);
     let window_adapter = renderer.window_adapter.clone();
@@ -1489,6 +1532,7 @@ fn prepare_scene(
     window.draw_contents(|components, post_render| {
         let logical_size = (size.cast() / factor).cast();
 
+        let dirty_started = now();
         match software_renderer.repaint_buffer_type.get() {
             RepaintBufferType::NewBuffer => {
                 // NewBuffer always redraws the full screen, so skip dirty region
@@ -1515,6 +1559,7 @@ fn prepare_scene(
                 software_renderer.prev_frame_dirty.set(dirty_region_for_this_frame);
             }
         }
+        prep.dirty_us = (now() - dirty_started) as u32;
 
         let rotation =
             RotationInfo { orientation: software_renderer.rotation.get(), screen_size: size };
@@ -1535,6 +1580,7 @@ fn prepare_scene(
         drop(i);
 
         let partial = software_renderer.repaint_buffer_type.get() != RepaintBufferType::NewBuffer;
+        let items_started = now();
         for (component, origin) in components {
             if let Some(component) = ItemTreeWeak::upgrade(component) {
                 i_slint_core::item_rendering::render_component_items(
@@ -1551,6 +1597,7 @@ fn prepare_scene(
         } else {
             post_render(&mut renderer.actual_renderer);
         }
+        prep.items_us = (now() - items_started) as u32;
     });
 
     software_renderer.measure_frame_rendered(&mut renderer);
@@ -1575,7 +1622,16 @@ fn prepare_scene(
         )
     } // */
 
-    Scene::new(prepare_scene.processor.items, prepare_scene.processor.vectors, dirty_region)
+    prep.text_us = prepare_scene.text_us;
+    prep.texts = prepare_scene.texts;
+    prep.glyphs = prepare_scene.glyphs;
+    prep.commands = prepare_scene.processor.items.len() as u32;
+    let scene_started = now();
+    let scene =
+        Scene::new(prepare_scene.processor.items, prepare_scene.processor.vectors, dirty_region);
+    prep.scene_us = (now() - scene_started) as u32;
+    software_renderer.probe.set(prep);
+    scene
 }
 
 trait ProcessScene {
@@ -2200,6 +2256,11 @@ struct SceneBuilder<'a, T> {
     rotation: RotationInfo,
     #[cfg(feature = "systemfonts")]
     text_layout_cache: &'a sharedparley::TextLayoutCache,
+    // Ruzina (JC1060 deck screen): the clock, and the texts' part of the scene (`ScenePrep`).
+    probe_clock: Option<fn() -> u64>,
+    text_us: u32,
+    texts: u32,
+    glyphs: u32,
 }
 
 impl<'a, T: ProcessScene> SceneBuilder<'a, T> {
@@ -2227,6 +2288,10 @@ impl<'a, T: ProcessScene> SceneBuilder<'a, T> {
             rotation: RotationInfo { orientation, screen_size },
             #[cfg(feature = "systemfonts")]
             text_layout_cache,
+            probe_clock: None,
+            text_us: 0,
+            texts: 0,
+            glyphs: 0,
         }
     }
 
@@ -2473,6 +2538,7 @@ impl<'a, T: ProcessScene> SceneBuilder<'a, T> {
                     }
                     let scale_delta = paragraph.layout.font.scale_delta();
                     for positioned_glyph in glyphs {
+                        self.glyphs += 1;
                         let Some(glyph) = paragraph
                             .layout
                             .font
@@ -2797,6 +2863,10 @@ impl<T: ProcessScene> i_slint_core::item_rendering::ItemRenderer for SceneBuilde
         size: LogicalSize,
         _cache: &CachedRenderingData,
     ) {
+        // Ruzina (JC1060 deck screen): each text's time (`ScenePrep`); the returns below
+        // leave the block.
+        let started = self.probe_clock.map(|clock| clock());
+        'text: {
         let font_request = text.font_request(self_rc);
 
         #[cfg(feature = "systemfonts")]
@@ -2812,7 +2882,7 @@ impl<T: ProcessScene> i_slint_core::item_rendering::ItemRenderer for SceneBuilde
         if uses_parley(&font) {
             drop(font_ctx);
             sharedparley::draw_text(self, text, Some(self_rc), size, Some(self.text_layout_cache));
-            return;
+            break 'text;
         }
 
         let content = text.text();
@@ -2824,12 +2894,12 @@ impl<T: ProcessScene> i_slint_core::item_rendering::ItemRenderer for SceneBuilde
         };
 
         if string.trim().is_empty() {
-            return;
+            break 'text;
         }
 
         let geom = LogicalRect::from(size);
         if !self.should_draw(&geom) {
-            return;
+            break 'text;
         }
 
         let color = self.alpha_color(text.color().color());
@@ -2842,7 +2912,7 @@ impl<T: ProcessScene> i_slint_core::item_rendering::ItemRenderer for SceneBuilde
         {
             logical_clip.cast() * self.scale_factor
         } else {
-            return; // This should have been caught earlier already
+            break 'text; // This should have been caught earlier already
         };
         let offset = self.current_state.offset.to_vector().cast() * self.scale_factor;
 
@@ -2866,6 +2936,11 @@ impl<T: ProcessScene> i_slint_core::item_rendering::ItemRenderer for SceneBuilde
 
             self.draw_text_paragraph(&paragraph, physical_clip, offset, color, None);
         });
+        }
+        if let (Some(clock), Some(started)) = (self.probe_clock, started) {
+            self.text_us += (clock() - started) as u32;
+            self.texts += 1;
+        }
     }
 
     fn draw_text_input(
