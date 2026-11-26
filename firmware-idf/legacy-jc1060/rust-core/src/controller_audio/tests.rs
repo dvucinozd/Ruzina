@@ -20,6 +20,7 @@ fn profiling_six_packet_fill_preserves_pcm_and_failed_exit() {
         frames: 0,
         toned_packets: 0,
         rejection: [0; 3],
+        feedback: [0; 3],
     };
     let run = |enabled: bool, capacity: usize| {
         let mut state = make_state();
@@ -116,7 +117,7 @@ fn sample16(packet: &[u8], frame: usize, channel: usize) -> i16 {
 fn flx4_headphone_tone_is_selected_requested_and_packed() {
     a_refused_configuration_names_its_reason();
     let config = flx4_config();
-    let mut info = [0u32; 8];
+    let mut info = [0u32; 10];
     // SAFETY: `config` and `info` outlive the call.
     let selected = unsafe {
         ruzina_legacy_uac_select(config.as_ptr(), config.len() as u32, 1, info.as_mut_ptr())
@@ -173,7 +174,7 @@ fn reject() -> [u32; 3] {
 }
 
 fn select_config(config: &[u8], high_speed: bool) -> i32 {
-    let mut info = [0u32; 8];
+    let mut info = [0u32; 10];
     // SAFETY: `config` and `info` outlive the call.
     unsafe {
         ruzina_legacy_uac_select(
@@ -185,6 +186,66 @@ fn select_config(config: &[u8], high_speed: bool) -> i32 {
     }
 }
 
+/// 10.14 feedback bytes for `frames_per_ms`.
+fn feedback_wire(frames_per_ms: f64) -> [u8; 3] {
+    let value = (frames_per_ms * 16_384.0).round() as u32;
+    [value as u8, (value >> 8) as u8, (value >> 16) as u8]
+}
+
+fn feedback(bytes: &[u8]) -> i32 {
+    // SAFETY: `bytes` outlives the call.
+    unsafe { ruzina_legacy_uac_feedback(bytes.as_ptr(), bytes.len() as u32) }
+}
+
+fn feedback_stats() -> [u32; 4] {
+    let mut out = [0u32; 4];
+    // SAFETY: four writable slots.
+    unsafe { ruzina_legacy_uac_feedback_stats(out.as_mut_ptr()) };
+    out
+}
+
+/// The Inpulse 500 at full speed: selected with its feedback endpoint, then
+/// paced by what it reads back.
+fn inpulse_500_is_paced_by_its_feedback(config: &[u8]) {
+    let mut info = [0u32; 10];
+    // SAFETY: `config` and `info` outlive the call.
+    let chosen = unsafe {
+        ruzina_legacy_uac_select(config.as_ptr(), config.len() as u32, 0, info.as_mut_ptr())
+    };
+    assert_eq!(chosen, 1);
+    // Interface 1 alt 1, OUT 0x01 of 540 bytes, 4 x 3 bytes at 44.1 kHz,
+    // no SET_CUR; feedback on IN 0x81, refreshed every 2^5 ms.
+    assert_eq!(info, [1, 1, 0x01, 540, 4, 3, 44_100, 0, 0x81, 5]);
+    assert_eq!(reject(), [0, 0, 0]);
+    // Before any reading: the nominal 44.1 frames per ms.
+    assert_eq!(feedback_stats(), [0, 0, 0, 44_100 * 65_536 / 1000]);
+    let mut out = vec![0u8; 6 * 540];
+    let mut sizes = [0u32; 6];
+    let mut frames = 0;
+    for _ in 0..100 {
+        assert!(with(|state| fill(state, &mut out, &mut sizes, false, false)) > 0);
+        frames += sizes.iter().map(|size| size / 12).sum::<u32>();
+    }
+    assert!((i64::from(frames) - 26_460).abs() <= 1, "{frames}");
+    // Between refreshes the device answers with nothing: no new pace.
+    assert_eq!(feedback(&[]), 0);
+    // A device 2 % fast: 600 ms then take 2 % more frames, no packet over 45.
+    assert_eq!(feedback(&feedback_wire(44.982)), 1);
+    let mut frames = 0;
+    for _ in 0..100 {
+        with(|state| fill(state, &mut out, &mut sizes, false, false));
+        assert!(sizes.iter().all(|size| *size <= 540 && *size % 12 == 0));
+        frames += sizes.iter().map(|size| size / 12).sum::<u32>();
+    }
+    assert!((i64::from(frames) - 26_989).abs() <= 1, "{frames}");
+    // Refused: 10 % fast, and a reading of the wrong length.
+    assert_eq!(feedback(&feedback_wire(48.5)), -1);
+    assert_eq!(feedback(&[1, 2]), -1);
+    let [updates, empty, invalid, q16] = feedback_stats();
+    assert_eq!([updates, empty, invalid], [1, 1, 2]);
+    assert!((q16 as f64 / 65_536.0 - 44.982).abs() < 0.001, "{q16}");
+}
+
 /// Part of the FLX4 test below: both use the one selection state.
 fn a_refused_configuration_names_its_reason() {
     // The donor's captures (firmware-rust/crates/ruzina-uac/tests/fixtures).
@@ -194,15 +255,19 @@ fn a_refused_configuration_names_its_reason() {
     let s2 = include_bytes!(
         "../../../../../firmware-rust/crates/ruzina-uac/tests/fixtures/s2_mk3_hs.bin"
     );
-    // Inpulse 500 at full speed: FEEDBACK on interface 1, alternate 1.
-    assert_eq!(select_config(hercules, false), 0);
+    // Inpulse 500 at high speed: FEEDBACK on interface 1, alternate 1 (it
+    // is a full-speed device; the deck follows feedback at full speed only).
+    assert_eq!(select_config(hercules, true), 0);
     assert_eq!(reject(), [7, 1, 1]);
+    inpulse_500_is_paced_by_its_feedback(hercules);
     // S2 MK3 at high speed: MALFORMED at its 6-byte UAC2 Format Type.
     assert_eq!(select_config(s2, true), 0);
     let [code, offset, _] = reject();
     assert_eq!(code, 2);
     assert_eq!(&s2[offset as usize..offset as usize + 3], &[6, 0x24, 2]);
-    // A selection clears the reason.
+    // A selection clears the reason; the FLX4 has no feedback to follow.
     assert_eq!(select_config(&flx4_config(), true), 1);
     assert_eq!(reject(), [0, 0, 0]);
+    assert_eq!(feedback(&feedback_wire(48.0)), -1);
+    assert_eq!(feedback_stats(), [0, 0, 0, 0]);
 }

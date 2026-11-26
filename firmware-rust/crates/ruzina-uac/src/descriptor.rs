@@ -3,9 +3,10 @@
 //!
 //! Only explicitly supported formats are offered: PCM, 16-bit in two bytes or
 //! 24-bit packed in three, two or four channels, 44.1 or 48 kHz, one packet
-//! per millisecond, synchronous/adaptive without a feedback endpoint and no
-//! high-bandwidth packets. Anything else is not an audio route; it never
-//! fails MIDI, which the controller crate finds independently.
+//! per millisecond and no high-bandwidth packets; synchronous or adaptive, or
+//! at full speed asynchronous with an explicit 3-byte feedback endpoint in the
+//! same alternate (the Inpulse 500). Anything else is not an audio route; it
+//! never fails MIDI, which the controller crate finds independently.
 
 const DESCRIPTOR_CONFIGURATION: u8 = 0x02;
 const DESCRIPTOR_INTERFACE: u8 = 0x04;
@@ -20,6 +21,7 @@ const FORMAT_TYPE_I: u8 = 0x01;
 const FORMAT_TAG_PCM: u16 = 0x0001;
 const TRANSFER_ISOCHRONOUS: u8 = 0x01;
 const SYNC_ASYNCHRONOUS: u8 = 0x01;
+const USAGE_FEEDBACK: u8 = 0x01;
 
 pub const MAX_FORMATS: usize = 8;
 pub const MAX_RATES: usize = 8;
@@ -60,8 +62,20 @@ pub struct PlaybackFormat {
     rates: [u32; MAX_RATES],
     rate_count: u8,
     pub pcm: bool,
-    /// Asynchronous sync or a feedback endpoint: unsupported.
+    /// Asynchronous sync, a synch address or a feedback endpoint: the device
+    /// sets the pace, supported only through [`PlaybackFormat::explicit_feedback`].
     pub feedback: bool,
+    /// The OUT endpoint is asynchronous.
+    pub asynchronous: bool,
+    /// The OUT endpoint's `bSynchAddress`.
+    pub sync_address: u8,
+    /// The isochronous IN feedback endpoint of this alternate, 0 for none.
+    pub feedback_endpoint: u8,
+    pub feedback_interval: u8,
+    /// `bRefresh`: a new feedback value every 2^n frames.
+    pub feedback_refresh: u8,
+    /// An implicit, second or malformed feedback endpoint.
+    pub feedback_unusable: bool,
     /// The endpoint accepts SET_CUR sampling frequency.
     pub frequency_control: bool,
 }
@@ -80,6 +94,12 @@ impl PlaybackFormat {
         rate_count: 0,
         pcm: true,
         feedback: false,
+        asynchronous: false,
+        sync_address: 0,
+        feedback_endpoint: 0,
+        feedback_interval: 0,
+        feedback_refresh: 0,
+        feedback_unusable: false,
         frequency_control: false,
     };
 
@@ -100,6 +120,26 @@ impl PlaybackFormat {
         rate.div_ceil(1000) as usize * usize::from(self.channels) * usize::from(self.subframe_bytes)
     }
 
+    /// Asynchronous OUT paced by this alternate's own explicit feedback
+    /// endpoint, as USB Audio 1.0 3.7.2.2 defines it: 3 bytes every frame,
+    /// refreshed every 2 to 512 ms, named by the OUT endpoint's synch address.
+    pub fn explicit_feedback(&self) -> bool {
+        self.asynchronous
+            && !self.feedback_unusable
+            && self.feedback_endpoint & 0x80 != 0
+            && self.sync_address == self.feedback_endpoint
+            && self.feedback_interval == 1
+            && (1..=9).contains(&self.feedback_refresh)
+    }
+
+    /// Frames of the largest packet the endpoint takes.
+    pub fn max_frames(&self) -> usize {
+        let frame = usize::from(self.channels) * usize::from(self.subframe_bytes);
+        usize::from(self.max_packet & 0x07ff)
+            .checked_div(frame)
+            .unwrap_or(0)
+    }
+
     fn complete(&self) -> bool {
         self.endpoint != 0
             && self.max_packet != 0
@@ -117,8 +157,10 @@ impl PlaybackFormat {
             UsbSpeed::High => (self.interval == 4, 1024),
         };
         let high_bandwidth = self.max_packet >> 11 != 0;
+        // Feedback is read at full speed only: 10.14 samples per 1 ms frame.
+        let paced = !self.feedback || (speed == UsbSpeed::Full && self.explicit_feedback());
         self.pcm
-            && !self.feedback
+            && paced
             && interval_ok
             && !high_bandwidth
             && self.sample_format().is_some()
@@ -264,12 +306,30 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
                     current.endpoint = d[2];
                     current.max_packet = le16(d, 4);
                     current.interval = d[6];
-                    current.feedback |=
-                        (attributes >> 2) & 0x03 == SYNC_ASYNCHRONOUS || (len >= 9 && d[8] != 0);
+                    current.asynchronous = (attributes >> 2) & 0x03 == SYNC_ASYNCHRONOUS;
+                    current.sync_address = if len >= 9 { d[8] } else { 0 };
+                    current.feedback |= current.asynchronous
+                        || current.sync_address != 0
+                        || (attributes >> 4) & 0x03 != 0;
                 } else if attributes & 0x03 == TRANSFER_ISOCHRONOUS && (attributes >> 4) & 0x03 != 0
                 {
-                    // An explicit feedback endpoint in the playback setting.
+                    // A feedback endpoint in the playback setting. Only one
+                    // explicit IN endpoint of 3 bytes without its own sync
+                    // type paces the stream; anything else is unusable.
                     current.feedback = true;
+                    let explicit = (attributes >> 4) & 0x03 == USAGE_FEEDBACK && d[2] & 0x80 != 0;
+                    if !explicit
+                        || current.feedback_endpoint != 0
+                        || len < 9
+                        || (attributes >> 2) & 0x03 != 0
+                        || le16(d, 4) != 3
+                    {
+                        current.feedback_unusable = true;
+                    } else {
+                        current.feedback_endpoint = d[2];
+                        current.feedback_interval = d[6];
+                        current.feedback_refresh = d[7];
+                    }
                 }
             }
             DESCRIPTOR_CS_ENDPOINT if streaming => {
@@ -343,7 +403,8 @@ pub enum Rejection {
     NoStreaming,
     /// Not PCM in 16/2 or 24/3, or not two or four channels.
     Format { interface: u8, alternate: u8 },
-    /// Asynchronous OUT or an explicit feedback endpoint.
+    /// Asynchronous OUT or feedback the deck cannot follow: not an explicit
+    /// 3-byte endpoint of the same alternate, or not at full speed.
     Feedback { interface: u8, alternate: u8 },
     /// `bInterval` is not one packet per millisecond at this speed, or a
     /// high-bandwidth or oversize `wMaxPacketSize`.
@@ -375,7 +436,7 @@ impl PlaybackFormat {
                     interface,
                     alternate,
                 }
-            } else if self.feedback {
+            } else if self.feedback && !(speed == UsbSpeed::Full && self.explicit_feedback()) {
                 Rejection::Feedback {
                     interface,
                     alternate,
@@ -613,6 +674,67 @@ pub(crate) mod tests {
             let formats = parse_playback_formats(&bytes).unwrap();
             assert_eq!(select(&formats, UsbSpeed::Full), None, "{why}");
             assert_eq!(choose(&bytes, UsbSpeed::Full), Err(reason), "{why}");
+        }
+    }
+
+    /// The Inpulse 500's alternate: asynchronous 540-byte OUT 0x01 at 44.1 kHz
+    /// naming `sync`, then the given feedback endpoints.
+    fn asynchronous(sync: u8, feedback: &[&[u8]]) -> Vec<u8> {
+        let mut alt = alternate(1, 1, 4, 3, 24, &[44_100], 0x05, 540, 1);
+        let out_at = alt.len() - 7 - 9;
+        alt[out_at + 8] = sync;
+        for endpoint in feedback {
+            alt.extend_from_slice(endpoint);
+        }
+        alt
+    }
+
+    const FEEDBACK: [u8; 9] = [9, 5, 0x81, 0x11, 3, 0, 1, 5, 0];
+
+    #[test]
+    fn explicit_feedback_is_followed_only_as_uac1_defines_it() {
+        let good = controller(&[asynchronous(0x81, &[&FEEDBACK])]);
+        let chosen = choose(&good, UsbSpeed::Full).unwrap();
+        assert!(chosen.format.explicit_feedback());
+        assert_eq!(chosen.rate, 44_100);
+        let refused = Err(Rejection::Feedback {
+            interface: 1,
+            alternate: 1,
+        });
+        // Not at high speed, where feedback counts microframes.
+        assert_eq!(choose(&good, UsbSpeed::High), refused);
+        let mut refresh_zero = FEEDBACK;
+        refresh_zero[7] = 0;
+        let mut four_bytes = FEEDBACK;
+        four_bytes[4] = 4;
+        let mut every_2ms = FEEDBACK;
+        every_2ms[6] = 2;
+        let mut implicit = FEEDBACK;
+        implicit[3] = 0x21;
+        let mut own_sync = FEEDBACK;
+        own_sync[3] = 0x15;
+        for (why, alt) in [
+            ("no feedback endpoint", asynchronous(0x81, &[])),
+            ("synch address elsewhere", asynchronous(0x82, &[&FEEDBACK])),
+            ("no synch address", asynchronous(0, &[&FEEDBACK])),
+            ("refresh 0", asynchronous(0x81, &[&refresh_zero])),
+            ("4-byte feedback", asynchronous(0x81, &[&four_bytes])),
+            ("every 2 ms", asynchronous(0x81, &[&every_2ms])),
+            ("implicit feedback", asynchronous(0x81, &[&implicit])),
+            (
+                "feedback with its own sync type",
+                asynchronous(0x81, &[&own_sync]),
+            ),
+            (
+                "two feedback endpoints",
+                asynchronous(0x81, &[&FEEDBACK, &FEEDBACK]),
+            ),
+        ] {
+            assert_eq!(
+                choose(&controller(&[alt]), UsbSpeed::Full),
+                refused,
+                "{why}"
+            );
         }
     }
 

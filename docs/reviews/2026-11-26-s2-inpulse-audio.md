@@ -131,3 +131,51 @@ Branch `ogranak/uac-fifo`, from `main` at `dc2c950`.
     `S6_USB_FIFO total_lines=… split=DECK|DEFAULT rx=… nptx=… ptx=… install=…`.
 - **Tests:** `tools/tests/test_usb_fifo.py` checks the split against a 4 KiB
   FIFO, the 540-byte packet, the RX minimum and the smallest FIFO that takes it.
+
+## Step 4: UAC1 explicit feedback
+
+Branch `ogranak/uac-feedback`, from `main` at `4157093`.
+
+- **Descriptor (`ruzina-uac`):** an asynchronous OUT alternate is now offered at
+  full speed when it carries its own explicit feedback endpoint, as USB Audio
+  1.0 section 3.7.2.2 defines it:
+  - an isochronous IN endpoint with usage "feedback", no sync type of its own,
+    3 bytes, every frame;
+  - `bRefresh` 1 to 9, so a new value every 2 to 512 ms;
+  - named by the OUT endpoint's `bSynchAddress`.
+  - Implicit feedback, a second feedback endpoint, a wrong size or interval, a
+    synch address elsewhere, and high speed (where feedback counts
+    microframes) stay refused with `reason=FEEDBACK`.
+  - The Inpulse 500 capture is now selected: alternate 1, 44.1 kHz,
+    feedback IN `0x81`, refresh every 32 ms.
+- **Feedback (`ruzina_uac::feedback`):** 3 bytes of 10.14 samples per frame
+  become Q16 frames per millisecond.
+  - A reading more than 5 % from the nominal rate, or one that would need more
+    frames than the endpoint holds (45 for 540 bytes), is refused.
+  - An empty reply between refreshes is no new value.
+- **Cadence:** `Cadence::with_feedback` starts at the nominal rate and, after
+  each reading, paces packets by the device's rate, carrying the fraction
+  over. Without feedback nothing changes.
+- **Firmware:**
+  - `ruzina_legacy_uac_select` now returns the feedback endpoint and refresh
+    (ten words). `ruzina_legacy_uac_feedback` takes each reading, and
+    `ruzina_legacy_uac_feedback_stats` reports updates, empty and refused
+    readings and the pace.
+  - The C driver keeps one 3-byte isochronous IN reading in flight beside the
+    OUT pool while the stream runs, and queues it again after each completion.
+    A failed reading is counted and the pace held.
+  - During an OUT recovery the reading is not queued again, so the recovery's
+    wait for every transfer ends; the restart queues it again. A stop frees it.
+  - The log names the endpoint once (`usb_uac_feedback ep=81 refresh_ms=32
+    pace=EXPLICIT`) and then reports every 1000 transfers.
+  - Packets may carry up to 51 frames, 5 % over 48 kHz, as far as the endpoint
+    holds.
+- **Tests:**
+  - `ruzina-uac`: every refused feedback shape, decoding, and the paced
+    cadence (1 % fast gives 441 more frames per second).
+  - `rust-core`: the Inpulse 500 capture is selected with `0x81` and refresh 5.
+    600 packets follow a 2 % fast reading, and no packet exceeds 540 bytes.
+  - C driver: the reading stays in flight, empty and failed readings are
+    handled, the recovery waits for it, and stop frees it. A device without
+    feedback gets no feedback transfer.
+- **Not checked:** playing on an Inpulse 500. None is at hand.

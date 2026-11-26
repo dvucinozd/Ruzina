@@ -41,7 +41,7 @@ typedef struct usb_transfer {
     int device_handle, bEndpointAddress, status;
     void (*callback)(struct usb_transfer *);
     void *context;
-    struct {int num_bytes,status;} isoc_packet_desc[6];
+    struct {int num_bytes,actual_num_bytes,status;} isoc_packet_desc[6];
 } usb_transfer_t;
 static int client=1, device=1;
 static bool gone;
@@ -142,11 +142,18 @@ static int xTaskCreatePinnedToCore(void (*fn)(void *),const char *name,unsigned 
 static int32_t select_result=1;
 static uint32_t reject_code[3];
 static unsigned reject_calls;
+/* With select_feedback, the Inpulse 500: OUT 0x01 of 540 bytes, feedback IN 0x81. */
+static bool select_feedback;
+static unsigned feedback_calls, feedback_last_len;
 int32_t ruzina_legacy_uac_select(const uint8_t *c,uint32_t l,int32_t h,uint32_t *o) {
     (void)c;(void)l;(void)h;if(!select_result)return 0;
-    uint32_t info[8]={1,1,2,384,4,2,48000,0};memcpy(o,info,sizeof(info));return 1;
+    uint32_t info[10]={1,1,2,384,4,2,48000,0,0,0};
+    uint32_t hercules[10]={1,1,1,540,4,3,44100,0,0x81,5};
+    memcpy(o,select_feedback?hercules:info,sizeof(info));return 1;
 }
 void ruzina_legacy_uac_reject(uint32_t *out) { ++reject_calls;memcpy(out,reject_code,sizeof(reject_code)); }
+int32_t ruzina_legacy_uac_feedback(const uint8_t *bytes,uint32_t len) { (void)bytes;++feedback_calls;feedback_last_len=len;return len==3; }
+void ruzina_legacy_uac_feedback_stats(uint32_t *out) { out[0]=feedback_calls;out[1]=out[2]=0;out[3]=44100u*65536u/1000u; }
 uint32_t ruzina_legacy_uac_control(uint32_t step,uint8_t *out) { (void)step;out[0]=0;return 8; }
 uint32_t ruzina_legacy_uac_fill(uint8_t *b,uint32_t c,uint32_t *sizes,uint32_t packets) {
 #if UAC_TEST_TIMING
@@ -478,6 +485,31 @@ int main(void) {
         uac_start(&config,USB_SPEED_HIGH);
         assert(uac_interface==0xff && uac_health.state==UAC_HEALTH_OFF && live==0 && allocations==prior);
         claim_error=0;assert(uac_stop());
+    }
+    // An asynchronous device: its feedback reading stays in flight beside the OUT pool,
+    // goes to Rust and is queued again; a recovery waits for it, and a stop frees it.
+    {
+        select_feedback=true;feedback_calls=0;
+        start();assert(live==UAC_TRANSFERS+1 && uac_fb && uac_fb_busy);
+        assert(uac_fb->bEndpointAddress==0x81 && uac_fb->num_bytes==3 && uac_fb->isoc_packet_desc[0].num_bytes==3);
+        uac_fb->isoc_packet_desc[0].actual_num_bytes=3;complete(uac_fb,USB_TRANSFER_STATUS_COMPLETED);
+        assert(feedback_calls==1 && feedback_last_len==3 && uac_fb_busy && live==UAC_TRANSFERS+1);
+        uac_fb->isoc_packet_desc[0].actual_num_bytes=0;complete(uac_fb,USB_TRANSFER_STATUS_COMPLETED);
+        assert(feedback_calls==2 && feedback_last_len==0 && uac_fb_busy);
+        // A failed reading is counted and skipped, the next one queued.
+        uac_fb->isoc_packet_desc[0].status=9;complete(uac_fb,USB_TRANSFER_STATUS_COMPLETED);
+        assert(feedback_calls==2 && uac_fb_errors==1 && uac_fb_busy);uac_fb->isoc_packet_desc[0].status=0;
+        uac_report_pending=true;uac_report();
+        // An OUT fault: the feedback reading returns and is not queued again until the
+        // stream restarts.
+        complete(uac_iso[0],9);assert(uac_health.state==UAC_HEALTH_RECOVERING);
+        complete(uac_fb,USB_TRANSFER_STATUS_COMPLETED);assert(!uac_fb_busy);
+        uac_recover_poll();usb_host_client_handle_events(1,0);uac_recover_poll();
+        assert(uac_health.state==UAC_HEALTH_STREAMING && uac_fb_busy && live==UAC_TRANSFERS+1);
+        stop();assert(!uac_fb && uac_info[8]==0);
+        select_feedback=false;
+        // A device without feedback allocates no feedback transfer.
+        start();assert(live==UAC_TRANSFERS && !uac_fb);stop();
     }
     return 0;
 }

@@ -5,6 +5,8 @@ extern uint32_t ruzina_legacy_uac_control(uint32_t step, uint8_t *out);
 extern uint32_t ruzina_legacy_uac_fill(uint8_t *buffer, uint32_t capacity, uint32_t *sizes, uint32_t packets);
 extern void ruzina_legacy_uac_stats(uint32_t *out);
 extern void ruzina_legacy_uac_reject(uint32_t *out);
+extern int32_t ruzina_legacy_uac_feedback(const uint8_t *bytes, uint32_t len);
+extern void ruzina_legacy_uac_feedback_stats(uint32_t *out);
 #if CONFIG_RUZINA_DECK_PLAY
 extern void ruzina_legacy_play_diagnostics(uint32_t *out);
 #endif
@@ -44,7 +46,14 @@ static usb_transfer_t *uac_ctrl, *uac_iso[UAC_TRANSFERS];
 static bool uac_ctrl_busy, uac_iso_busy[UAC_TRANSFERS];
 static uint8_t uac_interface = 0xff;
 static int uac_step = UAC_OFF;
-static uint32_t uac_info[8]; /* interface, alt, endpoint, mps, channels, bytes, rate, freq_control */
+/* interface, alt, endpoint, mps, channels, bytes, rate, freq_control, feedback endpoint
+ * (0: none), feedback refresh exponent */
+static uint32_t uac_info[10];
+/* An asynchronous device's explicit feedback: one 3-byte isochronous IN packet per frame,
+ * kept in flight beside the OUT pool while the stream runs. */
+static usb_transfer_t *uac_fb;
+static bool uac_fb_busy;
+static uint32_t uac_fb_errors;
 static uint32_t uac_completed, uac_iso_errors, uac_packet_errors, uac_ctrl_errors, uac_fill_errors;
 static uint32_t uac_submit_errors, uac_generation;
 #if CONFIG_RUZINA_PRODUCER_PROFILE
@@ -76,7 +85,7 @@ static uint32_t uac_profile_ordinal;
 static bool uac_profile_seen, uac_profile_over_seen, uac_profile_headroom_seen;
 #endif
 typedef struct { uint32_t generation; unsigned slot; } uac_context_t;
-static uac_context_t uac_context[UAC_TRANSFERS], uac_control_context;
+static uac_context_t uac_context[UAC_TRANSFERS], uac_control_context, uac_fb_context;
 static void uac_start_stream(enum uac_fill_phase phase);
 static void uac_begin_selected(void);
 #if CONFIG_RUZINA_DECK_ENGINE
@@ -258,6 +267,7 @@ typedef struct {
     producer_service_t service;
 #endif
     uint32_t completed, stats[3], iso_errors, packet_errors, submit_errors, log_drops;
+    uint32_t feedback_endpoint, feedback[4], feedback_errors;
 #if CONFIG_RUZINA_DECK_PLAY
     uint32_t diagnostics[4];
 #endif
@@ -374,6 +384,10 @@ static void uac_log_task(void *unused)
                " iso_errors=%" PRIu32 " packet_errors=%" PRIu32 " submit_errors=%" PRIu32 "\n",
                sample.completed, sample.stats[0], sample.stats[1], sample.stats[2],
                sample.iso_errors, sample.packet_errors, sample.submit_errors);
+        if (sample.feedback_endpoint)
+            printf("usb_uac_feedback ep=%02" PRIx32 " updates=%" PRIu32 " empty=%" PRIu32 " invalid=%" PRIu32
+                   " frames_q16=%" PRIu32 " errors=%" PRIu32 "\n", sample.feedback_endpoint, sample.feedback[0],
+                   sample.feedback[1], sample.feedback[2], sample.feedback[3], sample.feedback_errors);
 #if CONFIG_RUZINA_DECK_MIX
         printf("deck_mix_stats rendered=%" PRIu32 " underruns=%" PRIu32 "/%" PRIu32 " buffered=%" PRIu32 "/%" PRIu32
                " rate=%" PRIu32 "/%" PRIu32 " limited=%" PRIu32 " fill_max_us=%" PRIu32 "\n",
@@ -460,6 +474,8 @@ static void uac_report(void)
     uac_log_snapshot_t sample={.completed=uac_completed,.iso_errors=uac_iso_errors,
         .packet_errors=uac_packet_errors,.submit_errors=uac_submit_errors};
     ruzina_legacy_uac_stats(sample.stats);
+    sample.feedback_endpoint=uac_info[8]; sample.feedback_errors=uac_fb_errors;
+    if (uac_info[8]) ruzina_legacy_uac_feedback_stats(sample.feedback);
 #if CONFIG_RUZINA_PRODUCER_PROFILE
     sample.producer_mask=ruzina_legacy_producer_profile_snapshot(sample.producers,3*PRODUCER_PROFILE_WORDS);
     sample.service=producer_service;
@@ -501,6 +517,48 @@ static void uac_report(void)
     if (uac_log_queue) (void)xQueueOverwrite(uac_log_queue,&sample);
 }
 
+static bool uac_fb_submit(void)
+{
+    uac_fb->num_bytes = 3;
+    uac_fb->isoc_packet_desc[0].num_bytes = 3;
+    if (usb_host_transfer_submit(uac_fb) != ESP_OK) { uac_fb_errors++; return false; }
+    uac_fb_busy = true;
+    return true;
+}
+
+/* Each reading goes to Rust, which paces the next packets by it; the next one is queued
+ * at once. A lost reading keeps the last pace: the device's clock moves slowly. */
+static void uac_fb_done(usb_transfer_t *transfer)
+{
+    const uac_context_t *context = transfer->context;
+    if (!uac_recovery_current(&uac_health, context->generation)) return;
+    uac_fb_busy = false;
+    if (transfer->status == USB_TRANSFER_STATUS_NO_DEVICE) return;
+    if (transfer->status == USB_TRANSFER_STATUS_COMPLETED &&
+        transfer->isoc_packet_desc[0].status == USB_TRANSFER_STATUS_COMPLETED) {
+        const int bytes = transfer->isoc_packet_desc[0].actual_num_bytes;
+        (void)ruzina_legacy_uac_feedback(transfer->data_buffer, bytes > 0 ? (uint32_t)bytes : 0);
+    } else if (transfer->status != USB_TRANSFER_STATUS_CANCELED) uac_fb_errors++;
+    /* Not while recovering: the OUT endpoint's recovery waits for every transfer to return. */
+    if (uac_step == UAC_STREAMING && uac_health.state == UAC_HEALTH_STREAMING && device && !gone)
+        (void)uac_fb_submit();
+}
+
+/* Allocates the feedback transfer once per stream and keeps one reading in flight. */
+static bool uac_fb_start(void)
+{
+    if (!uac_info[8]) return true;
+    if (!uac_fb) {
+        if (usb_host_transfer_alloc(64, 1, &uac_fb) != ESP_OK) { uac_fb=NULL; return false; }
+        uac_fb->device_handle = device;
+        uac_fb->bEndpointAddress = (uint8_t)uac_info[8];
+        uac_fb->callback = uac_fb_done;
+    }
+    uac_fb_context = (uac_context_t){.generation=uac_health.generation};
+    uac_fb->context = &uac_fb_context;
+    return uac_fb_busy || uac_fb_submit();
+}
+
 static void uac_start_stream(enum uac_fill_phase phase)
 {
 #if CONFIG_RUZINA_DECK_ENGINE
@@ -522,6 +580,7 @@ static void uac_start_stream(enum uac_fill_phase phase)
         uac_context[i] = (uac_context_t){.generation=uac_health.generation, .slot=i};
         uac_iso[i]->context = &uac_context[i];
     }
+    if (!uac_fb_start()) { uac_recovery_fault(&uac_health); return; }
     for (unsigned i = 0; i < UAC_TRANSFERS; ++i) {
         if (!uac_refill(uac_iso[i],phase)) { uac_recovery_fault(&uac_health); break; }
         if (usb_host_transfer_submit(uac_iso[i]) != ESP_OK) {
@@ -539,7 +598,7 @@ static void uac_start_stream(enum uac_fill_phase phase)
 
 static bool uac_busy(void)
 {
-    bool busy=uac_ctrl_busy;
+    bool busy=uac_ctrl_busy || uac_fb_busy;
     for (unsigned i=0;i<UAC_TRANSFERS;++i) busy |= uac_iso_busy[i];
     return busy;
 }
@@ -697,6 +756,8 @@ static void uac_begin_selected(void)
            " bytes=%" PRIu32 " rate=%" PRIu32 " freq_control=%" PRIu32 " headphones=3/4 claim=%s\n",
            uac_info[0], uac_info[1], uac_info[2], uac_info[3], uac_info[4], uac_info[5], uac_info[6], uac_info[7],
            esp_err_to_name(err));
+    if (uac_info[8])
+        printf("usb_uac_feedback ep=%02" PRIx32 " refresh_ms=%u pace=EXPLICIT\n", uac_info[8], 1u << uac_info[9]);
     fflush(stdout);
 }
 
@@ -710,14 +771,14 @@ static bool uac_stop(void)
     uac_step = UAC_OFF;
     uac_health.state=UAC_HEALTH_STOPPING;
     for (int i = 0; i < 50; ++i) {
-        bool busy = uac_ctrl_busy;
+        bool busy = uac_ctrl_busy || uac_fb_busy;
         for (int t = 0; t < UAC_TRANSFERS; ++t) busy |= uac_iso_busy[t];
         if (!busy) break;
         usb_host_client_handle_events(client, pdMS_TO_TICKS(10));
     }
     uint32_t stats[3];
     ruzina_legacy_uac_stats(stats);
-    bool busy = uac_ctrl_busy;
+    bool busy = uac_ctrl_busy || uac_fb_busy;
     for (int t = 0; t < UAC_TRANSFERS; ++t) busy |= uac_iso_busy[t];
     if (busy) {
         uac_health.state=UAC_HEALTH_FAULT_HELD;
@@ -733,6 +794,10 @@ static bool uac_stop(void)
             if (usb_host_transfer_free(uac_ctrl) != ESP_OK) {uac_health.state=UAC_HEALTH_FAULT_HELD;return false;}
             uac_ctrl = NULL;
         }
+        if (uac_fb) {
+            if (usb_host_transfer_free(uac_fb) != ESP_OK) {uac_health.state=UAC_HEALTH_FAULT_HELD;return false;}
+            uac_fb = NULL;
+        }
     }
     esp_err_t release = usb_host_interface_release(client, device, uac_interface);
     printf("usb_uac_stop transfers=%" PRIu32 " packets=%" PRIu32 " frames=%" PRIu32 " tone_packets=%" PRIu32
@@ -742,5 +807,5 @@ static bool uac_stop(void)
     if (release != ESP_OK) { uac_health.state=UAC_HEALTH_FAULT_HELD; return false; }
     uac_interface = 0xff; uac_health.state=UAC_HEALTH_OFF;
     uac_completed = uac_iso_errors = uac_packet_errors = uac_ctrl_errors = uac_fill_errors = 0;
-    uac_submit_errors=0; return true;
+    uac_submit_errors=0; uac_fb_errors=0; for (unsigned i=0;i<10;++i) uac_info[i]=0; return true;
 }
