@@ -22,52 +22,59 @@ LINE = '#38251e'
 INK = '#f5f0ed'
 MUTED = '#a3958e'
 
-# (group, [(hex, name, where)])
+# (group, [(hex, name, where)]) — as of the GUI pass, 2026-11-26 (s229).
 GROUPS = [
     ('Pozadine i površine', [
-        ('#100c08', 'Glavna pozadina', 'pozadina ekrana i waveform lanea, Library, Settings, FX, screensaver i UPDATING; tekst na svijetlim gumbima (D1/D2, LOAD, PLAY, CUE)'),
-        ('#1e1511', 'Površina', 'kartice decka, rail, redovi Library (parni u Settings), isključeni gumbi, pozadina phase stripa'),
-        ('#181210', 'Površina 2', 'neparni redovi na Settings'),
-        ('#160f0c', 'Površina FX', 'pozadina FX panela, kanal na koji efekt ne ide'),
+        ('#000000', 'Glavna pozadina (crna)', 'ekran, lane waveforma, mini waveformi, kartice decka, rail, FX stupac, sve stranice, boot, screensaver i UPDATING; neupaljeni gumbi i oznake'),
+        ('#202020', 'Tamnosiva', 'phase strip i oznaka „+12 ms”, zaglavlje Library, crte između redova u Library'),
+        ('#101010', 'Gotovo crna', 'svaki drugi red popisa na Settings'),
+        ('#1e1511', 'Smeđa površina', 'neodabrani izbori na Settings, gumb „FX” na FX panelu kad je ugašen'),
         ('#2a1b14', 'Aktivni rail / meter ugašen', 'pozadina aktivne ikone na railu; ugašeni segment metera'),
-        ('#0b2614', 'Tamno zelena', 'MT uključen (pozadina), odabrani red u Library, BACK pritisnut'),
-        ('#2a2300', 'Tamno žuta', 'QUANTIZE uključen (pozadina)'),
+        ('#0b2614', 'Tamno zelena', 'MT uključen, odabrani red u Library, FX ON pritisnut'),
+        ('#2a2300', 'Tamno žuta', 'Q uključen'),
         ('#301c00', 'Sjena loopa', 'raspon loopa iza waveforma'),
     ]),
     ('Linije i rubovi', [
-        ('#38251e', 'Rub', 'rubovi kartica, linija raila, razdjelnik Hot Cues, rub izbora; beat linije u waveformu; odsvirani dio overviewa; sredina phase stripa'),
-        ('#574b45', 'Prigušeni rub', 'isključeni MT/Q i FX rubovi, BACK isključen, faza "—"; bar linije u waveformu'),
+        ('#38251e', 'Rub', 'rubovi kartica i FX gumba, linija raila, razdjelnik Hot Cues; beat linije; odsvirani dio mini waveforma'),
+        ('#574b45', 'Prigušeni rub', 'neupaljeni MT/Q, BACK, BPM filter, sortiranje, CLOSE i FX rubovi; bar linije; status EMPTY'),
+        ('#404040', 'Sredina phase stripa', 'crta između polovica phase stripa'),
     ]),
     ('Tekst', [
-        ('#f5f0ed', 'Glavni tekst', 'naslovi, proteklo vrijeme, BPM i TIME u Library, vrijednosti postavki; playhead, mini playhead, memory cue, bijeli vrhovi waveforma'),
-        ('#a3958e', 'Sekundarni tekst', 'preostalo vrijeme, oznake (BPM, EFFECT, TARGET…), neaktivne ikone raila, status, "touch me…", podnaslov UPDATING; key koji ne pristaje'),
-        ('#f0e6e0', 'Naslov UPDATING', 'UPDATING FIRMWARE'),
+        ('#f5f0ed', 'Glavni tekst', 'naslovi, proteklo vrijeme, Library redovi, vrijednosti; memory cue linije, bijeli vrhovi i visoki u waveformu, bijela sredina phase stripa'),
+        ('#a3958e', 'Sekundarni tekst', 'preostalo vrijeme, oznake, zaglavlje Library, neupaljeni gumbi, izreka na screensaveru'),
+        ('#100c08', 'Tamni tekst na punim gumbima', 'D1/D2, puni PLAY/CUE/LOAD/BACK, odabrani FX izbori'),
     ]),
     ('Decki i naglasci', [
-        ('#e64c0c', 'Deck 1 / Rust narančasta', 'D1, LOAD D1, pruga D1 na kartici, aktivna ikona raila, BPM broj, naslovi u Settings, decki u Library redu, playlist, BPM filter rub; niski u waveformu; boja D1 u phase stripu'),
-        ('#00e5ff', 'Deck 2 / cijan', 'D2, LOAD D2, pruga D2 na kartici; visoki u waveformu; boja D2 u phase stripu; Hot Cue B'),
-        ('#b7410e', 'Hrđa', 'PAUSE, odabrani izbor u Settings, zaglavlje Library, BPM filter uključen, FX DEPTH traka'),
-        ('#ff7700', 'Narančasta', 'tonalitet (key) u decku, LOOP u memory cueovima, oznaka foldera, key nepoznat; rubovi loopa u waveformu'),
+        ('#e64c0c', 'Deck 1 / Rust narančasta', 'D1, LOAD D1, DECK 1 na FX, pruga D1, aktivni rail, BPM, naslovi Settings, crta ispod zaglavlja Library, BPM filter'),
+        ('#00e5ff', 'Deck 2 / cijan', 'D2, LOAD D2, DECK 2 na FX, pruga D2, SYNC na D2; Hot Cue B'),
+        ('#b7410e', 'Hrđa', 'odabrani izbor na Settings, autor izreke na screensaveru'),
+        ('#ff7700', 'Narančasta', 'LOOP oznaka i LOOP u memory cueovima, oznaka foldera, key nepoznat; rubovi loopa'),
     ]),
     ('Stanja', [
-        ('#00ff66', 'Zelena', 'PLAY, MT, odabrani red i rub u Library, BACK, FX ON, key pristaje; Hot Cue A'),
-        ('#ffd600', 'Žuta', 'CUE, pitch, QUANTIZE, sortirani stupac, faza drugog decka, key +2; Hot Cue D'),
-        ('#ff2e63', 'Crvena brisanja', 'DELETE na Hot Cues i rub pločice koja se briše'),
-        ('#0088ff', 'Plava', 'key +7; srednji u waveformu'),
+        ('#00ff66', 'Zelena', 'PLAY/PAUSE, MT, key oznaka, odabrani red, BACK, FX ON, key pristaje; Hot Cue A'),
+        ('#ffd600', 'Žuta', 'CUE, pitch, Q, sortiranje (gumbi i zaglavlje), faza; key +2; Hot Cue D'),
+        ('#ff0033', 'Žarko crvena', 'playhead i mini playhead, D1 u phase stripu, preostalo vrijeme u zadnjih 30 s, UPDATING FIRMWARE, vrh metera; Hot Cue C'),
+        ('#5c1020', 'Prigušena crvena', 'preostalo vrijeme u zadnjih 30 s dok trepće ugašeno'),
+        ('#ff2e63', 'Crvena brisanja', 'DELETE na Hot Cues'),
+        ('#0088ff', 'Plava', 'key +7'),
     ]),
-    ('Waveform (frekvencije)', [
-        ('#e64c0c', 'Niski', 'boja 0–2 bjeline iz rekordboxa'),
-        ('#0088ff', 'Srednji', 'boja 3–4'),
-        ('#00e5ff', 'Visoki', 'boja 5–7'),
+    ('Waveform (rekordbox 3-band)', [
+        ('#2f6bff', 'Niski', 'bjelina 0–2; isto kao Hot Cue G'),
+        ('#e0a040', 'Srednji', 'bjelina 3–4'),
+        ('#f5f0ed', 'Visoki', 'bjelina 5–7'),
         ('#39ff14', 'Bar trokut', 'zeleni trokut na svakoj bar liniji'),
+    ]),
+    ('Phase strip', [
+        ('#ff0033', 'Deck 1', 'udarci D1 u gornjoj polovici'),
+        ('#0066ff', 'Deck 2', 'udarci D2 u donjoj polovici'),
     ]),
     ('Meteri', [
         ('#39ff14', 'Do 0 dB', 'acid zelena'),
         ('#e6193c', 'Iznad 0 dB', 'koraljno crvena (u kodu METER_AMBER)'),
-        ('#ff0033', 'Vrh', 'laser crvena; i Hot Cue C'),
+        ('#ff0033', 'Vrh', 'žarko crvena'),
     ]),
     ('Hot Cue A–H', [
-        ('#00ff66', 'A', 'linija i zastavica u waveformu, pločica na Hot Cues'),
+        ('#00ff66', 'A', 'linija i zastavica na velikom i mini waveformu, pločica na Hot Cues'),
         ('#00e5ff', 'B', ''),
         ('#ff0033', 'C', ''),
         ('#ffd600', 'D', ''),
@@ -77,19 +84,19 @@ GROUPS = [
         ('#b6ff00', 'H', ''),
     ]),
     ('FX efekti', [
-        ('#eb870f', 'ECHO', 'boja FX panela kad je efekt uključen'),
+        ('#eb870f', 'ECHO', 'FX panel i FX stranica: gumb efekta, odabrani BEAT i DEPTH'),
         ('#b44ae0', 'FLANGER', ''),
         ('#27c7c7', 'DELAY', ''),
-        ('#2d85cd', 'Ostali', ''),
+        ('#2d85cd', 'FILTER i ostali', ''),
     ]),
 ]
 
-# Colours close enough to confuse, for the screen-by-screen pass.
+# Colours close enough to confuse, for later passes.
 NEAR = [
-    ('#ff0033', '#ff2e63', '#e6193c', 'tri crvene: vrh metera i Hot Cue C, brisanje, iznad 0 dB'),
-    ('#00ff66', '#39ff14', '#b6ff00', 'tri zelene: stanja i Hot Cue A, meter i bar trokut, Hot Cue H'),
-    ('#e64c0c', '#ff7700', '#eb870f', 'tri narančaste: Deck 1, key i loop, ECHO'),
-    ('#f5f0ed', '#f0e6e0', None, 'dvije bijele: glavni tekst, naslov UPDATING'),
+    ('#ff0033', '#ff2e63', '#e6193c', 'tri crvene: playhead, D1 faza i Hot Cue C; brisanje; iznad 0 dB'),
+    ('#00ff66', '#39ff14', '#b6ff00', 'tri zelene: stanja i Hot Cue A; meter i bar trokut; Hot Cue H'),
+    ('#2f6bff', '#0066ff', '#0088ff', 'tri plave: niski i Hot Cue G (iste); D2 faza; key +7'),
+    ('#e64c0c', '#ff7700', '#eb870f', 'tri narančaste: Deck 1; key nepoznat i loop; ECHO'),
 ]
 
 
