@@ -13,6 +13,11 @@ name = "legacy_codec_streams"
 path = "../../../firmware-rust/crates/ruzina-audio-runtime/tests/codec_streams.rs"
 required-features = ["deck-mix"]
 
+# The deck screen's pages drawn on the PC with the board's renderer (`examples/render_screens.rs`).
+[[example]]
+name = "render_screens"
+required-features = ["slint-ui"]
+
 [dependencies]
 ruzina-deck = { path = "../../../firmware-rust/crates/ruzina-deck" }
 ruzina-audio-dsp = { path = "../../../firmware-rust/crates/ruzina-audio-dsp", optional = true }

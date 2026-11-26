@@ -34,22 +34,29 @@ component RailButton inherits Rectangle {
     }
 }
 
-// A button that reports going down and up, as the controller's buttons do.
+// A button that reports going down and up, as the controller's buttons do. Lit, it is
+// filled with its tint; otherwise only its outline and text are, and it fills while it
+// is held down.
 component SideButton inherits Rectangle {
     in property <string> text;
-    in property <color> ink: #100c08;
+    in property <color> tint;
+    in property <bool> lit;
     callback down(bool);
+    property <bool> filled: root.lit || touch.pressed;
     width: 58px;
-    height: 38px;
-    border-radius: 3px;
-    opacity: touch.pressed ? 0.6 : 1.0;
+    height: 50px;
+    border-radius: 4px;
+    border-width: 2px;
+    border-color: root.tint;
+    background: root.filled ? root.tint : #000000;
     touch := TouchArea {
         changed pressed => { root.down(self.pressed); }
     }
     Text {
         text: root.text;
-        color: root.ink;
-        font-size: 14px;
+        color: root.filled ? #100c08 : root.tint;
+        font-size: 15px;
+        font-weight: 700;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
@@ -66,7 +73,7 @@ component DeckSide inherits Rectangle {
     callback play();
     callback cue(bool);
     width: 66px;
-    height: 220px;
+    height: 200px;
     Rectangle {
         x: 4px;
         y: 4px;
@@ -82,11 +89,12 @@ component DeckSide inherits Rectangle {
             vertical-alignment: center;
         }
     }
+    // Green: filled while the deck plays, an outline while it stands.
     SideButton {
         x: 4px;
-        y: 35px;
-        height: 34px;
-        background: root.playing ? #00ff66 : #b7410e;
+        y: 34px;
+        tint: #00ff66;
+        lit: root.playing;
         text: root.playing ? "PLAY" : "PAUSE";
         down(pressed) => {
             if (pressed) {
@@ -94,46 +102,55 @@ component DeckSide inherits Rectangle {
             }
         }
     }
+    // Yellow: an outline, filled while it is held.
     SideButton {
         x: 4px;
-        y: 74px;
-        height: 34px;
-        background: #ffd600;
+        y: 88px;
+        tint: #ffd600;
         text: "CUE";
         down(pressed) => { root.cue(pressed); }
     }
+    // As wide as the buttons above it.
     if root.has-cover: Image {
-        x: 5px;
-        y: 113px;
-        width: 56px;
-        height: 56px;
+        x: 4px;
+        y: 142px;
+        width: 58px;
+        height: 58px;
         source: root.cover;
     }
 }
 
-// Times, tempo, pitch, Master Tempo and key of one deck, above its overview.
+// Times, tempo, pitch and Master Tempo of one deck, above its overview. The time left
+// and the tempo are the large ones; in a track's last 30 s the time left blinks red.
 component DeckInfo inherits Rectangle {
     in property <string> elapsed;
     in property <string> remaining;
+    in property <bool> ending;
+    in property <bool> blink;
     in property <string> bpm;
     in property <string> pitch;
     in property <bool> master-tempo;
     in property <bool> quantize;
-    in property <string> key;
-    in property <string> status;
     // MT tapped: Master Tempo on or off.
     callback mt-tapped();
-    width: 456px;
-    height: 30px;
-    Text { x: 0px; y: 2px; text: root.elapsed; color: #f5f0ed; font-size: 20px; }
-    Text { x: 76px; y: 2px; text: root.remaining; color: #a3958e; font-size: 20px; }
-    Text { x: 160px; y: 2px; text: root.bpm; color: #e64c0c; font-size: 20px; }
-    Text { x: 218px; y: 10px; text: "BPM"; color: #a3958e; font-size: 11px; }
+    width: 466px;
+    height: 34px;
+    Text { x: 0px; height: 34px; text: root.elapsed; color: #f5f0ed; font-size: 18px; vertical-alignment: center; }
+    Text {
+        x: 66px;
+        height: 34px;
+        text: root.remaining;
+        color: !root.ending ? #a3958e : root.blink ? #ff0033 : #5c1020;
+        font-size: 26px;
+        vertical-alignment: center;
+    }
+    Text { x: 176px; height: 34px; text: root.bpm; color: #e64c0c; font-size: 26px; vertical-alignment: center; }
+    Text { x: 264px; y: 17px; text: "BPM"; color: #a3958e; font-size: 10px; }
     Rectangle {
-        x: 248px;
-        y: 2px;
-        width: 62px;
-        height: 26px;
+        x: 300px;
+        y: 3px;
+        width: 66px;
+        height: 28px;
         border-width: 2px;
         border-color: #ffd600;
         border-radius: 2px;
@@ -145,19 +162,21 @@ component DeckInfo inherits Rectangle {
             vertical-alignment: center;
         }
     }
+    // MT and Q: large enough to read and to hit (the owner asked, 2026-11-26).
     Rectangle {
-        x: 316px;
-        y: 2px;
-        width: 26px;
-        height: 26px;
-        border-width: 1px;
+        x: 374px;
+        y: 0px;
+        width: 44px;
+        height: 34px;
+        border-width: root.master-tempo ? 2px : 1px;
         border-radius: 4px;
         border-color: root.master-tempo ? #00ff66 : #574b45;
-        background: root.master-tempo ? #0b2614 : #1e1511;
+        background: root.master-tempo ? #0b2614 : #000000;
         Text {
             text: "MT";
             color: root.master-tempo ? #00ff66 : #a3958e;
-            font-size: 12px;
+            font-size: 16px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -172,31 +191,41 @@ component DeckInfo inherits Rectangle {
     }
     // Quantize: loops and cues land on the beat grid.
     Rectangle {
-        x: 348px;
-        y: 2px;
-        width: 22px;
-        height: 26px;
-        border-width: 1px;
+        x: 422px;
+        y: 0px;
+        width: 44px;
+        height: 34px;
+        border-width: root.quantize ? 2px : 1px;
         border-radius: 4px;
         border-color: root.quantize ? #ffd600 : #574b45;
-        background: root.quantize ? #2a2300 : #1e1511;
+        background: root.quantize ? #2a2300 : #000000;
         Text {
             text: "Q";
             color: root.quantize ? #ffd600 : #a3958e;
-            font-size: 12px;
+            font-size: 16px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
     }
-    Text { x: 378px; y: 6px; text: root.key; color: #ff7700; font-size: 14px; }
+}
+
+// A small label beside a deck's title: its key, or its state (SYNC, LOOP, EMPTY).
+component Tag inherits Rectangle {
+    in property <string> text;
+    in property <color> tint;
+    height: 22px;
+    border-width: 1px;
+    border-radius: 4px;
+    border-color: root.tint;
+    background: #000000;
     Text {
-        x: 404px;
-        y: 7px;
-        width: 52px;
-        text: root.status;
-        color: #a3958e;
-        font-size: 11px;
-        horizontal-alignment: right;
+        text: root.text;
+        color: root.tint;
+        font-size: 13px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
     }
 }
 
@@ -458,7 +487,7 @@ component SettingsPage inherits Rectangle {
     callback change(int, int);
     width: 952px;
     height: 474px;
-    background: #100c08;
+    background: #000000;
     // Takes the taps that miss the buttons, away from the page below.
     TouchArea { }
     Text { x: 20px; y: 10px; text: "DECKS"; color: #e64c0c; font-size: 16px; }
@@ -588,7 +617,7 @@ component LibraryPage inherits Rectangle {
     callback bpm-filter-toggled();
     width: 952px;
     height: 474px;
-    background: #100c08;
+    background: #000000;
     // Takes the taps that miss the rows and buttons, away from the page below.
     TouchArea { }
     // The column headings, as large as the titles: a tap sorts on one (the title's is the
@@ -749,7 +778,7 @@ component FxPage inherits Rectangle {
     callback close();
     width: 952px;
     height: 474px;
-    background: #100c08;
+    background: #000000;
     // Takes the taps that miss the buttons, away from the page below.
     TouchArea { }
     Text { x: 16px; y: 12px; text: "BEAT FX"; color: #f5f0ed; font-size: 20px; }
@@ -861,8 +890,9 @@ component FxPanel inherits Rectangle {
     in property <bool> on;
     callback open();
     width: 64px;
-    height: 464px;
-    background: #160f0c;
+    height: 424px;
+    // Black, as the rail and the deck cards (the owner asked, 2026-11-26).
+    background: #000000;
     border-width: 1px;
     // Each effect has its colour, as on the donor's overview (`ui_overview_fx_effect_color`):
     // FILTER blue, ECHO amber, FLANGER violet, DELAY teal. While the effect is on, the
@@ -911,7 +941,7 @@ component FxPanel inherits Rectangle {
         border-width: 1px;
         property <bool> routed: root.on && (root.target == 0 || root.target == pill + 1);
         border-color: self.routed ? root.tint : #574b45;
-        background: self.routed ? root.tint : #160f0c;
+        background: self.routed ? root.tint : #000000;
         Text { text: pill + 1; color: parent.routed ? #100c08 : #a3958e; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Text { x: 0px; y: 112px; width: 64px; text: "BEAT"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
@@ -947,13 +977,17 @@ export component Overview inherits Window {
     width: 1024px;
     height: 600px;
     default-font-family: "DejaVu Sans";
-    background: #100c08;
+    background: #000000;
     in property <string> title-1;
     in property <string> title-2;
     in property <string> elapsed-1;
     in property <string> elapsed-2;
     in property <string> remaining-1;
     in property <string> remaining-2;
+    // A deck in its track's last 30 s: its time left blinks red, lit while `blink` is.
+    in property <bool> ending-1;
+    in property <bool> ending-2;
+    in property <bool> blink;
     in property <string> bpm-1;
     in property <string> bpm-2;
     in property <string> pitch-1;
@@ -1036,13 +1070,13 @@ export component Overview inherits Window {
     // Each tab has a page. The FX panel opens page 4, which no tab marks.
     in-out property <int> active-tab: 0;
 
-    // The pages, on a rail at the left: icons only.
+    // The pages, on a rail at the left: icons only, on black.
     Rectangle {
         x: 0px;
         y: 0px;
         width: 48px;
         height: 600px;
-        background: #1e1511;
+        background: #000000;
         Rectangle { x: 47px; width: 1px; height: 600px; background: #38251e; }
         RailButton {
             y: 0px;
@@ -1093,7 +1127,7 @@ export component Overview inherits Window {
     DeckSide {
         visible: root.active-tab == 0;
         x: 52px;
-        y: 252px;
+        y: 232px;
         number: 2;
         accent: #00e5ff;
         playing: root.playing-2;
@@ -1103,21 +1137,21 @@ export component Overview inherits Window {
         cue(down) => { root.cue(1, down); }
     }
     // Rust draws here: the two waveforms.
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 8px; width: 814px; height: 220px; background: #100c08; }
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 252px; width: 814px; height: 220px; background: #100c08; }
+    Rectangle { visible: root.active-tab == 0; x: 129px; y: 8px; width: 814px; height: 200px; background: #000000; }
+    Rectangle { visible: root.active-tab == 0; x: 129px; y: 232px; width: 814px; height: 200px; background: #000000; }
     // Between the lanes: the phase strip, which Rust draws, and its offset. At 24 px there
     // is room for one line: the offset alone.
     Rectangle {
         visible: root.active-tab == 0;
         x: 52px;
-        y: 228px;
-        width: 80px;
+        y: 208px;
+        width: 74px;
         height: 24px;
         border-radius: 3px;
-        background: #1e1511;
+        background: #202020;
         Text { y: 3px; width: parent.width; text: root.phase; color: root.phase == "—" ? #574b45 : #ffd600; font-size: 14px; horizontal-alignment: center; }
     }
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 228px; width: 814px; height: 24px; background: #1e1511; }
+    Rectangle { visible: root.active-tab == 0; x: 129px; y: 208px; width: 814px; height: 24px; background: #202020; }
 
     FxPanel {
         visible: root.active-tab == 0;
@@ -1183,7 +1217,7 @@ export component Overview inherits Window {
         y: 0px;
         width: 952px;
         height: 474px;
-        background: #100c08;
+        background: #000000;
         // Takes the taps that miss the pads and buttons, away from the page below.
         TouchArea { }
         CueDeck {
@@ -1211,21 +1245,23 @@ export component Overview inherits Window {
         }
     }
 
-    // The deck cards, on every page: title, times and tempo, and the overview.
+    // The deck cards, on every page: title, times and tempo, and the overview. On the
+    // overview page they are taller, with an overview of 80 pixels (45 on the others,
+    // whose pages need the height): the owner asked for larger overviews (2026-11-26).
     for deck in 2: Rectangle {
         x: 52px + deck * 486px;
-        y: 478px;
+        y: root.active-tab == 0 ? 438px : 478px;
         width: 482px;
-        height: 116px;
+        height: root.active-tab == 0 ? 156px : 116px;
         border-radius: 3px;
         border-width: 1px;
         border-color: #38251e;
-        background: #1e1511;
+        background: #000000;
         Rectangle { x: 7px; y: 8px; width: 6px; height: 22px; background: deck == 0 ? #e64c0c : #00e5ff; }
         Text {
             x: 21px;
             y: 6px;
-            width: 452px;
+            width: 352px;
             height: 26px;
             text: deck == 0 ? root.title-1 : root.title-2;
             color: #f5f0ed;
@@ -1233,33 +1269,57 @@ export component Overview inherits Window {
             overflow: elide;
             vertical-alignment: center;
         }
+        // The key and the deck's state, as tags at the title's end.
+        property <string> key: deck == 0 ? root.key-1 : root.key-2;
+        property <string> status: deck == 0 ? root.status-1 : root.status-2;
+        // The key above Q, green as PAUSE; the state beside it.
+        if key != "": Tag {
+            x: 429px;
+            y: 8px;
+            width: 44px;
+            text: key;
+            tint: #00ff66;
+        }
+        if status != "": Tag {
+            x: 379px;
+            y: 8px;
+            width: 46px;
+            text: status;
+            tint: status == "SYNC" ? (deck == 0 ? #e64c0c : #00e5ff) : status == "LOOP" ? #ff7700 : #574b45;
+        }
         // Rust draws the overview here.
-        Rectangle { x: 8px; y: 70px; width: 466px; height: 45px; background: #100c08; }
+        Rectangle {
+            x: 8px;
+            y: root.active-tab == 0 ? 72px : 70px;
+            width: 466px;
+            height: root.active-tab == 0 ? 80px : 45px;
+            background: #000000;
+        }
     }
     DeckInfo {
         x: 59px;
-        y: 515px;
+        y: root.active-tab == 0 ? 473px : 513px;
         elapsed: root.elapsed-1;
         remaining: root.remaining-1;
+        ending: root.ending-1;
+        blink: root.blink;
         bpm: root.bpm-1;
         pitch: root.pitch-1;
         master-tempo: root.master-tempo-1;
         quantize: root.quantize-1;
-        key: root.key-1;
-        status: root.status-1;
         mt-tapped => { root.master-tempo(0); }
     }
     DeckInfo {
         x: 545px;
-        y: 515px;
+        y: root.active-tab == 0 ? 473px : 513px;
         elapsed: root.elapsed-2;
         remaining: root.remaining-2;
+        ending: root.ending-2;
+        blink: root.blink;
         bpm: root.bpm-2;
         pitch: root.pitch-2;
         master-tempo: root.master-tempo-2;
         quantize: root.quantize-2;
-        key: root.key-2;
-        status: root.status-2;
         mt-tapped => { root.master-tempo(1); }
     }
 
@@ -1281,7 +1341,7 @@ export component Overview inherits Window {
     if root.cover != 0: Rectangle {
         width: 1024px;
         height: 600px;
-        background: root.cover == 2 ? #000000 : #100c08;
+        background: #000000;
         // Takes every tap: one that wakes the screensaver presses nothing below.
         TouchArea { }
         // The wordmark cut into its letters (`wordmark/make.sh`), side by side as drawn.
