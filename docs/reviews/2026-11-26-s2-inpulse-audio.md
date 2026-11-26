@@ -103,3 +103,31 @@ Branch `ogranak/uac-44k1`, from `main` at `a090534`.
   - Back at 48 kHz the resampler is gone; at 96 kHz, 32 kHz and 0 the output is
     silent.
   - CI runs the host tests and clippy with `uac-44k1` too.
+
+## Step 3: the periodic TX FIFO for a 540-byte packet
+
+Branch `ogranak/uac-fifo`, from `main` at `dc2c950`.
+
+- **The limit:** esp-usb's balanced split gives the HS controller's periodic OUT
+  FIFO 128 lines (512 bytes). The Inpulse 500's isochronous OUT packet is 540
+  bytes, so the HCD refuses its interface claim. The deck now logs that refusal
+  (step 1).
+- **The split:** `main/usb_fifo.h`, the donor's JC1060 split, in 4-byte lines:
+  - non-periodic TX: 256 lines, as balanced (two 512-byte bulk OUT packets for
+    the stick and MIDI);
+  - periodic TX: 160 lines (640 bytes);
+  - RX: the rest, 32 lines fewer than balanced, and never below two 512-byte
+    bulk IN packets with their status lines.
+  - A FIFO too small for this keeps esp-usb's own split.
+- **The total:** esp-usb splits the FIFO only at install, and its total is in
+  the controller's hardware configuration (`GHWCFG3`), readable only once
+  installed. `ruzina_usb_host_enum_start` therefore installs twice:
+  1. A first install leaves the root port unpowered, so no device is seen, and
+     reads the total.
+  2. After `usb_host_uninstall`, a second install gives the deck's split.
+  - If the uninstall fails, the first install stays, its root port is powered,
+    and esp-usb's split applies.
+  - The boot log shows the outcome:
+    `S6_USB_FIFO total_lines=… split=DECK|DEFAULT rx=… nptx=… ptx=… install=…`.
+- **Tests:** `tools/tests/test_usb_fifo.py` checks the split against a 4 KiB
+  FIFO, the 540-byte packet, the RX minimum and the smallest FIFO that takes it.
