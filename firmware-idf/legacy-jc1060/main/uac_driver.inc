@@ -4,6 +4,7 @@ extern int32_t ruzina_legacy_uac_select(const uint8_t *config, uint32_t len, int
 extern uint32_t ruzina_legacy_uac_control(uint32_t step, uint8_t *out);
 extern uint32_t ruzina_legacy_uac_fill(uint8_t *buffer, uint32_t capacity, uint32_t *sizes, uint32_t packets);
 extern void ruzina_legacy_uac_stats(uint32_t *out);
+extern void ruzina_legacy_uac_reject(uint32_t *out);
 #if CONFIG_RUZINA_DECK_PLAY
 extern void ruzina_legacy_play_diagnostics(uint32_t *out);
 #endif
@@ -604,6 +605,22 @@ static void uac_ctrl_done(usb_transfer_t *transfer)
 #else
 #define UAC_LOG_STACK 3072
 #endif
+/* Why Rust chose no format (controller_audio.rs reject_words): descriptor
+ * errors carry the byte offset, format reasons the interface and alternate. */
+static void uac_log_reject(void)
+{
+    static const char *const names[]={"NONE","HEADER","MALFORMED","DUPLICATE_ENDPOINT","TOO_MANY_RATES",
+        "NO_STREAMING","FORMAT","FEEDBACK","INTERVAL","RATE","PACKET_SIZE","CHANNELS"};
+    uint32_t reject[3];
+    ruzina_legacy_uac_reject(reject);
+    const char *name=reject[0]<sizeof(names)/sizeof(names[0]) ? names[reject[0]] : "?";
+    if (reject[0]>=2 && reject[0]<=4)
+        printf("usb_uac select=NONE reason=%s offset=%" PRIu32 "\n",name,reject[1]);
+    else if (reject[0]>=6)
+        printf("usb_uac select=NONE reason=%s interface=%" PRIu32 " alt=%" PRIu32 "\n",name,reject[1],reject[2]);
+    else printf("usb_uac select=NONE reason=%s\n",name);
+}
+
 static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
 {
 #if CONFIG_RUZINA_UAC_PROFILE
@@ -617,7 +634,7 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
         }
     }
     if (!ruzina_legacy_uac_select((const uint8_t *)config, config->wTotalLength, speed == USB_SPEED_HIGH, uac_info)) {
-        printf("usb_uac select=NONE\n");
+        uac_log_reject();
         return;
     }
 #if CONFIG_RUZINA_DECK_ENGINE
@@ -661,7 +678,12 @@ static void uac_begin_selected(void)
 #endif
     uac_interface = (uint8_t)uac_info[0];
     esp_err_t err = usb_host_interface_claim(client, device, uac_interface, (uint8_t)uac_info[1]);
-    if (err != ESP_OK) { uac_interface=0xff;uac_health.state=UAC_HEALTH_OFF;return; }
+    if (err != ESP_OK) {
+        /* The HCD sizes the endpoint here: an MPS over the periodic TX FIFO fails. */
+        printf("usb_uac interface=%" PRIu32 " alt=%" PRIu32 " ep=%02" PRIx32 " mps=%" PRIu32
+               " claim=%s\n", uac_info[0], uac_info[1], uac_info[2], uac_info[3], esp_err_to_name(err));
+        uac_interface=0xff;uac_health.state=UAC_HEALTH_OFF;return;
+    }
     err = usb_host_transfer_alloc(64, 0, &uac_ctrl);
     if (err != ESP_OK) uac_health.state=UAC_HEALTH_FAULT_HELD;
     if (err == ESP_OK) {

@@ -19,6 +19,7 @@ fn profiling_six_packet_fill_preserves_pcm_and_failed_exit() {
         packets: 0,
         frames: 0,
         toned_packets: 0,
+        rejection: [0; 3],
     };
     let run = |enabled: bool, capacity: usize| {
         let mut state = make_state();
@@ -113,6 +114,7 @@ fn sample16(packet: &[u8], frame: usize, channel: usize) -> i16 {
 
 #[test]
 fn flx4_headphone_tone_is_selected_requested_and_packed() {
+    a_refused_configuration_names_its_reason();
     let config = flx4_config();
     let mut info = [0u32; 8];
     // SAFETY: `config` and `info` outlive the call.
@@ -161,4 +163,46 @@ fn flx4_headphone_tone_is_selected_requested_and_packed() {
     // SAFETY: three writable slots.
     unsafe { ruzina_legacy_uac_stats(stats.as_mut_ptr()) };
     assert_eq!(stats, [16, 16 * 48, 8]);
+}
+
+fn reject() -> [u32; 3] {
+    let mut out = [u32::MAX; 3];
+    // SAFETY: three writable slots.
+    unsafe { ruzina_legacy_uac_reject(out.as_mut_ptr()) };
+    out
+}
+
+fn select_config(config: &[u8], high_speed: bool) -> i32 {
+    let mut info = [0u32; 8];
+    // SAFETY: `config` and `info` outlive the call.
+    unsafe {
+        ruzina_legacy_uac_select(
+            config.as_ptr(),
+            config.len() as u32,
+            i32::from(high_speed),
+            info.as_mut_ptr(),
+        )
+    }
+}
+
+/// Part of the FLX4 test below: both use the one selection state.
+fn a_refused_configuration_names_its_reason() {
+    // The donor's captures (firmware-rust/crates/ruzina-uac/tests/fixtures).
+    let hercules = include_bytes!(
+        "../../../../../firmware-rust/crates/ruzina-uac/tests/fixtures/hercules_inpulse_500_fs.bin"
+    );
+    let s2 = include_bytes!(
+        "../../../../../firmware-rust/crates/ruzina-uac/tests/fixtures/s2_mk3_hs.bin"
+    );
+    // Inpulse 500 at full speed: FEEDBACK on interface 1, alternate 1.
+    assert_eq!(select_config(hercules, false), 0);
+    assert_eq!(reject(), [7, 1, 1]);
+    // S2 MK3 at high speed: MALFORMED at its 6-byte UAC2 Format Type.
+    assert_eq!(select_config(s2, true), 0);
+    let [code, offset, _] = reject();
+    assert_eq!(code, 2);
+    assert_eq!(&s2[offset as usize..offset as usize + 3], &[6, 0x24, 2]);
+    // A selection clears the reason.
+    assert_eq!(select_config(&flx4_config(), true), 1);
+    assert_eq!(reject(), [0, 0, 0]);
 }

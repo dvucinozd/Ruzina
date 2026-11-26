@@ -13,7 +13,9 @@
 //! MAIN and the headphones from both decks.
 use core::cell::UnsafeCell;
 use ruzina_audio_dsp::PcmFrame;
-use ruzina_uac::descriptor::{Selected, UsbSpeed, parse_playback_formats, select};
+use ruzina_uac::descriptor::{DescriptorError, Rejection, Selected, UsbSpeed, choose};
+#[cfg(all(test, feature = "idf-uac-profile"))]
+use ruzina_uac::descriptor::{parse_playback_formats, select};
 use ruzina_uac::packet::{Cadence, ChannelMap, Pair, pack};
 use ruzina_uac::stream::{ControlRequest, ControlStep};
 
@@ -38,6 +40,8 @@ struct State {
     packets: u32,
     frames: u64,
     toned_packets: u32,
+    /// Why the last configuration offered no format: [`reject_words`].
+    rejection: [u32; 3],
 }
 
 struct Shared(UnsafeCell<State>);
@@ -51,6 +55,7 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     packets: 0,
     frames: 0,
     toned_packets: 0,
+    rejection: [0; 3],
 }));
 
 fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
@@ -105,10 +110,17 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
         UsbSpeed::Full
     };
     with(|state| {
-        state.selected = parse_playback_formats(bytes)
-            .ok()
-            .and_then(|formats| select(&formats, speed))
-            .filter(|chosen| chosen.format.channels == 4);
+        let chosen = choose(bytes, speed);
+        state.rejection = match chosen {
+            Ok(chosen) if chosen.format.channels != 4 => [
+                REJECT_CHANNELS,
+                u32::from(chosen.format.interface),
+                u32::from(chosen.format.alternate),
+            ],
+            Ok(_) => [0; 3],
+            Err(rejection) => reject_words(rejection),
+        };
+        state.selected = chosen.ok().filter(|chosen| chosen.format.channels == 4);
         state.map = state
             .selected
             .and_then(|_| ChannelMap::new(4, Some(MAIN), Some(HEADPHONES)).ok());
@@ -135,6 +147,64 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
         unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
         1
     })
+}
+
+/// `ruzina_legacy_uac_reject` code for a selected format without four
+/// channels (MAIN and headphones need four).
+const REJECT_CHANNELS: u32 = 11;
+
+/// `[code, a, b]` for the C log; the codes index the names in
+/// `uac_log_reject` (`uac_driver.inc`), 0 meaning none. Descriptor errors
+/// carry the byte offset in `a`; format reasons carry interface and alternate.
+fn reject_words(rejection: Rejection) -> [u32; 3] {
+    let at = |code: u32, offset: usize| [code, offset as u32, 0];
+    let alt = |code: u32, interface: u8, alternate: u8| {
+        [code, u32::from(interface), u32::from(alternate)]
+    };
+    match rejection {
+        Rejection::Descriptor(DescriptorError::Header) => [1, 0, 0],
+        Rejection::Descriptor(DescriptorError::Malformed { offset }) => at(2, offset),
+        Rejection::Descriptor(DescriptorError::DuplicateEndpoint { offset }) => at(3, offset),
+        Rejection::Descriptor(DescriptorError::TooManyRates { offset }) => at(4, offset),
+        Rejection::NoStreaming => [5, 0, 0],
+        Rejection::Format {
+            interface,
+            alternate,
+        } => alt(6, interface, alternate),
+        Rejection::Feedback {
+            interface,
+            alternate,
+        } => alt(7, interface, alternate),
+        Rejection::Interval {
+            interface,
+            alternate,
+        } => alt(8, interface, alternate),
+        Rejection::Rate {
+            interface,
+            alternate,
+        } => alt(9, interface, alternate),
+        Rejection::PacketSize {
+            interface,
+            alternate,
+        } => alt(10, interface, alternate),
+    }
+}
+
+/// Writes why the last [`ruzina_legacy_uac_select`] chose nothing to
+/// `out[0..3]`: code (0 after a selection), then offset or interface and
+/// alternate.
+///
+/// # Safety
+/// `out` must be valid for three `u32` writes.
+#[cfg(feature = "idf-controller-audio")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_uac_reject(out: *mut u32) {
+    if out.is_null() {
+        return;
+    }
+    let values = with(|state| state.rejection);
+    // SAFETY: the caller provides three writable u32 slots.
+    unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
 }
 
 /// Builds the EP0 request for `step` (0 SET_INTERFACE to the selected

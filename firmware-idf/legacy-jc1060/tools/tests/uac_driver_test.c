@@ -118,7 +118,8 @@ static void complete(usb_transfer_t *t,int status) {
 static int usb_host_endpoint_halt(int d,int ep) { (void)d;(void)ep;return endpoint_error; }
 static int usb_host_endpoint_flush(int d,int ep) { (void)d;(void)ep;flushes++;return endpoint_error; }
 static int usb_host_endpoint_clear(int d,int ep) { (void)d;(void)ep;clears++;return endpoint_error; }
-static int usb_host_interface_claim(int c,int d,int i,int a) { (void)c;(void)d;(void)i;(void)a;return 0; }
+static int claim_error;
+static int usb_host_interface_claim(int c,int d,int i,int a) { (void)c;(void)d;(void)i;(void)a;return claim_error; }
 static int usb_host_interface_release(int c,int d,int i) { (void)c;(void)d;(void)i;assert(live==0);return 0; }
 static int usb_host_client_handle_events(int c,int ticks) {
     (void)c;(void)ticks;
@@ -138,9 +139,14 @@ static int xQueueOverwrite(QueueHandle_t q,const void *sample){(void)q;memcpy(lo
 static void vQueueDelete(QueueHandle_t q){(void)q;}
 static int xTaskCreatePinnedToCore(void (*fn)(void *),const char *name,unsigned stack,void *arg,int priority,void *handle,int core){(void)fn;(void)name;(void)arg;(void)handle;(void)core;assert(stack==(UAC_TEST_PROFILE?4096:3072) && priority==1);return 1;}
 #include "uac_driver.inc"
+static int32_t select_result=1;
+static uint32_t reject_code[3];
+static unsigned reject_calls;
 int32_t ruzina_legacy_uac_select(const uint8_t *c,uint32_t l,int32_t h,uint32_t *o) {
-    (void)c;(void)l;(void)h;uint32_t info[8]={1,1,2,384,4,2,48000,0};memcpy(o,info,sizeof(info));return 1;
+    (void)c;(void)l;(void)h;if(!select_result)return 0;
+    uint32_t info[8]={1,1,2,384,4,2,48000,0};memcpy(o,info,sizeof(info));return 1;
 }
+void ruzina_legacy_uac_reject(uint32_t *out) { ++reject_calls;memcpy(out,reject_code,sizeof(reject_code)); }
 uint32_t ruzina_legacy_uac_control(uint32_t step,uint8_t *out) { (void)step;out[0]=0;return 8; }
 uint32_t ruzina_legacy_uac_fill(uint8_t *b,uint32_t c,uint32_t *sizes,uint32_t packets) {
 #if UAC_TEST_TIMING
@@ -458,5 +464,20 @@ int main(void) {
     uac_start(&config,USB_SPEED_HIGH);resource_state=3;complete(uac_ctrl,0);
     assert(live==0 && uac_health.state==UAC_HEALTH_FAULT_HELD);stop();resource_state=2;
 #endif
+    // A refused configuration logs its reason, every code and an unknown one, and claims
+    // or allocates nothing; so does a refused claim (an MPS over the periodic FIFO).
+    {
+        const int prior=allocations;
+        select_result=0;
+        for(uint32_t code=0;code<13;++code) {
+            reject_code[0]=code;reject_code[1]=1;reject_code[2]=1;
+            uac_start(&config,USB_SPEED_HIGH);
+        }
+        assert(reject_calls==13 && uac_interface==0xff && live==0 && allocations==prior);
+        select_result=1;claim_error=-1;
+        uac_start(&config,USB_SPEED_HIGH);
+        assert(uac_interface==0xff && uac_health.state==UAC_HEALTH_OFF && live==0 && allocations==prior);
+        claim_error=0;assert(uac_stop());
+    }
     return 0;
 }

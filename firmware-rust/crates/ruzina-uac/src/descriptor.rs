@@ -319,6 +319,93 @@ pub fn select(formats: &PlaybackFormats, speed: UsbSpeed) -> Option<Selected> {
         .map(|(_, selected)| selected)
 }
 
+/// Why a configuration offers no playback format, for the log. It changes
+/// nothing in the choice: [`select`] alone decides.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Rejection {
+    /// The walk failed; no format of this configuration is offered.
+    Descriptor(DescriptorError),
+    /// No AudioStreaming alternate with an isochronous OUT endpoint.
+    NoStreaming,
+    /// Not PCM in 16/2 or 24/3, or not two or four channels.
+    Format { interface: u8, alternate: u8 },
+    /// Asynchronous OUT or an explicit feedback endpoint.
+    Feedback { interface: u8, alternate: u8 },
+    /// `bInterval` is not one packet per millisecond at this speed, or a
+    /// high-bandwidth or oversize `wMaxPacketSize`.
+    Interval { interface: u8, alternate: u8 },
+    /// Neither 44.1 nor 48 kHz among the discrete rates.
+    Rate { interface: u8, alternate: u8 },
+    /// `wMaxPacketSize` is below the largest 1 ms packet.
+    PacketSize { interface: u8, alternate: u8 },
+}
+
+impl PlaybackFormat {
+    /// The first check [`PlaybackFormat::supports`] fails for both rates, in
+    /// that function's order; `None` when one rate is supported.
+    pub fn rejection(&self, speed: UsbSpeed) -> Option<Rejection> {
+        if [48_000, 44_100]
+            .into_iter()
+            .any(|rate| self.supports(rate, speed))
+        {
+            return None;
+        }
+        let (interface, alternate) = (self.interface, self.alternate);
+        let interval_ok = match speed {
+            UsbSpeed::Full => self.interval == 1 && self.max_packet <= 1023,
+            UsbSpeed::High => self.interval == 4 && self.max_packet <= 1024,
+        };
+        Some(
+            if !self.pcm || self.sample_format().is_none() || !matches!(self.channels, 2 | 4) {
+                Rejection::Format {
+                    interface,
+                    alternate,
+                }
+            } else if self.feedback {
+                Rejection::Feedback {
+                    interface,
+                    alternate,
+                }
+            } else if !interval_ok || self.max_packet >> 11 != 0 {
+                Rejection::Interval {
+                    interface,
+                    alternate,
+                }
+            } else if !self
+                .rates()
+                .iter()
+                .any(|rate| matches!(rate, 44_100 | 48_000))
+            {
+                Rejection::Rate {
+                    interface,
+                    alternate,
+                }
+            } else {
+                Rejection::PacketSize {
+                    interface,
+                    alternate,
+                }
+            },
+        )
+    }
+}
+
+/// [`select`] on `config`, or why it offers nothing. A four-channel
+/// alternate's reason is reported before others', the highest alternate's
+/// first: that is the setting the deck would have used.
+pub fn choose(config: &[u8], speed: UsbSpeed) -> Result<Selected, Rejection> {
+    let formats = parse_playback_formats(config).map_err(Rejection::Descriptor)?;
+    if let Some(selected) = select(&formats, speed) {
+        return Ok(selected);
+    }
+    Err(formats
+        .as_slice()
+        .iter()
+        .max_by_key(|format| (format.channels == 4, format.alternate))
+        .and_then(|format| format.rejection(speed))
+        .unwrap_or(Rejection::NoStreaming))
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     extern crate std;
@@ -437,37 +524,108 @@ pub(crate) mod tests {
 
     #[test]
     fn unsupported_audio_yields_no_route() {
-        for (alt, why) in [
+        let (i, a) = (1, 1);
+        let format = Rejection::Format {
+            interface: i,
+            alternate: a,
+        };
+        let interval = Rejection::Interval {
+            interface: i,
+            alternate: a,
+        };
+        let rate = Rejection::Rate {
+            interface: i,
+            alternate: a,
+        };
+        for (alt, why, reason) in [
             (
                 alternate(1, 1, 2, 2, 16, &[48_000], 0x05, 192, 1),
                 "asynchronous",
+                Rejection::Feedback {
+                    interface: i,
+                    alternate: a,
+                },
             ),
-            (alternate(1, 1, 2, 4, 32, &[48_000], 0x09, 384, 1), "32-bit"),
+            (
+                alternate(1, 1, 2, 4, 32, &[48_000], 0x09, 384, 1),
+                "32-bit",
+                format,
+            ),
             (
                 alternate(1, 1, 6, 2, 16, &[48_000], 0x09, 576, 1),
                 "six channels",
+                format,
             ),
-            (alternate(1, 1, 2, 2, 16, &[96_000], 0x09, 384, 1), "96 kHz"),
+            (
+                alternate(1, 1, 2, 2, 16, &[96_000], 0x09, 384, 1),
+                "96 kHz",
+                rate,
+            ),
             (
                 alternate(1, 1, 2, 2, 16, &[48_000], 0x09, 191, 1),
                 "packet too small",
+                Rejection::PacketSize {
+                    interface: i,
+                    alternate: a,
+                },
             ),
             (
                 alternate(1, 1, 2, 2, 16, &[48_000], 0x09, 192, 2),
                 "2 ms interval",
+                interval,
             ),
             (
                 alternate(1, 1, 2, 2, 16, &[48_000], 0x09, 0x0800 | 192, 1),
                 "high bandwidth",
+                interval,
             ),
             (
                 alternate(1, 1, 2, 2, 16, &[], 0x09, 192, 1),
+                // Without a discrete rate the alternate is not offered at all.
                 "continuous rates",
+                Rejection::NoStreaming,
             ),
         ] {
-            let formats = parse_playback_formats(&controller(&[alt])).unwrap();
+            let bytes = controller(&[alt]);
+            let formats = parse_playback_formats(&bytes).unwrap();
             assert_eq!(select(&formats, UsbSpeed::Full), None, "{why}");
+            assert_eq!(choose(&bytes, UsbSpeed::Full), Err(reason), "{why}");
         }
+    }
+
+    #[test]
+    fn choose_agrees_with_select_and_names_the_failure() {
+        let good = controller(&[alternate(1, 1, 4, 2, 16, &[48_000], 0x09, 384, 1)]);
+        let formats = parse_playback_formats(&good).unwrap();
+        assert_eq!(
+            choose(&good, UsbSpeed::Full).ok(),
+            select(&formats, UsbSpeed::Full)
+        );
+        let mut broken = good.clone();
+        broken[9] = 0;
+        assert_eq!(
+            choose(&broken, UsbSpeed::Full),
+            Err(Rejection::Descriptor(DescriptorError::Malformed {
+                offset: 9
+            }))
+        );
+        let midi_only = config(&[&[9, 4, 0, 0, 2, 1, 3, 0, 0]]);
+        assert_eq!(
+            choose(&midi_only, UsbSpeed::Full),
+            Err(Rejection::NoStreaming)
+        );
+        // The four-channel alternate's reason wins over a two-channel one's.
+        let mixed = controller(&[
+            alternate(1, 1, 4, 2, 16, &[48_000], 0x05, 384, 1),
+            alternate(1, 2, 2, 2, 16, &[96_000], 0x09, 384, 1),
+        ]);
+        assert_eq!(
+            choose(&mixed, UsbSpeed::Full),
+            Err(Rejection::Feedback {
+                interface: 1,
+                alternate: 1
+            })
+        );
     }
 
     #[test]
