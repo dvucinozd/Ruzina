@@ -12,6 +12,13 @@
 //! rate) gets the same frames through `ruzina-uac`'s `Resampler`, MAIN and
 //! headphones together, pulled one packet at a time.
 //!
+//! A controller that mixes its own headphones (the Inpulse 500: its profile's
+//! `native_headphone_controls`, S3CP v4 bit 5) gets the pre-fader cue bus at
+//! unity on its headphone channels instead of the software headphone mix: its
+//! hardware blends cue with MAIN and sets the level, so the deck must not do it
+//! a second time. The software headphone settings stay and apply again with
+//! any other controller.
+//!
 //! Two departures from the product, for a diagnostic on headphones:
 //! - Master Volume and Headphone Level start at a quarter until each knob
 //!   first moves, instead of the product's full scale.
@@ -27,7 +34,7 @@ use ruzina_audio_runtime::render::{
     RenderDeckControl, RenderOutputBlock,
 };
 use ruzina_controller_core::{ControlEvent, ControlValue, DeckId, SemanticControl};
-use ruzina_mixer::{MIXER_CONTROL_MAX, MixerState};
+use ruzina_mixer::{HeadphoneGains, MIXER_CONTROL_MAX, MixerState};
 use ruzina_uac::resample::Resampler;
 
 /// Frames per render block: each 6 ms USB transfer of 288 frames takes exactly three,
@@ -46,6 +53,13 @@ const CONVERTED_RATE_HZ: u32 = 44_100;
 
 /// MAIN left and right, then headphones left and right.
 type Frame4 = [i16; 4];
+
+/// The cue bus alone at unity: headphones for a controller that mixes them.
+const NATIVE_HEADPHONES: HeadphoneGains = HeadphoneGains {
+    cue: 1.0,
+    master: 0.0,
+    level: 1.0,
+};
 
 /// Fixed headphone headroom on top of the product mix (-12 dB).
 const HEADPHONE_CEILING: f32 = 0.25;
@@ -94,6 +108,8 @@ pub(crate) struct Mix {
     /// 48 kHz to the device's rate, and the rate it was made for; none at
     /// 48 kHz. Its buffers live here, not on the USB callback's stack.
     resampler: Option<(u32, Resampler<4>)>,
+    /// The bound controller mixes its own headphones.
+    native_headphones: bool,
     resample_in: [Frame4; RESAMPLE_FRAMES],
     resample_out: [Frame4; RESAMPLE_FRAMES],
 }
@@ -127,6 +143,7 @@ impl Mix {
             #[cfg(feature = "deck-engine")]
             trim: 1.0,
             resampler: None,
+            native_headphones: false,
             resample_in: [[0; 4]; RESAMPLE_FRAMES],
             resample_out: [[0; 4]; RESAMPLE_FRAMES],
         }
@@ -173,6 +190,18 @@ impl Mix {
     #[cfg(feature = "idf-controller-midi")]
     pub(crate) fn set_channel_filter_always(&mut self, always: bool) {
         self.mixer.set_channel_filter_always(always);
+    }
+
+    /// The bound controller's profile mixes its own headphones (S3CP v4
+    /// NATIVE_HEADPHONES); off with no controller.
+    #[cfg(feature = "idf-controller-midi")]
+    pub(crate) fn set_native_headphones(&mut self, native: bool) {
+        self.native_headphones = native;
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn native_headphones(&self) -> bool {
+        self.native_headphones
     }
 
     /// The mixer's settings, for the Web Remote's status.
@@ -288,7 +317,11 @@ impl Mix {
         {
             control.master_gain *= self.trim;
         }
-        control.headphones = self.mixer.headphone_gains();
+        control.headphones = if self.native_headphones {
+            NATIVE_HEADPHONES
+        } else {
+            self.mixer.headphone_gains()
+        };
         #[cfg(feature = "deck-engine")]
         let fx = self.engine.fx_controls();
         for (index, deck) in [DeckId::One, DeckId::Two].into_iter().enumerate() {
@@ -560,11 +593,17 @@ impl Mix {
         let main = self.block.main[self.position];
         let monitor = self.block.headphones[self.position];
         self.position += 1;
+        // The controller's own level stands in for the ceiling.
+        let ceiling = if self.native_headphones {
+            1.0
+        } else {
+            HEADPHONE_CEILING
+        };
         (
             main,
             PcmFrame {
-                left: (f32::from(monitor.left) * HEADPHONE_CEILING) as i16,
-                right: (f32::from(monitor.right) * HEADPHONE_CEILING) as i16,
+                left: (f32::from(monitor.left) * ceiling) as i16,
+                right: (f32::from(monitor.right) * ceiling) as i16,
             },
         )
     }
