@@ -57,7 +57,9 @@ when source, control and persistence queues are temporarily busy.
 Hot Cue journaling uses a versioned record format, bounded transfer/queues and
 fault containment. A faulted store cannot acknowledge an unconfirmed durable
 write, and persistent failures must not block other transport/control work.
-General settings storage and signed OTA are separate, unfinished subsystems.
+General settings storage and signed OTA are separate subsystems. On the legacy JC1060
+both have target adapters (settings on flash; local signed OTA into two app slots with
+rollback, 2026-11-25); on the native target both are unfinished.
 
 The planned profile compatibility boundary is S3CP v2/v3/v4; the current Rust
 parser/compiler still support v2 only. CUE preview, explicit jog modes, shared

@@ -8,6 +8,34 @@ entry, exact-sector programming/readback and scalar reset smoke were observed.
 Actual factory restore remains NOT_RUN. Read the
 [unit record](readiness/jc1060-20261030-com3.json) for the current device state.
 
+## Since s210: two app slots
+
+Since s210 (2026-11-25) every image with Wi-Fi uses `partitions-ota.csv`
+([firmware updates](../reviews/2026-11-25-web-remote-ota.md)):
+
+| Partition | Offset | Size |
+|---|---|---|
+| nvs | 0x9000 | 0x6000 (the network's password) |
+| phy_init | 0xF000 | 0x1000 |
+| ota_0 | 0x10000 | 6 MiB |
+| ota_1 | 0x610000 | 6 MiB |
+| hotcues | 0xC10000 | 1 MiB (the Hot Cue journal) |
+| settings | 0xD10000 | 16 KiB |
+| otadata | 0xD14000 | 0x2000 |
+
+- **Normal updates** come from the Web Remote (SETUP, FIRMWARE UPDATE) as bundles signed
+  with the owner's Ruzina key. The image goes to the slot the deck is not running.
+- **A bad image** is undone by the bootloader: a new image boots pending, and if it
+  restarts before its Web Remote listens again (about 30 s), the previous image starts.
+  The previous image also stays in the other slot until the next update, so uploading it
+  again is a second way back.
+- **Over USB** (the Web Remote does not start, or the slots must be rewritten): write the
+  app to `ota_0` at 0x10000 and erase otadata, so the bootloader starts `ota_0`, as
+  `s210-ota-flash.py` in the board log does. Keep the pre-write backup of every span
+  written. The Hot Cue journal, settings and NVS are not touched.
+- The factory layout below, and its backups, remain the way back to the board's own
+  firmware.
+
 ## Verified factory layout
 
 Source: independent full backup `factory-esptool56-read-1.bin` in

@@ -22,11 +22,14 @@ The board runs `deck-engine` with the Slint deck screen. Two recipes, from the
 repository root in the pinned IDF environment (below), each into a NEW output directory.
 
 **Play image, music from the USB stick.** These are the flags in the build manifest of
-s162, the image kept for play:
+s229, the image kept for play (`--version` names the image; see the
+[status page](../../docs/DEVELOPMENT_STATUS.md#the-boards-images)):
 
 ```sh
-python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --output /absolute/new/play --variant deck-engine --soak-autoplay --slint-ui --fill-iram --usb-stick
+python firmware-idf/legacy-jc1060/tools/build_legacy.py --idf "$IDF_PATH" --output /absolute/new/play --variant deck-engine --slint-ui --fill-iram --usb-stick --version s229
 ```
+
+Add `--soak-autoplay` for the soak DJ (both decks keep loading and playing).
 
 **Fill profile image.** These are the flags of s163, the
 [fill contention](../../docs/reviews/2026-11-21-fill-contention.md) profile image:
@@ -44,6 +47,20 @@ key, whose private half stays outside the repository
 
 ```sh
 python firmware-idf/legacy-jc1060/tools/ota_bundle.py bundle --private-key KEY.pem --input /absolute/new/play/build/ruzina_legacy_probe.bin --output NAME.ddjota
+```
+
+A flash over USB after that must keep to the two slots: write the app to the slot that
+should start and erase otadata, or the bootloader may start the other slot's older image
+([recovery](../../docs/boards/JC1060_LEGACY_RECOVERY.md#since-s210-two-app-slots)).
+
+**The pages on the PC.** `rust-core/examples/render_screens.rs` draws every page of the
+deck screen with the board's Slint renderer, fonts and images, into PPM files, for
+reviewing a page before a build (what Rust draws itself, the waveforms, meters and phase
+strip, is left out):
+
+```sh
+cd firmware-idf/legacy-jc1060/rust-core
+cargo run --example render_screens --features "idf-soak-autoplay idf-slint-ui" -- /absolute/out
 ```
 
 | Flag | What it does | Requires |

@@ -1,12 +1,12 @@
 # Current development status
 
-Updated 2026-11-25. This page is the one place that names the board's images; the other
+Updated 2026-11-26. This page is the one place that names the board's images; the other
 documents link here.
 
 ## The board's images
 
 - **On the board:** s229 (app `f57f5908…`, version `s229`), in slot ota_0. Its firmware
-  is `ogranak/gui-pass`: main `2f04d44` (#174) with
+  is main `9e1dec8`: #175,
   [the deck screen, page by page](reviews/2026-11-26-gui-pass.md). It is the play image
   recipe, less `--soak-autoplay`, with `--version s229`, sent from the Web Remote. The
   owner checked every page on it ("Sve je gotovo"); fills during play were not measured.
@@ -43,7 +43,7 @@ documents link here.
   - **s184p, s185p and s186p:** the redesign's frame rate
     ([redesign on the fill gap](reviews/2026-11-22-redesign-on-fill-gap.md)).
 - **Where this comes from:** the dated reviews and the board log in
-  `D:\BoardEvidence\JC1060-20261030-COM3` (`FLX4-DAY.md`), as of 2026-11-25.
+  `D:\BoardEvidence\JC1060-20261030-COM3` (`FLX4-DAY.md`), as of 2026-11-26.
   - This page does not read the flash: what is on the board right now is whatever its
     boot log's app hash says.
   - The handoff lists the older images and where each flash backup is kept.
@@ -77,13 +77,14 @@ them. The owner's listening checks are separate, shorter runs. The
 | SYNC and Quantize | Beat sync, continuous SYNC, Quantize | [beat sync](reviews/2026-11-11-beat-sync.md), [continuous](reviews/2026-11-13-continuous-sync.md), [Quantize](reviews/2026-11-12-quantize.md) |
 | Master Tempo | Its own keylock; with SYNC, phase within 1 ms | [Master Tempo](reviews/2026-11-13-master-tempo.md), [stops](reviews/2026-11-13-mt-phase.md), [controller](reviews/2026-11-14-mt-on-controller.md), [with SYNC](reviews/2026-11-16-sync-mt-line.md) |
 | USB audio fill and the screen | The screen waits for gaps between fills and draws Slint's lines and the lane caches through the PPA from internal RAM; on s170, 5.5 % of Master Tempo fills over 3 ms (s163: 18.3 %), all under 5 ms | [fill contention](reviews/2026-11-21-fill-contention.md), [fill gap](reviews/2026-11-22-fill-gap.md) |
-| Deck screen | Slint, with waveforms drawn by Rust; the redesign: Rust palette, icon rail, 814×220 lanes with a phase strip between them, deck cards; Library sort, BPM ±4 % and key colours; Croatian letters | [screen](reviews/2026-11-10-deck-screen.md), [palette](reviews/2026-11-21-rust-palette.md), [layout](reviews/2026-11-21-screen-layout.md), [Library filters](reviews/2026-11-21-library-filters.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [letters](reviews/2026-11-13-latin-glyphs.md) |
-| Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings); the lanes and the phase strip move at every refresh (61 a second) | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [smooth lanes](reviews/2026-11-25-smooth-lanes.md) |
+| Deck screen | Slint, with waveforms drawn by Rust; on black since the GUI pass (2026-11-26): rekordbox 3-band waveforms with a red playhead, 814×200 lanes with a grey phase strip between them (deck 1 red, deck 2 blue), taller deck cards with 80-pixel overviews and Hot Cue flags on the overview page, larger PLAY, CUE, MT and Q; Library with ten larger rows, sort buttons, BPM ±4 % and key colours; Croatian letters. The pages can be drawn on the PC (`examples/render_screens.rs`) | [screen](reviews/2026-11-10-deck-screen.md), [palette](reviews/2026-11-21-rust-palette.md), [layout](reviews/2026-11-21-screen-layout.md), [Library filters](reviews/2026-11-21-library-filters.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [GUI pass](reviews/2026-11-26-gui-pass.md), [letters](reviews/2026-11-13-latin-glyphs.md) |
+| Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings); the lanes and the phase strip move at every refresh (61 a second); a PPA copy that does not end in 50 ms hands the drawing to the CPU, so the screen cannot stand still on it | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [smooth lanes](reviews/2026-11-25-smooth-lanes.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
 | Playlists and covers | Rekordbox's playlist tree in the Library, each deck's cover | [playlists and covers](reviews/2026-11-16-playlists-covers.md) |
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
 | Controllers | The FLX4, checked again on s182 (2026-11-22). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware, and the S2 MK3 and Inpulse 500 have no audio yet. The Web Remote's SETUP lists them | [profiles](reviews/2026-11-21-controller-profiles.md), [in SETUP](reviews/2026-11-25-profiles-and-polish.md) |
-| Boot screen and screensaver | The owner's wordmark, its letters lit in turn; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md) |
-| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover; a SETUP view for the deck's settings and information, and the network's password | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md), [SETUP](reviews/2026-11-25-web-remote-setup.md), [password](reviews/2026-11-25-web-remote-network.md) |
+| Boot screen and screensaver | The owner's wordmark with a shine sliding across it; the screensaver on black with one of the owner's sayings each minute; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
+| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover; a SETUP view for the deck's settings and information, the network's password, the controller profiles and firmware updates | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md), [SETUP](reviews/2026-11-25-web-remote-setup.md), [password](reviews/2026-11-25-web-remote-network.md) |
+| Firmware updates | A `.ddjota` bundle signed with the owner's Ruzina key (`ruz-001`), sent from SETUP into the app slot the deck is not running (two 6 MiB slots); kept once its Web Remote listens again, else the bootloader goes back. Upload, keep and rollback tried on s210 to s213; UPDATING FIRMWARE stands still on screen while the slot is written | [OTA](reviews/2026-11-25-web-remote-ota.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
 
 ## Still to come
 
@@ -111,6 +112,10 @@ them. The owner's listening checks are separate, shorter runs. The
   - **s197p, profile image with smooth lanes** (8 minutes, 4 without Master Tempo and 4
     with it; [smooth lanes](reviews/2026-11-25-smooth-lanes.md)): 13.5 % over 3 ms,
     longest 4.81 ms.
+  - **s208p, profile image of #173** (10 minutes, Master Tempo for the last part;
+    [profiles and fixes](reviews/2026-11-25-profiles-and-polish.md)): Master Tempo fills
+    13.1 % over 3 ms, longest 5.14 ms; plain fills 0.1 %, longest 3.94 ms.
+  - The GUI pass's images (s214 to s229) were not measured in play.
 - **Screen:**
   - The lanes and the phase strip move at every refresh
     ([smooth lanes](reviews/2026-11-25-smooth-lanes.md)).
@@ -119,6 +124,10 @@ them. The owner's listening checks are separate, shorter runs. The
   - No lane misses on s208p (they were about once in 80 s), and putting the stick back no
     longer lengthens a fill ([profiles and fixes](reviews/2026-11-25-profiles-and-polish.md)).
   - Slint's scene preparation is still 16 to 26 ms of a big frame (Library, Settings).
+  - A PPA copy that never ended stood the screen still under the screensaver's shine
+    (s214). Copies are now waited for 50 ms at most, then the CPU draws; the boot screen,
+    screensaver and UPDATING FIRMWARE are drawn by the CPU
+    ([GUI pass](reviews/2026-11-26-gui-pass.md)).
 - **Boot:** the FLX4 drops and enumerates again once at every boot
   (`Enqueue URB error: ESP_ERR_INVALID_STATE`); it then works.
 - **SD (SD build only):** an SD clock failure at the first boot after a flash.
@@ -128,7 +137,7 @@ them. The owner's listening checks are separate, shorter runs. The
     ([SD slot](reviews/2026-11-16-sd-slot-teardown.md)).
 - **Web Remote:**
   - SETUP covers the deck's settings, its network's password, a list of the controller profiles and firmware updates; profiles cannot be uploaded, and the network's name stays.
-  - Firmware updates: a `.ddjota` bundle signed with the Ruzina key (`ruz-001`) goes to the slot the deck is not running, with rollback (tried on s210 and s211). During an upload the screen shows UPDATING FIRMWARE and USB audio stalls; there is no pull from a server.
+  - Firmware updates: a `.ddjota` bundle signed with the Ruzina key (`ruz-001`) goes to the slot the deck is not running, with rollback (tried on s210 to s213; every image since has come this way). During an upload the screen shows UPDATING FIRMWARE and USB audio stalls; there is no pull from a server, and the C6's firmware is not updated.
   - The network's default password is a build setting; the owner's own is kept in NVS.
 
 ## Evidence layers
@@ -168,7 +177,7 @@ N/A = outside the named component. A host PASS never implies hardware PASS.
 | 10 USB roles / MAIN changes | PASS contracts | PARTIAL state/demo | no board role activation | NOT RUN | Port/power map and teardown receipts |
 | 11 Settings | PASS fake flash / power cuts | PASS HTTP config and RAM-backed flash | standalone crate; no board flash owner | NOT RUN | Durable target adapter |
 | 12 Web/C6 | PASS HTTP / upload leases / async JS | PASS settings/profile/resources/log APIs | standalone no_std core; no C6 driver | NOT RUN | C6 network and TLS |
-| 13 Signed OTA | PASS incremental HTTP→fake A/B and rollback | Firmware metadata; upload 503 without trust/slot adapter | standalone crate; no flash/TLS adapter | NOT RUN | Configure board trust/project/slot adapter, physical rollback |
+| 13 Signed OTA | PASS incremental HTTP→fake A/B and rollback | Firmware metadata; upload 503 without trust/slot adapter | standalone crate; no flash/TLS adapter | NOT RUN natively; the legacy JC1060 has the slot adapter, upload, keep and rollback ([OTA](reviews/2026-11-25-web-remote-ota.md)) | Native trust/slot adapter; pull and TLS |
 | 14 Resources / regression | PASS bounded contracts | PASS Health + resources/log snapshots | runtime-health compile-only | NOT RUN | Measured board budgets; heap values explicitly unavailable |
 | 15 Reconnect fencing | PASS | PARTIAL synthetic media lifecycle | compile-only owners | NOT RUN | Real attach/detach/recovery stress |
 | 16 Headphone gain | PASS packer/render contracts | N/A: no audible output | no physical UAC packer wiring | NOT RUN | Per-controller channel map/level/listening |

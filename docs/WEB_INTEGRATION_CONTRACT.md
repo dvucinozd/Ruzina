@@ -15,7 +15,7 @@ Response bytes are bounded by the caller buffer; overflow yields 500.
 | GET /api/controller-profiles | no body; bounded profiles array: id/version/vid/pid; simulator scope | ProfileRegistry from validated installed blobs |
 | POST /api/controller-profile | 32..16384 B binary; X-DDJ-Profile-ID, optional X-DDJ-Profile-Overwrite 0/1 | ProfileScanBuffers::install then registry rescan; valid S3CP only |
 | GET /api/firmware | no body; running/candidate state, simulated flag; boot_confirmed false for pending image | OTA install + BootHealth model; no automatic confirmation |
-| POST /api/ota/p4 | 212..4194492 B signed DDJOTA1; application/octet-stream | Incremental local-policy installer, inactive SlotFlash; candidate only after signature/hash/descriptor checks |
+| POST /api/ota/p4 | 212..6291644 B signed DDJOTA1 (header and up to a 6 MiB slot); application/octet-stream | Incremental local-policy installer, inactive SlotFlash; candidate only after signature/hash/descriptor checks |
 | GET /api/resources | no body; simulated scope and measurement availability | bounded resource snapshot; unavailable heaps null, no invented device measurements |
 | GET /api/diagnostic-log | no body; bounded redacted owner snapshot, units/scope stated | Service snapshot; no raw arbitrary log strings or request URLs |
 
@@ -58,3 +58,27 @@ only enter fixtures with provenance and permission; no private music is added.
 Existing fixture manifests remain authoritative; synthetic cases are labelled.
 
 Implementation/validation progress: [phase B execution log](reviews/2026-10-27-phase-b-log.md).
+
+## On the legacy JC1060 deck (2026-11-25)
+
+The deck's Web Remote (`firmware-idf/legacy-jc1060`, `rust-core/src/web_remote.rs`)
+serves a subset, on the same admission rules:
+
+| Method / route | On the deck |
+|---|---|
+| GET /api/settings | the deck's settings, its information (network, firmware, slot, controller, media, tracks, uptime) and the controller profiles ([SETUP](reviews/2026-11-25-web-remote-setup.md)) |
+| POST /api/settings?name=…&value=… | one setting, as the deck's Settings page sets it |
+| POST /api/network | `{"password":"…"}` in the body only; 409 while a deck plays ([password](reviews/2026-11-25-web-remote-network.md)) |
+| POST /api/ota/p4 | a bundle signed with the Ruzina key (`ruz-001`), project `ruzina_legacy_probe` ([OTA](reviews/2026-11-25-web-remote-ota.md)) |
+
+Where the deck's firmware upload differs from the host contract above:
+
+- **Streaming:** the C server (`main/web_client.h`) streams a body too long for its
+  2 KiB request buffer to `ruzina-web` in pieces of at most 2 KiB.
+- **Deadlines:** a streamed body may pause up to 10 s.
+- **Refusals:** a refused body is read to its end, so the answer reaches the browser.
+- **While a deck plays:** the upload is refused with 409.
+- **After the upload:** the deck restarts 1 s after a 200.
+
+The other management routes (`/api/ota/config`, profile upload, `/api/firmware`,
+resources and the diagnostic log) are not served by the deck.
