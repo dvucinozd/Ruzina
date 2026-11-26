@@ -6,7 +6,8 @@
 //! Slint parts (worst, then 31 the average), 22 a waveform frame (32). A Slint frame over
 //! `SLOW_FRAME_US` also logs 23 its draw (pass: the rows drawn) and 24 the page updates
 //! before it (pass: the open page), then 25 each area drawn (pass: first and last row,
-//! value: first and last column, 16 bits each) and 26 the lines (pass) and pixels drawn.
+//! value: first and last column, 16 bits each) and 26 the lines (pass) and pixels drawn;
+//! 27 to 29 where its time went, and 50 to 52 the parts of the scene's preparation.
 //!
 //! The boot screen and the screensaver lie over everything (`screen_idle`); Rust then draws
 //! nothing. So does UPDATING FIRMWARE while the Web Remote writes a new image; once it is
@@ -274,6 +275,20 @@ unsafe extern "C" {
         width: u32,
         height: u32,
     ) -> i32;
+    /// As `ruzina_panel_blit`, but returns once the copy has begun (0), after the one
+    /// before it has ended.
+    fn ruzina_panel_blit_start(
+        from: *const u16,
+        from_width: u32,
+        from_x: u32,
+        to: *mut u16,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+    ) -> i32;
+    /// Waits for the copy begun last: 0 once it has ended, or if none is under way.
+    fn ruzina_panel_blit_wait() -> i32;
     fn ruzina_bridge_load_report(pass: u32, event: u32, value: u32);
     /// Whether media put back are read again without an app restart (a USB stick).
     fn ruzina_media_reinsertable() -> bool;
@@ -914,13 +929,17 @@ const STRIP_COLUMNS: usize = 64;
 const STRIP_PIXELS: usize = 16 * WIDTH;
 const _: () = assert!(STRIP_COLUMNS * LANE_HEIGHT <= STRIP_PIXELS);
 
-/// Copies a block of Slint's lines from the strip into a frame buffer, by the PPA.
-fn copy_block(strip: &[u16], frame: &mut [u16], block: ruzina_screen_lines::Block) -> bool {
+/// Begins copying a block of Slint's lines from the strip into a frame buffer, by the PPA;
+/// `wait_block` waits for it. Slint draws its next lines meanwhile, in the strip's other
+/// half.
+fn start_block(strip: &[u16], frame: &mut [u16], block: ruzina_screen_lines::Block) -> bool {
     mark(MOVE, true);
     // SAFETY: the block lies inside `strip`, `stage_width` to a row (screen-lines makes
     // it so); `frame` is one of the panel's frame buffers and C bounds the block to it.
+    // Both stay alive, and screen-lines leaves the block's part of the strip and its rows
+    // of the frame alone, until `wait_block` returns.
     let copied = unsafe {
-        ruzina_panel_blit(
+        ruzina_panel_blit_start(
             strip.as_ptr(),
             block.stage_width as u32,
             block.stage_x as u32,
@@ -933,6 +952,15 @@ fn copy_block(strip: &[u16], frame: &mut [u16], block: ruzina_screen_lines::Bloc
     } == 0;
     mark(MOVE, false);
     copied
+}
+
+/// Waits for the block `start_block` began last.
+fn wait_block() -> bool {
+    mark(MOVE, true);
+    // SAFETY: no arguments; C waits on its own semaphore.
+    let ended = unsafe { ruzina_panel_blit_wait() } == 0;
+    mark(MOVE, false);
+    ended
 }
 
 /// Where a lane's pixels go: the frame buffer, or a strip that holds columns `first` and
@@ -2774,6 +2802,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
         let mut rows_drawn = 0;
         let mut drawn_areas = None;
         let mut split = None;
+        let mut prep = None;
         let direct: &[Area] = if hidden {
             &[]
         } else if covered {
@@ -2792,11 +2821,14 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
                 let stage = strip.as_deref_mut().filter(|_| !hidden).map(|pixels| {
                     ruzina_screen_lines::Stage {
                         pixels,
-                        copy: copy_block,
+                        start: start_block,
+                        wait: wait_block,
                     }
                 });
+                renderer.set_probe_clock(now_us);
                 let lines =
                     ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us, stage);
+                prep = Some(renderer.scene_prep());
                 drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));
                 let mut flush_us = 0;
                 if lines.bottom > lines.top {
@@ -2844,6 +2876,14 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
                 // 8-cycle units at the 360 MHz CPU clock.
                 let us = u64::from(cycles_8.wrapping_sub(allocs_before.1)) * 8 / 360;
                 ruzina_bridge_load_report(calls, 29, us as u32);
+                // Inside the preparation (the vendored renderer's `ScenePrep`): the item
+                // tree's dirty tracking, then the items gone over; the texts' share of
+                // those, then the sorting of the scene; the texts and their glyphs.
+                if let Some(prep) = prep {
+                    ruzina_bridge_load_report(prep.dirty_us, 50, prep.items_us);
+                    ruzina_bridge_load_report(prep.text_us, 51, prep.scene_us);
+                    ruzina_bridge_load_report(prep.texts, 52, prep.glyphs);
+                }
             }
         }
         for deck in 0..2 {

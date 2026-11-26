@@ -92,19 +92,45 @@ static bool mover_ready(void)
     return true;
 }
 
+/* The copy begun last and not yet waited for (`blit_wait`): one at a time. */
+static bool blit_pending;
+static uint32_t blit_w, blit_h, blit_x, blit_y;
+
+/* Waits up to BLIT_WAIT_MS for the copy begun last: 0 once it is done, or when none is
+   under way; -1 if it did not end in time. */
+static int32_t blit_wait(void)
+{
+    if (!blit_pending) return 0;
+    blit_pending = false;
+    if (xSemaphoreTake(blit_done, pdMS_TO_TICKS(BLIT_WAIT_MS)) == pdTRUE) return 0;
+    ppa_stuck = true;
+    printf("ppa stuck=1 wait_ms=%d block=%" PRIu32 "x%" PRIu32 " at=%" PRIu32 ",%" PRIu32
+           ": the CPU draws from now on\n", BLIT_WAIT_MS, blit_w, blit_h, blit_x, blit_y);
+    return -1;
+}
+
+/* Begins a PPA copy once the one before it has ended: 0 once begun, -1 if it did not
+   begin. The driver keeps its own copy of `blit`. */
+static int32_t blit_start(ppa_srm_oper_config_t *blit)
+{
+    if (blit_wait() != 0) return -1;
+    blit->mode = PPA_TRANS_MODE_NON_BLOCKING;
+    xSemaphoreTake(blit_done, 0);
+    if (ppa_do_scale_rotate_mirror(mover, blit) != ESP_OK) return -1;
+    blit_pending = true;
+    blit_w = blit->in.block_w;
+    blit_h = blit->in.block_h;
+    blit_x = blit->out.block_offset_x;
+    blit_y = blit->out.block_offset_y;
+    return 0;
+}
+
 /* One PPA copy, waited for up to BLIT_WAIT_MS: 0 once it is done, -1 if it failed or did
    not end in time. */
 static int32_t blit_run(ppa_srm_oper_config_t *blit)
 {
-    blit->mode = PPA_TRANS_MODE_NON_BLOCKING;
-    xSemaphoreTake(blit_done, 0);
-    if (ppa_do_scale_rotate_mirror(mover, blit) != ESP_OK) return -1;
-    if (xSemaphoreTake(blit_done, pdMS_TO_TICKS(BLIT_WAIT_MS)) == pdTRUE) return 0;
-    ppa_stuck = true;
-    printf("ppa stuck=1 wait_ms=%d block=%" PRIu32 "x%" PRIu32 " at=%" PRIu32 ",%" PRIu32
-           ": the CPU draws from now on\n", BLIT_WAIT_MS, blit->in.block_w, blit->in.block_h,
-           blit->out.block_offset_x, blit->out.block_offset_y);
-    return -1;
+    if (blit_start(blit) != 0) return -1;
+    return blit_wait();
 }
 
 /* A lane move as a plain 2D-DMA memory-to-memory copy. The PPA's SRM engine moved a lane
@@ -454,22 +480,48 @@ uint16_t *ruzina_panel_strip(uint32_t pixels)
     return made == pixels ? strip : NULL;
 }
 
-/* Copies the `w` by `h` pixels at column `from_x` of `from`, `from_w` to a row, to (x, y)
-   of frame buffer `to`, in hardware. The PPA driver invalidates the rows of `to`, so the
-   caller writes them back before. */
-int32_t ruzina_panel_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *to,
-                          uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+/* A copy of the `w` by `h` pixels at column `from_x` of `from`, `from_w` to a row, to
+   (x, y) of frame buffer `to`; false if it does not fit or the PPA cannot copy. */
+static bool panel_blit_config(ppa_srm_oper_config_t *blit, const uint16_t *from, uint32_t from_w,
+                              uint32_t from_x, uint16_t *to, uint32_t x, uint32_t y, uint32_t w,
+                              uint32_t h)
 {
-    if (!w || !h || from_x + w > from_w || x + w > 1024 || y + h > 600 || !mover_ready()) return -1;
-    ppa_srm_oper_config_t blit = {
+    if (!w || !h || from_x + w > from_w || x + w > 1024 || y + h > 600 || !mover_ready()) return false;
+    *blit = (ppa_srm_oper_config_t){
         .in = {.buffer = from, .pic_w = from_w, .pic_h = h, .block_w = w, .block_h = h,
                .block_offset_x = from_x, .block_offset_y = 0, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
         .out = {.buffer = to, .buffer_size = 1024 * 600 * 2, .pic_w = 1024, .pic_h = 600,
                 .block_offset_x = x, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
         .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
     };
+    return true;
+}
+
+/* Copies the `w` by `h` pixels at column `from_x` of `from`, `from_w` to a row, to (x, y)
+   of frame buffer `to`, in hardware. The PPA driver invalidates the rows of `to`, so the
+   caller writes them back before. */
+int32_t ruzina_panel_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *to,
+                          uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+    ppa_srm_oper_config_t blit;
+    if (!panel_blit_config(&blit, from, from_w, from_x, to, x, y, w, h)) return -1;
     return blit_run(&blit);
 }
+
+/* As `ruzina_panel_blit`, but returns once the copy has begun, after the one before it has
+   ended, so the deck screen draws its next lines meanwhile. `from` and the rows of `to`
+   are the PPA's until `ruzina_panel_blit_wait`. */
+int32_t ruzina_panel_blit_start(const uint16_t *from, uint32_t from_w, uint32_t from_x, uint16_t *to,
+                                uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+    ppa_srm_oper_config_t blit;
+    if (!panel_blit_config(&blit, from, from_w, from_x, to, x, y, w, h)) return -1;
+    return blit_start(&blit);
+}
+
+/* Waits for the copy `ruzina_panel_blit_start` began last: 0 once it is done, or if none is
+   under way; -1 if it did not end in time. */
+int32_t ruzina_panel_blit_wait(void) { return blit_wait(); }
 
 /* Waits for the end of the next refresh. */
 void ruzina_panel_wait_refresh(void)

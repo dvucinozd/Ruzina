@@ -3,6 +3,7 @@
 //! overview, the Library, Hot Cues, Settings, FX, the boot screen, the screensaver and
 //! UPDATING FIRMWARE. What Rust draws itself on the board (waveforms, overviews, meters,
 //! the phase strip) is left as the page's own background. Demonstration texts only.
+//! Then it times frames as the board draws them and prints their parts (`frame_parts`).
 //!
 //! cargo run --example render_screens --features "idf-soak-autoplay idf-slint-ui" -- OUT
 use slint::platform::software_renderer::{MinimalSoftwareWindow, RepaintBufferType, Rgb565Pixel};
@@ -209,4 +210,108 @@ fn main() {
     }
     let _ = ui.get_library_rows().row_count();
     println!("pages drawn into {}", out.display());
+    frame_parts(&window, &ui);
+}
+
+fn clock() -> u64 {
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    START
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_nanos() as u64
+}
+
+/// The parts of a frame `frame_parts` prints.
+const PARTS: [&str; 9] = [
+    "total", "prepare", "dirty", "items", "text", "scene", "lines", "texts", "glyphs",
+];
+
+/// Draws frames as the board does (a reused buffer, line by line) and prints the fastest
+/// of each part, in nanoseconds on this PC (steadier than the mean on a busy PC), with the
+/// scene's preparation split as the board's slow-frame log splits it (events 27, 50 to 52):
+/// 1000 Library page turns, each changing all ten rows, then 200 frames on each page in
+/// which only the first deck's time changes.
+fn frame_parts(window: &MinimalSoftwareWindow, ui: &Overview) {
+    ui.set_cover(0);
+    ui.set_active_tab(1);
+    let rows = Rc::new(VecModel::from(
+        ui.get_library_rows().iter().collect::<Vec<_>>(),
+    ));
+    ui.set_library_rows(rows.clone().into());
+    let mut frame = vec![0u16; WIDTH * HEIGHT];
+    let mut draw = || {
+        let mut parts = [0u64; 9];
+        slint::platform::update_timers_and_animations();
+        window.draw_if_needed(|renderer| {
+            renderer.set_repaint_buffer_type(RepaintBufferType::ReusedBuffer);
+            renderer.set_probe_clock(clock);
+            let started = clock();
+            let lines = ruzina_screen_lines::render(renderer, &mut frame, &[], clock, None);
+            let total = clock() - started;
+            let prep = renderer.scene_prep();
+            parts = [
+                total,
+                u64::from(lines.prepare_us),
+                u64::from(prep.dirty_us),
+                u64::from(prep.items_us),
+                u64::from(prep.text_us),
+                u64::from(prep.scene_us),
+                u64::from(lines.lines_us),
+                u64::from(prep.texts),
+                u64::from(prep.glyphs),
+            ];
+        });
+        parts
+    };
+    let fastest = |label: &str, frames: &mut dyn FnMut() -> [u64; 9], count: usize| {
+        let mut best = [u64::MAX; 9];
+        for _ in 0..count {
+            for (best, part) in best.iter_mut().zip(frames()) {
+                *best = (*best).min(part);
+            }
+        }
+        let parts: Vec<_> = PARTS
+            .iter()
+            .zip(best)
+            .map(|(name, value)| format!("{name}={value}"))
+            .collect();
+        println!("{label} {}", parts.join(" "));
+    };
+    draw();
+    let mut turn = 0;
+    fastest(
+        "library_page_turn",
+        &mut || {
+            turn += 1;
+            for row in 0..rows.row_count() {
+                let mut line = rows.row_data(row).expect("a row");
+                line.title = text(&format!("Demo Track {} of page {turn}", row + 1));
+                line.number = text(&(turn * 10 + row + 1).to_string());
+                line.selected = row == turn % 10;
+                rows.set_row_data(row, line);
+            }
+            draw()
+        },
+        1000,
+    );
+    for (name, tab) in [
+        ("overview", 0),
+        ("library", 1),
+        ("cues", 2),
+        ("settings", 3),
+        ("fx", 4),
+    ] {
+        ui.set_active_tab(tab);
+        draw();
+        let mut second = 0;
+        fastest(
+            &format!("{name}_time_only"),
+            &mut || {
+                second += 1;
+                ui.set_elapsed_1(text(&format!("01:{:02}", second % 60)));
+                draw()
+            },
+            200,
+        );
+    }
 }

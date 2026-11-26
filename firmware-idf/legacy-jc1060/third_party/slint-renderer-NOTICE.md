@@ -9,11 +9,15 @@ of the registry copy with `[patch.crates-io]`.
   LicenseRef-Slint-Software-3.0`, the texts in its `LICENSES/`. The vendored copy changes
   nothing about which of these the firmware uses Slint under.
 - **Per-file SHA-256** of all 17 files as upstream ships them: `upstream-files.json`. The
-  changed file's upstream and patched digests are pinned in
+  changed files' upstream and patched digests are pinned in
   `tools/source_budget/vendor-patch.json`; `tools/source_budget/verify_vendor.py` checks
   both in CI.
 
-## The one change
+## The changes
+
+Two files, each change under a `Ruzina (JC1060 deck screen)` comment.
+
+### Glyphs at their own size
 
 `draw_functions.rs`, in `draw_texture_line`, under a `Ruzina (JC1060 deck screen)`
 comment: a fast path for a glyph drawn at its own size.
@@ -32,5 +36,19 @@ On the host, at `opt-level = 3`:
 - a full Library page drew in about 660 µs instead of about 818 µs;
 - Settings drew in 150 µs instead of 174 µs.
 
-To move to a newer Slint, copy that version's package and carry the fast path over, or
-drop it if upstream draws glyphs at their own size without the general path.
+### Timing the scene's preparation
+
+`lib.rs`: `SoftwareRenderer::set_probe_clock` gives the renderer a clock, and
+`SoftwareRenderer::scene_prep` returns where the last `render_by_line` call's preparation
+of the scene went (`ScenePrep`):
+- the dirty tracking over the whole item tree;
+- going over the items to make the scene's commands, and of that, the texts;
+- sorting the commands by line;
+- the texts gone over and their glyphs.
+
+Without a clock nothing is timed and the drawing is unchanged; with one it reads the clock
+about twice per text. The deck screen logs these parts for its slow frames (events 50 to
+52).
+
+To move to a newer Slint, copy that version's package and carry both changes over, or
+drop the fast path if upstream draws glyphs at their own size without the general path.
