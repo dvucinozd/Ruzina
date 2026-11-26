@@ -1,6 +1,7 @@
-//! The boot screen and the screensaver, as the donor firmware (Pajoniiir) has them: the
-//! word RUZINA, its letters lit in turn, for the first seconds after boot and again once
-//! the deck has stood idle for the wait set on the Settings page.
+//! The boot screen and the screensaver: the word RUZINA with a shine sliding across it,
+//! for the first seconds after boot and again once the deck has stood idle for the wait
+//! set on the Settings page. The screensaver is on black, with one of the owner's sayings
+//! under the word, a new one each minute.
 //!
 //! The timing is the shared [`IdleScreen`]: nothing touched or pressed for the wait, and
 //! no deck playing. A playing deck holds it off and counts as activity, so it does not

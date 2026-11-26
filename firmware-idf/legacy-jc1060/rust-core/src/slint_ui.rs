@@ -37,25 +37,44 @@ const OFFSET_LABEL_MS: u64 = 250;
 use ruzina_screen_lines::Area;
 
 const LANE_WIDTH: usize = 814;
-const LANE_HEIGHT: usize = 220;
+/// The lanes' left edge: their playhead (column `PLAYHEAD_X`, three wide) then falls on
+/// the middle of the gap between the deck cards, x 536 (the owner asked, 2026-11-26).
+const LANES_X: usize = 129;
+const _: () = assert!(LANES_X + LANE_WIDTH / 2 == 536);
+const LANE_HEIGHT: usize = 200;
 /// The two lanes, right of the deck buttons, with the phase strip's 24 pixels between them:
 /// their bar triangles touch it (the owner asked, on s185p).
 const LANES: [Area; 2] = [
     Area {
-        x: 136,
+        x: LANES_X,
         y: 8,
         width: LANE_WIDTH,
         height: LANE_HEIGHT,
     },
     Area {
-        x: 136,
-        y: 252,
+        x: LANES_X,
+        y: 232,
         width: LANE_WIDTH,
         height: LANE_HEIGHT,
     },
 ];
-/// The overviews, at the bottom of the deck cards.
+/// The overviews, at the bottom of the deck cards: 80 pixels high on the overview page,
+/// whose cards are taller, and 45 under the other pages.
 const MINIS: [Area; 2] = [
+    Area {
+        x: 60,
+        y: 510,
+        width: 466,
+        height: 80,
+    },
+    Area {
+        x: 546,
+        y: 510,
+        width: 466,
+        height: 80,
+    },
+];
+const MINIS_COVERED: [Area; 2] = [
     Area {
         x: 60,
         y: 548,
@@ -73,14 +92,14 @@ const MINIS: [Area; 2] = [
 /// high and 14 apart.
 const METERS: [Area; 2] = [
     Area {
-        x: 122,
-        y: 48,
+        x: 117,
+        y: 38,
         width: 10,
         height: 140,
     },
     Area {
-        x: 122,
-        y: 292,
+        x: 117,
+        y: 262,
         width: 10,
         height: 140,
     },
@@ -88,8 +107,8 @@ const METERS: [Area; 2] = [
 /// The phase strip between the lanes: deck 1's beats in its upper half, deck 2's in its
 /// lower, over four of the master's beats in real time, the playhead in the middle.
 const PHASE: Area = Area {
-    x: 136,
-    y: 228,
+    x: LANES_X,
+    y: 208,
     width: LANE_WIDTH,
     height: 24,
 };
@@ -109,47 +128,61 @@ const PHASE_HALVES: [Area; 2] = [
         height: 9,
     },
 ];
-const PHASE_BACK: u16 = rgb(0x1e, 0x15, 0x11);
-const PHASE_MIDDLE: u16 = rgb(0x38, 0x25, 0x1e);
-const DECK_COLORS: [u16; 2] = [rgb(0xe6, 0x4c, 0x0c), rgb(0x00, 0xe5, 0xff)];
+/// The phase strip: dark grey, a few shades above black, with deck 1's beats in bright
+/// red and deck 2's in bright blue, and a white playhead, apart from both (the owner's
+/// choice, 2026-11-26). Greys whose RGB565 green is twice their red stay neutral.
+const PHASE_BACK: u16 = rgb(0x20, 0x20, 0x20);
+const PHASE_MIDDLE: u16 = rgb(0x40, 0x40, 0x40);
+const PHASE_TICKS: [u16; 2] = [rgb(0xff, 0x00, 0x33), rgb(0x00, 0x66, 0xff)];
+const PHASE_PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
 const DIRECT: [Area; 7] = [
     LANES[0], LANES[1], MINIS[0], MINIS[1], METERS[0], METERS[1], PHASE,
 ];
 /// The Library, Hot Cues, Settings and FX pages cover the lanes and meters; Rust then draws only
 /// the overviews.
-const COVERED_DIRECT: [Area; 2] = [MINIS[0], MINIS[1]];
-/// The cover's lit letter moves one letter on each step.
-const COVER_STEP_MS: u64 = 120;
-/// The cover's word has six letters; its lit letter runs from two before the first to two
-/// past the last.
-const COVER_HEADS: u64 = 6 + 5;
+const COVERED_DIRECT: [Area; 2] = [MINIS_COVERED[0], MINIS_COVERED[1]];
+/// The cover's shine: one sweep across the word every `SHINE_PERIOD_MS`, taking
+/// `SHINE_SWEEP_MS`, from `SHINE_FROM` to `SHINE_TO` pixels from the word's left edge (the
+/// word is 720 px wide; the band's soft edges start and end off it).
+const SHINE_PERIOD_MS: u64 = 4_000;
+const SHINE_SWEEP_MS: u64 = 2_500;
+const SHINE_FROM: i64 = -150;
+const SHINE_TO: i64 = 720 + 150;
+/// Between sweeps the shine rests off the word.
+const SHINE_OFF: i32 = -1_000;
+/// The screensaver's sayings: one a minute, of three.
+const QUOTE_MS: u64 = 60_000;
+const QUOTES: u64 = 3;
 /// The Library page's rows.
-const LIBRARY_ROWS: u32 = 12;
+const LIBRARY_ROWS: u32 = 10;
 // The owner's Rust palette (`docs/reviews/2026-11-21-rust-palette.md`). The main
-// background is #100C08, not the spec's #0F0B09, which RGB565 turns neutral grey.
-const PANEL: u16 = rgb(0x10, 0x0c, 0x08);
+// background is black (the owner's choice, 2026-11-26; it was #100C08).
+const PANEL: u16 = rgb(0x00, 0x00, 0x00);
 /// The meters: acid green to 0 dB, deep coral red above it, laser red at the top.
 const METER_OFF: u16 = rgb(0x2a, 0x1b, 0x14);
 const METER_GREEN: u16 = rgb(0x39, 0xff, 0x14);
 const METER_AMBER: u16 = rgb(0xe6, 0x19, 0x3c);
 const METER_RED: u16 = rgb(0xff, 0x00, 0x33);
 
-const BACKGROUND: u16 = rgb(0x10, 0x0c, 0x08);
+const BACKGROUND: u16 = rgb(0x00, 0x00, 0x00);
 const BEAT_LINE: u16 = rgb(0x38, 0x25, 0x1e);
 const BAR_LINE: u16 = rgb(0x57, 0x4b, 0x45);
-const PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
+/// Red, as rekordbox has it: the highs are white (the owner's choice, 2026-11-26).
+const PLAYHEAD: u16 = rgb(0xff, 0x00, 0x33);
 const PLAYHEAD_X: usize = LANE_WIDTH / 2;
 /// Refreshes per frame of the deck screen: up to 61 frames a second. The lanes move at
 /// every refresh however long a frame takes (`LaneCache`).
 const REFRESHES_PER_FRAME: u32 = 1;
-/// Half the mini overview's height, for a full-scale column.
-const MINI_HALF: u32 = 21;
 const PLAYED_SHADE: u16 = rgb(0x38, 0x25, 0x1e);
-const MINI_PLAYHEAD: u16 = rgb(0xf5, 0xf0, 0xed);
-/// The waveform by frequency: lows, mids and highs. Rekordbox's detail waveform (PWV3)
+const MINI_PLAYHEAD: u16 = rgb(0xff, 0x00, 0x33);
+/// The waveform by frequency: lows, mids and highs, as rekordbox's 3-band view (blue,
+/// gold, white; the owner's choice, 2026-11-26). Rekordbox's detail waveform (PWV3)
 /// has no bands, only how white each column is, 0 to 7: the whiter, the brighter the
 /// sound, so 0 to 2 draw as lows, 3 and 4 as mids, 5 to 7 as highs.
-const BANDS: [[u8; 3]; 3] = [[0xe6, 0x4c, 0x0c], [0x00, 0x88, 0xff], [0x00, 0xe5, 0xff]];
+const BANDS: [[u8; 3]; 3] = [[0x2f, 0x6b, 0xff], [0xe0, 0xa0, 0x40], [0xf5, 0xf0, 0xed]];
+/// A track's last stretch: its time left blinks red, `BLINK_MS` on and off.
+const ENDING_MS: u32 = 30_000;
+const BLINK_MS: u64 = 500;
 const LOWS: u16 = rgb(BANDS[0][0], BANDS[0][1], BANDS[0][2]);
 const MIDS: u16 = rgb(BANDS[1][0], BANDS[1][1], BANDS[1][2]);
 const HIGHS: u16 = rgb(BANDS[2][0], BANDS[2][1], BANDS[2][2]);
@@ -1630,12 +1663,12 @@ fn draw_phase(frame: &mut [u16], strip: Option<&mut [u16]>, ticks: [Ticks; 2]) {
     for (deck, half) in halves.iter_mut().enumerate() {
         for &column in ticks[deck].columns() {
             let column = usize::from(column);
-            half[column..(column + 2).min(LANE_WIDTH)].fill(DECK_COLORS[deck]);
+            half[column..(column + 2).min(LANE_WIDTH)].fill(PHASE_TICKS[deck]);
         }
     }
     let [upper, lower] = &mut halves;
     for row in [&mut plain, &mut middle, upper, lower] {
-        row[PLAYHEAD_X - 1..=PLAYHEAD_X + 1].fill(PLAYHEAD);
+        row[PLAYHEAD_X - 1..=PLAYHEAD_X + 1].fill(PHASE_PLAYHEAD);
     }
     let line = |row: usize| match row {
         2..=10 => &halves[0],
@@ -1686,32 +1719,61 @@ fn draw_phase(frame: &mut [u16], strip: Option<&mut [u16]>, ticks: [Ticks; 2]) {
     }
 }
 
+/// What the overview marks: the track's memory cues and the deck's Hot Cues.
+struct MiniMarks<'a> {
+    memory: &'a [AnalysisMemoryCue],
+    cues: [Option<u32>; 8],
+}
+
+/// A Hot Cue on the overview: a line through it in the pad's colour and, at its top, a
+/// flag `MINI_FLAG_WIDTH` by `MINI_FLAG_HEIGHT` to the right of the line, as the lanes have
+/// them (the owner asked for them, 2026-11-26).
+const MINI_FLAG_WIDTH: usize = 6;
+const MINI_FLAG_HEIGHT: usize = 7;
+
 /// Draws the whole-track overview, shaded up to the playhead at `x`, with each memory
-/// cue of a track `duration_ms` long marked at its top and bottom.
+/// cue of a track `duration_ms` long marked at its top and bottom, and each Hot Cue as a
+/// line with a flag.
 fn draw_mini(
     frame: &mut [u16],
     area: Area,
     preview: &[WaveformColumn],
     x: Option<usize>,
-    memory: &[AnalysisMemoryCue],
+    marks: MiniMarks<'_>,
     duration_ms: u32,
 ) {
     let middle = area.height / 2;
     let mut heights = [0u32; 512];
     let mut colors = [BACKGROUND; 512];
     let mut marked = [false; 512];
+    let mut cue_lines: [Option<u16>; 512] = [None; 512];
+    let mut flags: [Option<u16>; 512] = [None; 512];
+    let column_of = |ms: u32| {
+        (u64::from(ms.min(duration_ms)) * (area.width as u64 - 1) / u64::from(duration_ms)) as usize
+    };
     if duration_ms != 0 {
-        for cue in memory {
-            let column = (u64::from(cue.start_ms.min(duration_ms)) * (area.width as u64 - 1)
-                / u64::from(duration_ms)) as usize;
-            if let Some(mark) = marked.get_mut(column) {
+        for cue in marks.memory {
+            if let Some(mark) = marked.get_mut(column_of(cue.start_ms)) {
                 *mark = true;
+            }
+        }
+        for (pad, cue) in marks.cues.iter().enumerate() {
+            let Some(ms) = *cue else { continue };
+            let column = column_of(ms);
+            if let Some(line) = cue_lines.get_mut(column) {
+                *line = Some(CUE_COLORS[pad]);
+            }
+            let end = (column + MINI_FLAG_WIDTH).min(area.width);
+            for flag in &mut flags[column..end.max(column)] {
+                *flag = Some(CUE_COLORS[pad]);
             }
         }
     }
     for column in 0..area.width {
         if let Some(entry) = preview.get(column * preview.len() / area.width.max(1)) {
-            heights[column] = u32::from(entry.peak) * MINI_HALF / u32::from(u16::MAX);
+            // Half the overview's height, less a row, for a full-scale column.
+            let half = (area.height as u32 / 2).saturating_sub(1);
+            heights[column] = u32::from(entry.peak) * half / u32::from(u16::MAX);
             colors[column] = if x.is_some_and(|x| column < x) {
                 PLAYED_SHADE
             } else {
@@ -1726,6 +1788,10 @@ fn draw_mini(
         for column in 0..area.width {
             frame[start + column] = if x == Some(column) {
                 MINI_PLAYHEAD
+            } else if let Some(flag) = flags[column].filter(|_| row < MINI_FLAG_HEIGHT) {
+                flag
+            } else if let Some(line) = cue_lines[column] {
+                line
             } else if edge && marked[column] {
                 MEMORY
             } else if heights[column] != 0 && distance <= heights[column] {
@@ -1772,8 +1838,8 @@ impl Times {
     }
 }
 
-/// An overview as drawn: the track's catalog index and the playhead column.
-type MiniState = (u32, Option<usize>);
+/// An overview as drawn: the track's catalog index, the playhead column and the Hot Cues' revision.
+type MiniState = (u32, Option<usize>, u32);
 
 /// One deck's texts and flags, as last handed to Slint.
 #[derive(Clone, Default, PartialEq)]
@@ -1788,6 +1854,8 @@ struct DeckTexts {
     playing: bool,
     master_tempo: bool,
     quantize: bool,
+    /// In the track's last `ENDING_MS`.
+    ending: bool,
 }
 
 fn texts(track: Option<&LoadedTrack>, deck: DeckSnapshot) -> DeckTexts {
@@ -1827,6 +1895,7 @@ fn texts(track: Option<&LoadedTrack>, deck: DeckSnapshot) -> DeckTexts {
         playing: deck.has(deck_view::PLAYING),
         master_tempo: deck.has(deck_view::MASTER_TEMPO),
         quantize: deck.has(deck_view::QUANTIZE),
+        ending: loaded && duration != 0 && duration.saturating_sub(deck.position_ms) <= ENDING_MS,
     }
 }
 
@@ -1849,6 +1918,7 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
         ui.set_playing_1(texts.playing);
         ui.set_master_tempo_1(texts.master_tempo);
         ui.set_quantize_1(texts.quantize);
+        ui.set_ending_1(texts.ending);
     } else {
         ui.set_title_2(title);
         ui.set_elapsed_2(elapsed);
@@ -1860,6 +1930,7 @@ fn show_texts(ui: &Overview, deck: usize, texts: &DeckTexts) {
         ui.set_playing_2(texts.playing);
         ui.set_master_tempo_2(texts.master_tempo);
         ui.set_quantize_2(texts.quantize);
+        ui.set_ending_2(texts.ending);
     }
 }
 
@@ -2288,7 +2359,9 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     let mut backlight_shown = crate::deck_settings::current().backlight_percent;
     let mut was_covered = false;
     let mut shown_cover = Cover::Boot;
-    let mut shown_head = None;
+    let mut shown_shine = SHINE_OFF;
+    let mut shown_quote = 0;
+    let mut shown_blink = false;
     let (mut touched, mut touch_errors) = (None, 0);
     // SAFETY: the caller hands over the shown frame buffer.
     let frame = unsafe { core::slice::from_raw_parts_mut(shown, WIDTH * HEIGHT) };
@@ -2429,13 +2502,22 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
             shown_cover = cover;
         }
         let hidden = cover != Cover::None;
-        // The letters move on the boot screen and screensaver; under UPDATING FIRMWARE
-        // they stand still, so nothing is drawn after it.
-        let head = (hidden && cover != Cover::Updating)
-            .then(|| ((ms / COVER_STEP_MS) % COVER_HEADS) as i32 - 2);
-        if head != shown_head {
-            ui.set_cover_head(head.unwrap_or(0));
-            shown_head = head;
+        // The shine slides across the word on the boot screen and screensaver; under
+        // UPDATING FIRMWARE nothing moves, so nothing is drawn after it.
+        let shine = (hidden && cover != Cover::Updating)
+            .then_some(ms % SHINE_PERIOD_MS)
+            .filter(|&at| at < SHINE_SWEEP_MS)
+            .map_or(SHINE_OFF, |at| {
+                (SHINE_FROM + (SHINE_TO - SHINE_FROM) * at as i64 / SHINE_SWEEP_MS as i64) as i32
+            });
+        if shine != shown_shine {
+            ui.set_cover_shine(shine);
+            shown_shine = shine;
+        }
+        let quote = ((ms / QUOTE_MS) % QUOTES) as i32;
+        if cover == Cover::Screensaver && quote != shown_quote {
+            ui.set_cover_quote(quote);
+            shown_quote = quote;
         }
         for deck in 0..2 {
             if let Some(track) = deck_view::take_track(deck) {
@@ -2455,6 +2537,12 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
                 show_texts(&ui, deck, &texts);
                 shown_texts[deck] = Some(texts);
             }
+        }
+        // A track's last stretch: its time left blinks.
+        let blink = (ms / BLINK_MS).is_multiple_of(2);
+        if blink != shown_blink && shown_texts.iter().flatten().any(|texts| texts.ending) {
+            ui.set_blink(blink);
+            shown_blink = blink;
         }
         for (deck, meter) in meters.iter_mut().enumerate() {
             *meter = deck_view::meter_segments(deck_view::PEAKS.take(deck)).max(*meter - 1);
@@ -2482,6 +2570,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
             lane_at = [None; 2];
             meter_at = [None; 2];
             phase_at = None;
+            // The overviews move with the cards' size.
+            mini_at = [None; 2];
             was_covered = covered;
         }
         let packed = crate::deck_settings::current_packed();
@@ -2673,13 +2763,17 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
         gate.run(Step::Slint, || {
             window.draw_if_needed(|renderer| {
                 // Made in its own crate, built for speed (`ruzina-screen-lines`). Its lines
-                // go through the strip and the PPA, off the CPU's writes to PSRAM.
-                let stage = strip
-                    .as_deref_mut()
-                    .map(|pixels| ruzina_screen_lines::Stage {
+                // go through the strip and the PPA, off the CPU's writes to PSRAM. Under
+                // the boot screen, screensaver and UPDATING FIRMWARE no deck plays, so the
+                // CPU writes the frame itself: the shine's small copies, one each refresh,
+                // left a PPA copy that never ended and the screen standing still (s214,
+                // s215d: 58 copies begun, 57 done).
+                let stage = strip.as_deref_mut().filter(|_| !hidden).map(|pixels| {
+                    ruzina_screen_lines::Stage {
                         pixels,
                         copy: copy_block,
-                    });
+                    }
+                });
                 let lines =
                     ruzina_screen_lines::render(renderer, &mut *buffer, direct, now_us, stage);
                 drawn_areas = Some((lines.calls, lines.pixels, lines.runs, lines.run_count));
@@ -2802,14 +2896,20 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
                 (u64::from(decks[deck].position_ms.min(duration)) * (MINIS[deck].width as u64 - 1)
                     / u64::from(duration)) as usize
             });
-            let mini = Some((index, playhead));
+            // Its Hot Cues too: a new revision draws it again.
+            let mini = Some((index, playhead, revision));
             if !hidden && mini_at[deck] != mini {
                 let view = track
                     .and_then(|track| track.analysis.as_ref())
                     .map(|analysis| analysis.view());
                 let preview = view.as_ref().map_or(&[][..], |view| view.preview());
                 let memory = view.as_ref().map_or(&[][..], |view| view.memory_cues());
-                draw_mini(buffer, MINIS[deck], preview, playhead, memory, duration);
+                let minis = if covered { &MINIS_COVERED } else { &MINIS };
+                let mini_marks = MiniMarks {
+                    memory,
+                    cues: marks.cues,
+                };
+                draw_mini(buffer, minis[deck], preview, playhead, mini_marks, duration);
                 mini_at[deck] = mini;
             }
         }
@@ -2841,7 +2941,7 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
                 let content = Content::Ticks {
                     beats,
                     window_ms,
-                    color: DECK_COLORS[deck],
+                    color: PHASE_TICKS[deck],
                 };
                 let key = (beats.as_ptr() as usize, window_ms, beats.len() as u32);
                 let motion = Motion {

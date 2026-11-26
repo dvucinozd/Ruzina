@@ -5,14 +5,16 @@ documents link here.
 
 ## The board's images
 
-- **On the board:** s213 (app `95f00c31…`, version `s213`), in slot ota_1. Its firmware
-  is `ogranak/web-remote-ota`: main `2a68ea8` (#173) with
-  [firmware updates from the browser](reviews/2026-11-25-web-remote-ota.md), the
-  UPDATING FIRMWARE screen and the panel's interrupt running while flash is written. It
-  is the play image recipe, less `--soak-autoplay`, with `--version s213`. It reached the
-  deck from the Web Remote, as a signed bundle. On it the screen held still through an
-  update ("ne blica!").
+- **On the board:** s229 (app `f57f5908…`, version `s229`), in slot ota_0. Its firmware
+  is `ogranak/gui-pass`: main `2f04d44` (#174) with
+  [the deck screen, page by page](reviews/2026-11-26-gui-pass.md). It is the play image
+  recipe, less `--soak-autoplay`, with `--version s229`, sent from the Web Remote. The
+  owner checked every page on it ("Sve je gotovo"); fills during play were not measured.
 - **Before it:**
+  - s214 to s228, the GUI pass's steps; s215d, s216d and s218d were diagnostic images
+    (the screen standing still under the screensaver's shine, and the PPA's time limit).
+  - s213 (app `95f00c31…`), the play image of #174. On it the screen held still through
+    an update ("ne blica!").
   - s212 (app `28728a57…`) and s211 (app `a1f398fa…`), the same branch before the
     screen's fixes, sent from the Web Remote.
   - s210 (app `0d976bb1…`), the same firmware: the first image with two app slots, flashed

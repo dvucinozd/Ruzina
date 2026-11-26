@@ -34,22 +34,29 @@ component RailButton inherits Rectangle {
     }
 }
 
-// A button that reports going down and up, as the controller's buttons do.
+// A button that reports going down and up, as the controller's buttons do. Lit, it is
+// filled with its tint; otherwise only its outline and text are, and it fills while it
+// is held down.
 component SideButton inherits Rectangle {
     in property <string> text;
-    in property <color> ink: #100c08;
+    in property <color> tint;
+    in property <bool> lit;
     callback down(bool);
+    property <bool> filled: root.lit || touch.pressed;
     width: 58px;
-    height: 38px;
-    border-radius: 3px;
-    opacity: touch.pressed ? 0.6 : 1.0;
+    height: 50px;
+    border-radius: 4px;
+    border-width: 2px;
+    border-color: root.tint;
+    background: root.filled ? root.tint : #000000;
     touch := TouchArea {
         changed pressed => { root.down(self.pressed); }
     }
     Text {
         text: root.text;
-        color: root.ink;
-        font-size: 14px;
+        color: root.filled ? #100c08 : root.tint;
+        font-size: 15px;
+        font-weight: 700;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
@@ -66,7 +73,7 @@ component DeckSide inherits Rectangle {
     callback play();
     callback cue(bool);
     width: 66px;
-    height: 220px;
+    height: 200px;
     Rectangle {
         x: 4px;
         y: 4px;
@@ -82,11 +89,12 @@ component DeckSide inherits Rectangle {
             vertical-alignment: center;
         }
     }
+    // Green: filled while the deck plays, an outline while it stands.
     SideButton {
         x: 4px;
-        y: 35px;
-        height: 34px;
-        background: root.playing ? #00ff66 : #b7410e;
+        y: 34px;
+        tint: #00ff66;
+        lit: root.playing;
         text: root.playing ? "PLAY" : "PAUSE";
         down(pressed) => {
             if (pressed) {
@@ -94,46 +102,55 @@ component DeckSide inherits Rectangle {
             }
         }
     }
+    // Yellow: an outline, filled while it is held.
     SideButton {
         x: 4px;
-        y: 74px;
-        height: 34px;
-        background: #ffd600;
+        y: 88px;
+        tint: #ffd600;
         text: "CUE";
         down(pressed) => { root.cue(pressed); }
     }
+    // As wide as the buttons above it.
     if root.has-cover: Image {
-        x: 5px;
-        y: 113px;
-        width: 56px;
-        height: 56px;
+        x: 4px;
+        y: 142px;
+        width: 58px;
+        height: 58px;
         source: root.cover;
     }
 }
 
-// Times, tempo, pitch, Master Tempo and key of one deck, above its overview.
+// Times, tempo, pitch and Master Tempo of one deck, above its overview. The time left
+// and the tempo are the large ones; in a track's last 30 s the time left blinks red.
 component DeckInfo inherits Rectangle {
     in property <string> elapsed;
     in property <string> remaining;
+    in property <bool> ending;
+    in property <bool> blink;
     in property <string> bpm;
     in property <string> pitch;
     in property <bool> master-tempo;
     in property <bool> quantize;
-    in property <string> key;
-    in property <string> status;
     // MT tapped: Master Tempo on or off.
     callback mt-tapped();
-    width: 456px;
-    height: 30px;
-    Text { x: 0px; y: 2px; text: root.elapsed; color: #f5f0ed; font-size: 20px; }
-    Text { x: 76px; y: 2px; text: root.remaining; color: #a3958e; font-size: 20px; }
-    Text { x: 160px; y: 2px; text: root.bpm; color: #e64c0c; font-size: 20px; }
-    Text { x: 218px; y: 10px; text: "BPM"; color: #a3958e; font-size: 11px; }
+    width: 466px;
+    height: 34px;
+    Text { x: 0px; height: 34px; text: root.elapsed; color: #f5f0ed; font-size: 18px; vertical-alignment: center; }
+    Text {
+        x: 66px;
+        height: 34px;
+        text: root.remaining;
+        color: !root.ending ? #a3958e : root.blink ? #ff0033 : #5c1020;
+        font-size: 26px;
+        vertical-alignment: center;
+    }
+    Text { x: 176px; height: 34px; text: root.bpm; color: #e64c0c; font-size: 26px; vertical-alignment: center; }
+    Text { x: 264px; y: 17px; text: "BPM"; color: #a3958e; font-size: 10px; }
     Rectangle {
-        x: 248px;
-        y: 2px;
-        width: 62px;
-        height: 26px;
+        x: 300px;
+        y: 3px;
+        width: 66px;
+        height: 28px;
         border-width: 2px;
         border-color: #ffd600;
         border-radius: 2px;
@@ -145,19 +162,21 @@ component DeckInfo inherits Rectangle {
             vertical-alignment: center;
         }
     }
+    // MT and Q: large enough to read and to hit (the owner asked, 2026-11-26).
     Rectangle {
-        x: 316px;
-        y: 2px;
-        width: 26px;
-        height: 26px;
-        border-width: 1px;
+        x: 374px;
+        y: 0px;
+        width: 44px;
+        height: 34px;
+        border-width: root.master-tempo ? 2px : 1px;
         border-radius: 4px;
         border-color: root.master-tempo ? #00ff66 : #574b45;
-        background: root.master-tempo ? #0b2614 : #1e1511;
+        background: root.master-tempo ? #0b2614 : #000000;
         Text {
             text: "MT";
             color: root.master-tempo ? #00ff66 : #a3958e;
-            font-size: 12px;
+            font-size: 16px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -172,31 +191,41 @@ component DeckInfo inherits Rectangle {
     }
     // Quantize: loops and cues land on the beat grid.
     Rectangle {
-        x: 348px;
-        y: 2px;
-        width: 22px;
-        height: 26px;
-        border-width: 1px;
+        x: 422px;
+        y: 0px;
+        width: 44px;
+        height: 34px;
+        border-width: root.quantize ? 2px : 1px;
         border-radius: 4px;
         border-color: root.quantize ? #ffd600 : #574b45;
-        background: root.quantize ? #2a2300 : #1e1511;
+        background: root.quantize ? #2a2300 : #000000;
         Text {
             text: "Q";
             color: root.quantize ? #ffd600 : #a3958e;
-            font-size: 12px;
+            font-size: 16px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
     }
-    Text { x: 378px; y: 6px; text: root.key; color: #ff7700; font-size: 14px; }
+}
+
+// A small label beside a deck's title: its key, or its state (SYNC, LOOP, EMPTY).
+component Tag inherits Rectangle {
+    in property <string> text;
+    in property <color> tint;
+    height: 22px;
+    border-width: 1px;
+    border-radius: 4px;
+    border-color: root.tint;
+    background: #000000;
     Text {
-        x: 404px;
-        y: 7px;
-        width: 52px;
-        text: root.status;
-        color: #a3958e;
-        font-size: 11px;
-        horizontal-alignment: right;
+        text: root.text;
+        color: root.tint;
+        font-size: 13px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
     }
 }
 
@@ -268,7 +297,7 @@ component CueDeck inherits Rectangle {
         border-radius: 3px;
         border-width: 1px;
         border-color: #f5f0ed;
-        background: root.listing ? #f5f0ed : #1e1511;
+        background: root.listing ? #f5f0ed : #000000;
         Text {
             text: "MEMORY";
             color: root.listing ? #100c08 : #f5f0ed;
@@ -291,7 +320,7 @@ component CueDeck inherits Rectangle {
         border-radius: 3px;
         border-width: 1px;
         border-color: #ff2e63;
-        background: root.deleting ? #ff2e63 : #1e1511;
+        background: root.deleting ? #ff2e63 : #000000;
         Text {
             text: "DELETE";
             color: root.deleting ? #100c08 : #ff2e63;
@@ -324,7 +353,7 @@ component CueDeck inherits Rectangle {
         border-radius: 4px;
         border-width: 1px;
         border-color: #f5f0ed;
-        background: #1e1511;
+        background: #000000;
         opacity: memory-touch.pressed ? 0.6 : 1.0;
         Text {
             x: 10px;
@@ -363,7 +392,7 @@ component CueDeck inherits Rectangle {
         border-radius: 4px;
         border-width: root.deleting && tile.set ? 4px : 2px;
         border-color: root.deleting && tile.set ? #ff2e63 : tile.tint;
-        background: tile.set ? tile.tint : #1e1511;
+        background: tile.set ? tile.tint : #000000;
         opacity: !root.loaded ? 0.4 : touch.pressed ? 0.6 : 1.0;
         Text {
             y: 30px;
@@ -434,7 +463,7 @@ component SettingRow inherits Rectangle {
     x: 12px;
     width: 460px;
     height: 48px;
-    background: #1e1511;
+    background: #000000;
     Text { x: 8px; width: 140px; text: root.label; color: #a3958e; font-size: 15px; vertical-alignment: center; }
 }
 
@@ -458,7 +487,7 @@ component SettingsPage inherits Rectangle {
     callback change(int, int);
     width: 952px;
     height: 474px;
-    background: #100c08;
+    background: #000000;
     // Takes the taps that miss the buttons, away from the page below.
     TouchArea { }
     Text { x: 20px; y: 10px; text: "DECKS"; color: #e64c0c; font-size: 16px; }
@@ -532,7 +561,7 @@ component SettingsPage inherits Rectangle {
         y: 40px + i * 34px;
         width: 460px;
         height: 32px;
-        background: Math.mod(i, 2) == 0 ? #1e1511 : #181210;
+        background: Math.mod(i, 2) == 0 ? #000000 : #101010;
         Text { x: 8px; width: 90px; text: line.label; color: #a3958e; font-size: 15px; vertical-alignment: center; }
         Text { x: 100px; width: 352px; text: line.value; color: #f5f0ed; font-size: 16px; overflow: elide; vertical-alignment: center; }
     }
@@ -541,7 +570,7 @@ component SettingsPage inherits Rectangle {
         y: 40px + i * 34px;
         width: 460px;
         height: 32px;
-        background: Math.mod(i, 2) == 0 ? #1e1511 : #181210;
+        background: Math.mod(i, 2) == 0 ? #000000 : #101010;
         Text { x: 8px; width: 160px; text: line.label; color: #a3958e; font-size: 15px; vertical-alignment: center; }
         Text { x: 170px; width: 282px; text: line.value; color: #f5f0ed; font-size: 16px; overflow: elide; vertical-alignment: center; }
     }
@@ -588,50 +617,54 @@ component LibraryPage inherits Rectangle {
     callback bpm-filter-toggled();
     width: 952px;
     height: 474px;
-    background: #100c08;
+    background: #000000;
     // Takes the taps that miss the rows and buttons, away from the page below.
     TouchArea { }
-    // The column headings, as large as the titles: a tap sorts on one (the title's is the
-    // level's name), and the sorted one shows in yellow with its arrow, on a rust band.
-    Rectangle { x: 0px; y: 0px; width: 820px; height: 34px; background: #b7410e; }
-    Text { x: 8px; y: 0px; height: 34px; text: "#"; color: #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    // The column headings: a tap sorts on one (the title's is the level's name), and the
+    // sorted one shows in yellow with its arrow, on a dark grey band with a rust line.
+    Rectangle { x: 0px; y: 0px; width: 820px; height: 40px; background: #202020; }
+    Rectangle { x: 0px; y: 40px; width: 820px; height: 2px; background: #e64c0c; }
+    Text { x: 8px; y: 0px; height: 40px; text: "#"; color: #a3958e; font-size: 17px; vertical-alignment: center; }
     Text {
         x: 48px;
         y: 0px;
         width: 360px;
-        height: 34px;
+        height: 40px;
         text: root.heading + (root.sort-column == 0 ? (root.sort-descending ? "▼" : "▲") : "");
-        color: root.sort-column == 0 ? #ffd600 : #f5f0ed;
-        font-size: 16px;
+        color: root.sort-column == 0 ? #ffd600 : #a3958e;
+        font-size: 17px;
         overflow: elide;
         vertical-alignment: center;
     }
-    Text { x: 416px; y: 0px; height: 34px; text: "ARTIST" + (root.sort-column == 1 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 1 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
-    Text { x: 622px; y: 0px; height: 34px; text: "BPM" + (root.sort-column == 2 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 2 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
-    Text { x: 686px; y: 0px; height: 34px; text: "KEY" + (root.sort-column == 3 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 3 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
-    Text { x: 734px; y: 0px; height: 34px; text: "TIME" + (root.sort-column == 4 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 4 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 416px; y: 0px; height: 40px; text: "ARTIST" + (root.sort-column == 1 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 1 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    Text { x: 622px; y: 0px; height: 40px; text: "BPM" + (root.sort-column == 2 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 2 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    Text { x: 686px; y: 0px; height: 40px; text: "KEY" + (root.sort-column == 3 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 3 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    Text { x: 732px; y: 0px; height: 40px; text: "TIME" + (root.sort-column == 4 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 4 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    // Ten rows of 42 pixels on black, a grey line under each (the owner asked for larger
+    // rows and text, 2026-11-26).
     for row[i] in root.rows: Rectangle {
         x: 0px;
-        y: 38px + i * 33px;
+        y: 44px + i * 43px;
         width: 820px;
-        height: 32px;
-        background: row.selected ? #0b2614 : #1e1511;
+        height: 42px;
+        background: row.selected ? #0b2614 : #000000;
         border-width: row.selected ? 1px : 0px;
         border-color: #00ff66;
+        if !row.selected: Rectangle { y: 42px; width: parent.width; height: 1px; background: #202020; }
         Text {
             x: 8px;
             width: 36px;
             text: row.number;
             color: #a3958e;
-            font-size: 13px;
+            font-size: 15px;
             vertical-alignment: center;
         }
         // A folder or playlist: a mark in its colour before the name.
         if row.kind != 0: Rectangle {
             x: 34px;
-            y: 9px;
+            y: 13px;
             width: 8px;
-            height: 14px;
+            height: 16px;
             border-radius: 2px;
             background: row.kind == 1 ? #ff7700 : #e64c0c;
         }
@@ -640,7 +673,7 @@ component LibraryPage inherits Rectangle {
             width: 360px;
             text: row.title;
             color: row.selected ? #00ff66 : #f5f0ed;
-            font-size: 15px;
+            font-size: 19px;
             overflow: elide;
             vertical-alignment: center;
         }
@@ -649,30 +682,36 @@ component LibraryPage inherits Rectangle {
             width: 200px;
             text: row.artist;
             color: row.kind == 0 ? #f5f0ed : #a3958e;
-            font-size: 14px;
+            font-size: 17px;
             overflow: elide;
             vertical-alignment: center;
         }
-        Text { x: 622px; width: 60px; text: row.bpm; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
-        Text { x: 686px; width: 44px; text: row.key; color: row.fit == 1 ? #00ff66 : row.fit == 2 ? #ffd600 : row.fit == 3 ? #0088ff : row.fit == 4 ? #a3958e : #ff7700; font-size: 14px; vertical-alignment: center; }
-        Text { x: 734px; width: 46px; text: row.time; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
-        Text { x: 782px; width: 32px; text: row.decks; color: #e64c0c; font-size: 11px; vertical-alignment: center; }
+        Text { x: 622px; width: 60px; text: row.bpm; color: #f5f0ed; font-size: 17px; vertical-alignment: center; }
+        Text { x: 686px; width: 44px; text: row.key; color: row.fit == 1 ? #00ff66 : row.fit == 2 ? #ffd600 : row.fit == 3 ? #0088ff : row.fit == 4 ? #a3958e : #ff7700; font-size: 17px; vertical-alignment: center; }
+        Text { x: 732px; width: 60px; text: row.time; color: #f5f0ed; font-size: 17px; vertical-alignment: center; }
+        Text { x: 794px; width: 24px; text: row.decks; color: #e64c0c; font-size: 13px; vertical-alignment: center; }
         TouchArea {
             clicked => { root.pick(i); }
         }
     }
+    // The right column, from the top (the owner's layout, 2026-11-26): LOAD D1 and D2, the
+    // same size; BACK; the BPM filter; then sorting by TRACK, ARTIST or BPM. Each as PLAY and
+    // CUE: an outline in its colour, filled while held, or while it is on.
     for deck[i] in [1, 2]: Rectangle {
+        property <color> tint: i == 0 ? #e64c0c : #00e5ff;
         x: 832px;
-        y: 40px + i * 96px;
+        y: i * 82px;
         width: 112px;
-        height: 84px;
+        height: 76px;
         border-radius: 4px;
-        background: i == 0 ? #e64c0c : #00e5ff;
-        opacity: load.pressed ? 0.6 : 1.0;
+        border-width: 2px;
+        border-color: self.tint;
+        background: load.pressed ? self.tint : #000000;
         Text {
             text: "LOAD\nD" + deck;
-            color: #100c08;
-            font-size: 18px;
+            color: load.pressed ? #100c08 : parent.tint;
+            font-size: 20px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -682,17 +721,18 @@ component LibraryPage inherits Rectangle {
     }
     Rectangle {
         x: 832px;
-        y: 236px;
+        y: 164px;
         width: 112px;
-        height: 56px;
+        height: 48px;
         border-radius: 4px;
-        border-width: 1px;
-        border-color: root.can-back ? #00ff66 : #38251e;
-        background: back.pressed ? #0b2614 : #1e1511;
+        border-width: 2px;
+        border-color: root.can-back ? #00ff66 : #574b45;
+        background: back.pressed ? #00ff66 : #000000;
         Text {
             text: "BACK";
-            color: root.can-back ? #00ff66 : #574b45;
-            font-size: 18px;
+            color: back.pressed ? #100c08 : root.can-back ? #00ff66 : #574b45;
+            font-size: 20px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -702,32 +742,55 @@ component LibraryPage inherits Rectangle {
         }
     }
     // The headings take a tap: the title's over the heading, then each column's.
-    for column[i] in [{ x: 40px, w: 368px }, { x: 408px, w: 206px }, { x: 614px, w: 64px }, { x: 678px, w: 48px }, { x: 726px, w: 56px }]: TouchArea {
+    for column[i] in [{ x: 40px, w: 368px }, { x: 408px, w: 206px }, { x: 614px, w: 64px }, { x: 678px, w: 48px }, { x: 726px, w: 66px }]: TouchArea {
         x: column.x;
         y: 0px;
         width: column.w;
-        height: 36px;
+        height: 42px;
         clicked => { root.sort(i); }
     }
     Rectangle {
         x: 832px;
-        y: 304px;
+        y: 218px;
         width: 112px;
-        height: 72px;
+        height: 60px;
         border-radius: 4px;
-        border-width: 1px;
-        border-color: root.bpm-filter ? #e64c0c : #38251e;
-        background: root.bpm-filter ? #b7410e : #1e1511;
-        opacity: bpm.pressed ? 0.6 : 1.0;
-        Text { y: 14px; width: parent.width; text: "BPM ±4%"; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; }
-        Text { y: 44px; width: parent.width; text: root.bpm-reference; color: root.bpm-filter ? #f5f0ed : #a3958e; font-size: 11px; horizontal-alignment: center; }
+        border-width: 2px;
+        border-color: root.bpm-filter ? #e64c0c : #574b45;
+        background: root.bpm-filter || bpm.pressed ? #e64c0c : #000000;
+        Text { y: 8px; width: parent.width; text: "BPM ±4%"; color: root.bpm-filter || bpm.pressed ? #100c08 : #f5f0ed; font-size: 16px; font-weight: 700; horizontal-alignment: center; }
+        Text { y: 34px; width: parent.width; text: root.bpm-reference; color: root.bpm-filter || bpm.pressed ? #100c08 : #a3958e; font-size: 13px; horizontal-alignment: center; }
         bpm := TouchArea {
             clicked => { root.bpm-filter-toggled(); }
         }
     }
+    // Sorting, as the headings do: a tap sorts on the column, a second turns it over. The
+    // one in use is filled yellow, with its direction.
+    for button[i] in [{ text: "TRACK", column: 0 }, { text: "ARTIST", column: 1 }, { text: "BPM", column: 2 }]: Rectangle {
+        property <bool> on: root.sort-column == button.column;
+        x: 832px;
+        y: 290px + i * 50px;
+        width: 112px;
+        height: 44px;
+        border-radius: 4px;
+        border-width: 2px;
+        border-color: self.on ? #ffd600 : #574b45;
+        background: self.on || sort-touch.pressed ? #ffd600 : #000000;
+        Text {
+            text: button.text + (parent.on ? (root.sort-descending ? " ▼" : " ▲") : "");
+            color: parent.on || sort-touch.pressed ? #100c08 : #a3958e;
+            font-size: 17px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        sort-touch := TouchArea {
+            clicked => { root.sort(button.column); }
+        }
+    }
     Text {
         x: 832px;
-        y: 440px;
+        y: 446px;
         width: 112px;
         text: root.count;
         color: #a3958e;
@@ -736,8 +799,36 @@ component LibraryPage inherits Rectangle {
     }
 }
 
+// A choice on the FX page: an outline, filled with its tint while it is the one in use.
+component FxChoice inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected;
+    in property <color> tint;
+    // The text's colour while not in use.
+    in property <color> ink: #a3958e;
+    callback clicked();
+    height: 56px;
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: root.selected ? root.tint : #38251e;
+    background: root.selected ? root.tint : touch.pressed ? #202020 : #000000;
+    Text {
+        text: root.text;
+        color: root.selected ? #000000 : root.ink;
+        font-size: 19px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
 // Beat FX by touch: the effect, its beat and channel, the depth, and FX ON. Each choice
-// does what the controller's Beat FX buttons and knob do.
+// does what the controller's Beat FX buttons and knob do. The effect's colour (as on the
+// FX panel) runs through the page: its button, the beat chosen and the depth (the owner
+// asked for a clearer page, 2026-11-26).
 component FxPage inherits Rectangle {
     in property <string> effect;
     in property <string> beat;
@@ -747,57 +838,87 @@ component FxPage inherits Rectangle {
     // What changed (0 effect, 1 beat, 2 channel, 3 depth from 0 to 127, 4 FX ON) and to.
     callback set(int, float);
     callback close();
+    property <color> accent: root.effect == "ECHO" ? #eb870f
+        : root.effect == "FLANGER" ? #b44ae0
+        : root.effect == "DELAY" ? #27c7c7
+        : #2d85cd;
     width: 952px;
     height: 474px;
-    background: #100c08;
+    background: #000000;
     // Takes the taps that miss the buttons, away from the page below.
     TouchArea { }
-    Text { x: 16px; y: 12px; text: "BEAT FX"; color: #f5f0ed; font-size: 20px; }
-    Text { x: 16px; y: 54px; text: "EFFECT"; color: #a3958e; font-size: 12px; }
-    for name[i] in ["FILTER", "ECHO", "FLANGER", "DELAY"]: Choice {
+    Text { x: 16px; y: 10px; text: "BEAT FX"; color: #f5f0ed; font-size: 22px; font-weight: 700; }
+    Text { x: 130px; y: 15px; text: root.effect; color: root.accent; font-size: 17px; font-weight: 700; }
+    FxChoice {
+        x: 812px;
+        y: 8px;
+        width: 132px;
+        height: 44px;
+        text: "CLOSE";
+        tint: #574b45;
+        clicked => { root.close(); }
+    }
+    Text { x: 16px; y: 60px; text: "EFFECT"; color: #a3958e; font-size: 13px; }
+    for item[i] in [
+        { name: "FILTER", tint: #2d85cd },
+        { name: "ECHO", tint: #eb870f },
+        { name: "FLANGER", tint: #b44ae0 },
+        { name: "DELAY", tint: #27c7c7 },
+    ]: FxChoice {
         x: 16px + i * 198px;
-        y: 72px;
+        y: 80px;
         width: 190px;
-        text: name;
-        selected: name == root.effect;
+        height: 60px;
+        text: item.name;
+        tint: item.tint;
+        ink: item.tint;
+        border-color: self.selected ? item.tint : item.tint.darker(60%);
+        selected: item.name == root.effect;
         clicked => { root.set(0, i); }
     }
-    Text { x: 16px; y: 140px; text: "BEAT"; color: #a3958e; font-size: 12px; }
-    for name[i] in ["1/4", "1/2", "1", "2", "4"]: Choice {
+    Text { x: 16px; y: 156px; text: "BEAT"; color: #a3958e; font-size: 13px; }
+    for name[i] in ["1/4", "1/2", "1", "2", "4"]: FxChoice {
         x: 16px + i * 158px;
-        y: 158px;
+        y: 176px;
         width: 150px;
         text: name;
+        tint: root.accent;
         selected: name == root.beat;
         clicked => { root.set(1, i); }
     }
-    Text { x: 16px; y: 226px; text: "CHANNEL"; color: #a3958e; font-size: 12px; }
-    for name[i] in ["DECK 1", "DECK 2", "BOTH"]: Choice {
+    Text { x: 16px; y: 248px; text: "CHANNEL"; color: #a3958e; font-size: 13px; }
+    for item[i] in [
+        { name: "DECK 1", tint: #e64c0c },
+        { name: "DECK 2", tint: #00e5ff },
+        { name: "BOTH", tint: #f5f0ed },
+    ]: FxChoice {
         x: 16px + i * 198px;
-        y: 244px;
+        y: 268px;
         width: 190px;
-        text: name;
+        text: item.name;
+        tint: item.tint;
+        ink: item.tint;
         // Deck 1, deck 2 and both are channels 1, 2 and 0.
         selected: Math.mod(i + 1, 3) == root.target;
         clicked => { root.set(2, Math.mod(i + 1, 3)); }
     }
-    Text { x: 16px; y: 312px; text: "DEPTH"; color: #a3958e; font-size: 12px; }
+    Text { x: 16px; y: 340px; text: "DEPTH"; color: #a3958e; font-size: 13px; }
     Rectangle {
         x: 16px;
-        y: 330px;
-        width: 700px;
-        height: 64px;
-        border-radius: 4px;
-        border-width: 1px;
+        y: 360px;
+        width: 690px;
+        height: 60px;
+        border-radius: 6px;
+        border-width: 2px;
         border-color: #38251e;
-        background: #1e1511;
+        background: #000000;
         Rectangle {
-            x: 1px;
-            y: 1px;
-            width: (parent.width - 2px) * root.depth / 100;
-            height: parent.height - 2px;
-            border-radius: 3px;
-            background: #b7410e;
+            x: 2px;
+            y: 2px;
+            width: (parent.width - 4px) * root.depth / 100;
+            height: parent.height - 4px;
+            border-radius: 4px;
+            background: root.accent;
         }
         // Down on the bar and dragged along it, as the depth knob turns.
         slide := TouchArea {
@@ -810,39 +931,32 @@ component FxPage inherits Rectangle {
         }
     }
     Text {
-        x: 724px;
-        y: 330px;
-        width: 76px;
-        height: 64px;
+        x: 712px;
+        y: 360px;
+        width: 92px;
+        height: 60px;
         text: root.depth + "%";
-        color: #f5f0ed;
-        font-size: 22px;
+        color: root.accent;
+        font-size: 26px;
+        font-weight: 700;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
-    Choice {
-        x: 812px;
-        y: 8px;
-        width: 132px;
-        height: 48px;
-        text: "CLOSE";
-        selected: false;
-        clicked => { root.close(); }
-    }
+    // FX ON: filled green while on, a green outline while off.
     Rectangle {
         x: 812px;
-        y: 72px;
+        y: 80px;
         width: 132px;
-        height: 322px;
-        border-radius: 6px;
+        height: 340px;
+        border-radius: 8px;
         border-width: 2px;
         border-color: #00ff66;
-        background: root.on ? #00ff66 : #1e1511;
-        opacity: toggle.pressed ? 0.6 : 1.0;
+        background: root.on ? #00ff66 : toggle.pressed ? #0b2614 : #000000;
         Text {
             text: root.on ? "FX ON" : "FX OFF";
-            color: root.on ? #100c08 : #00ff66;
+            color: root.on ? #000000 : #00ff66;
             font-size: 28px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -861,8 +975,9 @@ component FxPanel inherits Rectangle {
     in property <bool> on;
     callback open();
     width: 64px;
-    height: 464px;
-    background: #160f0c;
+    height: 424px;
+    // Black, as the rail and the deck cards (the owner asked, 2026-11-26).
+    background: #000000;
     border-width: 1px;
     // Each effect has its colour, as on the donor's overview (`ui_overview_fx_effect_color`):
     // FILTER blue, ECHO amber, FLANGER violet, DELAY teal. While the effect is on, the
@@ -911,7 +1026,7 @@ component FxPanel inherits Rectangle {
         border-width: 1px;
         property <bool> routed: root.on && (root.target == 0 || root.target == pill + 1);
         border-color: self.routed ? root.tint : #574b45;
-        background: self.routed ? root.tint : #160f0c;
+        background: self.routed ? root.tint : #000000;
         Text { text: pill + 1; color: parent.routed ? #100c08 : #a3958e; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
     }
     Text { x: 0px; y: 112px; width: 64px; text: "BEAT"; color: #a3958e; font-size: 11px; horizontal-alignment: center; }
@@ -947,13 +1062,17 @@ export component Overview inherits Window {
     width: 1024px;
     height: 600px;
     default-font-family: "DejaVu Sans";
-    background: #100c08;
+    background: #000000;
     in property <string> title-1;
     in property <string> title-2;
     in property <string> elapsed-1;
     in property <string> elapsed-2;
     in property <string> remaining-1;
     in property <string> remaining-2;
+    // A deck in its track's last 30 s: its time left blinks red, lit while `blink` is.
+    in property <bool> ending-1;
+    in property <bool> ending-2;
+    in property <bool> blink;
     in property <string> bpm-1;
     in property <string> bpm-2;
     in property <string> pitch-1;
@@ -1004,9 +1123,11 @@ export component Overview inherits Window {
     // Over everything: 0 nothing, 1 the boot screen, 2 the screensaver, 3 a firmware
     // update being written (`screen_idle.rs`).
     in property <int> cover: 1;
-    // The cover's lit letter, which moves along the word from before its first letter to
-    // past its last; the letters around it glow less the further they are.
-    in property <int> cover-head;
+    // The shine's centre on the boot screen and screensaver, in pixels from the word's left
+    // edge; it slides across the word and rests off it (-1000) between sweeps.
+    in property <int> cover-shine: -1000;
+    // The screensaver's saying, 0 to 2: it changes every minute.
+    in property <int> cover-quote;
     // How far the other deck's beat is ahead of the master's ("+12 ms"), or a dash.
     in property <string> phase: "—";
 
@@ -1034,13 +1155,13 @@ export component Overview inherits Window {
     // Each tab has a page. The FX panel opens page 4, which no tab marks.
     in-out property <int> active-tab: 0;
 
-    // The pages, on a rail at the left: icons only.
+    // The pages, on a rail at the left: icons only, on black.
     Rectangle {
         x: 0px;
         y: 0px;
         width: 48px;
         height: 600px;
-        background: #1e1511;
+        background: #000000;
         Rectangle { x: 47px; width: 1px; height: 600px; background: #38251e; }
         RailButton {
             y: 0px;
@@ -1091,7 +1212,7 @@ export component Overview inherits Window {
     DeckSide {
         visible: root.active-tab == 0;
         x: 52px;
-        y: 252px;
+        y: 232px;
         number: 2;
         accent: #00e5ff;
         playing: root.playing-2;
@@ -1101,21 +1222,21 @@ export component Overview inherits Window {
         cue(down) => { root.cue(1, down); }
     }
     // Rust draws here: the two waveforms.
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 8px; width: 814px; height: 220px; background: #100c08; }
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 252px; width: 814px; height: 220px; background: #100c08; }
+    Rectangle { visible: root.active-tab == 0; x: 129px; y: 8px; width: 814px; height: 200px; background: #000000; }
+    Rectangle { visible: root.active-tab == 0; x: 129px; y: 232px; width: 814px; height: 200px; background: #000000; }
     // Between the lanes: the phase strip, which Rust draws, and its offset. At 24 px there
     // is room for one line: the offset alone.
     Rectangle {
         visible: root.active-tab == 0;
         x: 52px;
-        y: 228px;
-        width: 80px;
+        y: 208px;
+        width: 74px;
         height: 24px;
         border-radius: 3px;
-        background: #1e1511;
+        background: #202020;
         Text { y: 3px; width: parent.width; text: root.phase; color: root.phase == "—" ? #574b45 : #ffd600; font-size: 14px; horizontal-alignment: center; }
     }
-    Rectangle { visible: root.active-tab == 0; x: 136px; y: 228px; width: 814px; height: 24px; background: #1e1511; }
+    Rectangle { visible: root.active-tab == 0; x: 129px; y: 208px; width: 814px; height: 24px; background: #202020; }
 
     FxPanel {
         visible: root.active-tab == 0;
@@ -1181,7 +1302,7 @@ export component Overview inherits Window {
         y: 0px;
         width: 952px;
         height: 474px;
-        background: #100c08;
+        background: #000000;
         // Takes the taps that miss the pads and buttons, away from the page below.
         TouchArea { }
         CueDeck {
@@ -1209,21 +1330,23 @@ export component Overview inherits Window {
         }
     }
 
-    // The deck cards, on every page: title, times and tempo, and the overview.
+    // The deck cards, on every page: title, times and tempo, and the overview. On the
+    // overview page they are taller, with an overview of 80 pixels (45 on the others,
+    // whose pages need the height): the owner asked for larger overviews (2026-11-26).
     for deck in 2: Rectangle {
         x: 52px + deck * 486px;
-        y: 478px;
+        y: root.active-tab == 0 ? 438px : 478px;
         width: 482px;
-        height: 116px;
+        height: root.active-tab == 0 ? 156px : 116px;
         border-radius: 3px;
         border-width: 1px;
         border-color: #38251e;
-        background: #1e1511;
+        background: #000000;
         Rectangle { x: 7px; y: 8px; width: 6px; height: 22px; background: deck == 0 ? #e64c0c : #00e5ff; }
         Text {
             x: 21px;
             y: 6px;
-            width: 452px;
+            width: 352px;
             height: 26px;
             text: deck == 0 ? root.title-1 : root.title-2;
             color: #f5f0ed;
@@ -1231,33 +1354,57 @@ export component Overview inherits Window {
             overflow: elide;
             vertical-alignment: center;
         }
+        // The key and the deck's state, as tags at the title's end.
+        property <string> key: deck == 0 ? root.key-1 : root.key-2;
+        property <string> status: deck == 0 ? root.status-1 : root.status-2;
+        // The key above Q, green as PAUSE; the state beside it.
+        if key != "": Tag {
+            x: 429px;
+            y: 8px;
+            width: 44px;
+            text: key;
+            tint: #00ff66;
+        }
+        if status != "": Tag {
+            x: 379px;
+            y: 8px;
+            width: 46px;
+            text: status;
+            tint: status == "SYNC" ? (deck == 0 ? #e64c0c : #00e5ff) : status == "LOOP" ? #ff7700 : #574b45;
+        }
         // Rust draws the overview here.
-        Rectangle { x: 8px; y: 70px; width: 466px; height: 45px; background: #100c08; }
+        Rectangle {
+            x: 8px;
+            y: root.active-tab == 0 ? 72px : 70px;
+            width: 466px;
+            height: root.active-tab == 0 ? 80px : 45px;
+            background: #000000;
+        }
     }
     DeckInfo {
         x: 59px;
-        y: 515px;
+        y: root.active-tab == 0 ? 473px : 513px;
         elapsed: root.elapsed-1;
         remaining: root.remaining-1;
+        ending: root.ending-1;
+        blink: root.blink;
         bpm: root.bpm-1;
         pitch: root.pitch-1;
         master-tempo: root.master-tempo-1;
         quantize: root.quantize-1;
-        key: root.key-1;
-        status: root.status-1;
         mt-tapped => { root.master-tempo(0); }
     }
     DeckInfo {
         x: 545px;
-        y: 515px;
+        y: root.active-tab == 0 ? 473px : 513px;
         elapsed: root.elapsed-2;
         remaining: root.remaining-2;
+        ending: root.ending-2;
+        blink: root.blink;
         bpm: root.bpm-2;
         pitch: root.pitch-2;
         master-tempo: root.master-tempo-2;
         quantize: root.quantize-2;
-        key: root.key-2;
-        status: root.status-2;
         mt-tapped => { root.master-tempo(1); }
     }
 
@@ -1274,12 +1421,12 @@ export component Overview inherits Window {
         text: "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſ‘’‚“”„–—•€™▲▼";
     }
 
-    // The boot screen and the screensaver, as the donor's: the owner's RUZINA wordmark, its
-    // letters lit in turn.
+    // The boot screen and the screensaver: the owner's RUZINA wordmark, with a shine that
+    // slides across it. The screensaver is on black, with a saying under the word.
     if root.cover != 0: Rectangle {
         width: 1024px;
         height: 600px;
-        background: #100c08;
+        background: #000000;
         // Takes every tap: one that wakes the screensaver presses nothing below.
         TouchArea { }
         // The wordmark cut into its letters (`wordmark/make.sh`), side by side as drawn.
@@ -1297,22 +1444,52 @@ export component Overview inherits Window {
                 @image-url("wordmark/A.png"),
             ]: Image {
                 source: letter;
-                opacity: Math.abs(i - root.cover-head) >= 4 ? 0.27 : (255 - Math.abs(i - root.cover-head) * 46) / 255;
+                // A little dimmed, so the shine shows; steady under UPDATING FIRMWARE.
+                opacity: root.cover == 3 ? 1.0 : 0.75;
             }
         }
+        // The shine: the word brightened (`wordmark/shine.py`), seen through a band that
+        // slides across it. Three bands, wide to narrow, each adding some of it, make the
+        // band's edges soft. The word is 720 px wide, from x 152.
+        for band in [120, 80, 40]: Rectangle {
+            visible: root.cover-shine > -500;
+            x: (152 + root.cover-shine - band / 2) * 1px;
+            y: 244px;
+            width: band * 1px;
+            height: 112px;
+            clip: true;
+            opacity: 0.4;
+            Image {
+                x: (band / 2 - root.cover-shine) * 1px;
+                source: @image-url("wordmark/word-shine.png");
+            }
+        }
+        // The owner's sayings, one a minute.
         if root.cover == 2: Text {
-            y: 540px;
+            y: 468px;
             width: 1024px;
-            text: "touch me.....or don't ;)";
+            text: root.cover-quote == 0 ? "“Without music, life would be a mistake.”"
+                : root.cover-quote == 1 ? "“Music is liquid architecture; architecture is frozen music.”"
+                : "“Techno is everything you haven't imagined yet.”";
             color: #a3958e;
-            font-size: 20px;
+            font-size: 22px;
+            horizontal-alignment: center;
+        }
+        if root.cover == 2: Text {
+            y: 506px;
+            width: 1024px;
+            text: root.cover-quote == 0 ? "- Friedrich Nietzsche -"
+                : root.cover-quote == 1 ? "- Goethe -"
+                : "- Jeff Mills -";
+            color: #b7410e;
+            font-size: 16px;
             horizontal-alignment: center;
         }
         if root.cover == 3: Text {
             y: 420px;
             width: 1024px;
             text: "UPDATING FIRMWARE";
-            color: #f0e6e0;
+            color: #ff0033;
             font-size: 28px;
             font-weight: 700;
             horizontal-alignment: center;
