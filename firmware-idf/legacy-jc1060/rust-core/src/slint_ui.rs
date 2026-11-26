@@ -154,7 +154,7 @@ const SHINE_OFF: i32 = -1_000;
 const QUOTE_MS: u64 = 60_000;
 const QUOTES: u64 = 3;
 /// The Library page's rows.
-const LIBRARY_ROWS: u32 = 12;
+const LIBRARY_ROWS: u32 = 10;
 // The owner's Rust palette (`docs/reviews/2026-11-21-rust-palette.md`). The main
 // background is black (the owner's choice, 2026-11-26; it was #100C08).
 const PANEL: u16 = rgb(0x00, 0x00, 0x00);

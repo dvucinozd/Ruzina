@@ -124,14 +124,14 @@ fn demo(ui: &Overview) {
     ui.set_library_sort_column(2);
     ui.set_library_bpm_reference(text("128.0"));
     ui.set_library_rows(model(
-        (0..12)
+        (0..10)
             .map(|i| LibraryLine {
                 number: text(&(i + 1).to_string()),
                 title: text(&format!("Demo Track {}", i + 1)),
                 artist: text("Demo Artist"),
                 bpm: text(&format!("{}.0", 124 + i)),
                 key: text(["8A", "9A", "3B", "10A"][i % 4]),
-                time: text("5:12"),
+                time: text(if i % 3 == 0 { "10:24" } else { "5:12" }),
                 decks: text(if i == 0 { "1" } else { "" }),
                 selected: i == 2,
                 kind: if i == 0 { 2 } else { 0 },

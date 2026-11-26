@@ -620,47 +620,51 @@ component LibraryPage inherits Rectangle {
     background: #000000;
     // Takes the taps that miss the rows and buttons, away from the page below.
     TouchArea { }
-    // The column headings, as large as the titles: a tap sorts on one (the title's is the
-    // level's name), and the sorted one shows in yellow with its arrow, on a rust band.
-    Rectangle { x: 0px; y: 0px; width: 820px; height: 34px; background: #b7410e; }
-    Text { x: 8px; y: 0px; height: 34px; text: "#"; color: #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    // The column headings: a tap sorts on one (the title's is the level's name), and the
+    // sorted one shows in yellow with its arrow, on a dark grey band with a rust line.
+    Rectangle { x: 0px; y: 0px; width: 820px; height: 40px; background: #202020; }
+    Rectangle { x: 0px; y: 40px; width: 820px; height: 2px; background: #e64c0c; }
+    Text { x: 8px; y: 0px; height: 40px; text: "#"; color: #a3958e; font-size: 17px; vertical-alignment: center; }
     Text {
         x: 48px;
         y: 0px;
         width: 360px;
-        height: 34px;
+        height: 40px;
         text: root.heading + (root.sort-column == 0 ? (root.sort-descending ? "▼" : "▲") : "");
-        color: root.sort-column == 0 ? #ffd600 : #f5f0ed;
-        font-size: 16px;
+        color: root.sort-column == 0 ? #ffd600 : #a3958e;
+        font-size: 17px;
         overflow: elide;
         vertical-alignment: center;
     }
-    Text { x: 416px; y: 0px; height: 34px; text: "ARTIST" + (root.sort-column == 1 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 1 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
-    Text { x: 622px; y: 0px; height: 34px; text: "BPM" + (root.sort-column == 2 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 2 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
-    Text { x: 686px; y: 0px; height: 34px; text: "KEY" + (root.sort-column == 3 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 3 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
-    Text { x: 734px; y: 0px; height: 34px; text: "TIME" + (root.sort-column == 4 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 4 ? #ffd600 : #f5f0ed; font-size: 16px; vertical-alignment: center; }
+    Text { x: 416px; y: 0px; height: 40px; text: "ARTIST" + (root.sort-column == 1 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 1 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    Text { x: 622px; y: 0px; height: 40px; text: "BPM" + (root.sort-column == 2 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 2 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    Text { x: 686px; y: 0px; height: 40px; text: "KEY" + (root.sort-column == 3 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 3 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    Text { x: 732px; y: 0px; height: 40px; text: "TIME" + (root.sort-column == 4 ? (root.sort-descending ? "▼" : "▲") : ""); color: root.sort-column == 4 ? #ffd600 : #a3958e; font-size: 17px; vertical-alignment: center; }
+    // Ten rows of 42 pixels on black, a grey line under each (the owner asked for larger
+    // rows and text, 2026-11-26).
     for row[i] in root.rows: Rectangle {
         x: 0px;
-        y: 38px + i * 33px;
+        y: 44px + i * 43px;
         width: 820px;
-        height: 32px;
-        background: row.selected ? #0b2614 : #1e1511;
+        height: 42px;
+        background: row.selected ? #0b2614 : #000000;
         border-width: row.selected ? 1px : 0px;
         border-color: #00ff66;
+        if !row.selected: Rectangle { y: 42px; width: parent.width; height: 1px; background: #202020; }
         Text {
             x: 8px;
             width: 36px;
             text: row.number;
             color: #a3958e;
-            font-size: 13px;
+            font-size: 15px;
             vertical-alignment: center;
         }
         // A folder or playlist: a mark in its colour before the name.
         if row.kind != 0: Rectangle {
             x: 34px;
-            y: 9px;
+            y: 13px;
             width: 8px;
-            height: 14px;
+            height: 16px;
             border-radius: 2px;
             background: row.kind == 1 ? #ff7700 : #e64c0c;
         }
@@ -669,7 +673,7 @@ component LibraryPage inherits Rectangle {
             width: 360px;
             text: row.title;
             color: row.selected ? #00ff66 : #f5f0ed;
-            font-size: 15px;
+            font-size: 19px;
             overflow: elide;
             vertical-alignment: center;
         }
@@ -678,30 +682,36 @@ component LibraryPage inherits Rectangle {
             width: 200px;
             text: row.artist;
             color: row.kind == 0 ? #f5f0ed : #a3958e;
-            font-size: 14px;
+            font-size: 17px;
             overflow: elide;
             vertical-alignment: center;
         }
-        Text { x: 622px; width: 60px; text: row.bpm; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
-        Text { x: 686px; width: 44px; text: row.key; color: row.fit == 1 ? #00ff66 : row.fit == 2 ? #ffd600 : row.fit == 3 ? #0088ff : row.fit == 4 ? #a3958e : #ff7700; font-size: 14px; vertical-alignment: center; }
-        Text { x: 734px; width: 46px; text: row.time; color: #f5f0ed; font-size: 14px; vertical-alignment: center; }
-        Text { x: 782px; width: 32px; text: row.decks; color: #e64c0c; font-size: 11px; vertical-alignment: center; }
+        Text { x: 622px; width: 60px; text: row.bpm; color: #f5f0ed; font-size: 17px; vertical-alignment: center; }
+        Text { x: 686px; width: 44px; text: row.key; color: row.fit == 1 ? #00ff66 : row.fit == 2 ? #ffd600 : row.fit == 3 ? #0088ff : row.fit == 4 ? #a3958e : #ff7700; font-size: 17px; vertical-alignment: center; }
+        Text { x: 732px; width: 60px; text: row.time; color: #f5f0ed; font-size: 17px; vertical-alignment: center; }
+        Text { x: 794px; width: 24px; text: row.decks; color: #e64c0c; font-size: 13px; vertical-alignment: center; }
         TouchArea {
             clicked => { root.pick(i); }
         }
     }
+    // The right column, from the top (the owner's layout, 2026-11-26): LOAD D1 and D2, the
+    // same size; BACK; the BPM filter; then sorting by TRACK, ARTIST or BPM. Each as PLAY and
+    // CUE: an outline in its colour, filled while held, or while it is on.
     for deck[i] in [1, 2]: Rectangle {
+        property <color> tint: i == 0 ? #e64c0c : #00e5ff;
         x: 832px;
-        y: 40px + i * 96px;
+        y: i * 82px;
         width: 112px;
-        height: 84px;
+        height: 76px;
         border-radius: 4px;
-        background: i == 0 ? #e64c0c : #00e5ff;
-        opacity: load.pressed ? 0.6 : 1.0;
+        border-width: 2px;
+        border-color: self.tint;
+        background: load.pressed ? self.tint : #000000;
         Text {
             text: "LOAD\nD" + deck;
-            color: #100c08;
-            font-size: 18px;
+            color: load.pressed ? #100c08 : parent.tint;
+            font-size: 20px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -711,17 +721,18 @@ component LibraryPage inherits Rectangle {
     }
     Rectangle {
         x: 832px;
-        y: 236px;
+        y: 164px;
         width: 112px;
-        height: 56px;
+        height: 48px;
         border-radius: 4px;
-        border-width: 1px;
-        border-color: root.can-back ? #00ff66 : #38251e;
-        background: back.pressed ? #0b2614 : #1e1511;
+        border-width: 2px;
+        border-color: root.can-back ? #00ff66 : #574b45;
+        background: back.pressed ? #00ff66 : #000000;
         Text {
             text: "BACK";
-            color: root.can-back ? #00ff66 : #574b45;
-            font-size: 18px;
+            color: back.pressed ? #100c08 : root.can-back ? #00ff66 : #574b45;
+            font-size: 20px;
+            font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
@@ -731,32 +742,55 @@ component LibraryPage inherits Rectangle {
         }
     }
     // The headings take a tap: the title's over the heading, then each column's.
-    for column[i] in [{ x: 40px, w: 368px }, { x: 408px, w: 206px }, { x: 614px, w: 64px }, { x: 678px, w: 48px }, { x: 726px, w: 56px }]: TouchArea {
+    for column[i] in [{ x: 40px, w: 368px }, { x: 408px, w: 206px }, { x: 614px, w: 64px }, { x: 678px, w: 48px }, { x: 726px, w: 66px }]: TouchArea {
         x: column.x;
         y: 0px;
         width: column.w;
-        height: 36px;
+        height: 42px;
         clicked => { root.sort(i); }
     }
     Rectangle {
         x: 832px;
-        y: 304px;
+        y: 218px;
         width: 112px;
-        height: 72px;
+        height: 60px;
         border-radius: 4px;
-        border-width: 1px;
-        border-color: root.bpm-filter ? #e64c0c : #38251e;
-        background: root.bpm-filter ? #b7410e : #1e1511;
-        opacity: bpm.pressed ? 0.6 : 1.0;
-        Text { y: 14px; width: parent.width; text: "BPM ±4%"; color: #f5f0ed; font-size: 14px; horizontal-alignment: center; }
-        Text { y: 44px; width: parent.width; text: root.bpm-reference; color: root.bpm-filter ? #f5f0ed : #a3958e; font-size: 11px; horizontal-alignment: center; }
+        border-width: 2px;
+        border-color: root.bpm-filter ? #e64c0c : #574b45;
+        background: root.bpm-filter || bpm.pressed ? #e64c0c : #000000;
+        Text { y: 8px; width: parent.width; text: "BPM ±4%"; color: root.bpm-filter || bpm.pressed ? #100c08 : #f5f0ed; font-size: 16px; font-weight: 700; horizontal-alignment: center; }
+        Text { y: 34px; width: parent.width; text: root.bpm-reference; color: root.bpm-filter || bpm.pressed ? #100c08 : #a3958e; font-size: 13px; horizontal-alignment: center; }
         bpm := TouchArea {
             clicked => { root.bpm-filter-toggled(); }
         }
     }
+    // Sorting, as the headings do: a tap sorts on the column, a second turns it over. The
+    // one in use is filled yellow, with its direction.
+    for button[i] in [{ text: "TRACK", column: 0 }, { text: "ARTIST", column: 1 }, { text: "BPM", column: 2 }]: Rectangle {
+        property <bool> on: root.sort-column == button.column;
+        x: 832px;
+        y: 290px + i * 50px;
+        width: 112px;
+        height: 44px;
+        border-radius: 4px;
+        border-width: 2px;
+        border-color: self.on ? #ffd600 : #574b45;
+        background: self.on || sort-touch.pressed ? #ffd600 : #000000;
+        Text {
+            text: button.text + (parent.on ? (root.sort-descending ? " ▼" : " ▲") : "");
+            color: parent.on || sort-touch.pressed ? #100c08 : #a3958e;
+            font-size: 17px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        sort-touch := TouchArea {
+            clicked => { root.sort(button.column); }
+        }
+    }
     Text {
         x: 832px;
-        y: 440px;
+        y: 446px;
         width: 112px;
         text: root.count;
         color: #a3958e;
