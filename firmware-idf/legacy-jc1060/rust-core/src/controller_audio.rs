@@ -25,8 +25,9 @@ const SINE_HALF: [i16; 24] = [
     1640, 1462, 1258, 1033, 791, 535, 270,
 ];
 
-/// Frames in the largest 1 ms packet (48 kHz).
-const MAX_FRAMES: usize = 48;
+/// Frames in the largest 1 ms packet: 48 kHz, or a device's feedback up to
+/// 5 % above it (`ruzina_uac::feedback`), as far as its endpoint holds.
+const MAX_FRAMES: usize = 51;
 
 /// The rate tried first: the render rate, or 44.1 kHz to check the
 /// conversion on the board (`uac-44k1`).
@@ -50,6 +51,8 @@ struct State {
     toned_packets: u32,
     /// Why the last configuration offered no format: [`reject_words`].
     rejection: [u32; 3],
+    /// Explicit feedback readings: new rates, empty replies, refused ones.
+    feedback: [u32; 3],
 }
 
 struct Shared(UnsafeCell<State>);
@@ -64,6 +67,7 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     frames: 0,
     toned_packets: 0,
     rejection: [0; 3],
+    feedback: [0; 3],
 }));
 
 fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
@@ -94,11 +98,12 @@ fn tone(phase: &mut usize, frames: usize, left: bool, right: bool, out: &mut [Pc
 
 /// Selects the playback format from a configuration descriptor. Writes
 /// interface, alternate, endpoint, max packet, channels, subframe bytes, rate
-/// and frequency-control into `out[0..8]`; returns 1 when a format is
+/// and frequency-control into `out[0..8]`, then the explicit feedback endpoint
+/// (0 for none) and its refresh exponent into `out[8..10]`; returns 1 when a format is
 /// supported with a headphone pair, else 0.
 ///
 /// # Safety
-/// `config` must be valid for `len` reads and `out` for eight `u32` writes.
+/// `config` must be valid for `len` reads and `out` for ten `u32` writes.
 #[cfg(feature = "idf-controller-audio")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ruzina_legacy_uac_select(
@@ -135,7 +140,13 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
         let Some(chosen) = state.selected.filter(|_| state.map.is_some()) else {
             return 0;
         };
-        state.cadence = Cadence::new(chosen.rate);
+        let explicit = chosen.format.explicit_feedback();
+        state.cadence = if explicit {
+            Cadence::with_feedback(chosen.rate)
+        } else {
+            Cadence::new(chosen.rate)
+        };
+        state.feedback = [0; 3];
         state.phase = 0;
         state.packets = 0;
         state.frames = 0;
@@ -150,11 +161,78 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
             u32::from(f.subframe_bytes),
             chosen.rate,
             u32::from(f.frequency_control),
+            u32::from(if explicit { f.feedback_endpoint } else { 0 }),
+            u32::from(if explicit { f.feedback_refresh } else { 0 }),
         ];
-        // SAFETY: the caller provides eight writable u32 slots.
+        // SAFETY: the caller provides ten writable u32 slots.
         unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
         1
     })
+}
+
+/// One reading of the selected format's explicit feedback endpoint (the
+/// bytes it returned, none between refreshes): 1 a new pace, 0 nothing new,
+/// -1 refused or no feedback to follow. The pace holds until the next reading.
+///
+/// # Safety
+/// `bytes` must be valid for `len` reads (any pointer when `len` is 0).
+#[cfg(feature = "idf-controller-audio")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_uac_feedback(bytes: *const u8, len: u32) -> i32 {
+    let bytes = if len == 0 || bytes.is_null() {
+        &[][..]
+    } else {
+        // SAFETY: the caller lends `len` readable bytes for this call.
+        unsafe { core::slice::from_raw_parts(bytes, len as usize) }
+    };
+    with(|state| {
+        let Some(chosen) = state
+            .selected
+            .filter(|chosen| chosen.format.explicit_feedback())
+        else {
+            return -1;
+        };
+        let max_frames = chosen.format.max_frames().min(MAX_FRAMES);
+        match ruzina_uac::feedback::decode(bytes, chosen.rate, max_frames) {
+            ruzina_uac::feedback::Feedback::Rate(q16) => {
+                state.cadence.set_feedback_q16(q16);
+                state.feedback[0] = state.feedback[0].wrapping_add(1);
+                1
+            }
+            ruzina_uac::feedback::Feedback::Empty => {
+                state.feedback[1] = state.feedback[1].wrapping_add(1);
+                0
+            }
+            ruzina_uac::feedback::Feedback::Invalid => {
+                state.feedback[2] = state.feedback[2].wrapping_add(1);
+                -1
+            }
+        }
+    })
+}
+
+/// Writes the feedback readings (new paces, empty, refused) and the current
+/// pace in Q16 frames per ms (0 without feedback) to `out[0..4]`.
+///
+/// # Safety
+/// `out` must be valid for four `u32` writes.
+#[cfg(feature = "idf-controller-audio")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_uac_feedback_stats(out: *mut u32) {
+    if out.is_null() {
+        return;
+    }
+    let values = with(|state| {
+        let [updates, empty, invalid] = state.feedback;
+        [
+            updates,
+            empty,
+            invalid,
+            state.cadence.feedback_q16().unwrap_or(0),
+        ]
+    });
+    // SAFETY: the caller provides four writable u32 slots.
+    unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
 }
 
 /// `ruzina_legacy_uac_reject` code for a selected format without four

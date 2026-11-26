@@ -19,18 +19,55 @@ use ruzina_audio_dsp::PcmFrame;
 pub struct Cadence {
     rate: u32,
     remainder: u32,
+    /// With explicit feedback: the device's Q16 frames per millisecond, and
+    /// the fraction carried to the next packet.
+    feedback_q16: Option<u32>,
+    phase: u32,
 }
 
 impl Cadence {
     pub const fn new(rate: u32) -> Self {
-        Self { rate, remainder: 0 }
+        Self {
+            rate,
+            remainder: 0,
+            feedback_q16: None,
+            phase: 0,
+        }
+    }
+
+    /// Paced by the device's feedback from now on, starting at its nominal
+    /// rate until the first reading.
+    pub const fn with_feedback(rate: u32) -> Self {
+        Self {
+            rate,
+            remainder: 0,
+            feedback_q16: Some(crate::feedback::nominal_q16(rate)),
+            phase: 0,
+        }
     }
 
     pub const fn rate(&self) -> u32 {
         self.rate
     }
 
+    /// The device's latest rate (`feedback::decode`); ignored without feedback.
+    pub fn set_feedback_q16(&mut self, q16: u32) {
+        if self.feedback_q16.is_some() {
+            self.feedback_q16 = Some(q16);
+        }
+    }
+
+    pub const fn feedback_q16(&self) -> Option<u32> {
+        self.feedback_q16
+    }
+
     pub fn next_frames(&mut self) -> usize {
+        if let Some(q16) = self.feedback_q16 {
+            self.phase += q16;
+            let frames = self.phase >> 16;
+            self.phase &= 0xffff;
+            return frames as usize;
+        }
         self.remainder += self.rate;
         let frames = self.remainder / 1000;
         self.remainder -= frames * 1000;
@@ -173,6 +210,30 @@ pub fn pack(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn feedback_paces_the_packets() {
+        // At its nominal rate a feedback cadence matches the plain one to
+        // within a frame per second.
+        let (mut plain, mut paced) = (Cadence::new(44_100), Cadence::with_feedback(44_100));
+        let (mut a, mut b) = (0, 0);
+        for _ in 0..1000 {
+            let (x, y) = (plain.next_frames(), paced.next_frames());
+            assert!(matches!(y, 44 | 45));
+            a += x;
+            b += y;
+        }
+        assert_eq!(a, 44_100);
+        assert!((b as i64 - 44_100).abs() <= 1, "{b}");
+        // A device 1 % fast takes 441 more frames per second.
+        paced.set_feedback_q16(crate::feedback::nominal_q16(44_541));
+        let more: usize = (0..1000).map(|_| paced.next_frames()).sum();
+        assert!((more as i64 - 44_541).abs() <= 1, "{more}");
+        // A cadence without feedback ignores readings.
+        plain.set_feedback_q16(1 << 22);
+        assert_eq!(plain.feedback_q16(), None);
+        assert!(matches!(plain.next_frames(), 44 | 45));
+    }
 
     const MAIN: Pair = Pair { left: 0, right: 1 };
     const PHONES: Pair = Pair { left: 2, right: 3 };

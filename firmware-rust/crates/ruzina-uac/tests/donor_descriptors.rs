@@ -1,6 +1,6 @@
 //! Configuration descriptors the donor captured from real controllers
-//! (`fixtures/README.md`). They record what Ruzina offers today, and why not,
-//! before the Inpulse 500 and S2 MK3 audio work changes it.
+//! (`fixtures/README.md`). They record what Ruzina offers for each, and why
+//! not, as the Inpulse 500 and S2 MK3 audio work changes it.
 
 use ruzina_uac::descriptor::{
     DescriptorError, Rejection, SampleFormat, UsbSpeed, choose, parse_playback_formats,
@@ -38,19 +38,32 @@ fn inpulse_500_is_asynchronous_44k1_packed_24_with_feedback() {
 }
 
 #[test]
-fn inpulse_500_is_refused_for_its_feedback_today() {
-    let feedback = Rejection::Feedback {
-        interface: 1,
-        alternate: 1,
-    };
-    // Full speed on the HS root; high speed is not this device's, but must refuse too.
+fn inpulse_500_plays_through_its_explicit_feedback_at_full_speed() {
+    let formats = parse_playback_formats(HERCULES_INPULSE_500_FS).unwrap();
+    let format = formats.as_slice()[0];
+    // OUT 0x01 names IN 0x81 as its synch endpoint: 3 bytes every frame,
+    // a new value every 2^5 = 32 ms.
+    assert!(format.asynchronous);
+    assert_eq!(format.sync_address, 0x81);
     assert_eq!(
-        choose(HERCULES_INPULSE_500_FS, UsbSpeed::Full),
-        Err(feedback)
+        (
+            format.feedback_endpoint,
+            format.feedback_interval,
+            format.feedback_refresh
+        ),
+        (0x81, 1, 5)
     );
+    assert!(format.explicit_feedback() && !format.feedback_unusable);
+    assert_eq!(format.max_frames(), 45);
+    let chosen = choose(HERCULES_INPULSE_500_FS, UsbSpeed::Full).unwrap();
+    assert_eq!((chosen.format.alternate, chosen.rate), (1, 44_100));
+    // The deck reads feedback at full speed only.
     assert_eq!(
         choose(HERCULES_INPULSE_500_FS, UsbSpeed::High),
-        Err(feedback)
+        Err(Rejection::Feedback {
+            interface: 1,
+            alternate: 1
+        })
     );
 }
 
