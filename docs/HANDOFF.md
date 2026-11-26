@@ -458,9 +458,63 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
   `deck_view`. The headings are 16 px on a rust band. s180 (app `68235527…`): owner "Sve
   radi". After it, the Overview's FX label blinks green while the effect is on (s181, app
   `f47e264d…`, owner "Sve radi").
+- **Fill gap (2026-11-22):** [keeping the screen's memory work out of the USB audio fills](reviews/2026-11-22-fill-gap.md).
+  A boot bench (s165) showed that the CPU's writes to the frame buffers in PSRAM slow the
+  fill, not the PPA's copies. The screen now waits for a gap between fills, and draws
+  Slint's lines and the lane caches into a strip in internal RAM that the PPA copies in.
+  s170: 5.5 % of Master Tempo fills over 3 ms, longest 4168 µs (s163: 18.3 %). Merged as
+  #165.
+- **Web Remote console (2026-11-22):** [the Web Remote as a full console](reviews/2026-11-22-web-remote-console.md).
+  The owner's phone mock-up, upright and sideways: overviews (`/api/wave`), meters, Hot
+  Cues 1–8, EQ knobs and the mixer. s182: owner "Sve radi". Merged as #163.
+- **Redesign on the fill gap (2026-11-22):** [the screen redesign on the fill gap](reviews/2026-11-22-redesign-on-fill-gap.md).
+  The redesign (palette, layout, phase strip, Library filters) rebased on #165; the phase
+  strip goes through the strip too, and the gate waits only within the frame's slot.
+  s186p: owner "Sve dobro". Merged as #166; s188 was the play image.
+- **Smooth lanes (2026-11-25):** [smooth lanes, drawn the way the donor draws them](reviews/2026-11-25-smooth-lanes.md).
+  One frame buffer, a ring cache per lane and a lanes' task that copies the window around
+  the playhead at every refresh, by 2D-DMA. The phase strip's halves are lanes too. s197p
+  and s199p: owner "Glatko je", "Sve glatko". Merged as #168 and #169.
+- **A stick put back (2026-11-25):** [a stick put back is read again without an app restart](reviews/2026-11-25-stick-reinsert.md).
+  The media owner loops over sessions; the deck resources take new producers. s201p to
+  s203: owner "Radi", "Sve radi". Merged as #170.
+- **Web Remote SETUP (2026-11-25):** [a SETUP page for the deck's settings](reviews/2026-11-25-web-remote-setup.md),
+  then [the network's password](reviews/2026-11-25-web-remote-network.md) (kept in NVS,
+  DEFAULT on the deck puts the build's back) and
+  [the controller profiles](reviews/2026-11-25-profiles-and-polish.md). s205 to s209:
+  owner "Sve radi". Merged as #171, #172 and #173.
+- **Firmware updates from the browser (2026-11-25):** [OTA from the Web Remote](reviews/2026-11-25-web-remote-ota.md).
+  A new Ruzina key (`ruz-001`; its private half in `D:\BoardEvidence\keys`), signed
+  `.ddjota` bundles (`tools/ota_bundle.py`), two 6 MiB app slots with the rollback
+  bootloader (`partitions-ota.csv`), and the upload streamed into the slot the deck is not
+  running. s210 went over USB to ota_0 with otadata erased; s211 came through the browser
+  and was kept; a reset before the keep rolled back. While the slot is written the screen
+  shows UPDATING FIRMWARE, and the panel's interrupt runs with the cache off, so it no
+  longer flickers (s213: "ne blica!"). Merged as #174.
+- **The deck screen, page by page (2026-11-26):** [the GUI pass](reviews/2026-11-26-gui-pass.md).
+  The owner went through every page with a palette and PC renders
+  (`examples/render_screens.rs`): black backgrounds, rekordbox 3-band waveforms, a grey
+  phase strip, larger controls and overviews, the Library's sort buttons, the FX page
+  rearranged, the screensaver's shine and sayings. A PPA copy that never ended stood the
+  screen still (s214); copies now wait 50 ms at most, then the CPU draws. s229: owner "Sve
+  je gotovo". Merged as #175.
 - **Images in this log:** which one the board keeps for play is on the
   [status page](DEVELOPMENT_STATUS.md#the-boards-images); this list does not say what is on
   the flash now.
+  - Since s210 the board has two app slots. Images s211 and later came through the Web
+    Remote, with no flash backup: the image before stays in the other slot until the next
+    update. s210's USB flash kept its backup in `s210-ota-flash`.
+  - s229 (app `f57f5908…`) is main `9e1dec8` (#175), the GUI pass's last image.
+  - s224 (app `58858929…`) and s226 (app `c6a74c72…`) are the GUI pass's Overview and
+    Library images; s215d, s216d and s218d were its diagnostic images.
+  - s213 (app `95f00c31…`) is #174's play image; s210 (app `0d976bb1…`) is its first, over
+    USB.
+  - s209 (app `91b83e13…`) is #173's play image; s208p (app `50175f51…`) its profile image.
+  - s207, s205 and s203 are the play images of #172, #171 and #170; s201p and s202p the
+    stick's profile images.
+  - s199p and s197p are the smooth lanes' profile images; s188 (app `eb4d42c3…`) is main
+    `d6ef0d0` (#166).
+  - s182 (app `818c8df5…`) is the Web Remote console's image; s170 and s169 the fill gap's.
   - s181 (app `f47e264d…`) is the play image flags on the redesign branch with the
     Library filters and the blinking FX label.
   - s180 (app `68235527…`) is the play image flags on the redesign branch with the
@@ -495,9 +549,8 @@ the [status page](DEVELOPMENT_STATUS.md#the-boards-images), with the current sum
 - **Parked work:** the matched control/opt3 source-compare preparation is on
   `ogranak/jc1060-source-compare-parked`, not for merge.
 - **Open:** the current open items are on the [status page](DEVELOPMENT_STATUS.md#open),
-  with the latest fill figures (s163, 2026-11-21: Master Tempo fills over 3 ms mostly
-  overlap a screen frame; work on that overlap is in progress). The items below are older,
-  each with its campaign:
+  with the latest fill figures (s208p, 2026-11-25: 13.1 % of Master Tempo fills over 3 ms,
+  longest 5.14 ms). The items below are older, each with its campaign:
   - 2026-11-05, loops campaign (SD build, [loops](reviews/2026-11-05-loops.md)):
     `fill_max_us` was 3.2 ms in production and
     3.4 ms under profiling while really mixing, over the 3000 µs headroom target, with no

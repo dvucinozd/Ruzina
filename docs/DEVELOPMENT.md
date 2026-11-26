@@ -18,10 +18,14 @@ with device evidence on the [status page](DEVELOPMENT_STATUS.md#what-runs-on-the
   record);
 - each deck's cover on the Slint screen (RP-07);
 - FLX4 audio: MAIN on channels 1/2 and the headphones on 3/4
-  (`rust-core/src/controller_audio.rs`).
+  (`rust-core/src/controller_audio.rs`);
+- signed firmware updates from the Web Remote into two app slots with rollback
+  (`rust-core/src/deck_ota.rs`, `main/ota_slot.c`, `tools/ota_bundle.py`; RP-13's
+  `ruzina-ota`), since 2026-11-25.
 
-Open on both backends: signed OTA and its slot/trust adapter, TLS, writable media
-(profile uploads to a card or stick), an external DAC on MAIN, and the JC8012.
+Open on both backends: pull OTA and TLS, writable media (profile uploads to a card or
+stick), an external DAC on MAIN, and the JC8012. The native backend also lacks the OTA
+slot/trust adapter.
 
 For continuation by another agent, read the [handoff](HANDOFF.md) first. It
 records the exact branch/worktree, source pins, next batches, constraints and
@@ -140,8 +144,8 @@ media workflows, signed A/B OTA/rollback/readiness, C6 transport/networking and 
 Remote are unfinished; their RP-11/12/13 rules exist only as host contracts there.
 Physical audio sinks and controller-specific headphone channel maps are not
 implemented/qualified there. The rev103 legacy path has the settings, C6 and Web Remote
-adapters and the FLX4 channel map (see **Two backends** above); writable media, OTA and
-TLS are open on it too. Musical analysis accuracy, device performance,
+adapters, the FLX4 channel map and local signed OTA with rollback (see **Two backends**
+above); writable media, pull OTA and TLS are open on it too. Musical analysis accuracy, device performance,
 sanitizer/fuzz campaigns and long-duration physical soak are separate gates.
 
 The Rust product is named **Ruzina**; Pajoniiir remains the C donor's name.

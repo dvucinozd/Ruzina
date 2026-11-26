@@ -32,5 +32,20 @@ Preserve `.ddjota` compatibility where practical; any incompatible successor req
 - Host failure injection must interrupt transfer, flash, settings and candidate
   confirmation boundaries before physical OTA qualification. Since 2026-10-23
   these rules exist as host contracts in `ruzina-ota` (RP-13 in the parity
-  plan); no target partition, transport or TLS adapter exists yet, and no
-  OTA, rollback or reboot behavior is hardware-verified.
+  plan).
+
+## Status on the legacy JC1060 (2026-11-25)
+
+The legacy path implements local signed upload with A/B slots and rollback
+([firmware updates from the browser](../reviews/2026-11-25-web-remote-ota.md)):
+
+- **Bundles:** `.ddjota` stays byte-compatible. The deck takes the owner's Ruzina key
+  (`ruz-001`) instead of M2.5's release key; `Expected` names the key id.
+- **Slots:** two 6 MiB app slots and `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`.
+- **Upload:** `POST /api/ota/p4` streams through `ruzina-web` into `ruzina-ota`'s `Push`;
+  nothing is written before the header, signature and image header pass.
+- **Readiness:** a candidate is kept once its Web Remote server listens again, and rolled
+  back if the server fails or has not started within three 30-second reports. Readiness
+  is the network only; critical tasks and allocations are not yet part of it.
+- **On the board:** upload, keep and rollback were tried on s210 to s213.
+- **Still open:** pull OTA with TLS, the C6's firmware, and the native target's adapter.

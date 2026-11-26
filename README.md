@@ -4,7 +4,7 @@ Native Rust DJ firmware and desktop simulator for Guition ESP32-P4 boards.
 Development targets are **JC1060P470C_I_W_Y** and **JC8012P4A1C_I_W_Y**, with
 v3.2 silicon required by the native target. The minimum configured revision is 302.
 
-## Current state — 2026-11-21
+## Current state — 2026-11-26
 
 **On the board:** the owner's JC1060 (ESP32-P4 v1.3, rev103) runs the legacy path:
 - ESP-IDF 6.1, with the shared `no_std` Rust core, in
@@ -37,30 +37,38 @@ runs.
   - the FLX4's LEDs;
   - soft takeover.
 - **Deck screen (Slint):**
-  - waveforms with Hot Cue, loop and beat marks;
-  - a Library with Rekordbox playlists, and each deck's cover;
+  - on black, reviewed page by page with the owner
+    ([GUI pass](docs/reviews/2026-11-26-gui-pass.md));
+  - waveforms in rekordbox's 3-band colours with a red playhead, Hot Cue, loop and beat
+    marks, moving at every refresh; overviews with Hot Cue flags;
+  - a Library with Rekordbox playlists, sorting and the BPM filter, and each deck's cover;
   - Hot Cues, FX and Settings pages;
   - Rekordbox memory cues, called from the HOT CUES page or the FLX4's SAMPLER pads;
   - settings kept on flash: LOAD LOCK, VINYL/CDJ, brightness, the MAIN trim and the
     screensaver's wait;
-  - a boot screen and a screensaver with the RUZINA wordmark.
+  - a boot screen and a screensaver with the RUZINA wordmark and a shine across it; the
+    screensaver shows the owner's sayings.
 - **Media:** the USB stick shares a hub with the FLX4. Pulled out, the Library shows
-  MEDIA REMOVED; put back, the app restarts and reads it again. No SD card is needed.
+  MEDIA REMOVED; put back, it is read again without a restart. No SD card is needed.
 - **Network:** the deck's own Wi-Fi (ESP32-C6 via ESP-Hosted) and the Web Remote, with
-  play, cue, library, mixer and SYNC.
+  play, cue, library, mixer and SYNC, and a SETUP view: the deck's settings, its
+  network's password, the controller profiles and firmware updates.
+- **Firmware updates:** a `.ddjota` bundle signed with the owner's Ruzina key, sent from
+  the Web Remote into the app slot the deck is not running. A new image is kept once its
+  Web Remote runs again; otherwise the bootloader goes back to the previous one
+  ([OTA](docs/reviews/2026-11-25-web-remote-ota.md)).
 
 **Still to come:** the final layout, with the board's own power on CN2 and the stick on the
 FS port. The console is already on UART0 ([service link](docs/boards/JC1060_UART0_SERVICE.md)).
 
 **Open:**
-- USB audio fills over the 3 ms target, with no underruns. On the s163 profile image
-  (2026-11-21, Master Tempo on both decks), 18.3 % of Master Tempo fills took over 3 ms
-  while the screen drew, against 1.7 % with it still, and 88 % of those over 3 ms
-  overlapped a screen frame ([fill contention](docs/reviews/2026-11-21-fill-contention.md)).
-  Earlier figures, each with its image and workload, are on the
-  [status page](docs/DEVELOPMENT_STATUS.md#open). Keeping the screen's frames from slowing
-  the fill is in progress.
+- USB audio fills over the 3 ms target, with no underruns. With Master Tempo on, 13 to
+  16 % of fills still take over 3 ms, all under 5.3 ms (s197p: 13.5 %; s208p: 13.1 %).
+  Each figure, with its image and workload, is on the
+  [status page](docs/DEVELOPMENT_STATUS.md#open).
 - Slint's scene preparation is still 16 to 26 ms of a big frame.
+- While a firmware update is written, USB audio fills stall (both decks are stopped).
+- The FLX4 drops and enumerates again once at every boot.
 - In the SD build only: an SD clock failure at the first boot after a flash.
 
 **Evidence layers:** each claim names its layer.
