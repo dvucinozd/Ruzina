@@ -53,14 +53,58 @@ static IRAM_ATTR bool frame_done(esp_lcd_panel_handle_t panel_handle, esp_lcd_dp
 /* Panel refreshes since start, about 61 a second: the clock the waveforms scroll by. */
 uint32_t ruzina_panel_refreshes(void) { return refreshes; }
 
-/* The PPA's client for the blits into frames and lane caches. */
+/* A PPA copy must end within BLIT_WAIT_MS: a lane's whole height took 8.1 ms (s190p). On
+   s214 one copy under the screensaver's shine never ended, and, waited for without a
+   limit, it stood the screen still. One that does not end leaves the PPA to it: from then
+   on the copies fail at once, and the screen's lines (`ruzina-screen-lines`) and the lane
+   caches (`draw_cache`) are drawn by the CPU instead, as they already are when a copy
+   fails. Waited for this way (the driver's non-blocking mode and our own semaphore), the
+   shine's copies ran through the PPA for 4 minutes on s218d without one stuck, where the
+   driver's blocking mode had stood still within a minute. */
+#define BLIT_WAIT_MS 50
+static SemaphoreHandle_t blit_done;
+static bool ppa_stuck;
+
+static IRAM_ATTR bool blit_ended(ppa_client_handle_t client, ppa_event_data_t *event, void *context)
+{
+    (void)client; (void)event; (void)context;
+    BaseType_t woken = pdFALSE;
+    xSemaphoreGiveFromISR(blit_done, &woken);
+    return woken == pdTRUE;
+}
+
+/* The PPA's client for the blits into frames and lane caches; false once the PPA is
+   stuck. */
 static bool mover_ready(void)
 {
+    if (ppa_stuck) return false;
     if (!mover) {
+        if (!blit_done && !(blit_done = xSemaphoreCreateBinary())) return false;
         ppa_client_config_t client = {.oper_type = PPA_OPERATION_SRM, .max_pending_trans_num = 1};
         if (ppa_register_client(&client, &mover) != ESP_OK) return false;
+        ppa_event_callbacks_t callbacks = {.on_trans_done = blit_ended};
+        if (ppa_client_register_event_callbacks(mover, &callbacks) != ESP_OK) {
+            ppa_unregister_client(mover);
+            mover = NULL;
+            return false;
+        }
     }
     return true;
+}
+
+/* One PPA copy, waited for up to BLIT_WAIT_MS: 0 once it is done, -1 if it failed or did
+   not end in time. */
+static int32_t blit_run(ppa_srm_oper_config_t *blit)
+{
+    blit->mode = PPA_TRANS_MODE_NON_BLOCKING;
+    xSemaphoreTake(blit_done, 0);
+    if (ppa_do_scale_rotate_mirror(mover, blit) != ESP_OK) return -1;
+    if (xSemaphoreTake(blit_done, pdMS_TO_TICKS(BLIT_WAIT_MS)) == pdTRUE) return 0;
+    ppa_stuck = true;
+    printf("ppa stuck=1 wait_ms=%d block=%" PRIu32 "x%" PRIu32 " at=%" PRIu32 ",%" PRIu32
+           ": the CPU draws from now on\n", BLIT_WAIT_MS, blit->in.block_w, blit->in.block_h,
+           blit->out.block_offset_x, blit->out.block_offset_y);
+    return -1;
 }
 
 /* A lane move as a plain 2D-DMA memory-to-memory copy. The PPA's SRM engine moved a lane
@@ -391,9 +435,8 @@ int32_t ruzina_lanes_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x
         .out = {.buffer = cache, .buffer_size = 1024 * h * 2, .pic_w = 1024, .pic_h = h,
                 .block_offset_x = x, .block_offset_y = 0, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
         .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
-        .mode = PPA_TRANS_MODE_BLOCKING,
     };
-    return ppa_do_scale_rotate_mirror(mover, &blit) == ESP_OK ? 0 : -1;
+    return blit_run(&blit);
 }
 
 /* A strip of `pixels` pixels in internal RAM, made on the first call, or NULL. The deck
@@ -424,9 +467,8 @@ int32_t ruzina_panel_blit(const uint16_t *from, uint32_t from_w, uint32_t from_x
         .out = {.buffer = to, .buffer_size = 1024 * 600 * 2, .pic_w = 1024, .pic_h = 600,
                 .block_offset_x = x, .block_offset_y = y, .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
         .rotation_angle = PPA_SRM_ROTATION_ANGLE_0, .scale_x = 1.0f, .scale_y = 1.0f,
-        .mode = PPA_TRANS_MODE_BLOCKING,
     };
-    return ppa_do_scale_rotate_mirror(mover, &blit) == ESP_OK ? 0 : -1;
+    return blit_run(&blit);
 }
 
 /* Waits for the end of the next refresh. */
