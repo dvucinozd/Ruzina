@@ -1,0 +1,3 @@
+# Diagnostic (--usb-debug): debug logs are compiled in; the USB host turns them on for
+# its hub, port and enumeration tags (usb_host_enum.c). Everything else stays at INFO.
+CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y

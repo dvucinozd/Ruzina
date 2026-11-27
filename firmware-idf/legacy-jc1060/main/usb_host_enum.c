@@ -4,6 +4,7 @@
 #include "sdkconfig.h"
 #include "esp_err.h"
 #include "esp_intr_alloc.h"
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -442,6 +443,11 @@ esp_err_t ruzina_usb_host_enum_start(void)
      * controller share it behind a hub, so USB Serial/JTAG keeps the FS PHY. */
     usb_host_config_t host = {.skip_phy_setup = false, .intr_flags = ESP_INTR_FLAG_LEVEL1,
                               .root_port_unpowered = true};
+#if CONFIG_LOG_MAXIMUM_LEVEL >= 4
+    /* --usb-debug: how the hub brings its ports up and the devices behind them. */
+    static const char *const tags[] = {"EXT_PORT", "EXT_HUB", "HUB", "ENUM", "USB HOST"};
+    for (unsigned i = 0; i < sizeof tags / sizeof tags[0]; ++i) esp_log_level_set(tags[i], ESP_LOG_DEBUG);
+#endif
     /* esp-usb splits the FIFO only at install, and its total is in the controller's hardware
      * configuration, readable once installed. A first install leaves the root port unpowered,
      * so no device is seen, and reads it; the second gives the deck's split (usb_fifo.h). */
