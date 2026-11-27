@@ -297,3 +297,44 @@ Branch `ogranak/uac2-clock`, from `main` at `5b5f918`.
     release on stop.
 - **Not checked:** an S2 MK3's clock, as none is at hand. The FLX4 stays UAC1,
   so nothing changes for it.
+
+## Step 8: the UAC2 stream at high speed
+
+Branch `ogranak/uac2-stream`, from `main` at `5dd1c56`.
+
+- **`ruzina-uac`:**
+  - `SampleFormat::Subslot32Bits24` packs each 16-bit sample left-justified
+    in a 4-byte subslot (`sample << 16`), the same full scale as packed
+    24-bit.
+  - `feedback::decode_microframe` reads UAC2's 4-byte 16.16 frames per
+    microframe. It refuses a reading more than 5 % from nominal or more than a
+    packet holds.
+  - `Cadence::with_microframe_feedback` paces one packet per 125 µs: 6 frames
+    at 48 kHz, 5 or 6 at 44.1 kHz, and whatever the device's reading says.
+- **Firmware (`controller_audio`):**
+  - One `Stream` now describes what the packets carry: the wire format, the
+    rate, the frames a packet holds, and the pace (host, UAC1 feedback or
+    UAC2 feedback). It is set by a UAC1 selection, or when a UAC2 clock is
+    ready.
+  - Ready with four channels in a supported subslot gives the stream at the
+    clock's rate. Anything else fails the clock with detail 6.
+  - SET_INTERFACE goes to the UAC2 alternate. There is no endpoint SET_CUR,
+    because the rate is the clock's.
+- **C driver:**
+  - A UAC2 stream uses 48 packets per transfer, one per microframe. That is
+    the same 6 ms as six 1 ms packets, within esp-usb's 61.
+  - Its feedback reading is 4 bytes.
+  - When the clock is ready the driver records the rate, sends SET_INTERFACE,
+    and starts the stream as for UAC1 (four transfers, the feedback reading
+    in flight, recovery, stop).
+- **Tests:**
+  - packing in 24-in-32;
+  - 16.16 decoding;
+  - microframe pacing;
+  - the S2 MK3 capture end to end in Rust: clock ready, SET_INTERFACE, 48
+    packets of 96 bytes, then a 4 % fast reading paces 300 frames in packets
+    of 96 or 112 bytes;
+  - the C lifecycle from clock to stream with the 4-byte feedback.
+- **Not checked:** playing on an S2 MK3, as none is at hand. The donor's M3
+  bench saw ISO packet loss and a bus drop under jog use on HS, cause
+  unproven. When one is here, watch `packet_errors` and the feedback counters.

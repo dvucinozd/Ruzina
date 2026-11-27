@@ -14,7 +14,9 @@
 use core::cell::UnsafeCell;
 use ruzina_audio_dsp::PcmFrame;
 use ruzina_uac::clock::{ClockFailure, ClockNegotiation, ClockNext, ClockRequest};
-use ruzina_uac::descriptor::{DescriptorError, Rejection, Selected, UsbSpeed, choose_preferring};
+use ruzina_uac::descriptor::{
+    DescriptorError, Rejection, SampleFormat, Selected, UsbSpeed, choose_preferring,
+};
 #[cfg(all(test, feature = "idf-uac-profile"))]
 use ruzina_uac::descriptor::{parse_playback_formats, select};
 use ruzina_uac::packet::{Cadence, ChannelMap, Pair, pack};
@@ -46,8 +48,31 @@ const PREFERRED_UAC2_RATE: u32 = 48_000;
 const MAIN: Pair = Pair { left: 0, right: 1 };
 const HEADPHONES: Pair = Pair { left: 2, right: 3 };
 
+/// What the packets carry once a stream is chosen: its wire format and
+/// rate, the frames a packet holds, and how the device paces it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Stream {
+    format: SampleFormat,
+    rate: u32,
+    max_frames: usize,
+    pace: Pace,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Pace {
+    /// The host's clock: synchronous or adaptive.
+    Host,
+    /// UAC1 explicit feedback, 10.14 frames per ms.
+    Uac1Feedback,
+    /// UAC2 explicit feedback, 16.16 frames per microframe.
+    Uac2Feedback,
+}
+
 struct State {
     selected: Option<Selected>,
+    /// The stream packets are filled for: the UAC1 selection, or a UAC2
+    /// alternate once its clock is ready.
+    stream: Option<Stream>,
     cadence: Cadence,
     map: Option<ChannelMap>,
     phase: usize,
@@ -71,6 +96,7 @@ struct Shared(UnsafeCell<State>);
 unsafe impl Sync for Shared {}
 static STATE: Shared = Shared(UnsafeCell::new(State {
     selected: None,
+    stream: None,
     cadence: Cadence::new(48_000),
     map: None,
     phase: 0,
@@ -154,6 +180,7 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
         state.uac2 = None;
         state.clock = None;
         state.clock_outcome = [0; 4];
+        state.stream = None;
         if let Err(Rejection::Uac2 {
             interface,
             alternate,
@@ -200,6 +227,16 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
         } else {
             Cadence::new(chosen.rate)
         };
+        state.stream = chosen.format.sample_format().map(|format| Stream {
+            format,
+            rate: chosen.rate,
+            max_frames: chosen.format.max_frames().min(MAX_FRAMES),
+            pace: if explicit {
+                Pace::Uac1Feedback
+            } else {
+                Pace::Host
+            },
+        });
         state.feedback = [0; 3];
         state.phase = 0;
         state.packets = 0;
@@ -242,14 +279,19 @@ pub unsafe extern "C" fn ruzina_legacy_uac_feedback(bytes: *const u8, len: u32) 
         unsafe { core::slice::from_raw_parts(bytes, len as usize) }
     };
     with(|state| {
-        let Some(chosen) = state
-            .selected
-            .filter(|chosen| chosen.format.explicit_feedback())
-        else {
+        let Some(stream) = state.stream else {
             return -1;
         };
-        let max_frames = chosen.format.max_frames().min(MAX_FRAMES);
-        match ruzina_uac::feedback::decode(bytes, chosen.rate, max_frames) {
+        let decoded = match stream.pace {
+            Pace::Host => return -1,
+            Pace::Uac1Feedback => {
+                ruzina_uac::feedback::decode(bytes, stream.rate, stream.max_frames)
+            }
+            Pace::Uac2Feedback => {
+                ruzina_uac::feedback::decode_microframe(bytes, stream.rate, stream.max_frames)
+            }
+        };
+        match decoded {
             ruzina_uac::feedback::Feedback::Rate(q16) => {
                 state.cadence.set_feedback_q16(q16);
                 state.feedback[0] = state.feedback[0].wrapping_add(1);
@@ -293,7 +335,8 @@ pub unsafe extern "C" fn ruzina_legacy_uac_feedback_stats(out: *mut u32) {
 
 /// `[state, rate, retries, detail]` for the C log: state 1 negotiating, 2
 /// ready at `rate`, 3 failed with `detail` 1 transfer, 2 range, 3 no rate, 4
-/// readback (then `rate` is the rate the clock reported), 5 invalid.
+/// readback (then `rate` is the rate the clock reported), 5 invalid, 6 not four
+/// channels of a supported subslot.
 fn clock_words(clock: &ClockNegotiation, next: ClockNext) -> [u32; 4] {
     match next {
         ClockNext::Send(_) | ClockNext::RetryAt { .. } => [1, clock.rate(), clock.retries(), 0],
@@ -385,6 +428,33 @@ pub unsafe extern "C" fn ruzina_legacy_uac2_clock_done(
         };
         let next = clock.done(request, ok != 0, &copy[..len], u64::from(now_ms));
         state.clock_outcome = clock_words(&clock, next);
+        if let ClockNext::Ready(rate) = next {
+            // The alternate streams from here: four channels, packets of one
+            // microframe paced by its 16.16 feedback.
+            let map = ChannelMap::new(format.channels, Some(MAIN), Some(HEADPHONES)).ok();
+            match (format.sample_format(), map) {
+                (Some(sample), Some(map)) if format.channels == 4 => {
+                    state.map = Some(map);
+                    state.cadence = Cadence::with_microframe_feedback(rate);
+                    state.feedback = [0; 3];
+                    state.phase = 0;
+                    state.packets = 0;
+                    state.frames = 0;
+                    state.toned_packets = 0;
+                    state.stream = Some(Stream {
+                        format: sample,
+                        rate,
+                        max_frames: format.max_frames().min(MAX_FRAMES),
+                        pace: Pace::Uac2Feedback,
+                    });
+                }
+                _ => {
+                    state.clock = None;
+                    state.clock_outcome = [3, rate, clock.retries(), 6];
+                    return 3;
+                }
+            }
+        }
         let (action, send, wait) = match next {
             ClockNext::Send(request) => (0, Some(request), 0),
             ClockNext::RetryAt { at_ms, request } => (
@@ -506,6 +576,19 @@ pub unsafe extern "C" fn ruzina_legacy_uac_control(step: u32, out: *mut u8) -> u
         return 0;
     }
     with(|state| {
+        if let Some(format) = state.uac2.filter(|_| state.stream.is_some()) {
+            // A UAC2 alternate whose clock is ready: SET_INTERFACE only; its
+            // rate is the clock's, not an endpoint's.
+            let alternate = match step {
+                ControlStep::SetAlternate => format.alternate,
+                ControlStep::SetZeroAlternate => 0,
+                ControlStep::SetSampleRate => return 0,
+            };
+            let bytes = [0x01, 0x0b, alternate, 0, format.interface, 0, 0, 0];
+            // SAFETY: the caller provides eleven writable bytes.
+            unsafe { core::ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len()) };
+            return bytes.len() as u32;
+        }
         let Some(chosen) = state.selected else {
             return 0;
         };
@@ -555,7 +638,7 @@ pub unsafe extern "C" fn ruzina_legacy_uac_fill(
         let _ = right;
         let gain = crate::deck_play::headphone_gain_q15(crate::controller_midi::headphone_level());
         with(|state| {
-            let rate = state.selected.map_or(0, |chosen| chosen.rate);
+            let rate = state.stream.map_or(0, |stream| stream.rate);
             fill_from(state, out, sizes, |_, _, pcm| {
                 crate::deck_play::render(pcm, rate, left, gain);
                 left
@@ -592,12 +675,10 @@ fn fill_from(
     sizes: &mut [u32],
     mut source: impl FnMut(&mut State, &mut [PcmFrame], &mut [PcmFrame]) -> bool,
 ) -> u32 {
-    let (Some(chosen), Some(map)) = (state.selected, state.map) else {
+    let (Some(stream), Some(map)) = (state.stream, state.map) else {
         return 0;
     };
-    let Some(format) = chosen.format.sample_format() else {
-        return 0;
-    };
+    let format = stream.format;
     let mut offset = 0;
     let mut main = [PcmFrame::default(); MAX_FRAMES + 1];
     let mut pcm = [PcmFrame::default(); MAX_FRAMES + 1];

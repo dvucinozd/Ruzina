@@ -80,6 +80,15 @@ pub struct Uac2Playback {
 }
 
 impl Uac2Playback {
+    /// The wire format of a supported subslot.
+    pub fn sample_format(&self) -> Option<crate::descriptor::SampleFormat> {
+        match (self.subslot_bytes, self.bits) {
+            (2, 16) => Some(crate::descriptor::SampleFormat::Pcm16),
+            (4, 24) => Some(crate::descriptor::SampleFormat::Subslot32Bits24),
+            _ => None,
+        }
+    }
+
     /// The bytes each sample takes on the wire: 16 bits in 2, or 24 in 4.
     pub fn subslot_supported(&self) -> bool {
         matches!((self.subslot_bytes, self.bits), (2, 16) | (4, 24))

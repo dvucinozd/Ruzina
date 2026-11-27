@@ -13,6 +13,12 @@ fn profiling_six_packet_fill_preserves_pcm_and_failed_exit() {
     .unwrap();
     let make_state = || State {
         selected: Some(selected),
+        stream: Some(Stream {
+            format: selected.format.sample_format().unwrap(),
+            rate: selected.rate,
+            max_frames: selected.format.max_frames(),
+            pace: Pace::Host,
+        }),
         cadence: Cadence::new(selected.rate),
         map: Some(ChannelMap::new(4, Some(MAIN), Some(HEADPHONES)).unwrap()),
         phase: 0,
@@ -321,6 +327,34 @@ fn s2_mk3_negotiates_its_clock(config: &[u8]) {
     let [state, rate, retries, detail] = clock_status();
     assert_eq!((state, rate, detail), (2, 48_000, 0));
     assert_eq!(retries, 2);
+    // Ready: SET_INTERFACE to alternate 1 of interface 1, no endpoint SET_CUR.
+    let mut request = [0u8; 11];
+    // SAFETY: eleven writable bytes.
+    let len = unsafe { ruzina_legacy_uac_control(0, request.as_mut_ptr()) };
+    assert_eq!(&request[..len as usize], &[0x01, 0x0b, 1, 0, 1, 0, 0, 0]);
+    // SAFETY: as above.
+    assert_eq!(
+        unsafe { ruzina_legacy_uac_control(1, request.as_mut_ptr()) },
+        0
+    );
+    // 48 packets of one microframe: 6 frames of four 24-in-32 channels each.
+    let mut packets = std::vec![0u8; 48 * 112];
+    let mut sizes = [0u32; 48];
+    assert_eq!(
+        with(|state| fill(state, &mut packets, &mut sizes, false, false)),
+        48 * 96
+    );
+    assert!(sizes.iter().all(|size| *size == 96));
+    // A 16.16 reading of 6.25 frames per microframe (4 % fast) paces the next
+    // packets: 6 and 7 frames, never over the endpoint's 7. 6.5 would be 8 %
+    // fast, past the 5 % a reading may differ.
+    assert_eq!(feedback(&((13u32 << 16) / 2).to_le_bytes()), -1);
+    assert_eq!(feedback(&((25u32 << 16) / 4).to_le_bytes()), 1);
+    assert_eq!(feedback(&[1, 2, 3]), -1);
+    with(|state| fill(state, &mut packets, &mut sizes, false, false));
+    let frames: u32 = sizes.iter().map(|size| size / 16).sum();
+    assert_eq!(frames, 48 * 25 / 4);
+    assert!(sizes.iter().all(|size| *size == 96 || *size == 112));
     // A stalled request fails the negotiation; nothing else is in flight.
     // SAFETY: twelve writable bytes and one u32.
     unsafe { ruzina_legacy_uac2_clock_begin(out.as_mut_ptr(), &mut reply) };

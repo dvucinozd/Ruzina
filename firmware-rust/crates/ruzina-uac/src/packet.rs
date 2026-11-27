@@ -36,12 +36,23 @@ impl Cadence {
     }
 
     /// Paced by the device's feedback from now on, starting at its nominal
-    /// rate until the first reading.
+    /// rate until the first reading: one packet per millisecond (UAC1).
     pub const fn with_feedback(rate: u32) -> Self {
         Self {
             rate,
             remainder: 0,
             feedback_q16: Some(crate::feedback::nominal_q16(rate)),
+            phase: 0,
+        }
+    }
+
+    /// As [`Cadence::with_feedback`], one packet per 125 us microframe
+    /// (UAC2 at high speed): readings are Q16 frames per microframe.
+    pub const fn with_microframe_feedback(rate: u32) -> Self {
+        Self {
+            rate,
+            remainder: 0,
+            feedback_q16: Some(crate::feedback::nominal_microframe_q16(rate)),
             phase: 0,
         }
     }
@@ -158,6 +169,11 @@ fn write(out: &mut [u8], sample: i16, format: SampleFormat) {
         SampleFormat::Pcm16 => out.copy_from_slice(&sample.to_le_bytes()),
         // Full amplitude: the 16-bit sample is the 24-bit word's top bits.
         SampleFormat::Packed24 => out.copy_from_slice(&(i32::from(sample) << 8).to_le_bytes()[..3]),
+        // Left-justified: the 16-bit sample is the subslot's top bits, the same
+        // full scale as packed 24-bit (donor `controller_uac2_pack_pcm`).
+        SampleFormat::Subslot32Bits24 => {
+            out.copy_from_slice(&(i32::from(sample) << 16).to_le_bytes())
+        }
     }
 }
 
@@ -212,6 +228,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn microframe_feedback_paces_125_us_packets() {
+        // 48 kHz: 6 frames every microframe; 44.1 kHz: 5 or 6, 44 100 a second.
+        let mut paced = Cadence::with_microframe_feedback(48_000);
+        assert!((0..8_000).all(|_| paced.next_frames() == 6));
+        let mut paced = Cadence::with_microframe_feedback(44_100);
+        let frames: usize = (0..8_000)
+            .map(|_| {
+                let frames = paced.next_frames();
+                assert!(matches!(frames, 5 | 6));
+                frames
+            })
+            .sum();
+        assert!((frames as i64 - 44_100).abs() <= 1, "{frames}");
+        // A reading of 6.25 frames per microframe.
+        let mut paced = Cadence::with_microframe_feedback(48_000);
+        paced.set_feedback_q16((25u32 << 16) / 4);
+        let frames: usize = (0..8).map(|_| paced.next_frames()).sum();
+        assert_eq!(frames, 50);
+    }
+
+    #[test]
     fn feedback_paces_the_packets() {
         // At its nominal rate a feedback cadence matches the plain one to
         // within a frame per second.
@@ -245,6 +282,9 @@ mod tests {
             match format {
                 SampleFormat::Pcm16 => i32::from(i16::from_le_bytes([raw[0], raw[1]])),
                 SampleFormat::Packed24 => i32::from_le_bytes([0, raw[0], raw[1], raw[2]]) >> 8,
+                SampleFormat::Subslot32Bits24 => {
+                    i32::from_le_bytes([raw[0], raw[1], raw[2], raw[3]]) >> 8
+                }
             }
         })
     }
@@ -290,12 +330,16 @@ mod tests {
                 right: 1,
             },
         ];
-        for format in [SampleFormat::Pcm16, SampleFormat::Packed24] {
+        for format in [
+            SampleFormat::Pcm16,
+            SampleFormat::Packed24,
+            SampleFormat::Subslot32Bits24,
+        ] {
             let mut out = [0xaa; 64];
             let written = pack(&mut out, format, &map, Some(&main), Some(&phones), 2).unwrap();
             let frame = 4 * format.bytes();
             assert_eq!(written, 2 * frame);
-            let scale = if format == SampleFormat::Packed24 {
+            let scale = if format != SampleFormat::Pcm16 {
                 256
             } else {
                 1
