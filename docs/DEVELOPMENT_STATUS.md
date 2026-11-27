@@ -1,14 +1,25 @@
 # Current development status
 
-Updated 2026-11-26. This page is the one place that names the board's images; the other
+Updated 2026-11-27. This page is the one place that names the board's images; the other
 documents link here.
 
 ## The board's images
 
-- **On the board:** s232 (app `2779d955…`, version `s232`), in slot ota_0: main `35d0235`
-  with the Library's count drawn apart from its rows (`ogranak/library-redraw`), the play
-  image recipe with `--version s232`, sent from the Web Remote.
+- **On the board:** s242 (app `922f8f08…`, version `s242`), in slot ota_1: main `763c656`
+  (#186, the last step of [S2 MK3 and Inpulse 500 audio](reviews/2026-11-26-s2-inpulse-audio.md)),
+  the play image recipe with `--version s242`, sent from the Web Remote. The owner played
+  a track from the stick on the FLX4 on it ("Sve je kao prije").
 - **Before it:**
+  - s235 to s241, each the play image of one step of that plan (#179 to #185), each
+    checked with the FLX4 and the stick: s235 (`63f4b5d8…`), s236 (`b319f34a…`), s237
+    (`ec8ba4fc…`), s238 (`5cf52aa1…`), s239 (`51af436d…`), s240 (`a5f11650…`), s241
+    (`aa9090eb…`). s236d (`f22b8891…`) was a diagnostic image with the FLX4 forced to
+    44.1 kHz (`--uac-44k1`); it sounded the same.
+  - s234 (app `2cc631f5…`), main `73d666b` (#177 and #178,
+    [big frames](reviews/2026-11-26-big-frames.md)); s233p (`1d6420bf…`) the same
+    branch as a profile image.
+  - s232 (app `2779d955…`), main `35d0235` with the Library's count drawn apart from its
+    rows (`ogranak/library-redraw`).
   - s231p (app `c6e44bc2…`), the same firmware as a profile image: no step of the Library's
     selection over 30 ms (s230p: 44 to 60 ms).
   - s230p (app `a2bf0b23…`), the profile image of main `9e1dec8`.
@@ -47,7 +58,7 @@ documents link here.
   - **s184p, s185p and s186p:** the redesign's frame rate
     ([redesign on the fill gap](reviews/2026-11-22-redesign-on-fill-gap.md)).
 - **Where this comes from:** the dated reviews and the board log in
-  `D:\BoardEvidence\JC1060-20261030-COM3` (`FLX4-DAY.md`), as of 2026-11-26.
+  `D:\BoardEvidence\JC1060-20261030-COM3` (`FLX4-DAY.md`), as of 2026-11-27.
   - This page does not read the flash: what is on the board right now is whatever its
     boot log's app hash says.
   - The handoff lists the older images and where each flash backup is kept.
@@ -85,7 +96,7 @@ them. The owner's listening checks are separate, shorter runs. The
 | Screen speed | Big frames 84 → 61 ms (Library), 50 → 41 ms (Settings); the lanes and the phase strip move at every refresh (61 a second); a PPA copy that does not end in 50 ms hands the drawing to the CPU, so the screen cannot stand still on it | [draw speed](reviews/2026-11-16-screen-draw-speed.md), [UI pool](reviews/2026-11-16-ui-pool.md), [redesign](reviews/2026-11-22-redesign-on-fill-gap.md), [smooth lanes](reviews/2026-11-25-smooth-lanes.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
 | Playlists and covers | Rekordbox's playlist tree in the Library, each deck's cover | [playlists and covers](reviews/2026-11-16-playlists-covers.md) |
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
-| Controllers | The FLX4, checked again on s182 (2026-11-22). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware, and the S2 MK3 and Inpulse 500 have no audio yet (the deck logs why it refuses their audio; plan in eight steps). The Web Remote's SETUP lists them | [profiles](reviews/2026-11-21-controller-profiles.md), [in SETUP](reviews/2026-11-25-profiles-and-polish.md), [S2 and Inpulse audio](reviews/2026-11-26-s2-inpulse-audio.md) |
+| Controllers | The FLX4, checked again on every image from s235 to s242 (2026-11-27). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware. Audio for the Inpulse 500 (UAC1 at 44.1 kHz with explicit feedback, native headphones) and the S2 MK3 (UAC2 at high speed, clock negotiated, 125 µs packets) is written and host-tested against their captured descriptors, but has not played on this board. When the deck refuses a controller's audio it logs why. The Web Remote's SETUP lists the profiles | [profiles](reviews/2026-11-21-controller-profiles.md), [in SETUP](reviews/2026-11-25-profiles-and-polish.md), [S2 and Inpulse audio](reviews/2026-11-26-s2-inpulse-audio.md) |
 | Boot screen and screensaver | The owner's wordmark with a shine sliding across it; the screensaver on black with one of the owner's sayings each minute; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
 | Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover; a SETUP view for the deck's settings and information, the network's password, the controller profiles and firmware updates | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md), [SETUP](reviews/2026-11-25-web-remote-setup.md), [password](reviews/2026-11-25-web-remote-network.md) |
 | Firmware updates | A `.ddjota` bundle signed with the owner's Ruzina key (`ruz-001`), sent from SETUP into the app slot the deck is not running (two 6 MiB slots); kept once its Web Remote listens again, else the bootloader goes back. Upload, keep and rollback tried on s210 to s213; UPDATING FIRMWARE stands still on screen while the slot is written | [OTA](reviews/2026-11-25-web-remote-ota.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
@@ -99,6 +110,17 @@ them. The owner's listening checks are separate, shorter runs. The
   - with that power, the brightness cap (50 %) can rise.
 - **The RTC:** the Epson RX8025T at I2C 0x32 is on the board, not yet used.
 - **External audio:** see the [external audio plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md).
+- **Other controllers on hardware:**
+  - **Inpulse 500:** directly on the HS port, with no hub, since esp-usb has no
+    transaction translator for a full-speed device behind a high-speed hub. Expect
+    `rate=44100` and `usb_uac_feedback ep=81` with its counters.
+  - **S2 MK3:** in MIDI mode (hold left FLX while plugging it in). Expect
+    `usb_uac_clock … state=READY` and `packets_per_transfer=48`. Watch `packet_errors`:
+    the donor saw HS ISO loss and a bus drop under jog use.
+  - **DDJ-400 and DJ2GO2 Touch:** neither has been tried.
+  - **With the final layout:** a dual-host install ignores the deck's FIFO split
+    (`main/usb_fifo.h`), so the Inpulse 500's 540-byte packet would need the Kconfig bias
+    or a patch there.
 
 ## Open
 
