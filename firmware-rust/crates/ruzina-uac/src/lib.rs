@@ -10,6 +10,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod clock;
 pub mod descriptor;
 pub mod feedback;
 pub mod health;

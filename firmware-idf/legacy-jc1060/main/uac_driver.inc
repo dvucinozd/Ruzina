@@ -7,6 +7,10 @@ extern void ruzina_legacy_uac_stats(uint32_t *out);
 extern void ruzina_legacy_uac_reject(uint32_t *out);
 extern int32_t ruzina_legacy_uac_feedback(const uint8_t *bytes, uint32_t len);
 extern void ruzina_legacy_uac_feedback_stats(uint32_t *out);
+extern uint32_t ruzina_legacy_uac2_clock_begin(uint8_t *out, uint32_t *reply);
+extern int32_t ruzina_legacy_uac2_clock_done(int32_t ok, const uint8_t *bytes, uint32_t len, uint32_t now_ms,
+                                             uint8_t *out, uint32_t *out_len, uint32_t *reply, uint32_t *wait_ms);
+extern void ruzina_legacy_uac2_clock_status(uint32_t *out);
 #if CONFIG_RUZINA_DECK_PLAY
 extern void ruzina_legacy_play_diagnostics(uint32_t *out);
 #endif
@@ -41,14 +45,22 @@ extern void ruzina_legacy_play_stats(uint32_t *out);
  * 8 failed on the board with ESP_ERR_INVALID_SIZE. */
 #define UAC_TRANSFERS 4
 #define UAC_PACKETS 6
-enum { UAC_OFF = -1, UAC_SET_ALT, UAC_SET_RATE, UAC_STREAMING };
+enum { UAC_OFF = -1, UAC_SET_ALT, UAC_SET_RATE, UAC_STREAMING, UAC_CLOCK };
 static usb_transfer_t *uac_ctrl, *uac_iso[UAC_TRANSFERS];
 static bool uac_ctrl_busy, uac_iso_busy[UAC_TRANSFERS];
 static uint8_t uac_interface = 0xff;
 static int uac_step = UAC_OFF;
 /* interface, alt, endpoint, mps, channels, bytes, rate, freq_control, feedback endpoint
- * (0: none), feedback refresh exponent */
-static uint32_t uac_info[10];
+ * (0: none), feedback refresh exponent (UAC1) or interval (UAC2), UAC2 clock source and
+ * its AudioControl interface */
+static uint32_t uac_info[12];
+/* 1: UAC1, 2: UAC2 (clock negotiated over EP0 first; it does not stream yet). */
+static int32_t uac_kind;
+/* The UAC2 clock request to send, and when, while the clock settles after SET CUR. */
+static uint8_t uac_clock_setup[12];
+static uint32_t uac_clock_len, uac_clock_reply;
+static bool uac_clock_waiting;
+static TickType_t uac_clock_at;
 /* An asynchronous device's explicit feedback: one 3-byte isochronous IN packet per frame,
  * kept in flight beside the OUT pool while the stream runs. */
 static usb_transfer_t *uac_fb;
@@ -635,6 +647,60 @@ static void uac_send(uint32_t step)
     else { uac_ctrl_errors++; uac_step = UAC_OFF; uac_health.state=UAC_HEALTH_FAULT_HELD; }
 }
 
+/* Sends the UAC2 clock request Rust built: SETUP (and SET CUR data) plus room for the reply. */
+static void uac_clock_send(void)
+{
+    memcpy(uac_ctrl->data_buffer, uac_clock_setup, uac_clock_len);
+    uac_ctrl->num_bytes = (int)(uac_clock_len + uac_clock_reply);
+    uac_ctrl->device_handle = device;
+    uac_ctrl->bEndpointAddress = 0;
+    uac_clock_waiting = false;
+    if (usb_host_transfer_submit_control(client, uac_ctrl) == ESP_OK) uac_ctrl_busy = true;
+    else { uac_ctrl_errors++; uac_step = UAC_OFF; uac_health.state=UAC_HEALTH_FAULT_HELD; }
+}
+
+static void uac_clock_log(void)
+{
+    static const char *const details[]={"NONE","TRANSFER","RANGE","NO_RATE","READBACK","INVALID"};
+    uint32_t status[4];
+    ruzina_legacy_uac2_clock_status(status);
+    const char *detail=status[3]<sizeof(details)/sizeof(details[0]) ? details[status[3]] : "?";
+    printf("usb_uac_clock id=%02" PRIx32 " interface=%" PRIu32 " state=%s rate=%" PRIu32 " retries=%" PRIu32
+           " failure=%s\n", uac_info[10], uac_info[11], status[0]==2 ? "READY" : status[0]==3 ? "FAILED" : "NEGOTIATING",
+           status[1], status[2], detail);
+}
+
+/* Each clock reply goes to Rust, which says what to send next, when, or that it is done.
+ * Ready: the alternate would now stream, which needs 125 us packets (not yet). */
+static void uac_clock_done(usb_transfer_t *transfer)
+{
+    const bool ok = transfer->status == USB_TRANSFER_STATUS_COMPLETED;
+    const int reply = ok ? transfer->actual_num_bytes - 8 : 0;
+    uint32_t wait_ms = 0;
+    const int32_t action = ruzina_legacy_uac2_clock_done(ok, transfer->data_buffer + 8, reply > 0 ? (uint32_t)reply : 0,
+        (uint32_t)pdTICKS_TO_MS(xTaskGetTickCount()), uac_clock_setup, &uac_clock_len, &uac_clock_reply, &wait_ms);
+    if (action == 0) { uac_clock_send(); return; }
+    if (action == 1) {
+        uac_clock_waiting = true;
+        uac_clock_at = xTaskGetTickCount() + pdMS_TO_TICKS(wait_ms);
+        return;
+    }
+    uac_clock_log();
+    uac_step = UAC_OFF;
+    if (action == 2) {
+        uac_health.state = UAC_HEALTH_OFF;
+        printf("usb_uac stream=UAC2_NOT_YET interface=%" PRIu32 " alt=%" PRIu32 "\n", uac_info[0], uac_info[1]);
+    } else uac_health.state = UAC_HEALTH_FAULT_HELD;
+}
+
+/* The client loop's turn: a clock read that waited for the clock to settle goes out. */
+static void uac_clock_poll(void)
+{
+    if (uac_step != UAC_CLOCK || !uac_clock_waiting || uac_ctrl_busy || !device || gone) return;
+    if ((TickType_t)(xTaskGetTickCount() - uac_clock_at) > (TickType_t)(~(TickType_t)0 / 2)) return;
+    uac_clock_send();
+}
+
 /* SET_INTERFACE, then SET_CUR 48 kHz when the endpoint takes it, then stream. */
 static void uac_ctrl_done(usb_transfer_t *transfer)
 {
@@ -642,6 +708,7 @@ static void uac_ctrl_done(usb_transfer_t *transfer)
     if (!uac_recovery_current(&uac_health,context->generation)) return;
     uac_ctrl_busy = false;
     if (gone || uac_health.state==UAC_HEALTH_STOPPING || uac_health.state==UAC_HEALTH_FAULT_HELD) return;
+    if (uac_step == UAC_CLOCK) { uac_clock_done(transfer); return; }
     if (transfer->status != USB_TRANSFER_STATUS_COMPLETED) {
         uac_ctrl_errors++;
         printf("usb_uac_control step=%d status=%d\n", uac_step, transfer->status);
@@ -692,7 +759,8 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
             vQueueDelete(uac_log_queue); uac_log_queue=NULL;
         }
     }
-    if (!ruzina_legacy_uac_select((const uint8_t *)config, config->wTotalLength, speed == USB_SPEED_HIGH, uac_info)) {
+    uac_kind = ruzina_legacy_uac_select((const uint8_t *)config, config->wTotalLength, speed == USB_SPEED_HIGH, uac_info);
+    if (!uac_kind) {
         uac_log_reject();
         return;
     }
@@ -743,21 +811,32 @@ static void uac_begin_selected(void)
                " claim=%s\n", uac_info[0], uac_info[1], uac_info[2], uac_info[3], esp_err_to_name(err));
         uac_interface=0xff;uac_health.state=UAC_HEALTH_OFF;return;
     }
-    err = usb_host_transfer_alloc(64, 0, &uac_ctrl);
+    /* SETUP plus the largest reply: a UAC2 clock's eight-subrange GET RANGE, 98 bytes. */
+    err = usb_host_transfer_alloc(128, 0, &uac_ctrl);
     if (err != ESP_OK) uac_health.state=UAC_HEALTH_FAULT_HELD;
     if (err == ESP_OK) {
         uac_ctrl->callback = uac_ctrl_done;
         uac_control_context=(uac_context_t){.generation=uac_generation};
         uac_ctrl->context=&uac_control_context;
-        uac_step = UAC_SET_ALT;
-        uac_send(0);
+        if (uac_kind == 2) {
+            uac_step = UAC_CLOCK;
+            uac_clock_len = ruzina_legacy_uac2_clock_begin(uac_clock_setup, &uac_clock_reply);
+            if (uac_clock_len) uac_clock_send();
+            else { uac_step = UAC_OFF; uac_health.state=UAC_HEALTH_FAULT_HELD; }
+        } else {
+            uac_step = UAC_SET_ALT;
+            uac_send(0);
+        }
     }
     printf("usb_uac interface=%" PRIu32 " alt=%" PRIu32 " ep=%02" PRIx32 " mps=%" PRIu32 " channels=%" PRIu32
            " bytes=%" PRIu32 " rate=%" PRIu32 " freq_control=%" PRIu32 " headphones=3/4 claim=%s\n",
            uac_info[0], uac_info[1], uac_info[2], uac_info[3], uac_info[4], uac_info[5], uac_info[6], uac_info[7],
            esp_err_to_name(err));
-    if (uac_info[8])
+    if (uac_kind == 1 && uac_info[8])
         printf("usb_uac_feedback ep=%02" PRIx32 " refresh_ms=%u pace=EXPLICIT\n", uac_info[8], 1u << uac_info[9]);
+    if (uac_kind == 2)
+        printf("usb_uac_clock id=%02" PRIx32 " interface=%" PRIu32 " class=UAC2 feedback_ep=%02" PRIx32 " state=NEGOTIATING\n",
+               uac_info[10], uac_info[11], uac_info[8]);
     fflush(stdout);
 }
 
@@ -807,5 +886,6 @@ static bool uac_stop(void)
     if (release != ESP_OK) { uac_health.state=UAC_HEALTH_FAULT_HELD; return false; }
     uac_interface = 0xff; uac_health.state=UAC_HEALTH_OFF;
     uac_completed = uac_iso_errors = uac_packet_errors = uac_ctrl_errors = uac_fill_errors = 0;
-    uac_submit_errors=0; uac_fb_errors=0; for (unsigned i=0;i<10;++i) uac_info[i]=0; return true;
+    uac_submit_errors=0; uac_fb_errors=0; for (unsigned i=0;i<12;++i) uac_info[i]=0;
+    uac_kind=0; uac_clock_waiting=false; return true;
 }
