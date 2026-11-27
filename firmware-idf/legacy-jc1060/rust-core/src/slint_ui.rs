@@ -2085,7 +2085,8 @@ fn show_library(
             .into(),
         );
         ui.set_library_heading("MEDIA REMOVED".into());
-        ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
+        ui.set_library_has_playlists(deck_view::level_len(Level::Top) != 0);
+        ui.set_library_in_playlists(level != Level::All);
         return (changed, None);
     }
     let count_text = match selected {
@@ -2102,7 +2103,8 @@ fn show_library(
         heading.push_str(name);
     }
     ui.set_library_heading(heading.into());
-    ui.set_library_can_back(level != Level::All || deck_view::level_len(Level::Top) != 0);
+    ui.set_library_has_playlists(deck_view::level_len(Level::Top) != 0);
+    ui.set_library_in_playlists(level != Level::All);
     (changed, Some(count_text))
 }
 
@@ -2281,8 +2283,8 @@ pub unsafe extern "C" fn ruzina_legacy_slint_run(shown: *mut u16) {
     let bpm_filter: Rc<core::cell::Cell<bool>> = Rc::default();
     let filter = bpm_filter.clone();
     ui.on_library_bpm_filter_toggled(move || filter.set(!filter.get()));
-    ui.on_library_back(|| {
-        deck_view::TOUCH.push(0, deck_view::TouchControl::LibraryBack);
+    ui.on_library_playlists(|| {
+        deck_view::TOUCH.push(0, deck_view::TouchControl::LibraryPlaylists);
     });
     ui.on_load(|deck| {
         deck_view::TOUCH.push(deck as usize & 1, deck_view::TouchControl::Load);

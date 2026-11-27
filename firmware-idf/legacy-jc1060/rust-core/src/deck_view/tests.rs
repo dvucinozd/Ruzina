@@ -100,9 +100,9 @@ fn touches_reach_the_usb_task_in_order_and_a_full_queue_drops_the_newest() {
     assert_eq!(queue.pop(), Some((1, TouchControl::Cue(true))));
     assert_eq!(queue.pop(), Some((1, TouchControl::Cue(false))));
     assert!(queue.push(0, TouchControl::LibraryOpen));
-    assert!(queue.push(0, TouchControl::LibraryBack));
+    assert!(queue.push(0, TouchControl::LibraryPlaylists));
     assert_eq!(queue.pop(), Some((0, TouchControl::LibraryOpen)));
-    assert_eq!(queue.pop(), Some((0, TouchControl::LibraryBack)));
+    assert_eq!(queue.pop(), Some((0, TouchControl::LibraryPlaylists)));
     assert!(queue.push(1, TouchControl::Memory(0)));
     assert!(queue.push(0, TouchControl::Memory(15)));
     assert_eq!(queue.pop(), Some((1, TouchControl::Memory(0))));
@@ -357,6 +357,60 @@ fn back_returns_to_the_row_it_came_from_however_deep_the_tree() {
     }
     assert!(back());
     assert_eq!((level(), selected()), (Level::Top, Some(1)));
+    clear_shelf();
+    publish_library(std::vec::Vec::new());
+    take_library();
+}
+
+#[test]
+fn playlist_toggles_with_the_tracks_and_climbs_straight_to_the_top_level() {
+    let _decks = crate::DECK_TESTS.lock().unwrap_or_else(|e| e.into_inner());
+    publish_library(std::vec![LibraryRow::default(); 3]);
+    clear_shelf();
+    select(2);
+    assert!(!playlists(), "no playlists: the track list stays");
+    assert_eq!((level(), selected()), (Level::All, Some(2)));
+    // Top level: a playlist, then a folder with a folder in it, which holds a playlist.
+    let mut shelf = Shelf::default();
+    for (name, folder, parent) in [
+        ("first", false, None),
+        ("outer", true, None),
+        ("inner", true, Some(1)),
+        ("deep", false, Some(2)),
+    ] {
+        shelf.nodes.push(ShelfNode {
+            name: name.into(),
+            folder,
+            parent,
+            children: std::vec::Vec::new(),
+            tracks: std::vec::Vec::new(),
+        });
+    }
+    shelf.top = std::vec![0, 1];
+    shelf.nodes[1].children = std::vec![2];
+    shelf.nodes[2].children = std::vec![3];
+    publish_shelf(shelf);
+    select(2);
+    assert!(playlists());
+    assert_eq!((level(), selected()), (Level::Top, Some(0)));
+    assert!(playlists(), "a second tap goes back to the tracks");
+    assert_eq!(
+        (level(), selected()),
+        (Level::All, Some(2)),
+        "on the track it left"
+    );
+    assert!(playlists());
+    select(1);
+    assert!(open());
+    assert!(open());
+    assert!(open());
+    assert_eq!(level(), Level::Node(3));
+    assert!(playlists(), "from two folders down");
+    assert_eq!(
+        (level(), selected()),
+        (Level::Top, Some(1)),
+        "on the top-level folder it lies under"
+    );
     clear_shelf();
     publish_library(std::vec::Vec::new());
     take_library();

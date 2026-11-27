@@ -474,6 +474,12 @@ fn refresh_mix() {
         while let Some((deck, control)) = crate::deck_view::TOUCH.pop() {
             // The FX page picks an effect or a beat; the engine steps to it from where
             // it is now.
+            if control == crate::deck_view::TouchControl::LibraryPlaylists {
+                // The Library's level belongs to this task, as Shift and the browse
+                // knob's press move it here too.
+                crate::deck_view::playlists();
+                continue;
+            }
             let fx = mix.engine().fx_view();
             for event in touch_events(deck, control, fx).into_iter().flatten() {
                 mix.control(&event);
@@ -627,7 +633,8 @@ pub(crate) fn touch_events(
         }
         TouchControl::Load => events.presses(on, SemanticControl::Load, 1),
         TouchControl::LibraryOpen => events.presses(None, SemanticControl::BrowsePress, 1),
-        TouchControl::LibraryBack => events.presses(None, SemanticControl::ShiftBrowsePress, 1),
+        // No controller event: the USB task moves the Library itself (`refresh_mix`).
+        TouchControl::LibraryPlaylists => {}
         // The pad in Hot Cue mode, whatever mode the controller's pads are in.
         TouchControl::HotCue { pad, delete, down } => events.push(
             on,
