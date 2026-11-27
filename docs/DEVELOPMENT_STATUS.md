@@ -195,6 +195,10 @@ them. The owner's listening checks are separate, shorter runs. The
     55 ms (s231p 63), opening the Library 80 ms (s231p 89). Of a page turn's 29 ms of
     preparation, the dirty tracking over the whole item tree takes 14 ms and the items
     12 ms, 7.6 ms of it the texts (events 50 to 52).
+  - Since s246p every Text that can change has a height, so a page turn no longer
+    measures its texts in the dirty tracking: a page turn 43.8 ms (s245p 55.8), its dirty
+    tracking 3.2 ms (14.4) ([text heights](reviews/2026-11-27-slint-text-heights.md)).
+    Opening the Library is unchanged at about 70 ms.
   - A PPA copy that never ended stood the screen still under the screensaver's shine
     (s214). Copies are now waited for 50 ms at most, then the CPU draws; the boot screen,
     screensaver and UPDATING FIRMWARE are drawn by the CPU
