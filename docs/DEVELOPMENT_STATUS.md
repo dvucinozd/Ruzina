@@ -120,6 +120,8 @@ them. The owner's listening checks are separate, shorter runs. The
      controllers at once (`usb_host_config_t.peripheral_map`, dual host since 1.3.0); the
      firmware installs only the HS one today (`main/usb_host_enum.c`). The FS port then no
      longer serves USB Serial/JTAG (COM3): images come by OTA, or over UART0 with BOOT.
+     A dual-host install also ignores the deck's own FIFO split (`main/usb_fifo.h`, read
+     back by a first install), so each port's FIFO then comes from the Kconfig bias.
   3. **The FLX4 at full speed on the FS port:** its audio (4 channels, 48 kHz, 16 bit,
      384 bytes a millisecond) fits a full-speed isochronous endpoint (up to 1023), and the
      UAC code already chooses by speed (`ruzina_legacy_uac_select`), but the FLX4 has only
