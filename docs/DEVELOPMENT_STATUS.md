@@ -103,11 +103,34 @@ them. The owner's listening checks are separate, shorter runs. The
 
 ## Still to come
 
-- **The final layout:**
-  - the board's own power on CN2, and the stick on the FS port. Today the FLX4 and the
-    stick share a hub on the HS port. The console is already on UART0 (CN2, GPIO37/38,
-    921600 baud; see the [UART0 service link](boards/JC1060_UART0_SERVICE.md));
-  - with that power, the brightness cap (50 %) can rise.
+- **The final layout** (planned with the owner, 2026-11-26): the board's power on CN2, the
+  FLX4 alone on the FS port, and a hub on the HS port for **two music sticks**. Today the
+  FLX4 and one stick share a hub on the HS port. The console is already on UART0 (CN2,
+  GPIO37/38, 921600 baud; see the [UART0 service link](boards/JC1060_UART0_SERVICE.md)).
+  With that power, the brightness cap (50 %) can rise. In order:
+  1. **Measure the current** with a USB meter: the board at full brightness, the FLX4, a
+     stick and the hub. Everything on either port's VBUS comes straight from `USB5V_IN`,
+     with no current limit ([USB topology](boards/JC1060_USB_TOPOLOGY.md#vbus-and-power)),
+     and with power on CN2 it all runs through its MX1.25 connector, commonly rated about
+     1 A a contact. The FLX4 asks for up to 500 mA, a stick 100 to 300 mA. The likely
+     answer is a hub with its own supply for the sticks; first check with a multimeter that
+     the hub (and the FLX4's own power port, if used) puts no 5 V back on the board's VBUS.
+     Never two live 5 V sources on `USB5V_IN`.
+  2. **Both USB ports as hosts:** the vendored esp-usb 1.6.0 supports both ESP32-P4 USB
+     controllers at once (`usb_host_config_t.peripheral_map`, dual host since 1.3.0); the
+     firmware installs only the HS one today (`main/usb_host_enum.c`). The FS port then no
+     longer serves USB Serial/JTAG (COM3): images come by OTA, or over UART0 with BOOT.
+     A dual-host install also ignores the deck's own FIFO split (`main/usb_fifo.h`, read
+     back by a first install), so each port's FIFO then comes from the Kconfig bias.
+  3. **The FLX4 at full speed on the FS port:** its audio (4 channels, 48 kHz, 16 bit,
+     384 bytes a millisecond) fits a full-speed isochronous endpoint (up to 1023), and the
+     UAC code already chooses by speed (`ruzina_legacy_uac_select`), but the FLX4 has only
+     run at high speed so far. Measure fills and underruns. On its own controller its audio
+     is apart from the stick's reads, and the boot drop (`Enqueue URB error`) may go.
+  4. **Two sticks:** today one stick, one media session and one Rekordbox catalog
+     (`main/usb_msc.inc` binds one device). Needed: a second MSC device, two catalogs, a
+     source choice in the Library (USB 1 / USB 2, as on a CDJ), loads from either, and one
+     stick pulled out while the other plays. Several PRs.
 - **The RTC:** the Epson RX8025T at I2C 0x32 is on the board, not yet used.
 - **External audio:** see the [external audio plan](boards/JC1060_EXTERNAL_AUDIO_PLAN.md).
 - **Other controllers on hardware:**
