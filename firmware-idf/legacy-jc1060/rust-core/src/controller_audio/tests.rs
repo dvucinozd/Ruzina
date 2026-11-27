@@ -260,11 +260,12 @@ fn a_refused_configuration_names_its_reason() {
     assert_eq!(select_config(hercules, true), 0);
     assert_eq!(reject(), [7, 1, 1]);
     inpulse_500_is_paced_by_its_feedback(hercules);
-    // S2 MK3 at high speed: MALFORMED at its 6-byte UAC2 Format Type.
+    // S2 MK3 at high speed: UAC2 on interface 1, alternate 1, which the deck
+    // can drive once it speaks UAC2; at full speed nothing it can drive.
     assert_eq!(select_config(s2, true), 0);
-    let [code, offset, _] = reject();
-    assert_eq!(code, 2);
-    assert_eq!(&s2[offset as usize..offset as usize + 3], &[6, 0x24, 2]);
+    assert_eq!(reject(), [12, 1, 1]);
+    assert_eq!(select_config(s2, false), 0);
+    assert_eq!(reject(), [13, 1, 1]);
     // A selection clears the reason; the FLX4 has no feedback to follow.
     assert_eq!(select_config(&flx4_config(), true), 1);
     assert_eq!(reject(), [0, 0, 0]);

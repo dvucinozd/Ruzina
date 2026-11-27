@@ -273,6 +273,14 @@ fn reject_words(rejection: Rejection) -> [u32; 3] {
             interface,
             alternate,
         } => alt(10, interface, alternate),
+        Rejection::Uac2 {
+            interface,
+            alternate,
+        } => alt(12, interface, alternate),
+        Rejection::Uac2Unsupported {
+            interface,
+            alternate,
+        } => alt(13, interface, alternate),
     }
 }
 

@@ -669,7 +669,7 @@ static void uac_ctrl_done(usb_transfer_t *transfer)
 static void uac_log_reject(void)
 {
     static const char *const names[]={"NONE","HEADER","MALFORMED","DUPLICATE_ENDPOINT","TOO_MANY_RATES",
-        "NO_STREAMING","FORMAT","FEEDBACK","INTERVAL","RATE","PACKET_SIZE","CHANNELS"};
+        "NO_STREAMING","FORMAT","FEEDBACK","INTERVAL","RATE","PACKET_SIZE","CHANNELS","UAC2","UAC2_UNSUPPORTED"};
     uint32_t reject[3];
     ruzina_legacy_uac_reject(reject);
     const char *name=reject[0]<sizeof(names)/sizeof(names[0]) ? names[reject[0]] : "?";
