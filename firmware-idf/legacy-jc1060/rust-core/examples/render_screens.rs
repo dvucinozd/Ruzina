@@ -121,7 +121,7 @@ fn demo(ui: &Overview) {
     ]));
     ui.set_library_heading(text("ALL TRACKS"));
     ui.set_library_count(text("25 TRACKS"));
-    ui.set_library_can_back(true);
+    ui.set_library_has_playlists(true);
     ui.set_library_sort_column(2);
     ui.set_library_bpm_reference(text("128.0"));
     ui.set_library_rows(model(

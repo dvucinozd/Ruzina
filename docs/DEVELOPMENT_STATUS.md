@@ -5,11 +5,17 @@ documents link here.
 
 ## The board's images
 
-- **On the board:** s242 (app `922f8f08…`, version `s242`), in slot ota_1: main `763c656`
-  (#186, the last step of [S2 MK3 and Inpulse 500 audio](reviews/2026-11-26-s2-inpulse-audio.md)),
-  the play image recipe with `--version s242`, sent from the Web Remote. The owner played
-  a track from the stick on the FLX4 on it ("Sve je kao prije").
+- **On the board:** s244 (app `35c15656…`, version `s244`), in slot ota_1: this branch
+  (#191) on main `ac55e33`, the play image recipe with `--version s244`, sent from the
+  Web Remote. It has the ESP-Hosted host 2.12.11 to match the C6 (with its SDIO pool off)
+  and the Library's PLAYLIST button in place of BACK. The owner checked PLAYLIST and the
+  FLX4 on it ("Sve radi").
 - **Before it:**
+  - s243 was the same host with the pool on: it asserted at boot
+    (`sdio_mempool_create`) and the board went back to s242.
+  - s242 (`922f8f08…`), main `763c656` (#186, the last step of
+    [S2 MK3 and Inpulse 500 audio](reviews/2026-11-26-s2-inpulse-audio.md)), reflashed over COM3 into ota_0 after the owner
+    flashed the C6 with ESP-Hosted 2.12.11; it played on the FLX4 ("Svira").
   - s235 to s241, each the play image of one step of that plan (#179 to #185), each
     checked with the FLX4 and the stick: s235 (`63f4b5d8…`), s236 (`b319f34a…`), s237
     (`ec8ba4fc…`), s238 (`5cf52aa1…`), s239 (`51af436d…`), s240 (`a5f11650…`), s241
@@ -98,7 +104,7 @@ them. The owner's listening checks are separate, shorter runs. The
 | Settings | LOAD LOCK, VINYL/CDJ, brightness, MAIN trim, screensaver wait, kept on flash | [settings](reviews/2026-11-17-settings.md), [screensaver](reviews/2026-11-21-screensaver.md) |
 | Controllers | The FLX4, checked again on every image from s235 to s242 (2026-11-27). DDJ-400, DJ2GO2 Touch, S2 MK3 and Inpulse 500 profiles are chosen by VID:PID; they are untested on this hardware. Audio for the Inpulse 500 (UAC1 at 44.1 kHz with explicit feedback, native headphones) and the S2 MK3 (UAC2 at high speed, clock negotiated, 125 µs packets) is written and host-tested against their captured descriptors, but has not played on this board. When the deck refuses a controller's audio it logs why. The Web Remote's SETUP lists the profiles | [profiles](reviews/2026-11-21-controller-profiles.md), [in SETUP](reviews/2026-11-25-profiles-and-polish.md), [S2 and Inpulse audio](reviews/2026-11-26-s2-inpulse-audio.md) |
 | Boot screen and screensaver | The owner's wordmark with a shine sliding across it; the screensaver on black with one of the owner's sayings each minute; a press only wakes it | [screensaver](reviews/2026-11-21-screensaver.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
-| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover; a SETUP view for the deck's settings and information, the network's password, the controller profiles and firmware updates | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md), [SETUP](reviews/2026-11-25-web-remote-setup.md), [password](reviews/2026-11-25-web-remote-network.md) |
+| Wi-Fi and Web Remote | The deck's own network (C6 via ESP-Hosted, 2.12.11 on both sides since s244). A console page that works upright and sideways: overviews, meters, Hot Cues 1–8, EQ knobs, mixer, library, four connections, soft takeover; a SETUP view for the deck's settings and information, the network's password, the controller profiles and firmware updates | [network](reviews/2026-11-15-wifi-in-the-deck-image.md), [takeover](reviews/2026-11-15-fader-takeover.md), [connections](reviews/2026-11-16-web-connections.md), [console](reviews/2026-11-22-web-remote-console.md), [SETUP](reviews/2026-11-25-web-remote-setup.md), [password](reviews/2026-11-25-web-remote-network.md) |
 | Firmware updates | A `.ddjota` bundle signed with the owner's Ruzina key (`ruz-001`), sent from SETUP into the app slot the deck is not running (two 6 MiB slots); kept once its Web Remote listens again, else the bootloader goes back. Upload, keep and rollback tried on s210 to s213; UPDATING FIRMWARE stands still on screen while the slot is written | [OTA](reviews/2026-11-25-web-remote-ota.md), [GUI pass](reviews/2026-11-26-gui-pass.md) |
 
 ## Still to come

@@ -359,8 +359,9 @@ pub(crate) enum TouchControl {
     /// The Library page's selected folder or playlist tapped again: open it, as the
     /// browse knob's press does. It belongs to no deck.
     LibraryOpen,
-    /// The Library page's BACK: one level up, as Shift and the browse knob's press do.
-    LibraryBack,
+    /// The Library page's PLAYLIST: the playlists' top level, or from there back to the
+    /// track list (`playlists`). It belongs to no deck.
+    LibraryPlaylists,
     /// A memory cue on the Hot Cues page tapped (0 to 15): the deck calls it, as the
     /// SAMPLER pads do.
     Memory(u8),
@@ -422,7 +423,7 @@ impl TouchQueue {
                 }
                 TouchControl::MasterTempo => 1 << 20,
                 TouchControl::LibraryOpen => 1 << 21,
-                TouchControl::LibraryBack => 1 << 21 | 1 << 22,
+                TouchControl::LibraryPlaylists => 1 << 21 | 1 << 22,
                 TouchControl::Memory(n) => 1 << 23 | u32::from(n & 15) << 24,
             };
         self.slots[(head % TOUCH_SLOTS) as usize].store(word, Ordering::Relaxed);
@@ -449,7 +450,7 @@ impl TouchQueue {
             TouchControl::Memory((word >> 24 & 15) as u8)
         } else if word & 1 << 21 != 0 {
             if word & 1 << 22 != 0 {
-                TouchControl::LibraryBack
+                TouchControl::LibraryPlaylists
             } else {
                 TouchControl::LibraryOpen
             }
@@ -834,6 +835,37 @@ pub(crate) fn back() -> bool {
     LEVEL.store(up, Ordering::Relaxed);
     let len = level_len(level());
     SELECTED.store(selected.min(len.saturating_sub(1)), Ordering::Relaxed);
+    true
+}
+
+/// The Library page's PLAYLIST: from the track list to the playlists' top level, from
+/// there back to the track list, and from a folder or playlist however deep straight to
+/// the top level, on the row it lies under. False when the export has no playlists.
+/// The engine's side.
+pub(crate) fn playlists() -> bool {
+    let Level::Node(node) = level() else {
+        return back();
+    };
+    let Some(shelf) = shelf() else {
+        return false;
+    };
+    // The top-level node it lies under. No path is longer than the tree has nodes; the
+    // bound only stops a broken parent loop.
+    let mut top = node;
+    for _ in 0..shelf.nodes.len() {
+        match shelf.nodes.get(top as usize).and_then(|node| node.parent) {
+            Some(parent) => top = parent,
+            None => break,
+        }
+    }
+    let row = shelf
+        .top
+        .iter()
+        .position(|&child| child == top)
+        .unwrap_or(0) as u32;
+    LEVEL.store(TOP, Ordering::Relaxed);
+    let len = level_len(Level::Top);
+    SELECTED.store(row.min(len.saturating_sub(1)), Ordering::Relaxed);
     true
 }
 

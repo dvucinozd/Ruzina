@@ -596,12 +596,15 @@ export struct LibraryLine {
 // The catalog or a level of its playlists, a page at a time around the selection, which
 // the browse knob or a tap moves. LOAD on the controller or here loads the selected
 // track; on a folder or playlist it opens it, as the knob's press or a second tap does.
-// BACK, or Shift and the press, goes one level up.
+// PLAYLIST goes to the playlists' top level, and from there back to the tracks; Shift
+// and the press go one level up.
 component LibraryPage inherits Rectangle {
     in property <[LibraryLine]> rows;
     in property <string> count;
     in property <string> heading;
-    in property <bool> can-back;
+    // Whether the export has playlists, and whether a level of them is shown.
+    in property <bool> has-playlists;
+    in property <bool> in-playlists;
     // The column the list is sorted on (0 title, 1 artist, 2 BPM, 3 key, 4 time; -1 none),
     // and which way.
     in property <int> sort-column: -1;
@@ -611,7 +614,7 @@ component LibraryPage inherits Rectangle {
     in property <string> bpm-reference;
     callback pick(int);
     callback load(int);
-    callback back();
+    callback playlists();
     // A column's heading tapped: sort on it, or turn its sort over.
     callback sort(int);
     callback bpm-filter-toggled();
@@ -695,7 +698,7 @@ component LibraryPage inherits Rectangle {
         }
     }
     // The right column, from the top (the owner's layout, 2026-11-26): LOAD D1 and D2, the
-    // same size; BACK; the BPM filter; then sorting by TRACK, ARTIST or BPM. Each as PLAY and
+    // same size; PLAYLIST (in place of BACK, 2026-11-27); the BPM filter; then sorting by TRACK, ARTIST or BPM. Each as PLAY and
     // CUE: an outline in its colour, filled while held, or while it is on.
     for deck[i] in [1, 2]: Rectangle {
         property <color> tint: i == 0 ? #e64c0c : #00e5ff;
@@ -726,19 +729,21 @@ component LibraryPage inherits Rectangle {
         height: 48px;
         border-radius: 4px;
         border-width: 2px;
-        border-color: root.can-back ? #00ff66 : #574b45;
-        background: back.pressed ? #00ff66 : #000000;
+        // Green while a level of the playlists is shown, filled while held; grey with no
+        // playlists.
+        border-color: root.has-playlists ? (root.in-playlists ? #00ff66 : #a3958e) : #574b45;
+        background: playlists.pressed ? #00ff66 : root.in-playlists ? #0b2614 : #000000;
         Text {
-            text: "BACK";
-            color: back.pressed ? #100c08 : root.can-back ? #00ff66 : #574b45;
-            font-size: 20px;
+            text: "PLAYLIST";
+            color: playlists.pressed ? #100c08 : root.has-playlists ? (root.in-playlists ? #00ff66 : #f5f0ed) : #574b45;
+            font-size: 18px;
             font-weight: 700;
             horizontal-alignment: center;
             vertical-alignment: center;
         }
-        back := TouchArea {
-            enabled: root.can-back;
-            clicked => { root.back(); }
+        playlists := TouchArea {
+            enabled: root.has-playlists;
+            clicked => { root.playlists(); }
         }
     }
     // The headings take a tap: the title's over the heading, then each column's.
@@ -1100,7 +1105,8 @@ export component Overview inherits Window {
     in property <[LibraryLine]> library-rows;
     in property <string> library-count;
     in property <string> library-heading;
-    in property <bool> library-can-back;
+    in property <bool> library-has-playlists;
+    in property <bool> library-in-playlists;
     in property <int> library-sort-column: -1;
     in property <bool> library-sort-descending;
     in property <bool> library-bpm-filter;
@@ -1134,10 +1140,10 @@ export component Overview inherits Window {
     // Deck 0 or 1: PLAY pressed, CUE down or up.
     callback play(int);
     callback cue(int, bool);
-    // The Library: a row of the page tapped, LOAD tapped for deck 0 or 1, BACK tapped.
+    // The Library: a row of the page tapped, LOAD tapped for deck 0 or 1, PLAYLIST tapped.
     callback pick(int);
     callback load(int);
-    callback library-back();
+    callback library-playlists();
     // The Library's column heading 0 to 4 tapped, and its BPM filter.
     callback library-sort(int);
     callback library-bpm-filter-toggled();
@@ -1258,14 +1264,15 @@ export component Overview inherits Window {
         rows: root.library-rows;
         count: root.library-count;
         heading: root.library-heading;
-        can-back: root.library-can-back;
+        has-playlists: root.library-has-playlists;
+        in-playlists: root.library-in-playlists;
         sort-column: root.library-sort-column;
         sort-descending: root.library-sort-descending;
         bpm-filter: root.library-bpm-filter;
         bpm-reference: root.library-bpm-reference;
         pick(row) => { root.pick(row); }
         load(deck) => { root.load(deck); }
-        back => { root.library-back(); }
+        playlists => { root.library-playlists(); }
         sort(column) => { root.library-sort(column); }
         bpm-filter-toggled => { root.library-bpm-filter-toggled(); }
     }
