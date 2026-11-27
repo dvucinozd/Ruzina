@@ -476,11 +476,11 @@ int main(void) {
     {
         const int prior=allocations;
         select_result=0;
-        for(uint32_t code=0;code<13;++code) {
+        for(uint32_t code=0;code<15;++code) {
             reject_code[0]=code;reject_code[1]=1;reject_code[2]=1;
             uac_start(&config,USB_SPEED_HIGH);
         }
-        assert(reject_calls==13 && uac_interface==0xff && live==0 && allocations==prior);
+        assert(reject_calls==15 && uac_interface==0xff && live==0 && allocations==prior);
         select_result=1;claim_error=-1;
         uac_start(&config,USB_SPEED_HIGH);
         assert(uac_interface==0xff && uac_health.state==UAC_HEALTH_OFF && live==0 && allocations==prior);

@@ -207,3 +207,47 @@ Branch `ogranak/native-headphones`, from `main` at `7419a5a`.
     unbind clears it.
 - **Not checked:** an Inpulse 500's headphones, as none is at hand. The FLX4
   has no flag, so nothing changes for it.
+
+## Step 6: the S2 MK3's zero tail and a UAC2 parser
+
+Branch `ogranak/uac2-parser`, from `main` at `f0cde19`.
+
+- **Zero tail:** zero bytes from a descriptor boundary to the end of
+  `wTotalLength` are padding, not a descriptor. A zero length followed by
+  anything else is still malformed.
+- **UAC1 walk:** only protocol-0 streaming alternates are walked. A UAC2
+  alternate (protocol 0x20) has other class descriptors, so it is no longer
+  read as a malformed UAC1 one.
+- **`ruzina_uac::uac2`:**
+  - The first pass collects each UAC2 AudioControl interface's clock sources and
+    input terminals.
+  - The second reads each playback alternate: AS_GENERAL v2 (terminal link,
+    PCM, channels), Format Type v2 (subslot and bits), the isochronous OUT
+    endpoint and its explicit feedback endpoint.
+  - It then links the alternate through its terminal to the terminal's clock
+    source, on the same AudioControl interface.
+  - `supported(speed)` holds only for what the deck can drive:
+    - high speed, PCM in 16/2 or 24/4, two or four channels;
+    - one packet per microframe, at least 7 frames per packet;
+    - asynchronous OUT with its own 4-byte feedback endpoint;
+    - a clock whose frequency is settable and whose validity is readable.
+- **Choice:** a configuration without UAC1 playback is now reported by its UAC2
+  alternates:
+  - `reason=UAC2 interface=… alt=…` for one the deck can drive once it speaks
+    UAC2 (steps 7 and 8);
+  - `reason=UAC2_UNSUPPORTED` when none qualifies.
+  - Nothing streams UAC2 yet.
+- **The S2 MK3 capture** (high speed) now parses:
+  - interface 1 alternate 1: 4 channels of 24 bits in 4 bytes;
+  - OUT `0x01` of 112 bytes every microframe, feedback IN `0x81` of 4 bytes
+    every 1 ms;
+  - terminal 1 on clock `0x11` of AudioControl interface 0, settable and with
+    readable validity.
+  - The deck logs `reason=UAC2 interface=1 alt=1` (full speed:
+    `UAC2_UNSUPPORTED`).
+- **Tests:**
+  - a driveable function and each undriveable variant;
+  - padding and truncation;
+  - the UAC1 walk with padding and with a UAC2 alternate;
+  - the S2 capture end to end;
+  - the firmware's reason codes 12 and 13.

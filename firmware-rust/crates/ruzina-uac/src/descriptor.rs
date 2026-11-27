@@ -22,6 +22,7 @@ const FORMAT_TAG_PCM: u16 = 0x0001;
 const TRANSFER_ISOCHRONOUS: u8 = 0x01;
 const SYNC_ASYNCHRONOUS: u8 = 0x01;
 const USAGE_FEEDBACK: u8 = 0x01;
+const PROTOCOL_UAC1: u8 = 0x00;
 
 pub const MAX_FORMATS: usize = 8;
 pub const MAX_RATES: usize = 8;
@@ -210,6 +211,13 @@ fn le16(bytes: &[u8], at: usize) -> u16 {
     u16::from_le_bytes([bytes[at], bytes[at + 1]])
 }
 
+/// Zero bytes from `offset` to the end of the configuration: padding inside
+/// `wTotalLength` (the S2 MK3 ends in eight), not a descriptor. A zero length
+/// followed by anything else is still malformed.
+pub(crate) fn zero_tail(config: &[u8], offset: usize, total: usize) -> bool {
+    config[offset..total].iter().all(|byte| *byte == 0)
+}
+
 /// Walks the whole configuration; any malformed descriptor refuses all
 /// audio formats rather than yielding a partial result.
 pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, DescriptorError> {
@@ -229,6 +237,9 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
     let mut seen_format_type = false;
     let mut offset = 9;
     while offset < total {
+        if zero_tail(config, offset, total) {
+            break;
+        }
         let malformed = DescriptorError::Malformed { offset };
         if offset + 2 > total {
             return Err(malformed);
@@ -250,8 +261,13 @@ pub fn parse_playback_formats(config: &[u8]) -> Result<PlaybackFormats, Descript
                 }
                 current = PlaybackFormat::EMPTY;
                 seen_format_type = false;
-                // Alternate 0 is the zero-bandwidth setting.
-                streaming = d[5] == CLASS_AUDIO && d[6] == SUBCLASS_STREAMING && d[3] != 0;
+                // Alternate 0 is the zero-bandwidth setting. A USB Audio 2.0
+                // alternate (protocol 0x20) has other class descriptors: it is
+                // `uac2`'s, not walked here.
+                streaming = d[5] == CLASS_AUDIO
+                    && d[6] == SUBCLASS_STREAMING
+                    && d[7] == PROTOCOL_UAC1
+                    && d[3] != 0;
                 current.interface = d[2];
                 current.alternate = d[3];
             }
@@ -413,6 +429,11 @@ pub enum Rejection {
     Rate { interface: u8, alternate: u8 },
     /// `wMaxPacketSize` is below the largest 1 ms packet.
     PacketSize { interface: u8, alternate: u8 },
+    /// A USB Audio 2.0 alternate the deck can drive (`uac2`), once it speaks
+    /// UAC2: it has no UAC1 alternate to use meanwhile.
+    Uac2 { interface: u8, alternate: u8 },
+    /// Only USB Audio 2.0 alternates, none of them one the deck can drive.
+    Uac2Unsupported { interface: u8, alternate: u8 },
 }
 
 impl PlaybackFormat {
@@ -472,6 +493,28 @@ pub fn choose(config: &[u8], speed: UsbSpeed) -> Result<Selected, Rejection> {
     choose_preferring(config, speed, 48_000)
 }
 
+/// Why a configuration without UAC1 playback offers nothing: its UAC2
+/// alternates, the first one the deck can drive before any other.
+fn uac2_rejection(config: &[u8], speed: UsbSpeed) -> Rejection {
+    let formats = match crate::uac2::parse(config) {
+        Ok(formats) => formats,
+        Err(error) => return Rejection::Descriptor(error),
+    };
+    let formats = formats.as_slice();
+    if let Some(format) = formats.iter().find(|format| format.supported(speed)) {
+        return Rejection::Uac2 {
+            interface: format.interface,
+            alternate: format.alternate,
+        };
+    }
+    formats.first().map_or(Rejection::NoStreaming, |format| {
+        Rejection::Uac2Unsupported {
+            interface: format.interface,
+            alternate: format.alternate,
+        }
+    })
+}
+
 /// [`choose`] with `preferred` first, as [`select_preferring`].
 pub fn choose_preferring(
     config: &[u8],
@@ -481,6 +524,9 @@ pub fn choose_preferring(
     let formats = parse_playback_formats(config).map_err(Rejection::Descriptor)?;
     if let Some(selected) = select_preferring(&formats, speed, preferred) {
         return Ok(selected);
+    }
+    if formats.as_slice().is_empty() {
+        return Err(uac2_rejection(config, speed));
     }
     Err(formats
         .as_slice()
@@ -845,6 +891,25 @@ pub(crate) mod tests {
             select(&short, UsbSpeed::High).is_none(),
             "45 frames x 4 ch x 2 bytes"
         );
+    }
+
+    #[test]
+    fn zero_padding_ends_the_walk_and_uac2_alternates_are_not_walked() {
+        let mut padded = controller(&[alternate(1, 1, 4, 2, 16, &[48_000], 0x09, 384, 1)]);
+        padded.extend_from_slice(&[0; 8]);
+        let total = padded.len() as u16;
+        padded[2..4].copy_from_slice(&total.to_le_bytes());
+        assert_eq!(parse_playback_formats(&padded).unwrap().as_slice().len(), 1);
+        let last = padded.len() - 1;
+        padded[last] = 1;
+        assert!(parse_playback_formats(&padded).is_err());
+        // The same alternate marked protocol 0x20, with a UAC2-sized Format
+        // Type: not a UAC1 format, and not malformed.
+        let mut uac2 = alternate(1, 1, 4, 4, 24, &[], 0x05, 112, 1);
+        uac2[7] = 0x20;
+        uac2.splice(9 + 7..9 + 7 + 8, [6, 0x24, 2, 1, 4, 24]);
+        let formats = parse_playback_formats(&controller(&[uac2])).unwrap();
+        assert!(formats.as_slice().is_empty());
     }
 
     #[test]

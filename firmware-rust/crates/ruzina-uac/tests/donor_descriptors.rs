@@ -2,9 +2,8 @@
 //! (`fixtures/README.md`). They record what Ruzina offers for each, and why
 //! not, as the Inpulse 500 and S2 MK3 audio work changes it.
 
-use ruzina_uac::descriptor::{
-    DescriptorError, Rejection, SampleFormat, UsbSpeed, choose, parse_playback_formats,
-};
+use ruzina_uac::descriptor::{Rejection, SampleFormat, UsbSpeed, choose, parse_playback_formats};
+use ruzina_uac::uac2;
 
 const HERCULES_INPULSE_500_FS: &[u8] = include_bytes!("fixtures/hercules_inpulse_500_fs.bin");
 const S2_MK3_HS: &[u8] = include_bytes!("fixtures/s2_mk3_hs.bin");
@@ -68,17 +67,64 @@ fn inpulse_500_plays_through_its_explicit_feedback_at_full_speed() {
 }
 
 #[test]
-fn s2_mk3_is_refused_as_a_malformed_configuration_today() {
-    // UAC2: its 6-byte Format Type descriptor is shorter than UAC1's, and the
-    // configuration ends in eight zero bytes inside wTotalLength.
-    let error = parse_playback_formats(S2_MK3_HS).err().unwrap();
-    let DescriptorError::Malformed { offset } = error else {
-        panic!("{error:?}");
-    };
-    assert_eq!(&S2_MK3_HS[offset..offset + 3], &[6, 0x24, 2]);
+fn s2_mk3_is_a_driveable_uac2_function_the_deck_does_not_stream_yet() {
+    // Eight zero bytes end the configuration inside wTotalLength: padding.
     assert_eq!(&S2_MK3_HS[310..], &[0; 8]);
+    // No UAC1 playback: its streaming alternates are UAC2 (protocol 0x20).
+    assert!(
+        parse_playback_formats(S2_MK3_HS)
+            .unwrap()
+            .as_slice()
+            .is_empty()
+    );
+    let formats = uac2::parse(S2_MK3_HS).unwrap();
+    let [format] = formats.as_slice() else {
+        panic!("{formats:?}")
+    };
+    assert_eq!(
+        (format.interface, format.alternate, format.endpoint),
+        (1, 1, 0x01)
+    );
+    assert_eq!((format.max_packet, format.interval), (112, 1));
+    assert_eq!(
+        (format.channels, format.subslot_bytes, format.bits),
+        (4, 4, 24)
+    );
+    assert!(format.pcm && format.asynchronous);
+    assert_eq!(
+        (
+            format.feedback_endpoint,
+            format.feedback_max_packet,
+            format.feedback_interval
+        ),
+        (0x81, 4, 4)
+    );
+    // Terminal 1 runs on clock source 0x11 of AudioControl interface 0, which
+    // the host may set and read the validity of.
+    assert_eq!(
+        (
+            format.terminal,
+            format.clock_source,
+            format.control_interface
+        ),
+        (1, 0x11, 0)
+    );
+    assert!(format.clock_settable && format.clock_validity);
+    assert_eq!(format.max_frames(), 7);
+    assert!(format.supported(UsbSpeed::High));
     assert_eq!(
         choose(S2_MK3_HS, UsbSpeed::High),
-        Err(Rejection::Descriptor(error))
+        Err(Rejection::Uac2 {
+            interface: 1,
+            alternate: 1
+        })
+    );
+    // At full speed the S2 MK3 would be nothing the deck can drive.
+    assert_eq!(
+        choose(S2_MK3_HS, UsbSpeed::Full),
+        Err(Rejection::Uac2Unsupported {
+            interface: 1,
+            alternate: 1
+        })
     );
 }
