@@ -24,7 +24,7 @@
         <p class="hero-copy">Prepare your music in rekordbox, connect your gear, and play your first two-deck mix. Learn how to use cue points, effects, and the Web Remote.</p>
         <a class="primary" href="#brzi-pocetak">Start setup <span aria-hidden="true">↓</span></a>
       </div>
-      <img class="emblem" src="docs/manual/emblem.webp" width="475" height="480" alt="">
+      <img class="hero-render" src="docs/manual/ruzina-deck-render.webp" width="1280" height="853" alt="The Ruzina deck: the JC1060 touchscreen in its angled case with orange side panels, showing the Overview with both decks' waveforms.">
     </div>
   </div>
 
@@ -116,11 +116,23 @@
       <section id="zaslon">
         <h2><span class="section-icon" aria-hidden="true">🖥️</span>Screen and library</h2>
         <dl class="definitions">
-          <div><dt>OVERVIEW</dt><dd>Shows both decks, their waveforms, available cover art, position, time, BPM, and pitch, with markers for beats, cues, and loops. It has touchscreen PLAY and CUE controls, Master Tempo and Quantize indicators, and a Beat FX panel. On this build, turning the browse knob on the Overview zooms the waveforms.</dd></div>
-          <div><dt>LIBRARY</dt><dd>Shows all tracks, folders, and playlists from the export. A track row can display its artist, BPM, key, and duration, plus a D1 or D2 label when loaded.</dd></div>
+          <div><dt>OVERVIEW</dt><dd>Shows both decks with their waveforms in rekordbox’s three-band colors and a red playhead, available cover art, position, time, BPM, and pitch, with markers for beats, cues, and loops. The track overviews show Hot Cues as flagged lines, and the strip between the two waveforms shows each deck’s beats, deck 1 in red and deck 2 in blue. The time remaining blinks red in a track’s last 30 seconds, the key appears in green, and a tag beside the title shows SYNC, LOOP, or EMPTY. It has touchscreen PLAY and CUE controls, Master Tempo and Quantize indicators, and a Beat FX panel. On this build, turning the browse knob on the Overview zooms the waveforms.</dd></div>
+          <div><dt>LIBRARY</dt><dd>Shows all tracks, folders, and playlists from the export, ten rows per page. A track row can display its artist, BPM, key, and duration, plus a D1 or D2 label when loaded. Tap a column heading, or <b>TRACK</b>, <b>ARTIST</b>, or <b>BPM</b> on the right, to sort the list; tap again to reverse it. <b>BPM ±4%</b> shows only tracks within 4 percent of the playing deck’s tempo. A key is green when it fits the playing deck’s key, yellow for +2, and blue for +7.</dd></div>
           <div><dt>HOT CUES</dt><dd>Eight Hot Cue slots per deck, A through H, and a list of imported Memory Cues.</dd></div>
-          <div><dt>SETTINGS</dt><dd>Device settings, firmware and controller information, playback diagnostics, and Wi-Fi credentials.</dd></div>
+          <div><dt>SETTINGS</dt><dd>Device settings, firmware and controller information, playback diagnostics, and Wi-Fi credentials. With Wi-Fi, <b>DEFAULT</b> beside <b>WI-FI PASSWORD</b> restores the network password the firmware was built with.</dd></div>
         </dl>
+        <figure class="manual-shot device-shot">
+          <a href="docs/manual/screen-overview.webp">
+            <img src="docs/manual/screen-overview.webp" width="1024" height="600" loading="lazy" decoding="async" alt="The Overview: deck 1 and deck 2 waveforms in blue, gold and white with a red playhead, the beat strip between them, the FX panel on the right, and both deck cards with time, BPM, pitch, MT and Q below.">
+          </a>
+          <figcaption>The Overview with two demo tracks. The icons on the left open the Overview, LIBRARY, HOT CUES, the Beat FX page, and SETTINGS. Select an image for a full-size view.</figcaption>
+        </figure>
+        <figure class="manual-shot device-shot">
+          <a href="docs/manual/screen-library.webp">
+            <img src="docs/manual/screen-library.webp" width="1024" height="600" loading="lazy" decoding="async" alt="The Library: ten track rows with title, artist, BPM, key and time, sorted by BPM, with LOAD D1, LOAD D2, BACK, BPM ±4%, TRACK, ARTIST and BPM buttons on the right.">
+          </a>
+          <figcaption>LIBRARY sorted by BPM. Keys are colored against the playing deck’s key.</figcaption>
+        </figure>
         <h3>Browse and load with the DDJ-FLX4</h3>
         <div class="table-wrap">
           <table>
@@ -246,9 +258,22 @@
             </ul>
           </div>
         </figure>
+        <figure class="manual-shot device-shot">
+          <a href="docs/manual/screen-hot-cues.webp">
+            <img src="docs/manual/screen-hot-cues.webp" width="1024" height="600" loading="lazy" decoding="async" alt="The Hot Cues page: pads A to H for deck 1 and deck 2, set pads filled in their cue colors with their times, MEMORY and DELETE buttons above each deck.">
+          </a>
+          <figcaption>HOT CUES. Filled pads hold a cue; outlined pads are empty.</figcaption>
+        </figure>
         <h3>Beat FX and Pad FX</h3>
         <p>On the Overview, tap the <b>FX</b> panel to the right of the waveforms. Choose <b>Filter</b>, <b>Echo</b>, <b>Flanger</b>, or <b>Delay</b>, then choose a beat value from ¼ to 4 and a target (<b>deck 1</b>, <b>deck 2</b>, or <b>both</b>). Set <b>DEPTH</b> and press <b>FX ON</b>. Start with a low depth and raise it by ear. <b>CLOSE</b> returns to the Overview. <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/DEVELOPMENT_STATUS.md#open">Device validation status for effects and channel selection</a></p>
         <p>For Pad FX, select <b>PAD FX</b> mode on the FLX4 and use a pad to trigger its assigned effect. Check the Beat FX target and on/off state before transitioning between tracks.</p>
+        <figure class="manual-shot device-shot">
+          <a href="docs/manual/screen-beat-fx.webp">
+            <img src="docs/manual/screen-beat-fx.webp" width="1024" height="600" loading="lazy" decoding="async" alt="The Beat FX page: FILTER, ECHO, FLANGER and DELAY, beat values from 1/4 to 4, the channel DECK 1, DECK 2 or BOTH, the DEPTH bar at 60 percent, FX ON and CLOSE.">
+          </a>
+          <figcaption>The Beat FX page, with Echo at ½ beat on deck 1.</figcaption>
+        </figure>
+
       </section>
 
       <section id="postavke">
@@ -267,6 +292,19 @@
         </div>
         <p>Changes take effect during use. The device saves them to flash after both decks are paused and the settings have been idle for a few seconds. Pause both decks and give the device time to save before powering it off.</p>
         <p>For troubleshooting, see <b>Controller</b>, <b>Firmware</b>, <b>Built</b>, and <b>ELF</b>. SETTINGS also shows audio buffer and underrun counters.</p>
+        <figure class="manual-shot device-shot">
+          <a href="docs/manual/screen-settings.webp">
+            <img src="docs/manual/screen-settings.webp" width="1024" height="600" loading="lazy" decoding="async" alt="The SETTINGS page: network name, password (hidden here) and web address, LOAD LOCK, jog mode for each deck, brightness, MAIN TRIM, screensaver, firmware, build time and controller.">
+          </a>
+          <figcaption>SETTINGS. The password is hidden in this picture; on the device it is shown.</figcaption>
+        </figure>
+        <figure class="manual-shot device-shot">
+          <a href="docs/manual/screen-screensaver.webp">
+            <img src="docs/manual/screen-screensaver.webp" width="1024" height="600" loading="lazy" decoding="async" alt="The screensaver: the RUZINA wordmark on black with a quotation below it.">
+          </a>
+          <figcaption>The screensaver shows the RUZINA wordmark and a new saying each minute.</figcaption>
+        </figure>
+
       </section>
 
       <section id="web-remote">
@@ -280,6 +318,8 @@
           <li>Each deck shows its waveform overview. Tap the overview to jump to that point in the track. The deck card shows the tempo, the pitch, <b>SYNC</b>, and the tempo fader. Under each deck are <b>HOT 1</b>–<b>HOT 8</b>, CUE, PLAY, <b>4B LOOP</b>, and <b>CLEAR</b>. A Hot Cue pad lights in its cue color when it holds a cue. Tap an empty pad to set a cue there.</li>
           <li>The mixer offers EQ knobs, filters, channel meters and faders, PFL, MASTER, headphone mix, and SMART CFX and SMART FADER. To turn a knob, drag it up or down. Double-tap a knob or fader to reset it. The crossfader stays at the bottom of the screen. Check the control positions if several people are using the remote.</li>
           <li>The page works with the phone upright or turned sideways. Turned sideways, deck 1, the mixer, and deck 2 sit side by side. Use <b>DECK 1</b> or <b>DECK 2</b> at the top to show only one deck, or <b>DUAL / MIX</b> to show both.</li>
+          <li><b>SETUP</b>, the fourth tab, holds the device settings from the SETTINGS page (LOAD LOCK, jog mode per deck, brightness, MAIN TRIM, and screensaver), the device information, and the list of controller profiles. Changes take effect on the device at once and are saved like changes made on the touchscreen.</li>
+          <li>Under <b>WI-FI PASSWORD</b> in SETUP, enter a new password of 8 to 63 characters and press <b>SAVE</b>. Stop both decks first. Connected phones drop and must join again with the new password. The network name stays the same.</li>
         </ol>
         <figure class="manual-shot">
           <a href="docs/manual/web-remote-console.webp">
@@ -310,12 +350,28 @@
         <ol>
           <li>Pause both decks. If you edited settings or Hot Cues, wait a few seconds for the device to save them.</li>
           <li>Turn down the outputs before shutting down or changing connections. To shut down normally, disconnect USB power from the board.</li>
-          <li>If you unplug the drive while the device is running, LIBRARY may show <b>MEDIA REMOVED</b> and keep the old track rows on screen. When you plug the USB drive back in, the firmware automatically restarts the app to read the library again.</li>
-          <li>Wait for the library to return and load your tracks again. Restarting interrupts playback and clears both decks.</li>
+          <li>If you unplug the drive while the device is running, LIBRARY shows <b>MEDIA REMOVED</b> and both decks are cleared. When you plug the USB drive back in, Ruzina reads its library again without restarting.</li>
+          <li>Wait for the library to return and load your tracks again.</li>
         </ol>
-        <h3>Updates and recovery</h3>
+        <h3>Updating the firmware from the Web Remote</h3>
+        <ol>
+          <li>Get a firmware file ending in <code>.ddjota</code> that is made for your board. Ruzina accepts only files signed with the Ruzina key.</li>
+          <li>Stop both decks. Open the Web Remote, select <b>SETUP</b>, and under <b>FIRMWARE UPDATE</b> choose the file and press <b>INSTALL</b>. The page shows the upload’s progress, which takes one to two minutes.</li>
+          <li>While the file is written, the screen shows <b>UPDATING FIRMWARE</b> and the controller’s audio stops. Do not disconnect power.</li>
+          <li>Ruzina then restarts into the new firmware. Your phone may need to join the Wi-Fi network again. The new firmware is kept once the Web Remote answers again. If it fails to start, Ruzina returns to the previous firmware at the next restart.</li>
+          <li>In SETTINGS or SETUP, check the <b>Firmware</b> version and the slot it runs from.</li>
+        </ol>
+        <p>If the page reports that both decks must stop first, stop them and try again. A file that is not signed for this board is refused, and Ruzina keeps its current firmware.</p>
+        <figure class="manual-shot device-shot">
+          <a href="docs/manual/screen-updating.webp">
+            <img src="docs/manual/screen-updating.webp" width="1024" height="600" loading="lazy" decoding="async" alt="The update screen: the RUZINA wordmark with UPDATING FIRMWARE in red and the note to keep the deck switched on.">
+          </a>
+          <figcaption>The screen while new firmware is written.</figcaption>
+        </figure>
+
+        <h3>Updates and recovery over USB</h3>
         <p>Before selecting a firmware image, record the board model, ESP32-P4 silicon revision, and the <b>Firmware</b>, <b>Built</b>, and <b>ELF</b> values in SETTINGS. Check the development status and choose an image for that silicon revision and the intended music source. USB and SD use separate builds.</p>
-        <p>Before flashing, make a verified backup of the existing flash and prepare a recovery procedure for your device. The maintainer documentation covers build selection, partition layout, and recovery verification. <a href="https://github.com/dvucinozd/Ruzina/blob/main/firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image">Deck screen builds</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/boards/JC1060_LEGACY_RECOVERY.md">JC1060 recovery</a></p>
+        <p>Before flashing over USB, make a verified backup of the existing flash and prepare a recovery procedure for your device. The maintainer documentation covers build selection, partition layout, and recovery verification. <a href="https://github.com/dvucinozd/Ruzina/blob/main/firmware-idf/legacy-jc1060/README.md#build-recipes-for-the-deck-screen-image">Deck screen builds</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/boards/JC1060_LEGACY_RECOVERY.md">JC1060 recovery</a></p>
       </section>
 
       <section id="problemi">
@@ -364,19 +420,20 @@
             <tbody>
               <tr><th scope="row">JC1060 rev 1.3 + DDJ-FLX4</th><td>Tested on hardware with the ESP-IDF build, a USB drive, and RCA MAIN and headphones on the FLX4. Validation of individual features depends on the exact firmware image.</td></tr>
               <tr><th scope="row">DDJ-400 and Numark DJ2GO2 Touch</th><td>Controller profiles are present. Playback and control validation with physical units on this board is pending.</td></tr>
-              <tr><th scope="row">Traktor Kontrol S2 MK3 and Inpulse 500</th><td>Controller profiles are present. USB audio support and hardware validation are pending.</td></tr>
+              <tr><th scope="row">Hercules DJControl Inpulse 500</th><td>The controller profile and USB audio are present: 44.1 kHz, with the controller mixing its own headphones. Connect it directly to the HS port, without a hub. Hardware validation is pending.</td></tr>
+              <tr><th scope="row">Traktor Kontrol S2 MK3</th><td>The controller profile and USB audio (USB Audio 2.0) are present. Connect it in MIDI mode by holding the left FLX button while plugging it in. Hardware validation is pending.</td></tr>
               <tr><th scope="row">Native esp-hal build</th><td>Separate compile-checked target for ESP32-P4 revision 3.2 (302) or newer. The rev 1.3 instructions cover the ESP-IDF build.</td></tr>
               <tr><th scope="row">JC8012P4A1C_I_W_Y</th><td>Separate development target. Hardware qualification is pending.</td></tr>
               <tr><th scope="row">External DAC for MAIN</th><td>Planned. The setup covered here uses the FLX4 for MAIN and headphones.</td></tr>
             </tbody>
           </table>
         </div>
-        <p>See the development documentation for individual firmware images, listening checks, and longer test runs. <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/DEVELOPMENT_STATUS.md">Development status</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/docs/reviews/2026-11-21-controller-profiles.md">Additional controller profiles</a></p>
+        <p>See the development documentation for individual firmware images, listening checks, and longer test runs. <a href="https://github.com/dvucinozd/Ruzina/blob/main/docs/DEVELOPMENT_STATUS.md">Development status</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/056915509a324f4c87cb557376105a27144dc868/docs/reviews/2026-11-21-controller-profiles.md">Additional controller profiles</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/056915509a324f4c87cb557376105a27144dc868/docs/reviews/2026-11-26-s2-inpulse-audio.md">S2 MK3 and Inpulse 500 audio</a></p>
       </section>
 
       <footer class="manual-footer">
-        <p>This manual was checked against the public source at commit <a href="https://github.com/dvucinozd/Ruzina/commit/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5"><code>7a5ea74</code></a>.</p>
-        <p>Maintainer references. <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-idf/legacy-jc1060/rust-core/ui/overview.slint">Device screen</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/49caa194037c80d83ad8aaad03a1c48f3ffc44d4/firmware-rust/crates/ruzina-web/web/index.html">Web Remote</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.json">FLX4 profile</a> · <a href="https://www.pioneerdj.com/-/media/pioneerdj/software-info/controller/ddj-flx4/ddj-flx4_midi_message_list_e1.pdf">FLX4 MIDI reference</a></p>
+        <p>This manual was checked against the public source at commit <a href="https://github.com/dvucinozd/Ruzina/commit/056915509a324f4c87cb557376105a27144dc868"><code>0569155</code></a>.</p>
+        <p>Maintainer references. <a href="https://github.com/dvucinozd/Ruzina/blob/056915509a324f4c87cb557376105a27144dc868/firmware-idf/legacy-jc1060/rust-core/ui/overview.slint">Device screen</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/056915509a324f4c87cb557376105a27144dc868/firmware-rust/crates/ruzina-web/web/index.html">Web Remote</a> · <a href="https://github.com/dvucinozd/Ruzina/blob/7a5ea749fcc7a72b5804d7b2f018e6b047f0f9c5/firmware-rust/crates/ruzina-controller-profile/fixtures/pioneer_ddj_flx4.json">FLX4 profile</a> · <a href="https://www.pioneerdj.com/-/media/pioneerdj/software-info/controller/ddj-flx4/ddj-flx4_midi_message_list_e1.pdf">FLX4 MIDI reference</a></p>
         <a href="#vrh">Back to top ↑</a>
       </footer>
     </main>
