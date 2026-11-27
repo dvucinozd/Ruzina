@@ -42,9 +42,12 @@ extern void ruzina_legacy_play_stats(uint32_t *out);
 /* Four isochronous OUT transfers of six 1 ms packets keep 24 ms queued. At
  * high speed a 1 ms bInterval is 8 microframes, and esp-usb fits at most
  * (64 - 3) microframes per ISOC transfer, so 7 packets is the hard ceiling:
- * 8 failed on the board with ESP_ERR_INVALID_SIZE. */
+ * 8 failed on the board with ESP_ERR_INVALID_SIZE. A UAC2 alternate sends a
+ * packet every 125 us microframe: 48 of them are the same 6 ms per transfer,
+ * within the 61. */
 #define UAC_TRANSFERS 4
-#define UAC_PACKETS 6
+#define UAC_MAX_PACKETS 48
+static int uac_packets = 6;
 enum { UAC_OFF = -1, UAC_SET_ALT, UAC_SET_RATE, UAC_STREAMING, UAC_CLOCK };
 static usb_transfer_t *uac_ctrl, *uac_iso[UAC_TRANSFERS];
 static bool uac_ctrl_busy, uac_iso_busy[UAC_TRANSFERS];
@@ -174,7 +177,7 @@ uint32_t ruzina_uac_wait_gap(uint32_t budget_us)
 
 static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
 {
-    uint32_t sizes[UAC_PACKETS];
+    uint32_t sizes[UAC_MAX_PACKETS];
 #if CONFIG_RUZINA_UAC_PROFILE
     if (phase==UAC_FILL_CALLBACK) uac_timing_increment(&uac_profile_ordinal);
     uac_profile_record_t profile={.generation=uac_generation,.phase=(uint32_t)phase,
@@ -195,7 +198,7 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     uac_fill_began((uint32_t)start);
 #endif
     uint32_t bytes = ruzina_legacy_uac_fill(transfer->data_buffer, (uint32_t)transfer->data_buffer_size,
-                                            sizes, UAC_PACKETS);
+                                            sizes, (uint32_t)uac_packets);
 #if CONFIG_RUZINA_DECK_MIX
     int64_t elapsed = esp_timer_get_time() - start;
     uint32_t took = elapsed > UINT32_MAX ? UINT32_MAX : (uint32_t)elapsed;
@@ -231,7 +234,7 @@ static bool uac_refill(usb_transfer_t *transfer, enum uac_fill_phase phase)
     (void)phase;
 #endif
     if (!bytes) { uac_fill_errors++; return false; }
-    for (int i = 0; i < UAC_PACKETS; ++i) transfer->isoc_packet_desc[i].num_bytes = (int)sizes[i];
+    for (int i = 0; i < uac_packets; ++i) transfer->isoc_packet_desc[i].num_bytes = (int)sizes[i];
     transfer->num_bytes = (int)bytes;
     return true;
 }
@@ -254,7 +257,7 @@ static void uac_iso_done(usb_transfer_t *transfer)
         uac_completed++;
         /* A lost isochronous packet is a dropped millisecond, not a broken
          * endpoint: count it and keep streaming (no halt/flush/restart). */
-        for (int i = 0; i < UAC_PACKETS; ++i)
+        for (int i = 0; i < uac_packets; ++i)
             if (transfer->isoc_packet_desc[i].status != USB_TRANSFER_STATUS_COMPLETED)
                 uac_packet_errors++;
     } else if (transfer->status != USB_TRANSFER_STATUS_NO_DEVICE
@@ -531,8 +534,10 @@ static void uac_report(void)
 
 static bool uac_fb_submit(void)
 {
-    uac_fb->num_bytes = 3;
-    uac_fb->isoc_packet_desc[0].num_bytes = 3;
+    /* UAC1: 10.14 in 3 bytes; UAC2: 16.16 in 4. */
+    const int bytes = uac_kind == 2 ? 4 : 3;
+    uac_fb->num_bytes = bytes;
+    uac_fb->isoc_packet_desc[0].num_bytes = bytes;
     if (usb_host_transfer_submit(uac_fb) != ESP_OK) { uac_fb_errors++; return false; }
     uac_fb_busy = true;
     return true;
@@ -583,7 +588,7 @@ static void uac_start_stream(enum uac_fill_phase phase)
     int started = 0;
     /* Allocate the complete pool before publishing any transfer. */
     for (unsigned i = 0; i < UAC_TRANSFERS; ++i) {
-        if (!uac_iso[i] && usb_host_transfer_alloc(UAC_PACKETS * mps, UAC_PACKETS, &uac_iso[i]) != ESP_OK) {
+        if (!uac_iso[i] && usb_host_transfer_alloc(uac_packets * mps, uac_packets, &uac_iso[i]) != ESP_OK) {
             uac_recovery_fault(&uac_health); return;
         }
         uac_iso[i]->device_handle = device;
@@ -605,7 +610,7 @@ static void uac_start_stream(enum uac_fill_phase phase)
     }
     if (started == UAC_TRANSFERS) uac_health.state = UAC_HEALTH_STREAMING;
     printf("usb_uac stream=%s transfers=%d packets_per_transfer=%d generation=%" PRIu32 "\n",
-           started == UAC_TRANSFERS ? "STARTED" : "RECOVERING", started, UAC_PACKETS, uac_health.generation);
+           started == UAC_TRANSFERS ? "STARTED" : "RECOVERING", started, uac_packets, uac_health.generation);
 }
 
 static bool uac_busy(void)
@@ -671,7 +676,7 @@ static void uac_clock_log(void)
 }
 
 /* Each clock reply goes to Rust, which says what to send next, when, or that it is done.
- * Ready: the alternate would now stream, which needs 125 us packets (not yet). */
+ * Ready: SET_INTERFACE to the alternate, then the stream as any other. */
 static void uac_clock_done(usb_transfer_t *transfer)
 {
     const bool ok = transfer->status == USB_TRANSFER_STATUS_COMPLETED;
@@ -686,11 +691,13 @@ static void uac_clock_done(usb_transfer_t *transfer)
         return;
     }
     uac_clock_log();
-    uac_step = UAC_OFF;
     if (action == 2) {
-        uac_health.state = UAC_HEALTH_OFF;
-        printf("usb_uac stream=UAC2_NOT_YET interface=%" PRIu32 " alt=%" PRIu32 "\n", uac_info[0], uac_info[1]);
-    } else uac_health.state = UAC_HEALTH_FAULT_HELD;
+        uint32_t status[4];
+        ruzina_legacy_uac2_clock_status(status);
+        uac_info[6] = status[1]; /* the rate the clock runs */
+        uac_step = UAC_SET_ALT;
+        uac_send(0);
+    } else { uac_step = UAC_OFF; uac_health.state = UAC_HEALTH_FAULT_HELD; }
 }
 
 /* The client loop's turn: a clock read that waited for the clock to settle goes out. */
@@ -760,6 +767,7 @@ static void uac_start(const usb_config_desc_t *config, usb_speed_t speed)
         }
     }
     uac_kind = ruzina_legacy_uac_select((const uint8_t *)config, config->wTotalLength, speed == USB_SPEED_HIGH, uac_info);
+    uac_packets = uac_kind == 2 ? UAC_MAX_PACKETS : 6;
     if (!uac_kind) {
         uac_log_reject();
         return;
@@ -835,8 +843,9 @@ static void uac_begin_selected(void)
     if (uac_kind == 1 && uac_info[8])
         printf("usb_uac_feedback ep=%02" PRIx32 " refresh_ms=%u pace=EXPLICIT\n", uac_info[8], 1u << uac_info[9]);
     if (uac_kind == 2)
-        printf("usb_uac_clock id=%02" PRIx32 " interface=%" PRIu32 " class=UAC2 feedback_ep=%02" PRIx32 " state=NEGOTIATING\n",
-               uac_info[10], uac_info[11], uac_info[8]);
+        printf("usb_uac_clock id=%02" PRIx32 " interface=%" PRIu32 " class=UAC2 feedback_ep=%02" PRIx32
+               " feedback_interval=%" PRIu32 " packets_per_transfer=%d state=NEGOTIATING\n",
+               uac_info[10], uac_info[11], uac_info[8], uac_info[9], uac_packets);
     fflush(stdout);
 }
 

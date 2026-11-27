@@ -12,6 +12,31 @@ pub const fn nominal_q16(rate: u32) -> u32 {
     (((rate as u64) << 16) / 1000) as u32
 }
 
+/// Q16 frames per 125 us microframe at `rate`.
+pub const fn nominal_microframe_q16(rate: u32) -> u32 {
+    (((rate as u64) << 16) / 8000) as u32
+}
+
+/// Decodes one USB Audio 2.0 high-speed feedback packet: 4 bytes, 16.16
+/// frames per microframe (donor `controller_uac2_feedback`), within 5 % of
+/// `rate` and no more than `max_frames` a packet. UAC2 has no empty replies.
+pub fn decode_microframe(bytes: &[u8], rate: u32, max_frames: usize) -> Feedback {
+    let [a, b, c, d] = bytes else {
+        return Feedback::Invalid;
+    };
+    let value = u32::from_le_bytes([*a, *b, *c, *d]);
+    let nominal = nominal_microframe_q16(rate);
+    let largest = usize::try_from(value.div_ceil(1 << 16)).unwrap_or(usize::MAX);
+    if rate == 0
+        || value < nominal - nominal / 20
+        || value > nominal + nominal / 20
+        || largest > max_frames
+    {
+        return Feedback::Invalid;
+    }
+    Feedback::Rate(value)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Feedback {
     /// A new rate, Q16 frames per millisecond.
@@ -67,6 +92,25 @@ mod tests {
             panic!()
         };
         assert!(fast > q16);
+    }
+
+    #[test]
+    fn uac2_readings_are_16_16_frames_per_microframe() {
+        // 6.0 frames per microframe at 48 kHz.
+        let six = (6u32 << 16).to_le_bytes();
+        assert_eq!(decode_microframe(&six, 48_000, 7), Feedback::Rate(6 << 16));
+        // 5.5125 at 44.1 kHz.
+        let q16 = nominal_microframe_q16(44_100);
+        assert_eq!(
+            decode_microframe(&q16.to_le_bytes(), 44_100, 7),
+            Feedback::Rate(q16)
+        );
+        // Empty, short, 10 % off, or 8 frames for a 7-frame packet.
+        assert_eq!(decode_microframe(&[], 48_000, 7), Feedback::Invalid);
+        assert_eq!(decode_microframe(&six[..3], 48_000, 7), Feedback::Invalid);
+        let far = ((66u32 << 16) / 10).to_le_bytes();
+        assert_eq!(decode_microframe(&far, 48_000, 7), Feedback::Invalid);
+        assert_eq!(decode_microframe(&six, 48_000, 5), Feedback::Invalid);
     }
 
     #[test]

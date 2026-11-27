@@ -37,6 +37,8 @@ pub enum UsbSpeed {
 pub enum SampleFormat {
     Pcm16,
     Packed24,
+    /// USB Audio 2.0: 24 bits left-justified in a 4-byte subslot.
+    Subslot32Bits24,
 }
 
 impl SampleFormat {
@@ -44,6 +46,7 @@ impl SampleFormat {
         match self {
             Self::Pcm16 => 2,
             Self::Packed24 => 3,
+            Self::Subslot32Bits24 => 4,
         }
     }
 }

@@ -45,7 +45,7 @@ typedef struct usb_transfer {
     int device_handle, bEndpointAddress, status;
     void (*callback)(struct usb_transfer *);
     void *context;
-    struct {int num_bytes,actual_num_bytes,status;} isoc_packet_desc[6];
+    struct {int num_bytes,actual_num_bytes,status;} isoc_packet_desc[48];
 } usb_transfer_t;
 static int client=1, device=1;
 static bool gone;
@@ -551,9 +551,18 @@ int main(void) {
         ticks+=10;uac_clock_poll();assert(!uac_ctrl_busy);
         ticks+=40;uac_clock_poll();assert(uac_ctrl_busy && !uac_clock_waiting);
         complete(uac_ctrl,USB_TRANSFER_STATUS_COMPLETED);
-        assert(clock_calls==3 && uac_step==UAC_OFF && uac_health.state==UAC_HEALTH_OFF && live==0);
-        assert(uac_interface==1 && !uac_fb);
-        assert(uac_stop() && uac_interface==0xff && frees==allocations);
+        // Ready: SET_INTERFACE goes out, then the stream starts as any other, with 48
+        // packets of one microframe per transfer and a 4-byte feedback reading.
+        assert(clock_calls==3 && uac_step==UAC_SET_ALT && uac_ctrl_busy && live==1);
+        complete(uac_ctrl,USB_TRANSFER_STATUS_COMPLETED);
+        assert(uac_step==UAC_STREAMING && uac_health.state==UAC_HEALTH_STREAMING);
+        assert(live==UAC_TRANSFERS+1 && uac_fb && uac_fb->num_bytes==4 && uac_packets==48);
+        assert(uac_iso[0]->num_bytes==48*384 && uac_info[6]==48000);
+        uac_fb->isoc_packet_desc[0].actual_num_bytes=4;complete(uac_fb,USB_TRANSFER_STATUS_COMPLETED);
+        assert(feedback_last_len==4 && uac_fb_busy);
+        complete(uac_iso[1],USB_TRANSFER_STATUS_COMPLETED);assert(live==UAC_TRANSFERS+1);
+        assert(uac_interface==1);
+        stop();assert(uac_interface==0xff && !uac_fb);
         // A stalled request: Rust says failed, the fault is held, stop still releases.
         static const int32_t failed[]={3};
         clock_actions=failed;
