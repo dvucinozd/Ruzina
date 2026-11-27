@@ -354,6 +354,21 @@ fn each_controller_binds_its_own_profile_and_initial_sysex() {
     assert!(take_out(1024).iter().all(|packet| packet[0] & 0x0f > 0x07));
     assert_eq!(attached(), Some((0x2b73, 0x0045, Some("Pioneer DDJ-FLX4"))));
 
+    // The Inpulse 500 mixes its own headphones; the FLX4 and no controller do not.
+    #[cfg(feature = "deck-mix")]
+    {
+        let native = || crate::deck_mix::with(|mix| mix.native_headphones());
+        assert!(!native());
+        assert_eq!(ruzina_legacy_midi_bind(0x06f8, 0xb12b), 1);
+        assert!(native());
+        assert_eq!(ruzina_legacy_midi_bind(0x2b73, 0x0045), 1);
+        assert!(!native());
+        assert_eq!(ruzina_legacy_midi_bind(0x06f8, 0xb12b), 1);
+        ruzina_legacy_midi_unbind();
+        assert!(!native());
+        take_out(4096);
+    }
+
     // A controller without a profile is shown by its VID:PID.
     assert_eq!(ruzina_legacy_midi_bind(0x1234, 0x5678), 0);
     assert_eq!(attached(), Some((0x1234, 0x5678, None)));

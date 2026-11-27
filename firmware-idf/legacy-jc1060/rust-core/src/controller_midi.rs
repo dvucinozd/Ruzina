@@ -766,10 +766,12 @@ pub extern "C" fn ruzina_legacy_midi_bind(vid: u16, pid: u16) -> i32 {
                 state.push_packet(packet);
             }
         }
-        // A profile may let the channel filter work without Smart CFX (the DDJ-400).
+        // A profile may let the channel filter work without Smart CFX (the DDJ-400), or
+        // mix its own headphones (the Inpulse 500).
         #[cfg(feature = "deck-mix")]
         crate::deck_mix::with(|mix| {
-            mix.set_channel_filter_always(state.profile.is_some_and(|p| p.channel_filter_always()))
+            mix.set_channel_filter_always(state.profile.is_some_and(|p| p.channel_filter_always()));
+            mix.set_native_headphones(state.profile.is_some_and(|p| p.native_headphones()));
         });
         drain(state);
         i32::from(state.profile.is_some())
@@ -824,7 +826,10 @@ pub extern "C" fn ruzina_legacy_midi_unbind() {
         ATTACHED.store(0, Ordering::Release);
         KNOWN.store(0, Ordering::Release);
         #[cfg(feature = "deck-mix")]
-        crate::deck_mix::with(|mix| mix.set_channel_filter_always(false));
+        crate::deck_mix::with(|mix| {
+            mix.set_channel_filter_always(false);
+            mix.set_native_headphones(false);
+        });
     });
 }
 

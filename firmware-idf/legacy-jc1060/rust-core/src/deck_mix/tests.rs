@@ -99,6 +99,21 @@ fn two_decks_mix_through_the_product_graph() {
     assert!(near(&main, -2_000), "{main:?}");
     assert!(near(&headphones, 625), "{headphones:?}");
 
+    // A controller that mixes its own headphones gets deck 1's cue at unity,
+    // past the software Headphone Level and ceiling; MAIN is unchanged. Off
+    // again, the software mix returns as it was.
+    mix.set_native_headphones(true);
+    let (main, headphones) = run(&mut mix, 10, [true, true]);
+    assert!(near(&main, -2_000), "{main:?}");
+    assert!(near(&headphones, 10_000), "{headphones:?}");
+    mix.control(&press(SemanticControl::Pfl, DeckId::One));
+    let (_, headphones) = run(&mut mix, 10, [true, true]);
+    assert!(near(&headphones, 0), "no cue selected: {headphones:?}");
+    mix.control(&press(SemanticControl::Pfl, DeckId::One));
+    mix.set_native_headphones(false);
+    let (_, headphones) = run(&mut mix, 10, [true, true]);
+    assert!(near(&headphones, 625), "{headphones:?}");
+
     // Master Volume at full: MAIN carries deck 2 at unity.
     mix.control(&absolute(
         SemanticControl::MasterVolume,

@@ -179,3 +179,31 @@ Branch `ogranak/uac-feedback`, from `main` at `4157093`.
     handled, the recovery waits for it, and stop frees it. A device without
     feedback gets no feedback transfer.
 - **Not checked:** playing on an Inpulse 500. None is at hand.
+
+## Step 5: native headphones
+
+Branch `ogranak/native-headphones`, from `main` at `7419a5a`.
+
+- **Why:** the Inpulse 500 blends cue with MAIN and sets the headphone level in
+  its own hardware. Its profile says so with `native_headphone_controls` (S3CP
+  v4 bit 5), and it maps no software headphone mix or level. The deck was
+  sending its software headphone mix at the -12 dB ceiling, which the hardware
+  would then blend and attenuate a second time.
+- **Now (`deck_mix`):** while the bound profile has the flag, the render graph's
+  headphone gains are the cue bus alone at unity (cue 1, MAIN 0, level 1), and
+  the -12 dB ceiling is skipped.
+  - Channels 3/4 carry the pre-fader cue of the decks whose PFL is on, mono on
+    both sides as the graph builds it, or silence when none is on.
+  - MAIN on 1/2 is unchanged.
+  - The software Headphone Mix and Level stay as they were, and apply again
+    when another controller binds or none is bound.
+- **Binding (`controller_midi`):** the flag is set when a profile binds, next to
+  FILTER_ALWAYS, and cleared on unbind.
+- **Tests:**
+  - `deck_mix`: with the flag, deck 1's cue comes out at unity (10 000) instead
+    of 625, and MAIN is unchanged. With PFL off the headphones are silent;
+    without the flag the software mix returns.
+  - `controller_midi`: binding the Inpulse 500 sets the flag, and the FLX4 or an
+    unbind clears it.
+- **Not checked:** an Inpulse 500's headphones, as none is at hand. The FLX4
+  has no flag, so nothing changes for it.
