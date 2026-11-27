@@ -33,11 +33,15 @@ uint32_t ruzina_legacy_producer_profile_snapshot(uint32_t *out,uint32_t len) {
 #define USB_TRANSFER_STATUS_CANCELED 2
 #define USB_SPEED_HIGH 2
 #define pdMS_TO_TICKS(x) (x)
+#define pdTICKS_TO_MS(x) (x)
+typedef unsigned TickType_t;
+static TickType_t ticks;
+static TickType_t xTaskGetTickCount(void) { return ticks; }
 typedef int esp_err_t;
 typedef int usb_speed_t;
 typedef struct { uint16_t wTotalLength; } usb_config_desc_t;
 typedef struct usb_transfer {
-    unsigned char *data_buffer; int data_buffer_size, num_bytes;
+    unsigned char *data_buffer; int data_buffer_size, num_bytes, actual_num_bytes;
     int device_handle, bEndpointAddress, status;
     void (*callback)(struct usb_transfer *);
     void *context;
@@ -145,12 +149,28 @@ static unsigned reject_calls;
 /* With select_feedback, the Inpulse 500: OUT 0x01 of 540 bytes, feedback IN 0x81. */
 static bool select_feedback;
 static unsigned feedback_calls, feedback_last_len;
+/* With select_uac2, the S2 MK3: UAC2 clock 0x11 on AudioControl interface 0. */
+static bool select_uac2;
 int32_t ruzina_legacy_uac_select(const uint8_t *c,uint32_t l,int32_t h,uint32_t *o) {
     (void)c;(void)l;(void)h;if(!select_result)return 0;
-    uint32_t info[10]={1,1,2,384,4,2,48000,0,0,0};
-    uint32_t hercules[10]={1,1,1,540,4,3,44100,0,0x81,5};
-    memcpy(o,select_feedback?hercules:info,sizeof(info));return 1;
+    uint32_t info[12]={1,1,2,384,4,2,48000,0,0,0,0,0};
+    uint32_t hercules[12]={1,1,1,540,4,3,44100,0,0x81,5,0,0};
+    uint32_t s2[12]={1,1,1,112,4,4,48000,0,0x81,4,0x11,0};
+    memcpy(o,select_uac2?s2:select_feedback?hercules:info,sizeof(info));return select_uac2?2:1;
 }
+/* The clock's answers in order: each call's action (0 send, 1 wait, 2 ready, 3 failed). */
+static const int32_t *clock_actions; static unsigned clock_calls, clock_last_len; static int32_t clock_last_ok;
+uint32_t ruzina_legacy_uac2_clock_begin(uint8_t *out,uint32_t *reply) {
+    const uint8_t setup[8]={0xa1,2,0,1,0,0x11,2,0};memcpy(out,setup,8);*reply=2;clock_calls=0;return 8;
+}
+int32_t ruzina_legacy_uac2_clock_done(int32_t ok,const uint8_t *bytes,uint32_t len,uint32_t now_ms,
+                                      uint8_t *out,uint32_t *out_len,uint32_t *reply,uint32_t *wait_ms) {
+    (void)bytes;(void)now_ms;clock_last_ok=ok;clock_last_len=len;
+    const int32_t action=clock_actions[clock_calls++];
+    const uint8_t setup[8]={0xa1,1,0,1,0,0x11,4,0};memcpy(out,setup,8);
+    *out_len=action<2?8:0;*reply=4;*wait_ms=action==1?50:0;return action;
+}
+void ruzina_legacy_uac2_clock_status(uint32_t *out) { out[0]=clock_calls;out[1]=48000;out[2]=1;out[3]=0; }
 void ruzina_legacy_uac_reject(uint32_t *out) { ++reject_calls;memcpy(out,reject_code,sizeof(reject_code)); }
 int32_t ruzina_legacy_uac_feedback(const uint8_t *bytes,uint32_t len) { (void)bytes;++feedback_calls;feedback_last_len=len;return len==3; }
 void ruzina_legacy_uac_feedback_stats(uint32_t *out) { out[0]=feedback_calls;out[1]=out[2]=0;out[3]=44100u*65536u/1000u; }
@@ -510,6 +530,41 @@ int main(void) {
         select_feedback=false;
         // A device without feedback allocates no feedback transfer.
         start();assert(live==UAC_TRANSFERS && !uac_fb);stop();
+    }
+    // A UAC2 alternate: its clock is negotiated over EP0 with the replies going to Rust,
+    // a read that waits for the clock goes out on a later client turn, and nothing
+    // streams yet. A failed negotiation holds the fault.
+    {
+        usb_config_desc_t config={0};
+        static const int32_t ready[]={0,1,2};
+        select_uac2=true;clock_actions=ready;
+        uac_start(&config,USB_SPEED_HIGH);
+#if UAC_TEST_TIMING
+        uac_start_poll();
+#endif
+        assert(uac_step==UAC_CLOCK && uac_ctrl_busy && uac_ctrl->num_bytes==8+2 && uac_ctrl->data_buffer_size>=8+98);
+        assert(uac_ctrl->data_buffer[0]==0xa1 && uac_ctrl->data_buffer[5]==0x11);
+        uac_ctrl->actual_num_bytes=8+2;complete(uac_ctrl,USB_TRANSFER_STATUS_COMPLETED);
+        assert(clock_last_ok && clock_last_len==2 && uac_ctrl_busy && uac_ctrl->num_bytes==8+4);
+        uac_ctrl->actual_num_bytes=8+4;complete(uac_ctrl,USB_TRANSFER_STATUS_COMPLETED);
+        assert(!uac_ctrl_busy && uac_clock_waiting);
+        ticks+=10;uac_clock_poll();assert(!uac_ctrl_busy);
+        ticks+=40;uac_clock_poll();assert(uac_ctrl_busy && !uac_clock_waiting);
+        complete(uac_ctrl,USB_TRANSFER_STATUS_COMPLETED);
+        assert(clock_calls==3 && uac_step==UAC_OFF && uac_health.state==UAC_HEALTH_OFF && live==0);
+        assert(uac_interface==1 && !uac_fb);
+        assert(uac_stop() && uac_interface==0xff && frees==allocations);
+        // A stalled request: Rust says failed, the fault is held, stop still releases.
+        static const int32_t failed[]={3};
+        clock_actions=failed;
+        uac_start(&config,USB_SPEED_HIGH);
+#if UAC_TEST_TIMING
+        uac_start_poll();
+#endif
+        complete(uac_ctrl,9);
+        assert(!clock_last_ok && uac_step==UAC_OFF && uac_health.state==UAC_HEALTH_FAULT_HELD);
+        assert(uac_stop() && frees==allocations);
+        select_uac2=false;
     }
     return 0;
 }

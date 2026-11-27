@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 #include "sdkconfig.h"
 #include "esp_err.h"
 #include "esp_intr_alloc.h"
@@ -421,6 +422,7 @@ static void client_task(void *unused)
         }
 #if CONFIG_RUZINA_USB_HOST_UAC
         uac_start_poll();
+        uac_clock_poll();
         uac_recover_poll();
         uac_report();
 #endif

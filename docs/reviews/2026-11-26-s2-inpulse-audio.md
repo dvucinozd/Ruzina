@@ -251,3 +251,49 @@ Branch `ogranak/uac2-parser`, from `main` at `f0cde19`.
   - the UAC1 walk with padding and with a UAC2 alternate;
   - the S2 capture end to end;
   - the firmware's reason codes 12 and 13.
+
+## Step 7: UAC2 clock negotiation
+
+Branch `ogranak/uac2-clock`, from `main` at `5b5f918`.
+
+- **`ruzina_uac::clock`:** the donor's sequence as a state machine that
+  touches no USB. Each step is a class request to the clock's AudioControl
+  interface (`wIndex = clock << 8 | interface`):
+  1. GET RANGE of the sampling frequency, 2 bytes, then the whole `2 + 12 n`
+     bytes, checked whole (1 to 8 subranges, none empty).
+     - 48 kHz must lie in a subrange; if it does not, 44.1 kHz is used.
+     - With neither, the negotiation fails with `NO_RATE`.
+  2. SET CUR with the rate, 4 bytes.
+  3. GET CUR, 4 bytes.
+     - While the clock reports another rate, the read is repeated every 50 ms
+       for up to 500 ms.
+     - If the clock settles at 44.1 kHz, the range has it, and 48 kHz was
+       asked for, it is set once more at 44.1 kHz.
+     - Otherwise the negotiation fails with `READBACK`; the deck never streams
+       one rate labelled as another.
+  4. GET CUR of clock validity, 1 byte, until it reads 1, in the same window.
+- **Firmware:**
+  - `ruzina_legacy_uac_select` returns 2 for a driveable UAC2 alternate, with
+    the clock source and its AudioControl interface (now twelve words).
+  - `ruzina_legacy_uac2_clock_begin`, `_done` and `_status` run the state
+    machine. Rust copies each reply before it writes the next request.
+- **The C driver** (`UAC_CLOCK`):
+  - Its control buffer is now 128 bytes, enough for an eight-subrange
+    GET RANGE.
+  - It sends each request Rust builds and hands back the reply bytes. A read
+    that waits for the clock goes out on a later client-loop turn
+    (`uac_clock_poll`).
+  - At the end it logs
+    `usb_uac_clock id=11 interface=0 state=READY|FAILED rate=… retries=… failure=…`.
+  - When ready, it logs `usb_uac stream=UAC2_NOT_YET`: streaming needs step 8.
+    A failure holds the fault.
+  - Either way, stop releases the interface.
+- **Tests:**
+  - `clock`: each path, at once, settling, stuck at 44.1 kHz with and without
+    it in the range, a range without 48 kHz, and every failure.
+  - `controller_audio`: the S2 MK3 capture is selected as UAC2 and negotiated
+    against a clock that reports the old rate twice, then a stalled request.
+  - C driver: send, wait, poll before and after the wait, ready, a stall,
+    release on stop.
+- **Not checked:** an S2 MK3's clock, as none is at hand. The FLX4 stays UAC1,
+  so nothing changes for it.

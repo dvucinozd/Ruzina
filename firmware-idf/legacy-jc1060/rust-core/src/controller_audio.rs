@@ -13,11 +13,13 @@
 //! MAIN and the headphones from both decks.
 use core::cell::UnsafeCell;
 use ruzina_audio_dsp::PcmFrame;
+use ruzina_uac::clock::{ClockFailure, ClockNegotiation, ClockNext, ClockRequest};
 use ruzina_uac::descriptor::{DescriptorError, Rejection, Selected, UsbSpeed, choose_preferring};
 #[cfg(all(test, feature = "idf-uac-profile"))]
 use ruzina_uac::descriptor::{parse_playback_formats, select};
 use ruzina_uac::packet::{Cadence, ChannelMap, Pair, pack};
 use ruzina_uac::stream::{ControlRequest, ControlStep};
+use ruzina_uac::uac2::Uac2Playback;
 
 /// Half period of a 1 kHz sine at 48 kHz, amplitude 2067 (-24 dBFS).
 const SINE_HALF: [i16; 24] = [
@@ -37,6 +39,9 @@ const PREFERRED_RATE: u32 = if cfg!(feature = "uac-44k1") {
     48_000
 };
 
+/// A UAC2 clock is asked for the render rate first.
+const PREFERRED_UAC2_RATE: u32 = 48_000;
+
 /// FLX4 four-channel output: MAIN on 1/2, headphones on 3/4.
 const MAIN: Pair = Pair { left: 0, right: 1 };
 const HEADPHONES: Pair = Pair { left: 2, right: 3 };
@@ -53,6 +58,12 @@ struct State {
     rejection: [u32; 3],
     /// Explicit feedback readings: new rates, empty replies, refused ones.
     feedback: [u32; 3],
+    /// A USB Audio 2.0 alternate to negotiate the clock of, and that
+    /// negotiation with the request in flight.
+    uac2: Option<Uac2Playback>,
+    clock: Option<(ClockNegotiation, ClockRequest)>,
+    /// The clock's outcome for the log: [`clock_words`].
+    clock_outcome: [u32; 4],
 }
 
 struct Shared(UnsafeCell<State>);
@@ -68,6 +79,9 @@ static STATE: Shared = Shared(UnsafeCell::new(State {
     toned_packets: 0,
     rejection: [0; 3],
     feedback: [0; 3],
+    uac2: None,
+    clock: None,
+    clock_outcome: [0; 4],
 }));
 
 fn with<R>(f: impl FnOnce(&mut State) -> R) -> R {
@@ -99,11 +113,15 @@ fn tone(phase: &mut usize, frames: usize, left: bool, right: bool, out: &mut [Pc
 /// Selects the playback format from a configuration descriptor. Writes
 /// interface, alternate, endpoint, max packet, channels, subframe bytes, rate
 /// and frequency-control into `out[0..8]`, then the explicit feedback endpoint
-/// (0 for none) and its refresh exponent into `out[8..10]`; returns 1 when a format is
+/// (0 for none) and its refresh exponent (UAC1) or interval (UAC2) into
+/// `out[8..10]`, and the UAC2 clock source and its AudioControl interface into
+/// `out[10..12]` (0 for UAC1). Returns 1 for a UAC1 format, 2 for a UAC2
+/// alternate whose clock is to be negotiated (`ruzina_legacy_uac2_clock_*`),
+/// 0 when nothing; a UAC1 format is
 /// supported with a headphone pair, else 0.
 ///
 /// # Safety
-/// `config` must be valid for `len` reads and `out` for ten `u32` writes.
+/// `config` must be valid for `len` reads and `out` for twelve `u32` writes.
 #[cfg(feature = "idf-controller-audio")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ruzina_legacy_uac_select(
@@ -133,6 +151,42 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
             Ok(_) => [0; 3],
             Err(rejection) => reject_words(rejection),
         };
+        state.uac2 = None;
+        state.clock = None;
+        state.clock_outcome = [0; 4];
+        if let Err(Rejection::Uac2 {
+            interface,
+            alternate,
+        }) = chosen
+            && let Some(format) =
+                ruzina_uac::uac2::parse(bytes).ok().and_then(|formats| {
+                    formats.as_slice().iter().copied().find(|format| {
+                        (format.interface, format.alternate) == (interface, alternate)
+                    })
+                })
+        {
+            state.selected = None;
+            state.map = None;
+            state.uac2 = Some(format);
+            state.rejection = [0; 3];
+            let values = [
+                u32::from(format.interface),
+                u32::from(format.alternate),
+                u32::from(format.endpoint),
+                u32::from(format.max_packet),
+                u32::from(format.channels),
+                u32::from(format.subslot_bytes),
+                PREFERRED_UAC2_RATE,
+                0,
+                u32::from(format.feedback_endpoint),
+                u32::from(format.feedback_interval),
+                u32::from(format.clock_source),
+                u32::from(format.control_interface),
+            ];
+            // SAFETY: the caller provides twelve writable u32 slots.
+            unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
+            return 2;
+        }
         state.selected = chosen.ok().filter(|chosen| chosen.format.channels == 4);
         state.map = state
             .selected
@@ -163,8 +217,10 @@ pub unsafe extern "C" fn ruzina_legacy_uac_select(
             u32::from(f.frequency_control),
             u32::from(if explicit { f.feedback_endpoint } else { 0 }),
             u32::from(if explicit { f.feedback_refresh } else { 0 }),
+            0,
+            0,
         ];
-        // SAFETY: the caller provides ten writable u32 slots.
+        // SAFETY: the caller provides twelve writable u32 slots.
         unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
         1
     })
@@ -231,6 +287,136 @@ pub unsafe extern "C" fn ruzina_legacy_uac_feedback_stats(out: *mut u32) {
             state.cadence.feedback_q16().unwrap_or(0),
         ]
     });
+    // SAFETY: the caller provides four writable u32 slots.
+    unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
+}
+
+/// `[state, rate, retries, detail]` for the C log: state 1 negotiating, 2
+/// ready at `rate`, 3 failed with `detail` 1 transfer, 2 range, 3 no rate, 4
+/// readback (then `rate` is the rate the clock reported), 5 invalid.
+fn clock_words(clock: &ClockNegotiation, next: ClockNext) -> [u32; 4] {
+    match next {
+        ClockNext::Send(_) | ClockNext::RetryAt { .. } => [1, clock.rate(), clock.retries(), 0],
+        ClockNext::Ready(rate) => [2, rate, clock.retries(), 0],
+        ClockNext::Failed(failure) => {
+            let (detail, rate) = match failure {
+                ClockFailure::Transfer => (1, clock.rate()),
+                ClockFailure::Range => (2, clock.rate()),
+                ClockFailure::NoRate => (3, clock.rate()),
+                ClockFailure::Readback { reported } => (4, reported),
+                ClockFailure::Invalid => (5, clock.rate()),
+            };
+            [3, rate, clock.retries(), detail]
+        }
+    }
+}
+
+/// Writes `request`'s SETUP (and SET CUR data) for the selected clock to
+/// `out[0..12]` and the bytes the device returns to `reply`; returns the
+/// bytes to send.
+fn write_setup(format: &Uac2Playback, request: ClockRequest, out: *mut u8, reply: *mut u32) -> u32 {
+    let setup = request.setup(format.clock_source, format.control_interface);
+    // SAFETY: the callers check both pointers and provide twelve bytes and
+    // one u32.
+    unsafe {
+        core::ptr::copy_nonoverlapping(setup.bytes.as_ptr(), out, setup.len);
+        *reply = u32::from(setup.reply);
+    }
+    setup.len as u32
+}
+
+/// Starts the selected UAC2 alternate's clock negotiation: its first request
+/// into `out[0..12]` and the reply bytes it expects into `reply`; returns the
+/// bytes to send, 0 without a UAC2 selection.
+///
+/// # Safety
+/// `out` must be valid for twelve writes and `reply` for one.
+#[cfg(feature = "idf-controller-audio")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_uac2_clock_begin(out: *mut u8, reply: *mut u32) -> u32 {
+    if out.is_null() || reply.is_null() {
+        return 0;
+    }
+    with(|state| {
+        let Some(format) = state.uac2 else {
+            return 0;
+        };
+        let (clock, request) = ClockNegotiation::new(PREFERRED_UAC2_RATE);
+        state.clock = Some((clock, request));
+        state.clock_outcome = [1, clock.rate(), 0, 0];
+        write_setup(&format, request, out, reply)
+    })
+}
+
+/// The request in flight came back (`ok` when it completed) with `len`
+/// reply bytes at `now_ms`. Returns 0: send `out` (`out_len`, expecting
+/// `reply` bytes) now; 1: send it after `wait_ms`; 2: ready; 3: failed;
+/// -1 without a negotiation. [`ruzina_legacy_uac2_clock_status`] says which
+/// rate or failure.
+///
+/// # Safety
+/// `bytes` must be valid for `len` reads (any pointer when `len` is 0), `out`
+/// for twelve writes, and `out_len`, `reply` and `wait_ms` for one each.
+#[cfg(feature = "idf-controller-audio")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_uac2_clock_done(
+    ok: i32,
+    bytes: *const u8,
+    len: u32,
+    now_ms: u32,
+    out: *mut u8,
+    out_len: *mut u32,
+    reply: *mut u32,
+    wait_ms: *mut u32,
+) -> i32 {
+    if out.is_null() || out_len.is_null() || reply.is_null() || wait_ms.is_null() {
+        return -1;
+    }
+    let mut copy = [0u8; ruzina_uac::clock::MAX_RANGE_BYTES];
+    let len = (len as usize).min(copy.len());
+    if len != 0 && !bytes.is_null() {
+        // SAFETY: the caller lends `len` readable bytes for this call; they
+        // are copied before `out` is written.
+        unsafe { core::ptr::copy_nonoverlapping(bytes, copy.as_mut_ptr(), len) };
+    }
+    with(|state| {
+        let (Some(format), Some((mut clock, request))) = (state.uac2, state.clock) else {
+            return -1;
+        };
+        let next = clock.done(request, ok != 0, &copy[..len], u64::from(now_ms));
+        state.clock_outcome = clock_words(&clock, next);
+        let (action, send, wait) = match next {
+            ClockNext::Send(request) => (0, Some(request), 0),
+            ClockNext::RetryAt { at_ms, request } => (
+                1,
+                Some(request),
+                at_ms.saturating_sub(u64::from(now_ms)) as u32,
+            ),
+            ClockNext::Ready(_) => (2, None, 0),
+            ClockNext::Failed(_) => (3, None, 0),
+        };
+        state.clock = send.map(|request| (clock, request));
+        // SAFETY: checked above; the caller provides the outputs.
+        unsafe {
+            *wait_ms = wait;
+            *out_len = send.map_or(0, |request| write_setup(&format, request, out, reply));
+        }
+        action
+    })
+}
+
+/// Writes the clock negotiation's `[state, rate, retries, detail]`
+/// (`clock_words`) to `out[0..4]`.
+///
+/// # Safety
+/// `out` must be valid for four `u32` writes.
+#[cfg(feature = "idf-controller-audio")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ruzina_legacy_uac2_clock_status(out: *mut u32) {
+    if out.is_null() {
+        return;
+    }
+    let values = with(|state| state.clock_outcome);
     // SAFETY: the caller provides four writable u32 slots.
     unsafe { core::ptr::copy_nonoverlapping(values.as_ptr(), out, values.len()) };
 }

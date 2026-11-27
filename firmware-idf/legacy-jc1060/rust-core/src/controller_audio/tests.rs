@@ -21,6 +21,9 @@ fn profiling_six_packet_fill_preserves_pcm_and_failed_exit() {
         toned_packets: 0,
         rejection: [0; 3],
         feedback: [0; 3],
+        uac2: None,
+        clock: None,
+        clock_outcome: [0; 4],
     };
     let run = |enabled: bool, capacity: usize| {
         let mut state = make_state();
@@ -117,7 +120,7 @@ fn sample16(packet: &[u8], frame: usize, channel: usize) -> i16 {
 fn flx4_headphone_tone_is_selected_requested_and_packed() {
     a_refused_configuration_names_its_reason();
     let config = flx4_config();
-    let mut info = [0u32; 10];
+    let mut info = [0u32; 12];
     // SAFETY: `config` and `info` outlive the call.
     let selected = unsafe {
         ruzina_legacy_uac_select(config.as_ptr(), config.len() as u32, 1, info.as_mut_ptr())
@@ -174,7 +177,7 @@ fn reject() -> [u32; 3] {
 }
 
 fn select_config(config: &[u8], high_speed: bool) -> i32 {
-    let mut info = [0u32; 10];
+    let mut info = [0u32; 12];
     // SAFETY: `config` and `info` outlive the call.
     unsafe {
         ruzina_legacy_uac_select(
@@ -207,7 +210,7 @@ fn feedback_stats() -> [u32; 4] {
 /// The Inpulse 500 at full speed: selected with its feedback endpoint, then
 /// paced by what it reads back.
 fn inpulse_500_is_paced_by_its_feedback(config: &[u8]) {
-    let mut info = [0u32; 10];
+    let mut info = [0u32; 12];
     // SAFETY: `config` and `info` outlive the call.
     let chosen = unsafe {
         ruzina_legacy_uac_select(config.as_ptr(), config.len() as u32, 0, info.as_mut_ptr())
@@ -215,7 +218,7 @@ fn inpulse_500_is_paced_by_its_feedback(config: &[u8]) {
     assert_eq!(chosen, 1);
     // Interface 1 alt 1, OUT 0x01 of 540 bytes, 4 x 3 bytes at 44.1 kHz,
     // no SET_CUR; feedback on IN 0x81, refreshed every 2^5 ms.
-    assert_eq!(info, [1, 1, 0x01, 540, 4, 3, 44_100, 0, 0x81, 5]);
+    assert_eq!(info, [1, 1, 0x01, 540, 4, 3, 44_100, 0, 0x81, 5, 0, 0]);
     assert_eq!(reject(), [0, 0, 0]);
     // Before any reading: the nominal 44.1 frames per ms.
     assert_eq!(feedback_stats(), [0, 0, 0, 44_100 * 65_536 / 1000]);
@@ -246,6 +249,99 @@ fn inpulse_500_is_paced_by_its_feedback(config: &[u8]) {
     assert!((q16 as f64 / 65_536.0 - 44.982).abs() < 0.001, "{q16}");
 }
 
+fn clock_status() -> [u32; 4] {
+    let mut out = [0u32; 4];
+    // SAFETY: four writable slots.
+    unsafe { ruzina_legacy_uac2_clock_status(out.as_mut_ptr()) };
+    out
+}
+
+/// The S2 MK3 at high speed: selected for its UAC2 clock 0x11 on
+/// AudioControl interface 0, then negotiated against a clock that ranges
+/// 44.1 and 48 kHz and reports the old rate for a while after SET CUR.
+fn s2_mk3_negotiates_its_clock(config: &[u8]) {
+    let mut info = [0u32; 12];
+    // SAFETY: `config` and `info` outlive the call.
+    let chosen = unsafe {
+        ruzina_legacy_uac_select(config.as_ptr(), config.len() as u32, 1, info.as_mut_ptr())
+    };
+    assert_eq!(chosen, 2);
+    assert_eq!(info, [1, 1, 0x01, 112, 4, 4, 48_000, 0, 0x81, 4, 0x11, 0]);
+    let (mut out, mut reply, mut out_len, mut wait) = ([0u8; 12], 0u32, 0u32, 0u32);
+    // SAFETY: twelve writable bytes and one u32.
+    let len = unsafe { ruzina_legacy_uac2_clock_begin(out.as_mut_ptr(), &mut reply) };
+    assert_eq!(&out[..len as usize], &[0xa1, 2, 0, 1, 0, 0x11, 2, 0]);
+    assert_eq!(reply, 2);
+    let mut range = 2u16.to_le_bytes().to_vec();
+    for rate in [44_100u32, 48_000] {
+        for value in [rate, rate, 0] {
+            range.extend_from_slice(&value.to_le_bytes());
+        }
+    }
+    let mut now = 10_000u32;
+    let mut sent = std::vec::Vec::new();
+    loop {
+        sent.push(out[..8].to_vec());
+        let answer: std::vec::Vec<u8> = match (out[1], out[3], out[6]) {
+            (2, 1, 2) => range[..2].to_vec(),
+            (2, 1, _) => range.clone(),
+            (1, 1, 4) if out[0] == 0x21 => std::vec::Vec::new(),
+            // GET CUR: still 44.1 kHz for the first two reads.
+            (1, 1, 4) => if sent.len() < 6 { 44_100u32 } else { 48_000 }
+                .to_le_bytes()
+                .to_vec(),
+            (1, 2, 1) => std::vec![1],
+            other => panic!("{other:?}"),
+        };
+        // SAFETY: the buffers outlive the call.
+        let action = unsafe {
+            ruzina_legacy_uac2_clock_done(
+                1,
+                answer.as_ptr(),
+                answer.len() as u32,
+                now,
+                out.as_mut_ptr(),
+                &mut out_len,
+                &mut reply,
+                &mut wait,
+            )
+        };
+        match action {
+            0 => {}
+            1 => {
+                assert_eq!(wait, 50);
+                now += wait;
+            }
+            2 => break,
+            other => panic!("action {other}, status {:?}", clock_status()),
+        }
+        assert!(out_len == 8 || out_len == 12);
+        now += 1;
+    }
+    let [state, rate, retries, detail] = clock_status();
+    assert_eq!((state, rate, detail), (2, 48_000, 0));
+    assert_eq!(retries, 2);
+    // A stalled request fails the negotiation; nothing else is in flight.
+    // SAFETY: twelve writable bytes and one u32.
+    unsafe { ruzina_legacy_uac2_clock_begin(out.as_mut_ptr(), &mut reply) };
+    // SAFETY: the buffers outlive the call.
+    let action = unsafe {
+        ruzina_legacy_uac2_clock_done(
+            0,
+            core::ptr::null(),
+            0,
+            now,
+            out.as_mut_ptr(),
+            &mut out_len,
+            &mut reply,
+            &mut wait,
+        )
+    };
+    assert_eq!(action, 3);
+    assert_eq!(clock_status()[0..1], [3]);
+    assert_eq!(clock_status()[3], 1);
+}
+
 /// Part of the FLX4 test below: both use the one selection state.
 fn a_refused_configuration_names_its_reason() {
     // The donor's captures (firmware-rust/crates/ruzina-uac/tests/fixtures).
@@ -260,10 +356,9 @@ fn a_refused_configuration_names_its_reason() {
     assert_eq!(select_config(hercules, true), 0);
     assert_eq!(reject(), [7, 1, 1]);
     inpulse_500_is_paced_by_its_feedback(hercules);
-    // S2 MK3 at high speed: UAC2 on interface 1, alternate 1, which the deck
-    // can drive once it speaks UAC2; at full speed nothing it can drive.
-    assert_eq!(select_config(s2, true), 0);
-    assert_eq!(reject(), [12, 1, 1]);
+    // S2 MK3 at high speed: UAC2 on interface 1, alternate 1, whose clock the
+    // deck negotiates; at full speed nothing it can drive.
+    s2_mk3_negotiates_its_clock(s2);
     assert_eq!(select_config(s2, false), 0);
     assert_eq!(reject(), [13, 1, 1]);
     // A selection clears the reason; the FLX4 has no feedback to follow.
