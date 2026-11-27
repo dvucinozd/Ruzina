@@ -9,7 +9,7 @@ set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/third_party/esp-usb-1.6.0/us
 # the images with Wi-Fi: its constructor resets the C6 and starts SDIO in any image that
 # links it.
 if("$ENV{RUZINA_WIFI}" STREQUAL "1")
-    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/third_party/esp-hosted-2.11.7/esp_hosted")
+    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/third_party/esp-hosted-2.12.11/esp_hosted")
 endif()
 # The image's version (its app description): the build's name from build_legacy.py
 # --version, which the Web Remote shows and a firmware bundle names.
