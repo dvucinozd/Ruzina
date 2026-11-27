@@ -39,10 +39,15 @@ Review notes:
   tasks (4 and 5), and the value is fixed in
   `host/port/esp/freertos/include/port_esp_hosted_host_os.h`. The probe lowers each
   task by name (`main/wifi_remote.c`).
-- **The Wi-Fi images turn off three things:**
+- **The Wi-Fi images turn off four things:**
   - restart on transport failure, which would reboot the deck;
   - the hosted console, which would take over ours;
-  - auto-connect on station start.
+  - auto-connect on station start;
+  - its SDIO buffer pool (`ESP_HOSTED_USE_MEMPOOL`). Since 2.12 the pool takes about
+    48 KiB of internal DMA RAM in the boot constructor, before IDF adds the 384 KiB
+    startup region to the heap. On s243 that failed and the image asserted
+    (`sdio_drv.c`, `buf_mp_g`) and rolled back. Without the pool, each buffer comes
+    from the heap when needed.
 
   It also leaves the SD LDO control off (`ESP_HOSTED_SD_PWR_CTRL_LDO_INTERNAL_IO`).
 - **The SD error path can cut the C6 off.** On an SD failure, `sd_bridge.c` calls

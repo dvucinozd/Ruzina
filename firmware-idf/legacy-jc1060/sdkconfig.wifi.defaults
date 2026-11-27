@@ -31,6 +31,10 @@ CONFIG_ESP_HOSTED_TRANSPORT_RESTART_ON_FAILURE=n
 CONFIG_ESP_HOSTED_CLI_ENABLED=n
 CONFIG_ESP_HOSTED_MEM_MONITOR=n
 CONFIG_ESP_HOSTED_WIFI_AUTO_CONNECT_ON_STA_START=n
+# Since 2.12 the SDIO pool takes about 48 KiB of internal DMA RAM in the boot constructor,
+# before the 384 KiB startup region joins the heap; on s243 that failed and asserted
+# (sdio_drv.c, buf_mp_g). Without the pool each buffer comes from the heap when needed.
+CONFIG_ESP_HOSTED_USE_MEMPOOL=n
 
 # lwIP's task on the screen's core, below the decoders: USB audio owns the other one.
 CONFIG_LWIP_TCPIP_TASK_PRIO=2
